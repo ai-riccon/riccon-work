@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!--
+    Riccon 根 reactor。
+    设计约束见 AGENTS.md 合同、docs/ARCHITECTURE.md 与 docs/adr/。
+    版本只允许通过 properties 调整，且必须与合同 stack.versions 保持一致。
+  -->
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>4.1.2</version>
+    <relativePath/>
+  </parent>
+
+  <groupId>com.riccon</groupId>
+  <artifactId>riccon-parent</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+  <name>riccon-parent</name>
+  <description>Riccon 多租户 AI 协同办公系统：后端 reactor 根</description>
+
+  <modules>
+    <module>platform/platform-common</module>
+    <module>apps/api</module>
+    <module>apps/worker</module>
+    <module>platform/platform-architecture-tests</module>
+  </modules>
+
+  <properties>
+    <java.version>21</java.version>
+    <maven.compiler.release>21</maven.compiler.release>
+
+    <!-- 版本来源：AGENTS.md Project Contract -> stack.versions -->
+    <spring-ai.version>2.0.2</spring-ai.version>
+    <agentscope.version>2.0.5</agentscope.version>
+    <springdoc.version>3.2.0</springdoc.version>
+
+    <!-- 构建与质量工具 -->
+    <archunit.version>1.5.1</archunit.version>
+    <spotless.version>3.11.0</spotless.version>
+    <palantir-java-format.version>2.103.0</palantir-java-format.version>
+    <jacoco.version>0.8.16</jacoco.version>
+    <enforcer.version>3.7.0</enforcer.version>
+
+    <!-- 覆盖率门槛：AGENTS.md -> constraints.coverage -->
+    <coverage.line.minimum>0.80</coverage.line.minimum>
+    <coverage.branch.minimum>0.70</coverage.branch.minimum>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- Spring AI 2.0.2 先只做 BOM 管理，M02 起才引入具体 starter。 -->
+      <dependency>
+        <groupId>org.springframework.ai</groupId>
+        <artifactId>spring-ai-bom</artifactId>
+        <version>${spring-ai.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <dependency>
+        <groupId>com.riccon</groupId>
+        <artifactId>riccon-platform-common</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>io.agentscope</groupId>
+        <artifactId>agentscope-core</artifactId>
+        <version>${agentscope.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.tngtech.archunit</groupId>
+        <artifactId>archunit</artifactId>
+        <version>${archunit.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.springdoc</groupId>
+        <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        <version>${springdoc.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>com.diffplug.spotless</groupId>
+          <artifactId>spotless-maven-plugin</artifactId>
+          <version>${spotless.version}</version>
+          <configuration>
+            <java>
+              <includes>
+                <include>src/main/java/**/*.java</include>
+                <include>src/test/java/**/*.java</include>
+              </includes>
+              <!--
+                Spotless 使用 Palantir Java Format：与 google-java-format 相比，
+                在 JDK 21 与 Maven 3.10 下无需额外的 javac 模块导出参数，格式化结果更稳定。
+              -->
+              <palantirJavaFormat>
+                <version>${palantir-java-format.version}</version>
+              </palantirJavaFormat>
+              <importOrder/>
+              <removeUnusedImports/>
+              <trimTrailingWhitespace/>
+              <endWithNewline/>
+            </java>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>${enforcer.version}</version>
+        <executions>
+          <execution>
+            <id>enforce-toolchain</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireJavaVersion>
+                  <version>[21,22)</version>
+                  <message>Riccon 要求 JDK 21（合同 stack.versions.java）。</message>
+                </requireJavaVersion>
+                <requireMavenVersion>
+                  <version>[3.10,4)</version>
+                  <message>Riccon 要求 Maven 3.10.x（合同 stack.package_manager）。</message>
+                </requireMavenVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+      </plugin>
+
+      <!--
+        覆盖率门槛按合同 constraints.coverage 执行。
+        每个模块在 verify 阶段运行 jacoco:check；排除项集中写在各模块 pom 中。
+      -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <executions>
+          <execution>
+            <id>prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

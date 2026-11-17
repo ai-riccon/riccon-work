@@ -1,0 +1,8 @@
+spring:
+  # 单元/上下文测试不连接真实数据库：M01 没有业务查询，连接数据库只会让测试依赖沙箱。
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration
+  flyway:
+    enabled: false

@@ -1,0 +1,228 @@
+# 编码规范
+
+- **所有者**：`riccon/architect`
+- **适用对象**：`apps/api`、`apps/worker`、`platform/**` 的 Java 21 / Spring Boot 4.1 代码；前端规范在 TASK-0003 建立 `apps/web` 时补充。
+- **强制力**：本文件中的“必须/禁止”是评审阻断项。Builder 不得擅自修改构建配置、覆盖率门槛、格式化器、模块边界规则；需要变更时走决策包。
+- **复现命令**：
+
+```bash
+./mvnw -q -T1C verify          # 编译 + 单元/切片测试 + 覆盖率门槛
+./mvnw -q spotless:check       # 格式与导入检查
+./mvnw -q spotless:apply       # 本地自动修复格式（提交前运行）
+./mvnw -q -T1C verify jacoco:report   # 合同 commands.coverage 的后端部分
+```
+
+## 1. 技术栈与版本
+
+| 项              | 版本                                  | 约束                                             |
+| --------------- | ------------------------------------- | ------------------------------------------------ |
+| JDK             | 21                                    | Maven Enforcer 锁定 `[21,22)`，不得使用 22+ 语法 |
+| Maven           | 3.10.x                                | 通过 `./mvnw` 执行，不依赖本机 Maven             |
+| Spring Boot     | 4.1.2                                 | 由 `spring-boot-starter-parent` 管理             |
+| Spring Security | 7.1.2                                 | 由 Boot BOM 管理                                 |
+| Spring AI       | 2.0.2                                 | M01 只导入 BOM，不引入具体 starter               |
+| agentscope-java | 2.0.5                                 | 只能出现在 `apps/worker`                         |
+| MySQL           | 8.4.13                                | 驱动 `com.mysql:mysql-connector-j`               |
+| Flyway          | 12.4.0                                | 由 Boot BOM 管理                                 |
+| JUnit           | 6.x                                   | Jupiter API，不用 JUnit 4                        |
+| ArchUnit        | 1.5.1                                 | 架构规则                                         |
+| Spotless        | 3.11.0 + Palantir Java Format 2.103.0 | 格式唯一来源                                     |
+
+禁止自行升级版本、替换框架或引入第二套 JSON/HTTP/ORM/测试框架。版本变更必须同步 `AGENTS.md` 合同与 ADR。
+
+## 2. 目录与包结构
+
+```text
+apps/api/src/main/java/com/riccon/api/
+  ApiApplication.java
+  config/            # Spring 配置、SecurityFilterChain
+  <feature>/         # 按业务能力纵向分包：controller/service/repository/domain
+apps/worker/src/main/java/com/riccon/worker/
+  WorkerApplication.java
+  config/
+  agent/             # AgentScope 适配层（M02 起），不得被 api/platform 引用
+platform/platform-common/src/main/java/com/riccon/platform/common/
+  tenant/            # TenantId、TenantContext
+platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
+```
+
+规则：
+
+- 包名全小写，根包固定为 `com.riccon.api`、`com.riccon.worker`、`com.riccon.platform.common`。
+- 业务能力按 feature 分包，不按技术层建全局大包；同一 feature 内再分 `controller/service/repository/domain`。
+- `controller` 只做协议转换、校验、鉴权注解；`service` 承载事务与业务规则；`repository` 只做持久化。
+- `config` 包只放配置类；`@Configuration` 类必须位于 `..config..`（ArchUnit 强制）。
+- 公共能力先放 `platform-common`；只被一个部署物使用的代码不要下沉。
+- `platform-common` 不得依赖 Spring Web、`jakarta.servlet`、`apps/*`、`io.agentscope`。
+
+### 模块边界（机器强制）
+
+| 规则                                                | 执行者                                         |
+| --------------------------------------------------- | ---------------------------------------------- |
+| `apps/api` 与 `platform` 不得依赖 `io.agentscope..` | ArchUnit + Maven Enforcer `bannedDependencies` |
+| 只有 `apps/worker` 可以依赖 agentscope              | ArchUnit + Enforcer                            |
+| `api` 与 `worker` 不得互相编译依赖                  | ArchUnit                                       |
+| `platform` 不得依赖 `apps/*`                        | ArchUnit                                       |
+| `platform-common` 不得依赖 Spring/Web               | ArchUnit                                       |
+| MVC 分层单向：controller → service → repository     | ArchUnit `layeredArchitecture`                 |
+
+规则文件：`platform/platform-architecture-tests/src/test/java/com/riccon/architecture/ModuleBoundaryTest.java`。规则失败时修改依赖方向，禁止用 `@ArchIgnore` 或放宽规则绕过；确需例外时写 ADR 并在规则中显式标注。
+
+## 3. 命名
+
+| 对象         | 规则                         | 示例                             |
+| ------------ | ---------------------------- | -------------------------------- |
+| 包           | 小写，点分隔                 | `com.riccon.api.chat.controller` |
+| 类/记录/枚举 | PascalCase                   | `TenantContext`、`ChatSession`   |
+| 方法/变量    | camelCase                    | `requireTenant()`、`tenantId`    |
+| 常量         | UPPER_SNAKE_CASE             | `MAX_PAGE_SIZE`                  |
+| 测试类       | 被测类名 + `Test`            | `TenantContextTest`              |
+| 测试方法     | `被测方法_场景_期望`         | `requireFailsWhenTenantMissing`  |
+| 数据库表/列  | snake_case                   | `chat_session`、`tenant_id`      |
+| REST 路径    | 小写复数、短横线             | `/api/v1/knowledge-bases`        |
+| JSON 字段    | camelCase                    | `tenantId`、`createdAt`          |
+| 环境变量     | `RICCON_` 前缀 + UPPER_SNAKE | `RICCON_DB_URL`                  |
+| 日志键       | camelCase 或点分小写         | `tenantId`、`agent.run_id`       |
+| 错误码       | `RICCON-<DOMAIN>-<NNN>`      | `RICCON-TENANT-001`              |
+
+禁止：拼音命名、无意义缩写（`tmp`、`data1`、`util2`）、单字母变量（循环下标除外）、中文标识符。
+
+## 4. 格式化与静态检查
+
+- 唯一格式化器：Spotless + Palantir Java Format，4 空格缩进，行宽 120，导入按字母排序并删除未使用导入。
+- 提交前运行 `./mvnw -q spotless:apply`；CI 运行 `./mvnw -q spotless:check`，不通过即失败。
+- 不在代码中手工对齐或使用 IDE 自带格式化覆盖 Spotless 结果。
+- 不允许 `@SuppressWarnings` 掩盖未检查泛型/废弃 API；确需抑制时在同一行注释原因和移除条件。
+- 编译告警不阻断构建，但新增告警必须在 PR 描述中说明；禁止新增 `deprecation` 告警。
+- 禁止提交 `System.out`、`System.err`、`printStackTrace`、`TODO` 占位实现。
+
+## 5. Java 21 约定
+
+- 数据传输对象优先使用 `record`；需要可变状态或 JPA 实体时用普通类。
+- `Optional` 只用于返回值，不用于字段、方法参数或集合元素。
+- 禁止返回 `null` 集合；返回空集合或 `Optional`。
+- 字符串拼接使用 `StringBuilder` 或文本块；SQL 使用参数绑定。
+- 时间统一使用 `java.time`（`Instant`/`OffsetDateTime`），禁止 `Date`/`Calendar`。
+- 金额、比例等精确值使用 `BigDecimal`，禁止 `double`。
+- 集合默认使用 `List`/`Map` 接口类型；需要不可变时用 `List.copyOf`/`Map.copyOf`。
+- 不使用 `var` 隐藏关键类型；局部变量类型明显时可用。
+- 不使用 Java 21 预览特性（如未定稿的 ScopedValue/虚拟线程 API 变更），避免构建依赖 `--enable-preview`。
+- 显式关闭资源：`try-with-resources` 优先；`TenantContext` 必须用 `try (TenantScope ...)`。
+
+## 6. Spring Boot 4.1 约定
+
+- **构造器注入**：禁止 `@Autowired` 字段注入；单构造器可省略注解。
+- **配置类**：使用 `@Configuration(proxyBeanMethods = false)`；配置类集中在 `config` 包。
+- **配置属性**：外部配置用 `@ConfigurationProperties` + 校验，不用散落的 `@Value`；前缀 `riccon.*`。
+- **Web 层**：M01 使用 `spring-boot-starter-webmvc`（Boot 4 的规范 starter），不要同时引入 WebFlux。
+- **异常**：REST 边界统一转换为 `ProblemDetail`；业务异常在 M02 建立基类，禁止把 `Exception` 直接抛出控制器。
+- **事务**：`@Transactional` 只放在 service 的公共方法；只读查询标注 `readOnly = true`；禁止在 controller 开启事务。
+- **安全**：新增端点默认被 `denyAll()` 覆盖；需要放行时必须显式列出路径并说明理由，禁止 `anyRequest().permitAll()`。
+- **健康检查**：`/actuator/health` 保持无认证、无外部依赖；不要把模型/MCP 探活塞进 readiness。
+- **日志**：使用 SLF4J，不直接依赖 Logback API。
+- **启动类**：排除 `UserDetailsServiceAutoConfiguration` 的基线不得移除，除非认证方案已落地并评审。
+
+## 7. 异常与错误码
+
+- 业务失败用异常表达，不用返回 `null` 或布尔值表示多种失败原因。
+- 异常层次（M02 建立）：`RicconException`（受检业务失败）→ 领域子类；技术异常包装为 `InfrastructureException`。
+- 每个对外错误必须有稳定错误码，格式 `RICCON-<DOMAIN>-<NNN>`；同一错误的码不得复用。
+- HTTP 映射：参数错误 400，未认证 401，无权限 403，不存在 404，冲突 409，限流 429，内部错误 500。
+- 响应使用 RFC 9457 `ProblemDetail`，至少包含 `type`、`title`、`status`、`detail`、`code`、`traceId`。
+- 禁止把堆栈、SQL、内部主机名、密钥、完整提示词返回给客户端。
+- 捕获异常时必须处理或添加上下文再抛出；禁止空 `catch`、禁止捕获 `Throwable` 后继续执行。
+- 批量任务必须区分“可重试”和“不可重试”错误，并在日志中带 `retryable=true/false`。
+
+## 8. 日志
+
+- 使用参数化日志：`log.info("agent.run.completed runId={} tenantId={} durationMs={}", ...)`。
+- 日志消息用英文短句，键值对便于检索；禁止拼接字符串生成日志。
+- 必须带上下文：`tenantId`、`traceId`、`requestId`、`runId`（按场景）。
+- 级别：`ERROR` 仅用于需要人工介入的失败；`WARN` 用于可恢复异常；`INFO` 记录状态变化；`DEBUG` 只用于本地排障。
+- 禁止记录：密码、token、Cookie、密钥、完整身份证/手机号/邮箱、完整提示词、知识库原文、MCP 凭据。
+- 需要记录用户内容时先脱敏（保留前后各 4 字符或哈希），并在代码注释说明脱敏规则。
+- 审计日志与业务日志分离：审计必须落库，不能只写日志文件。
+- 日志中禁止使用中文错误消息作为唯一检索键；错误码与英文键必须存在。
+
+## 9. 注释（中文）
+
+- 所有 `public`/`protected` 类和方法必须有中文 Javadoc，说明职责、参数、返回值和抛出的异常。
+- 复杂业务流程必须有行级或段落注释，解释“为什么”而不是“做了什么”；纯 getter/setter 不写重复注释。
+- 安全相关代码必须注释威胁与边界，例如“此处不放行任何业务路径，认证在 M02 接入”。
+- 数据库迁移、外部协议适配、重试/幂等、租户传播必须有中文说明。
+- TODO 格式：`// TODO(owner, M0x): 具体动作与移除条件`；禁止无 owner、无期限的 TODO。
+- 禁止注释掉的代码；删除而不是注释。
+- 标识符、日志键、错误码、命令保持英文；注释、文档、commit message 使用中文。
+
+## 10. 测试
+
+- 框架：JUnit 6 Jupiter + AssertJ；Spring 切片测试用 `@SpringBootTest`/`@AutoConfigureMockMvc`；禁止 JUnit 4。
+- 单元测试不启动 Spring；只有需要验证装配、安全链、序列化时才用切片测试。
+- 测试方法命名：`被测方法_场景_期望`，例如 `requireFailsWhenTenantMissing`。
+- 每个测试只验证一个行为；断言必须具体（状态码、错误码、字段值），禁止只断言 `not null`。
+- 禁止 `Thread.sleep`、依赖执行顺序、依赖真实时间或随机数；需要时钟时注入 `Clock`。
+- 数据库/外部服务测试使用 `deploy/compose/docker-compose.test.yml` 或 Testcontainers；测试数据必须可重复清理。
+- 安全测试必须覆盖：未认证访问、越权访问、跨租户访问、默认拒绝路径。
+- 覆盖率门槛（合同 `constraints.coverage`）：
+  - 行覆盖率 ≥ **80%**，分支覆盖率 ≥ **70%**；
+  - 由 `jacoco:check` 在 `verify` 阶段强制执行；
+  - 排除项仅允许启动类（`**/*Application.class`）；新增排除必须在 PR 说明理由并由 verifier 确认；
+  - 报告路径：`apps/*/target/site/jacoco/index.html`、`platform/*/target/site/jacoco/index.html`；
+  - 复现命令：`./mvnw -q -T1C verify jacoco:report`。
+- 测试必须真实执行；0 个测试的命令视为失败，不得用 `-DskipTests` 作为交付证据。
+- 前端 E2E 与覆盖率在 TASK-0003 建立 `apps/web` 后补充，命令以合同 `commands.test_e2e` 为准。
+
+## 11. 数据库与迁移
+
+- 只使用 Flyway；迁移文件位于 `apps/api/src/main/resources/db/migration`。
+- 命名：`V{n}__{snake_case_描述}.sql`，序号连续，不修改已应用的文件。
+- 每个业务表必须包含：`id`、`tenant_id`、`created_at`、`updated_at`；需要软删除时加 `deleted_at`。
+- 索引必须以 `tenant_id` 开头或包含 `tenant_id`，除非是全局字典表并写 ADR。
+- 迁移只向前兼容：新增列允许 `NULL` 或带默认值；重命名/删除必须分两步并保留回滚脚本。
+- 破坏性变更（删表、删列、改类型、数据回填）必须有 ADR、回滚脚本和 sandbox 演练记录。
+- 禁止在迁移中使用 `DROP DATABASE`、跨库写入或依赖生产数据。
+- 大表变更必须评估锁表时间，并在 RUNBOOK 记录操作窗口。
+
+## 12. 安全基线
+
+- **默认拒绝**：安全过滤器链默认 `denyAll()`；只放行健康检查。新增白名单路径必须评审。
+- **最小权限**：数据库账号只授予所需库表权限；生产不使用 root。
+- **租户隔离**：所有业务查询必须带 `tenant_id`；`TenantContext.require()` 失败时不得降级为全租户查询。
+- **认证与会话**：M02 前不得上线任何登录接口；认证方案落地后必须覆盖 CSRF、会话固定、登出、密码策略。
+- **输入校验**：所有外部输入在 controller 边界校验；文件上传限制类型、大小和存储路径；禁止路径穿越。
+- **SSRF**：模型网关与 MCP 端点使用允许列表；禁止用户可控 URL 直接出网。
+- **提示注入**：检索内容与工具返回一律视为数据；不得拼接进系统指令；高风险工具必须 HITL。
+- **密钥**：只从环境变量或密钥管理读取；日志、异常、证据、测试快照中不得出现真实密钥。
+- **依赖安全**：新增依赖必须检查许可证（Apache-2.0/MIT/BSD/EPL）与已知漏洞；CI/发布前运行 Trivy。
+- **审计**：模型、工具、MCP、权限、租户变更必须审计；审计失败时业务失败。
+
+## 13. 性能
+
+- API p95 ≤ 500 ms（不含模型与外部 MCP）；首字 p95 ≤ 3 s（假模型基准）。
+- 所有列表接口必须分页，默认 20，最大 100；禁止无界查询。
+- 禁止 N+1 查询；批量查询使用 `IN` 或 join，并在测试中验证查询次数。
+- 外部调用（模型、MCP、对象存储）必须设置连接/读取超时和重试上限；重试只用于幂等操作。
+- 大文件走流式处理，禁止一次性读入内存；上传大小上限在配置中显式声明。
+- 性能敏感变更必须附 k6 或基准测试证据；未达到预算不得发布。
+
+## 14. Git 与提交
+
+- 分支从 `main` 创建；M01 只使用 `main`。
+- Commit message：`type(scope): 中文摘要`，type ∈ `feat|fix|chore|docs|test|refactor|build`。
+- 一个 commit 只做一件事；格式化与行为变更分开提交。
+- 不提交 `.env`、密钥、构建产物、`target/`、`node_modules/`、日志、`.DS_Store`。
+- PR 描述必须包含：变更范围、验收标准、测试命令与结果、风险与回滚方式。
+- 不执行 `git push --force`、`rm -rf`、`sudo` 等破坏性命令，除非用户明确批准。
+
+## 15. 评审检查清单
+
+- [ ] 依赖方向符合模块边界，agentscope 未出现在 api/platform。
+- [ ] 新增端点默认被拒绝，白名单有理由。
+- [ ] 所有外部输入已校验，错误使用 `ProblemDetail` + 稳定错误码。
+- [ ] 日志无 PII/密钥，关键路径带 `tenantId`/`traceId`。
+- [ ] 公共类/方法有中文 Javadoc，复杂流程有中文行级注释。
+- [ ] 新增/修改行为有对应测试，覆盖率门槛通过。
+- [ ] 数据库迁移可向前兼容，破坏性变更附 ADR 与回滚脚本。
+- [ ] 性能预算与超时/重试已评估。
+- [ ] `./mvnw -q -T1C verify` 与 `./mvnw -q spotless:check` 通过。
+- [ ] 文档已同步，或记录 no-impact 理由。

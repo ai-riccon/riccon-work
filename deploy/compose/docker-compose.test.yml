@@ -1,0 +1,97 @@
+# Riccon 测试栈（合同 commands.sandbox）。
+#
+# 仅用于本地与 CI 的测试/演示，不是生产编排：
+# - 所有端口绑定 127.0.0.1，且使用非默认端口，避免与宿主已有服务冲突；
+# - 凭据是测试占位值，可通过环境变量覆盖，禁止写入真实密钥；
+# - 对象存储使用 RustFS（S3 兼容）。MinIO 官方镜像已停止公开发布，替换理由见
+#   docs/adr/ADR-0002-test-object-storage-rustfs.md。
+name: riccon-test
+
+services:
+  mysql:
+    image: mysql:8.4.13
+    container_name: riccon-test-mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    environment:
+      MYSQL_DATABASE: riccon
+      MYSQL_USER: riccon
+      MYSQL_PASSWORD: ${RICCON_DB_PASSWORD:-riccon_test_only}
+      MYSQL_ROOT_PASSWORD: ${RICCON_DB_ROOT_PASSWORD:-riccon_root_test_only}
+    ports:
+      - "127.0.0.1:13306:3306"
+    volumes:
+      - mysql-test-data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD} --silent",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    networks:
+      - riccon-test-net
+
+  opensearch:
+    image: opensearchproject/opensearch:3.9.0
+    container_name: riccon-test-opensearch
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      bootstrap.memory_lock: "false"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "127.0.0.1:19200:9200"
+      - "127.0.0.1:19600:9600"
+    volumes:
+      - opensearch-test-data:/usr/share/opensearch/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://127.0.0.1:9200/_cluster/health >/dev/null",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+    networks:
+      - riccon-test-net
+
+  object-storage:
+    image: rustfs/rustfs:1.0.6
+    container_name: riccon-test-object-storage
+    environment:
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_ACCESS_KEY: ${RICCON_S3_ACCESS_KEY:-riccon_test_only}
+      RUSTFS_SECRET_KEY: ${RICCON_S3_SECRET_KEY:-riccon_test_only_secret}
+    ports:
+      - "127.0.0.1:19000:9000"
+      - "127.0.0.1:19001:9001"
+    volumes:
+      - object-storage-test-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    networks:
+      - riccon-test-net
+
+volumes:
+  mysql-test-data:
+  opensearch-test-data:
+  object-storage-test-data:
+
+networks:
+  riccon-test-net:
+    driver: bridge

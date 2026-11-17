@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: riccon-api
+  datasource:
+    # 本地默认值对应 deploy/compose/docker-compose.test.yml 的非默认端口；生产必须由环境变量注入。
+    url: ${RICCON_DB_URL:jdbc:mysql://127.0.0.1:13306/riccon?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8}
+    username: ${RICCON_DB_USERNAME:riccon}
+    password: ${RICCON_DB_PASSWORD:riccon_test_only}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+
+server:
+  port: ${RICCON_API_PORT:8080}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+  health:
+    db:
+      enabled: true
+
+springdoc:
+  api-docs:
+    # M01 默认关闭 OpenAPI 文档，避免在认证落地前暴露内部描述；M02 按环境开启。
+    enabled: false
+  swagger-ui:
+    enabled: false
