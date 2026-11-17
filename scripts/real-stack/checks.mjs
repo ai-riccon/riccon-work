@@ -1,0 +1,260 @@
+#!/usr/bin/env node
+// 真实栈安全与审计复核：跨租户拒绝、审计覆盖、append-only、密钥不落日志、契约端点缺口。
+//
+// 退出码只在“必须成立”的断言失败时非零；契约声明的端点缺失记录为 gaps，由评审定级。
+
+import assert from "node:assert/strict";
+import { readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { ApiClient } from "./lib/http.mjs";
+import { runSql } from "./lib/mysql.mjs";
+
+const root = process.cwd();
+const seedPath =
+  process.env.REAL_SEED_OUT ??
+  path.join(root, ".riccon/evidence/TASK-0024/real-stack-seed.json");
+const seed = JSON.parse(readFileSync(seedPath, "utf8"));
+const journey = JSON.parse(
+  readFileSync(
+    path.join(root, ".riccon/evidence/TASK-0024/real-stack-j2.json"),
+    "utf8",
+  ),
+);
+const masterKey = process.env.RICCON_MASTER_KEY;
+const fakeApiKey = seed.fakeApiKey ?? "fake-model-api-key-real-stack";
+
+/** 记录观察结果，不直接决定退出码。 */
+const gaps = [];
+const observations = {};
+
+// ---------- 跨租户 ----------
+const alpha = new ApiClient(seed.apiBase);
+await alpha.login(
+  seed.tenants.alpha,
+  "alpha-member",
+  "alpha-member-password-12",
+);
+const beta = new ApiClient(seed.apiBase);
+await beta.login(seed.tenants.beta, "beta-member", "beta-member-password-12");
+
+const alphaConversation = await alpha.post(
+  `/api/v1/workspaces/${seed.workspaces.alpha.id}/conversations`,
+  {
+    title: "跨租户验证会话",
+  },
+);
+assert.equal(alphaConversation.status, 201);
+const crossChecks = [
+  ["conversation", `/api/v1/conversations/${alphaConversation.data.id}`],
+  ["task", `/api/v1/research-tasks/${journey.approvedTaskId}`],
+  ["artifact", `/api/v1/artifacts/${journey.approvedArtifactId}`],
+  [
+    "artifactVersion",
+    `/api/v1/artifacts/${journey.approvedArtifactId}/versions/1`,
+  ],
+  [
+    "artifactDownload",
+    `/api/v1/artifacts/${journey.approvedArtifactId}/versions/1/download-url`,
+  ],
+  [
+    "knowledgeDocument",
+    `/api/v1/knowledge/documents/${seed.knowledge.documentId}`,
+  ],
+  ["file", `/api/v1/files/${seed.knowledge.sourceFileId}`],
+];
+for (const [name, url] of crossChecks) {
+  const response = await beta.get(url);
+  assert.equal(
+    response.status,
+    404,
+    `cross-tenant ${name} must be 404, got ${response.status} ${response.text}`,
+  );
+  assert.ok(
+    !response.text.includes("2025 中国企业协同办公"),
+    `cross-tenant ${name} leaked content`,
+  );
+}
+const betaApprovals = await beta.get("/api/v1/approvals?page=1&size=100");
+assert.equal(betaApprovals.status, 200);
+assert.equal(
+  betaApprovals.data.total,
+  0,
+  "cross-tenant approval list must be empty",
+);
+const betaCreateInAlphaWorkspace = await beta.post(
+  `/api/v1/workspaces/${seed.workspaces.alpha.id}/research-tasks`,
+  { topic: "跨租户工作空间创建测试", mcpToolId: seed.catalog.mcpToolId },
+  { "Idempotency-Key": `cross-ws-${Date.now()}` },
+);
+assert.equal(
+  betaCreateInAlphaWorkspace.status,
+  404,
+  "cross-tenant workspace create must be 404",
+);
+const betaUseAlphaTool = await beta.post(
+  `/api/v1/workspaces/${seed.workspaces.beta.id}/research-tasks`,
+  { topic: "跨租户工具授权测试", mcpToolId: seed.catalog.mcpToolId },
+  { "Idempotency-Key": `cross-tool-${Date.now()}` },
+);
+observations.crossTenantToolCreate = `${betaUseAlphaTool.status} ${betaUseAlphaTool.data?.code ?? ""}`;
+
+// 在 beta 自己的租户上传并删除一个文件，补齐 file.deleted 审计。
+const betaUpload = await beta.upload(seed.workspaces.beta.id, {
+  filename: "beta-audit.docx",
+  mimeType:
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  content: readFileSync(path.join(root, "e2e/real/fixtures/market.docx")),
+});
+assert.equal(betaUpload.status, 201);
+const betaDelete = await beta.delete(`/api/v1/files/${betaUpload.data.id}`);
+assert.equal(betaDelete.status, 204);
+
+// ---------- 审计覆盖 ----------
+const requiredActions = [
+  "auth.login.succeeded",
+  "user.created",
+  "tenant.created",
+  "file.uploaded",
+  "file.deleted",
+  "session.created",
+  "message.sent",
+  "model.invocation.started",
+  "model.invocation.completed",
+  "mcp.tool.invoked",
+  "approval.decided",
+  "research.task.created",
+  "artifact.saved",
+];
+const actionRows = runSql(`
+SELECT action, COUNT(*) AS total FROM audit_event GROUP BY action ORDER BY action;
+`).stdout;
+const auditCounts = Object.fromEntries(
+  actionRows
+    .trim()
+    .split("\n")
+    .slice(1)
+    .map((line) => {
+      const [action, total] = line.split("\t");
+      return [action, Number(total)];
+    }),
+);
+for (const action of requiredActions) {
+  assert.ok((auditCounts[action] ?? 0) > 0, `audit action missing: ${action}`);
+}
+
+// append-only：数据库触发器必须拒绝 UPDATE/DELETE。
+const updateAttempt = runSql(
+  "UPDATE audit_event SET outcome='FAILURE' WHERE action='artifact.saved';",
+  { allowFailure: true },
+);
+const deleteAttempt = runSql(
+  "DELETE FROM audit_event WHERE action='artifact.saved';",
+  { allowFailure: true },
+);
+assert.notEqual(
+  updateAttempt.status,
+  0,
+  "audit_event UPDATE must be rejected by trigger",
+);
+assert.notEqual(
+  deleteAttempt.status,
+  0,
+  "audit_event DELETE must be rejected by trigger",
+);
+assert.match(updateAttempt.stderr ?? "", /append-only|1644/);
+assert.match(deleteAttempt.stderr ?? "", /append-only|1644/);
+
+// 审计租户字段必须与实际租户一致，不能出现空租户。
+const invalidTenant = runSql(
+  "SELECT COUNT(*) AS total FROM audit_event WHERE tenant_id = '' OR tenant_id IS NULL;",
+)
+  .stdout.trim()
+  .split("\n")
+  .pop();
+assert.equal(invalidTenant, "0", "audit rows must carry tenant id");
+
+// ---------- 密钥不落日志/明文入库 ----------
+const logFiles = [
+  process.env.REAL_API_LOG,
+  process.env.REAL_WORKER_LOG,
+  process.env.REAL_MODEL_LOG,
+].filter(Boolean);
+const leakedLogs = [];
+for (const logFile of logFiles) {
+  const text = readFileSync(logFile, "utf8");
+  if (text.includes(fakeApiKey)) {
+    leakedLogs.push(logFile);
+  }
+  if (masterKey && text.includes(masterKey)) {
+    leakedLogs.push(logFile);
+  }
+}
+assert.deepEqual(
+  leakedLogs,
+  [],
+  `secrets leaked into logs: ${leakedLogs.join(",")}`,
+);
+const credentialPlaintext = runSql(
+  `SELECT COUNT(*) FROM provider_credential WHERE ciphertext LIKE '%${fakeApiKey}%';`,
+)
+  .stdout.trim()
+  .split("\n")
+  .pop();
+assert.equal(
+  credentialPlaintext,
+  "0",
+  "provider credential must not store plaintext",
+);
+
+// ---------- 契约声明的端点缺口 ----------
+const contractEndpoints = [
+  "/api/v1/mcp-tools?page=1&size=100",
+  "/api/v1/models",
+  `/api/v1/runs/${journey.approvedTaskId}`,
+  "/api/v1/admin/model-providers",
+  "/api/v1/admin/models",
+  "/api/v1/admin/mcp-servers",
+  "/api/v1/admin/mcp-tools",
+];
+for (const endpoint of contractEndpoints) {
+  const response = await alpha.get(endpoint);
+  if (response.status === 404) {
+    gaps.push({
+      endpoint,
+      status: response.status,
+      code: response.data?.code ?? null,
+    });
+  }
+}
+
+// MCP 客户端补偿控制核对：server 为 STDIO 白名单且工具 READ + 必须审批。
+const mcpPolicy = runSql(`
+SELECT s.transport, s.code, t.risk_level, t.requires_approval
+  FROM mcp_server s JOIN mcp_tool t ON t.server_id = s.id
+ WHERE s.code = 'riccon-builtin';
+`).stdout.trim();
+assert.match(mcpPolicy, /STDIO\triccon-builtin\tREAD\t1/);
+
+const summary = {
+  status: "passed",
+  generatedAt: new Date().toISOString(),
+  auditActions: auditCounts,
+  appendOnly: {
+    updateExit: updateAttempt.status,
+    deleteExit: deleteAttempt.status,
+    updateError: (updateAttempt.stderr ?? "").trim().split("\n").slice(-1)[0],
+    deleteError: (deleteAttempt.stderr ?? "").trim().split("\n").slice(-1)[0],
+  },
+  crossTenantChecks: crossChecks.map(([name, url]) => ({
+    name,
+    url,
+    status: 404,
+  })),
+  observations,
+  gaps,
+};
+writeFileSync(
+  path.join(root, ".riccon/evidence/TASK-0024/real-stack-checks.json"),
+  `${JSON.stringify(summary, null, 2)}\n`,
+);
+console.log(JSON.stringify(summary, null, 2));
