@@ -132,8 +132,8 @@ MCP 升级已实测失败（不可强行升级）：
 - 分类：
   - `pnpm -C apps/web why immer|axios|vite|react-router|katex|decode-uri-component|node-fetch|glob|minimatch|@hono/node-server|esbuild|elliptic`
   - `./mvnw -pl apps/worker dependency:tree -Dincludes=io.modelcontextprotocol.sdk,io.opentelemetry`
-- 修复验证：`pnpm -w build`、`pnpm -w test`、`pnpm -w e2e`、`./mvnw -q -T1C verify` 均通过（TASK-0008 证据）。
+- 修复验证：`pnpm -w build`（EV-0086）、`pnpm -w test`（EV-0087）、`pnpm -w e2e`（EV-0088）、`./mvnw -q -T1C verify`（EV-0089）均通过。
 - MCP 不兼容实测：`1.1.5` 与 `0.18.5` 覆盖均报 `NoSuchMethodError: McpJsonMapper.getDefault()`；`javap` 核验 1.0.0/1.0.1/1.0.2 无该方法。
 - 产物检查：`grep -rl axios|immer|katex|decode-uri apps/web/dist` 无匹配（仅 XProvider 上下文键 `mermaid` 字符串，非 mermaid/katex 代码）。
-- 扫描后：`trivy fs --scanners vuln,secret,misconfig --skip-dirs node_modules --skip-dirs target --skip-dirs .git --exit-code 1 .` → exit 0；仅 2 条 CVE 被 `.trivyignore` 抑制（`--show-suppressed` 可复核）。
+- 扫描后：`trivy fs --scanners vuln,secret,misconfig --skip-dirs node_modules --skip-dirs target --skip-dirs .git --exit-code 1 .` → exit 0（EV-0090）；仅 2 条 CVE 被 `.trivyignore` 抑制（`--show-suppressed` 可复核）。
 - 构建链残余：`trivy fs --scanners vuln --include-dev-deps ...` → 1 HIGH / 7 MEDIUM / 1 LOW（均在上表）。
