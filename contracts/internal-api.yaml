@@ -9,8 +9,20 @@ info:
     - API 使用 HMAC-SHA256 签名的短期令牌，头名 `X-Riccon-Service-Token`，声明至少包含：
       `iss=riccon-api`、`aud=riccon-worker`、`sub=user:<userId>`、`tenantId`、`runId`、`scope=agent:run`、`iat`、`exp`（≤300 秒）、`jti`。
     - Worker 校验签名、`aud`、`exp`、`scope`，并强制 `tenantId == agent_run.tenant_id`；
-      不一致时返回 403 并写审计（TEN-014/TEN-017）。
+      跨租户运行统一返回 404，并写 `outcome=denied` 审计（TEN-014/TEN-017、ADR-0014 澄清）。
     - Worker 只接受该令牌，不接受浏览器 Cookie；除健康检查与内部端点外默认拒绝。
+
+    ## 错误语义（与 Worker 实现对齐）
+    - `401 Unauthorized`：令牌缺失、格式错误、签名/签发者/受众/有效期/scope 不合法，或令牌绑定的
+      `runId` 与路径/请求体不一致。统一 `RICCON-AUTH-401`，不区分具体原因，避免探测。
+    - `400 Bad Request`：请求体 schema 非法、`X-Trace-Id` 缺失/超长、取消原因不在枚举内，或请求体
+      `tenantId` 与令牌 `tenantId` 不一致。租户以令牌为准，请求体字段只用于冗余核对。
+    - `403 Forbidden`：令牌有效且绑定当前 run，但同一租户内的主体/运行绑定校验失败：`sub` 与请求体
+      `userId` 不一致、run kind 不是 `CHAT`、run 的 conversation/user 与请求不一致、运行发起人已禁用。
+    - `404 Not Found`：运行、会话或用户消息在令牌租户内不可见；**包括 run 属于其他租户**。统一
+      `RICCON-TENANT-404`，不区分“不存在”与“属于其他租户”，防止存在性泄露（ADR-0014、TM-07）。
+    - 跨租户 run 不得返回 403：403 会向调用方确认“该 run 存在但属于其他租户”。需要拒绝跨租户时，
+      必须用租户作用域查询自然得到 404，并写拒绝审计。
 
     ## 流式
     对话使用 SSE。事件载荷见 `contracts/events/sse/chat-event.v1.schema.json`；
@@ -73,6 +85,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
         "429":
@@ -98,14 +112,16 @@ paths:
       responses:
         "202":
           description: 已请求取消
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
 components:
   securitySchemes:
     serviceToken:
@@ -142,25 +158,25 @@ components:
         maxLength: 64
   responses:
     BadRequest:
-      description: 请求体不合法或令牌与载荷不匹配
+      description: 请求体 schema 非法、trace 头缺失/超长、取消原因不合法，或请求体 tenantId 与令牌租户不一致
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
     Unauthorized:
-      description: 服务令牌缺失、过期或签名错误
+      description: 服务令牌缺失、格式/签名/签发者/受众/有效期/scope 不合法，或令牌 runId 绑定与请求不一致
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
     Forbidden:
-      description: 令牌租户与运行租户不一致、scope 不足或用户已禁用
+      description: 令牌有效且绑定当前 run，但同一租户内的主体/运行绑定校验失败；跨租户 run 不使用本响应
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
     NotFound:
-      description: 运行不存在或不属于令牌租户
+      description: 运行、会话或用户消息在令牌租户内不可见；跨租户 run 同样返回 404，避免存在性泄露
       content:
         application/problem+json:
           schema:

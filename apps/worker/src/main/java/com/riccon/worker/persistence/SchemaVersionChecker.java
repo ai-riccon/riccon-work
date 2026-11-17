@@ -25,8 +25,8 @@ import org.springframework.stereotype.Component;
 @ConditionalOnBean(JdbcClient.class)
 public class SchemaVersionChecker implements ApplicationRunner {
 
-    /** 期望的 schema 最大版本，对应 {@code apps/api/src/main/resources/db/migration/V1..V7}。 */
-    public static final int EXPECTED_SCHEMA_VERSION = 7;
+    /** 期望的 schema 最大版本，对应 {@code apps/api/src/main/resources/db/migration/V1..V8}。 */
+    public static final int EXPECTED_SCHEMA_VERSION = 8;
 
     /** 稳定错误码前缀，启动失败日志只输出版本与错误码，不输出连接串。 */
     public static final String ERROR_CODE = "RICCON-WORKER-001";

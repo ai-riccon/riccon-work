@@ -112,3 +112,7 @@ M02 要落地 J1（文件、会话、引用、知识库）与 J2（报告任务�
 - `platform/platform-domain` 的状态枚举与 `contracts/openapi.yaml`、`contracts/events/**` 的值一致
 - `docs/security/THREAT-MODEL.md` TM-06、TM-11、TM-12、TM-16、TM-17、B-04、B-12
 - `docs/adr/ADR-0009`、`ADR-0006`、`ADR-0007`、`ADR-0008`、`ADR-0010`
+
+## 澄清（不改本 ADR 决策）
+
+- 2026-11-18：V8 为 `approval` 增加 `params_ciphertext VARBINARY(8192)`、`params_key_id VARCHAR(64)`，并把 `params_preview` 收紧为脱敏摘要（≤4096 字节、JSON 对象），`params_sha256` 继续为 64 位小写 hex。新列可空以兼容历史行；索引 `idx_approval_params_key (tenant_id, params_key_id)` 仍以 `tenant_id` 开头，未新增全局表或跨租户例外。语义与轮换见 ADR-0017。

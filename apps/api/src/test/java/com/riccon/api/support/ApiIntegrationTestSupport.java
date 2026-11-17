@@ -19,7 +19,7 @@ import tools.jackson.databind.JsonNode;
 /**
  * API 集成测试基类。
  *
- * <p>使用真实 MySQL 8.4（Testcontainers）与随机端口 Tomcat，Flyway 在上下文启动时按 V1–V7 建库，
+ * <p>使用真实 MySQL 8.4（Testcontainers）与随机端口 Tomcat，Flyway 在上下文启动时按 V1–V8 建库，
  * 引导管理员由 test profile 环境变量创建。所有测试共享同一容器与 Spring 上下文，避免重复建库；
  * 测试数据使用唯一租户代码隔离。
  */

@@ -80,3 +80,7 @@ T4 项目要求模型、MCP、OIDC 等凭据加密入库，且密钥不得出现
 - `apps/api/src/main/resources/application.yml` 与 `apps/worker/src/main/resources/application.yml` 的配置项（M02）
 - `docs/security/THREAT-MODEL.md` TM-12、TM-16、B-05；合同 `constraints.security`、`constraints.compliance`
 - 合同 `commands.security`（Trivy secret 扫描）
+
+## 澄清（不改本 ADR 决策）
+
+- 2026-11-18：审批参数（`approval` 的完整工具入参）也使用本 ADR 的租户 DEK 信封机制，`purpose = approval-params`。但该场景的载荷是 `VARBINARY`（`version||nonce||ciphertext||tag`），不是 `enc:v1:<keyId>:<Base64>` 文本；AAD 为 `tenantId|approvalId`，把密文绑定到具体审批行。`key_id` 单独存列，主密钥轮换仍只 rewrap DEK。凭据类数据继续使用本文第 2 节的文本格式。详见 ADR-0017 与 `V8__approval_params_envelope.sql`。

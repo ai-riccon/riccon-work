@@ -136,3 +136,4 @@ M03 评估每日哈希链（`prev_hash` + `event_hash`）与外部锚定。M02 �
 
 - 2026-11-17：`event_id` 的数据库表示由 ADR-0012 统一为 UUIDv7 `BINARY(16)`；仍要求时间有序与全局唯一，本文其余字段、分区与 append-only 语义不变。
 - 2026-11-17：M02 目标类型在本文最小列表外增加 `WORKSPACE`、`CONVERSATION`、`KNOWLEDGE_DOCUMENT`、`RESEARCH_TASK`、`RUN`、`APPROVAL`，统一由 `AuditTargetType` 枚举约束；`details` 白名单与禁止字段不变。
+- 2026-11-18：`approval.params_preview` 恢复为本文第 5 节要求的**脱敏摘要**，不再保存完整工具参数；完整参数由 `params_ciphertext` + `params_key_id` 加密保存，只在审批通过后由 Worker 解密重放（ADR-0017、V8 迁移）。`mcp.tool.invoked` 仍只允许 `paramsSha256`/`resultSha256`，`approval.decided` 仍只允许审批 ID、决定、审批人与工具名；审计 `details` 不得出现参数预览、密文或明文。

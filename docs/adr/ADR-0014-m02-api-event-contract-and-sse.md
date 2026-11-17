@@ -98,3 +98,8 @@ M01 只建立了命名约定，没有具体契约。若 M02 让 API 与 Worker �
 - `platform/platform-domain` 的 `EventTypes`、`AuditActions`、`PermissionCodes`、`HttpHeaders`
 - `docs/security/THREAT-MODEL.md` TM-17、TM-18、TM-21、S-03-1、T-03-1
 - 测试（Builder 实现）：`IT-RUN-001..003`、`IT-SVC-001..003`、`IT-OBS-001`、`E2E-AC-03/05/06/09/11`
+
+## 澄清（不改本 ADR 决策）
+
+- 2026-11-18：第 5 节“令牌 `tenantId` 与 `agent_run.tenant_id` 不一致返回 403”按第 2 节的跨租户统一 404 执行：run 在令牌租户内不可见（包括属于其他租户）时返回 `404 RICCON-TENANT-404`，不返回 403，避免泄露“该 run 存在但属于其他租户”；仍写 `outcome=denied` 审计。403 仅用于同一租户内的绑定冲突（`sub` 与请求 `userId` 不符、run kind 不匹配、conversation/user 绑定不符、发起人已禁用）。请求体 `tenantId` 与令牌不一致属于请求不合法，返回 `400 RICCON-CHAT-400`，租户始终以令牌为准。该澄清使契约与 Worker 现有安全策略一致，不改变租户隔离强度。
+- 2026-11-18：`agent_run_stage.details` 在 `contracts/openapi.yaml` 中显式定义 `RunStageDetails`：`paramsPreview`、`resultSummary`、`invocationId` 为可选字段，并给出长度与脱敏上限；`paramsPreview` 只是脱敏摘要，完整审批参数加密保存（ADR-0017），任何 API 都不返回密文。

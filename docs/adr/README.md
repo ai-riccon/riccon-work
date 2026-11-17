@@ -34,6 +34,7 @@ Evidence:
 | ADR-0014 | M02 API/事件契约、SSE 语义与版本规则                        | accepted |
 | ADR-0015 | M02 领域模块边界、共享词汇与持久化归属                      | accepted |
 | ADR-0016 | Worker outbox 跨租户领取例外与租户绑定                      | accepted |
+| ADR-0017 | 审批参数加密重放与脱敏预览                                  | accepted |
 
 说明：
 
