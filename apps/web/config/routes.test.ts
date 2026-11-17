@@ -29,6 +29,32 @@ describe('路由表', () => {
     expect(findRouteByPath('*')?.component).toBe('@/pages/404');
   });
 
+  it('嵌套路由可递归查找，未命中路径返回 undefined', () => {
+    expect(findRouteByPath('/admin/settings')?.title).toBe('系统设置');
+    expect(findRouteByPath('/admin/overview')?.component).toBe('@/pages/admin/overview');
+    expect(findRouteByPath('/not-exist')).toBeUndefined();
+  });
+
+  it('每个页面路由都有标题，便于浏览器标题与菜单展示', () => {
+    const pageRoutes: typeof routes = [];
+    const collect = (nodes: typeof routes) => {
+      nodes.forEach((node) => {
+        // 布局路由不直接渲染页面，标题由子路由提供；这里只检查 @/pages/ 下的页面。
+        if (node.path && node.component?.startsWith('@/pages/')) {
+          pageRoutes.push(node);
+        }
+        if (node.routes) {
+          collect(node.routes);
+        }
+      });
+    };
+    collect(routes);
+
+    pageRoutes.forEach((route) => {
+      expect(route.title, `${route.path} 缺少 title`).toBeTruthy();
+    });
+  });
+
   it('页面路由不重复，避免 Umi 构建时静默覆盖', () => {
     const pagePaths: string[] = [];
     const collect = (nodes: typeof routes) => {

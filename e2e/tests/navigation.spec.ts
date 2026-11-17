@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 /**
  * 路由跳转冒烟：覆盖根路径重定向与管理端嵌套路由。

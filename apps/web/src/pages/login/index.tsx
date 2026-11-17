@@ -21,9 +21,9 @@ export default function LoginPage() {
         </Typography.Paragraph>
         <Alert
           showIcon
-          message="登录尚未开放"
           description="M02 将接入内置账号与 OIDC（Authorization Code + PKCE），并补齐 CSRF、会话固定与登出测试。"
           style={{ marginBottom: 16 }}
+          title="登录尚未开放"
           type="warning"
         />
         <Form layout="vertical" requiredMark={false}>

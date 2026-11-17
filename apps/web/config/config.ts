@@ -16,4 +16,8 @@ export default defineConfig({
   npmClient: 'pnpm',
   // 分包产物共用 esbuild 助手时会因 IIFE 包裹方式冲突导致构建失败；开启后按 Umi 官方提示生成独立 IIFE。
   esbuildMinifyIIFE: true,
+  // Umi 4.7.34 的 MFSU 会把 CJS 包 @umijs/utils/compiled/strip-ansi 预打包成双层 default，
+  // 导致 dev 环境的 HMR client 在格式化 webpack warning 时抛 TypeError；显式排除该包，
+  // 让 webpack 直接按 __esModule 互操作解析。待 Umi 修复该缺陷或升级到修复版本后移除。
+  mfsu: { exclude: [/@umijs\/utils\/compiled\/strip-ansi/] },
 });

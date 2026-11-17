@@ -16,8 +16,8 @@ export default function AdminOverviewPage() {
       <Alert
         showIcon
         description="租户、模型、知识库与审计能力将在 M02–M07 分模块接入；当前页面只验证管理端布局与导航。"
-        message="骨架阶段提示"
         style={{ marginBottom: 16 }}
+        title="骨架阶段提示"
         type="info"
       />
       <ProCard gutter={16} wrap>
