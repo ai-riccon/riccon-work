@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0013",
+  "module_id": "M02",
+  "title": "Worker 基础：outbox、文件解析、知识库索引",
+  "owner": "riccon/builder",
+  "status": "review",
+  "write_scope": [
+    "apps/worker/**"
+  ],
+  "acceptance": [
+    "outbox 轮询含租约/幂等/租户隔离，测试通过",
+    "PDF/DOCX/XLSX/图片解析并更新 file_parse 状态",
+    "知识库切分/embedding/OpenSearch 索引可重建",
+    "worker 启动校验 schema 版本且不执行 Flyway",
+    "./mvnw verify 与 Testcontainers 集成测试通过"
+  ],
+  "evidence": [
+    "EV-0148",
+    "EV-0149",
+    "EV-0151",
+    "EV-0152",
+    "EV-0153"
+  ],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-17T12:22:32.678Z",
+  "updated_at": "2026-11-17T13:58:59.010Z",
+  "baseline_commit": "e7b1282",
+  "end_commit": "5e099d9"
+}

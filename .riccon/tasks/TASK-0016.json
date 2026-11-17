@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0016",
+  "module_id": "M02",
+  "title": "Worker：模型网关、Agent、MCP 与 HITL",
+  "owner": "riccon/builder",
+  "status": "review",
+  "write_scope": [
+    "apps/worker/**"
+  ],
+  "acceptance": [
+    "OpenAI 兼容模型客户端 + 凭据解密 + 调用审计",
+    "ReAct Agent 接入知识库检索工具与 1 个 MCP 工具",
+    "HITL 审批挂起/恢复与 SSE 事件（started/delta/citation/completed）",
+    "假模型与 mock MCP 的确定性测试，租户隔离",
+    "./mvnw verify 通过"
+  ],
+  "evidence": [
+    "EV-0173",
+    "EV-0174",
+    "EV-0175",
+    "EV-0176"
+  ],
+  "tools_used": [
+    "riccon",
+    "git",
+    "maven",
+    "docker"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-17T13:59:49.966Z",
+  "updated_at": "2026-11-17T16:25:32.891Z",
+  "baseline_commit": "cdf2aad",
+  "end_commit": "98c424f"
+}

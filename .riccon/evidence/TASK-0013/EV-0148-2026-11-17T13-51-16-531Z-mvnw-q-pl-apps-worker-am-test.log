@@ -1,0 +1,341 @@
+# command: ./mvnw -q -pl apps/worker -am test
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-17T13:47:50.478Z
+# finished_at: 2026-11-17T13:51:15.880Z
+# duration_ms: 205400
+# exit_code: 0
+
+# --- stdout ---
+21:48:03.788 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.parse.service.S3FileContentReaderTest]: S3FileContentReaderTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+21:48:04.225 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.parse.service.S3FileContentReaderTest
+21:48:04.707 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.parse.service.S3FileContentReaderTest]: S3FileContentReaderTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+21:48:04.708 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+21:48:04.718 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.parse.service.S3FileContentReaderTest
+21:48:05.029 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+21:48:05.037 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+21:48:05.136 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+21:48:07.168 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+21:48:07.170 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+21:48:07.198 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+21:48:07.354 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+21:48:07.703 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: 8d0052a4df6060c79ef0dab926a9fe602aac4b573b44a6edb82912cccd82a530
+21:48:08.296 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT0.941552S
+21:48:08.302 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+21:48:08.303 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+21:48:08.303 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+21:48:08.304 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+21:48:08.406 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: 61c9bb6f8e494e71686cc432540de13cf5beb5ff520e767b3e4c95054e90cb74
+21:48:08.730 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:62197/riccon using query 'SELECT 1'
+21:48:18.963 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT10.659116S
+21:48:18.963 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:62197/riccon)
+21:48:18.968 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Creating container for image: opensearchproject/opensearch:3.9.0
+21:48:19.099 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 is starting: 5357d0a163f5fd253cbafee2b941c8c30e255dabf8cace9fa9eb84c2c661252f
+21:48:19.486 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /elated_northcutt: Waiting for 180 seconds for URL: http://localhost:62477/_cluster/health?wait_for_status=yellow&timeout=120s (where port 62477 maps to container port 9200)
+21:49:09.711 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 started in PT50.742456S
+21:49:09.727 [main] INFO tc.rustfs/rustfs:1.0.6 -- Creating container for image: rustfs/rustfs:1.0.6
+21:49:09.962 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 is starting: 42784151893f9b5c2b45fb3ad48d66ef71b65485617c88a200ab1f19d7c1ca4f
+21:49:10.710 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /pensive_mendeleev: Waiting for 60 seconds for URL: http://localhost:62810/health (where port 62810 maps to container port 9000)
+21:49:10.728 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 started in PT1.000787S
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-17T21:49:18.895+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.w.p.service.S3FileContentReaderTest  : Starting S3FileContentReaderTest using Java 21.0.13 with PID 78082 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/worker)
+2026-11-17T21:49:18.904+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.w.p.service.S3FileContentReaderTest  : No active profile set, falling back to 1 default profile: "default"
+2026-11-17T21:49:24.905+08:00  INFO 78082 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-17T21:49:24.905+08:00  INFO 78082 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-17T21:49:24.935+08:00  INFO 78082 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoints beneath base path '/actuator'
+2026-11-17T21:49:24.964+08:00  INFO 78082 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 58 ms
+2026-11-17T21:49:25.298+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.w.p.service.S3FileContentReaderTest  : Started S3FileContentReaderTest in 7.91 seconds (process running for 84.884)
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-17T21:49:27.465+08:00  INFO 78082 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-17T21:49:27.508+08:00  INFO 78082 --- [riccon-worker] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@76f877ac
+2026-11-17T21:49:27.514+08:00  INFO 78082 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-17T21:49:31.212+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.parse.service.FileParseServiceIntegrationTest]: FileParseServiceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:49:31.218+08:00  INFO 78082 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.parse.service.FileParseServiceIntegrationTest
+2026-11-17T21:49:31.220+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.parse.service.FileParseServiceIntegrationTest]: FileParseServiceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:49:31.220+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:49:31.226+08:00  INFO 78082 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.parse.service.FileParseServiceIntegrationTest
+2026-11-17T21:49:34.203+08:00  WARN 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a1e9c5-25e8-7aab-9a95-e779aebb9274 tenantId=tenant-a runId=01a1e9c5-2524-71d0-a46c-6a89a7d846b9 attempts=1 reason=RICCON-TENANT-404: file parse attempt not found
+2026-11-17T21:49:36.404+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-a fileId=01a1e9c5-2d92-7890-9f10-5ee1e35ff1a6 parseId=01a1e9c5-2dbc-7484-a816-35fdf22f74bb chunks=2
+2026-11-17T21:49:36.424+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1e9c5-2dd7-7f41-b7b1-2ca485863727 tenantId=tenant-a runId=01a1e9c5-2dc7-73df-8398-0974e02acff8 attempts=1
+2026-11-17T21:49:39.084+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-a fileId=01a1e9c5-3889-7da4-8022-06110fb6923b parseId=01a1e9c5-38a4-7637-9a06-42fcf4b3ee49 chunks=2
+2026-11-17T21:49:39.094+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1e9c5-38b2-7997-807f-cdbb55a8ce18 tenantId=tenant-a runId=01a1e9c5-38ab-7da1-a8d8-fd21669a8571 attempts=1
+2026-11-17T21:49:40.568+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-a fileId=01a1e9c5-3ee6-7f33-a05f-da959e7f1e4c parseId=01a1e9c5-3f01-721c-b9b3-4a22571394f6 chunks=1
+2026-11-17T21:49:40.580+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1e9c5-3f12-7a6b-a670-fb6d054c4913 tenantId=tenant-a runId=01a1e9c5-3f09-7ee0-9c61-b335e1c0e1a6 attempts=1
+2026-11-17T21:49:42.905+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-a fileId=01a1e9c5-47f0-7355-87e6-c23128998b50 parseId=01a1e9c5-4816-71ed-967f-ddee79379721 chunks=1
+2026-11-17T21:49:42.926+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1e9c5-482a-7d74-877f-ee43ff9fa3f7 tenantId=tenant-a runId=01a1e9c5-481f-77e1-b726-8c1cc01b001a attempts=1
+2026-11-17T21:49:45.054+08:00  WARN 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a1e9c5-505e-78bb-83b4-641eeba6730d tenantId=tenant-a runId=01a1e9c5-5057-71f1-af30-85e8f698ff8c attempts=1 reason=RICCON-TENANT-404: file not found
+2026-11-17T21:49:47.370+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-a fileId=01a1e9c5-5830-70dc-85be-4f291c1bf951 parseId=01a1e9c5-5872-70fb-bd8d-d01b25bb0a3a chunks=3
+2026-11-17T21:49:47.396+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1e9c5-5890-7452-a403-a5f12e547811 tenantId=tenant-a runId=01a1e9c5-5882-7f3d-ad1f-e9b22a0355d0 attempts=1
+2026-11-17T21:49:49.032+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-a fileId=01a1e9c5-6000-7e9e-bedd-a4c486c24626 parseId=01a1e9c5-6015-7d4e-9aaf-adf7cfffe382 chunks=1
+2026-11-17T21:49:49.043+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1e9c5-6022-7c51-81fb-15672ab69f99 tenantId=tenant-a runId=01a1e9c5-601b-708a-91e1-d2018cc95ddc attempts=1
+2026-11-17T21:49:50.549+08:00  WARN 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a1e9c5-660b-7159-9427-ffe20ef8ad65 tenantId=tenant-a runId=01a1e9c5-6605-7e14-a92e-2c4f325d6e92 attempts=1 reason=RICCON-FILE-422: pdf document is not readable
+2026-11-17T21:49:50.708+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerApplicationTests]: WorkerApplicationTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:49:50.726+08:00  INFO 78082 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.WorkerApplicationTests
+2026-11-17T21:49:50.728+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerApplicationTests]: WorkerApplicationTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:49:50.728+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:49:50.730+08:00  INFO 78082 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.WorkerApplicationTests
+2026-11-17T21:49:53.995+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.persistence.SchemaVersionCheckerTest]: SchemaVersionCheckerTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:49:54.013+08:00  INFO 78082 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.persistence.SchemaVersionCheckerTest
+2026-11-17T21:49:54.016+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.persistence.SchemaVersionCheckerTest]: SchemaVersionCheckerTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:49:54.016+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:49:54.020+08:00  INFO 78082 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.persistence.SchemaVersionCheckerTest
+2026-11-17T21:50:01.292+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=7 actual=7
+2026-11-17T21:50:01.315+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.persistence.TenantJdbcTest]: TenantJdbcTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:50:01.319+08:00  INFO 78082 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.persistence.TenantJdbcTest
+2026-11-17T21:50:01.321+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.persistence.TenantJdbcTest]: TenantJdbcTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:50:01.322+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:50:01.324+08:00  INFO 78082 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.persistence.TenantJdbcTest
+2026-11-17T21:50:11.274+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.index.service.OpenSearchIndexClientTest]: OpenSearchIndexClientTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:50:11.294+08:00  INFO 78082 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.index.service.OpenSearchIndexClientTest
+2026-11-17T21:50:11.296+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.index.service.OpenSearchIndexClientTest]: OpenSearchIndexClientTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:50:11.297+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:50:11.301+08:00  INFO 78082 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.index.service.OpenSearchIndexClientTest
+2026-11-17T21:50:20.630+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.index.service.KnowledgeIndexServiceIntegrationTest]: KnowledgeIndexServiceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:50:20.632+08:00  INFO 78082 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.index.service.KnowledgeIndexServiceIntegrationTest
+2026-11-17T21:50:20.633+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.index.service.KnowledgeIndexServiceIntegrationTest]: KnowledgeIndexServiceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:50:20.634+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:50:20.636+08:00  INFO 78082 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.index.service.KnowledgeIndexServiceIntegrationTest
+2026-11-17T21:50:22.520+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-a documentId=01a1e9c5-e175-7b42-9e8e-77afe01c691c chunks=2 dimensions=64
+2026-11-17T21:50:22.532+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1e9c5-e181-762e-b070-710f0d51f67d tenantId=tenant-a runId=01a1e9c5-e17b-7e0d-9d39-7362beaa8af7 attempts=1
+2026-11-17T21:50:24.175+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-a documentId=01a1e9c5-e92a-71d4-ae48-013b55194537 chunks=2 dimensions=64
+2026-11-17T21:50:24.187+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1e9c5-e93e-7ca3-a085-99018a357c8c tenantId=tenant-a runId=01a1e9c5-e938-79af-af7f-e5fc7e1a6fde attempts=1
+2026-11-17T21:50:25.573+08:00  WARN 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a1e9c5-eef5-77b1-8b1c-5cafcfbc594a tenantId=tenant-a runId=01a1e9c5-eeef-74b5-a11b-f4d235b1576f attempts=1 reason=RICCON-INDEX-422: document has no indexable text
+2026-11-17T21:50:27.116+08:00  WARN 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a1e9c5-f4ff-7256-878d-a8e810585ac5 tenantId=tenant-a runId=01a1e9c5-f4f7-7a09-a757-3e83024cb0c5 attempts=1 reason=RICCON-WORKER-422: knowledge document fileId does not match payload
+2026-11-17T21:50:28.751+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-a documentId=01a1e9c5-fac2-73ff-9e49-15c1af004228 chunks=2 dimensions=64
+2026-11-17T21:50:28.763+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1e9c5-fad5-7443-b190-2b48777be12d tenantId=tenant-a runId=01a1e9c5-faca-7e8e-91e4-ad4bd224b986 attempts=1
+2026-11-17T21:50:28.944+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-a documentId=01a1e9c5-fac2-73ff-9e49-15c1af004228 chunks=2 dimensions=64
+2026-11-17T21:50:30.487+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-a documentId=01a1e9c6-01c9-7a18-a2cd-0b81a78dd41a chunks=2 dimensions=64
+2026-11-17T21:50:30.497+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1e9c6-01d6-7626-9d4d-1ce9fe944ec3 tenantId=tenant-a runId=01a1e9c6-01ce-72c1-8ad4-50547f3b2f16 attempts=1
+2026-11-17T21:50:31.932+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1e9c6-07ce-7e66-8a59-c036fd273e61 tenantId=tenant-a runId=01a1e9c6-07c6-7578-8293-1051a4c72d80 attempts=1
+2026-11-17T21:50:32.025+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.run.persistence.OutboxClaimerTest]: OutboxClaimerTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:50:32.038+08:00  INFO 78082 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.run.persistence.OutboxClaimerTest
+2026-11-17T21:50:32.039+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.run.persistence.OutboxClaimerTest]: OutboxClaimerTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:50:32.040+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:50:32.042+08:00  INFO 78082 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.run.persistence.OutboxClaimerTest
+2026-11-17T21:50:50.913+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.run.service.OutboxPollerTest]: OutboxPollerTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:50:50.952+08:00  INFO 78082 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.run.service.OutboxPollerTest
+2026-11-17T21:50:50.955+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.run.service.OutboxPollerTest]: OutboxPollerTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:50:50.956+08:00  INFO 78082 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-17T21:50:50.961+08:00  INFO 78082 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.run.service.OutboxPollerTest
+2026-11-17T21:50:52.435+08:00 ERROR 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.failed eventId=01a1e9c6-57fa-79d0-97be-0dd804e0d276 tenantId=tenant-a runId=01a1e9c6-57f4-7864-980b-0aa3f1e232d2 attempts=1 errorCode=RICCON-WORKER-500
+
+java.lang.IllegalStateException: boom
+	at com.riccon.worker.run.service.OutboxPollerTest$1.handle(OutboxPollerTest.java:185) ~[test-classes/:na]
+	at com.riccon.worker.run.service.OutboxPoller.process(OutboxPoller.java:126) ~[classes/:na]
+	at com.riccon.worker.run.service.OutboxPoller.pollOnce(OutboxPoller.java:82) ~[classes/:na]
+	at com.riccon.worker.run.service.OutboxPollerTest.pollOnce_unexpectedRuntime_retriesWithWorker500(OutboxPollerTest.java:190) ~[test-classes/:na]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:701) ~[junit-platform-commons-6.0.3.jar:6.0.3]
+	at org.junit.platform.commons.support.ReflectionSupport.invokeMethod(ReflectionSupport.java:502) ~[junit-platform-commons-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.support.MethodReflectionUtils.invoke(MethodReflectionUtils.java:45) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:61) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:124) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:163) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:148) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:123) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:105) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:99) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:66) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:47) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:39) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:104) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:98) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invokeVoid(InterceptingExecutableInvoker.java:71) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$0(TestMethodTestDescriptor.java:219) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:215) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:157) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:70) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:176) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:138) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596) ~[na:na]
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:138) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596) ~[na:na]
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:138) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:36) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:52) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:58) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.executeEngine(EngineExecutionOrchestrator.java:246) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.failOrExecuteEngine(EngineExecutionOrchestrator.java:218) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:179) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:108) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:66) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:157) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:65) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:125) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:114) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:58) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$2(InterceptingLauncher.java:57) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:56) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:58) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.apache.maven.surefire.api.util.ReflectionUtils.invokeMethodWithArray(ReflectionUtils.java:125) ~[surefire-api-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.executeWithCancellationToken(LauncherAdapter.java:68) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.execute(LauncherAdapter.java:54) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.execute(JUnitPlatformProvider.java:203) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invokeAllTests(JUnitPlatformProvider.java:168) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:136) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385) ~[surefire-booter-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162) ~[surefire-booter-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507) ~[surefire-booter-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495) ~[surefire-booter-3.5.6.jar:3.5.6]
+
+2026-11-17T21:50:52.458+08:00  WARN 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.retry_scheduled eventId=01a1e9c6-57fa-79d0-97be-0dd804e0d276 tenantId=tenant-a runId=01a1e9c6-57f4-7864-980b-0aa3f1e232d2 attempts=1 errorCode=RICCON-WORKER-500 availableAt=2026-11-17T13:50:52.459303Z
+2026-11-17T21:50:54.111+08:00  WARN 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a1e9c6-5e76-787b-8ea3-09cb63b11eae tenantId=tenant-a runId=01a1e9c6-5e45-760b-9130-edf43a3f58c4 attempts=1 reason=RICCON-TENANT-404: file parse attempt not found
+2026-11-17T21:50:55.622+08:00  WARN 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a1e9c6-6471-717d-a010-79528e4c82f6 tenantId=tenant-a runId=01a1e9c6-646a-7156-a167-e9885c8838e6 attempts=1 reason=agent_run kind mismatch for event type: riccon.file.parse.requested.v1
+2026-11-17T21:50:58.755+08:00  WARN 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a1e9c6-7082-7a67-8679-ee8ab20b36ce tenantId=tenant-a runId=01a1e9c6-707a-7d5b-bbae-770bf5eb6ae1 attempts=1 reason=RICCON-WORKER-422: payload field fileId must be a UUID string
+2026-11-17T21:51:00.298+08:00  WARN 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a1e9c6-76b5-778d-81d4-aeedffcf3bfe tenantId=tenant-a runId=01a1e9c6-76ae-740e-80aa-11f04b0a14f1 attempts=1 reason=unsupported event type: riccon.agent.run.requested.v1
+2026-11-17T21:51:01.843+08:00  WARN 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.retry_scheduled eventId=01a1e9c6-7cb2-7efa-93ac-aa6886156ff9 tenantId=tenant-a runId=01a1e9c6-7cac-7dab-bfa8-b84dc78d5a7c attempts=1 errorCode=RICCON-TEST-503 availableAt=2026-11-17T13:51:01.844648Z
+2026-11-17T21:51:01.876+08:00  WARN 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.retry_scheduled eventId=01a1e9c6-7cb2-7efa-93ac-aa6886156ff9 tenantId=tenant-a runId=01a1e9c6-7cac-7dab-bfa8-b84dc78d5a7c attempts=2 errorCode=RICCON-TEST-503 availableAt=2026-11-17T13:51:01.887091Z
+2026-11-17T21:51:01.907+08:00  WARN 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a1e9c6-7cb2-7efa-93ac-aa6886156ff9 tenantId=tenant-a runId=01a1e9c6-7cac-7dab-bfa8-b84dc78d5a7c attempts=3 reason=RICCON-TEST-503: transient failure
+2026-11-17T21:51:03.667+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1e9c6-83dc-7ec3-a3e0-128ceb78f578 tenantId=tenant-a runId=01a1e9c6-83d1-7b55-a66c-5593c536cc65 attempts=1
+2026-11-17T21:51:06.855+08:00  WARN 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a1e9c6-9043-7d85-ad49-311320c1959e tenantId=tenant-a runId=01a1e9c6-9039-7e05-a184-0e4162839b94 attempts=1 reason=RICCON-TEST-503: transient failure
+2026-11-17T21:51:08.231+08:00 ERROR 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxScheduler   : outbox.poll.failed
+
+java.lang.IllegalStateException: database down
+	at com.riccon.worker.run.service.OutboxPoller.pollOnce(OutboxPoller.java:80) ~[classes/:na]
+	at com.riccon.worker.run.service.OutboxScheduler.poll(OutboxScheduler.java:40) ~[classes/:na]
+	at com.riccon.worker.run.service.OutboxSchedulerTest.lambda$poll_exception_isCaught$0(OutboxSchedulerTest.java:30) ~[test-classes/:na]
+	at org.assertj.core.api.ThrowableAssert.catchThrowable(ThrowableAssert.java:66) ~[assertj-core-3.27.7.jar:na]
+	at org.assertj.core.api.AssertionsForClassTypes.catchThrowable(AssertionsForClassTypes.java:908) ~[assertj-core-3.27.7.jar:na]
+	at org.assertj.core.api.AssertionsForClassTypes.assertThatCode(AssertionsForClassTypes.java:879) ~[assertj-core-3.27.7.jar:na]
+	at org.assertj.core.api.Assertions.assertThatCode(Assertions.java:1396) ~[assertj-core-3.27.7.jar:na]
+	at com.riccon.worker.run.service.OutboxSchedulerTest.poll_exception_isCaught(OutboxSchedulerTest.java:30) ~[test-classes/:na]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:701) ~[junit-platform-commons-6.0.3.jar:6.0.3]
+	at org.junit.platform.commons.support.ReflectionSupport.invokeMethod(ReflectionSupport.java:502) ~[junit-platform-commons-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.support.MethodReflectionUtils.invoke(MethodReflectionUtils.java:45) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:61) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:124) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:163) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:148) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:123) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:105) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:99) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:66) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:47) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:39) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:104) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:98) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invokeVoid(InterceptingExecutableInvoker.java:71) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$0(TestMethodTestDescriptor.java:219) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:215) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:157) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:70) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:176) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:138) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596) ~[na:na]
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:138) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596) ~[na:na]
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:138) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:36) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:52) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:58) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.executeEngine(EngineExecutionOrchestrator.java:246) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.failOrExecuteEngine(EngineExecutionOrchestrator.java:218) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:179) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:108) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:66) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:157) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:65) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:125) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:114) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:58) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$2(InterceptingLauncher.java:57) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:56) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:58) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.apache.maven.surefire.api.util.ReflectionUtils.invokeMethodWithArray(ReflectionUtils.java:125) ~[surefire-api-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.executeWithCancellationToken(LauncherAdapter.java:68) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.execute(LauncherAdapter.java:54) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.execute(JUnitPlatformProvider.java:203) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invokeAllTests(JUnitPlatformProvider.java:168) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:136) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385) ~[surefire-booter-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162) ~[surefire-booter-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507) ~[surefire-booter-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495) ~[surefire-booter-3.5.6.jar:3.5.6]
+
+2026-11-17T21:51:08.343+08:00  INFO 78082 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=2
+2026-11-17T21:51:09.419+08:00  INFO 78082 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Initializing MCP sync client: riccon-mcp-smoke
+2026-11-17T21:51:09.550+08:00  INFO 78082 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server starting.
+2026-11-17T21:51:09.640+08:00  INFO 78082 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server started
+2026-11-17T21:51:10.671+08:00  INFO 78082 --- [riccon-worker] [pool-5-thread-1] i.m.client.LifecycleInitializer          : Server response with Protocol: 2024-11-05, Capabilities: ServerCapabilities[completions=null, experimental=null, logging=null, prompts=null, resources=null, tools=ToolCapabilities[listChanged=null]], Info: Implementation[name=riccon-mcp-mock, title=null, version=1.0.0] and Instructions null
+2026-11-17T21:51:10.889+08:00  INFO 78082 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Closing MCP sync client: riccon-mcp-smoke
+2026-11-17T21:51:11.023+08:00  INFO 78082 --- [riccon-worker] [onPool-worker-1] i.m.c.transport.StdioClientTransport     : MCP server process stopped
+2026-11-17T21:51:12.122+08:00  INFO 78082 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'approval_echo' in group 'ungrouped'
+2026-11-17T21:51:13.917+08:00  INFO 78082 --- [riccon-worker] [           main] i.a.h.a.s.impl.docker.DockerSandbox      : [sandbox-docker] Container started: id=f5b44beba58ea59244ebba2e334cbb588edfdcac83bea8eea97dac24ddc7b800, name=agentscope-sandbox-b9c8f357-2803-4f5b-9dc4-fa0768e82867
+
+# --- stderr ---
+
