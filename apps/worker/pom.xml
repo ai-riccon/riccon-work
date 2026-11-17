@@ -46,6 +46,18 @@
       <artifactId>agentscope-core</artifactId>
     </dependency>
 
+    <!--
+      仅测试作用域：agentscope-core 2.0.5 不包含 Docker 沙箱实现，官方沙箱位于同版本
+      agentscope-harness（DockerSandbox）。这里只用于 M01 沙箱冒烟测试，不进入生产依赖，
+      生产依赖仍遵循 ADR-0004 的“只引入 core”决策。
+    -->
+    <dependency>
+      <groupId>io.agentscope</groupId>
+      <artifactId>agentscope-harness</artifactId>
+      <version>${agentscope.version}</version>
+      <scope>test</scope>
+    </dependency>
+
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-webmvc-test</artifactId>
