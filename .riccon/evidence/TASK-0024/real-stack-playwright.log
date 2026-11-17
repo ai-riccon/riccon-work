@@ -1,0 +1,94 @@
+
+Running 7 tests using 1 worker
+
+[1/7] [chromium] › e2e/real/tests/a11y.spec.ts:11:3 › 真实栈可访问性 › 登录页与 J1 工作空间无 serious/critical，375px 无横向滚动
+[2/7] [chromium] › e2e/real/tests/a11y.spec.ts:42:3 › 真实栈可访问性 › J2 报告页无 serious/critical，375px 无横向滚动
+[3/7] [chromium] › e2e/real/tests/j1-first-token.spec.ts:15:3 › 真实栈首字预算 › 提交问题后 3 秒内出现首字
+[chromium] › e2e/real/tests/j1-first-token.spec.ts:15:3 › 真实栈首字预算 › 提交问题后 3 秒内出现首字
+REAL_FIRST_TOKEN_MS=4380 wall=4432
+
+  1) [chromium] › e2e/real/tests/j1-first-token.spec.ts:15:3 › 真实栈首字预算 › 提交问题后 3 秒内出现首字 ────────────
+
+    Error: 首字 4380ms 超过 3000ms 预算
+
+    expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 3000
+    Received:    4380
+
+      28 |     const firstTokenMs = await waitForJ1Answer(page);
+      29 |     console.log(`REAL_FIRST_TOKEN_MS=${firstTokenMs} wall=${Date.now() - startedAt}`);
+    > 30 |     expect(firstTokenMs, `首字 ${firstTokenMs}ms 超过 3000ms 预算`).toBeLessThanOrEqual(3000);
+         |                                                               ^
+      31 |   });
+      32 | });
+      33 |
+        at /Users/ricky/Documents/projects/riccon-work/e2e/real/tests/j1-first-token.spec.ts:30:63
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/j1-first-token-真实栈首字预算-提交问题后-3-秒内出现首字-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/j1-first-token-真实栈首字预算-提交问题后-3-秒内出现首字-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/j1-first-token-真实栈首字预算-提交问题后-3-秒内出现首字-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/j1-first-token-真实栈首字预算-提交问题后-3-秒内出现首字-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[4/7] [chromium] › e2e/real/tests/j1.spec.ts:15:3 › 真实栈 J1 › 上传、解析、提问、引用与重开
+[chromium] › e2e/real/tests/j1.spec.ts:15:3 › 真实栈 J1 › 上传、解析、提问、引用与重开
+REAL_J1_REQUEST_BODY={"content":"请总结真实栈文件中的市场规模与竞争格局","clientMessageId":"c2c4abb3-98d3-40e8-a0b0-8c4ec607f44a","fileIds":["01a1ebdd-0186-7baf-bc2c-b538172bc4e0"]}
+
+[5/7] [chromium] › e2e/real/tests/j2.spec.ts:12:3 › 真实栈 J2 创建入口 › 报告页可加载已授权工具并创建任务
+  2) [chromium] › e2e/real/tests/j2.spec.ts:12:3 › 真实栈 J2 创建入口 › 报告页可加载已授权工具并创建任务 ──────────────────
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  getByText('授权工具加载失败')
+    Expected: 0
+    Received: 1
+    Timeout:  60000ms
+
+    Call log:
+      - Expect "toHaveCount" getByText('授权工具加载失败') with timeout 60000ms
+      - waiting for getByText('授权工具加载失败')
+        123 × locator resolved to 1 element
+            - unexpected value "1"
+
+
+      16 |
+      17 |     // 端点缺失时页面显示 warning；这正是需要暴露的真实栈断裂点。
+    > 18 |     await expect(page.getByText('授权工具加载失败')).toHaveCount(0);
+         |                                              ^
+      19 |
+      20 |     const toolSelect = page.getByRole('combobox', { name: '数据工具' });
+      21 |     await expect(toolSelect).toBeEnabled({ timeout: 30_000 });
+        at /Users/ricky/Documents/projects/riccon-work/e2e/real/tests/j2.spec.ts:18:46
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/j2-真实栈-J2-创建入口-报告页可加载已授权工具并创建任务-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/j2-真实栈-J2-创建入口-报告页可加载已授权工具并创建任务-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/j2-真实栈-J2-创建入口-报告页可加载已授权工具并创建任务-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/j2-真实栈-J2-创建入口-报告页可加载已授权工具并创建任务-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[6/7] [chromium] › e2e/real/tests/login.spec.ts:9:3 › 真实栈登录 › 正确凭据进入租户工作空间并显示租户名
+[7/7] [chromium] › e2e/real/tests/login.spec.ts:15:3 › 真实栈登录 › 错误凭据只显示统一失败提示
+  2 failed
+    [chromium] › e2e/real/tests/j1-first-token.spec.ts:15:3 › 真实栈首字预算 › 提交问题后 3 秒内出现首字 ─────────────
+    [chromium] › e2e/real/tests/j2.spec.ts:12:3 › 真实栈 J2 创建入口 › 报告页可加载已授权工具并创建任务 ───────────────────
+  5 passed (1.7m)
+

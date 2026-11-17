@@ -1,0 +1,197 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-18T07:09:02.121+08:00  INFO 2804 --- [riccon-api] [           main] com.riccon.api.ApiApplication            : Starting ApiApplication v0.1.0-SNAPSHOT using Java 21.0.13 with PID 2804 (/Users/ricky/Documents/projects/riccon-work/apps/api/target/riccon-api-0.1.0-SNAPSHOT-exec.jar started by ricky in /Users/ricky/Documents/projects/riccon-work)
+2026-11-18T07:09:02.126+08:00  INFO 2804 --- [riccon-api] [           main] com.riccon.api.ApiApplication            : No active profile set, falling back to 1 default profile: "default"
+2026-11-18T07:09:04.354+08:00  INFO 2804 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 18080 (http)
+2026-11-18T07:09:04.379+08:00  INFO 2804 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-18T07:09:04.380+08:00  INFO 2804 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-18T07:09:04.435+08:00  INFO 2804 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2229 ms
+2026-11-18T07:09:04.696+08:00  INFO 2804 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-18T07:09:04.984+08:00  INFO 2804 --- [riccon-api] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@761f234c
+2026-11-18T07:09:04.986+08:00  INFO 2804 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-18T07:09:05.021+08:00  INFO 2804 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://127.0.0.1:13306/riccon?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8 (MySQL 8.4)
+2026-11-18T07:09:05.202+08:00  INFO 2804 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon`.`flyway_schema_history` does not exist yet
+2026-11-18T07:09:05.209+08:00  INFO 2804 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 8 migrations (execution time 00:00.035s)
+2026-11-18T07:09:05.242+08:00  INFO 2804 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon`.`flyway_schema_history` ...
+2026-11-18T07:09:05.340+08:00  INFO 2804 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: << Empty Schema >>
+2026-11-18T07:09:05.354+08:00  INFO 2804 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "1 - baseline"
+2026-11-18T07:09:05.435+08:00  INFO 2804 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "2 - identity and workspace"
+2026-11-18T07:09:05.738+08:00  INFO 2804 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "3 - files knowledge and conversation"
+2026-11-18T07:09:06.087+08:00  INFO 2804 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "4 - research runs and artifacts"
+2026-11-18T07:09:06.462+08:00  INFO 2804 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "5 - model gateway and mcp"
+2026-11-18T07:09:06.804+08:00  INFO 2804 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "6 - audit event"
+2026-11-18T07:09:07.235+08:00  INFO 2804 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "7 - spring session"
+2026-11-18T07:09:07.367+08:00  INFO 2804 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "8 - approval params envelope"
+2026-11-18T07:09:07.503+08:00  INFO 2804 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 8 migrations to schema `riccon`, now at version v8 (execution time 00:01.784s)
+2026-11-18T07:09:07.871+08:00  INFO 2804 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-18T07:09:07.871+08:00  INFO 2804 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-18T07:09:10.588+08:00  INFO 2804 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoints beneath base path '/actuator'
+2026-11-18T07:09:10.678+08:00  INFO 2804 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 18080 (http) with context path '/'
+2026-11-18T07:09:10.690+08:00  INFO 2804 --- [riccon-api] [           main] com.riccon.api.ApiApplication            : Started ApiApplication in 9.482 seconds (process running for 10.755)
+2026-11-18T07:09:11.167+08:00  INFO 2804 --- [riccon-api] [io-18080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-18T07:09:11.168+08:00  INFO 2804 --- [riccon-api] [io-18080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-18T07:09:11.169+08:00  INFO 2804 --- [riccon-api] [io-18080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-11-18T07:09:11.335+08:00  INFO 2804 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin created
+2026-11-18T07:09:24.360+08:00  INFO 2804 --- [riccon-api] [io-18080-exec-9] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1ebc5-b094-7019-a140-401da0e04812 sizeBytes=1153 format=DOCX
+2026-11-18T07:09:33.193+08:00  INFO 2804 --- [riccon-api] [io-18080-exec-5] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1ebc5-d47f-7f2e-bb71-63379f09688a workspaceId=01a1ebc5-ace4-753d-a4dc-ed070f24019f
+2026-11-18T07:09:33.459+08:00  INFO 2804 --- [riccon-api] [io-18080-exec-6] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1ebc5-d558-7c7a-9015-d8332ff7b925 sizeBytes=1153 format=DOCX
+2026-11-18T07:09:33.531+08:00  INFO 2804 --- [riccon-api] [io-18080-exec-7] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1ebc5-d47f-7f2e-bb71-63379f09688a runId=01a1ebc5-d5bd-7435-be6a-35e88716e7f2 userMessageId=01a1ebc5-d5bd-70e3-a840-30498c47cbf7 assistantMessageId=01a1ebc5-d5bd-7a60-a05c-6342f43c4ee3 attachments=0
+2026-11-18T07:09:41.183+08:00  INFO 2804 --- [riccon-api] [io-18080-exec-6] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1ebc5-f3b8-79bd-85b9-28aea1ac1ce7 workspaceId=01a1ebc5-ace4-753d-a4dc-ed070f24019f
+2026-11-18T07:09:41.430+08:00  INFO 2804 --- [riccon-api] [io-18080-exec-8] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1ebc5-f497-70d5-b3cb-45ec90ef14f8 sizeBytes=1153 format=DOCX
+2026-11-18T07:09:43.508+08:00  INFO 2804 --- [riccon-api] [io-18080-exec-9] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1ebc5-f3b8-79bd-85b9-28aea1ac1ce7 runId=01a1ebc5-fcc5-7674-bf3c-15d707adea16 userMessageId=01a1ebc5-fcc5-77c6-a33c-289f69922691 assistantMessageId=01a1ebc5-fcc5-79cf-8eca-5253fe79af42 attachments=1
+2026-11-18T07:10:57.618+08:00  INFO 2804 --- [riccon-api] [io-18080-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=03939142-973a-43c1-a9d5-c3e298ff0823 path=/api/v1/auth/login
+2026-11-18T07:10:58.852+08:00  INFO 2804 --- [riccon-api] [io-18080-exec-7] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=tenant-alpha taskId=01a1ebc7-231a-78be-8647-db0936c4ac53 runId=01a1ebc7-231a-7a1b-99af-b266cab57ccb workspaceId=01a1ebc5-ace4-753d-a4dc-ed070f24019f toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-18T07:10:59.642+08:00  INFO 2804 --- [riccon-api] [ionShutdownHook] o.s.boot.tomcat.GracefulShutdown         : Commencing graceful shutdown. Waiting for active requests to complete
+2026-11-18T07:11:01.655+08:00  INFO 2804 --- [riccon-api] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete
+2026-11-18T07:11:01.678+08:00  INFO 2804 --- [riccon-api] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-11-18T07:11:01.683+08:00  INFO 2804 --- [riccon-api] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-18T07:12:42.053+08:00  INFO 3490 --- [riccon-api] [           main] com.riccon.api.ApiApplication            : Starting ApiApplication v0.1.0-SNAPSHOT using Java 21.0.13 with PID 3490 (/Users/ricky/Documents/projects/riccon-work/apps/api/target/riccon-api-0.1.0-SNAPSHOT-exec.jar started by ricky in /Users/ricky/Documents/projects/riccon-work)
+2026-11-18T07:12:42.059+08:00  INFO 3490 --- [riccon-api] [           main] com.riccon.api.ApiApplication            : No active profile set, falling back to 1 default profile: "default"
+2026-11-18T07:12:44.455+08:00  INFO 3490 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 18080 (http)
+2026-11-18T07:12:44.490+08:00  INFO 3490 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-18T07:12:44.491+08:00  INFO 3490 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-18T07:12:44.548+08:00  INFO 3490 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2401 ms
+2026-11-18T07:12:44.843+08:00  INFO 3490 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-18T07:12:45.147+08:00  INFO 3490 --- [riccon-api] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@761f234c
+2026-11-18T07:12:45.149+08:00  INFO 3490 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-18T07:12:45.186+08:00  INFO 3490 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://127.0.0.1:13306/riccon?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8 (MySQL 8.4)
+2026-11-18T07:12:45.381+08:00  INFO 3490 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon`.`flyway_schema_history` does not exist yet
+2026-11-18T07:12:45.388+08:00  INFO 3490 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 8 migrations (execution time 00:00.041s)
+2026-11-18T07:12:45.432+08:00  INFO 3490 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon`.`flyway_schema_history` ...
+2026-11-18T07:12:45.547+08:00  INFO 3490 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: << Empty Schema >>
+2026-11-18T07:12:45.561+08:00  INFO 3490 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "1 - baseline"
+2026-11-18T07:12:45.637+08:00  INFO 3490 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "2 - identity and workspace"
+2026-11-18T07:12:45.927+08:00  INFO 3490 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "3 - files knowledge and conversation"
+2026-11-18T07:12:46.251+08:00  INFO 3490 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "4 - research runs and artifacts"
+2026-11-18T07:12:46.673+08:00  INFO 3490 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "5 - model gateway and mcp"
+2026-11-18T07:12:47.021+08:00  INFO 3490 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "6 - audit event"
+2026-11-18T07:12:47.429+08:00  INFO 3490 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "7 - spring session"
+2026-11-18T07:12:47.562+08:00  INFO 3490 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "8 - approval params envelope"
+2026-11-18T07:12:47.692+08:00  INFO 3490 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 8 migrations to schema `riccon`, now at version v8 (execution time 00:01.782s)
+2026-11-18T07:12:48.034+08:00  INFO 3490 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-18T07:12:48.034+08:00  INFO 3490 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-18T07:12:50.583+08:00  INFO 3490 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoints beneath base path '/actuator'
+2026-11-18T07:12:50.667+08:00  INFO 3490 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 18080 (http) with context path '/'
+2026-11-18T07:12:50.677+08:00  INFO 3490 --- [riccon-api] [           main] com.riccon.api.ApiApplication            : Started ApiApplication in 9.752 seconds (process running for 11.103)
+2026-11-18T07:12:51.173+08:00  INFO 3490 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin created
+2026-11-18T07:12:51.179+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-18T07:12:51.180+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-18T07:12:51.181+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-11-18T07:13:03.675+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-8] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1ebc9-093d-788e-9e91-34bb7adf7c76 sizeBytes=1153 format=DOCX
+2026-11-18T07:13:12.880+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-5] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1ebc9-2ea4-7661-880b-79289afffcc2 workspaceId=01a1ebc9-057e-7501-aba5-3d88dbc2b686
+2026-11-18T07:13:13.150+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-6] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1ebc9-2f8e-74c1-82c5-9b6eeebf4daf sizeBytes=1153 format=DOCX
+2026-11-18T07:13:13.253+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-7] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1ebc9-2ea4-7661-880b-79289afffcc2 runId=01a1ebc9-2fff-7c8b-b48b-6a1fbcd188ae userMessageId=01a1ebc9-2fff-7ead-9458-d91fd94439f0 assistantMessageId=01a1ebc9-2fff-7370-9fa0-f845c15e6927 attachments=0
+2026-11-18T07:13:21.369+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-6] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1ebc9-4fd1-7956-8b25-a0d8e8f67815 workspaceId=01a1ebc9-057e-7501-aba5-3d88dbc2b686
+2026-11-18T07:13:21.600+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-9] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1ebc9-50a0-7436-9bd4-bd63fcd477d9 sizeBytes=1153 format=DOCX
+2026-11-18T07:13:23.674+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-8] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1ebc9-4fd1-7956-8b25-a0d8e8f67815 runId=01a1ebc9-58c9-71ed-ace1-3666c360f1d5 userMessageId=01a1ebc9-58c9-76ba-ad63-a89338457335 assistantMessageId=01a1ebc9-58c9-7ecf-9a8a-e9a6e727a55c attachments=1
+2026-11-18T07:14:37.194+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=ba054a9b-5e82-44cc-8537-79e5c99a163f path=/api/v1/auth/login
+2026-11-18T07:14:38.432+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-8] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=tenant-alpha taskId=01a1ebca-7cd3-72a5-9a25-01d48d602061 runId=01a1ebca-7cd3-7d14-bd95-906ab7639c49 workspaceId=01a1ebc9-057e-7501-aba5-3d88dbc2b686 toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-18T07:14:39.140+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-2] c.r.a.research.service.ApprovalService   : research.approval.decided tenantId=tenant-alpha approvalId=01a1ebca-7dda-7f20-bcd9-80b71575879d taskId=01a1ebca-7cd3-72a5-9a25-01d48d602061 runId=01a1ebca-7cd3-7d14-bd95-906ab7639c49 decision=APPROVE
+2026-11-18T07:14:43.484+08:00  INFO 3490 --- [riccon-api] [o-18080-exec-10] c.r.a.research.service.ArtifactService   : artifact.download.url tenantId=tenant-alpha artifactId=01a1ebca-8efb-7f7c-b01c-3c70af1e0f8f version=1
+2026-11-18T07:14:43.537+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-1] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=tenant-alpha taskId=01a1ebca-90ca-7a12-ab4b-42a177446afb runId=01a1ebca-90ca-7527-a722-fe1bf0c8ae9e workspaceId=01a1ebc9-057e-7501-aba5-3d88dbc2b686 toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-18T07:14:44.192+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-3] c.r.a.research.service.ApprovalService   : research.approval.decided tenantId=tenant-alpha approvalId=01a1ebca-91a4-79dc-aa7d-8b3e1cfb23f0 taskId=01a1ebca-90ca-7a12-ab4b-42a177446afb runId=01a1ebca-90ca-7527-a722-fe1bf0c8ae9e decision=REJECT
+2026-11-18T07:14:45.196+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-2] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1ebca-9746-7483-9f36-3ca7241d4685 workspaceId=01a1ebc9-057e-7501-aba5-3d88dbc2b686
+2026-11-18T07:14:45.248+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=56284741-bcf2-452b-94c6-c7800a59d28b path=/api/v1/conversations/01a1ebca-9746-7483-9f36-3ca7241d4685
+2026-11-18T07:14:45.291+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=52d292e3-59b2-4d58-b14f-a4fd1d66edec path=/api/v1/research-tasks/01a1ebca-7cd3-72a5-9a25-01d48d602061
+2026-11-18T07:14:45.340+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=fafa13ee-1bc3-4196-a813-ec65f6f1992d path=/api/v1/artifacts/01a1ebca-8efb-7f7c-b01c-3c70af1e0f8f
+2026-11-18T07:14:45.394+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=514289a7-654c-401b-877e-d038374134cd path=/api/v1/artifacts/01a1ebca-8efb-7f7c-b01c-3c70af1e0f8f/versions/1
+2026-11-18T07:14:45.437+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=dd191e68-c7cf-40d1-b10c-8827f1a7445b path=/api/v1/artifacts/01a1ebca-8efb-7f7c-b01c-3c70af1e0f8f/versions/1/download-url
+2026-11-18T07:14:45.487+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=fa8860a0-fd33-47ac-90b1-ec3c0245a6a1 path=/api/v1/knowledge/documents/01a1ebc9-11b5-7086-8623-5cd0da685e7e
+2026-11-18T07:14:45.537+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=4d3c5245-4d05-4c08-9623-19f4a5e6b831 path=/api/v1/files/01a1ebc9-093d-788e-9e91-34bb7adf7c76
+2026-11-18T07:14:45.633+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=8312dfdd-53ba-4dcd-adce-8863dd854c57 path=/api/v1/workspaces/01a1ebc9-057e-7501-aba5-3d88dbc2b686/research-tasks
+2026-11-18T07:14:45.684+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=8868b65d-77b1-47c6-b6be-ea7d93907831 path=/api/v1/workspaces/01a1ebc9-073a-7306-8df2-d427184f9a2b/research-tasks
+2026-11-18T07:14:45.789+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-5] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-beta fileId=01a1ebca-9975-7d3c-9ec6-7321c8cb1a85 sizeBytes=1153 format=DOCX
+2026-11-18T07:14:45.840+08:00  INFO 3490 --- [riccon-api] [io-18080-exec-3] c.riccon.api.file.service.FileService    : file.deleted tenantId=tenant-beta fileId=01a1ebca-9975-7d3c-9ec6-7321c8cb1a85
+2026-11-18T07:14:48.675+08:00  INFO 3490 --- [riccon-api] [ionShutdownHook] o.s.boot.tomcat.GracefulShutdown         : Commencing graceful shutdown. Waiting for active requests to complete
+2026-11-18T07:14:50.693+08:00  INFO 3490 --- [riccon-api] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete
+2026-11-18T07:14:50.711+08:00  INFO 3490 --- [riccon-api] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-11-18T07:14:50.717+08:00  INFO 3490 --- [riccon-api] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-18T07:33:59.457+08:00  INFO 8977 --- [riccon-api] [           main] com.riccon.api.ApiApplication            : Starting ApiApplication v0.1.0-SNAPSHOT using Java 21.0.13 with PID 8977 (/Users/ricky/Documents/projects/riccon-work/apps/api/target/riccon-api-0.1.0-SNAPSHOT-exec.jar started by ricky in /Users/ricky/Documents/projects/riccon-work)
+2026-11-18T07:33:59.462+08:00  INFO 8977 --- [riccon-api] [           main] com.riccon.api.ApiApplication            : No active profile set, falling back to 1 default profile: "default"
+2026-11-18T07:34:02.084+08:00  INFO 8977 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 18080 (http)
+2026-11-18T07:34:02.110+08:00  INFO 8977 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-18T07:34:02.111+08:00  INFO 8977 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-18T07:34:02.166+08:00  INFO 8977 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2613 ms
+2026-11-18T07:34:02.448+08:00  INFO 8977 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-18T07:34:02.741+08:00  INFO 8977 --- [riccon-api] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@18bb1b88
+2026-11-18T07:34:02.743+08:00  INFO 8977 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-18T07:34:02.780+08:00  INFO 8977 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://127.0.0.1:13306/riccon?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8 (MySQL 8.4)
+2026-11-18T07:34:02.986+08:00  INFO 8977 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon`.`flyway_schema_history` does not exist yet
+2026-11-18T07:34:02.993+08:00  INFO 8977 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 8 migrations (execution time 00:00.034s)
+2026-11-18T07:34:03.030+08:00  INFO 8977 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon`.`flyway_schema_history` ...
+2026-11-18T07:34:03.126+08:00  INFO 8977 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: << Empty Schema >>
+2026-11-18T07:34:03.140+08:00  INFO 8977 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "1 - baseline"
+2026-11-18T07:34:03.222+08:00  INFO 8977 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "2 - identity and workspace"
+2026-11-18T07:34:03.502+08:00  INFO 8977 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "3 - files knowledge and conversation"
+2026-11-18T07:34:03.851+08:00  INFO 8977 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "4 - research runs and artifacts"
+2026-11-18T07:34:04.274+08:00  INFO 8977 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "5 - model gateway and mcp"
+2026-11-18T07:34:04.611+08:00  INFO 8977 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "6 - audit event"
+2026-11-18T07:34:05.006+08:00  INFO 8977 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "7 - spring session"
+2026-11-18T07:34:05.133+08:00  INFO 8977 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "8 - approval params envelope"
+2026-11-18T07:34:05.260+08:00  INFO 8977 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 8 migrations to schema `riccon`, now at version v8 (execution time 00:01.755s)
+2026-11-18T07:34:05.648+08:00  INFO 8977 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-18T07:34:05.648+08:00  INFO 8977 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-18T07:34:08.417+08:00  INFO 8977 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoints beneath base path '/actuator'
+2026-11-18T07:34:08.517+08:00  INFO 8977 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 18080 (http) with context path '/'
+2026-11-18T07:34:08.531+08:00  INFO 8977 --- [riccon-api] [           main] com.riccon.api.ApiApplication            : Started ApiApplication in 9.887 seconds (process running for 10.854)
+2026-11-18T07:34:08.797+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-18T07:34:08.797+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-18T07:34:08.799+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-11-18T07:34:09.043+08:00  INFO 8977 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin created
+2026-11-18T07:34:23.986+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-9] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1ebdc-9273-739d-a5ce-b99e65f5f813 sizeBytes=1153 format=DOCX
+2026-11-18T07:34:43.409+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-7] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1ebdc-dfc6-7119-9c51-1b7fc757a0e2 workspaceId=01a1ebdc-8ec4-7e84-ae01-3eca6829483b
+2026-11-18T07:34:43.689+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-8] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1ebdc-e0a7-75d5-ac63-c9da3608b47d sizeBytes=1153 format=DOCX
+2026-11-18T07:34:43.765+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-9] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1ebdc-dfc6-7119-9c51-1b7fc757a0e2 runId=01a1ebdc-e10a-7666-a771-440f3c557729 userMessageId=01a1ebdc-e10a-72e3-a1a2-81b40bd5421a assistantMessageId=01a1ebdc-e10a-7061-b844-422a61aaace3 attachments=0
+2026-11-18T07:34:51.845+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-8] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1ebdd-00be-7799-9dad-f024c83a0b73 workspaceId=01a1ebdc-8ec4-7e84-ae01-3eca6829483b
+2026-11-18T07:34:52.079+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-1] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1ebdd-0186-7baf-bc2c-b538172bc4e0 sizeBytes=1153 format=DOCX
+2026-11-18T07:34:54.152+08:00  INFO 8977 --- [riccon-api] [o-18080-exec-10] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1ebdd-00be-7799-9dad-f024c83a0b73 runId=01a1ebdd-09b9-78bf-a326-86df3b4323fe userMessageId=01a1ebdd-09b9-7d34-a237-10962d8e9cbe assistantMessageId=01a1ebdd-09b9-774b-af69-9850202198f3 attachments=1
+2026-11-18T07:36:08.514+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=e130b577-136d-4706-b9de-880e9af84cd1 path=/api/v1/auth/login
+2026-11-18T07:36:09.799+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-9] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=tenant-alpha taskId=01a1ebde-313b-727d-9ec2-ae28ab8d8e33 runId=01a1ebde-313b-7570-8c5f-078c098fbbc6 workspaceId=01a1ebdc-8ec4-7e84-ae01-3eca6829483b toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-18T07:36:10.536+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-3] c.r.a.research.service.ApprovalService   : research.approval.decided tenantId=tenant-alpha approvalId=01a1ebde-338e-7073-afa2-1d38b70da558 taskId=01a1ebde-313b-727d-9ec2-ae28ab8d8e33 runId=01a1ebde-313b-7570-8c5f-078c098fbbc6 decision=APPROVE
+2026-11-18T07:36:15.951+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-2] c.r.a.research.service.ArtifactService   : artifact.download.url tenantId=tenant-alpha artifactId=01a1ebde-4544-7709-a36b-1ca3092a1e5c version=1
+2026-11-18T07:36:16.007+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-3] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=tenant-alpha taskId=01a1ebde-4980-7719-8441-ddb385860801 runId=01a1ebde-4980-708a-9265-bbb903c21ede workspaceId=01a1ebdc-8ec4-7e84-ae01-3eca6829483b toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-18T07:36:16.639+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-5] c.r.a.research.service.ApprovalService   : research.approval.decided tenantId=tenant-alpha approvalId=01a1ebde-4a05-7e98-900d-30acf4e1bab1 taskId=01a1ebde-4980-7719-8441-ddb385860801 runId=01a1ebde-4980-708a-9265-bbb903c21ede decision=REJECT
+2026-11-18T07:36:17.667+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-4] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1ebde-4ffd-7a17-9882-d9ec6bbd098e workspaceId=01a1ebdc-8ec4-7e84-ae01-3eca6829483b
+2026-11-18T07:36:17.705+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=128e98f3-df84-478e-bbd2-b032505f6123 path=/api/v1/conversations/01a1ebde-4ffd-7a17-9882-d9ec6bbd098e
+2026-11-18T07:36:17.742+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=a91270e7-e90b-44e1-a3a9-b05cb6ad3b15 path=/api/v1/research-tasks/01a1ebde-313b-727d-9ec2-ae28ab8d8e33
+2026-11-18T07:36:17.780+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=9cdc6109-4ccd-4f9b-aa02-21bae529f233 path=/api/v1/artifacts/01a1ebde-4544-7709-a36b-1ca3092a1e5c
+2026-11-18T07:36:17.820+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=b59a6b64-5305-4913-966b-90fb02703c38 path=/api/v1/artifacts/01a1ebde-4544-7709-a36b-1ca3092a1e5c/versions/1
+2026-11-18T07:36:17.865+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=0789fbcf-8344-43d2-a06a-6b010bdeab74 path=/api/v1/artifacts/01a1ebde-4544-7709-a36b-1ca3092a1e5c/versions/1/download-url
+2026-11-18T07:36:17.911+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=10cc5972-ea0b-4acf-b912-7608f6bfea78 path=/api/v1/knowledge/documents/01a1ebdc-9ab6-7d5e-8acc-96bca4b07517
+2026-11-18T07:36:17.949+08:00  INFO 8977 --- [riccon-api] [o-18080-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=2432e5fe-6a1d-424e-ac93-4749a3930f33 path=/api/v1/files/01a1ebdc-9273-739d-a5ce-b99e65f5f813
+2026-11-18T07:36:18.024+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=c5300366-cf73-4ed5-a82d-2eda8a24523d path=/api/v1/workspaces/01a1ebdc-8ec4-7e84-ae01-3eca6829483b/research-tasks
+2026-11-18T07:36:18.059+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=b2f7d741-8309-497d-9c14-c1c4ab8a955c path=/api/v1/workspaces/01a1ebdc-9080-7240-a14f-c8db5caf4656/research-tasks
+2026-11-18T07:36:18.123+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-7] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-beta fileId=01a1ebde-51b3-72f3-bccd-682740cc1794 sizeBytes=1153 format=DOCX
+2026-11-18T07:36:18.170+08:00  INFO 8977 --- [riccon-api] [io-18080-exec-5] c.riccon.api.file.service.FileService    : file.deleted tenantId=tenant-beta fileId=01a1ebde-51b3-72f3-bccd-682740cc1794
+2026-11-18T07:36:20.101+08:00  INFO 8977 --- [riccon-api] [ionShutdownHook] o.s.boot.tomcat.GracefulShutdown         : Commencing graceful shutdown. Waiting for active requests to complete
+2026-11-18T07:36:22.115+08:00  INFO 8977 --- [riccon-api] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete
+2026-11-18T07:36:22.142+08:00  INFO 8977 --- [riccon-api] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-11-18T07:36:22.146+08:00  INFO 8977 --- [riccon-api] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.

@@ -1,0 +1,199 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-18T07:09:13.825+08:00  INFO 2823 --- [riccon-worker] [           main] com.riccon.worker.WorkerApplication      : Starting WorkerApplication v0.1.0-SNAPSHOT using Java 21.0.13 with PID 2823 (/Users/ricky/Documents/projects/riccon-work/apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar started by ricky in /Users/ricky/Documents/projects/riccon-work)
+2026-11-18T07:09:13.830+08:00  INFO 2823 --- [riccon-worker] [           main] com.riccon.worker.WorkerApplication      : No active profile set, falling back to 1 default profile: "default"
+2026-11-18T07:09:16.375+08:00  INFO 2823 --- [riccon-worker] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 18081 (http)
+2026-11-18T07:09:16.402+08:00  INFO 2823 --- [riccon-worker] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-18T07:09:16.402+08:00  INFO 2823 --- [riccon-worker] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-18T07:09:16.450+08:00  INFO 2823 --- [riccon-worker] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2513 ms
+2026-11-18T07:09:19.210+08:00  INFO 2823 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoints beneath base path '/actuator'
+2026-11-18T07:09:19.327+08:00  INFO 2823 --- [riccon-worker] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 18081 (http) with context path '/'
+2026-11-18T07:09:19.344+08:00  INFO 2823 --- [riccon-worker] [           main] com.riccon.worker.WorkerApplication      : Started WorkerApplication in 6.406 seconds (process running for 7.429)
+2026-11-18T07:09:19.513+08:00  INFO 2823 --- [riccon-worker] [io-18081-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-18T07:09:19.513+08:00  INFO 2823 --- [riccon-worker] [io-18081-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-18T07:09:19.515+08:00  INFO 2823 --- [riccon-worker] [io-18081-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-11-18T07:09:19.641+08:00  INFO 2823 --- [riccon-worker] [io-18081-exec-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-18T07:09:19.924+08:00  INFO 2823 --- [riccon-worker] [io-18081-exec-1] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@4f31f204
+2026-11-18T07:09:19.928+08:00  INFO 2823 --- [riccon-worker] [io-18081-exec-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-18T07:09:25.431+08:00  INFO 2823 --- [riccon-worker] [   scheduling-1] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-alpha fileId=01a1ebc5-b094-7019-a140-401da0e04812 parseId=01a1ebc5-b094-7d05-b25b-5388a9ea6dd3 chunks=4
+2026-11-18T07:09:25.444+08:00  INFO 2823 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebc5-b094-7e36-847e-6ecae3cd281b tenantId=tenant-alpha runId=01a1ebc5-b094-74cb-ac5e-bbd0bc391e8e attempts=1
+2026-11-18T07:09:25.444+08:00  INFO 2823 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:09:26.845+08:00  INFO 2823 --- [riccon-worker] [   scheduling-1] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-alpha documentId=01a1ebc5-b6c0-7a84-b414-8d6ef6a899c4 chunks=4 dimensions=64
+2026-11-18T07:09:26.859+08:00  INFO 2823 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebc5-b6c0-7062-99f4-1178e90cc88b tenantId=tenant-alpha runId=01a1ebc5-b6c0-7b21-a795-05b90795e1b3 attempts=1
+2026-11-18T07:09:26.860+08:00  INFO 2823 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:09:33.674+08:00  INFO 2823 --- [riccon-worker] [   scheduling-1] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-alpha fileId=01a1ebc5-d558-7c7a-9015-d8332ff7b925 parseId=01a1ebc5-d558-7b06-a327-b0d22bcc1a46 chunks=4
+2026-11-18T07:09:33.692+08:00  INFO 2823 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebc5-d558-784c-9c8b-7e815a5f5913 tenantId=tenant-alpha runId=01a1ebc5-d558-7df4-babb-1297bad12342 attempts=1
+2026-11-18T07:09:33.693+08:00  INFO 2823 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:09:33.803+08:00  INFO 2823 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-18T07:09:41.560+08:00  INFO 2823 --- [riccon-worker] [   scheduling-1] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-alpha fileId=01a1ebc5-f497-70d5-b3cb-45ec90ef14f8 parseId=01a1ebc5-f497-77f6-b082-b9918c6441f5 chunks=4
+2026-11-18T07:09:41.574+08:00  INFO 2823 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebc5-f497-7649-923b-a1324f71b500 tenantId=tenant-alpha runId=01a1ebc5-f497-7d7f-8af2-8237b2f7ffe5 attempts=1
+2026-11-18T07:09:41.574+08:00  INFO 2823 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:09:43.567+08:00  INFO 2823 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-18T07:10:59.062+08:00  INFO 2823 --- [riccon-worker] [   scheduling-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-18T07:10:59.064+08:00  INFO 2823 --- [riccon-worker] [   scheduling-1] io.agentscope.core.tool.Toolkit          : Registered tool 'market_data' in group 'ungrouped'
+2026-11-18T07:10:59.216+08:00  INFO 2823 --- [riccon-worker] [   scheduling-1] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-alpha runId=01a1ebc7-231a-7a1b-99af-b266cab57ccb approvalId=01a1ebc7-245d-7b99-92d2-5d310dc7e7c9 toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-18T07:10:59.223+08:00  INFO 2823 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebc7-231a-7e40-8a72-5222d547663e tenantId=tenant-alpha runId=01a1ebc7-231a-7a1b-99af-b266cab57ccb attempts=1
+2026-11-18T07:10:59.224+08:00  INFO 2823 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a1ebc7-231a-7e40-8a72-5222d547663e tenantId=tenant-alpha runId=01a1ebc7-231a-7a1b-99af-b266cab57ccb reason=WAITING_APPROVAL
+2026-11-18T07:10:59.224+08:00  INFO 2823 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:10:59.632+08:00  INFO 2823 --- [riccon-worker] [m-shutdown-hook] i.a.c.shutdown.GracefulShutdownManager   : Graceful shutdown initiated, 0 active request(s), timeout=infinite
+2026-11-18T07:10:59.634+08:00  INFO 2823 --- [riccon-worker] [m-shutdown-hook] i.a.c.m.transport.HttpTransportFactory   : Shutting down 0 managed HttpTransport(s)
+2026-11-18T07:10:59.638+08:00  INFO 2823 --- [riccon-worker] [ionShutdownHook] o.s.boot.tomcat.GracefulShutdown         : Commencing graceful shutdown. Waiting for active requests to complete
+2026-11-18T07:11:01.652+08:00  INFO 2823 --- [riccon-worker] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete
+2026-11-18T07:11:01.664+08:00  INFO 2823 --- [riccon-worker] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-11-18T07:11:01.673+08:00  INFO 2823 --- [riccon-worker] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-18T07:12:53.036+08:00  INFO 3510 --- [riccon-worker] [           main] com.riccon.worker.WorkerApplication      : Starting WorkerApplication v0.1.0-SNAPSHOT using Java 21.0.13 with PID 3510 (/Users/ricky/Documents/projects/riccon-work/apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar started by ricky in /Users/ricky/Documents/projects/riccon-work)
+2026-11-18T07:12:53.042+08:00  INFO 3510 --- [riccon-worker] [           main] com.riccon.worker.WorkerApplication      : No active profile set, falling back to 1 default profile: "default"
+2026-11-18T07:12:55.487+08:00  INFO 3510 --- [riccon-worker] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 18081 (http)
+2026-11-18T07:12:55.520+08:00  INFO 3510 --- [riccon-worker] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-18T07:12:55.521+08:00  INFO 3510 --- [riccon-worker] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-18T07:12:55.564+08:00  INFO 3510 --- [riccon-worker] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2440 ms
+2026-11-18T07:12:57.975+08:00  INFO 3510 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoints beneath base path '/actuator'
+2026-11-18T07:12:58.051+08:00  INFO 3510 --- [riccon-worker] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 18081 (http) with context path '/'
+2026-11-18T07:12:58.064+08:00  INFO 3510 --- [riccon-worker] [           main] com.riccon.worker.WorkerApplication      : Started WorkerApplication in 5.833 seconds (process running for 6.731)
+2026-11-18T07:12:58.489+08:00  INFO 3510 --- [riccon-worker] [io-18081-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-18T07:12:58.490+08:00  INFO 3510 --- [riccon-worker] [io-18081-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-18T07:12:58.492+08:00  INFO 3510 --- [riccon-worker] [io-18081-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-11-18T07:12:58.620+08:00  INFO 3510 --- [riccon-worker] [io-18081-exec-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-18T07:12:58.980+08:00  INFO 3510 --- [riccon-worker] [io-18081-exec-1] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@6c442e96
+2026-11-18T07:12:58.983+08:00  INFO 3510 --- [riccon-worker] [io-18081-exec-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-18T07:13:05.298+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-alpha fileId=01a1ebc9-093d-788e-9e91-34bb7adf7c76 parseId=01a1ebc9-093d-73ff-91c5-0a3f90088fde chunks=4
+2026-11-18T07:13:05.316+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebc9-093d-7fa2-baaf-8ae2c3219467 tenantId=tenant-alpha runId=01a1ebc9-093d-70ff-b7ab-843a01777f53 attempts=1
+2026-11-18T07:13:05.316+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:13:06.721+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-alpha documentId=01a1ebc9-11b5-7086-8623-5cd0da685e7e chunks=4 dimensions=64
+2026-11-18T07:13:06.736+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebc9-11b5-750c-ad5b-1061048f2c0e tenantId=tenant-alpha runId=01a1ebc9-11b5-7c51-a13d-481733454b9a attempts=1
+2026-11-18T07:13:06.736+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:13:13.517+08:00  INFO 3510 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-18T07:13:13.545+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-alpha fileId=01a1ebc9-2f8e-74c1-82c5-9b6eeebf4daf parseId=01a1ebc9-2f8e-7ace-ac0c-0a4a57bdb117 chunks=4
+2026-11-18T07:13:13.569+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebc9-2f8e-74b8-b976-35c3513e4c57 tenantId=tenant-alpha runId=01a1ebc9-2f8e-7c18-870f-b728d923ac60 attempts=1
+2026-11-18T07:13:13.569+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:13:21.931+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-alpha fileId=01a1ebc9-50a0-7436-9bd4-bd63fcd477d9 parseId=01a1ebc9-50a0-78d3-bff1-35943b806c46 chunks=4
+2026-11-18T07:13:21.947+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebc9-50a0-7af5-9813-fd0cb8b4b64a tenantId=tenant-alpha runId=01a1ebc9-50a0-7693-ac9a-111179673cd0 attempts=1
+2026-11-18T07:13:21.947+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:13:23.740+08:00  INFO 3510 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-18T07:14:38.588+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-18T07:14:38.590+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] io.agentscope.core.tool.Toolkit          : Registered tool 'market_data' in group 'ungrouped'
+2026-11-18T07:14:38.735+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-alpha runId=01a1ebca-7cd3-7d14-bd95-906ab7639c49 approvalId=01a1ebca-7dda-7f20-bcd9-80b71575879d toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-18T07:14:38.741+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebca-7cd3-7450-9d3f-6757b9edb774 tenantId=tenant-alpha runId=01a1ebca-7cd3-7d14-bd95-906ab7639c49 attempts=1
+2026-11-18T07:14:38.742+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a1ebca-7cd3-7450-9d3f-6757b9edb774 tenantId=tenant-alpha runId=01a1ebca-7cd3-7d14-bd95-906ab7639c49 reason=WAITING_APPROVAL
+2026-11-18T07:14:38.742+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:14:39.415+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] i.a.core.tool.mcp.McpSyncClientWrapper   : Initializing MCP sync client: riccon-builtin
+2026-11-18T07:14:39.420+08:00  INFO 3510 --- [riccon-worker] [oundedElastic-1] i.m.c.transport.StdioClientTransport     : MCP server starting.
+2026-11-18T07:14:39.439+08:00  INFO 3510 --- [riccon-worker] [oundedElastic-1] i.m.c.transport.StdioClientTransport     : MCP server started
+2026-11-18T07:14:39.525+08:00  INFO 3510 --- [riccon-worker] [pool-9-thread-1] i.m.c.transport.StdioClientTransport     : STDERR Message received: mcp-server: ready
+2026-11-18T07:14:39.573+08:00  INFO 3510 --- [riccon-worker] [pool-6-thread-1] i.m.client.LifecycleInitializer          : Server response with Protocol: 2024-11-05, Capabilities: ServerCapabilities[completions=null, experimental=null, logging=null, prompts=null, resources=null, tools=ToolCapabilities[listChanged=null]], Info: Implementation[name=riccon-real-mcp, title=null, version=1.0.0] and Instructions null
+2026-11-18T07:14:39.634+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] i.a.core.tool.mcp.McpSyncClientWrapper   : Closing MCP sync client: riccon-builtin
+2026-11-18T07:14:39.747+08:00  WARN 3510 --- [riccon-worker] [onPool-worker-1] i.m.c.transport.StdioClientTransport     : Process terminated with code 143
+2026-11-18T07:14:39.768+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.riccon.worker.mcp.service.McpGateway   : mcp.tool.completed tenantId=tenant-alpha runId=01a1ebca-7cd3-7d14-bd95-906ab7639c49 toolId=0192f0a0-0000-7000-8000-000000000004 durationMs=458 resultBytes=308
+2026-11-18T07:14:39.814+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-18T07:14:43.099+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.w.r.service.ReportArtifactService    : research.artifact.saved tenantId=tenant-alpha taskId=01a1ebca-7cd3-72a5-9a25-01d48d602061 artifactId=01a1ebca-8efb-7f7c-b01c-3c70af1e0f8f version=1 citations=5
+2026-11-18T07:14:43.116+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.w.r.service.AgentRunResumeHandler    : research.run.generation_completed tenantId=tenant-alpha runId=01a1ebca-7cd3-7d14-bd95-906ab7639c49 chars=178 artifactId=01a1ebca-8efb-7f7c-b01c-3c70af1e0f8f version=1
+2026-11-18T07:14:43.128+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebca-7f99-732a-a75e-e45da3f3c622 tenantId=tenant-alpha runId=01a1ebca-7cd3-7d14-bd95-906ab7639c49 attempts=1
+2026-11-18T07:14:43.128+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:14:43.717+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-18T07:14:43.717+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] io.agentscope.core.tool.Toolkit          : Registered tool 'market_data' in group 'ungrouped'
+2026-11-18T07:14:43.795+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-alpha runId=01a1ebca-90ca-7527-a722-fe1bf0c8ae9e approvalId=01a1ebca-91a4-79dc-aa7d-8b3e1cfb23f0 toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-18T07:14:43.803+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebca-90ca-77cb-a04a-d2ade693a085 tenantId=tenant-alpha runId=01a1ebca-90ca-7527-a722-fe1bf0c8ae9e attempts=1
+2026-11-18T07:14:43.803+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a1ebca-90ca-77cb-a04a-d2ade693a085 tenantId=tenant-alpha runId=01a1ebca-90ca-7527-a722-fe1bf0c8ae9e reason=WAITING_APPROVAL
+2026-11-18T07:14:43.803+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:14:44.331+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebca-9352-759e-8aa9-01921033900d tenantId=tenant-alpha runId=01a1ebca-90ca-7527-a722-fe1bf0c8ae9e attempts=1
+2026-11-18T07:14:44.331+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:14:45.938+08:00  WARN 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a1ebca-9975-7db6-b1dc-a5de076618bf tenantId=tenant-beta runId=01a1ebca-9975-7cc5-b9bc-c74aaaac7456 attempts=1 reason=RICCON-TENANT-404: file not found
+2026-11-18T07:14:45.938+08:00  INFO 3510 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:14:48.661+08:00  INFO 3510 --- [riccon-worker] [m-shutdown-hook] i.a.c.shutdown.GracefulShutdownManager   : Graceful shutdown initiated, 0 active request(s), timeout=infinite
+2026-11-18T07:14:48.664+08:00  INFO 3510 --- [riccon-worker] [m-shutdown-hook] i.a.c.m.transport.HttpTransportFactory   : Shutting down 0 managed HttpTransport(s)
+2026-11-18T07:14:48.670+08:00  INFO 3510 --- [riccon-worker] [ionShutdownHook] o.s.boot.tomcat.GracefulShutdown         : Commencing graceful shutdown. Waiting for active requests to complete
+2026-11-18T07:14:50.693+08:00  INFO 3510 --- [riccon-worker] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete
+2026-11-18T07:14:50.704+08:00  INFO 3510 --- [riccon-worker] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-11-18T07:14:50.713+08:00  INFO 3510 --- [riccon-worker] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-18T07:34:11.514+08:00  INFO 8997 --- [riccon-worker] [           main] com.riccon.worker.WorkerApplication      : Starting WorkerApplication v0.1.0-SNAPSHOT using Java 21.0.13 with PID 8997 (/Users/ricky/Documents/projects/riccon-work/apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar started by ricky in /Users/ricky/Documents/projects/riccon-work)
+2026-11-18T07:34:11.519+08:00  INFO 8997 --- [riccon-worker] [           main] com.riccon.worker.WorkerApplication      : No active profile set, falling back to 1 default profile: "default"
+2026-11-18T07:34:16.035+08:00  INFO 8997 --- [riccon-worker] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 18081 (http)
+2026-11-18T07:34:16.063+08:00  INFO 8997 --- [riccon-worker] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-18T07:34:16.064+08:00  INFO 8997 --- [riccon-worker] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-18T07:34:16.111+08:00  INFO 8997 --- [riccon-worker] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 4482 ms
+2026-11-18T07:34:18.784+08:00  INFO 8997 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoints beneath base path '/actuator'
+2026-11-18T07:34:18.864+08:00  INFO 8997 --- [riccon-worker] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 18081 (http) with context path '/'
+2026-11-18T07:34:18.878+08:00  INFO 8997 --- [riccon-worker] [           main] com.riccon.worker.WorkerApplication      : Started WorkerApplication in 8.359 seconds (process running for 9.391)
+2026-11-18T07:34:19.095+08:00  INFO 8997 --- [riccon-worker] [io-18081-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-18T07:34:19.095+08:00  INFO 8997 --- [riccon-worker] [io-18081-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-18T07:34:19.097+08:00  INFO 8997 --- [riccon-worker] [io-18081-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-11-18T07:34:19.208+08:00  INFO 8997 --- [riccon-worker] [io-18081-exec-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-18T07:34:19.505+08:00  INFO 8997 --- [riccon-worker] [io-18081-exec-1] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@c7ee1f0
+2026-11-18T07:34:19.509+08:00  INFO 8997 --- [riccon-worker] [io-18081-exec-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-18T07:34:25.461+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-alpha fileId=01a1ebdc-9273-739d-a5ce-b99e65f5f813 parseId=01a1ebdc-9273-7886-b988-f694ef4d4298 chunks=4
+2026-11-18T07:34:25.472+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebdc-9273-725b-b799-d7c62d87c36b tenantId=tenant-alpha runId=01a1ebdc-9273-7445-af18-39a22ebe5e3a attempts=1
+2026-11-18T07:34:25.473+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:34:26.860+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-alpha documentId=01a1ebdc-9ab6-7d5e-8acc-96bca4b07517 chunks=4 dimensions=64
+2026-11-18T07:34:26.884+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebdc-9ab6-7f8e-937e-ed1249bbc048 tenantId=tenant-alpha runId=01a1ebdc-9ab6-7ac1-8971-a4e56b38378b attempts=1
+2026-11-18T07:34:26.884+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:34:44.072+08:00  INFO 8997 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-18T07:34:44.118+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-alpha fileId=01a1ebdc-e0a7-75d5-ac63-c9da3608b47d parseId=01a1ebdc-e0a7-760c-9d54-300533e1e2a3 chunks=4
+2026-11-18T07:34:44.134+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebdc-e0a7-70eb-80ec-94d296e07d5e tenantId=tenant-alpha runId=01a1ebdc-e0a7-77b6-bb7b-d4d07eab4a3f attempts=1
+2026-11-18T07:34:44.134+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:34:52.506+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-alpha fileId=01a1ebdd-0186-7baf-bc2c-b538172bc4e0 parseId=01a1ebdd-0186-7fdb-b67b-70879f556ad0 chunks=4
+2026-11-18T07:34:52.535+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebdd-0186-7c7e-ae1b-0fbd8bfd1277 tenantId=tenant-alpha runId=01a1ebdd-0186-7764-a59d-eee5deadbc4c attempts=1
+2026-11-18T07:34:52.536+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:34:54.222+08:00  INFO 8997 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-18T07:36:10.218+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-18T07:36:10.221+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] io.agentscope.core.tool.Toolkit          : Registered tool 'market_data' in group 'ungrouped'
+2026-11-18T07:36:10.470+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-alpha runId=01a1ebde-313b-7570-8c5f-078c098fbbc6 approvalId=01a1ebde-338e-7073-afa2-1d38b70da558 toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-18T07:36:10.479+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebde-313b-7b66-a40f-9ce6abc21e07 tenantId=tenant-alpha runId=01a1ebde-313b-7570-8c5f-078c098fbbc6 attempts=1
+2026-11-18T07:36:10.479+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a1ebde-313b-7b66-a40f-9ce6abc21e07 tenantId=tenant-alpha runId=01a1ebde-313b-7570-8c5f-078c098fbbc6 reason=WAITING_APPROVAL
+2026-11-18T07:36:10.479+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:36:11.203+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] i.a.core.tool.mcp.McpSyncClientWrapper   : Initializing MCP sync client: riccon-builtin
+2026-11-18T07:36:11.209+08:00  INFO 8997 --- [riccon-worker] [oundedElastic-1] i.m.c.transport.StdioClientTransport     : MCP server starting.
+2026-11-18T07:36:11.236+08:00  INFO 8997 --- [riccon-worker] [oundedElastic-1] i.m.c.transport.StdioClientTransport     : MCP server started
+2026-11-18T07:36:11.308+08:00  INFO 8997 --- [riccon-worker] [pool-9-thread-1] i.m.c.transport.StdioClientTransport     : STDERR Message received: mcp-server: ready
+2026-11-18T07:36:11.381+08:00  INFO 8997 --- [riccon-worker] [pool-6-thread-1] i.m.client.LifecycleInitializer          : Server response with Protocol: 2024-11-05, Capabilities: ServerCapabilities[completions=null, experimental=null, logging=null, prompts=null, resources=null, tools=ToolCapabilities[listChanged=null]], Info: Implementation[name=riccon-real-mcp, title=null, version=1.0.0] and Instructions null
+2026-11-18T07:36:11.451+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] i.a.core.tool.mcp.McpSyncClientWrapper   : Closing MCP sync client: riccon-builtin
+2026-11-18T07:36:11.565+08:00  WARN 8997 --- [riccon-worker] [onPool-worker-1] i.m.c.transport.StdioClientTransport     : Process terminated with code 143
+2026-11-18T07:36:11.586+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.riccon.worker.mcp.service.McpGateway   : mcp.tool.completed tenantId=tenant-alpha runId=01a1ebde-313b-7570-8c5f-078c098fbbc6 toolId=0192f0a0-0000-7000-8000-000000000004 durationMs=530 resultBytes=308
+2026-11-18T07:36:11.628+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-18T07:36:14.958+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.w.r.service.ReportArtifactService    : research.artifact.saved tenantId=tenant-alpha taskId=01a1ebde-313b-727d-9ec2-ae28ab8d8e33 artifactId=01a1ebde-4544-7709-a36b-1ca3092a1e5c version=1 citations=5
+2026-11-18T07:36:14.983+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.w.r.service.AgentRunResumeHandler    : research.run.generation_completed tenantId=tenant-alpha runId=01a1ebde-313b-7570-8c5f-078c098fbbc6 chars=178 artifactId=01a1ebde-4544-7709-a36b-1ca3092a1e5c version=1
+2026-11-18T07:36:14.999+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebde-341a-7f0f-9a77-a0252cde3dac tenantId=tenant-alpha runId=01a1ebde-313b-7570-8c5f-078c098fbbc6 attempts=1
+2026-11-18T07:36:14.999+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:36:16.104+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-18T07:36:16.105+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] io.agentscope.core.tool.Toolkit          : Registered tool 'market_data' in group 'ungrouped'
+2026-11-18T07:36:16.170+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-alpha runId=01a1ebde-4980-708a-9265-bbb903c21ede approvalId=01a1ebde-4a05-7e98-900d-30acf4e1bab1 toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-18T07:36:16.177+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebde-4980-7408-aedf-91a0bb893468 tenantId=tenant-alpha runId=01a1ebde-4980-708a-9265-bbb903c21ede attempts=1
+2026-11-18T07:36:16.177+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a1ebde-4980-7408-aedf-91a0bb893468 tenantId=tenant-alpha runId=01a1ebde-4980-708a-9265-bbb903c21ede reason=WAITING_APPROVAL
+2026-11-18T07:36:16.177+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:36:16.704+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1ebde-4bf5-7294-8357-b86301bbac66 tenantId=tenant-alpha runId=01a1ebde-4980-708a-9265-bbb903c21ede attempts=1
+2026-11-18T07:36:16.704+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:36:18.281+08:00  WARN 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a1ebde-51b3-711c-b17e-db885f494898 tenantId=tenant-beta runId=01a1ebde-51b3-7a69-8dc7-da3cd3849796 attempts=1 reason=RICCON-TENANT-404: file not found
+2026-11-18T07:36:18.281+08:00  INFO 8997 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-18T07:36:20.089+08:00  INFO 8997 --- [riccon-worker] [m-shutdown-hook] i.a.c.shutdown.GracefulShutdownManager   : Graceful shutdown initiated, 0 active request(s), timeout=infinite
+2026-11-18T07:36:20.091+08:00  INFO 8997 --- [riccon-worker] [m-shutdown-hook] i.a.c.m.transport.HttpTransportFactory   : Shutting down 0 managed HttpTransport(s)
+2026-11-18T07:36:20.099+08:00  INFO 8997 --- [riccon-worker] [ionShutdownHook] o.s.boot.tomcat.GracefulShutdown         : Commencing graceful shutdown. Waiting for active requests to complete
+2026-11-18T07:36:22.115+08:00  INFO 8997 --- [riccon-worker] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete
+2026-11-18T07:36:22.129+08:00  INFO 8997 --- [riccon-worker] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-11-18T07:36:22.138+08:00  INFO 8997 --- [riccon-worker] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
