@@ -50,18 +50,13 @@ docker compose -f deploy/compose/docker-compose.test.yml down -v
 ## 本地运行
 
 ```bash
-# 1. 启动测试栈
+# 1. 启动测试栈（MySQL 已在 compose 中固定审计触发器所需参数，无需手工 SET GLOBAL）
 docker compose -f deploy/compose/docker-compose.test.yml up -d --wait
 
-# 2. 授予审计触发器所需权限（MySQL 8.4 默认开启 binlog；测试容器重启后需重设）
-#    生产等价要求：迁移账号具备 TRIGGER，且 log_bin_trust_function_creators=1 或等价权限。
-docker exec riccon-test-mysql mysql -uroot -p"${RICCON_DB_ROOT_PASSWORD:-riccon_root_test_only}" \
-  -e "SET GLOBAL log_bin_trust_function_creators=1"
-
-# 3. 启动 API（默认端口 8080，连接 13306 的 MySQL；启动时执行 Flyway V1–V7）
+# 2. 启动 API（默认端口 8080，连接 13306 的 MySQL；启动时执行 Flyway V1–V7）
 ./mvnw -q -pl apps/api spring-boot:run
 
-# 4. 启动 Worker（默认端口 8081；M01 无数据库依赖，M02 持久化实现任务加入 JDBC 后需要 MySQL）
+# 3. 启动 Worker（默认端口 8081；M01 无数据库依赖，M02 持久化实现任务加入 JDBC 后需要 MySQL）
 ./mvnw -q -pl apps/worker spring-boot:run
 ```
 
@@ -91,6 +86,81 @@ export RICCON_BOOTSTRAP_ADMIN_PASSWORD='<至少 12 位，部署时注入，禁�
 - V6 创建 `audit_event` 触发器；若 MySQL 返回 `ERROR 1419`，说明迁移账号缺少 `TRIGGER` 或 `log_bin_trust_function_creators` 未开启。不得删除触发器绕过。
 - 已应用的迁移文件禁止修改；新增迁移同步 `SchemaVersion.EXPECTED`（ADR-0010）。
 - Spring Session 表由 V7 创建，必须保持 `spring.session.jdbc.initialize-schema=never`，禁止应用自动建表。
+
+#### 测试栈迁移演练（V1–V7，可复制）
+
+> **仅测试栈。** 以下参数与凭据只属于 `deploy/compose/docker-compose.test.yml`。生产迁移账号是否具备 `TRIGGER`、是否开启 `log_bin_trust_function_creators`（或改用 DBA 预建触发器）由 M09 决定，禁止直接照搬本节配置。
+
+MySQL 8.4 默认开启 binlog（`log_bin=ON` 只读），非 SUPER 账号创建触发器会报 `ERROR 1419`。测试栈把 `--log-bin-trust-function-creators=1` 写进 MySQL 服务的 `command`，容器每次启动即生效；不要在容器启动后用 `SET GLOBAL` 临时打开——重启即失效，CI 也不可复现。
+
+在仓库根目录执行：
+
+```bash
+# 1. 全新卷，避免旧 schema/旧 binlog 状态干扰
+docker compose -f deploy/compose/docker-compose.test.yml down -v
+
+# 2. 启动三服务并等待 healthy（MySQL/OpenSearch/RustFS 都必须是 healthy）
+docker compose -f deploy/compose/docker-compose.test.yml up -d --wait
+docker compose -f deploy/compose/docker-compose.test.yml ps
+
+# 3. 确认参数生效；全程使用 riccon 用户，不用 root 绕过权限
+docker compose -f deploy/compose/docker-compose.test.yml exec -T \
+  -e MYSQL_PWD="${RICCON_DB_PASSWORD:-riccon_test_only}" \
+  mysql mysql --user=riccon -e "SHOW VARIABLES LIKE 'log_bin_trust_function_creators';"
+
+# 4. 按文件顺序执行 V1..V7；任一步失败立即中断，不吞错误
+set -euo pipefail
+for migration in apps/api/src/main/resources/db/migration/V*.sql; do
+  echo "== ${migration}"
+  docker compose -f deploy/compose/docker-compose.test.yml exec -T \
+    -e MYSQL_PWD="${RICCON_DB_PASSWORD:-riccon_test_only}" \
+    mysql mysql --user=riccon --database=riccon --batch --show-warnings < "${migration}"
+done
+
+# 5. 校验结构：36 张表、2 个触发器
+docker compose -f deploy/compose/docker-compose.test.yml exec -T \
+  -e MYSQL_PWD="${RICCON_DB_PASSWORD:-riccon_test_only}" \
+  mysql mysql --user=riccon --database=riccon --batch -e "
+    SELECT COUNT(*) AS table_count FROM information_schema.tables WHERE table_schema='riccon';
+    SELECT COUNT(*) AS trigger_count FROM information_schema.triggers WHERE trigger_schema='riccon';
+    SELECT trigger_name, event_manipulation FROM information_schema.triggers WHERE trigger_schema='riccon';"
+
+# 6. 校验 append-only：先插入一行，再验证 UPDATE/DELETE 都被触发器拒绝（两条命令都必须 exit 1）
+docker compose -f deploy/compose/docker-compose.test.yml exec -T \
+  -e MYSQL_PWD="${RICCON_DB_PASSWORD:-riccon_test_only}" \
+  mysql mysql --user=riccon --database=riccon -e "
+    INSERT INTO audit_event (event_id, occurred_at, tenant_id, actor_type, actor_id, action, outcome, trace_id)
+    VALUES (UNHEX('0192f0a1b2c37d4e8f9012345678abcd'), UTC_TIMESTAMP(6), 'platform', 'SYSTEM', 'system', 'migration.smoke', 'SUCCESS', 'trace-smoke-001');"
+
+docker compose -f deploy/compose/docker-compose.test.yml exec -T \
+  -e MYSQL_PWD="${RICCON_DB_PASSWORD:-riccon_test_only}" \
+  mysql mysql --user=riccon --database=riccon \
+  -e "UPDATE audit_event SET outcome='FAILURE' WHERE action='migration.smoke';" \
+  ; echo "UPDATE 期望 exit 1，实际 exit $?"
+
+docker compose -f deploy/compose/docker-compose.test.yml exec -T \
+  -e MYSQL_PWD="${RICCON_DB_PASSWORD:-riccon_test_only}" \
+  mysql mysql --user=riccon --database=riccon \
+  -e "DELETE FROM audit_event WHERE action='migration.smoke';" \
+  ; echo "DELETE 期望 exit 1，实际 exit $?"
+
+# 7. 清理：演练数据与容器一次性销毁
+docker compose -f deploy/compose/docker-compose.test.yml down -v
+```
+
+预期结果：
+
+| 检查项                            | 期望                                                                            |
+| --------------------------------- | ------------------------------------------------------------------------------- |
+| `log_bin_trust_function_creators` | `ON`                                                                            |
+| 迁移输出                          | V1–V7 逐条无错误；不得出现 `ERROR 1419`                                         |
+| `table_count`                     | 36（手工重放不含 `flyway_schema_history`；API 启动后由 Flyway 建表，因此为 37） |
+| `trigger_count`                   | 2（`trg_audit_event_no_update`、`trg_audit_event_no_delete`）                   |
+| UPDATE / DELETE                   | 均 exit 1，`ERROR 1644 (45000): audit_event is append-only`，行仍存在           |
+
+手工重放只用于演练与 CI 冒烟，不会写入 `flyway_schema_history`。**不要在同一数据卷上随即启动 API**：Flyway 会因“非空 schema 但无历史表”拒绝迁移；需要继续用 API 验证时先 `down -v` 再 `up -d --wait`。
+
+CI 的 `backend` job 使用同一个 compose 文件和同一文件顺序做冒烟（`.github/workflows/ci.yml` 的“迁移冒烟”步骤），并在跑 `./mvnw -q -T1C verify` 之前执行。
 
 > 合同 `commands.run` 引用 `deploy/compose/docker-compose.dev.yml`，该文件由后续 ops 任务建立；M01 用测试栈替代。不要在 M01 中创建生产/预览编排。
 

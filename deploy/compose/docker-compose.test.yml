@@ -14,6 +14,10 @@ services:
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_0900_ai_ci
+      # MySQL 8.4 默认开启 binlog；V6 的审计触发器由非 SUPER 的 riccon 用户创建，
+      # 没有该参数会报 ERROR 1419。仅测试栈放宽，生产迁移账号权限由 M09 决定，
+      # 不得把本参数当成生产配置抄走。
+      - --log-bin-trust-function-creators=1
     environment:
       MYSQL_DATABASE: riccon
       MYSQL_USER: riccon

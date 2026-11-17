@@ -34,6 +34,45 @@ jobs:
       - name: 启动测试依赖
         run: docker compose -f deploy/compose/docker-compose.test.yml up -d --wait
 
+      # 迁移冒烟：使用与本地/演练相同的 compose 和文件顺序，全程用非 SUPER 的 riccon 用户，
+      # 防止 root 绕过权限掩盖 ERROR 1419。失败即中断，不进入后续构建。
+      - name: 迁移冒烟（V1–V7）
+        run: |
+          set -euo pipefail
+          COMPOSE="docker compose -f deploy/compose/docker-compose.test.yml"
+          mysql_exec() {
+            $COMPOSE exec -T -e MYSQL_PWD="${RICCON_DB_PASSWORD:-riccon_test_only}" \
+              mysql mysql --user=riccon --database=riccon "$@"
+          }
+
+          # MySQL 8.4 默认开启 binlog，compose 固定 --log-bin-trust-function-creators=1
+          trust="$(mysql_exec --batch --skip-column-names \
+            -e "SHOW VARIABLES LIKE 'log_bin_trust_function_creators'" | awk '{print $2}')"
+          echo "log_bin_trust_function_creators=${trust}"
+          test "${trust}" = "ON"
+
+          for migration in apps/api/src/main/resources/db/migration/V*.sql; do
+            echo "== ${migration}"
+            mysql_exec --batch --show-warnings < "${migration}"
+          done
+
+          tables="$(mysql_exec --batch --skip-column-names \
+            -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='riccon'")"
+          triggers="$(mysql_exec --batch --skip-column-names \
+            -e "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema='riccon'")"
+          echo "tables=${tables} triggers=${triggers}"
+          test "${tables}" -eq 36
+          test "${triggers}" -eq 2
+
+          # append-only 必须由数据库拒绝，而不是只靠应用层
+          mysql_exec -e "INSERT INTO audit_event (event_id, occurred_at, tenant_id, actor_type, actor_id, action, outcome, trace_id) VALUES (UNHEX('0192f0a1b2c37d4e8f9012345678abcd'), UTC_TIMESTAMP(6), 'platform', 'SYSTEM', 'system', 'migration.smoke', 'SUCCESS', 'trace-smoke-001');"
+          if mysql_exec -e "UPDATE audit_event SET outcome='FAILURE' WHERE action='migration.smoke';"; then
+            echo "audit_event UPDATE 未被触发器拒绝"; exit 1
+          fi
+          if mysql_exec -e "DELETE FROM audit_event WHERE action='migration.smoke';"; then
+            echo "audit_event DELETE 未被触发器拒绝"; exit 1
+          fi
+
       - name: 构建与测试
         run: ./mvnw -q -T1C verify
 
