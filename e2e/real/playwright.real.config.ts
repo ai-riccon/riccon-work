@@ -19,7 +19,10 @@ export default defineConfig({
   fullyParallel: false,
   retries: 0,
   workers: 1,
-  reporter: [['list'], ['json', { outputFile: path.join(repoRoot, 'e2e/real/real-report.json') }]],
+  reporter: [
+    ['list'],
+    ['json', { outputFile: path.join(repoRoot, '.riccon/evidence/TASK-0024/real-report.json') }],
+  ],
   use: {
     baseURL: process.env.REAL_WEB_BASE ?? 'http://127.0.0.1:8092',
     screenshot: 'only-on-failure',
