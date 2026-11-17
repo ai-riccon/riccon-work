@@ -20,7 +20,7 @@ product:
     - "部门/团队负责人（共享空间与 Agent 管理者）"
     - "平台管理员（租户、模型、知识库、MCP、审计）"
     - "企业 IT 运维（私有化部署与运维）"
-  mvc: "员工登录后进入云工作空间，完成通用问答与文件处理，以及市场调研报告闭环：知识库检索带引用、调用 1 个 MCP 工具、人工审批、产物保存。"
+  mvc: "J1 通用问答与文件处理：员工上传 PDF/Word/Excel/图片，在云工作空间获得流式回答与知识库引用。J2 市场调研报告：输入主题 → 知识库检索带引用 + 1 个 MCP 工具取数 → 人工审批 → 生成报告并保存到工作空间。"
   non_goals:
     - "在线文档协同编辑"
     - "IM、日历、会议"
@@ -28,17 +28,17 @@ product:
     - "完整云桌面（RDP/VDI）"
     - "移动端 App（v1 Web 优先）"
     - "信创适配（v1 不承诺）"
-    - "Team/Workflow 可视化编排的首版交付"
+    - "agentscope Team/Workflow preview 的可视化编排（M06 自研 DAG Studio 属于 v1）"
   success_metrics:
     - "12 周内 M02（MVC）可演示"
     - "24 周内完成 M02–M06 私有化 v1"
-    - "MVC 两条旅程 E2E 通过，跨租户越权用例零漏检"
+    - "MVC 旅程 J1/J2 E2E 通过，跨租户越权用例零漏检"
     - "假模型基准下首字 p95 不超过 3 秒"
     - "审计覆盖模型、工具、MCP 与权限变更"
   module_roadmap:
     - id: M01
       title: "工程基线与 agentscope 冒烟"
-      goal: "monorepo 骨架、CI、合同命令可运行、agentscope 2.0.5 五项冒烟、威胁模型初稿"
+      goal: "monorepo 骨架、CI、合同命令可运行、agentscope 2.0.5 五项冒烟（状态后端、沙箱、MCP、HITL、流式）、威胁模型初稿"
       status: planned
     - id: M02
       title: "MVC：云工作空间与办公协同闭环"
@@ -131,8 +131,15 @@ stack:
         - "Umi Max 4"
       package_manager: "pnpm"
 repo_map:
+  root:
+    - pom.xml
+    - mvnw
+    - .mvn
+    - pnpm-workspace.yaml
+    - package.json
   source:
     - apps
+    - platform
   tests:
     - apps
     - e2e
@@ -142,19 +149,23 @@ repo_map:
 commands:
   install: "./mvnw -q -T1C -DskipTests dependency:go-offline && pnpm -w install --frozen-lockfile"
   build: "./mvnw -q -T1C -DskipTests package && pnpm -w build"
+  format: "./mvnw -q spotless:apply && pnpm -w format"
   lint: "./mvnw -q spotless:check && pnpm -w lint"
   typecheck: "pnpm -w typecheck"
   test: "./mvnw -q -T1C verify && pnpm -w test"
-  test_e2e: "pnpm -w e2e"
+  test_e2e: "docker compose -f deploy/compose/docker-compose.test.yml up -d --wait && pnpm -w e2e"
   coverage: "./mvnw -q -T1C verify jacoco:report && pnpm -w test -- --coverage"
-  run: "docker compose -f deploy/compose/docker-compose.dev.yml up -d --wait && ./mvnw -q -pl apps/api spring-boot:run"
+  run: "docker compose -f deploy/compose/docker-compose.test.yml up -d --wait && pnpm -w dev"
+  security: "trivy fs --scanners vuln,secret,misconfig --skip-dirs node_modules --skip-dirs target --skip-dirs .git --exit-code 1 ."
+  perf: "k6 run e2e/perf/mvc-smoke.js"
+  a11y: "pnpm -w a11y"
   deploy_preview: "docker compose -f deploy/compose/docker-compose.preview.yml up -d --build"
   deploy_prod: "helm upgrade --install riccon deploy/helm/riccon -n riccon --create-namespace"
   sandbox: "docker compose -f deploy/compose/docker-compose.test.yml up -d --wait"
 sandbox:
   required: true
-  runtime: "Docker Compose（MySQL 8.4、OpenSearch、MinIO）加 agentscope 容器沙箱"
-  network: "测试栈仅本地网络；Agent 沙箱默认禁外网，仅放行模型与授权 MCP 端点"
+  runtime: "Docker Compose（MySQL 8.4、OpenSearch、RustFS）加 agentscope 容器沙箱"
+  network: "构建/测试容器默认无外网；Compose 测试栈仅私有 Docker 网络；Agent 沙箱默认禁外网，仅放行模型与授权 MCP 端点"
   mounts:
     - "临时 workspace 卷（每会话隔离）"
   secrets: "本地 .env 与 CI secrets；密钥加密入库，禁止写入镜像、仓库和日志"
@@ -167,7 +178,7 @@ sandbox:
 tools:
   required:
     - id: riccon
-      purpose: "状态、任务、证据与门禁内核"
+      purpose: "状态、任务、证据与门禁内核（node ~/.config/opencode/riccon/scripts/riccon.mjs）"
       fallback: "无替代，缺失即 blocker"
     - id: git
       purpose: "版本与 diff 证据"
@@ -227,7 +238,7 @@ integrations:
   auth: "内置账号 + OIDC Authorization Code/PKCE（Spring Security 7）"
   payments: "无（私有化许可，v1 不计费）"
   email: "无（v1 不发邮件）"
-  storage: "S3 兼容（开发和小规模用 MinIO；一体机分发改用 RustFS/SeaweedFS）"
+  storage: "S3 兼容（测试与小规模用 RustFS；客户可用自有 S3/OSS；生产由 ops 在 M09 选型）"
   external_apis:
     - "OpenCode Go OpenAI 兼容端点 https://opencode.ai/zen/go/v1（仅开发与演示）"
     - "客户自建 OpenAI 兼容模型网关（生产）"
@@ -235,20 +246,29 @@ integrations:
 data:
   pii: true
   retention: "审计日志至少 180 天；对话与产物默认 180 天，按租户策略覆盖；删除请求 30 天内完成"
-  migrations: "Flyway；只向前兼容；破坏性变更需 ADR 与回滚脚本"
+  migrations: "Flyway；仅 apps/api 执行迁移，worker 关闭 Flyway 并校验版本；只向前兼容；破坏性变更需 ADR 与回滚脚本"
 constraints:
   style: "Java 21 + Spring Boot 4.1 模块化单体，ArchUnit 强制边界；前端 TypeScript strict + ESLint；注释中文"
-  security: "T4；租户行级隔离与越权测试；密钥加密托管；MCP 工具白名单；提示注入防护；全链路审计"
-  performance: "假模型基准首字 p95 不超过 3 秒；API p95 不超过 500ms；50 并发 Agent run"
-  accessibility: "关键旅程 WCAG 2.1 AA 基线；axe 无 serious 或 critical"
+  security: "T4；租户行级隔离与越权测试；密钥加密托管与轮换；MCP 工具白名单；提示注入防护；全链路审计；外部模型端点仅处理合成数据，PII 必须走客户内网网关，路由失败即失败"
+  performance: "假模型基准首字 p95 不超过 3 秒；API p95 不超过 500ms；50 并发 Agent run；脚本 e2e/perf/mvc-smoke.js，开关 RICCON_FAKE_MODEL=1"
+  accessibility: "J1/J2 关键旅程 WCAG 2.1 AA 基线；axe 无 serious 或 critical；入口 commands.a11y"
   coverage:
     line: 80
     branch: 70
+    exclude:
+      - "生成代码"
+      - "deploy/"
+      - "e2e/"
+      - "apps/web 纯展示组件"
+    reports:
+      - "apps/*/target/site/jacoco"
+      - "apps/web/coverage"
+    note: "M01 骨架期以实际可测代码为准；排除项必须在评审中逐条列出"
   licensing: "产品私有；依赖限 Apache-2.0、MIT、BSD、EPL；AGPL 仅限内部使用且不得进入一体机分发；agentscope-java 为 Apache-2.0"
   compliance:
     - "等保二级基线设计（不承诺测评通过）"
     - "生产数据不出客户内网"
-    - "审计留存不少于 180 天"
+    - "审计留存不少于 180 天且 append-only，禁止在线删除，导出需审批"
     - "信创适配 v1 不支持"
 coding_standard:
   path: docs/CODING-STANDARDS.md
@@ -338,4 +358,5 @@ budget:
 - “覆盖率”默认指代码行/分支覆盖率，不是 AC 覆盖；门槛见合同 `constraints.coverage`，报告必须可由 `commands.coverage` 复现。
 - 现有历史代码的注释迁移单独成任务，不和行为变更混合。
 - 任务过大（`write_scope` 超过 8 项或 acceptance 超过 6 项）时先拆分；不要用一个大任务让 Builder 长时间只读。
-- 模块结束用 `riccon module cost` 记录 requests/tokens/墙钟/成本估算；全零且 `confidence` 不是 `unmeasured` 会被拒绝，0 不等于免费。
+- 模块结束用 `riccon module cost` 记录墙钟；本项目不计量 token 与美元成本，`confidence` 用 `estimated`，并在 source/note 注明 wall-clock-only；全部指标为 0 时只能用 `unmeasured`。
+- 合同变更：加载 `riccon-contract` → 修改受管区块 → `riccon contract sync` → `riccon contract validate --strict`；决策不可覆盖，只追加。
