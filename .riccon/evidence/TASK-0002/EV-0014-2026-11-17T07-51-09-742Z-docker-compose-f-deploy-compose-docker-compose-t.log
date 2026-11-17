@@ -1,0 +1,127 @@
+# command: docker compose -f deploy/compose/docker-compose.test.yml config
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-17T07:51:08.984Z
+# finished_at: 2026-11-17T07:51:09.496Z
+# duration_ms: 509
+# exit_code: 0
+
+# --- stdout ---
+name: riccon-test
+services:
+  mysql:
+    container_name: riccon-test-mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    environment:
+      MYSQL_DATABASE: riccon
+      MYSQL_PASSWORD: riccon_test_only
+      MYSQL_ROOT_PASSWORD: riccon_root_test_only
+      MYSQL_USER: riccon
+    image: mysql:8.4.13
+    networks:
+      riccon-test-net: null
+    volumes:
+      - type: volume
+        source: mysql-test-data
+        target: /var/lib/mysql
+        volume: {}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD} --silent
+      timeout: 5s
+      interval: 5s
+      retries: 30
+      start_period: 30s
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 3306
+        published: "13306"
+        protocol: tcp
+  object-storage:
+    container_name: riccon-test-object-storage
+    environment:
+      RUSTFS_ACCESS_KEY: riccon_test_only
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_SECRET_KEY: riccon_test_only_secret
+      RUSTFS_VOLUMES: /data
+    image: rustfs/rustfs:1.0.6
+    networks:
+      riccon-test-net: null
+    volumes:
+      - type: volume
+        source: object-storage-test-data
+        target: /data
+        volume: {}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS http://127.0.0.1:9000/health >/dev/null
+      timeout: 5s
+      interval: 10s
+      retries: 20
+      start_period: 20s
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 9000
+        published: "19000"
+        protocol: tcp
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 9001
+        published: "19001"
+        protocol: tcp
+  opensearch:
+    container_name: riccon-test-opensearch
+    environment:
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      DISABLE_SECURITY_PLUGIN: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+      bootstrap.memory_lock: "false"
+      discovery.type: single-node
+    image: opensearchproject/opensearch:3.9.0
+    networks:
+      riccon-test-net: null
+    volumes:
+      - type: volume
+        source: opensearch-test-data
+        target: /usr/share/opensearch/data
+        volume: {}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS http://127.0.0.1:9200/_cluster/health >/dev/null
+      timeout: 5s
+      interval: 10s
+      retries: 30
+      start_period: 40s
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 9200
+        published: "19200"
+        protocol: tcp
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 9600
+        published: "19600"
+        protocol: tcp
+networks:
+  riccon-test-net:
+    name: riccon-test_riccon-test-net
+    driver: bridge
+volumes:
+  mysql-test-data:
+    name: riccon-test_mysql-test-data
+  object-storage-test-data:
+    name: riccon-test_object-storage-test-data
+  opensearch-test-data:
+    name: riccon-test_opensearch-test-data
+
+# --- stderr ---
+
