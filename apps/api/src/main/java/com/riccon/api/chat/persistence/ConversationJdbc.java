@@ -51,10 +51,11 @@ public class ConversationJdbc {
             )
             """;
 
-    /** 列表只返回 ACTIVE 且未删除的会话。 */
+    /** 列表只返回 ACTIVE 且未删除的会话，并限定在工作空间内。 */
     private static final String OWNED_FILTER = """
              FROM conversation
             WHERE tenant_id = :tenantId
+              AND workspace_id = :workspaceId
               AND created_by = :userId
               AND deleted_at IS NULL
               AND status = 'ACTIVE'
@@ -176,28 +177,34 @@ public class ConversationJdbc {
     }
 
     /**
-     * 统计创建人的活跃会话。
+     * 统计创建人在指定工作空间的活跃会话。
      *
      * @param tenantId 当前租户
      * @param userId 创建人
+     * @param workspaceId 工作空间 ID
      * @return 总数
      */
-    public long countOwned(TenantId tenantId, UUID userId) {
-        return tenantJdbc.count(tenantId, COUNT_OWNED, Map.of("userId", BinaryUuids.toBytes(userId)));
+    public long countOwned(TenantId tenantId, UUID userId, UUID workspaceId) {
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("userId", BinaryUuids.toBytes(userId));
+        params.put("workspaceId", BinaryUuids.toBytes(workspaceId));
+        return tenantJdbc.count(tenantId, COUNT_OWNED, params);
     }
 
     /**
-     * 分页列出创建人的活跃会话。
+     * 分页列出创建人在指定工作空间的活跃会话。
      *
      * @param tenantId 当前租户
      * @param userId 创建人
+     * @param workspaceId 工作空间 ID
      * @param limit 每页大小
      * @param offset 偏移量
      * @return 会话列表
      */
-    public List<ConversationRecord> listOwned(TenantId tenantId, UUID userId, int limit, int offset) {
+    public List<ConversationRecord> listOwned(TenantId tenantId, UUID userId, UUID workspaceId, int limit, int offset) {
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("userId", BinaryUuids.toBytes(userId));
+        params.put("workspaceId", BinaryUuids.toBytes(workspaceId));
         params.put("limit", limit);
         params.put("offset", offset);
         return tenantJdbc.query(tenantId, LIST_OWNED, params, ConversationJdbc::mapRow);

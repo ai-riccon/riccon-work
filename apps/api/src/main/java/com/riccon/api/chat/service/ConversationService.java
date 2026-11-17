@@ -115,9 +115,11 @@ public class ConversationService {
     public ConversationPageResponse list(RicconPrincipal actor, UUID workspaceId, PageQuery page) {
         TenantId tenantId = TenantId.of(actor.tenantId());
         workspaceService.requireAccessible(tenantId, workspaceId, actor.userId());
-        long total = conversationRepository.countOwned(tenantId, actor.userId());
+        long total = conversationRepository.countOwned(tenantId, actor.userId(), workspaceId);
         List<ConversationResponse> items =
-                conversationRepository.listOwned(tenantId, actor.userId(), page.size(), page.offset()).stream()
+                conversationRepository
+                        .listOwned(tenantId, actor.userId(), workspaceId, page.size(), page.offset())
+                        .stream()
                         .map(ConversationResponse::from)
                         .toList();
         return new ConversationPageResponse(page.page(), page.size(), total, page.totalPages(total), items);

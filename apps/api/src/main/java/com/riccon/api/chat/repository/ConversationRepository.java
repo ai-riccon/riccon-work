@@ -66,27 +66,29 @@ public class ConversationRepository {
     }
 
     /**
-     * 统计创建人的活跃会话。
+     * 统计创建人在指定工作空间的活跃会话。
      *
      * @param tenantId 当前租户
      * @param userId 创建人
+     * @param workspaceId 工作空间 ID
      * @return 总数
      */
-    public long countOwned(TenantId tenantId, UUID userId) {
-        return conversationJdbc.countOwned(tenantId, userId);
+    public long countOwned(TenantId tenantId, UUID userId, UUID workspaceId) {
+        return conversationJdbc.countOwned(tenantId, userId, workspaceId);
     }
 
     /**
-     * 分页列出创建人的活跃会话。
+     * 分页列出创建人在指定工作空间的活跃会话。
      *
      * @param tenantId 当前租户
      * @param userId 创建人
+     * @param workspaceId 工作空间 ID
      * @param limit 每页大小
      * @param offset 偏移量
      * @return 会话列表
      */
-    public List<ConversationRecord> listOwned(TenantId tenantId, UUID userId, int limit, int offset) {
-        return conversationJdbc.listOwned(tenantId, userId, limit, offset);
+    public List<ConversationRecord> listOwned(TenantId tenantId, UUID userId, UUID workspaceId, int limit, int offset) {
+        return conversationJdbc.listOwned(tenantId, userId, workspaceId, limit, offset);
     }
 
     /**

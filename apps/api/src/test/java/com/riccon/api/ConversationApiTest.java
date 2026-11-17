@@ -79,6 +79,8 @@ class ConversationApiTest extends ApiIntegrationTestSupport {
         for (int index = 0; index < 3; index++) {
             createConversation(admin, teamId, "会话 " + index);
         }
+        String otherTeamId = createTeamWorkspace(admin, "另一个空间");
+        createConversation(admin, otherTeamId, "其他空间的会话");
         createConversation(member, teamId, "员工自己的会话");
 
         JsonNode firstPage = listConversations(admin, teamId, 1, 2);
@@ -88,6 +90,15 @@ class ConversationApiTest extends ApiIntegrationTestSupport {
 
         JsonNode secondPage = listConversations(admin, teamId, 2, 2);
         assertThat(secondPage.path("items")).hasSize(1);
+
+        JsonNode otherWorkspaceList = listConversations(admin, otherTeamId, 1, 20);
+        assertThat(otherWorkspaceList.path("total").asLong()).isEqualTo(1);
+        assertThat(otherWorkspaceList.path("items").get(0).path("title").asText())
+                .isEqualTo("其他空间的会话");
+        assertThat(otherWorkspaceList.path("items").toString()).doesNotContain("会话 0");
+
+        JsonNode personalList = listConversations(admin, personalWorkspaceId(admin), 1, 20);
+        assertThat(personalList.path("total").asLong()).isZero();
 
         JsonNode memberList = listConversations(member, teamId, 1, 20);
         assertThat(memberList.path("total").asLong()).isEqualTo(1);
