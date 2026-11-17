@@ -1,0 +1,36 @@
+{
+  "name": "riccon-work",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Riccon 多租户 AI 协同办公系统：根 workspace 编排（前端与跨端验证）",
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=22.12.0",
+    "pnpm": ">=10.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "react": "19.3.1",
+      "react-dom": "19.3.1"
+    }
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,worker,web -c blue,green,magenta \"pnpm run dev:api\" \"pnpm run dev:worker\" \"pnpm run dev:web\"",
+    "dev:api": "./mvnw -q -pl apps/api spring-boot:run",
+    "dev:worker": "./mvnw -q -pl apps/worker spring-boot:run",
+    "dev:web": "pnpm --filter @riccon/web run dev",
+    "build": "pnpm --filter @riccon/web run build",
+    "lint": "pnpm --filter @riccon/web run lint",
+    "typecheck": "pnpm --filter @riccon/web run typecheck",
+    "test": "node apps/web/scripts/test.mjs",
+    "format": "pnpm --filter @riccon/web run format",
+    "format:check": "pnpm --filter @riccon/web run format:check",
+    "e2e": "playwright test --config e2e/playwright.config.ts",
+    "a11y": "playwright test --config e2e/playwright.config.ts --grep @a11y"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.65.1",
+    "concurrently": "10.0.7"
+  }
+}

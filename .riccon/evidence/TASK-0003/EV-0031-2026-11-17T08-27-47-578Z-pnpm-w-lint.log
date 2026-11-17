@@ -1,0 +1,33 @@
+# command: pnpm -w lint
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-17T08:27:43.195Z
+# finished_at: 2026-11-17T08:27:46.980Z
+# duration_ms: 3783
+# exit_code: 1
+
+# --- stdout ---
+
+> riccon-work@0.1.0 lint /Users/ricky/Documents/projects/riccon-work
+> pnpm --filter @riccon/web run lint
+
+
+> @riccon/web@0.1.0 lint /Users/ricky/Documents/projects/riccon-work/apps/web
+> eslint --max-warnings=0 . && prettier --check .
+
+
+/Users/ricky/Documents/projects/riccon-work/apps/web/scripts/test.mjs
+  13:23  error  'process' is not defined  no-undef
+  14:35  error  'URL' is not defined      no-undef
+  22:3   error  'console' is not defined  no-undef
+  23:3   error  'process' is not defined  no-undef
+  26:1   error  'process' is not defined  no-undef
+
+✖ 5 problems (5 errors, 0 warnings)
+
+/Users/ricky/Documents/projects/riccon-work/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @riccon/web@0.1.0 lint: `eslint --max-warnings=0 . && prettier --check .`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.
+
+# --- stderr ---
+

@@ -1,0 +1,13 @@
+# Riccon 前端 workspace。后端（apps/api、apps/worker、platform）由 Maven reactor 管理，不进入 pnpm workspace。
+packages:
+  - "apps/web"
+
+# pnpm 10 默认阻止依赖执行安装脚本；只放行确实需要下载/编译二进制的包，其余保持默认拒绝。
+onlyBuiltDependencies:
+  - esbuild
+
+# 这些包只打印赞助/升级提示，不产生二进制；显式忽略，保持安装输出可审计。
+ignoredBuiltDependencies:
+  - core-js
+  - core-js-pure
+  - es5-ext
