@@ -8,10 +8,12 @@ import com.riccon.platform.domain.research.RunStage;
 import com.riccon.platform.domain.research.StageStatus;
 import com.riccon.worker.agent.domain.AgentException;
 import com.riccon.worker.agent.domain.AgentSession;
+import com.riccon.worker.agent.domain.RetrievedChunk;
 import com.riccon.worker.agent.service.KnowledgeRetriever;
 import com.riccon.worker.agent.service.ResearchAgentService;
 import com.riccon.worker.audit.service.AuditService;
 import com.riccon.worker.chat.repository.UserAccessRepository;
+import com.riccon.worker.mcp.domain.Digests;
 import com.riccon.worker.mcp.domain.McpException;
 import com.riccon.worker.mcp.domain.McpToolHandle;
 import com.riccon.worker.mcp.repository.McpRepository;
@@ -46,12 +48,15 @@ import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * 报告任务首次运行：检索 → 工具 → 挂起等待审批。
  *
- * <p>M02 不提前实现报告产物编排：本处理器完成 RETRIEVAL 阶段与 TOOL 阶段的 HITL 挂起，
- * 审批通过后由 resume 事件执行已批准工具并进入生成阶段。审批等待不占用 Worker 租约。
+ * <p>首次事件从 RETRIEVAL 开始；用户从 TOOL 阶段手动重试时 payload 的 stage 为 TOOL，处理器跳过检索，
+ * 用新的 attempt 创建新审批。审批通过后由 resume 事件执行已批准工具、生成报告并保存产物。
+ * 审批等待不占用 Worker 租约。
  */
 @Component
 public class AgentRunRequestedHandler implements OutboxEventHandler {
@@ -162,7 +167,13 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
         UUID researchTaskId = payloadParser.requiredUuid(payload, "researchTaskId");
         String stage = payloadParser.requiredText(payload, "stage");
         int attempt = payloadParser.requiredPositiveInt(payload, "attempt");
-        if (!runId.equals(event.runId()) || !RunStage.RETRIEVAL.name().equals(stage)) {
+        RunStage requestedStage;
+        try {
+            requestedStage = RunStage.valueOf(stage);
+        } catch (IllegalArgumentException ex) {
+            throw new EventProcessingException(WorkerErrorCodes.EVENT_INVALID, false, "run requested stage is invalid");
+        }
+        if (!runId.equals(event.runId()) || (requestedStage != RunStage.RETRIEVAL && requestedStage != RunStage.TOOL)) {
             throw new EventProcessingException(
                     WorkerErrorCodes.EVENT_INVALID, false, "run requested payload does not match event");
         }
@@ -188,46 +199,64 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
                     WorkerErrorCodes.EVENT_INVALID, false, "run is not bound to research task");
         }
 
-        runRepository.markStage(tenantId, runId, RunStage.RETRIEVAL.name());
-        repository.startStage(tenantId, runId, RunStage.RETRIEVAL.name(), attempt);
-        List<?> hits;
-        try {
-            hits = retriever.retrieveKnowledge(tenantId, task.topic());
-        } catch (RuntimeException ex) {
+        repository.markTaskRunning(tenantId, researchTaskId, runId, requestedStage.name());
+        if (requestedStage == RunStage.RETRIEVAL) {
+            runRepository.markStage(tenantId, runId, RunStage.RETRIEVAL.name());
+            repository.startStage(tenantId, runId, RunStage.RETRIEVAL.name(), attempt);
+            List<RetrievedChunk> hits;
+            String querySha256 = Digests.sha256Hex(task.topic());
+            try {
+                hits = retriever.retrieveKnowledge(tenantId, task.topic());
+            } catch (RuntimeException ex) {
+                repository.finishStage(
+                        tenantId,
+                        runId,
+                        RunStage.RETRIEVAL.name(),
+                        attempt,
+                        StageStatus.FAILED,
+                        null,
+                        WorkerErrorCodes.UNEXPECTED,
+                        "retrieval failed");
+                repository.markTaskFailed(
+                        tenantId, researchTaskId, runId, WorkerErrorCodes.UNEXPECTED, "retrieval failed");
+                throw new EventProcessingException(WorkerErrorCodes.UNEXPECTED, true, "research retrieval failed", ex);
+            }
+            if (hits.isEmpty()) {
+                // 检索无命中不进入工具与生成：保留阶段失败原因，员工调整主题后重新创建任务（M02-AC-07）。
+                repository.finishStage(
+                        tenantId,
+                        runId,
+                        RunStage.RETRIEVAL.name(),
+                        attempt,
+                        StageStatus.FAILED,
+                        retrievalJson(task.topic(), querySha256, List.of()),
+                        WorkerErrorCodes.RESEARCH_NO_SOURCES,
+                        "no knowledge sources matched the topic");
+                repository.markTaskFailed(
+                        tenantId,
+                        researchTaskId,
+                        runId,
+                        WorkerErrorCodes.RESEARCH_NO_SOURCES,
+                        "no knowledge sources matched the topic");
+                throw new EventProcessingException(
+                        WorkerErrorCodes.RESEARCH_NO_SOURCES, false, "no knowledge sources matched the topic");
+            }
             repository.finishStage(
                     tenantId,
                     runId,
                     RunStage.RETRIEVAL.name(),
                     attempt,
-                    StageStatus.FAILED,
+                    StageStatus.SUCCEEDED,
+                    retrievalJson(task.topic(), querySha256, hits),
                     null,
-                    "RICCON-WORKER-500",
-                    "retrieval failed");
-            throw new EventProcessingException(WorkerErrorCodes.UNEXPECTED, true, "research retrieval failed", ex);
+                    null);
         }
-        repository.finishStage(
-                tenantId,
-                runId,
-                RunStage.RETRIEVAL.name(),
-                attempt,
-                StageStatus.SUCCEEDED,
-                stageJson(new RunStageDetails(
-                        null,
-                        com.riccon.worker.mcp.domain.Digests.sha256Hex(task.topic()),
-                        hits.size(),
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null)),
-                null,
-                null);
 
         runRepository.markStage(tenantId, runId, RunStage.TOOL.name());
         repository.startStage(tenantId, runId, RunStage.TOOL.name(), attempt);
-        Optional<McpToolHandle> handle = mcpRepository.findFirstAuthorizedTool(tenantId);
+        Optional<McpToolHandle> handle = task.mcpToolId() == null
+                ? mcpRepository.findFirstAuthorizedTool(tenantId)
+                : mcpRepository.findAuthorizedTool(tenantId, task.mcpToolId());
         if (handle.isEmpty()) {
             repository.finishStage(
                     tenantId,
@@ -238,6 +267,8 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
                     null,
                     McpException.DENIED,
                     "no authorized mcp tool");
+            repository.markTaskFailed(
+                    tenantId, researchTaskId, runId, McpException.DENIED, "no authorized mcp tool is available");
             throw new EventProcessingException(McpException.DENIED, false, "no authorized mcp tool is available");
         }
         ResolvedModel model;
@@ -253,6 +284,7 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
                     null,
                     ex.errorCode(),
                     ex.getMessage());
+            repository.markTaskFailed(tenantId, researchTaskId, runId, ex.errorCode(), ex.getMessage());
             throw new EventProcessingException(ex.errorCode(), ex.retryable(), ex.getMessage(), ex);
         }
         AgentSession session = null;
@@ -282,7 +314,13 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
                         attempt,
                         StageStatus.FAILED,
                         null,
-                        "RICCON-WORKER-422",
+                        WorkerErrorCodes.EVENT_INVALID,
+                        "model did not request an approval-required tool");
+                repository.markTaskFailed(
+                        tenantId,
+                        researchTaskId,
+                        runId,
+                        WorkerErrorCodes.EVENT_INVALID,
                         "model did not request an approval-required tool");
                 throw new EventProcessingException(
                         WorkerErrorCodes.EVENT_INVALID, false, "model did not request an approval-required tool");
@@ -300,6 +338,9 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
                     objectMapper.valueToTree(approvalService.preview(approval)),
                     null,
                     null,
+                    null,
+                    null,
+                    null,
                     null);
             repository.updateStageDetails(tenantId, runId, RunStage.TOOL.name(), attempt, stageJson(waitingDetails));
             runRepository.markStage(tenantId, runId, RunStage.APPROVAL.name());
@@ -307,19 +348,23 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
             repository.updateStageDetails(
                     tenantId, runId, RunStage.APPROVAL.name(), attempt, stageJson(waitingDetails));
             runRepository.markWaitingApproval(tenantId, runId);
+            repository.markTaskWaitingApproval(tenantId, researchTaskId, runId, RunStage.APPROVAL.name());
             LOG.info(
                     "research.run.waiting_approval tenantId={} runId={} approvalId={} toolId={}",
                     tenantId.value(),
                     runId,
                     approval.id(),
                     handle.get().tool().id());
-        } catch (EventProcessingException | McpException | AgentException ex) {
+        } catch (EventProcessingException | McpException | AgentException | ModelException ex) {
             failInvocation(invocation, run.traceId(), errorCode(ex), retryable(ex));
             finishToolFailure(tenantId, runId, attempt, ex);
+            repository.markTaskFailed(tenantId, researchTaskId, runId, errorCode(ex), truncate(ex.getMessage()));
             throw new EventProcessingException(errorCode(ex), retryable(ex), "research tool stage failed", ex);
         } catch (RuntimeException ex) {
             failInvocation(invocation, run.traceId(), WorkerErrorCodes.UNEXPECTED, true);
             finishToolFailure(tenantId, runId, attempt, ex);
+            repository.markTaskFailed(
+                    tenantId, researchTaskId, runId, WorkerErrorCodes.UNEXPECTED, "research tool stage failed");
             throw new EventProcessingException(
                     WorkerErrorCodes.UNEXPECTED, true, "research tool stage failed unexpectedly", ex);
         } finally {
@@ -403,6 +448,9 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
         if (error instanceof AgentException agentError) {
             return agentError.errorCode();
         }
+        if (error instanceof ModelException modelError) {
+            return modelError.errorCode();
+        }
         return WorkerErrorCodes.UNEXPECTED;
     }
 
@@ -422,6 +470,9 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
         if (error instanceof AgentException agentError) {
             return agentError.retryable();
         }
+        if (error instanceof ModelException modelError) {
+            return modelError.retryable();
+        }
         return true;
     }
 
@@ -436,6 +487,58 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
             return null;
         }
         return value.length() <= 500 ? value : value.substring(0, 500);
+    }
+
+    /**
+     * 构造检索阶段详情，并附带可回溯的来源 ID 清单。
+     *
+     * <p>{@code sources} 是契约允许的额外键，只包含来源 ID、标题与定位，不含知识库原文；
+     * 产物引用清单可据此与检索阶段逐条对齐（M02-AC-10）。
+     *
+     * @param topic 调研主题
+     * @param querySha256 查询摘要
+     * @param hits 检索命中
+     * @return 详情 JSON
+     */
+    private String retrievalJson(String topic, String querySha256, List<RetrievedChunk> hits) {
+        RunStageDetails base = new RunStageDetails(
+                truncate(topic), querySha256, hits.size(), null, null, null, null, null, null, null, null, null, null);
+        try {
+            ObjectNode node = (ObjectNode) objectMapper.readTree(base.toJson(objectMapper));
+            ArrayNode sources = node.putArray("sources");
+            for (RetrievedChunk chunk : hits) {
+                ObjectNode source = sources.addObject();
+                source.put("ordinal", chunk.ordinal());
+                source.put("sourceType", chunk.sourceType().name());
+                if (chunk.fileId() != null) {
+                    source.put("fileId", chunk.fileId().toString());
+                }
+                if (chunk.knowledgeDocumentId() != null) {
+                    source.put(
+                            "knowledgeDocumentId", chunk.knowledgeDocumentId().toString());
+                }
+                source.put("title", truncate(chunk.title()));
+                if (chunk.locatorType() != null) {
+                    source.put("locatorType", chunk.locatorType().name());
+                }
+                if (chunk.pageNo() != null) {
+                    source.put("pageNo", chunk.pageNo());
+                }
+                if (chunk.sheetName() != null) {
+                    source.put("sheetName", chunk.sheetName());
+                }
+                if (chunk.cellRange() != null) {
+                    source.put("cellRange", chunk.cellRange());
+                }
+                if (chunk.paragraphNo() != null) {
+                    source.put("paragraphNo", chunk.paragraphNo());
+                }
+            }
+            return objectMapper.writeValueAsString(node);
+        } catch (JacksonException ex) {
+            throw new EventProcessingException(
+                    WorkerErrorCodes.UNEXPECTED, true, "failed to serialize retrieval details", ex);
+        }
     }
 
     /**

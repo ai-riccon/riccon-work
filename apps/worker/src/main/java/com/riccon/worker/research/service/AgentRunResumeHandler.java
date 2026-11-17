@@ -23,9 +23,16 @@ import com.riccon.worker.model.service.ModelInvocationService;
 import com.riccon.worker.model.service.ModelInvocationService.InvocationHandle;
 import com.riccon.worker.model.service.ModelRegistry;
 import com.riccon.worker.research.domain.ApprovalRecord;
+import com.riccon.worker.research.domain.ArtifactException;
+import com.riccon.worker.research.domain.ArtifactRecord;
+import com.riccon.worker.research.domain.ReportDocument;
+import com.riccon.worker.research.domain.ReportToolSource;
 import com.riccon.worker.research.domain.ResearchTaskRecord;
 import com.riccon.worker.research.domain.RunStageDetails;
+import com.riccon.worker.research.domain.RunStageRecord;
+import com.riccon.worker.research.repository.ArtifactRepository;
 import com.riccon.worker.research.repository.ResearchRepository;
+import com.riccon.worker.research.service.ReportArtifactService.SavedArtifact;
 import com.riccon.worker.run.domain.ClaimedOutboxEvent;
 import com.riccon.worker.run.domain.EventProcessingException;
 import com.riccon.worker.run.domain.OutboxEventHandler;
@@ -38,9 +45,12 @@ import io.agentscope.core.event.AgentEvent;
 import io.agentscope.core.event.AgentResultEvent;
 import io.agentscope.core.event.RequireUserConfirmEvent;
 import io.agentscope.core.message.Msg;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,16 +60,27 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * 审批通过后的恢复：执行已批准工具 → 生成阶段。
+ * 审批通过后的恢复：执行已批准工具 → 生成报告 → 保存产物。
  *
- * <p>不重跑检索；工具参数从审批记录读取并用 SHA-256 与审批绑定。生成结果目前只写阶段摘要，
- * 报告产物保存由后续报告编排任务接管（TASK-0016 范围）。
+ * <p>审批拒绝时终止运行与任务，并把审批人、时间与决定写入 APPROVAL 阶段详情；批准后不重跑检索。
+ * 工具参数从审批密文读取并用 SHA-256 与审批绑定，不得退回脱敏预览（ADR-0017）。
+ * 生成成功后在同一编排内写入 {@code artifact}/{@code artifact_version}/{@code artifact_citation}
+ * 并写 {@code artifact.saved} 审计；产物唯一键与正文摘要保证同一事件/重试不产生重复产物。
+ *
+ * <p>工具调用成功后审批即被消费：后续模型或对象存储失败不再自动重试同一恢复事件，
+ * 任务标记失败并由员工从工具阶段重新审批后重试，避免复用旧审批重放外部工具。
  */
 @Component
 public class AgentRunResumeHandler implements OutboxEventHandler {
 
     /** 日志记录器。 */
     private static final Logger LOG = LoggerFactory.getLogger(AgentRunResumeHandler.class);
+
+    /** 审批拒绝的稳定失败码，与 API 终止任务时保持一致。 */
+    static final String APPROVAL_REJECTED_CODE = "APPROVAL_REJECTED";
+
+    /** 审批拒绝的脱敏原因。 */
+    static final String APPROVAL_REJECTED_MESSAGE = "tool call approval was rejected";
 
     /** 报告仓储。 */
     private final ResearchRepository repository;
@@ -91,6 +112,15 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
     /** 报告 Agent。 */
     private final ResearchAgentService researchAgentService;
 
+    /** 报告组装。 */
+    private final ReportComposer reportComposer;
+
+    /** 产物写入。 */
+    private final ReportArtifactWriter artifactWriter;
+
+    /** 产物仓储，用于重复投递短路。 */
+    private final ArtifactRepository artifactRepository;
+
     /** JSON 序列化。 */
     private final ObjectMapper objectMapper;
 
@@ -110,6 +140,9 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
      * @param userAccessRepository 用户状态
      * @param auditService 审计
      * @param researchAgentService 报告 Agent
+     * @param reportComposer 报告组装
+     * @param artifactWriter 产物写入
+     * @param artifactRepository 产物仓储
      * @param objectMapper JSON 序列化
      * @param payloadParser payload 解析
      */
@@ -124,6 +157,9 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
             UserAccessRepository userAccessRepository,
             AuditService auditService,
             ResearchAgentService researchAgentService,
+            ReportComposer reportComposer,
+            ReportArtifactWriter artifactWriter,
+            ArtifactRepository artifactRepository,
             ObjectMapper objectMapper,
             EventPayloadParser payloadParser) {
         this.repository = Objects.requireNonNull(repository, "repository");
@@ -136,6 +172,9 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
         this.userAccessRepository = Objects.requireNonNull(userAccessRepository, "userAccessRepository");
         this.auditService = Objects.requireNonNull(auditService, "auditService");
         this.researchAgentService = Objects.requireNonNull(researchAgentService, "researchAgentService");
+        this.reportComposer = Objects.requireNonNull(reportComposer, "reportComposer");
+        this.artifactWriter = Objects.requireNonNull(artifactWriter, "artifactWriter");
+        this.artifactRepository = Objects.requireNonNull(artifactRepository, "artifactRepository");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
         this.payloadParser = Objects.requireNonNull(payloadParser, "payloadParser");
     }
@@ -183,6 +222,39 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
             auditService.userAccessDenied(tenantId, run.traceId(), null, run.userId());
             throw new EventProcessingException("RICCON-TENANT-403", false, "run owner is disabled");
         }
+        ResearchTaskRecord task = repository
+                .findTask(tenantId, researchTaskId)
+                .orElseThrow(() -> new EventProcessingException(
+                        WorkerErrorCodes.TENANT_NOT_FOUND, false, "research task not found"));
+
+        // 重复投递：本尝试已生成阶段且产物已落库时直接收尾，避免再次执行工具或模型。
+        Optional<RunStageRecord> existingGeneration =
+                repository.findStage(tenantId, runId, RunStage.GENERATION.name(), attempt);
+        Optional<ArtifactRecord> existingArtifact = artifactRepository.findByTask(tenantId, researchTaskId);
+        if (existingGeneration.isPresent()
+                && existingGeneration.get().status() != StageStatus.FAILED
+                && existingArtifact.isPresent()
+                && existingArtifact.get().currentVersion() > 0) {
+            if (existingGeneration.get().status() == StageStatus.RUNNING) {
+                // 崩溃恢复：产物已保存但阶段未收尾，补写终态，保持时间线与产物一致。
+                repository.finishStage(
+                        tenantId,
+                        runId,
+                        RunStage.GENERATION.name(),
+                        attempt,
+                        StageStatus.SUCCEEDED,
+                        existingGeneration.get().detailsJson(),
+                        null,
+                        null);
+            }
+            repository.markTaskSucceeded(tenantId, researchTaskId, runId);
+            LOG.info(
+                    "research.run.resume_skipped tenantId={} runId={} reason=ARTIFACT_ALREADY_SAVED",
+                    tenantId.value(),
+                    runId);
+            return;
+        }
+
         ApprovalRecord approval;
         try {
             approval = approvalService.requireApproved(tenantId, approvalId, runId, researchTaskId);
@@ -194,28 +266,21 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                                     || item.status() == ApprovalStatus.EXPIRED
                                     || item.status() == ApprovalStatus.CANCELLED)
                             .orElse(false)) {
-                repository.finishStage(
-                        tenantId,
-                        runId,
-                        RunStage.APPROVAL.name(),
-                        attempt,
-                        StageStatus.SKIPPED,
-                        null,
-                        AgentException.APPROVAL_CONFLICT,
-                        "approval was not granted");
-                runRepository.markCancelled(tenantId, runId);
+                terminateRejected(tenantId, runId, researchTaskId, attempt);
                 return;
             }
+            repository.markTaskFailed(tenantId, researchTaskId, runId, ex.errorCode(), ex.getMessage());
             throw new EventProcessingException(ex.errorCode(), false, ex.getMessage(), ex);
         }
-        ResearchTaskRecord task = repository
-                .findTask(tenantId, researchTaskId)
-                .orElseThrow(() -> new EventProcessingException(
-                        WorkerErrorCodes.TENANT_NOT_FOUND, false, "research task not found"));
+        repository.markTaskRunning(tenantId, researchTaskId, runId, RunStage.GENERATION.name());
         McpToolHandle handle = mcpRepository
                 .findAuthorizedTool(tenantId, approval.mcpToolId())
-                .orElseThrow(() -> new EventProcessingException(
-                        McpException.DENIED, false, "approved mcp tool is no longer authorized"));
+                .orElseThrow(() -> {
+                    repository.markTaskFailed(
+                            tenantId, researchTaskId, runId, McpException.DENIED, "approved mcp tool is unavailable");
+                    return new EventProcessingException(
+                            McpException.DENIED, false, "approved mcp tool is no longer authorized");
+                });
         Map<String, Object> arguments;
         try {
             arguments = approvalService.arguments(tenantId, approval);
@@ -230,6 +295,7 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                     null,
                     ex.errorCode(),
                     ex.getMessage());
+            repository.markTaskFailed(tenantId, researchTaskId, runId, ex.errorCode(), ex.getMessage());
             throw new EventProcessingException(ex.errorCode(), false, ex.getMessage(), ex);
         }
         McpCallResult toolResult;
@@ -253,7 +319,9 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                     null,
                     ex.errorCode(),
                     ex.getMessage());
-            throw new EventProcessingException(ex.errorCode(), ex.retryable(), ex.getMessage(), ex);
+            repository.markTaskFailed(tenantId, researchTaskId, runId, ex.errorCode(), ex.getMessage());
+            // 审批已被消费（网关已写入调用或拒绝记录），重试必须重新审批，不能自动复用旧审批。
+            throw new EventProcessingException(ex.errorCode(), false, ex.getMessage(), ex);
         }
         RunStageDetails toolDetails = new RunStageDetails(
                 null,
@@ -265,7 +333,10 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                 objectMapper.valueToTree(approvalService.preview(approval)),
                 "sha256=" + toolResult.resultSha256() + ",bytes=" + toolResult.sizeBytes(),
                 null,
-                null);
+                null,
+                decision(approval),
+                approval.decidedBy(),
+                decidedAt(approval));
         repository.finishStage(
                 tenantId,
                 runId,
@@ -281,17 +352,7 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                 RunStage.APPROVAL.name(),
                 attempt,
                 StageStatus.SUCCEEDED,
-                stageJson(new RunStageDetails(
-                        null,
-                        null,
-                        null,
-                        null,
-                        handle.tool().id(),
-                        approvalId,
-                        objectMapper.valueToTree(approvalService.preview(approval)),
-                        null,
-                        null,
-                        null)),
+                stageJson(approvalDetails(handle, approval, approvalId)),
                 null,
                 null);
 
@@ -310,7 +371,9 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                     null,
                     ex.errorCode(),
                     ex.getMessage());
-            throw new EventProcessingException(ex.errorCode(), ex.retryable(), ex.getMessage(), ex);
+            repository.markTaskFailed(tenantId, researchTaskId, runId, ex.errorCode(), ex.getMessage());
+            // 工具已经执行，审批不可复用；生成阶段失败只能由员工重新发起工具审批后重试。
+            throw new EventProcessingException(ex.errorCode(), false, ex.getMessage(), ex);
         }
         AgentSession session = null;
         InvocationHandle invocation = null;
@@ -331,8 +394,25 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
             invocationService.succeeded(invocation, run.traceId(), null, null, null, null);
             invocation = null;
             if (generated == null || generated.isBlank()) {
-                throw new EventProcessingException(WorkerErrorCodes.UNEXPECTED, true, "generation produced no content");
+                throw new EventProcessingException(
+                        WorkerErrorCodes.UNEXPECTED, false, "generation produced no content");
             }
+            ReportToolSource toolSource = new ReportToolSource(
+                    handle.tool().name(),
+                    toolResult.invocationId(),
+                    toolResult.resultSha256(),
+                    toolResult.sizeBytes(),
+                    toolResult.durationMs());
+            int hitCount = session.citations().size();
+            ReportDocument document = reportComposer.compose(
+                    task.topic(),
+                    generated,
+                    session.citations(),
+                    toolSource,
+                    model.model().modelKey(),
+                    com.riccon.worker.mcp.domain.Digests.sha256Hex(task.topic()),
+                    hitCount);
+            SavedArtifact saved = artifactWriter.write(tenantId, task, runId, run.userId(), document, run.traceId());
             repository.finishStage(
                     tenantId,
                     runId,
@@ -349,23 +429,39 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                             null,
                             null,
                             com.riccon.worker.mcp.domain.Digests.sha256Hex(generated),
-                            generated.length())),
+                            generated.length(),
+                            null,
+                            null,
+                            null)),
                     null,
                     null);
+            repository.markTaskSucceeded(tenantId, researchTaskId, runId);
             LOG.info(
-                    "research.run.generation_completed tenantId={} runId={} chars={}",
+                    "research.run.generation_completed tenantId={} runId={} chars={} artifactId={} version={}",
                     tenantId.value(),
                     runId,
-                    generated.length());
+                    generated.length(),
+                    saved.artifactId(),
+                    saved.version().version());
         } catch (EventProcessingException ex) {
-            failInvocation(invocation, run.traceId(), ex.errorCode(), ex.retryable());
-            finishGenerationFailure(tenantId, runId, attempt, ex.errorCode(), ex.getMessage());
-            throw ex;
+            failInvocation(invocation, run.traceId(), ex.errorCode(), false);
+            finishGenerationFailure(tenantId, researchTaskId, runId, attempt, ex.errorCode(), ex.getMessage());
+            throw new EventProcessingException(ex.errorCode(), false, ex.getMessage(), ex);
+        } catch (ArtifactException ex) {
+            failInvocation(invocation, run.traceId(), ex.errorCode(), false);
+            finishGenerationFailure(tenantId, researchTaskId, runId, attempt, ex.errorCode(), ex.getMessage());
+            // 工具已执行，自动重试会复用已消费的审批；产物失败需要员工重新审批后重试。
+            throw new EventProcessingException(ex.errorCode(), false, ex.getMessage(), ex);
+        } catch (ModelException ex) {
+            failInvocation(invocation, run.traceId(), ex.errorCode(), false);
+            finishGenerationFailure(tenantId, researchTaskId, runId, attempt, ex.errorCode(), ex.getMessage());
+            throw new EventProcessingException(ex.errorCode(), false, ex.getMessage(), ex);
         } catch (RuntimeException ex) {
-            failInvocation(invocation, run.traceId(), WorkerErrorCodes.UNEXPECTED, true);
-            finishGenerationFailure(tenantId, runId, attempt, WorkerErrorCodes.UNEXPECTED, "generation failed");
+            failInvocation(invocation, run.traceId(), WorkerErrorCodes.UNEXPECTED, false);
+            finishGenerationFailure(
+                    tenantId, researchTaskId, runId, attempt, WorkerErrorCodes.UNEXPECTED, "generation failed");
             throw new EventProcessingException(
-                    WorkerErrorCodes.UNEXPECTED, true, "research generation failed unexpectedly", ex);
+                    WorkerErrorCodes.UNEXPECTED, false, "research generation failed unexpectedly", ex);
         } finally {
             if (session != null) {
                 close(session);
@@ -374,7 +470,117 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
     }
 
     /**
-     * 记录生成阶段模型调用失败；未开始时忽略。
+     * 审批拒绝或被取消：终止运行与任务，写入决定详情，不生成产物。
+     *
+     * @param tenantId 租户
+     * @param runId 运行 ID
+     * @param researchTaskId 报告任务 ID
+     * @param attempt 尝试号
+     */
+    private void terminateRejected(TenantId tenantId, UUID runId, UUID researchTaskId, int attempt) {
+        ApprovalRecord approval = repository
+                .findApproval(tenantId, runId, ApprovalService.APPROVAL_STAGE, attempt)
+                .orElse(null);
+        RunStageDetails details = approval == null
+                ? null
+                : new RunStageDetails(
+                        null,
+                        null,
+                        null,
+                        null,
+                        approval.mcpToolId(),
+                        approval.id(),
+                        objectMapper.valueToTree(approvalService.preview(approval)),
+                        null,
+                        null,
+                        null,
+                        decision(approval),
+                        approval.decidedBy(),
+                        decidedAt(approval));
+        repository.finishStage(
+                tenantId,
+                runId,
+                RunStage.APPROVAL.name(),
+                attempt,
+                StageStatus.SKIPPED,
+                details == null ? null : stageJson(details),
+                AgentException.APPROVAL_CONFLICT,
+                "approval was not granted");
+        repository.finishStage(
+                tenantId,
+                runId,
+                RunStage.TOOL.name(),
+                attempt,
+                StageStatus.SKIPPED,
+                details == null ? null : stageJson(details),
+                AgentException.APPROVAL_CONFLICT,
+                "approval was not granted");
+        runRepository.markCancelled(tenantId, runId);
+        repository.markTaskCancelled(
+                tenantId, researchTaskId, runId, APPROVAL_REJECTED_CODE, APPROVAL_REJECTED_MESSAGE);
+        LOG.info(
+                "research.run.approval_rejected tenantId={} runId={} approvalId={} decision={}",
+                tenantId.value(),
+                runId,
+                approval == null ? null : approval.id(),
+                approval == null ? null : approval.status());
+    }
+
+    /**
+     * 构造审批阶段详情。
+     *
+     * @param handle 工具
+     * @param approval 审批
+     * @param approvalId 审批 ID
+     * @return 阶段详情
+     */
+    private RunStageDetails approvalDetails(McpToolHandle handle, ApprovalRecord approval, UUID approvalId) {
+        return new RunStageDetails(
+                null,
+                null,
+                null,
+                null,
+                handle.tool().id(),
+                approvalId,
+                objectMapper.valueToTree(approvalService.preview(approval)),
+                null,
+                null,
+                null,
+                decision(approval),
+                approval.decidedBy(),
+                decidedAt(approval));
+    }
+
+    /**
+     * 审批决定名。
+     *
+     * @param approval 审批
+     * @return APPROVE/REJECT；其他终态返回状态名
+     */
+    private static String decision(ApprovalRecord approval) {
+        return switch (approval.status()) {
+            case APPROVED -> "APPROVE";
+            case REJECTED -> "REJECT";
+            default -> approval.status().name();
+        };
+    }
+
+    /**
+     * 审批时间格式化为带偏移的 ISO 8601。
+     *
+     * @param approval 审批
+     * @return 时间字符串；未决定时为 null
+     */
+    private static String decidedAt(ApprovalRecord approval) {
+        if (approval.decidedAt() == null) {
+            return null;
+        }
+        return DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(
+                approval.decidedAt().atOffset(ZoneOffset.UTC));
+    }
+
+    /**
+     * 记录模型调用失败；未开始时忽略。
      *
      * @param invocation 调用句柄
      * @param traceId 追踪 ID
@@ -412,15 +618,17 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
     }
 
     /**
-     * 写入生成阶段失败。
+     * 写入生成阶段失败并同步任务失败状态。
      *
      * @param tenantId 租户
+     * @param researchTaskId 报告任务 ID
      * @param runId 运行 ID
      * @param attempt 尝试号
      * @param errorCode 错误码
      * @param message 脱敏摘要
      */
-    private void finishGenerationFailure(TenantId tenantId, UUID runId, int attempt, String errorCode, String message) {
+    private void finishGenerationFailure(
+            TenantId tenantId, UUID researchTaskId, UUID runId, int attempt, String errorCode, String message) {
         repository.finishStage(
                 tenantId,
                 runId,
@@ -430,6 +638,7 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                 null,
                 errorCode,
                 message != null && message.length() > 500 ? message.substring(0, 500) : message);
+        repository.markTaskFailed(tenantId, researchTaskId, runId, errorCode, message);
     }
 
     /**

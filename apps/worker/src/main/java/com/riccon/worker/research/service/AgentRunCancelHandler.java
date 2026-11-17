@@ -8,6 +8,7 @@ import com.riccon.worker.research.repository.ResearchRepository;
 import com.riccon.worker.run.domain.ClaimedOutboxEvent;
 import com.riccon.worker.run.domain.EventProcessingException;
 import com.riccon.worker.run.domain.OutboxEventHandler;
+import com.riccon.worker.run.domain.RunDetail;
 import com.riccon.worker.run.domain.WorkerErrorCodes;
 import com.riccon.worker.run.repository.RunRepository;
 import com.riccon.worker.run.service.EventPayloadParser;
@@ -84,12 +85,16 @@ public class AgentRunCancelHandler implements OutboxEventHandler {
                     WorkerErrorCodes.EVENT_INVALID, false, "cancel payload does not match event");
         }
         TenantId tenantId = TenantContext.require();
-        runRepository
+        RunDetail run = runRepository
                 .findDetail(tenantId, runId)
                 .orElseThrow(() -> new EventProcessingException(
                         WorkerErrorCodes.TENANT_NOT_FOUND, false, "research run not found"));
         repository.cancelPendingApprovals(tenantId, runId);
         runRepository.markCancelled(tenantId, runId);
+        if (run.researchTaskId() != null) {
+            // 取消不是失败：任务进入 CANCELLED，不写失败码；已完成的阶段与引用保持原样。
+            repository.markTaskCancelled(tenantId, run.researchTaskId(), runId, null, null);
+        }
         LOG.info("research.run.cancelled tenantId={} runId={} reason={}", tenantId.value(), runId, reason);
     }
 }

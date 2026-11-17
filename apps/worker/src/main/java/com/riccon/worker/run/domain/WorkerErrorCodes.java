@@ -39,6 +39,9 @@ public final class WorkerErrorCodes {
     /** OpenSearch 临时不可用，可重试。 */
     public static final String INDEX_UNAVAILABLE = "RICCON-INDEX-503";
 
+    /** 检索没有命中任何已索引资料，任务不进入生成。 */
+    public static final String RESEARCH_NO_SOURCES = "RICCON-RESEARCH-404";
+
     /** 工具类禁止实例化。 */
     private WorkerErrorCodes() {}
 }

@@ -16,7 +16,8 @@ import org.springframework.stereotype.Component;
 /**
  * 报告任务、审批与运行阶段仓储。
  *
- * <p>只暴露 HITL 所需的最小读写；任务状态更新留给后续报告编排任务。
+ * <p>覆盖 HITL 与报告编排所需的最小读写：审批创建/读取、阶段时间线、任务状态投影；
+ * 产物、版本与引用由 {@link ArtifactRepository} 负责。
  */
 @Component
 public class ResearchRepository {
@@ -52,6 +53,73 @@ public class ResearchRepository {
      */
     public Optional<ResearchTaskRecord> findTask(TenantId tenantId, UUID taskId) {
         return taskJdbc.find(tenantId, taskId);
+    }
+
+    /**
+     * 标记任务运行中并推进阶段。
+     *
+     * @param tenantId 租户
+     * @param taskId 任务 ID
+     * @param runId 当前运行 ID
+     * @param stage 当前阶段
+     * @return 受影响行数
+     */
+    public int markTaskRunning(TenantId tenantId, UUID taskId, UUID runId, String stage) {
+        return taskJdbc.markRunning(tenantId, taskId, runId, stage);
+    }
+
+    /**
+     * 标记任务等待审批。
+     *
+     * @param tenantId 租户
+     * @param taskId 任务 ID
+     * @param runId 当前运行 ID
+     * @param stage 当前阶段
+     * @return 受影响行数
+     */
+    public int markTaskWaitingApproval(TenantId tenantId, UUID taskId, UUID runId, String stage) {
+        return taskJdbc.markWaitingApproval(tenantId, taskId, runId, stage);
+    }
+
+    /**
+     * 标记任务成功；必须在产物保存之后调用。
+     *
+     * @param tenantId 租户
+     * @param taskId 任务 ID
+     * @param runId 当前运行 ID
+     * @return 受影响行数
+     */
+    public int markTaskSucceeded(TenantId tenantId, UUID taskId, UUID runId) {
+        return taskJdbc.markSucceeded(tenantId, taskId, runId);
+    }
+
+    /**
+     * 标记任务失败。
+     *
+     * @param tenantId 租户
+     * @param taskId 任务 ID
+     * @param runId 当前运行 ID
+     * @param errorCode 错误码
+     * @param errorMessage 脱敏错误
+     * @return 受影响行数
+     */
+    public int markTaskFailed(TenantId tenantId, UUID taskId, UUID runId, String errorCode, String errorMessage) {
+        return taskJdbc.markFailed(tenantId, taskId, runId, errorCode, errorMessage);
+    }
+
+    /**
+     * 标记任务取消。
+     *
+     * @param tenantId 租户
+     * @param taskId 任务 ID
+     * @param runId 当前运行 ID
+     * @param failureCode 终止原因码，可为空
+     * @param failureMessage 脱敏终止原因，可为空
+     * @return 受影响行数
+     */
+    public int markTaskCancelled(
+            TenantId tenantId, UUID taskId, UUID runId, String failureCode, String failureMessage) {
+        return taskJdbc.markCancelled(tenantId, taskId, runId, failureCode, failureMessage);
     }
 
     /**

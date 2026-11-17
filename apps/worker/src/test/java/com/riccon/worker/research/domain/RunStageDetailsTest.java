@@ -18,6 +18,7 @@ class RunStageDetailsTest {
         UUID invocationId = UUID.randomUUID();
         UUID toolId = UUID.randomUUID();
         UUID approvalId = UUID.randomUUID();
+        UUID decidedBy = UUID.randomUUID();
         RunStageDetails details = new RunStageDetails(
                 "市场调研",
                 "a".repeat(64),
@@ -28,7 +29,10 @@ class RunStageDetailsTest {
                 MAPPER.readTree("{\"text\":\"market-data\"}"),
                 "sha256=" + "b".repeat(64) + ",bytes=11",
                 "c".repeat(64),
-                42);
+                42,
+                "APPROVE",
+                decidedBy,
+                "2026-11-18T03:00:00Z");
 
         String json = details.toJson(MAPPER);
         RunStageDetails parsed = RunStageDetails.fromJson(MAPPER, json);
@@ -40,6 +44,9 @@ class RunStageDetailsTest {
         assertThat(parsed.resultSummary()).isEqualTo(details.resultSummary());
         assertThat(parsed.hitCount()).isEqualTo(3);
         assertThat(parsed.generatedChars()).isEqualTo(42);
+        assertThat(parsed.approvalDecision()).isEqualTo("APPROVE");
+        assertThat(parsed.approvalDecidedBy()).isEqualTo(decidedBy);
+        assertThat(parsed.approvalDecidedAt()).isEqualTo("2026-11-18T03:00:00Z");
     }
 
     /** 未知键、非法 UUID 与额外字段不得让解析失败。 */
@@ -66,8 +73,8 @@ class RunStageDetailsTest {
     /** 结果摘要写入前截断，避免超过列与契约上限。 */
     @Test
     void toJson_truncatesResultSummary() throws Exception {
-        RunStageDetails details =
-                new RunStageDetails(null, null, null, null, null, null, null, "x".repeat(900), null, null);
+        RunStageDetails details = new RunStageDetails(
+                null, null, null, null, null, null, null, "x".repeat(900), null, null, null, null, null);
 
         String json = details.toJson(MAPPER);
         RunStageDetails parsed = RunStageDetails.fromJson(MAPPER, json);

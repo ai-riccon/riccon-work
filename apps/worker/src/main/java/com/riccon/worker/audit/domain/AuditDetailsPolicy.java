@@ -7,7 +7,7 @@ import java.util.Set;
 /**
  * Worker 审计 details 白名单。
  *
- * <p>ADR-0007 第 5 节要求 details 只包含白名单字段。Worker 只写模型与 MCP 动作；
+ * <p>ADR-0007 第 5 节要求 details 只包含白名单字段。Worker 写模型、MCP 与产物保存动作；
  * 提示词、回答、文件原文、工具请求/响应原文、凭据与完整 PII 一律禁止。
  */
 public final class AuditDetailsPolicy {
@@ -20,6 +20,7 @@ public final class AuditDetailsPolicy {
             AuditActions.MODEL_INVOCATION_FAILED, Set.of("modelId", "durationMs", "errorCode", "retryable"),
             AuditActions.MCP_TOOL_INVOKED,
                     Set.of("toolName", "paramsSha256", "resultSha256", "durationMs", "approvalId"),
+            AuditActions.ARTIFACT_SAVED, Set.of("artifactId", "reportRunId", "version"),
             WorkerAuditActions.TENANT_ACCESS_DENIED, Set.of("attemptedTenant", "reason"),
             WorkerAuditActions.USER_ACCESS_DENIED, Set.of("userId", "reason"));
 

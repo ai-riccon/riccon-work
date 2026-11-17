@@ -22,6 +22,9 @@ import tools.jackson.databind.node.ObjectNode;
  * @param resultSummary 结果摘要，可为空
  * @param generatedSha256 生成内容 SHA-256，可为空
  * @param generatedChars 生成字符数，可为空
+ * @param approvalDecision 审批决定（APPROVE/REJECT），可为空
+ * @param approvalDecidedBy 审批人账号 ID，可为空
+ * @param approvalDecidedAt 审批时间（ISO 8601 带偏移），可为空
  */
 public record RunStageDetails(
         String query,
@@ -33,7 +36,10 @@ public record RunStageDetails(
         JsonNode paramsPreview,
         String resultSummary,
         String generatedSha256,
-        Integer generatedChars) {
+        Integer generatedChars,
+        String approvalDecision,
+        UUID approvalDecidedBy,
+        String approvalDecidedAt) {
 
     /** 结果摘要最大长度。 */
     public static final int MAX_RESULT_SUMMARY_LENGTH = 500;
@@ -77,6 +83,15 @@ public record RunStageDetails(
         if (generatedChars != null) {
             node.put("generatedChars", generatedChars);
         }
+        if (approvalDecision != null) {
+            node.put("approvalDecision", approvalDecision);
+        }
+        if (approvalDecidedBy != null) {
+            node.put("approvalDecidedBy", approvalDecidedBy.toString());
+        }
+        if (approvalDecidedAt != null) {
+            node.put("approvalDecidedAt", approvalDecidedAt);
+        }
         return objectMapper.writeValueAsString(node);
     }
 
@@ -106,7 +121,10 @@ public record RunStageDetails(
                 node.hasNonNull("paramsPreview") ? node.get("paramsPreview") : null,
                 text(node, "resultSummary"),
                 text(node, "generatedSha256"),
-                integer(node, "generatedChars"));
+                integer(node, "generatedChars"),
+                text(node, "approvalDecision"),
+                uuid(node, "approvalDecidedBy"),
+                text(node, "approvalDecidedAt"));
     }
 
     /**

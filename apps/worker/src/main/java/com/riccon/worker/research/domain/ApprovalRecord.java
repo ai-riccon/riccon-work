@@ -1,6 +1,7 @@
 package com.riccon.worker.research.domain;
 
 import com.riccon.platform.domain.research.ApprovalStatus;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -23,6 +24,8 @@ import java.util.UUID;
  * @param paramsKeyId 加密所用租户 DEK 标识；历史行可为空
  * @param paramsSha256 完整参数摘要
  * @param requestedBy 发起人
+ * @param decidedBy 审批人；待审批为空
+ * @param decidedAt 审批时间；待审批为空
  */
 public record ApprovalRecord(
         UUID id,
@@ -37,7 +40,9 @@ public record ApprovalRecord(
         byte[] paramsCiphertext,
         String paramsKeyId,
         String paramsSha256,
-        UUID requestedBy) {
+        UUID requestedBy,
+        UUID decidedBy,
+        Instant decidedAt) {
 
     /** 防御性复制密文，避免调用方修改后影响解密。 */
     public ApprovalRecord {

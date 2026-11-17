@@ -47,7 +47,8 @@ public class ApprovalJdbc {
                 tenantId,
                 """
                 SELECT id, research_task_id, stage, attempt_no, status, mcp_tool_id, tool_name,
-                       params_preview, params_ciphertext, params_key_id, params_sha256, requested_by
+                       params_preview, params_ciphertext, params_key_id, params_sha256, requested_by,
+                       decided_by, decided_at
                   FROM approval
                  WHERE tenant_id = :tenantId
                    AND run_id = :runId
@@ -71,7 +72,9 @@ public class ApprovalJdbc {
                         rs.getBytes("params_ciphertext"),
                         rs.getString("params_key_id"),
                         rs.getString("params_sha256"),
-                        UuidBinary.fromBytes(rs.getBytes("requested_by"))));
+                        UuidBinary.fromBytes(rs.getBytes("requested_by")),
+                        rs.getBytes("decided_by") == null ? null : UuidBinary.fromBytes(rs.getBytes("decided_by")),
+                        timestamp(rs.getObject("decided_at", java.time.LocalDateTime.class))));
     }
 
     /**
@@ -86,7 +89,8 @@ public class ApprovalJdbc {
                 tenantId,
                 """
                 SELECT run_id, research_task_id, stage, attempt_no, status, mcp_tool_id, tool_name,
-                       params_preview, params_ciphertext, params_key_id, params_sha256, requested_by
+                       params_preview, params_ciphertext, params_key_id, params_sha256, requested_by,
+                       decided_by, decided_at
                   FROM approval
                  WHERE tenant_id = :tenantId
                    AND id = :approvalId
@@ -105,7 +109,9 @@ public class ApprovalJdbc {
                         rs.getBytes("params_ciphertext"),
                         rs.getString("params_key_id"),
                         rs.getString("params_sha256"),
-                        UuidBinary.fromBytes(rs.getBytes("requested_by"))));
+                        UuidBinary.fromBytes(rs.getBytes("requested_by")),
+                        rs.getBytes("decided_by") == null ? null : UuidBinary.fromBytes(rs.getBytes("decided_by")),
+                        timestamp(rs.getObject("decided_at", java.time.LocalDateTime.class))));
     }
 
     /**
@@ -178,5 +184,15 @@ public class ApprovalJdbc {
                    AND run_id = :runId
                    AND status = 'PENDING'
                 """, Map.of("runId", UuidBinary.toBytes(runId)));
+    }
+
+    /**
+     * 把 MySQL DATETIME(6)（UTC）转换为 Instant。
+     *
+     * @param value 数据库时间
+     * @return Instant；空值返回 null
+     */
+    private static java.time.Instant timestamp(java.time.LocalDateTime value) {
+        return value == null ? null : value.toInstant(java.time.ZoneOffset.UTC);
     }
 }

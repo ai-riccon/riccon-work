@@ -235,6 +235,33 @@ public class AuditService {
     }
 
     /**
+     * 报告产物保存。
+     *
+     * @param tenantId 租户
+     * @param traceId 追踪 ID
+     * @param requestId 请求 ID，可为空
+     * @param artifactId 产物 ID
+     * @param reportRunId 生成运行 ID
+     * @param version 版本号
+     */
+    public void artifactSaved(
+            TenantId tenantId, String traceId, String requestId, UUID artifactId, UUID reportRunId, int version) {
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("artifactId", artifactId.toString());
+        details.put("reportRunId", reportRunId.toString());
+        details.put("version", version);
+        append(
+                tenantId,
+                traceId,
+                requestId,
+                AuditActions.ARTIFACT_SAVED,
+                AuditTargetType.ARTIFACT,
+                artifactId.toString(),
+                AuditOutcome.SUCCESS,
+                details);
+    }
+
+    /**
      * 构造并追加事件。
      *
      * @param tenantId 租户
