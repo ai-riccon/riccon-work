@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0020",
+  "module_id": "M02",
+  "title": "Worker：SSE 流式修复、审批参数加密重放、stage details",
+  "owner": "riccon/builder",
+  "status": "review",
+  "write_scope": [
+    "apps/worker/**"
+  ],
+  "acceptance": [
+    "params_preview 只写脱敏摘要，完整参数用 platform-common AES-GCM 密文重放",
+    "审批 resume 解密校验失败即失败，历史无密文不可重放",
+    "Chat SSE 改为可逐事件 flush，首字不被缓冲（mock 模型实测）",
+    "agent_run_stage.details 写入 paramsPreview/resultSummary/invocationId",
+    "./mvnw verify 与 Testcontainers 测试通过"
+  ],
+  "evidence": [
+    "EV-0187",
+    "EV-0188",
+    "EV-0189",
+    "EV-0190"
+  ],
+  "tools_used": [
+    "maven",
+    "git"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-18T02:47:19.446+08:00",
+  "updated_at": "2026-11-18T04:28:52.254+08:00",
+  "baseline_commit": "0345edde2f80c8dc410b6e7efaf84c59dbd5b1eb"
+}
