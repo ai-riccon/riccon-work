@@ -264,7 +264,7 @@ constraints:
       - "apps/*/target/site/jacoco"
       - "apps/web/coverage"
     note: "M01 骨架期以实际可测代码为准；排除项必须在评审中逐条列出"
-  licensing: "产品私有；依赖限 Apache-2.0、MIT、BSD、EPL；AGPL 仅限内部使用且不得进入一体机分发；agentscope-java 为 Apache-2.0"
+  licensing: "产品私有；依赖限 Apache-2.0、MIT、BSD、EPL；AGPL 仅限内部使用且不得进入一体机分发；agentscope-java 为 Apache-2.0；MySQL Connector/J 为 GPLv2+FOSS exception，按 DEC-0003 暂用，发布前必须取得商业许可或替换驱动（release blocker）"
   compliance:
     - "等保二级基线设计（不承诺测评通过）"
     - "生产数据不出客户内网"
