@@ -216,7 +216,7 @@ public class ReportComposer {
             markdown.append('\n');
         }
         markdown.append("## 数据来源\n\n");
-        markdown.append("- 知识库检索：命中 ")
+        markdown.append("- 知识库来源：")
                 .append(hitCount)
                 .append(" 条，查询摘要 SHA-256 `")
                 .append(querySha256 == null ? "" : querySha256)
