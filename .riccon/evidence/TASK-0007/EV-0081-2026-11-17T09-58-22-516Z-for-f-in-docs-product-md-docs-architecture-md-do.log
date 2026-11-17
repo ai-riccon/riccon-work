@@ -1,0 +1,12 @@
+# command: for f in docs/PRODUCT.md docs/ARCHITECTURE.md docs/CODING-STANDARDS.md docs/security/THREAT-MODEL.md docs/RUNBOOK.md docs/adr/ADR-0001-modular-monolith-two-deployables.md docs/adr/ADR-0002-test-object-storage-rustfs.md docs/adr/ADR-0003-tenant-context-thread-local.md docs/adr/ADR-0004-agentscope-core-not-starter.md docs/adr/ADR-0005-mysql-connector-j-license-gate.md docs/adr/ADR-0006-key-lifecycle-envelope-encryption.md docs/adr/ADR-0007-audit-event-model.md docs/adr/ADR-0008-mysql-outbox-async-and-observability.md docs/adr/ADR-0009-tenant-isolation-enforcement.md docs/adr/ADR-0010-flyway-single-migrator.md; do test -f "$f" || exit 1; done; for id in 01 02 03 04 05 06 07 08 09; do grep -q "TB-$id" docs/security/THREAT-MODEL.md || exit 1; done; for id in 01 02 03; do grep -q "ABUSE-$id" docs/security/THREAT-MODEL.md || exit 1; done; grep -q "B-01" docs/security/THREAT-MODEL.md; grep -q "B-06" docs/security/THREAT-MODEL.md; grep -q "M02-AC-16" docs/PRODUCT.md; grep -q "OIDC Authorization Code/PKCE 在 M03" docs/ARCHITECTURE.md; grep -q "OIDC/SSO、MFA" docs/security/THREAT-MODEL.md
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-17T09:58:22.029Z
+# finished_at: 2026-11-17T09:58:22.110Z
+# duration_ms: 79
+# exit_code: 0
+
+# --- stdout ---
+
+
+# --- stderr ---
+

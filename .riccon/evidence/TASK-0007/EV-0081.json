@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0081",
+  "task_id": "TASK-0007",
+  "command": "for f in docs/PRODUCT.md docs/ARCHITECTURE.md docs/CODING-STANDARDS.md docs/security/THREAT-MODEL.md docs/RUNBOOK.md docs/adr/ADR-0001-modular-monolith-two-deployables.md docs/adr/ADR-0002-test-object-storage-rustfs.md docs/adr/ADR-0003-tenant-context-thread-local.md docs/adr/ADR-0004-agentscope-core-not-starter.md docs/adr/ADR-0005-mysql-connector-j-license-gate.md docs/adr/ADR-0006-key-lifecycle-envelope-encryption.md docs/adr/ADR-0007-audit-event-model.md docs/adr/ADR-0008-mysql-outbox-async-and-observability.md docs/adr/ADR-0009-tenant-isolation-enforcement.md docs/adr/ADR-0010-flyway-single-migrator.md; do test -f \"$f\" || exit 1; done; for id in 01 02 03 04 05 06 07 08 09; do grep -q \"TB-$id\" docs/security/THREAT-MODEL.md || exit 1; done; for id in 01 02 03; do grep -q \"ABUSE-$id\" docs/security/THREAT-MODEL.md || exit 1; done; grep -q \"B-01\" docs/security/THREAT-MODEL.md; grep -q \"B-06\" docs/security/THREAT-MODEL.md; grep -q \"M02-AC-16\" docs/PRODUCT.md; grep -q \"OIDC Authorization Code/PKCE 在 M03\" docs/ARCHITECTURE.md; grep -q \"OIDC/SSO、MFA\" docs/security/THREAT-MODEL.md",
+  "manual": false,
+  "commit": "1fe71c924d65271efadcfd1b7f3ce6ce810e3291",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0007/EV-0081-2026-11-17T09-58-22-516Z-for-f-in-docs-product-md-docs-architecture-md-do.log",
+  "output_sha256": "b846d6494f8ea7e34b4a8346a90cc9d2ca55181c6c4a28e8475bba86eef9c793",
+  "output_bytes": 1309,
+  "agent": "riccon/verifier",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-17T09:58:22.029Z",
+  "finished_at": "2026-11-17T09:58:22.110Z",
+  "duration_ms": 79,
+  "note": "核对威胁模型 9 边界/3 滥用场景/B-01、OIDC=M03 与文档存在性",
+  "recorded_at": "2026-11-17T09:58:22.519Z"
+}

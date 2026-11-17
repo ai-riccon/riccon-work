@@ -1,0 +1,58 @@
+# command: docker compose -f deploy/compose/docker-compose.test.yml up -d --wait && pnpm -w e2e
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-17T09:51:29.626Z
+# finished_at: 2026-11-17T09:52:35.323Z
+# duration_ms: 65695
+# exit_code: 0
+
+# --- stdout ---
+
+> riccon-work@0.1.0 e2e /Users/ricky/Documents/projects/riccon-work
+> playwright test --config e2e/playwright.config.ts
+
+
+Running 3 tests using 1 worker
+
+  ✓  1 [chromium] › e2e/tests/admin.spec.ts:10:3 › 管理端布局 › 渲染 ProLayout 与占位菜单且无严重可访问性问题 @a11y (6.6s)
+  ✓  2 [chromium] › e2e/tests/chat.spec.ts:10:3 › 员工端工作空间 › 渲染聊天布局且无严重可访问性问题 @a11y (4.6s)
+  ✓  3 [chromium] › e2e/tests/navigation.spec.ts:8:1 › 根路径重定向到 /chat，管理端菜单可切换页面 (5.1s)
+
+  3 passed (22.6s)
+
+# --- stderr ---
+ Network riccon-test_riccon-test-net Creating 
+ Volume riccon-test_mysql-test-data Creating 
+ Volume riccon-test_mysql-test-data Creating 
+ Volume riccon-test_opensearch-test-data Creating 
+ Volume riccon-test_opensearch-test-data Creating 
+ Volume riccon-test_object-storage-test-data Creating 
+ Volume riccon-test_object-storage-test-data Creating 
+ Network riccon-test_riccon-test-net Creating 
+ Volume riccon-test_opensearch-test-data Created 
+ Volume riccon-test_opensearch-test-data Created 
+ Volume riccon-test_mysql-test-data Created 
+ Volume riccon-test_mysql-test-data Created 
+ Volume riccon-test_object-storage-test-data Created 
+ Volume riccon-test_object-storage-test-data Created 
+ Network riccon-test_riccon-test-net Created 
+ Network riccon-test_riccon-test-net Created 
+ Container riccon-test-opensearch Creating 
+ Container riccon-test-mysql Creating 
+ Container riccon-test-object-storage Creating 
+ Container riccon-test-opensearch Created 
+ Container riccon-test-object-storage Created 
+ Container riccon-test-mysql Created 
+ Container riccon-test-opensearch Starting 
+ Container riccon-test-object-storage Starting 
+ Container riccon-test-mysql Starting 
+ Container riccon-test-opensearch Started 
+ Container riccon-test-mysql Started 
+ Container riccon-test-object-storage Started 
+ Container riccon-test-mysql Waiting 
+ Container riccon-test-opensearch Waiting 
+ Container riccon-test-object-storage Waiting 
+ Container riccon-test-object-storage Healthy 
+ Container riccon-test-mysql Healthy 
+ Container riccon-test-opensearch Healthy 
+[WebServer] (node:53326) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
