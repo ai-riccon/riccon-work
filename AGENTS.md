@@ -347,6 +347,8 @@ budget:
 - 开始工作前读 `.riccon/state.json`、最新 handoff 和本文件中的合同。
 - 不假设合同里没有的目录、命令或工具。
 - 每个任务都有写入范围和验收标准；不要静默扩大任何一项。
+- 证据必须在提交之后录制：先 commit，再 `riccon evidence run`；dirty 工作区录制的证据 strict gate 会失败。
+- task 的 `write_scope` 按文件路径 glob 匹配；目录必须写 `dir/**`，不要写 `dir`。
 - 证据是命令、退出码和输出路径，不是声明。strict 绑定下，review 的 `dod_evidence` 必须把 acceptance/build/tests/e2e/coverage/docs 指向真实、通过、已评审的证据；命令必须与合同 `commands` 对应项匹配，空命令和 `not-implemented`/占位命令直接失败；未加引号管道默认失败，`||` 只允许 `exit 非零`，`; true`、`exit 0`、后台 `&` 等掩盖失败也失败。
 - 不要把密钥写进仓库、状态、日志或提示词。
 - 不要编辑 `.riccon/` 中其他角色负责的决策或报告。

@@ -80,7 +80,7 @@ M01 只建立 Worker 可启动骨架；任务契约、队列/HTTP 选择、重�
 - **默认拒绝**：`apps/api` 与 `apps/worker` 的过滤器链只放行 `/actuator/health`，其余请求在 M02 前一律拒绝。
 - **无默认用户**：排除 Spring Boot 内存用户自动配置，避免生成默认密码。
 - **租户隔离**：`TenantContext` 基于 ThreadLocal，入口 Filter 打开作用域，出口关闭；跨线程必须显式传递。M02 接入异步/响应式链路时按 ADR-0003 扩展。
-- **认证**：M02 接入内置账号 + OIDC Authorization Code/PKCE；会话与 CSRF 策略随认证方案一并评审。
+- **认证**：M02 提供内置账号与认证抽象（Session/CSRF 策略随实现评审）；OIDC Authorization Code/PKCE 在 M03 接入。
 - **密钥**：只从环境变量或密钥管理服务读取；禁止写入仓库、镜像、日志、证据和提示词。
 - **MCP**：工具白名单、参数校验、超时与出网限制；高风险工具必须人工审批。
 - **提示注入**：知识库与 MCP 返回内容一律视为不可信数据，不进入系统指令；M02 建立注入用例集。
