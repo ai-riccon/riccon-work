@@ -350,6 +350,7 @@ P0：**无**。P1：F-001/F-002/F-003/F-004 均为 open，按 Riccon 规则不�
 6. **性能合同**：补 `e2e/perf/mvc-smoke.js` 或修改合同命令；当前 F-007 使 M02 性能 DoD 无法由合同命令复现。
 7. **范围**：AC-02 的 5 种格式、AC-05/AC-11 的失败路径、AC-16 的键盘路径仍需真实栈/集成证据；本次只验证了 DOCX 与主要成功/拒绝路径。
 8. **墙钟**：验证期间观察到 `.riccon/modules/M02.json` 的 `wall_clock_limit_hours` 已由 8 调整为 16（与 DEC-0007 默认 A 一致），当前 elapsed 约 12.5h 未超 16h；DEC-0007 仍为 open/未回答，Lead 应在 gate 前确认决策状态。
+9. **write_scope 元数据**：TASK-0024 原 `.riccon` 裸目录已修正为 `.ricon/**`（目录必须用 `dir/**`）；其他 M02 任务仍存在裸目录（如 `platform`、`contracts`、`docs`、`apps/api/src/main/java`），`gate check --require-scope` 前应统一修正，否则会把 end_commit 后的合法文件判为未认领。
 
 ## 8. 未验证 / 不声称
 
