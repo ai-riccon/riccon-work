@@ -1579,12 +1579,42 @@ function handleControl(req, res, pathname, raw) {
 /**
  * 处理预签名对象下载；对象地址是绝对 URL，因此需要 CORS。
  *
+ * 覆盖 J1 文件下载与 J2 产物正文；文件内容为合成字节，仅验证预签名链路。
+ *
  * @param req Node 请求
  * @param res Node 响应
  * @param pathname 路径
  * @returns 是否已处理
  */
 function handleObject(req, res, pathname) {
+  const fileMatch = /^\/objects\/files\/([^/]+)$/.exec(pathname);
+  if (fileMatch && req.method === 'GET') {
+    const file = state.files.find((item) => item.id === decodeURIComponent(fileMatch[1]));
+    if (!file) {
+      const result = problem(404, 'RICCON-TENANT-404', '文件不存在', '文件不存在或已被删除。');
+      const payload = Buffer.from(JSON.stringify(result.body));
+      res.writeHead(404, {
+        'Content-Type': result.contentType,
+        'Content-Length': payload.length,
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-store',
+      });
+      res.end(payload);
+      return true;
+    }
+    // 上传内容不落盘，下载返回可识别的合成字节；仅用于验证预签名下载链路。
+    const payload = Buffer.from(`Riccon E2E stub file: ${file.originalName}\n`, 'utf8');
+    res.writeHead(200, {
+      'Content-Type': file.mimeType || 'application/octet-stream',
+      'Content-Length': payload.length,
+      'Content-Disposition': `attachment; filename="${encodeURIComponent(file.originalName)}"`,
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'no-store',
+    });
+    res.end(payload);
+    return true;
+  }
+
   const match = /^\/objects\/artifacts\/([^/]+)\/versions\/(\d+)\/content$/.exec(pathname);
   if (!match || req.method !== 'GET') {
     return false;
