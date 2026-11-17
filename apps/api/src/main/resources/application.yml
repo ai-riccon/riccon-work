@@ -18,10 +18,20 @@ spring:
       # 会话表由 Flyway V7 创建，禁止应用自动建表（ADR-0013）。
       initialize-schema: never
       table-name: SPRING_SESSION
+  servlet:
+    multipart:
+      # 合同与 OpenAPI：单文件 ≤ 200 MB；请求体额外预留 multipart 边界与表单字段开销。
+      max-file-size: 200MB
+      max-request-size: 210MB
+      # 超过阈值的上传直接落磁盘，避免 200 MB 文件占用堆内存。
+      file-size-threshold: 0B
 
 server:
   port: ${RICCON_API_PORT:8080}
   shutdown: graceful
+  tomcat:
+    # 让容器在返回 413 前吞掉超限请求体，避免客户端看到连接重置。
+    max-swallow-size: 210MB
   servlet:
     session:
       # 空闲 30 分钟滑动续期；登录成功后轮换会话 ID（ADR-0013）。
@@ -54,3 +64,15 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+riccon:
+  storage:
+    # 测试栈使用 RustFS（ADR-0002）；生产必须由环境变量注入客户对象存储与最小权限凭据。
+    endpoint: ${RICCON_S3_ENDPOINT:http://127.0.0.1:19000}
+    region: ${RICCON_S3_REGION:us-east-1}
+    access-key: ${RICCON_S3_ACCESS_KEY:riccon_test_only}
+    secret-key: ${RICCON_S3_SECRET_KEY:riccon_test_only_secret}
+    bucket: ${RICCON_S3_BUCKET:riccon-test}
+    path-style: true
+    # OpenAPI 要求下载地址 TTL ≤ 300 秒；配置校验会拒绝更大的值。
+    download-url-ttl: 300s

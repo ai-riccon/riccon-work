@@ -17,6 +17,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -107,7 +109,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
         }
 
         String forgedTenant =
-                firstPresent(request.getHeader(FORGED_TENANT_HEADER), request.getParameter(FORGED_TENANT_PARAMETER));
+                firstPresent(request.getHeader(FORGED_TENANT_HEADER), queryParameter(request, FORGED_TENANT_PARAMETER));
         if (forgedTenant != null && !forgedTenant.equals(tenantId.value())) {
             denyMismatchedTenant(request, response, principal, tenantId, forgedTenant);
             return;
@@ -177,6 +179,47 @@ public class TenantContextFilter extends OncePerRequestFilter {
                 "Forbidden",
                 "tenant does not match authenticated principal",
                 RequestContext.traceId(request));
+    }
+
+    /**
+     * 只从查询字符串读取参数，避免 Servlet 容器为检测伪造值而解析 multipart 请求体。
+     *
+     * <p>{@code request.getParameter} 会触发 multipart 解析；超过上传阈值时会在安全过滤器链内抛错，
+     * 让本应返回 413 的请求变成通用错误。这里手工解析 query string，不触碰请求体，也不改变
+     * “租户只从会话主体派生”的边界。
+     *
+     * @param request HTTP 请求
+     * @param name 参数名
+     * @return 解码后的第一个值；不存在时为空
+     */
+    private String queryParameter(HttpServletRequest request, String name) {
+        String query = request.getQueryString();
+        if (query == null || query.isBlank()) {
+            return null;
+        }
+        for (String pair : query.split("&")) {
+            int separator = pair.indexOf('=');
+            String rawName = separator >= 0 ? pair.substring(0, separator) : pair;
+            if (!name.equals(decode(rawName))) {
+                continue;
+            }
+            return separator >= 0 ? decode(pair.substring(separator + 1)) : "";
+        }
+        return null;
+    }
+
+    /**
+     * 解码 URL 组件；非法编码视为未提供该参数，不阻断请求。
+     *
+     * @param value 原始值
+     * @return 解码值，非法编码时返回空串
+     */
+    private String decode(String value) {
+        try {
+            return URLDecoder.decode(value, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException exception) {
+            return "";
+        }
     }
 
     /**

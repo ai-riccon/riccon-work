@@ -1,14 +1,17 @@
 package com.riccon.api.support;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -98,6 +101,80 @@ public final class ApiTestClient {
      */
     public ApiResponse patch(String path, String jsonBody, String sessionCookie, String csrfToken) {
         return sendWithBody("PATCH", path, jsonBody, sessionCookie, csrfToken, Map.of());
+    }
+
+    /**
+     * DELETE 请求。
+     *
+     * @param path 路径
+     * @param sessionCookie 会话 Cookie
+     * @param csrfToken CSRF 令牌
+     * @return 响应
+     */
+    public ApiResponse delete(String path, String sessionCookie, String csrfToken) {
+        return sendWithBody("DELETE", path, null, sessionCookie, csrfToken, Map.of());
+    }
+
+    /**
+     * POST multipart/form-data 请求。
+     *
+     * @param path 路径
+     * @param fields 普通表单字段
+     * @param filePartName 文件 part 名
+     * @param filename 文件名
+     * @param contentType 文件 Content-Type
+     * @param content 文件内容
+     * @param sessionCookie 会话 Cookie
+     * @param csrfToken CSRF 令牌
+     * @param extraHeaders 额外请求头
+     * @return 响应
+     */
+    public ApiResponse postMultipart(
+            String path,
+            Map<String, String> fields,
+            String filePartName,
+            String filename,
+            String contentType,
+            byte[] content,
+            String sessionCookie,
+            String csrfToken,
+            Map<String, String> extraHeaders) {
+        String boundary = "----riccon" + UUID.randomUUID().toString().replace("-", "");
+        ByteArrayOutputStream body = new ByteArrayOutputStream();
+        fields.forEach((name, value) -> {
+            writeAscii(body, "--" + boundary + "\r\n");
+            writeAscii(body, "Content-Disposition: form-data; name=\"" + name + "\"\r\n\r\n");
+            writeAscii(body, value);
+            writeAscii(body, "\r\n");
+        });
+        writeAscii(body, "--" + boundary + "\r\n");
+        writeAscii(
+                body,
+                "Content-Disposition: form-data; name=\""
+                        + filePartName
+                        + "\"; filename=\""
+                        + filename.replace("\"", "")
+                        + "\"\r\n");
+        writeAscii(body, "Content-Type: " + contentType + "\r\n\r\n");
+        body.writeBytes(content);
+        writeAscii(body, "\r\n--" + boundary + "--\r\n");
+
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(baseUrl + path))
+                .timeout(Duration.ofSeconds(30))
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body.toByteArray()));
+        applyHeaders(builder, sessionCookie, csrfToken, extraHeaders);
+        return send(builder.build());
+    }
+
+    /**
+     * 向 multipart 请求体写入 ASCII 边界与字段。
+     *
+     * @param output 输出流
+     * @param text 文本
+     */
+    private static void writeAscii(ByteArrayOutputStream output, String text) {
+        output.writeBytes(text.getBytes(StandardCharsets.UTF_8));
     }
 
     /**

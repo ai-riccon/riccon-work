@@ -63,4 +63,28 @@ class AuditDetailsPolicyTest {
         assertThatThrownBy(() -> AuditDetailsPolicy.validate("future.action", Map.of("method", "x")))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    /** 文件上传与删除只允许合同定义的摘要字段。 */
+    @Test
+    void fileActionsAllowOnlyContractKeys() {
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AuditActions.FILE_UPLOADED,
+                        Map.of(
+                                "fileId",
+                                "0193",
+                                "sizeBytes",
+                                1024,
+                                "contentType",
+                                "application/pdf",
+                                "sha256",
+                                "a".repeat(64))))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AuditActions.FILE_DELETED, Map.of("fileId", "0193", "objectKeyHash", "b".repeat(64))))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> AuditDetailsPolicy.validate(
+                        AuditActions.FILE_UPLOADED, Map.of("fileId", "0193", "originalName", "secret.pdf")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not allowed");
+    }
 }

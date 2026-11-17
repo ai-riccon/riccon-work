@@ -15,6 +15,14 @@
   <name>riccon-api</name>
   <description>Riccon 同步 HTTP 服务：认证、RBAC、会话、业务 API 与审计入口</description>
 
+  <properties>
+    <!--
+      S3 兼容对象存储客户端与 Worker 使用同一版本；仅本模块使用，不属于合同 stack.versions。
+      升级时必须同步安全扫描与许可证检查（合同 constraints.licensing）。
+    -->
+    <aws-sdk.version>2.59.2</aws-sdk.version>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>com.riccon</groupId>
@@ -70,12 +78,24 @@
       <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
     </dependency>
 
+    <!-- S3 协议客户端：上传原文、签发短期下载地址；对象 key 由 API 生成并带租户前缀。 -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
+      <version>${aws-sdk.version}</version>
+    </dependency>
+
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-webmvc-test</artifactId>
       <scope>test</scope>
     </dependency>
     <!-- 集成测试使用真实 MySQL 8.4（Testcontainers），与测试栈版本一致；版本由 Boot BOM 管理。 -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers-mysql</artifactId>

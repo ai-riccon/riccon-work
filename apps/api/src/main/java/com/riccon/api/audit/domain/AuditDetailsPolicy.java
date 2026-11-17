@@ -22,11 +22,16 @@ public final class AuditDetailsPolicy {
             Map.entry(AuditActions.USER_CREATED, Set.of("role", "targetTenantId")),
             Map.entry(AuditActions.USER_DISABLED, Set.of("enabled", "targetTenantId")),
             Map.entry(AuditActions.PERMISSION_CHANGED, Set.of("targetUserId", "role", "change", "targetTenantId")),
+            Map.entry(AuditActions.FILE_UPLOADED, Set.of("fileId", "sizeBytes", "contentType", "sha256")),
+            Map.entry(AuditActions.FILE_DELETED, Set.of("fileId", "objectKeyHash")),
             Map.entry(AdditionalAuditActions.TENANT_ACCESS_DENIED, Set.of("attemptedTenant", "reason")));
 
     /** 任何情况下都不允许出现的敏感键（大小写不敏感）。 */
     private static final Set<String> FORBIDDEN_KEYS =
             Set.of("password", "token", "cookie", "secret", "credential", "prompt", "content", "email", "phone");
+
+    /** ADR-0007 明确允许的文件审计键；它包含 forbidden 子串 "content"，但只表示 MIME，不含原文。 */
+    private static final Set<String> FORBIDDEN_KEY_EXCEPTIONS = Set.of("contenttype");
 
     /** details 单值最大长度，避免把原文写入审计。 */
     private static final int MAX_VALUE_LENGTH = 200;
@@ -50,7 +55,8 @@ public final class AuditDetailsPolicy {
                 throw new IllegalArgumentException("audit detail key must not be blank");
             }
             String normalizedKey = key.toLowerCase(java.util.Locale.ROOT);
-            if (FORBIDDEN_KEYS.stream().anyMatch(normalizedKey::contains)) {
+            if (FORBIDDEN_KEYS.stream().anyMatch(normalizedKey::contains)
+                    && !FORBIDDEN_KEY_EXCEPTIONS.contains(normalizedKey)) {
                 throw new IllegalArgumentException("audit detail key is forbidden: " + key);
             }
             if (!allowed.contains(key)) {

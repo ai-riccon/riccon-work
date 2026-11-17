@@ -32,6 +32,18 @@ public final class ErrorCodes {
     /** 状态冲突或唯一键冲突。 */
     public static final String CONFLICT = "RICCON-CONFLICT-409";
 
+    /** 文件上传内容不合法（空文件、缺少文件名等）。 */
+    public static final String FILE_INVALID = "RICCON-FILE-400";
+
+    /** 单会话文件数量超过 5 个。 */
+    public static final String FILE_LIMIT_EXCEEDED = "RICCON-FILE-409";
+
+    /** 单文件超过 200 MB。 */
+    public static final String FILE_TOO_LARGE = "RICCON-FILE-413";
+
+    /** 文件扩展名、Content-Type 或 magic bytes 不受支持/不一致。 */
+    public static final String FILE_UNSUPPORTED = "RICCON-FILE-415";
+
     /** 触发登录限流。 */
     public static final String RATE_LIMITED = "RICCON-RATE-429";
 

@@ -17,6 +17,9 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
@@ -140,6 +143,60 @@ public class GlobalExceptionHandler {
                 ErrorCodes.REQUEST_UNSUPPORTED_MEDIA_TYPE,
                 "Unsupported media type",
                 "content type is not supported",
+                request);
+    }
+
+    /**
+     * 映射上传超过 200 MB 的容器级异常。
+     *
+     * @param exception 大小超限异常
+     * @param request HTTP 请求
+     * @return 413 响应
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ProblemDetail> handleUploadTooLarge(
+            MaxUploadSizeExceededException exception, HttpServletRequest request) {
+        LOG.info("upload exceeds limit traceId={} path={}", RequestContext.traceId(request), request.getRequestURI());
+        return problem(
+                HttpStatus.PAYLOAD_TOO_LARGE,
+                ErrorCodes.FILE_TOO_LARGE,
+                "Payload too large",
+                "file must not exceed 200 MB",
+                request);
+    }
+
+    /**
+     * 映射缺少 multipart 文件 part 的请求。
+     *
+     * @param exception 缺少 part 异常
+     * @param request HTTP 请求
+     * @return 400 响应
+     */
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<ProblemDetail> handleMissingPart(
+            MissingServletRequestPartException exception, HttpServletRequest request) {
+        LOG.info("upload missing part traceId={} path={}", RequestContext.traceId(request), request.getRequestURI());
+        return problem(HttpStatus.BAD_REQUEST, ErrorCodes.FILE_INVALID, "Invalid file", "file is required", request);
+    }
+
+    /**
+     * 映射无法解析的 multipart 请求。
+     *
+     * @param exception multipart 异常
+     * @param request HTTP 请求
+     * @return 400 响应
+     */
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<ProblemDetail> handleMultipart(MultipartException exception, HttpServletRequest request) {
+        LOG.info(
+                "multipart request invalid traceId={} path={}",
+                RequestContext.traceId(request),
+                request.getRequestURI());
+        return problem(
+                HttpStatus.BAD_REQUEST,
+                ErrorCodes.FILE_INVALID,
+                "Invalid file",
+                "multipart request is invalid",
                 request);
     }
 
