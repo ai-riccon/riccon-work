@@ -66,6 +66,33 @@ M02 需要内置账号登录（M02-AC-01），并在 T4 下满足会话固定、
 - 会话表按 Spring Session 官方 schema 使用大写表名，避免 Linux 大小写敏感导致找不到表；`spring.session.jdbc.table-name=SPRING_SESSION`。
 - 会话属性使用 JDK 序列化；`RicconPrincipal` 必须实现 `Serializable`，且只存 ID/租户/用户名等非敏感字段，不存密码哈希或权限全集。
 
+### 7. 配置样例（Builder 落地）
+
+```yaml
+server:
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        name: RICCON_SESSION
+        http-only: true
+        same-site: lax
+        # 本地测试 false；preview/production 必须 true 并由 TLS 终止。
+        secure: ${RICCON_COOKIE_SECURE:false}
+spring:
+  session:
+    jdbc:
+      # 会话表由 Flyway V7 创建，禁止应用自动建表。
+      initialize-schema: never
+      table-name: SPRING_SESSION
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 210MB
+```
+
+生产 profile 必须校验 `RICCON_COOKIE_SECURE=true`、主密钥存在、无默认账号；缺一项即拒绝启动。
+
 ## Consequences
 
 - 正面：无 Redis/无 JWT 新依赖；重启后会话保留；登出与角色撤销即时生效；CSRF 令牌不经 JS 可读 Cookie；登录防护可测试。
