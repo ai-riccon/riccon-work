@@ -71,6 +71,17 @@ public class McpRepository {
     }
 
     /**
+     * 判断审批是否已执行过工具调用。
+     *
+     * @param tenantId 租户
+     * @param approvalId 审批 ID
+     * @return 是否存在调用记录
+     */
+    public boolean hasInvocationForApproval(TenantId tenantId, UUID approvalId) {
+        return invocationJdbc.existsForApproval(tenantId, approvalId);
+    }
+
+    /**
      * 写入 STARTED 调用记录。
      *
      * @param tenantId 租户

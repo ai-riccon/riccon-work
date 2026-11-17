@@ -30,11 +30,7 @@ import io.agentscope.core.event.TextBlockDeltaEvent;
 import io.agentscope.core.message.GenerateReason;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.model.ChatUsage;
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.Iterator;
 import java.util.List;
@@ -45,7 +41,7 @@ import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import tools.jackson.core.JacksonException;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -404,8 +400,9 @@ public class ChatStreamService {
     /**
      * 单个对话流会话。
      *
-     * <p>持有 Agent、事件迭代器、取消句柄与信号量；{@link #writeTo(OutputStream)} 必须在
-     * 请求线程之外执行，并在方法内部显式恢复租户上下文。
+     * <p>持有 Agent、事件迭代器、取消句柄与信号量；{@link #writeTo(SseEmitter)} 必须在
+     * 请求线程之外执行，并在方法内部显式恢复租户上下文。每个事件通过 {@code SseEmitter.send}
+     * 立即 flush，不能用 {@code StreamingResponseBody}（其输出流会忽略 flush）。
      */
     public final class ChatStreamSession {
 
@@ -484,25 +481,44 @@ public class ChatStreamService {
         }
 
         /**
-         * 将事件写入 SSE 输出流。
+         * 将事件写入 SSE 发射器。
          *
-         * @param output 输出流
+         * @param emitter SSE 发射器
          */
-        public void writeTo(OutputStream output) {
+        public void writeTo(SseEmitter emitter) {
             try (TenantContext.TenantScope ignored = TenantContext.open(tenantId)) {
-                writeInTenant(output);
+                writeInTenant(new SseEmitterChatSink(emitter, objectMapper));
             } finally {
                 cleanup();
             }
         }
 
         /**
+         * 请求取消 Agent；用于客户端断开或发射器超时，由流线程写终态并清理。
+         *
+         * @param reason 取消原因
+         */
+        public void abort(String reason) {
+            cancellation.cancel(reason);
+            close(agentSession);
+        }
+
+        /**
+         * 在执行器拒绝前终结运行，避免留下 RUNNING 状态。
+         *
+         * @param failure 对话错误
+         */
+        public void failBeforeStream(ChatException failure) {
+            fail(request.runId(), invocation, traceId, failure, null);
+            cleanup();
+        }
+
+        /**
          * 在租户作用域内写流。
          *
-         * @param output 输出流
+         * @param writer SSE 写入器
          */
-        private void writeInTenant(OutputStream output) {
-            SseWriter writer = new SseWriter(output, objectMapper);
+        private void writeInTenant(ChatEventSink writer) {
             Msg result = null;
             boolean ended = false;
             try {
@@ -595,7 +611,7 @@ public class ChatStreamService {
          * @param writer SSE 写入器
          * @param failure 对话错误
          */
-        private void failStream(SseWriter writer, ChatException failure) {
+        private void failStream(ChatEventSink writer, ChatException failure) {
             try {
                 invocationService.failed(invocation, traceId, null, failure.code(), false, firstTokenMs);
             } catch (RuntimeException ex) {
@@ -631,7 +647,7 @@ public class ChatStreamService {
          * @param writer SSE 写入器
          * @param reason 原因
          */
-        private void cancel(SseWriter writer, String reason) {
+        private void cancel(ChatEventSink writer, String reason) {
             String normalized = cancelState(reason);
             try {
                 writer.write(eventFactory.stopped(tenantId.value(), request.runId(), messageId, traceId, normalized));
@@ -665,7 +681,7 @@ public class ChatStreamService {
         /**
          * 清理 Agent、注册表与信号量；幂等。
          */
-        private void cleanup() {
+        private synchronized void cleanup() {
             if (cleaned) {
                 return;
             }
@@ -732,50 +748,6 @@ public class ChatStreamService {
          */
         private String reason() {
             return reason;
-        }
-    }
-
-    /**
-     * SSE 写入器。
-     *
-     * <p>每帧包含 id、event、data，空闲时立即 flush；JSON 序列化失败视为内部错误。
-     */
-    static final class SseWriter {
-
-        /** 输出。 */
-        private final BufferedWriter writer;
-
-        /** JSON 序列化。 */
-        private final ObjectMapper objectMapper;
-
-        /**
-         * 创建写入器。
-         *
-         * @param output 输出流
-         * @param objectMapper JSON 序列化
-         */
-        SseWriter(OutputStream output, ObjectMapper objectMapper) {
-            this.writer = new BufferedWriter(new OutputStreamWriter(output, StandardCharsets.UTF_8));
-            this.objectMapper = objectMapper;
-        }
-
-        /**
-         * 写入单个事件。
-         *
-         * @param event 聊天事件
-         * @throws IOException 输出失败
-         */
-        void write(ChatEvent event) throws IOException {
-            String json;
-            try {
-                json = objectMapper.writeValueAsString(event);
-            } catch (JacksonException ex) {
-                throw new IllegalStateException("failed to serialize chat event", ex);
-            }
-            writer.write("id: " + event.eventId() + "\n");
-            writer.write("event: " + event.eventType() + "\n");
-            writer.write("data: " + json + "\n\n");
-            writer.flush();
         }
     }
 }

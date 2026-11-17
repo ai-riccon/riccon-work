@@ -24,6 +24,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -33,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ArrayNode;
@@ -329,10 +331,11 @@ public class OpenAiCompatibleChatModel implements Model {
         AtomicBoolean finished = new AtomicBoolean(false);
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
             StringBuilder data = new StringBuilder();
+            Map<String, PendingToolCall> pendingToolCalls = new LinkedHashMap<>();
             String line;
             while (!sink.isCancelled() && (line = reader.readLine()) != null) {
                 if (line.isEmpty()) {
-                    if (!data.isEmpty() && handlePayload(data.toString(), sink, finished)) {
+                    if (!data.isEmpty() && handlePayload(data.toString(), sink, finished, pendingToolCalls)) {
                         return;
                     }
                     data.setLength(0);
@@ -350,8 +353,17 @@ public class OpenAiCompatibleChatModel implements Model {
                 }
             }
             // 部分兼容端点最后一行没有空行分隔；按已累积数据再处理一次。
-            if (!data.isEmpty() && handlePayload(data.toString(), sink, finished)) {
+            if (!data.isEmpty() && handlePayload(data.toString(), sink, finished, pendingToolCalls)) {
                 return;
+            }
+            if (!pendingToolCalls.isEmpty() && !sink.isCancelled()) {
+                List<ContentBlock> toolBlocks = new ArrayList<>();
+                appendToolCalls(toolBlocks, pendingToolCalls);
+                sink.next(ChatResponse.builder()
+                        .finishReason("tool_calls")
+                        .content(toolBlocks)
+                        .build());
+                finished.set(true);
             }
             if (!finished.get() && !sink.isCancelled()) {
                 sink.next(ChatResponse.builder()
@@ -377,9 +389,14 @@ public class OpenAiCompatibleChatModel implements Model {
      * @param payload data 内容
      * @param sink 订阅者
      * @param finished 是否已输出终止块
+     * @param pendingToolCalls 按工具调用聚合的参数分片
      * @return 是否收到 [DONE]
      */
-    private boolean handlePayload(String payload, FluxSink<ChatResponse> sink, AtomicBoolean finished) {
+    private boolean handlePayload(
+            String payload,
+            FluxSink<ChatResponse> sink,
+            AtomicBoolean finished,
+            Map<String, PendingToolCall> pendingToolCalls) {
         if (DONE.equals(payload.strip())) {
             sink.complete();
             return true;
@@ -410,21 +427,7 @@ public class OpenAiCompatibleChatModel implements Model {
             JsonNode toolCalls = delta.get("tool_calls");
             if (toolCalls != null && toolCalls.isArray()) {
                 for (JsonNode toolCall : toolCalls) {
-                    ToolUseBlock.Builder builder = ToolUseBlock.builder();
-                    JsonNode id = toolCall.get("id");
-                    if (id != null && id.isTextual() && !id.asText().isEmpty()) {
-                        builder.id(id.asText());
-                    }
-                    JsonNode function = toolCall.path("function");
-                    JsonNode name = function.get("name");
-                    if (name != null && name.isTextual() && !name.asText().isEmpty()) {
-                        builder.name(name.asText());
-                    }
-                    JsonNode arguments = function.get("arguments");
-                    if (arguments != null && arguments.isTextual()) {
-                        builder.content(arguments.asText());
-                    }
-                    blocks.add(builder.build());
+                    accumulateToolCall(pendingToolCalls, toolCall);
                 }
             }
             ChatResponse.Builder response = ChatResponse.builder().content(blocks);
@@ -434,6 +437,9 @@ public class OpenAiCompatibleChatModel implements Model {
                     && !finishReason.asText().isBlank()) {
                 response.finishReason(finishReason.asText());
                 finished.set(true);
+                // 工具参数可能分多个 delta 到达，只有终止块才把聚合后的完整 input 交给 AgentScope；
+                // 否则审批阶段会拿到空参数，导致“审批 A 执行 B”。
+                appendToolCalls(blocks, pendingToolCalls);
             }
             ChatUsage usage = usage(root.get("usage"));
             if (usage != null) {
@@ -449,6 +455,87 @@ public class OpenAiCompatibleChatModel implements Model {
             }
         }
         return false;
+    }
+
+    /**
+     * 聚合工具调用分片；同一 id 的 arguments 按到达顺序拼接。
+     *
+     * @param pending 聚合状态
+     * @param toolCall 当前 delta 中的工具调用
+     */
+    private static void accumulateToolCall(Map<String, PendingToolCall> pending, JsonNode toolCall) {
+        JsonNode idNode = toolCall.get("id");
+        String id = idNode != null && idNode.isTextual() && !idNode.asText().isEmpty() ? idNode.asText() : null;
+        // OpenAI 兼容端点只在首个 delta 带 id/name，后续 delta 只带 index；以 index 聚合才能把
+        // 参数拼到同一个工具调用上，避免“id 一条、index 一条”导致审批参数为空。
+        JsonNode indexNode = toolCall.get("index");
+        String key = indexNode != null && indexNode.isNumber()
+                ? "index:" + indexNode.asInt()
+                : (id == null ? "pending:0" : id);
+        PendingToolCall call = pending.computeIfAbsent(key, ignored -> new PendingToolCall());
+        if (id != null) {
+            call.id = id;
+        }
+        JsonNode function = toolCall.path("function");
+        JsonNode name = function.get("name");
+        if (name != null && name.isTextual() && !name.asText().isEmpty()) {
+            call.name = name.asText();
+        }
+        JsonNode arguments = function.get("arguments");
+        if (arguments != null && arguments.isTextual()) {
+            call.arguments.append(arguments.asText());
+        }
+    }
+
+    /**
+     * 把聚合后的工具调用写入响应块，并尽量解析完整 arguments 为 input。
+     *
+     * @param blocks 当前响应块
+     * @param pending 聚合状态；写入后清空
+     */
+    private void appendToolCalls(List<ContentBlock> blocks, Map<String, PendingToolCall> pending) {
+        if (pending.isEmpty()) {
+            return;
+        }
+        for (PendingToolCall call : pending.values()) {
+            ToolUseBlock.Builder builder = ToolUseBlock.builder();
+            if (call.id != null) {
+                builder.id(call.id);
+            }
+            if (call.name != null) {
+                builder.name(call.name);
+            }
+            String raw = call.arguments.toString();
+            builder.content(raw);
+            if (!raw.isBlank()) {
+                try {
+                    Map<String, Object> parsed =
+                            objectMapper.readValue(raw, new TypeReference<Map<String, Object>>() {});
+                    if (parsed != null) {
+                        builder.input(parsed);
+                    }
+                } catch (JacksonException ex) {
+                    // 模型返回非法参数时不在这里中断流；审批阶段会拒绝空/非法参数并失败关闭。
+                }
+            }
+            blocks.add(builder.build());
+        }
+        pending.clear();
+    }
+
+    /**
+     * 工具调用分片聚合状态。
+     */
+    private static final class PendingToolCall {
+
+        /** 调用 ID。 */
+        private String id;
+
+        /** 工具名。 */
+        private String name;
+
+        /** 参数 JSON 分片。 */
+        private final StringBuilder arguments = new StringBuilder();
     }
 
     /**

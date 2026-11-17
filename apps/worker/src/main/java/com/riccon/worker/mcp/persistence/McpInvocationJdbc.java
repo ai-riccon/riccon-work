@@ -33,6 +33,32 @@ public class McpInvocationJdbc {
     }
 
     /**
+     * 判断指定审批是否已有调用记录。
+     *
+     * @param tenantId 租户
+     * @param approvalId 审批 ID
+     * @return 是否已存在
+     */
+    public boolean existsForApproval(TenantId tenantId, UUID approvalId) {
+        if (approvalId == null) {
+            return false;
+        }
+        return tenantJdbc
+                .queryOne(
+                        tenantId,
+                        """
+                        SELECT id
+                          FROM mcp_invocation
+                         WHERE tenant_id = :tenantId
+                           AND approval_id = :approvalId
+                         LIMIT 1
+                        """,
+                        Map.of("approvalId", UuidBinary.toBytes(approvalId)),
+                        (rs, rowNum) -> Boolean.TRUE)
+                .orElse(false);
+    }
+
+    /**
      * 写入 STARTED 调用记录。
      *
      * @param tenantId 租户

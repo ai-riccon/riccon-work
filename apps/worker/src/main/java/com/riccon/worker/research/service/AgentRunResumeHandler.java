@@ -24,6 +24,7 @@ import com.riccon.worker.model.service.ModelInvocationService.InvocationHandle;
 import com.riccon.worker.model.service.ModelRegistry;
 import com.riccon.worker.research.domain.ApprovalRecord;
 import com.riccon.worker.research.domain.ResearchTaskRecord;
+import com.riccon.worker.research.domain.RunStageDetails;
 import com.riccon.worker.research.repository.ResearchRepository;
 import com.riccon.worker.run.domain.ClaimedOutboxEvent;
 import com.riccon.worker.run.domain.EventProcessingException;
@@ -38,7 +39,6 @@ import io.agentscope.core.event.AgentResultEvent;
 import io.agentscope.core.event.RequireUserConfirmEvent;
 import io.agentscope.core.message.Msg;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -216,6 +216,22 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                 .findAuthorizedTool(tenantId, approval.mcpToolId())
                 .orElseThrow(() -> new EventProcessingException(
                         McpException.DENIED, false, "approved mcp tool is no longer authorized"));
+        Map<String, Object> arguments;
+        try {
+            arguments = approvalService.arguments(tenantId, approval);
+        } catch (AgentException ex) {
+            // 密文缺失、key 退役、AAD/哈希不匹配：失败关闭，不退回脱敏预览，也不再重试。
+            repository.finishStage(
+                    tenantId,
+                    runId,
+                    RunStage.TOOL.name(),
+                    attempt,
+                    StageStatus.FAILED,
+                    null,
+                    ex.errorCode(),
+                    ex.getMessage());
+            throw new EventProcessingException(ex.errorCode(), false, ex.getMessage(), ex);
+        }
         McpCallResult toolResult;
         try {
             toolResult = mcpGateway.invoke(new McpGateway.McpInvocationCommand(
@@ -224,7 +240,7 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                     researchTaskId,
                     approvalId,
                     approval.mcpToolId(),
-                    approvalService.arguments(approval),
+                    arguments,
                     run.traceId(),
                     approvalId.toString()));
         } catch (McpException ex) {
@@ -239,13 +255,24 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                     ex.getMessage());
             throw new EventProcessingException(ex.errorCode(), ex.retryable(), ex.getMessage(), ex);
         }
+        RunStageDetails toolDetails = new RunStageDetails(
+                null,
+                null,
+                null,
+                toolResult.invocationId(),
+                handle.tool().id(),
+                approvalId,
+                objectMapper.valueToTree(approvalService.preview(approval)),
+                "sha256=" + toolResult.resultSha256() + ",bytes=" + toolResult.sizeBytes(),
+                null,
+                null);
         repository.finishStage(
                 tenantId,
                 runId,
                 RunStage.TOOL.name(),
                 attempt,
                 StageStatus.SUCCEEDED,
-                json(Map.of("toolId", handle.tool().id().toString(), "approvalId", approvalId.toString())),
+                stageJson(toolDetails),
                 null,
                 null);
         repository.finishStage(
@@ -254,7 +281,17 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                 RunStage.APPROVAL.name(),
                 attempt,
                 StageStatus.SUCCEEDED,
-                json(Map.of("approvalId", approvalId.toString())),
+                stageJson(new RunStageDetails(
+                        null,
+                        null,
+                        null,
+                        null,
+                        handle.tool().id(),
+                        approvalId,
+                        objectMapper.valueToTree(approvalService.preview(approval)),
+                        null,
+                        null,
+                        null)),
                 null,
                 null);
 
@@ -302,10 +339,16 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                     RunStage.GENERATION.name(),
                     attempt,
                     StageStatus.SUCCEEDED,
-                    json(Map.of(
-                            "generatedSha256",
+                    stageJson(new RunStageDetails(
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
                             com.riccon.worker.mcp.domain.Digests.sha256Hex(generated),
-                            "generatedChars",
                             generated.length())),
                     null,
                     null);
@@ -390,14 +433,14 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
     }
 
     /**
-     * 序列化摘要。
+     * 序列化阶段详情。
      *
-     * @param value 摘要
+     * @param details 白名单摘要
      * @return JSON
      */
-    private String json(Map<String, Object> value) {
+    private String stageJson(RunStageDetails details) {
         try {
-            return objectMapper.writeValueAsString(new LinkedHashMap<>(value));
+            return details.toJson(objectMapper);
         } catch (JacksonException ex) {
             throw new EventProcessingException(
                     WorkerErrorCodes.UNEXPECTED, true, "failed to serialize stage details", ex);

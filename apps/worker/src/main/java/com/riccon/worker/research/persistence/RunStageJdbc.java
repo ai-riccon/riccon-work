@@ -108,6 +108,33 @@ public class RunStageJdbc {
     }
 
     /**
+     * 更新运行中阶段的详情；不改变状态与时间。
+     *
+     * <p>用于审批等待期间先把脱敏预览写入时间线；阶段结束时由 {@link #finish} 写入最终详情。
+     *
+     * @param tenantId 租户
+     * @param runId 运行 ID
+     * @param stage 阶段
+     * @param attemptNo 尝试号
+     * @param detailsJson 白名单摘要 JSON，可为空
+     */
+    public void updateDetails(TenantId tenantId, UUID runId, String stage, int attemptNo, String detailsJson) {
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("runId", UuidBinary.toBytes(runId));
+        params.put("stage", stage);
+        params.put("attemptNo", attemptNo);
+        params.put("details", detailsJson);
+        tenantJdbc.update(tenantId, """
+                UPDATE agent_run_stage
+                   SET details = :details
+                 WHERE tenant_id = :tenantId
+                   AND run_id = :runId
+                   AND stage = :stage
+                   AND attempt_no = :attemptNo
+                """, params);
+    }
+
+    /**
      * 结束阶段。
      *
      * @param tenantId 租户

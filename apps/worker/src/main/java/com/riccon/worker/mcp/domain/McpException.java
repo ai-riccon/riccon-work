@@ -16,6 +16,9 @@ public class McpException extends RuntimeException {
     /** 工具返回格式不符合 MCP 协议或超出预算。 */
     public static final String INVALID = "RICCON-MCP-422";
 
+    /** 同一审批已执行过工具调用；重试必须重新审批。 */
+    public static final String ALREADY_INVOKED = "RICCON-MCP-409";
+
     /** 稳定错误码。 */
     private final String errorCode;
 

@@ -3,6 +3,7 @@ package com.riccon.worker.crypto.service;
 import com.riccon.worker.config.CryptoProperties;
 import com.riccon.worker.crypto.domain.CredentialException;
 import java.security.GeneralSecurityException;
+import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Set;
 import javax.crypto.Cipher;
@@ -28,6 +29,9 @@ public class MasterKeyProvider {
 
     /** GCM 认证标签长度（位）。 */
     private static final int TAG_LENGTH_BITS = 128;
+
+    /** 包裹 DEK 的随机源；每次包裹都必须使用新的 nonce。 */
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     /** 已知测试密钥：生产误用必须失败。 */
     private static final Set<String> KNOWN_TEST_KEYS =
@@ -67,6 +71,38 @@ public class MasterKeyProvider {
      */
     public String masterKeyId() {
         return masterKeyId;
+    }
+
+    /**
+     * 用当前主密钥包裹新的 DEK。
+     *
+     * <p>只允许 Worker 为自身用途（如审批参数）按需生成 DEK 时调用；nonce 每次重新生成，
+     * AAD 必须与 {@link EnvelopeDecryptor#aad(String, String, String)} 的格式一致。
+     * 失败时只抛固定异常，不输出密钥或 nonce。
+     *
+     * @param dek 32 字节数据密钥
+     * @param aad 附加认证数据
+     * @return 包裹后的密文与 nonce
+     * @throws CredentialException DEK 长度错误或 JDK 加密能力不可用
+     */
+    public WrappedDek wrap(byte[] dek, byte[] aad) {
+        if (dek == null || dek.length != 32) {
+            throw new CredentialException("RICCON-CRYPTO-500", "data key must be exactly 32 bytes");
+        }
+        if (aad == null || aad.length == 0) {
+            throw new CredentialException("RICCON-CRYPTO-500", "data key AAD must not be empty");
+        }
+        byte[] nonce = new byte[NONCE_LENGTH];
+        RANDOM.nextBytes(nonce);
+        try {
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE, current, new GCMParameterSpec(TAG_LENGTH_BITS, nonce));
+            cipher.updateAAD(aad);
+            return new WrappedDek(cipher.doFinal(dek), nonce);
+        } catch (GeneralSecurityException ex) {
+            // 算法在 JDK 21 必然存在；走到这里说明运行环境被裁剪，必须失败而不是写入明文。
+            throw new CredentialException("RICCON-CRYPTO-500", "data key wrapping is unavailable");
+        }
     }
 
     /**
@@ -144,5 +180,20 @@ public class MasterKeyProvider {
             throw new IllegalStateException(envName + " must decode to exactly 32 bytes");
         }
         return new SecretKeySpec(keyBytes, "AES");
+    }
+
+    /**
+     * 被主密钥包裹的数据密钥。
+     *
+     * @param wrappedDek 密文与认证标签
+     * @param nonce 包裹 nonce
+     */
+    public record WrappedDek(byte[] wrappedDek, byte[] nonce) {
+
+        /** 防御性复制，避免调用方修改包裹结果。 */
+        public WrappedDek {
+            wrappedDek = wrappedDek == null ? null : wrappedDek.clone();
+            nonce = nonce == null ? null : nonce.clone();
+        }
     }
 }

@@ -47,7 +47,7 @@ public class ApprovalJdbc {
                 tenantId,
                 """
                 SELECT id, research_task_id, stage, attempt_no, status, mcp_tool_id, tool_name,
-                       params_preview, params_sha256, requested_by
+                       params_preview, params_ciphertext, params_key_id, params_sha256, requested_by
                   FROM approval
                  WHERE tenant_id = :tenantId
                    AND run_id = :runId
@@ -68,6 +68,8 @@ public class ApprovalJdbc {
                         UuidBinary.fromBytes(rs.getBytes("mcp_tool_id")),
                         rs.getString("tool_name"),
                         rs.getString("params_preview"),
+                        rs.getBytes("params_ciphertext"),
+                        rs.getString("params_key_id"),
                         rs.getString("params_sha256"),
                         UuidBinary.fromBytes(rs.getBytes("requested_by"))));
     }
@@ -84,7 +86,7 @@ public class ApprovalJdbc {
                 tenantId,
                 """
                 SELECT run_id, research_task_id, stage, attempt_no, status, mcp_tool_id, tool_name,
-                       params_preview, params_sha256, requested_by
+                       params_preview, params_ciphertext, params_key_id, params_sha256, requested_by
                   FROM approval
                  WHERE tenant_id = :tenantId
                    AND id = :approvalId
@@ -100,6 +102,8 @@ public class ApprovalJdbc {
                         UuidBinary.fromBytes(rs.getBytes("mcp_tool_id")),
                         rs.getString("tool_name"),
                         rs.getString("params_preview"),
+                        rs.getBytes("params_ciphertext"),
+                        rs.getString("params_key_id"),
                         rs.getString("params_sha256"),
                         UuidBinary.fromBytes(rs.getBytes("requested_by"))));
     }
@@ -116,6 +120,8 @@ public class ApprovalJdbc {
      * @param toolId 工具 ID
      * @param toolName 工具名
      * @param paramsPreview 脱敏预览 JSON
+     * @param paramsCiphertext 完整参数密文
+     * @param paramsKeyId 加密所用 DEK 标识
      * @param paramsSha256 入参摘要
      * @param requestedBy 发起人
      */
@@ -129,6 +135,8 @@ public class ApprovalJdbc {
             UUID toolId,
             String toolName,
             String paramsPreview,
+            byte[] paramsCiphertext,
+            String paramsKeyId,
             String paramsSha256,
             UUID requestedBy) {
         Map<String, Object> params = new LinkedHashMap<>();
@@ -140,15 +148,19 @@ public class ApprovalJdbc {
         params.put("toolId", UuidBinary.toBytes(toolId));
         params.put("toolName", toolName);
         params.put("paramsPreview", paramsPreview);
+        params.put("paramsCiphertext", paramsCiphertext);
+        params.put("paramsKeyId", paramsKeyId);
         params.put("paramsSha256", paramsSha256);
         params.put("requestedBy", UuidBinary.toBytes(requestedBy));
         tenantJdbc.insert(tenantId, """
                 INSERT INTO approval
                     (tenant_id, id, research_task_id, run_id, stage, attempt_no, status,
-                     action_type, mcp_tool_id, tool_name, params_preview, params_sha256, requested_by)
+                     action_type, mcp_tool_id, tool_name, params_preview, params_ciphertext, params_key_id,
+                     params_sha256, requested_by)
                 VALUES
                     (:tenantId, :id, :researchTaskId, :runId, :stage, :attemptNo, 'PENDING',
-                     'MCP_TOOL_CALL', :toolId, :toolName, :paramsPreview, :paramsSha256, :requestedBy)
+                     'MCP_TOOL_CALL', :toolId, :toolName, :paramsPreview, :paramsCiphertext, :paramsKeyId,
+                     :paramsSha256, :requestedBy)
                 """, params);
     }
 

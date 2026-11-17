@@ -103,6 +103,10 @@ public class McpGateway {
         if (policyFailure != null) {
             deny(command, handle, policyFailure);
         }
+        if (mcpRepository.hasInvocationForApproval(command.tenantId(), command.approvalId())) {
+            auditAlreadyInvoked(command, handle);
+            throw new McpException(McpException.ALREADY_INVOKED, false, "approval has already been executed");
+        }
 
         String paramsJson = canonicalJson(command.arguments());
         String paramsSha256 = Digests.sha256Hex(paramsJson);
@@ -122,8 +126,10 @@ public class McpGateway {
                         paramsPreview));
 
         try {
-            McpCallResult result = call(command, handle);
+            McpCallResult raw = call(command, handle);
             long duration = Math.max(0, clock.millis() - startedAt);
+            McpCallResult result =
+                    new McpCallResult(invocationId, raw.text(), raw.resultSha256(), raw.sizeBytes(), duration);
             String resultPreview = "sha256=" + result.resultSha256() + ",bytes=" + result.sizeBytes();
             mcpRepository.invocationSucceeded(
                     command.tenantId(),
@@ -150,7 +156,7 @@ public class McpGateway {
                     handle.tool().id(),
                     duration,
                     result.sizeBytes());
-            return new McpCallResult(result.text(), result.resultSha256(), result.sizeBytes(), duration);
+            return result;
         } catch (McpException ex) {
             finishFailure(command, handle, invocationId, ex.errorCode(), startedAt);
             throw ex;
@@ -285,7 +291,7 @@ public class McpGateway {
             if (sizeBytes > properties.maxResultBytes()) {
                 throw new McpException(McpException.INVALID, false, "mcp tool result exceeds size budget");
             }
-            return new McpCallResult(text, Digests.sha256Hex(text), sizeBytes, 0);
+            return new McpCallResult(null, text, Digests.sha256Hex(text), sizeBytes, 0);
         } catch (McpException ex) {
             throw ex;
         } catch (RuntimeException ex) {
@@ -309,6 +315,31 @@ public class McpGateway {
             }
         }
         return builder.toString();
+    }
+
+    /**
+     * 记录重复执行审批的拒绝审计，但不新增 mcp_invocation（否则会掩盖第一次调用）。
+     *
+     * @param command 调用命令
+     * @param handle 工具
+     */
+    private void auditAlreadyInvoked(McpInvocationCommand command, McpToolHandle handle) {
+        auditService.mcpInvoked(
+                command.tenantId(),
+                command.traceId(),
+                command.requestId(),
+                handle.tool().id(),
+                handle.tool().name(),
+                Digests.sha256Hex(canonicalJson(command.arguments())),
+                null,
+                0,
+                command.approvalId(),
+                AuditOutcome.DENIED);
+        LOG.warn(
+                "mcp.tool.denied tenantId={} runId={} toolId={} reason=ALREADY_INVOKED",
+                command.tenantId().value(),
+                command.runId(),
+                handle.tool().id());
     }
 
     /**

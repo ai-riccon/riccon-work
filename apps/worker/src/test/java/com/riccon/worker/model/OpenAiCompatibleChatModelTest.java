@@ -94,6 +94,7 @@ class OpenAiCompatibleChatModelTest {
         assertThat(calls).isNotEmpty();
         assertThat(calls.get(0).getName()).isEqualTo("echo");
         assertThat(calls).anySatisfy(call -> assertThat(call.getContent()).contains("market-data"));
+        assertThat(calls.get(0).getInput()).containsEntry("text", "market-data");
         assertThat(stub.lastRequest()).contains("\"tools\"").contains("\"echo\"");
     }
 

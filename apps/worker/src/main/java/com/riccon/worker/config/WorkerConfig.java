@@ -1,6 +1,8 @@
 package com.riccon.worker.config;
 
 import java.time.Clock;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -37,5 +39,24 @@ public class WorkerConfig {
     @Bean
     Clock clock() {
         return Clock.systemUTC();
+    }
+
+    /**
+     * 对话流写线程池。
+     *
+     * <p>线程数与 {@code max-concurrent-streams} 一致：服务层信号量已限制活跃流数量，
+     * 因此执行器不应成为额外瓶颈。写线程阻塞在模型输出与 SseEmitter.send 上，
+     * 不能占用 Tomcat 请求线程；守护线程避免阻止 JVM 退出。
+     *
+     * @param properties 对话流配置
+     * @return 固定大小守护线程池
+     */
+    @Bean(name = "chatStreamExecutor", destroyMethod = "shutdownNow")
+    ExecutorService chatStreamExecutor(ChatStreamProperties properties) {
+        return Executors.newFixedThreadPool(properties.maxConcurrentStreams(), runnable -> {
+            Thread thread = new Thread(runnable, "chat-stream-writer");
+            thread.setDaemon(true);
+            return thread;
+        });
     }
 }

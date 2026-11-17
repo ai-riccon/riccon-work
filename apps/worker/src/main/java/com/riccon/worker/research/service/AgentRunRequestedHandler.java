@@ -22,6 +22,7 @@ import com.riccon.worker.model.service.ModelInvocationService.InvocationHandle;
 import com.riccon.worker.model.service.ModelRegistry;
 import com.riccon.worker.research.domain.ApprovalRecord;
 import com.riccon.worker.research.domain.ResearchTaskRecord;
+import com.riccon.worker.research.domain.RunStageDetails;
 import com.riccon.worker.research.repository.ResearchRepository;
 import com.riccon.worker.run.domain.ClaimedOutboxEvent;
 import com.riccon.worker.run.domain.EventProcessingException;
@@ -35,9 +36,7 @@ import io.agentscope.core.event.AgentEvent;
 import io.agentscope.core.event.RequireUserConfirmEvent;
 import io.agentscope.core.message.ToolUseBlock;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -212,11 +211,17 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
                 RunStage.RETRIEVAL.name(),
                 attempt,
                 StageStatus.SUCCEEDED,
-                json(Map.of(
-                        "hitCount",
+                stageJson(new RunStageDetails(
+                        null,
+                        com.riccon.worker.mcp.domain.Digests.sha256Hex(task.topic()),
                         hits.size(),
-                        "querySha256",
-                        com.riccon.worker.mcp.domain.Digests.sha256Hex(task.topic()))),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null)),
                 null,
                 null);
 
@@ -284,8 +289,23 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
             }
             ApprovalRecord approval = approvalService.requestApproval(
                     tenantId, runId, researchTaskId, attempt, run.userId(), handle.get(), pending);
+            // 审批等待期间先把脱敏预览写入时间线；阶段结束时会用同一摘要再次写入终态详情。
+            RunStageDetails waitingDetails = new RunStageDetails(
+                    null,
+                    null,
+                    null,
+                    null,
+                    handle.get().tool().id(),
+                    approval.id(),
+                    objectMapper.valueToTree(approvalService.preview(approval)),
+                    null,
+                    null,
+                    null);
+            repository.updateStageDetails(tenantId, runId, RunStage.TOOL.name(), attempt, stageJson(waitingDetails));
             runRepository.markStage(tenantId, runId, RunStage.APPROVAL.name());
             repository.startStage(tenantId, runId, RunStage.APPROVAL.name(), attempt);
+            repository.updateStageDetails(
+                    tenantId, runId, RunStage.APPROVAL.name(), attempt, stageJson(waitingDetails));
             runRepository.markWaitingApproval(tenantId, runId);
             LOG.info(
                     "research.run.waiting_approval tenantId={} runId={} approvalId={} toolId={}",
@@ -419,14 +439,14 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
     }
 
     /**
-     * 序列化摘要 JSON。
+     * 序列化阶段详情。
      *
-     * @param value 摘要
+     * @param details 白名单摘要
      * @return JSON
      */
-    private String json(Map<String, Object> value) {
+    private String stageJson(RunStageDetails details) {
         try {
-            return objectMapper.writeValueAsString(new LinkedHashMap<>(value));
+            return details.toJson(objectMapper);
         } catch (JacksonException ex) {
             throw new EventProcessingException(
                     WorkerErrorCodes.UNEXPECTED, true, "failed to serialize stage details", ex);

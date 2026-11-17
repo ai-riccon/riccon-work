@@ -9,7 +9,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -55,6 +57,12 @@ public final class TestModelStub implements AutoCloseable {
     /** 是否返回空流。 */
     private volatile boolean emptyStream;
 
+    /** 是否在首个 content 帧后暂停，用于证明下游逐事件 flush。 */
+    private volatile boolean holdAfterFirstContent;
+
+    /** 释放暂停的闸门；reset 时立即放开，避免测试之间互相阻塞。 */
+    private volatile CountDownLatch contentGate = new CountDownLatch(0);
+
     /**
      * 启动桩。
      */
@@ -89,6 +97,25 @@ public final class TestModelStub implements AutoCloseable {
         malformedResponse = false;
         noDone = false;
         emptyStream = false;
+        holdAfterFirstContent = false;
+        contentGate.countDown();
+        contentGate = new CountDownLatch(0);
+    }
+
+    /**
+     * 在首个 content 帧后暂停输出，直到 {@link #releaseContent()} 被调用。
+     *
+     * <p>用于验证 SSE 增量在模型结束前就被下游读到；若链路缓冲到流结束，测试会在读取
+     * 首个 delta 时超时，而不是靠“最终 body 完整”误判为通过。
+     */
+    public void holdAfterFirstContent() {
+        holdAfterFirstContent = true;
+        contentGate = new CountDownLatch(1);
+    }
+
+    /** 释放 {@link #holdAfterFirstContent()} 暂停的输出。 */
+    public void releaseContent() {
+        contentGate.countDown();
     }
 
     /**
@@ -194,9 +221,22 @@ public final class TestModelStub implements AutoCloseable {
         try (OutputStream output = exchange.getResponseBody()) {
             JsonNode root = MAPPER.readTree(body);
             Plan plan = plan(root);
+            boolean held = false;
             for (String frame : plan.frames()) {
                 output.write(frame.getBytes(StandardCharsets.UTF_8));
                 output.flush();
+                if (!held && holdAfterFirstContent && frame.contains("\"content\"")) {
+                    held = true;
+                    // 有界等待：测试忘记释放时让上游失败，而不是永久占用线程池。
+                    try {
+                        if (!contentGate.await(15, TimeUnit.SECONDS)) {
+                            return;
+                        }
+                    } catch (InterruptedException ex) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                }
             }
         }
         exchange.close();

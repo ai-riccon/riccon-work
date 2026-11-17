@@ -59,7 +59,7 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
         ChatFixture fixture = chatFixture("tenant-a", "市场问题");
 
         MvcResult result = performStream(fixture, fixture.token());
-        String body = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        String body = normalize(result.getResponse().getContentAsString(StandardCharsets.UTF_8));
 
         assertThat(body).contains("event: riccon.chat.started.v1");
         assertThat(body).contains("event: riccon.chat.citation.v1");
@@ -173,7 +173,7 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
         ChatFixture fixture = chatFixture("tenant-a", "问题");
 
         MvcResult result = performStream(fixture, fixture.token());
-        String body = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
+        String body = normalize(result.getResponse().getContentAsString(StandardCharsets.UTF_8));
 
         assertThat(body).contains("event: riccon.chat.delta.v1");
         assertThat(body).contains("event: riccon.chat.failed.v1");
@@ -479,6 +479,11 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
     /** 请求 JSON。 */
     private String requestJson(ChatFixture fixture) throws Exception {
         return objectMapper.writeValueAsString(requestBody(fixture));
+    }
+
+    /** SseEmitter 输出 `field:value`，测试统一规范化为带空格的 SSE 帧便于断言。 */
+    private static String normalize(String body) {
+        return body.replace("id:", "id: ").replace("event:", "event: ").replace("data:", "data: ");
     }
 
     /** 提取指定类型第一个 data JSON。 */

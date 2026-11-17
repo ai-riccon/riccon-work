@@ -95,6 +95,8 @@ public class ResearchRepository {
                 approval.toolId(),
                 approval.toolName(),
                 approval.paramsPreview(),
+                approval.paramsCiphertext(),
+                approval.paramsKeyId(),
                 approval.paramsSha256(),
                 approval.requestedBy());
     }
@@ -136,6 +138,19 @@ public class ResearchRepository {
     }
 
     /**
+     * 更新运行中阶段的详情。
+     *
+     * @param tenantId 租户
+     * @param runId 运行 ID
+     * @param stage 阶段
+     * @param attemptNo 尝试号
+     * @param detailsJson 摘要
+     */
+    public void updateStageDetails(TenantId tenantId, UUID runId, String stage, int attemptNo, String detailsJson) {
+        stageJdbc.updateDetails(tenantId, runId, stage, attemptNo, detailsJson);
+    }
+
+    /**
      * 结束阶段。
      *
      * @param tenantId 租户
@@ -169,7 +184,9 @@ public class ResearchRepository {
      * @param attemptNo 尝试号
      * @param toolId 工具 ID
      * @param toolName 工具名
-     * @param paramsPreview 审批参数 JSON
+     * @param paramsPreview 脱敏预览 JSON
+     * @param paramsCiphertext 完整参数密文
+     * @param paramsKeyId 加密所用 DEK 标识
      * @param paramsSha256 参数摘要
      * @param requestedBy 发起人
      */
@@ -182,6 +199,8 @@ public class ResearchRepository {
             UUID toolId,
             String toolName,
             String paramsPreview,
+            byte[] paramsCiphertext,
+            String paramsKeyId,
             String paramsSha256,
             UUID requestedBy) {}
 }

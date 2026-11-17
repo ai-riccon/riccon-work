@@ -19,6 +19,9 @@ public class AgentException extends RuntimeException {
     /** 模型或工具运行失败。 */
     public static final String RUNTIME = "RICCON-WORKER-500";
 
+    /** 审批参数加密/解密失败；失败关闭，禁止降级为明文。 */
+    public static final String CRYPTO = "RICCON-CRYPTO-500";
+
     /** 稳定错误码。 */
     private final String errorCode;
 
