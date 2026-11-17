@@ -87,4 +87,30 @@ class AuditDetailsPolicyTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("not allowed");
     }
+
+    /** 会话与消息动作只允许 ID、计数与原因，不允许内容。 */
+    @Test
+    void conversationAndMessageActionsUseWhitelistedIds() {
+        assertThatCode(() -> AuditDetailsPolicy.validate(AuditActions.SESSION_CREATED, Map.of("sessionId", "0193")))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AdditionalAuditActions.SESSION_DELETED, Map.of("sessionId", "0193")))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AdditionalAuditActions.MESSAGE_SENT,
+                        Map.of(
+                                "userMessageId", "0193",
+                                "assistantMessageId", "0194",
+                                "runId", "0195",
+                                "attachmentCount", 2)))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AdditionalAuditActions.MESSAGE_STOPPED,
+                        Map.of("messageId", "0194", "runId", "0195", "reason", "USER_CANCELLED")))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(() ->
+                        AuditDetailsPolicy.validate(AdditionalAuditActions.MESSAGE_SENT, Map.of("content", "secret")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("forbidden");
+    }
 }

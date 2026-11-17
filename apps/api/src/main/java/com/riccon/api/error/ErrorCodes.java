@@ -47,6 +47,18 @@ public final class ErrorCodes {
     /** 触发登录限流。 */
     public static final String RATE_LIMITED = "RICCON-RATE-429";
 
+    /** Worker 对话流并发已满；API 快速失败而不是排队。 */
+    public static final String CHAT_QUEUE_FULL = "RICCON-QUEUE-429";
+
+    /** Worker 内部对话流不可用或返回非法结果。 */
+    public static final String CHAT_UPSTREAM_FAILED = "RICCON-CHAT-500";
+
+    /** Worker SSE 事件或流终止方式不符合契约。 */
+    public static final String CHAT_STREAM_INVALID = "RICCON-CHAT-502";
+
+    /** 对话流空闲或总时长超过上限。 */
+    public static final String CHAT_STREAM_TIMEOUT = "RICCON-CHAT-504";
+
     /** 未预期内部错误；响应不包含堆栈、SQL 或内部主机。 */
     public static final String INTERNAL = "RICCON-COMMON-500";
 

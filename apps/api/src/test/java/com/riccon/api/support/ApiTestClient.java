@@ -2,6 +2,7 @@ package com.riccon.api.support;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -101,6 +102,35 @@ public final class ApiTestClient {
      */
     public ApiResponse patch(String path, String jsonBody, String sessionCookie, String csrfToken) {
         return sendWithBody("PATCH", path, jsonBody, sessionCookie, csrfToken, Map.of());
+    }
+
+    /**
+     * POST JSON 并返回未读取的响应流，用于测试 SSE 增量消费。
+     *
+     * @param path 路径
+     * @param jsonBody JSON 体
+     * @param sessionCookie 会话 Cookie
+     * @param csrfToken CSRF 令牌
+     * @param extraHeaders 额外请求头
+     * @return 状态、响应头与响应体流；调用方负责关闭
+     */
+    public StreamResponse postStream(
+            String path, String jsonBody, String sessionCookie, String csrfToken, Map<String, String> extraHeaders) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(baseUrl + path))
+                .timeout(Duration.ofSeconds(30))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody == null ? "" : jsonBody));
+        applyHeaders(builder, sessionCookie, csrfToken, extraHeaders);
+        try {
+            HttpResponse<InputStream> response =
+                    httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofInputStream());
+            return new StreamResponse(response.statusCode(), response.headers(), response.body());
+        } catch (IOException exception) {
+            throw new IllegalStateException("streaming HTTP request failed", exception);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("streaming HTTP request interrupted", exception);
+        }
     }
 
     /**
@@ -319,6 +349,26 @@ public final class ApiTestClient {
      * @param body 响应体
      */
     public record ApiResponse(int status, java.net.http.HttpHeaders headers, String body) {
+
+        /**
+         * 读取响应头首个值。
+         *
+         * @param name 头名
+         * @return 值或 {@code null}
+         */
+        public String header(String name) {
+            return headers.firstValue(name).orElse(null);
+        }
+    }
+
+    /**
+     * 未读取的流式响应。
+     *
+     * @param status 状态码
+     * @param headers 响应头
+     * @param body 响应体流；调用方负责关闭
+     */
+    public record StreamResponse(int status, java.net.http.HttpHeaders headers, InputStream body) {
 
         /**
          * 读取响应头首个值。

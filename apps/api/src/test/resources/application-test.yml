@@ -13,3 +13,9 @@ riccon:
       # 仅测试上下文使用的引导账号；密码是测试占位值，不对应任何真实环境。
       username: platform-admin
       password: test-bootstrap-password-12
+  worker:
+    client:
+      # 测试上下文不访问真实 Worker；对话流测试会用动态属性覆盖为本地 mock server。
+      base-url: http://127.0.0.1:18081
+      # 仅测试占位密钥，长度满足启动校验，不对应任何真实环境。
+      service-token-secret: test-service-token-secret-0123456789abcdef

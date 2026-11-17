@@ -25,6 +25,10 @@ spring:
       max-request-size: 210MB
       # 超过阈值的上传直接落磁盘，避免 200 MB 文件占用堆内存。
       file-size-threshold: 0B
+  mvc:
+    async:
+      # SSE 总时长上限 10 分钟；容器异步超时略大于看门狗上限，避免正常长回答被容器提前中断。
+      request-timeout: 11m
 
 server:
   port: ${RICCON_API_PORT:8080}
@@ -66,6 +70,16 @@ springdoc:
     enabled: false
 
 riccon:
+  # API → Worker 内部对话流客户端；共享密钥与端点只由部署环境注入（ADR-0014 第 5 节）。
+  worker:
+    client:
+      base-url: ${RICCON_WORKER_BASE_URL:http://127.0.0.1:8081}
+      connect-timeout: 5s
+      token-ttl: 300s
+      service-token-secret: ${RICCON_SERVICE_TOKEN_SECRET:}
+      cancel-timeout: 10s
+      idle-timeout: 60s
+      max-duration: 10m
   storage:
     # 测试栈使用 RustFS（ADR-0002）；生产必须由环境变量注入客户对象存储与最小权限凭据。
     endpoint: ${RICCON_S3_ENDPOINT:http://127.0.0.1:19000}

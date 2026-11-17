@@ -24,6 +24,13 @@ public final class AuditDetailsPolicy {
             Map.entry(AuditActions.PERMISSION_CHANGED, Set.of("targetUserId", "role", "change", "targetTenantId")),
             Map.entry(AuditActions.FILE_UPLOADED, Set.of("fileId", "sizeBytes", "contentType", "sha256")),
             Map.entry(AuditActions.FILE_DELETED, Set.of("fileId", "objectKeyHash")),
+            // ADR-0007 第 2 节规定新建会话的 details 只写 sessionId。
+            Map.entry(AuditActions.SESSION_CREATED, Set.of("sessionId")),
+            Map.entry(AdditionalAuditActions.SESSION_DELETED, Set.of("sessionId")),
+            Map.entry(
+                    AdditionalAuditActions.MESSAGE_SENT,
+                    Set.of("userMessageId", "assistantMessageId", "runId", "attachmentCount")),
+            Map.entry(AdditionalAuditActions.MESSAGE_STOPPED, Set.of("messageId", "runId", "reason")),
             Map.entry(AdditionalAuditActions.TENANT_ACCESS_DENIED, Set.of("attemptedTenant", "reason")));
 
     /** 任何情况下都不允许出现的敏感键（大小写不敏感）。 */
