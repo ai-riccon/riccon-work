@@ -5,6 +5,7 @@ import com.riccon.platform.domain.research.RunKind;
 import com.riccon.platform.domain.research.RunStatus;
 import com.riccon.worker.persistence.TenantJdbc;
 import com.riccon.worker.persistence.UuidBinary;
+import com.riccon.worker.run.domain.RunDetail;
 import com.riccon.worker.run.domain.RunRecord;
 import java.util.Map;
 import java.util.Objects;
@@ -62,6 +63,40 @@ public class RunRepository {
     }
 
     /**
+     * 读取运行详情，供服务令牌校验与 Agent 恢复使用。
+     *
+     * @param tenantId 当前租户
+     * @param runId 运行 ID
+     * @return 详情；不存在或不属于该租户时为空
+     */
+    public Optional<RunDetail> findDetail(TenantId tenantId, UUID runId) {
+        return tenantJdbc.queryOne(
+                tenantId,
+                """
+                SELECT kind, status, attempt, max_attempts, conversation_id, research_task_id,
+                       user_id, trace_id
+                  FROM agent_run
+                 WHERE tenant_id = :tenantId
+                   AND id = :runId
+                """,
+                Map.of("runId", UuidBinary.toBytes(runId)),
+                (rs, rowNum) -> new RunDetail(
+                        runId,
+                        RunKind.valueOf(rs.getString("kind")),
+                        RunStatus.valueOf(rs.getString("status")),
+                        rs.getInt("attempt"),
+                        rs.getInt("max_attempts"),
+                        rs.getBytes("conversation_id") == null
+                                ? null
+                                : UuidBinary.fromBytes(rs.getBytes("conversation_id")),
+                        rs.getBytes("research_task_id") == null
+                                ? null
+                                : UuidBinary.fromBytes(rs.getBytes("research_task_id")),
+                        UuidBinary.fromBytes(rs.getBytes("user_id")),
+                        rs.getString("trace_id")));
+    }
+
+    /**
      * 条件推进到 RUNNING。
      *
      * <p>允许 PENDING、RETRY_WAIT 与 RUNNING：RUNNING 用于租约过期后的重试；终态运行返回 false，
@@ -82,9 +117,85 @@ public class RunRepository {
                        error_message = NULL
                  WHERE tenant_id = :tenantId
                    AND id = :runId
-                   AND status IN ('PENDING', 'RETRY_WAIT', 'RUNNING')
+                   AND status IN ('PENDING', 'RETRY_WAIT', 'RUNNING', 'WAITING_APPROVAL')
                 """, Map.of("runId", UuidBinary.toBytes(runId), "attempt", attempt));
         return updated > 0;
+    }
+
+    /**
+     * 对话流专用：仅允许从 PENDING/RETRY_WAIT 进入 RUNNING，防止同一运行并发两个流。
+     *
+     * @param tenantId 当前租户
+     * @param runId 运行 ID
+     * @param attempt 本次尝试号
+     * @return 是否推进成功
+     */
+    public boolean markStreamRunning(TenantId tenantId, UUID runId, int attempt) {
+        int updated = tenantJdbc.update(tenantId, """
+                UPDATE agent_run
+                   SET status = 'RUNNING',
+                       attempt = GREATEST(attempt, :attempt),
+                       started_at = COALESCE(started_at, NOW(6)),
+                       error_code = NULL,
+                       error_message = NULL
+                 WHERE tenant_id = :tenantId
+                   AND id = :runId
+                   AND status IN ('PENDING', 'RETRY_WAIT')
+                """, Map.of("runId", UuidBinary.toBytes(runId), "attempt", attempt));
+        return updated > 0;
+    }
+
+    /**
+     * 更新当前阶段。
+     *
+     * @param tenantId 当前租户
+     * @param runId 运行 ID
+     * @param stage 阶段名
+     */
+    public void markStage(TenantId tenantId, UUID runId, String stage) {
+        tenantJdbc.update(tenantId, """
+                UPDATE agent_run
+                   SET current_stage = :stage
+                 WHERE tenant_id = :tenantId
+                   AND id = :runId
+                """, Map.of("runId", UuidBinary.toBytes(runId), "stage", stage));
+    }
+
+    /**
+     * 标记运行等待人工审批；审批不占用 Worker 租约。
+     *
+     * @param tenantId 当前租户
+     * @param runId 运行 ID
+     */
+    public void markWaitingApproval(TenantId tenantId, UUID runId) {
+        tenantJdbc.update(tenantId, """
+                UPDATE agent_run
+                   SET status = 'WAITING_APPROVAL',
+                       lease_until = NULL,
+                       lease_owner = NULL
+                 WHERE tenant_id = :tenantId
+                   AND id = :runId
+                   AND status = 'RUNNING'
+                """, Map.of("runId", UuidBinary.toBytes(runId)));
+    }
+
+    /**
+     * 标记运行取消；终态运行不迁移。
+     *
+     * @param tenantId 当前租户
+     * @param runId 运行 ID
+     */
+    public void markCancelled(TenantId tenantId, UUID runId) {
+        tenantJdbc.update(tenantId, """
+                UPDATE agent_run
+                   SET status = 'CANCELLED',
+                       finished_at = NOW(6),
+                       lease_until = NULL,
+                       lease_owner = NULL
+                 WHERE tenant_id = :tenantId
+                   AND id = :runId
+                   AND status IN ('PENDING', 'RUNNING', 'WAITING_APPROVAL', 'RETRY_WAIT')
+                """, Map.of("runId", UuidBinary.toBytes(runId)));
     }
 
     /**

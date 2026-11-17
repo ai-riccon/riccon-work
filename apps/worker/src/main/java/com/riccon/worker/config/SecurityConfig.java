@@ -28,6 +28,12 @@ public class SecurityConfig {
         http.authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/actuator/health", "/actuator/health/**")
                         .permitAll()
+                        // 内部端点只允许集群内访问；仅放行两个已实现路径，令牌在控制器/服务中强制校验。
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.POST,
+                                "/internal/v1/chat/streams",
+                                "/internal/v1/runs/*/cancel")
+                        .permitAll()
                         .anyRequest()
                         .denyAll())
                 .csrf(AbstractHttpConfigurer::disable)

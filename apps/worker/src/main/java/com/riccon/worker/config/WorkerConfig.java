@@ -19,7 +19,13 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     StorageProperties.class,
     OpenSearchProperties.class,
     EmbeddingProperties.class,
-    ParseProperties.class
+    ParseProperties.class,
+    CryptoProperties.class,
+    ServiceTokenProperties.class,
+    ModelGatewayProperties.class,
+    ChatStreamProperties.class,
+    McpProperties.class,
+    AgentProperties.class
 })
 public class WorkerConfig {
 

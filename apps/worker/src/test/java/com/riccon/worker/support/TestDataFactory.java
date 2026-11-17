@@ -385,6 +385,354 @@ public final class TestDataFactory {
     }
 
     /**
+     * 创建会话。
+     *
+     * @param tenantId 租户
+     * @param workspaceId 工作空间
+     * @param userId 创建人
+     * @return 会话 ID
+     */
+    public UUID createConversation(String tenantId, UUID workspaceId, UUID userId) {
+        UUID conversationId = UuidBinary.newV7();
+        jdbcClient
+                .sql("""
+                        INSERT INTO conversation
+                            (tenant_id, id, workspace_id, created_by, title, status)
+                        VALUES
+                            (:tenantId, :id, :workspaceId, :userId, 'Test conversation', 'ACTIVE')
+                        """)
+                .param("tenantId", tenantId)
+                .param("id", UuidBinary.toBytes(conversationId))
+                .param("workspaceId", UuidBinary.toBytes(workspaceId))
+                .param("userId", UuidBinary.toBytes(userId))
+                .update();
+        return conversationId;
+    }
+
+    /**
+     * 创建消息。
+     *
+     * @param tenantId 租户
+     * @param conversationId 会话
+     * @param seq 序号
+     * @param role 角色
+     * @param content 内容
+     * @return 消息 ID
+     */
+    public UUID createMessage(String tenantId, UUID conversationId, long seq, String role, String content) {
+        UUID messageId = UuidBinary.newV7();
+        jdbcClient
+                .sql("""
+                        INSERT INTO message
+                            (tenant_id, id, conversation_id, seq, role, content, status)
+                        VALUES
+                            (:tenantId, :id, :conversationId, :seq, :role, :content, 'COMPLETED')
+                        """)
+                .param("tenantId", tenantId)
+                .param("id", UuidBinary.toBytes(messageId))
+                .param("conversationId", UuidBinary.toBytes(conversationId))
+                .param("seq", seq)
+                .param("role", role)
+                .param("content", content)
+                .update();
+        return messageId;
+    }
+
+    /**
+     * 创建 CHAT 运行。
+     *
+     * @param tenantId 租户
+     * @param conversationId 会话
+     * @param userId 用户
+     * @return 运行 ID
+     */
+    public UUID createChatRun(String tenantId, UUID conversationId, UUID userId) {
+        UUID runId = UuidBinary.newV7();
+        jdbcClient
+                .sql("""
+                        INSERT INTO agent_run
+                            (tenant_id, id, kind, conversation_id, user_id, status, attempt, max_attempts, trace_id)
+                        VALUES
+                            (:tenantId, :id, 'CHAT', :conversationId, :userId, 'PENDING', 1, 3, :traceId)
+                        """)
+                .param("tenantId", tenantId)
+                .param("id", UuidBinary.toBytes(runId))
+                .param("conversationId", UuidBinary.toBytes(conversationId))
+                .param("userId", UuidBinary.toBytes(userId))
+                .param("traceId", traceFor(runId))
+                .update();
+        return runId;
+    }
+
+    /**
+     * 创建报告任务。
+     *
+     * @param tenantId 租户
+     * @param workspaceId 工作空间
+     * @param userId 用户
+     * @param topic 主题
+     * @param mcpToolId 工具 ID，可为空
+     * @return 任务 ID
+     */
+    public UUID createResearchTask(String tenantId, UUID workspaceId, UUID userId, String topic, UUID mcpToolId) {
+        UUID taskId = UuidBinary.newV7();
+        jdbcClient
+                .sql("""
+                        INSERT INTO research_task
+                            (tenant_id, id, workspace_id, created_by, topic, status, mcp_tool_id, idempotency_key)
+                        VALUES
+                            (:tenantId, :id, :workspaceId, :userId, :topic, 'PENDING', :mcpToolId, :idempotencyKey)
+                        """)
+                .param("tenantId", tenantId)
+                .param("id", UuidBinary.toBytes(taskId))
+                .param("workspaceId", UuidBinary.toBytes(workspaceId))
+                .param("userId", UuidBinary.toBytes(userId))
+                .param("topic", topic)
+                .param("mcpToolId", mcpToolId == null ? null : UuidBinary.toBytes(mcpToolId))
+                .param("idempotencyKey", "task-" + taskId)
+                .update();
+        return taskId;
+    }
+
+    /**
+     * 创建 RESEARCH_REPORT 运行。
+     *
+     * @param tenantId 租户
+     * @param taskId 报告任务
+     * @param userId 用户
+     * @return 运行 ID
+     */
+    public UUID createResearchRun(String tenantId, UUID taskId, UUID userId) {
+        UUID runId = UuidBinary.newV7();
+        jdbcClient
+                .sql("""
+                        INSERT INTO agent_run
+                            (tenant_id, id, kind, research_task_id, user_id, status, attempt, max_attempts,
+                             trace_id, current_stage)
+                        VALUES
+                            (:tenantId, :id, 'RESEARCH_REPORT', :taskId, :userId, 'PENDING', 1, 3,
+                             :traceId, 'RETRIEVAL')
+                        """)
+                .param("tenantId", tenantId)
+                .param("id", UuidBinary.toBytes(runId))
+                .param("taskId", UuidBinary.toBytes(taskId))
+                .param("userId", UuidBinary.toBytes(userId))
+                .param("traceId", traceFor(runId))
+                .update();
+        return runId;
+    }
+
+    /**
+     * 写入模型目录、DEK 与部署级凭据。
+     *
+     * @param baseUrl 模型端点
+     * @param apiKey 测试 API key
+     * @return 模型 ID
+     */
+    public UUID createModelCatalog(String baseUrl, String apiKey) {
+        UUID providerId = UuidBinary.newV7();
+        UUID modelId = UuidBinary.newV7();
+        UUID credentialId = UuidBinary.newV7();
+        String keyId = "dek-test";
+        byte[] dek = TestCredentials.newDek();
+        TestCredentials.WrappedDek wrapped = TestCredentials.wrap(
+                TestCredentials.MASTER_KEY_BASE64, "platform", TestCredentials.PURPOSE, keyId, dek);
+        jdbcClient
+                .sql("""
+                        INSERT INTO model_provider (id, code, name, protocol, base_url, status)
+                        VALUES (:id, :code, 'Stub', 'OPENAI_COMPATIBLE', :baseUrl, 'ACTIVE')
+                        """)
+                .param("id", UuidBinary.toBytes(providerId))
+                .param("code", "openai-compatible-" + providerId.toString().substring(0, 8))
+                .param("baseUrl", baseUrl)
+                .update();
+        jdbcClient
+                .sql("""
+                        INSERT INTO model
+                            (id, provider_id, model_key, display_name, context_window, max_output_tokens, status)
+                        VALUES (:id, :providerId, 'fake-model', 'Fake Model', 8192, 1024, 'ACTIVE')
+                        """)
+                .param("id", UuidBinary.toBytes(modelId))
+                .param("providerId", UuidBinary.toBytes(providerId))
+                .update();
+        jdbcClient
+                .sql("""
+                        INSERT INTO tenant_data_key
+                            (tenant_id, key_id, purpose, wrapped_dek, wrap_nonce, algorithm, master_key_id)
+                        VALUES ('platform', :keyId, :purpose, :wrappedDek, :wrapNonce, 'AES-256-GCM', :masterKeyId)
+                        """)
+                .param("keyId", keyId)
+                .param("purpose", TestCredentials.PURPOSE)
+                .param("wrappedDek", wrapped.wrappedDek())
+                .param("wrapNonce", wrapped.nonce())
+                .param("masterKeyId", TestCredentials.MASTER_KEY_ID)
+                .update();
+        jdbcClient
+                .sql("""
+                        INSERT INTO provider_credential
+                            (tenant_id, id, provider_id, credential_type, ciphertext, key_id, master_key_id, version, status)
+                        VALUES ('platform', :id, :providerId, 'API_KEY', :ciphertext, :keyId, :masterKeyId, 1, 'ACTIVE')
+                        """)
+                .param("id", UuidBinary.toBytes(credentialId))
+                .param("providerId", UuidBinary.toBytes(providerId))
+                .param(
+                        "ciphertext",
+                        TestCredentials.encryptCredential("platform", TestCredentials.PURPOSE, keyId, dek, apiKey))
+                .param("keyId", keyId)
+                .param("masterKeyId", TestCredentials.MASTER_KEY_ID)
+                .update();
+        return modelId;
+    }
+
+    /**
+     * 创建 MCP server。
+     *
+     * @param code server code
+     * @param command stdio 命令
+     * @return server ID
+     */
+    public UUID createMcpServer(String code, String command) {
+        UUID serverId = UuidBinary.newV7();
+        jdbcClient
+                .sql("""
+                        INSERT INTO mcp_server (id, code, name, transport, command, status)
+                        VALUES (:id, :code, 'Builtin stub', 'STDIO', :command, 'ACTIVE')
+                        """)
+                .param("id", UuidBinary.toBytes(serverId))
+                .param("code", code)
+                .param("command", command)
+                .update();
+        return serverId;
+    }
+
+    /**
+     * 创建只读、需审批的 MCP 工具。
+     *
+     * @param serverId server ID
+     * @param name 工具名
+     * @param inputSchema JSON Schema
+     * @return 工具 ID
+     */
+    public UUID createMcpTool(UUID serverId, String name, String inputSchema) {
+        UUID toolId = UuidBinary.newV7();
+        jdbcClient
+                .sql("""
+                        INSERT INTO mcp_tool
+                            (id, server_id, name, description, input_schema, risk_level, requires_approval, status)
+                        VALUES (:id, :serverId, :name, 'Echo tool', :inputSchema, 'READ', TRUE, 'ACTIVE')
+                        """)
+                .param("id", UuidBinary.toBytes(toolId))
+                .param("serverId", UuidBinary.toBytes(serverId))
+                .param("name", name)
+                .param("inputSchema", inputSchema)
+                .update();
+        return toolId;
+    }
+
+    /**
+     * 授权工具给租户。
+     *
+     * @param tenantId 租户
+     * @param toolId 工具 ID
+     */
+    public void grantMcpTool(String tenantId, UUID toolId) {
+        jdbcClient
+                .sql("""
+                        INSERT INTO mcp_tool_grant (tenant_id, mcp_tool_id, enabled)
+                        VALUES (:tenantId, :toolId, TRUE)
+                        """)
+                .param("tenantId", tenantId)
+                .param("toolId", UuidBinary.toBytes(toolId))
+                .update();
+    }
+
+    /**
+     * 创建报告任务 + 运行 + requested outbox。
+     *
+     * @param tenantId 租户
+     * @param workspaceId 工作空间
+     * @param userId 用户
+     * @param topic 主题
+     * @param toolId 工具 ID
+     * @return 已发布事件
+     */
+    public ResearchPublished publishResearchRequested(
+            String tenantId, UUID workspaceId, UUID userId, String topic, UUID toolId) {
+        UUID taskId = createResearchTask(tenantId, workspaceId, userId, topic, toolId);
+        UUID runId = createResearchRun(tenantId, taskId, userId);
+        String payload = json(Map.of(
+                "runId", runId.toString(), "researchTaskId", taskId.toString(), "stage", "RETRIEVAL", "attempt", 1));
+        UUID eventId = createOutbox(
+                tenantId,
+                runId,
+                com.riccon.platform.domain.contract.EventTypes.AGENT_RUN_REQUESTED,
+                payload,
+                "agent-run:" + runId);
+        return new ResearchPublished(runId, taskId, eventId);
+    }
+
+    /**
+     * 写入 resume outbox。
+     *
+     * @param tenantId 租户
+     * @param runId 运行
+     * @param taskId 任务
+     * @param approvalId 审批
+     * @return 事件 ID
+     */
+    public UUID publishResearchResume(String tenantId, UUID runId, UUID taskId, UUID approvalId) {
+        String payload = json(Map.of(
+                "runId", runId.toString(),
+                "researchTaskId", taskId.toString(),
+                "approvalId", approvalId.toString(),
+                "stage", "GENERATION",
+                "attempt", 1));
+        return createOutbox(
+                tenantId,
+                runId,
+                com.riccon.platform.domain.contract.EventTypes.AGENT_RUN_RESUME,
+                payload,
+                "resume:" + runId + ":" + approvalId);
+    }
+
+    /**
+     * 写入 cancel outbox。
+     *
+     * @param tenantId 租户
+     * @param runId 运行
+     * @param reason 原因
+     * @return 事件 ID
+     */
+    public UUID publishResearchCancel(String tenantId, UUID runId, String reason) {
+        String payload = json(Map.of("runId", runId.toString(), "reason", reason));
+        return createOutbox(
+                tenantId,
+                runId,
+                com.riccon.platform.domain.contract.EventTypes.AGENT_RUN_CANCEL,
+                payload,
+                "cancel:" + runId);
+    }
+
+    /**
+     * 返回运行 traceId。
+     *
+     * @param runId 运行 ID
+     * @return traceId
+     */
+    public static String traceFor(UUID runId) {
+        return "trace-" + runId.toString().substring(0, 8);
+    }
+
+    /**
+     * 报告任务发布结果。
+     *
+     * @param runId 运行 ID
+     * @param taskId 任务 ID
+     * @param eventId outbox 事件 ID
+     */
+    public record ResearchPublished(UUID runId, UUID taskId, UUID eventId) {}
+
+    /**
      * 序列化 payload。
      *
      * @param value 对象

@@ -124,6 +124,18 @@ public class OutboxPoller {
             }
             try {
                 handler.get().handle(event);
+                // 审批挂起不是失败：运行进入 WAITING_APPROVAL，outbox 事件完成但不标记运行成功。
+                Optional<RunRecord> current = runRepository.find(tenantId, event.runId());
+                if (current.isPresent()
+                        && current.get().status() == com.riccon.platform.domain.research.RunStatus.WAITING_APPROVAL) {
+                    markDone(event);
+                    LOG.info(
+                            "outbox.event.paused eventId={} tenantId={} runId={} reason=WAITING_APPROVAL",
+                            event.id(),
+                            event.tenantId(),
+                            event.runId());
+                    return;
+                }
                 runRepository.markSucceeded(tenantId, event.runId());
                 markDone(event);
             } catch (EventProcessingException ex) {

@@ -1,8 +1,10 @@
 package com.riccon.worker;
 
 import com.riccon.worker.persistence.SchemaVersionChecker;
+import com.riccon.worker.support.TestCredentials;
 import com.riccon.worker.support.TestDataFactory;
 import com.riccon.worker.support.TestSchema;
+import com.riccon.worker.support.TestServiceToken;
 import java.net.URI;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -98,6 +100,7 @@ public abstract class WorkerIntegrationTestBase {
     @BeforeEach
     void resetDatabase() {
         String[] tables = {
+            "audit_event",
             "artifact_citation",
             "artifact_version",
             "artifact",
@@ -119,6 +122,10 @@ public abstract class WorkerIntegrationTestBase {
             "mcp_tool_grant",
             "provider_credential",
             "tenant_data_key",
+            "mcp_tool",
+            "mcp_server",
+            "model",
+            "model_provider",
             "user_role",
             "role_permission",
             "role",
@@ -133,6 +140,11 @@ public abstract class WorkerIntegrationTestBase {
             for (String table : tables) {
                 statement.execute("TRUNCATE TABLE " + table);
             }
+            // 平台保留租户由 V2 迁移插入；清空后必须恢复，否则平台级凭据外键与跨租户审计无法写入。
+            statement.execute("""
+                    INSERT INTO tenant (id, name, status, plan, retention_days)
+                    VALUES ('platform', '平台管理', 'ACTIVE', 'internal', 180)
+                    """);
             statement.execute("SET FOREIGN_KEY_CHECKS = 1");
         } catch (SQLException ex) {
             throw new IllegalStateException("failed to reset integration test database", ex);
@@ -161,6 +173,16 @@ public abstract class WorkerIntegrationTestBase {
         registry.add("riccon.worker.outbox.retry-jitter", () -> "0ms");
         registry.add("riccon.worker.outbox.max-attempts", () -> "3");
         registry.add("riccon.worker.outbox.lease-duration", () -> "30s");
+        registry.add("riccon.worker.crypto.master-key", () -> TestCredentials.MASTER_KEY_BASE64);
+        registry.add("riccon.worker.crypto.master-key-id", () -> TestCredentials.MASTER_KEY_ID);
+        registry.add("riccon.worker.service-token.secret", () -> TestServiceToken.SECRET);
+        registry.add("riccon.worker.model.allow-insecure-http", () -> "true");
+        registry.add("riccon.worker.model.retry-delays", () -> "0ms,0ms");
+        registry.add("riccon.worker.model.request-timeout", () -> "10s");
+        registry.add("riccon.worker.mcp.allow-stdio", () -> "true");
+        registry.add("riccon.worker.mcp.request-timeout", () -> "15s");
+        registry.add("riccon.worker.mcp.initialization-timeout", () -> "10s");
+        registry.add("riccon.worker.chat.idle-timeout", () -> "20s");
     }
 
     /** 启动数据库、检索与对象存储容器。 */

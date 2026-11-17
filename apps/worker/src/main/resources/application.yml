@@ -10,6 +10,8 @@ spring:
       # Worker 轮询与租户任务并发有限，连接池保持小规模；生产按实例数调整。
       maximum-pool-size: ${RICCON_DB_POOL_SIZE:10}
       connection-timeout: 3000
+      # ADR-0012：DATETIME(6) 统一按 UTC 写入，禁止依赖容器默认时区。
+      connection-init-sql: "SET time_zone = '+00:00'"
   flyway:
     # 迁移只由 apps/api 执行（ADR-0010）；Worker 不包含迁移资源，也不加载 Flyway。
     enabled: false
@@ -71,5 +73,41 @@ riccon:
       max-file-bytes: 52428800
       chunk-size: 800
       chunk-overlap: 80
+    crypto:
+      # 主密钥只由部署环境注入；缺失/长度错误时 Worker 启动失败（ADR-0006）。
+      master-key: ${RICCON_MASTER_KEY:}
+      previous-master-key: ${RICCON_MASTER_KEY_PREVIOUS:}
+      master-key-id: ${RICCON_MASTER_KEY_ID:mk-1}
+    service-token:
+      # API → Worker HMAC 共享密钥；缺失/过短时启动失败。生产不得写入仓库。
+      secret: ${RICCON_SERVICE_TOKEN_SECRET:}
+    model:
+      connect-timeout: 5s
+      request-timeout: 60s
+      max-attempts: 3
+      retry-delays: 200ms,1s
+      # 仅本地测试允许 http 模型端点；生产必须为 false。
+      allow-insecure-http: ${RICCON_MODEL_ALLOW_HTTP:false}
+      default-max-output-tokens: 2048
+    chat:
+      max-concurrent-streams: ${RICCON_CHAT_MAX_STREAMS:16}
+      idle-timeout: 60s
+      max-duration: 10m
+      max-history-messages: 40
+    mcp:
+      # M02 只允许平台内置白名单；不在名单中的 server 即使有租户授权也会拒绝。
+      allowed-server-codes: ${RICCON_MCP_ALLOWED_SERVERS:riccon-builtin}
+      allow-stdio: ${RICCON_MCP_ALLOW_STDIO:false}
+      allow-insecure-http: ${RICCON_MCP_ALLOW_HTTP:false}
+      request-timeout: 30s
+      initialization-timeout: 15s
+      max-result-bytes: 65536
+      params-preview-max-length: 500
+    agent:
+      max-iterations: 4
+      knowledge-top-k: 5
+      file-chunk-limit: 5
+      max-chunk-chars: 2000
+      retrieval-candidate-limit: 60
 
-# M01 不配置任何模型或 MCP 凭据；M02 起通过环境变量注入，禁止写入仓库与镜像。
+# M02 起模型与 MCP 凭据通过环境变量注入，禁止写入仓库与镜像。

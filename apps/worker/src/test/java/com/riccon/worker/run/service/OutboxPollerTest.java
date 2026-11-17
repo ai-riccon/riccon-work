@@ -49,7 +49,7 @@ class OutboxPollerTest extends WorkerIntegrationTestBase {
     void pollOnce_unsupportedEvent_marksDead() {
         Seed seed = seedFileRun("tenant-a");
         UUID eventId =
-                data.createOutbox("tenant-a", seed.runId(), EventTypes.AGENT_RUN_REQUESTED, "{}", "unsupported-1");
+                data.createOutbox("tenant-a", seed.runId(), "riccon.agent.run.unknown.v1", "{}", "unsupported-1");
 
         assertThat(poller.pollOnce()).isEqualTo(1);
 

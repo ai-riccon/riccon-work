@@ -108,6 +108,21 @@ public class EventPayloadParser {
     }
 
     /**
+     * 读取必填文本字段。
+     *
+     * @param payload JSON 对象
+     * @param field 字段名
+     * @return 非空文本
+     */
+    public String requiredText(JsonNode payload, String field) {
+        JsonNode node = payload.get(field);
+        if (node == null || !node.isTextual() || node.asText().isBlank()) {
+            throw invalid("payload field " + field + " must be a non-blank string");
+        }
+        return node.asText();
+    }
+
+    /**
      * 构造不可重试的 payload 错误。
      *
      * @param message 脱敏摘要

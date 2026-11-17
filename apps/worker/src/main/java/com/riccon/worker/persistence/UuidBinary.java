@@ -1,25 +1,16 @@
 package com.riccon.worker.persistence;
 
 import java.nio.ByteBuffer;
-import java.security.SecureRandom;
 import java.util.UUID;
 
 /**
- * UUIDv7 生成与 {@code BINARY(16)} 编解码。
+ * UUIDv7 编解码与生成入口。
  *
  * <p>数据库中的业务 ID 一律为应用生成的 UUIDv7（ADR-0012）；本类只在持久化边界使用，
- * 业务层传 {@link UUID}，不暴露字节数组。UUIDv7 高位包含毫秒时间戳，满足 outbox 按 id 排序。
+ * 业务层传 {@link UUID}，不暴露字节数组。生成逻辑位于 {@link com.riccon.worker.common.UuidV7}，
+ * 避免 service 层依赖 persistence 包。
  */
 public final class UuidBinary {
-
-    /** UUIDv7 的版本号位于第 48–51 位。 */
-    private static final long VERSION_7 = 0x7000L;
-
-    /** RFC 9562 variant 位。 */
-    private static final long RFC_VARIANT = 0x8000000000000000L;
-
-    /** 随机数生成器；UUIDv7 允许使用普通安全随机数。 */
-    private static final SecureRandom RANDOM = new SecureRandom();
 
     /** 工具类禁止实例化。 */
     private UuidBinary() {}
@@ -30,12 +21,7 @@ public final class UuidBinary {
      * @return 时间有序的 UUIDv7
      */
     public static UUID newV7() {
-        long timestamp = System.currentTimeMillis() & 0xFFFFFFFFFFFFL;
-        long randomA = RANDOM.nextLong() & 0x0FFFL;
-        long randB = RANDOM.nextLong() & 0x3FFFFFFFFFFFFFFFL;
-        long mostSignificantBits = (timestamp << 16) | VERSION_7 | randomA;
-        long leastSignificantBits = RFC_VARIANT | randB;
-        return new UUID(mostSignificantBits, leastSignificantBits);
+        return com.riccon.worker.common.UuidV7.generate();
     }
 
     /**
