@@ -25,6 +25,14 @@ export function Outlet() {
   return <div data-testid="umi-outlet" />;
 }
 
+/** useNavigate 替身：页面测试通过 props 注入导航断言；这里只保证 hook 可调用。 */
+export function useNavigate() {
+  return (to: string, options?: { replace?: boolean }) => {
+    void to;
+    void options;
+  };
+}
+
 /** useLocation 替身：固定为管理端总览，用于断言菜单激活态。 */
 export function useLocation() {
   return { pathname: '/admin/overview' };

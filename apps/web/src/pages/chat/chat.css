@@ -1,0 +1,303 @@
+/* J1 工作空间布局：桌面为左侧会话列表 + 右侧对话，窄屏改为上下布局。 */
+.chat-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-width: 100vw;
+  overflow: hidden;
+  background: #fff;
+}
+
+.chat-header {
+  border-bottom: 1px solid #f0f0f0;
+  background: #fff;
+}
+
+.chat-header-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 24px;
+}
+
+.chat-header-title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+.chat-header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.chat-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-main {
+  display: flex;
+  flex: 1;
+  gap: 16px;
+  min-height: 0;
+  padding: 16px;
+}
+
+.chat-sidebar {
+  display: flex;
+  flex: 0 0 260px;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding-right: 16px;
+  border-right: 1px solid #f0f0f0;
+  overflow: auto;
+}
+
+.chat-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.chat-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.chat-file-panel {
+  max-height: 220px;
+  padding: 12px;
+  margin-bottom: 12px;
+  overflow: auto;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.chat-file-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chat-file-hint {
+  display: block;
+  margin-top: 4px;
+}
+
+.chat-file-list {
+  padding: 0;
+  margin: 8px 0 0;
+  list-style: none;
+}
+
+.chat-file-list li {
+  padding: 6px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.chat-file-list li:last-child {
+  border-bottom: 0;
+}
+
+.chat-file-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.chat-file-name {
+  flex: 1 1 160px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-messages {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chat-message-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.chat-composer {
+  margin-top: 12px;
+}
+
+.chat-composer-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  margin-bottom: 4px;
+}
+
+.chat-composer-hint {
+  display: block;
+  margin-top: 8px;
+}
+
+.message-text {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.stream-tail {
+  display: inline-block;
+  width: 0.6em;
+  margin-left: 2px;
+  color: #0958d9;
+  animation: chat-cursor 1s steps(2, start) infinite;
+}
+
+@keyframes chat-cursor {
+  to {
+    visibility: hidden;
+  }
+}
+
+.citation-block {
+  padding-top: 8px;
+  margin-top: 8px;
+  border-top: 1px dashed #d9d9d9;
+}
+
+.citation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0;
+  margin: 6px 0 0;
+  list-style: none;
+}
+
+.citation-link {
+  height: auto;
+  padding: 0;
+  text-align: left;
+  white-space: normal;
+}
+
+.no-citation-note {
+  display: block;
+  margin-top: 8px;
+}
+
+.status-tag {
+  margin-top: 8px;
+}
+
+.message-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.error-code {
+  font-size: 12px;
+}
+
+.citation-snippet {
+  padding: 8px 12px;
+  margin: 8px 0 0;
+  background: #f5f5f5;
+  border-left: 3px solid #0958d9;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* 会话项使用原生 button，保证键盘可聚焦与 Enter/Space 可切换。 */
+.conversation-link {
+  display: block;
+  width: 100%;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-link[aria-current='true'] {
+  font-weight: 600;
+}
+
+.file-input {
+  display: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 窄屏：会话列表置顶并限制高度，对话区保持可见且不产生页面横向滚动。 */
+@media (max-width: 768px) {
+  .chat-header-inner {
+    padding: 12px 16px;
+  }
+
+  .chat-main {
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .chat-sidebar {
+    flex: none;
+    width: 100%;
+    max-height: 180px;
+    padding-right: 0;
+    padding-bottom: 8px;
+    border-right: 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .chat-file-panel {
+    max-height: 180px;
+  }
+
+  .chat-panel {
+    min-height: 0;
+  }
+}

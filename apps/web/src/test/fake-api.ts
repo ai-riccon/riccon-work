@@ -1,0 +1,235 @@
+import { vi } from 'vitest';
+import type { RicconApi } from '@/services/api/client';
+import { ApiError } from '@/services/api/errors';
+import type {
+  ChatEvent,
+  Conversation,
+  ConversationDetail,
+  Message,
+  Page,
+  SessionInfo,
+  Workspace,
+  WorkspaceFile,
+} from '@/services/api/types';
+
+/** 测试用会话；字段与 OpenAPI `SessionInfo` 对齐。 */
+export const DEMO_SESSION: SessionInfo = {
+  authenticated: true,
+  user: {
+    id: 'user-1',
+    username: 'demo',
+    displayName: '演示员工',
+    email: null,
+    status: 'ACTIVE',
+    roles: ['MEMBER'],
+    lastLoginAt: '2026-11-17T08:00:00.000Z',
+    createdAt: '2026-11-17T08:00:00.000Z',
+  },
+  tenant: {
+    id: 'tenant-a',
+    name: '示例企业',
+    status: 'ACTIVE',
+    retentionDays: 180,
+    createdAt: '2026-11-17T08:00:00.000Z',
+  },
+  roles: ['MEMBER'],
+  permissions: ['workspace.read', 'conversation.read', 'conversation.write'],
+  csrfToken: 'csrf-token-for-tests',
+  expiresAt: '2026-11-17T09:00:00.000Z',
+};
+
+/** 测试用工作空间。 */
+export const DEMO_WORKSPACE: Workspace = {
+  id: 'workspace-1',
+  kind: 'PERSONAL',
+  name: '我的工作空间',
+  description: null,
+  ownerUserId: 'user-1',
+  status: 'ACTIVE',
+  createdAt: '2026-11-17T08:00:00.000Z',
+  updatedAt: '2026-11-17T08:00:00.000Z',
+};
+
+/**
+ * 构造分页响应。
+ *
+ * @param items 列表项
+ * @returns Page
+ */
+export function pageOf<T>(items: T[]): Page<T> {
+  return {
+    page: 1,
+    size: 100,
+    total: items.length,
+    totalPages: items.length > 0 ? 1 : 0,
+    items,
+  };
+}
+
+/**
+ * 构造会话。
+ *
+ * @param overrides 局部覆盖
+ * @returns Conversation
+ */
+export function makeConversation(overrides: Partial<Conversation> = {}): Conversation {
+  return {
+    id: 'conversation-1',
+    workspaceId: DEMO_WORKSPACE.id,
+    title: '示例会话',
+    status: 'ACTIVE',
+    lastMessageAt: '2026-11-17T08:10:00.000Z',
+    createdAt: '2026-11-17T08:00:00.000Z',
+    updatedAt: '2026-11-17T08:10:00.000Z',
+    ...overrides,
+  };
+}
+
+/**
+ * 构造服务端消息。
+ *
+ * @param overrides 局部覆盖
+ * @returns Message
+ */
+export function makeMessage(overrides: Partial<Message> = {}): Message {
+  return {
+    id: 'message-1',
+    conversationId: 'conversation-1',
+    seq: 1,
+    role: 'USER',
+    content: '请总结文件',
+    status: 'COMPLETED',
+    citations: [],
+    createdAt: '2026-11-17T08:10:00.000Z',
+    ...overrides,
+  };
+}
+
+/**
+ * 构造文件。
+ *
+ * @param overrides 局部覆盖
+ * @returns WorkspaceFile
+ */
+export function makeFile(overrides: Partial<WorkspaceFile> = {}): WorkspaceFile {
+  return {
+    id: 'file-1',
+    workspaceId: DEMO_WORKSPACE.id,
+    conversationId: 'conversation-1',
+    originalName: '季度报告.pdf',
+    format: 'PDF',
+    mimeType: 'application/pdf',
+    sizeBytes: 2048,
+    sha256: 'a'.repeat(64),
+    status: 'AVAILABLE',
+    parse: {
+      id: 'parse-1',
+      attempt: 1,
+      status: 'SUCCEEDED',
+      pageCount: 3,
+      chunkCount: 4,
+      errorCode: null,
+      errorMessage: null,
+      startedAt: '2026-11-17T08:00:00.000Z',
+      finishedAt: '2026-11-17T08:00:01.000Z',
+    },
+    createdAt: '2026-11-17T08:00:00.000Z',
+    deletedAt: null,
+    ...overrides,
+  };
+}
+
+/**
+ * 构造会话详情。
+ *
+ * @param messages 消息列表
+ * @param overrides 会话覆盖
+ * @returns ConversationDetail
+ */
+export function makeDetail(
+  messages: Message[] = [],
+  overrides: Partial<Conversation> = {},
+): ConversationDetail {
+  const conversation = makeConversation(overrides);
+  return { ...conversation, messages };
+}
+
+/** 构造完成的 SSE 事件。 */
+export function completedEvent(overrides: Partial<ChatEvent> = {}): ChatEvent {
+  return {
+    eventId: 'event-completed',
+    eventType: 'riccon.chat.completed.v1',
+    version: 1,
+    occurredAt: '2026-11-17T08:10:00.000Z',
+    tenantId: 'tenant-a',
+    runId: 'run-1',
+    messageId: 'assistant-1',
+    traceId: 'trace-1',
+    data: { finishReason: 'stop', firstTokenMs: 120 },
+    ...overrides,
+  } as ChatEvent;
+}
+
+/**
+ * 创建可注入的 fake API。
+ *
+ * 默认行为是“已登录、一个工作空间、空会话列表”，测试按需覆盖单个方法；
+ * 所有方法都是 vi.fn，便于断言调用次数与参数。
+ *
+ * @param overrides 局部覆盖
+ * @returns RicconApi
+ */
+export function createFakeApi(overrides: Partial<RicconApi> = {}): RicconApi {
+  let conversationSequence = 0;
+  const base: RicconApi = {
+    getSession: vi.fn(async () => DEMO_SESSION),
+    login: vi.fn(async () => DEMO_SESSION),
+    logout: vi.fn(async () => undefined),
+    listWorkspaces: vi.fn(async () => pageOf([DEMO_WORKSPACE])),
+    listConversations: vi.fn(async () => pageOf([])),
+    createConversation: vi.fn(async (workspaceId: string) => {
+      conversationSequence += 1;
+      return makeConversation({
+        id: `conversation-new-${conversationSequence}`,
+        workspaceId,
+        title: null,
+      });
+    }),
+    getConversation: vi.fn(async () => {
+      throw new ApiError('会话不存在', {
+        status: 404,
+        code: 'RICCON-TENANT-404',
+      });
+    }),
+    listMessages: vi.fn(async () => pageOf<Message>([])),
+    listFiles: vi.fn(async () => pageOf<WorkspaceFile>([])),
+    getFile: vi.fn(async (fileId: string) => makeFile({ id: fileId })),
+    uploadFile: vi.fn(async (_workspaceId: string, conversationId: string, file: File) =>
+      makeFile({ id: `file-${file.name}`, conversationId, originalName: file.name }),
+    ),
+    retryFileParse: vi.fn(async (fileId: string) =>
+      makeFile({
+        id: fileId,
+        parse: {
+          id: 'parse-retry',
+          attempt: 2,
+          status: 'PENDING',
+          errorCode: null,
+          errorMessage: null,
+          startedAt: '2026-11-17T08:00:02.000Z',
+          finishedAt: null,
+        },
+      }),
+    ),
+    getFileDownloadUrl: vi.fn(async () => ({
+      url: 'https://files.example.test/report.pdf',
+      expiresAt: '2026-11-17T09:00:00.000Z',
+    })),
+    sendMessage: vi.fn(async function* sendMessageGenerator() {
+      yield completedEvent();
+    }),
+    stopGeneration: vi.fn(async () => undefined),
+  };
+
+  return { ...base, ...overrides };
+}
