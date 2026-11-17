@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0012",
+  "module_id": "M02",
+  "title": "J1/J2 API 基础：认证、租户、RBAC、审计",
+  "owner": "riccon/builder",
+  "status": "review",
+  "write_scope": [
+    "apps/api/**"
+  ],
+  "acceptance": [
+    "Spring Session JDBC + CSRF + 内置账号登录/登出/me，bcrypt 种子用户",
+    "租户过滤 + TenantJdbc/PlatformJdbc + RBAC 强制，跨租户测试通过",
+    "审计 append-only 写入与关键动作事件，写失败使业务失败",
+    "Flyway V1–V7 在干净 MySQL 8.4 成功，API 启动健康",
+    "./mvnw verify 与 Testcontainers 集成测试通过"
+  ],
+  "evidence": [
+    "EV-0150",
+    "EV-0154",
+    "EV-0155",
+    "EV-0156",
+    "EV-0157"
+  ],
+  "tools_used": [
+    "git",
+    "maven",
+    "docker",
+    "jdk21"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-17T12:22:32.476Z",
+  "updated_at": "2026-11-17T13:58:59.405Z",
+  "baseline_commit": "d8d6b06",
+  "end_commit": "e7b1282"
+}
