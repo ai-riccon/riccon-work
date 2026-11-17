@@ -1,0 +1,255 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://riccon.example/contracts/events/sse/run-progress.v1.schema.json",
+  "title": "Riccon 报告任务进度 SSE 事件 v1",
+  "description": "API 根据 agent_run、agent_run_stage 与 approval 的权威状态派生并推送给浏览器。事件只携带 ID、状态与脱敏摘要，不携带提示词、文件原文或工具结果原文。",
+  "$defs": {
+    "envelope": {
+      "type": "object",
+      "required": [
+        "eventId",
+        "eventType",
+        "version",
+        "occurredAt",
+        "tenantId",
+        "runId",
+        "researchTaskId",
+        "traceId",
+        "data"
+      ],
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "eventType": {
+          "type": "string",
+          "enum": [
+            "riccon.run.stage.v1",
+            "riccon.run.approval.required.v1",
+            "riccon.run.approval.decided.v1",
+            "riccon.run.completed.v1",
+            "riccon.run.failed.v1",
+            "riccon.run.cancelled.v1"
+          ]
+        },
+        "version": {
+          "type": "integer",
+          "const": 1
+        },
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "runId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "researchTaskId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "traceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "data": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "stage": {
+      "type": "object",
+      "required": ["stage", "attempt", "status"],
+      "properties": {
+        "stage": {
+          "type": "string",
+          "enum": ["RETRIEVAL", "TOOL", "APPROVAL", "GENERATION"]
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": ["RUNNING", "SUCCEEDED", "FAILED", "SKIPPED"]
+        },
+        "errorCode": {
+          "type": ["string", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "approvalRequired": {
+      "type": "object",
+      "required": ["approvalId", "toolName"],
+      "properties": {
+        "approvalId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "toolName": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "approvalDecided": {
+      "type": "object",
+      "required": ["approvalId", "decision", "decidedBy", "decidedAt"],
+      "properties": {
+        "approvalId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "decision": {
+          "type": "string",
+          "enum": ["APPROVE", "REJECT"]
+        },
+        "decidedBy": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "decidedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "completed": {
+      "type": "object",
+      "required": ["artifactId", "artifactVersion"],
+      "properties": {
+        "artifactId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "artifactVersion": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "failed": {
+      "type": "object",
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^RICCON-[A-Z]+-[0-9]{3}$"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "failedStage": {
+          "type": ["string", "null"],
+          "enum": ["RETRIEVAL", "TOOL", "APPROVAL", "GENERATION", null]
+        }
+      },
+      "additionalProperties": false
+    },
+    "cancelled": {
+      "type": "object",
+      "required": ["reason"],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "enum": ["USER_CANCELLED", "PERMISSION_REVOKED"]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "#/$defs/envelope"
+    },
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "eventType": {
+              "const": "riccon.run.stage.v1"
+            },
+            "data": {
+              "$ref": "#/$defs/stage"
+            }
+          },
+          "required": ["eventType", "data"]
+        },
+        {
+          "properties": {
+            "eventType": {
+              "const": "riccon.run.approval.required.v1"
+            },
+            "data": {
+              "$ref": "#/$defs/approvalRequired"
+            }
+          },
+          "required": ["eventType", "data"]
+        },
+        {
+          "properties": {
+            "eventType": {
+              "const": "riccon.run.approval.decided.v1"
+            },
+            "data": {
+              "$ref": "#/$defs/approvalDecided"
+            }
+          },
+          "required": ["eventType", "data"]
+        },
+        {
+          "properties": {
+            "eventType": {
+              "const": "riccon.run.completed.v1"
+            },
+            "data": {
+              "$ref": "#/$defs/completed"
+            }
+          },
+          "required": ["eventType", "data"]
+        },
+        {
+          "properties": {
+            "eventType": {
+              "const": "riccon.run.failed.v1"
+            },
+            "data": {
+              "$ref": "#/$defs/failed"
+            }
+          },
+          "required": ["eventType", "data"]
+        },
+        {
+          "properties": {
+            "eventType": {
+              "const": "riccon.run.cancelled.v1"
+            },
+            "data": {
+              "$ref": "#/$defs/cancelled"
+            }
+          },
+          "required": ["eventType", "data"]
+        }
+      ]
+    }
+  ]
+}

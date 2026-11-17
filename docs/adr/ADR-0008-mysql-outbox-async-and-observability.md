@@ -131,3 +131,7 @@ SELECT id FROM agent_run_outbox
 - 测试（M02 建立）：`IT-RUN-001` 重复投递不重复执行、`IT-RUN-002` 每租户并发上限与 429、`IT-RUN-003` 崩溃后租约恢复、`IT-SVC-001..003` 服务身份与租户绑定、`IT-OBS-001` traceId 贯穿
 - 指标清单与 `PERF-001`（`k6 run e2e/perf/mvc-smoke.js`，`RICCON_FAKE_MODEL=1`）
 - `docs/security/THREAT-MODEL.md` TM-17、TM-18、B-10
+
+## 澄清（不改本 ADR 决策）
+
+- 2026-11-17：`event_id`/运行 ID 的数据库表示由 ADR-0012 统一为 UUIDv7 `BINARY(16)`；outbox 领取索引与跨租户例外见 ADR-0016。本文的事件类型、状态机与幂等语义不变。

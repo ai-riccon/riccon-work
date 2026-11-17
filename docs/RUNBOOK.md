@@ -53,10 +53,15 @@ docker compose -f deploy/compose/docker-compose.test.yml down -v
 # 1. 启动测试栈
 docker compose -f deploy/compose/docker-compose.test.yml up -d --wait
 
-# 2. 启动 API（默认端口 8080，连接 13306 的 MySQL）
+# 2. 授予审计触发器所需权限（MySQL 8.4 默认开启 binlog；测试容器重启后需重设）
+#    生产等价要求：迁移账号具备 TRIGGER，且 log_bin_trust_function_creators=1 或等价权限。
+docker exec riccon-test-mysql mysql -uroot -p"${RICCON_DB_ROOT_PASSWORD:-riccon_root_test_only}" \
+  -e "SET GLOBAL log_bin_trust_function_creators=1"
+
+# 3. 启动 API（默认端口 8080，连接 13306 的 MySQL；启动时执行 Flyway V1–V7）
 ./mvnw -q -pl apps/api spring-boot:run
 
-# 3. 启动 Worker（默认端口 8081，无数据库依赖）
+# 4. 启动 Worker（默认端口 8081；M01 无数据库依赖，M02 持久化实现任务加入 JDBC 后需要 MySQL）
 ./mvnw -q -pl apps/worker spring-boot:run
 ```
 
@@ -67,7 +72,25 @@ curl -fsS http://127.0.0.1:8080/actuator/health
 curl -fsS http://127.0.0.1:8081/actuator/health
 ```
 
-M01 的安全过滤器链默认拒绝健康检查之外的路径，返回 4xx 属于预期行为。
+M01 的安全过滤器链默认拒绝健康检查之外的路径；M02 落地后只放行认证、CSRF 与健康检查，其余仍需会话与权限。
+
+### 引导管理员（M02）
+
+首次启动前通过环境变量注入，迁移**不会**创建默认账号或默认密码：
+
+```bash
+export RICCON_BOOTSTRAP_ADMIN_USERNAME=platform-admin
+export RICCON_BOOTSTRAP_ADMIN_PASSWORD='<至少 12 位，部署时注入，禁止入库>'
+```
+
+启动后确认日志只有 “created/skipped”，随后从环境中移除该变量。空库且未提供引导变量时，平台没有管理员，需要按运维流程补建。
+
+### 迁移与审计触发器
+
+- 迁移只由 `apps/api` 执行；Worker 不包含迁移文件。
+- V6 创建 `audit_event` 触发器；若 MySQL 返回 `ERROR 1419`，说明迁移账号缺少 `TRIGGER` 或 `log_bin_trust_function_creators` 未开启。不得删除触发器绕过。
+- 已应用的迁移文件禁止修改；新增迁移同步 `SchemaVersion.EXPECTED`（ADR-0010）。
+- Spring Session 表由 V7 创建，必须保持 `spring.session.jdbc.initialize-schema=never`，禁止应用自动建表。
 
 > 合同 `commands.run` 引用 `deploy/compose/docker-compose.dev.yml`，该文件由后续 ops 任务建立；M01 用测试栈替代。不要在 M01 中创建生产/预览编排。
 
@@ -107,7 +130,9 @@ M09 交付。发布前必须满足 T4 要求：
 ## 恢复
 
 - **API 无法启动**：检查 `RICCON_DB_*`、Flyway 迁移状态、端口占用；先恢复依赖再重启。
-- **Worker 无法启动**：检查模型/MCP 出网允许列表与凭据；Worker 不健康不应阻塞 API 登录。
+- **Worker 无法启动**：检查 `RICCON_WORKER_PORT`、模型/MCP 出网允许列表与凭据；Worker 不健康不应阻塞 API 登录。
+- **Worker 无法领取任务**：检查 MySQL 连接、`agent_run_outbox` 索引与租约时间、服务令牌密钥；不要让 API 直接执行 Agent。
+- **Spring Session 表缺失**：确认 Flyway V7 已应用且 `spring.session.jdbc.initialize-schema=never`；恢复数据库备份时不要遗漏 `SPRING_SESSION*`。
 - **OpenSearch 不可用**：M02 前不影响 API 启动；M05 起检索降级策略另行定义。
 - **对象存储不可用**：产物上传失败必须显式报错，不允许静默丢弃。
 - **审计写入失败**：业务操作失败并告警；禁止降级为只写日志。

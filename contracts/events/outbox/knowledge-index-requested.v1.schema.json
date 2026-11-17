@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://riccon.example/contracts/events/outbox/knowledge-index-requested.v1.schema.json",
+  "title": "riccon.knowledge.index.requested.v1",
+  "description": "API 在知识库文档登记后写入；Worker 解析来源文件、生成 knowledge_chunk 并写入租户 OpenSearch 索引。",
+  "allOf": [
+    {
+      "$ref": "../envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "required": ["eventType", "producer", "payload"],
+      "properties": {
+        "eventType": {
+          "const": "riccon.knowledge.index.requested.v1"
+        },
+        "producer": {
+          "const": "api"
+        },
+        "payload": {
+          "type": "object",
+          "required": ["documentId", "attempt"],
+          "properties": {
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "fileId": {
+              "type": ["string", "null"],
+              "format": "uuid",
+              "description": "演示语料可为空。"
+            },
+            "attempt": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  ]
+}

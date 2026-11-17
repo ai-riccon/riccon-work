@@ -20,6 +20,10 @@
       <groupId>com.riccon</groupId>
       <artifactId>riccon-platform-common</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.riccon</groupId>
+      <artifactId>riccon-platform-domain</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -33,9 +37,19 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-security</artifactId>
     </dependency>
+    <!-- M02 使用 Spring JDBC（无 ORM），见 ADR-0009 与 ADR-0012。 -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-flyway</artifactId>
+    </dependency>
+    <!-- 会话存 MySQL，保证重启与多实例下登录态可恢复；见 ADR-0013。 -->
+    <dependency>
+      <groupId>org.springframework.session</groupId>
+      <artifactId>spring-session-jdbc</artifactId>
     </dependency>
     <dependency>
       <groupId>org.flywaydb</groupId>
@@ -85,8 +99,10 @@
                   <searchTransitive>true</searchTransitive>
                   <excludes>
                     <exclude>io.agentscope:*</exclude>
+                    <exclude>org.hibernate:*</exclude>
+                    <exclude>jakarta.persistence:*</exclude>
                   </excludes>
-                  <message>apps/api 禁止依赖 agentscope；AgentScope 只允许出现在 apps/worker。</message>
+                  <message>apps/api 只允许 Spring JDBC；AgentScope 与 JPA/Hibernate 都不得进入同步 API。</message>
                 </bannedDependencies>
               </rules>
             </configuration>

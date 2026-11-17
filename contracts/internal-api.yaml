@@ -1,0 +1,242 @@
+openapi: 3.1.0
+info:
+  title: Riccon Internal Worker API
+  version: 1.0.0-m02
+  description: |
+    仅集群内部可达的 API → Worker 契约。浏览器、租户网络和公网不得访问本文件定义的端点。
+
+    ## 服务身份
+    - API 使用 HMAC-SHA256 签名的短期令牌，头名 `X-Riccon-Service-Token`，声明至少包含：
+      `iss=riccon-api`、`aud=riccon-worker`、`sub=user:<userId>`、`tenantId`、`runId`、`scope=agent:run`、`iat`、`exp`（≤300 秒）、`jti`。
+    - Worker 校验签名、`aud`、`exp`、`scope`，并强制 `tenantId == agent_run.tenant_id`；
+      不一致时返回 403 并写审计（TEN-014/TEN-017）。
+    - Worker 只接受该令牌，不接受浏览器 Cookie；除健康检查与内部端点外默认拒绝。
+
+    ## 流式
+    对话使用 SSE。事件载荷见 `contracts/events/sse/chat-event.v1.schema.json`；
+    Worker 不直接面向浏览器，API 负责转发并维持租户、trace 与错误映射。
+
+    ## 超时与取消
+    - 首字前失败返回 `application/problem+json`，不发送半截回答。
+    - 首字后失败发送 `riccon.chat.failed.v1` 并结束流；已生成内容由 API 保留。
+    - 客户端断开或员工停止时，API 取消上游请求；Worker 在下一个检查点终止模型调用。
+  contact:
+    name: Riccon 架构组
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Riccon-Proprietary
+servers:
+  - url: http://worker:8081
+    description: 仅集群内部地址；实际地址由部署配置注入。
+security:
+  - serviceToken: []
+tags:
+  - name: Internal
+    description: API → Worker 内部调用
+paths:
+  /internal/v1/chat/streams:
+    post:
+      tags: [Internal]
+      operationId: streamChat
+      summary: 执行一次对话流
+      description: |
+        API 先持久化用户消息与 `agent_run`，再调用本端点。Worker 读取会话历史、文件分块与知识库检索结果，
+        调用模型并流式返回增量；引用事件必须引用真实检索结果，不得编造。
+      parameters:
+        - $ref: "#/components/parameters/ServiceToken"
+        - $ref: "#/components/parameters/TraceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatStreamRequest"
+      responses:
+        "200":
+          description: SSE 事件流
+          headers:
+            X-Trace-Id:
+              $ref: "#/components/headers/TraceId"
+            Cache-Control:
+              description: 必须为 no-store
+              schema:
+                type: string
+                const: no-store
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: 每帧 `event:` 为 chat 事件类型，`data:` 为 chat-event.v1 JSON。
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /internal/v1/runs/{runId}/cancel:
+    post:
+      tags: [Internal]
+      operationId: cancelRun
+      summary: 取消运行
+      description: 幂等；已生成内容保留，运行进入 CANCELLED。取消优先于后续阶段。
+      parameters:
+        - $ref: "#/components/parameters/ServiceToken"
+        - $ref: "#/components/parameters/RunId"
+        - $ref: "#/components/parameters/TraceId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelRunRequest"
+      responses:
+        "202":
+          description: 已请求取消
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+components:
+  securitySchemes:
+    serviceToken:
+      type: apiKey
+      in: header
+      name: X-Riccon-Service-Token
+      description: HMAC-SHA256 短期服务令牌；Worker 校验签名、aud、exp、scope、tenantId 与 runId。
+  parameters:
+    ServiceToken:
+      name: X-Riccon-Service-Token
+      in: header
+      required: true
+      schema:
+        type: string
+    TraceId:
+      name: X-Trace-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        maxLength: 64
+    RunId:
+      name: runId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  headers:
+    TraceId:
+      description: 贯穿 API、Worker、日志与审计的 traceId。
+      schema:
+        type: string
+        maxLength: 64
+  responses:
+    BadRequest:
+      description: 请求体不合法或令牌与载荷不匹配
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Unauthorized:
+      description: 服务令牌缺失、过期或签名错误
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Forbidden:
+      description: 令牌租户与运行租户不一致、scope 不足或用户已禁用
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    NotFound:
+      description: 运行不存在或不属于令牌租户
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Conflict:
+      description: 运行已处于终态或重复取消
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    TooManyRequests:
+      description: Worker 并发已满，API 应快速失败并返回 429 给员工
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    InternalError:
+      description: Worker 内部错误；不返回堆栈、提示词或凭据
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+  schemas:
+    ProblemDetail:
+      type: object
+      required: [type, title, status, code, traceId]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          pattern: "^RICCON-[A-Z]+-[0-9]{3}$"
+        traceId:
+          type: string
+          maxLength: 64
+        tenantId:
+          type: [string, "null"]
+      additionalProperties: false
+    ChatStreamRequest:
+      type: object
+      required: [runId, tenantId, userId, conversationId, userMessageId]
+      properties:
+        runId:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          minLength: 1
+          maxLength: 64
+        userId:
+          type: string
+          format: uuid
+        conversationId:
+          type: string
+          format: uuid
+        userMessageId:
+          type: string
+          format: uuid
+        fileIds:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+            format: uuid
+      additionalProperties: false
+    CancelRunRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          enum: [USER_CANCELLED, CLIENT_DISCONNECT, PERMISSION_REVOKED]
+      additionalProperties: false

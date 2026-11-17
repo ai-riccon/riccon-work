@@ -35,7 +35,8 @@ class ModuleBoundaryTest {
                 .contains(
                         "com.riccon.api.ApiApplication",
                         "com.riccon.worker.WorkerApplication",
-                        "com.riccon.platform.common.tenant.TenantContext");
+                        "com.riccon.platform.common.tenant.TenantContext",
+                        "com.riccon.platform.domain.research.RunStatus");
     }
 
     /** agentscope 只能出现在 worker，api 与 platform 必须保持框架无关。 */
@@ -97,6 +98,82 @@ class ModuleBoundaryTest {
         platformCommonMustNotUseWeb.check(PROJECT_CLASSES);
     }
 
+    /** 共享领域词汇只能包含 JDK 类型，不能引入框架或部署物实现。 */
+    @Test
+    void platformDomainStaysFrameworkFree() {
+        ArchRule rule = noClasses()
+                .that()
+                .resideInAPackage("com.riccon.platform.domain..")
+                .should()
+                .dependOnClassesThat()
+                .resideInAnyPackage(
+                        "org.springframework..",
+                        "jakarta..",
+                        "io.agentscope..",
+                        "com.riccon.api..",
+                        "com.riccon.worker..")
+                .because("platform-domain 是 api、worker 与未来连接器共享的契约词汇，必须保持框架无关");
+        rule.check(PROJECT_CLASSES);
+    }
+
+    /** 项目不使用 JPA/Hibernate，持久化统一走 Spring JDBC + TenantJdbc（ADR-0009/ADR-0012）。 */
+    @Test
+    void jpaIsNotAllowed() {
+        ArchRule rule = noClasses()
+                .that()
+                .resideInAPackage("com.riccon..")
+                .should()
+                .dependOnClassesThat()
+                .resideInAnyPackage("jakarta.persistence..", "org.hibernate..")
+                .because("M02 数据访问统一为 Spring JDBC；引入 ORM 会绕过 TenantJdbc 与复合租户键");
+        rule.check(PROJECT_CLASSES);
+    }
+
+    /** JdbcClient 只能出现在持久化包，业务层不得直接拼接 SQL。 */
+    @Test
+    void jdbcClientOnlyLivesInPersistence() {
+        ArchRule rule = noClasses()
+                .that()
+                .resideInAPackage("com.riccon..")
+                .and()
+                .resideOutsideOfPackage("..persistence..")
+                .should()
+                .dependOnClassesThat()
+                .haveFullyQualifiedName("org.springframework.jdbc.core.simple.JdbcClient")
+                .allowEmptyShould(true)
+                .because("所有租户 SQL 必须经过 TenantJdbc；直接注入 JdbcClient 会绕过 tenant_id 守卫");
+        rule.check(PROJECT_CLASSES);
+    }
+
+    /** TenantJdbc 必须位于 persistence 包，便于 ArchUnit 与评审定位唯一强制点。 */
+    @Test
+    void tenantJdbcLivesInPersistencePackage() {
+        ArchRule rule = classes()
+                .that()
+                .haveSimpleName("TenantJdbc")
+                .should()
+                .resideInAPackage("..persistence..")
+                .allowEmptyShould(true)
+                .because("每个部署物有且只有一个 TenantJdbc（ADR-0009）");
+        rule.check(PROJECT_CLASSES);
+    }
+
+    /** 跨租户 PlatformJdbc 只能在 admin 包使用；M02 不提供跨租户业务查询。 */
+    @Test
+    void platformJdbcOnlyLivesInAdmin() {
+        ArchRule rule = noClasses()
+                .that()
+                .resideInAPackage("com.riccon..")
+                .and()
+                .resideOutsideOfPackage("..admin..")
+                .should()
+                .dependOnClassesThat()
+                .haveSimpleName("PlatformJdbc")
+                .allowEmptyShould(true)
+                .because("跨租户读取必须是显式管理路径并写审计；业务代码只能使用 TenantJdbc");
+        rule.check(PROJECT_CLASSES);
+    }
+
     /** MVC 分层依赖必须单向：controller -> service -> repository。 */
     @Test
     void mvcLayeringIsOneWay() {
@@ -110,13 +187,17 @@ class ModuleBoundaryTest {
                 .definedBy("..service..")
                 .layer("Repository")
                 .definedBy("..repository..")
+                .layer("Persistence")
+                .definedBy("..persistence..")
                 .whereLayer("Controller")
                 .mayNotBeAccessedByAnyLayer()
                 .whereLayer("Service")
                 .mayOnlyBeAccessedByLayers("Controller")
                 .whereLayer("Repository")
                 .mayOnlyBeAccessedByLayers("Service")
-                .because("MVC 保持小：依赖只能从外层指向内层，禁止 controller 被 service 反向调用");
+                .whereLayer("Persistence")
+                .mayOnlyBeAccessedByLayers("Repository")
+                .because("MVC 保持小：controller -> service -> repository -> persistence 单向依赖");
         rule.check(PROJECT_CLASSES);
     }
 

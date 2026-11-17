@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://riccon.example/contracts/events/outbox/file-parse-requested.v1.schema.json",
+  "title": "riccon.file.parse.requested.v1",
+  "description": "API 在文件元数据与 file.uploaded 审计提交后，于同一 outbox 事务写入；Worker 领取后解析文件并写 file_parse/file_chunk。",
+  "allOf": [
+    {
+      "$ref": "../envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "required": ["eventType", "producer", "payload"],
+      "properties": {
+        "eventType": {
+          "const": "riccon.file.parse.requested.v1"
+        },
+        "producer": {
+          "const": "api"
+        },
+        "payload": {
+          "type": "object",
+          "required": ["fileId", "parseId", "attempt"],
+          "properties": {
+            "fileId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "parseId": {
+              "type": "string",
+              "format": "uuid",
+              "description": "本次解析尝试 ID；重试生成新值。"
+            },
+            "attempt": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  ],
+  "examples": [
+    {
+      "eventId": "01930000-0000-7000-8000-000000000001",
+      "eventType": "riccon.file.parse.requested.v1",
+      "eventVersion": 1,
+      "occurredAt": "2026-11-17T10:00:00Z",
+      "tenantId": "tenant-a",
+      "traceId": "01J00000000000000000000000",
+      "producer": "api",
+      "idempotencyKey": "file:01930000-0000-7000-8000-000000000002:parse:1",
+      "payload": {
+        "fileId": "01930000-0000-7000-8000-000000000002",
+        "parseId": "01930000-0000-7000-8000-000000000003",
+        "attempt": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,3049 @@
+openapi: 3.1.0
+info:
+  title: Riccon API
+  version: 1.0.0-m02
+  description: |
+    Riccon M02 公开 REST 契约（J1 通用问答与文件处理、J2 市场调研报告）。
+
+    ## 认证与会话
+    - 登录使用内置账号：`tenantCode + username + password`；租户代码即 `tenant.id`。
+    - 会话存储在 MySQL（Spring Session JDBC），Cookie 名 `RICCON_SESSION`，`HttpOnly`、`SameSite=Lax`，非本地环境 `Secure`。
+    - 不使用 JWT；登出即使会话失效。M03 接入 OIDC，不改变本契约的会话语义。
+
+    ## CSRF
+    - 先调用 `GET /api/v1/auth/csrf` 获取令牌；登录后响应会返回新的 `csrfToken`。
+    - 所有 `POST/PUT/PATCH/DELETE` 必须带 `X-CSRF-TOKEN`；缺失或过期返回 403 `RICCON-AUTH-403`。
+    - 登录接口同样受 CSRF 保护；匿名会话只承载 CSRF 令牌，不承载业务数据。
+
+    ## 租户隔离
+    - 租户只从已认证主体派生；请求体、查询参数、请求头中的 `tenantId` 一律忽略，不一致时拒绝并审计。
+    - 跨租户对象统一返回 404 `RICCON-TENANT-404`，不泄露对象是否存在。
+    - 所有列表强制分页：`page` 从 1 开始，`size` 默认 20、最大 100。
+
+    ## 错误
+    统一使用 RFC 9457 `application/problem+json`，至少包含 `type/title/status/code/traceId`。
+    错误码格式 `RICCON-<DOMAIN>-<NNN>`；禁止返回堆栈、SQL、内部主机、密钥或完整提示词。
+
+    ## 流式
+    `POST /api/v1/conversations/{conversationId}/messages` 返回 `text/event-stream`，
+    事件载荷见 `contracts/events/sse/chat-event.v1.schema.json`；报告进度事件见
+    `contracts/events/sse/run-progress.v1.schema.json`。
+
+    ## M02 范围外
+    审计查询/导出（M03）、模型路由与配额（M04）、文档级 ACL/OCR（M05）、MCP 注册与凭据托管（M07）。
+    审计在 M02 只写不读，因此本文件不定义审计查询路径。
+  contact:
+    name: Riccon 架构组
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Riccon-Proprietary
+servers:
+  - url: /
+tags:
+  - name: Auth
+    description: 登录、会话与 CSRF
+  - name: Workspace
+    description: 个人/团队工作空间
+  - name: Files
+    description: 文件上传、解析状态与下载
+  - name: Conversations
+    description: 会话、消息与流式回答
+  - name: Knowledge
+    description: 租户知识库文档
+  - name: Research
+    description: 市场调研报告任务与运行时间线
+  - name: Approvals
+    description: 外部工具调用审批
+  - name: Artifacts
+    description: 报告产物与版本
+  - name: Catalog
+    description: 租户可见的模型与 MCP 工具
+  - name: Admin
+    description: 平台只读目录与租户/账号管理
+security:
+  - sessionCookie: []
+x-riccon-deferred:
+  - id: audit-query
+    status: M03
+    reason: M02-AC-15 要求界面与接口均无审计查询/删除能力；审计只写不读。
+  - id: model-routing-quota
+    status: M04
+    reason: M02 只有单一部署级 OpenAI 兼容端点。
+  - id: knowledge-acl-ocr
+    status: M05
+    reason: M02 知识库无文档级 ACL，仅演示语料。
+  - id: mcp-registration-credentials
+    status: M07
+    reason: M02 只允许平台内置白名单，不提供注册 UI 与凭据托管。
+paths:
+  /api/v1/auth/csrf:
+    get:
+      tags: [Auth]
+      operationId: getCsrfToken
+      summary: 获取 CSRF 令牌
+      description: 匿名可调用；会建立仅承载 CSRF 令牌的匿名会话。登录成功后使用登录响应中的新令牌。
+      security: []
+      responses:
+        "200":
+          description: CSRF 令牌
+          headers:
+            X-Trace-Id:
+              $ref: "#/components/headers/TraceId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CsrfToken"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: 内置账号登录
+      description: |
+        统一失败提示：租户不存在、账号不存在、密码错误、账号锁定均返回 401 `RICCON-AUTH-001`。
+        登录成功后轮换会话 ID，并返回新的 CSRF 令牌。
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: 登录成功
+          headers:
+            X-Trace-Id:
+              $ref: "#/components/headers/TraceId"
+            Set-Cookie:
+              description: 会话 Cookie（HttpOnly、SameSite=Lax、非本地 Secure）
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionInfo"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/auth/session:
+    get:
+      tags: [Auth]
+      operationId: getSession
+      summary: 读取当前会话
+      description: 返回当前用户、租户、角色、权限与当前 CSRF 令牌；未登录返回 401。
+      responses:
+        "200":
+          description: 当前会话
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionInfo"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: 登出
+      description: 使当前会话失效并写 `auth.logout` 审计。
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      responses:
+        "204":
+          description: 已登出
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/workspaces:
+    get:
+      tags: [Workspace]
+      operationId: listWorkspaces
+      summary: 列出可访问工作空间
+      description: 个人空间仅本人可见；M02 团队空间对本租户启用员工可见。
+      x-riccon-permission: workspace.read
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: kind
+          in: query
+          schema:
+            $ref: "#/components/schemas/WorkspaceKind"
+      responses:
+        "200":
+          description: 工作空间列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspacePage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Workspace]
+      operationId: createWorkspace
+      summary: 创建团队工作空间
+      x-riccon-permission: workspace.write
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceCreateRequest"
+      responses:
+        "201":
+          description: 已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workspace"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/workspaces/{workspaceId}:
+    get:
+      tags: [Workspace]
+      operationId: getWorkspace
+      summary: 读取工作空间
+      x-riccon-permission: workspace.read
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+      responses:
+        "200":
+          description: 工作空间
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workspace"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Workspace]
+      operationId: updateWorkspace
+      summary: 修改工作空间
+      x-riccon-permission: workspace.write
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceUpdateRequest"
+      responses:
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workspace"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags: [Workspace]
+      operationId: deleteWorkspace
+      summary: 归档工作空间
+      description: 软删除；个人空间禁止删除（409）。归档不删除历史会话与产物。
+      x-riccon-permission: workspace.write
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/CsrfToken"
+      responses:
+        "204":
+          description: 已归档
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/workspaces/{workspaceId}/files:
+    get:
+      tags: [Files]
+      operationId: listFiles
+      summary: 列出工作空间文件
+      x-riccon-permission: file.read
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: conversationId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: 文件列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FilePage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Files]
+      operationId: uploadFile
+      summary: 上传文件
+      description: |
+        支持 PDF、DOCX、XLSX、PNG、JPEG；单文件 ≤ 200 MB；单会话 ≤ 5 个文件。
+        同时校验扩展名、Content-Type 与 magic bytes；文件先写对象存储，再在同事务写元数据与 `file.uploaded` 审计。
+      x-riccon-permission: file.upload
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                conversationId:
+                  type: [string, "null"]
+                  format: uuid
+      responses:
+        "201":
+          description: 已上传并受理解析
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/File"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/files/{fileId}:
+    get:
+      tags: [Files]
+      operationId: getFile
+      summary: 读取文件元数据与解析状态
+      x-riccon-permission: file.read
+      parameters:
+        - $ref: "#/components/parameters/FileId"
+      responses:
+        "200":
+          description: 文件
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/File"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Files]
+      operationId: deleteFile
+      summary: 删除文件
+      description: 软删除元数据并写 `file.deleted` 审计；对象清理由提交后的补偿任务执行。
+      x-riccon-permission: file.delete
+      parameters:
+        - $ref: "#/components/parameters/FileId"
+        - $ref: "#/components/parameters/CsrfToken"
+      responses:
+        "204":
+          description: 已删除
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/files/{fileId}/download-url:
+    get:
+      tags: [Files]
+      operationId: getFileDownloadUrl
+      summary: 获取文件下载地址
+      description: 服务端校验归属后签发预签名 URL，TTL ≤ 300 秒；URL 绑定对象 key。
+      x-riccon-permission: file.read
+      parameters:
+        - $ref: "#/components/parameters/FileId"
+      responses:
+        "200":
+          description: 下载地址
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DownloadUrl"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/files/{fileId}/parse-retries:
+    post:
+      tags: [Files]
+      operationId: retryFileParse
+      summary: 重试文件解析
+      description: 仅允许对失败文件重试；创建新的解析尝试，不覆盖历史失败记录。
+      x-riccon-permission: file.upload
+      parameters:
+        - $ref: "#/components/parameters/FileId"
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "202":
+          description: 已受理
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/File"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /api/v1/workspaces/{workspaceId}/conversations:
+    get:
+      tags: [Conversations]
+      operationId: listConversations
+      summary: 列出工作空间会话
+      x-riccon-permission: conversation.read
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 会话列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Conversations]
+      operationId: createConversation
+      summary: 新建会话
+      x-riccon-permission: conversation.write
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationCreateRequest"
+      responses:
+        "201":
+          description: 已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/conversations/{conversationId}:
+    get:
+      tags: [Conversations]
+      operationId: getConversation
+      summary: 读取会话与最近消息
+      x-riccon-permission: conversation.read
+      parameters:
+        - $ref: "#/components/parameters/ConversationId"
+      responses:
+        "200":
+          description: 会话详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Conversations]
+      operationId: updateConversation
+      summary: 修改会话标题
+      x-riccon-permission: conversation.write
+      parameters:
+        - $ref: "#/components/parameters/ConversationId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationUpdateRequest"
+      responses:
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Conversations]
+      operationId: deleteConversation
+      summary: 删除会话
+      description: 软删除会话；消息与引用不物理删除，保留至租户保留期结束。
+      x-riccon-permission: conversation.write
+      parameters:
+        - $ref: "#/components/parameters/ConversationId"
+        - $ref: "#/components/parameters/CsrfToken"
+      responses:
+        "204":
+          description: 已删除
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/conversations/{conversationId}/messages:
+    get:
+      tags: [Conversations]
+      operationId: listMessages
+      summary: 列出会话消息
+      description: 按 seq 升序；使用 beforeSeq 做向前翻页。
+      x-riccon-permission: conversation.read
+      parameters:
+        - $ref: "#/components/parameters/ConversationId"
+        - name: beforeSeq
+          in: query
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 消息列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessagePage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Conversations]
+      operationId: sendMessage
+      summary: 发送消息并流式接收回答
+      description: |
+        先持久化用户消息并创建 `agent_run`，再以 SSE 转发 Worker 增量。事件类型：
+        `riccon.chat.started.v1`、`riccon.chat.delta.v1`、`riccon.chat.citation.v1`、
+        `riccon.chat.completed.v1`、`riccon.chat.failed.v1`、`riccon.chat.stopped.v1`。
+        首字前失败返回 ProblemDetail；首字后失败发送 failed 事件并结束流，已生成内容保留。
+      x-riccon-permission: conversation.write
+      parameters:
+        - $ref: "#/components/parameters/ConversationId"
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageRequest"
+      responses:
+        "200":
+          description: SSE 事件流
+          headers:
+            X-Trace-Id:
+              $ref: "#/components/headers/TraceId"
+            Cache-Control:
+              description: 必须为 no-store
+              schema:
+                type: string
+                const: no-store
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: |
+                  每帧格式：
+                  `event: <eventType>`
+                  `data: <chat-event.v1 JSON>`
+                  空行结束。事件 schema 见 contracts/events/sse/chat-event.v1.schema.json。
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/conversations/{conversationId}/stop:
+    post:
+      tags: [Conversations]
+      operationId: stopGeneration
+      summary: 停止当前回答
+      description: 幂等；已生成内容保留，消息状态置 STOPPED。
+      x-riccon-permission: conversation.write
+      parameters:
+        - $ref: "#/components/parameters/ConversationId"
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StopRunRequest"
+      responses:
+        "202":
+          description: 已请求停止
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/runs/{runId}:
+    get:
+      tags: [Conversations]
+      operationId: getRun
+      summary: 读取运行详情
+      description: 返回状态、阶段与模型调用记录（模型标识、开始/结束时间、结果状态）。
+      x-riccon-permission: conversation.read
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      responses:
+        "200":
+          description: 运行详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/knowledge/documents:
+    get:
+      tags: [Knowledge]
+      operationId: listKnowledgeDocuments
+      summary: 列出知识库文档
+      x-riccon-permission: knowledge.read
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/KnowledgeDocumentStatus"
+      responses:
+        "200":
+          description: 文档列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeDocumentPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Knowledge]
+      operationId: createKnowledgeDocument
+      summary: 将已上传文件加入知识库
+      description: 复用工作空间文件，异步解析并写入租户 OpenSearch 索引。
+      x-riccon-permission: knowledge.manage
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgeDocumentCreateRequest"
+      responses:
+        "202":
+          description: 已受理索引
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeDocument"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/knowledge/documents/{documentId}:
+    get:
+      tags: [Knowledge]
+      operationId: getKnowledgeDocument
+      summary: 读取知识库文档
+      x-riccon-permission: knowledge.read
+      parameters:
+        - $ref: "#/components/parameters/KnowledgeDocumentId"
+      responses:
+        "200":
+          description: 文档
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeDocument"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Knowledge]
+      operationId: deleteKnowledgeDocument
+      summary: 删除知识库文档
+      description: 软删除并异步清理索引；删除后不再出现在检索结果。
+      x-riccon-permission: knowledge.manage
+      parameters:
+        - $ref: "#/components/parameters/KnowledgeDocumentId"
+        - $ref: "#/components/parameters/CsrfToken"
+      responses:
+        "204":
+          description: 已删除
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/knowledge/documents/{documentId}/reindex:
+    post:
+      tags: [Knowledge]
+      operationId: reindexKnowledgeDocument
+      summary: 重建知识库索引
+      x-riccon-permission: knowledge.manage
+      parameters:
+        - $ref: "#/components/parameters/KnowledgeDocumentId"
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "202":
+          description: 已受理
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeDocument"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/workspaces/{workspaceId}/research-tasks:
+    get:
+      tags: [Research]
+      operationId: listResearchTasks
+      summary: 列出报告任务
+      x-riccon-permission: report.read
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/ResearchTaskStatus"
+      responses:
+        "200":
+          description: 任务列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResearchTaskPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Research]
+      operationId: createResearchTask
+      summary: 创建市场调研报告任务
+      description: 必须带 Idempotency-Key；同一用户重复提交同一键返回既有任务。
+      x-riccon-permission: report.create
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/CsrfToken"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResearchTaskCreateRequest"
+      responses:
+        "201":
+          description: 已创建并入队
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResearchTask"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /api/v1/research-tasks/{researchTaskId}:
+    get:
+      tags: [Research]
+      operationId: getResearchTask
+      summary: 读取任务详情与时间线
+      description: 包含阶段、审批、MCP 调用、来源与产物摘要；每条来源可对应任务时间线。
+      x-riccon-permission: report.read
+      parameters:
+        - $ref: "#/components/parameters/ResearchTaskId"
+      responses:
+        "200":
+          description: 任务详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResearchTaskDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/research-tasks/{researchTaskId}/cancel:
+    post:
+      tags: [Research]
+      operationId: cancelResearchTask
+      summary: 取消任务
+      x-riccon-permission: report.create
+      parameters:
+        - $ref: "#/components/parameters/ResearchTaskId"
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "202":
+          description: 已请求取消
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/research-tasks/{researchTaskId}/retry:
+    post:
+      tags: [Research]
+      operationId: retryResearchTask
+      summary: 重试失败阶段
+      description: 仅允许 FAILED 任务；沿用同一任务与产物，不产生重复产物。
+      x-riccon-permission: report.create
+      parameters:
+        - $ref: "#/components/parameters/ResearchTaskId"
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResearchTaskRetryRequest"
+      responses:
+        "202":
+          description: 已受理重试
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResearchTask"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/research-tasks/{researchTaskId}/events:
+    get:
+      tags: [Research]
+      operationId: streamResearchTaskEvents
+      summary: 订阅任务进度（SSE）
+      description: |
+        服务端按 `Last-Event-ID`/短轮询数据库状态派生事件；事件 schema 见
+        contracts/events/sse/run-progress.v1.schema.json。连接空闲超时 60 秒。
+      x-riccon-permission: report.read
+      parameters:
+        - $ref: "#/components/parameters/ResearchTaskId"
+        - name: Last-Event-ID
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: SSE 事件流
+          headers:
+            Cache-Control:
+              description: 必须为 no-store
+              schema:
+                type: string
+                const: no-store
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: 每帧 `event:` 为事件类型，`data:` 为 run-progress.v1 JSON。
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/approvals:
+    get:
+      tags: [Approvals]
+      operationId: listApprovals
+      summary: 列出待审批项
+      x-riccon-permission: report.approve
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/ApprovalStatus"
+      responses:
+        "200":
+          description: 审批列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/v1/approvals/{approvalId}/decision:
+    post:
+      tags: [Approvals]
+      operationId: decideApproval
+      summary: 批准或拒绝外部工具调用
+      description: |
+        仅待审批状态可决定；重复提交同一决定幂等返回既有结果，相反决定返回 409。
+        拒绝后任务终止，不触发生成阶段。
+      x-riccon-permission: report.approve
+      parameters:
+        - $ref: "#/components/parameters/ApprovalId"
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalDecisionRequest"
+      responses:
+        "200":
+          description: 审批结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Approval"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/workspaces/{workspaceId}/artifacts:
+    get:
+      tags: [Artifacts]
+      operationId: listArtifacts
+      summary: 列出工作空间产物
+      x-riccon-permission: artifact.read
+      parameters:
+        - $ref: "#/components/parameters/WorkspaceId"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 产物列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtifactPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/artifacts/{artifactId}:
+    get:
+      tags: [Artifacts]
+      operationId: getArtifact
+      summary: 读取产物与当前版本
+      x-riccon-permission: artifact.read
+      parameters:
+        - $ref: "#/components/parameters/ArtifactId"
+      responses:
+        "200":
+          description: 产物
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtifactDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/artifacts/{artifactId}/versions:
+    get:
+      tags: [Artifacts]
+      operationId: listArtifactVersions
+      summary: 列出版本
+      x-riccon-permission: artifact.read
+      parameters:
+        - $ref: "#/components/parameters/ArtifactId"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 版本列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtifactVersionPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/artifacts/{artifactId}/versions/{version}:
+    get:
+      tags: [Artifacts]
+      operationId: getArtifactVersion
+      summary: 读取指定版本与引用清单
+      x-riccon-permission: artifact.read
+      parameters:
+        - $ref: "#/components/parameters/ArtifactId"
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 版本详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtifactVersion"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/artifacts/{artifactId}/versions/{version}/download-url:
+    get:
+      tags: [Artifacts]
+      operationId: getArtifactDownloadUrl
+      summary: 获取产物下载地址
+      description: 预签名 URL，TTL ≤ 300 秒，绑定对象 key。
+      x-riccon-permission: artifact.read
+      parameters:
+        - $ref: "#/components/parameters/ArtifactId"
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 下载地址
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DownloadUrl"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/models:
+    get:
+      tags: [Catalog]
+      operationId: listAvailableModels
+      summary: 列出可用模型
+      x-riccon-permission: model.read
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 模型列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/v1/mcp-tools:
+    get:
+      tags: [Catalog]
+      operationId: listGrantedMcpTools
+      summary: 列出本租户已授权 MCP 工具
+      description: 只返回 enabled=TRUE 且工具状态可用的记录；M02 只读工具且每次调用需审批。
+      x-riccon-permission: mcp.read
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 工具列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpToolPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/v1/users:
+    get:
+      tags: [Admin]
+      operationId: listTenantUsers
+      summary: 列出租户账号
+      x-riccon-permission: tenant.user.manage
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 账号列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Admin]
+      operationId: createTenantUser
+      summary: 创建租户内账号
+      x-riccon-permission: tenant.user.manage
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreateRequest"
+      responses:
+        "201":
+          description: 已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/users/{userId}:
+    patch:
+      tags: [Admin]
+      operationId: updateTenantUserStatus
+      summary: 启用/禁用租户账号
+      x-riccon-permission: tenant.user.manage
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserStatusRequest"
+      responses:
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/users/{userId}/roles:
+    put:
+      tags: [Admin]
+      operationId: replaceTenantUserRoles
+      summary: 替换租户账号角色
+      description: 写 `permission.changed` 审计；不得授予超出自身的角色。
+      x-riccon-permission: tenant.role.manage
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRolesRequest"
+      responses:
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/admin/tenants:
+    get:
+      tags: [Admin]
+      operationId: listTenants
+      summary: 列出平台租户
+      description: 仅平台管理员；只返回租户元数据，不返回租户业务内容。
+      x-riccon-permission: platform.tenant.manage
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 租户列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Admin]
+      operationId: createTenant
+      summary: 创建租户
+      description: 创建租户、系统角色与权限映射；写 `tenant.created` 审计。
+      x-riccon-permission: platform.tenant.manage
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TenantCreateRequest"
+      responses:
+        "201":
+          description: 已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/admin/tenants/{tenantId}:
+    patch:
+      tags: [Admin]
+      operationId: updateTenant
+      summary: 更新租户状态与保留策略
+      x-riccon-permission: platform.tenant.manage
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TenantUpdateRequest"
+      responses:
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/admin/tenants/{tenantId}/users:
+    get:
+      tags: [Admin]
+      operationId: listTenantUsersForPlatform
+      summary: 平台管理员列出目标租户账号元数据
+      x-riccon-permission: platform.tenant.manage
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 账号列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Admin]
+      operationId: createTenantUserForPlatform
+      summary: 平台管理员在目标租户创建账号
+      x-riccon-permission: platform.tenant.manage
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreateRequest"
+      responses:
+        "201":
+          description: 已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/admin/tenants/{tenantId}/users/{userId}/roles:
+    put:
+      tags: [Admin]
+      operationId: replaceTenantUserRolesForPlatform
+      summary: 平台管理员替换目标租户账号角色
+      x-riccon-permission: platform.tenant.manage
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/UserId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRolesRequest"
+      responses:
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/admin/model-providers:
+    get:
+      tags: [Admin]
+      operationId: listModelProviders
+      summary: 平台模型供应商目录（只读）
+      x-riccon-permission: platform.model.read
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 供应商列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelProviderPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/v1/admin/models:
+    get:
+      tags: [Admin]
+      operationId: listModelsForPlatform
+      summary: 平台模型目录（只读）
+      x-riccon-permission: platform.model.read
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 模型列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/v1/admin/mcp-servers:
+    get:
+      tags: [Admin]
+      operationId: listMcpServers
+      summary: 平台 MCP server 目录（只读）
+      x-riccon-permission: platform.mcp.read
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: server 列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpServerPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/v1/admin/mcp-tools:
+    get:
+      tags: [Admin]
+      operationId: listMcpToolsForPlatform
+      summary: 平台 MCP 工具目录（只读）
+      x-riccon-permission: platform.mcp.read
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 工具列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpToolPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: RICCON_SESSION
+      description: 服务端会话 Cookie（HttpOnly、SameSite=Lax、非本地 Secure）。
+  parameters:
+    CsrfToken:
+      name: X-CSRF-TOKEN
+      in: header
+      required: true
+      description: CSRF 令牌；从 GET /api/v1/auth/csrf 或登录响应获取。
+      schema:
+        type: string
+        minLength: 16
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: 可选幂等键；同一主体、同一资源重复请求返回既有结果。
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+    Page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: size
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    WorkspaceId:
+      name: workspaceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    FileId:
+      name: fileId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ConversationId:
+      name: conversationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    RunId:
+      name: runId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ResearchTaskId:
+      name: researchTaskId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ApprovalId:
+      name: approvalId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ArtifactId:
+      name: artifactId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    KnowledgeDocumentId:
+      name: documentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TenantId:
+      name: tenantId
+      in: path
+      required: true
+      description: 平台管理员显式指定的目标租户代码。
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 64
+  headers:
+    TraceId:
+      description: 本次请求的 traceId；与错误响应和审计一致。
+      schema:
+        type: string
+        maxLength: 64
+  responses:
+    BadRequest:
+      description: 参数或请求体不合法
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Unauthorized:
+      description: 未认证或凭据错误；不泄露账号是否存在
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Forbidden:
+      description: 已认证但无权限或 CSRF 校验失败
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    NotFound:
+      description: 对象不存在或属于其他租户；统一 404，不泄露存在性
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Conflict:
+      description: 状态冲突、重复请求或超出会话文件上限
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    PayloadTooLarge:
+      description: 文件超过 200 MB
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    UnsupportedMediaType:
+      description: 不支持的文件格式
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    TooManyRequests:
+      description: 触发限流或队列背压
+      headers:
+        Retry-After:
+          description: 建议重试秒数
+          schema:
+            type: integer
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    InternalError:
+      description: 未预期错误；响应不包含堆栈、SQL、内部主机或密钥
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+  schemas:
+    ProblemDetail:
+      type: object
+      required: [type, title, status, code, traceId]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: [string, "null"]
+          format: uri
+        code:
+          type: string
+          pattern: "^RICCON-[A-Z]+-[0-9]{3}$"
+        traceId:
+          type: string
+          maxLength: 64
+        tenantId:
+          type: [string, "null"]
+          description: 脱敏后的租户标识；平台级事件为 platform
+      additionalProperties: false
+    CsrfToken:
+      type: object
+      required: [headerName, token]
+      properties:
+        headerName:
+          type: string
+          const: X-CSRF-TOKEN
+        token:
+          type: string
+          minLength: 16
+      additionalProperties: false
+    LoginRequest:
+      type: object
+      required: [tenantCode, username, password]
+      properties:
+        tenantCode:
+          type: string
+          minLength: 1
+          maxLength: 64
+        username:
+          type: string
+          minLength: 1
+          maxLength: 100
+        password:
+          type: string
+          minLength: 1
+          maxLength: 200
+          format: password
+      additionalProperties: false
+    SessionInfo:
+      type: object
+      required:
+        [authenticated, user, tenant, roles, permissions, csrfToken, expiresAt]
+      properties:
+        authenticated:
+          type: boolean
+          const: true
+        user:
+          $ref: "#/components/schemas/UserSummary"
+        tenant:
+          $ref: "#/components/schemas/TenantSummary"
+        roles:
+          type: array
+          items:
+            type: string
+          example: [MEMBER]
+        permissions:
+          type: array
+          items:
+            type: string
+          example: [workspace.read, conversation.write]
+        csrfToken:
+          type: string
+          minLength: 16
+        expiresAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    UserSummary:
+      type: object
+      required: [id, username, displayName, status, roles]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        displayName:
+          type: string
+        email:
+          type: [string, "null"]
+        status:
+          $ref: "#/components/schemas/UserStatus"
+        roles:
+          type: array
+          items:
+            type: string
+        lastLoginAt:
+          type: [string, "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    TenantSummary:
+      type: object
+      required: [id, name, status, retentionDays]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/TenantStatus"
+        plan:
+          type: string
+        retentionDays:
+          type: integer
+          minimum: 30
+        createdAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    UserStatus:
+      type: string
+      enum: [ACTIVE, DISABLED]
+    TenantStatus:
+      type: string
+      enum: [ACTIVE, SUSPENDED]
+    WorkspaceKind:
+      type: string
+      enum: [PERSONAL, TEAM]
+    WorkspaceStatus:
+      type: string
+      enum: [ACTIVE, ARCHIVED]
+    FileStatus:
+      type: string
+      enum: [AVAILABLE, DELETED]
+    FileFormat:
+      type: string
+      enum: [PDF, DOCX, XLSX, PNG, JPEG]
+    ParseStatus:
+      type: string
+      enum: [PENDING, RUNNING, SUCCEEDED, FAILED]
+    MessageRole:
+      type: string
+      enum: [USER, ASSISTANT, SYSTEM, TOOL]
+    MessageStatus:
+      type: string
+      enum: [PENDING, STREAMING, COMPLETED, STOPPED, FAILED]
+    CitationSourceType:
+      type: string
+      enum: [FILE, KNOWLEDGE]
+    LocatorType:
+      type: string
+      enum: [PAGE, SHEET, PARAGRAPH]
+    KnowledgeDocumentStatus:
+      type: string
+      enum: [PENDING, INDEXING, INDEXED, FAILED, DELETED]
+    ResearchTaskStatus:
+      type: string
+      enum: [PENDING, RUNNING, WAITING_APPROVAL, SUCCEEDED, FAILED, CANCELLED]
+    RunStatus:
+      type: string
+      enum:
+        [
+          PENDING,
+          RUNNING,
+          WAITING_APPROVAL,
+          RETRY_WAIT,
+          SUCCEEDED,
+          FAILED,
+          CANCELLED,
+        ]
+    RunStage:
+      type: string
+      enum: [RETRIEVAL, TOOL, APPROVAL, GENERATION]
+    StageStatus:
+      type: string
+      enum: [RUNNING, SUCCEEDED, FAILED, SKIPPED]
+    ApprovalStatus:
+      type: string
+      enum: [PENDING, APPROVED, REJECTED, EXPIRED, CANCELLED]
+    ApprovalDecision:
+      type: string
+      enum: [APPROVE, REJECT]
+    ArtifactStatus:
+      type: string
+      enum: [DRAFT, SAVED, DELETED]
+    ModelPurpose:
+      type: string
+      enum: [CHAT, REPORT]
+    InvocationStatus:
+      type: string
+      enum: [STARTED, SUCCEEDED, FAILED, CANCELLED]
+    McpToolRisk:
+      type: string
+      enum: [READ, WRITE]
+    McpInvocationStatus:
+      type: string
+      enum: [STARTED, SUCCEEDED, FAILED, DENIED]
+    PageMeta:
+      type: object
+      required: [page, size, total, totalPages]
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          format: int64
+          minimum: 0
+    Workspace:
+      type: object
+      required: [id, kind, name, ownerUserId, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          $ref: "#/components/schemas/WorkspaceKind"
+        name:
+          type: string
+        description:
+          type: [string, "null"]
+        ownerUserId:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/WorkspaceStatus"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    WorkspacePage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Workspace"
+    WorkspaceCreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: [string, "null"]
+          maxLength: 1000
+      additionalProperties: false
+    WorkspaceUpdateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: [string, "null"]
+          maxLength: 1000
+      additionalProperties: false
+    FileParse:
+      type: object
+      required: [id, attempt, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        attempt:
+          type: integer
+          minimum: 1
+        status:
+          $ref: "#/components/schemas/ParseStatus"
+        parserVersion:
+          type: [string, "null"]
+        pageCount:
+          type: [integer, "null"]
+        sheetCount:
+          type: [integer, "null"]
+        chunkCount:
+          type: [integer, "null"]
+        errorCode:
+          type: [string, "null"]
+        errorMessage:
+          type: [string, "null"]
+        startedAt:
+          type: [string, "null"]
+          format: date-time
+        finishedAt:
+          type: [string, "null"]
+          format: date-time
+      additionalProperties: false
+    File:
+      type: object
+      required:
+        [
+          id,
+          workspaceId,
+          originalName,
+          format,
+          mimeType,
+          sizeBytes,
+          sha256,
+          status,
+          createdAt,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceId:
+          type: string
+          format: uuid
+        conversationId:
+          type: [string, "null"]
+          format: uuid
+        originalName:
+          type: string
+        format:
+          $ref: "#/components/schemas/FileFormat"
+        mimeType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+        sha256:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+        status:
+          $ref: "#/components/schemas/FileStatus"
+        parse:
+          oneOf:
+            - $ref: "#/components/schemas/FileParse"
+            - type: "null"
+        createdAt:
+          type: string
+          format: date-time
+        deletedAt:
+          type: [string, "null"]
+          format: date-time
+      additionalProperties: false
+    FilePage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/File"
+    DownloadUrl:
+      type: object
+      required: [url, expiresAt]
+      properties:
+        url:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    Conversation:
+      type: object
+      required: [id, workspaceId, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceId:
+          type: string
+          format: uuid
+        title:
+          type: [string, "null"]
+        status:
+          type: string
+          enum: [ACTIVE, ARCHIVED]
+        lastMessageAt:
+          type: [string, "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ConversationDetail:
+      allOf:
+        - $ref: "#/components/schemas/Conversation"
+        - type: object
+          required: [messages]
+          properties:
+            messages:
+              type: array
+              items:
+                $ref: "#/components/schemas/Message"
+    ConversationPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Conversation"
+    ConversationCreateRequest:
+      type: object
+      properties:
+        title:
+          type: [string, "null"]
+          maxLength: 200
+      additionalProperties: false
+    ConversationUpdateRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+      additionalProperties: false
+    Citation:
+      type: object
+      required: [ordinal, sourceType, title, snippet]
+      properties:
+        ordinal:
+          type: integer
+          minimum: 1
+        sourceType:
+          $ref: "#/components/schemas/CitationSourceType"
+        fileId:
+          type: [string, "null"]
+          format: uuid
+        knowledgeDocumentId:
+          type: [string, "null"]
+          format: uuid
+        chunkId:
+          type: [string, "null"]
+          format: uuid
+        locatorType:
+          $ref: "#/components/schemas/LocatorType"
+        pageNo:
+          type: [integer, "null"]
+          minimum: 1
+        sheetName:
+          type: [string, "null"]
+        cellRange:
+          type: [string, "null"]
+        paragraphNo:
+          type: [integer, "null"]
+          minimum: 1
+        title:
+          type: string
+        snippet:
+          type: string
+          maxLength: 1000
+        score:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 1
+      additionalProperties: false
+    Message:
+      type: object
+      required: [id, conversationId, seq, role, content, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversationId:
+          type: string
+          format: uuid
+        seq:
+          type: integer
+          format: int64
+          minimum: 1
+        role:
+          $ref: "#/components/schemas/MessageRole"
+        content:
+          type: string
+        status:
+          $ref: "#/components/schemas/MessageStatus"
+        clientMessageId:
+          type: [string, "null"]
+        runId:
+          type: [string, "null"]
+          format: uuid
+        modelId:
+          type: [string, "null"]
+          format: uuid
+        errorCode:
+          type: [string, "null"]
+        citations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Citation"
+        createdAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    MessagePage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Message"
+    SendMessageRequest:
+      type: object
+      required: [content, clientMessageId]
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        clientMessageId:
+          type: string
+          minLength: 8
+          maxLength: 64
+        fileIds:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+            format: uuid
+      additionalProperties: false
+    StopRunRequest:
+      type: object
+      required: [runId]
+      properties:
+        runId:
+          type: string
+          format: uuid
+      additionalProperties: false
+    ModelInvocation:
+      type: object
+      required: [id, modelId, modelKey, purpose, status, startedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        modelId:
+          type: string
+          format: uuid
+        modelKey:
+          type: string
+        purpose:
+          $ref: "#/components/schemas/ModelPurpose"
+        status:
+          $ref: "#/components/schemas/InvocationStatus"
+        firstTokenMs:
+          type: [integer, "null"]
+        durationMs:
+          type: [integer, "null"]
+        promptTokens:
+          type: [integer, "null"]
+        completionTokens:
+          type: [integer, "null"]
+        errorCode:
+          type: [string, "null"]
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: [string, "null"]
+          format: date-time
+      additionalProperties: false
+    RunStageRecord:
+      type: object
+      required: [stage, attempt, status]
+      properties:
+        stage:
+          $ref: "#/components/schemas/RunStage"
+        attempt:
+          type: integer
+          minimum: 1
+        status:
+          $ref: "#/components/schemas/StageStatus"
+        errorCode:
+          type: [string, "null"]
+        startedAt:
+          type: [string, "null"]
+          format: date-time
+        finishedAt:
+          type: [string, "null"]
+          format: date-time
+        details:
+          type: [object, "null"]
+          additionalProperties: true
+      additionalProperties: false
+    RunDetail:
+      type: object
+      required: [id, kind, status, attempt, startedAt, modelInvocations, stages]
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [CHAT, FILE_PARSE, KNOWLEDGE_INDEX, RESEARCH_REPORT]
+        status:
+          $ref: "#/components/schemas/RunStatus"
+        currentStage:
+          oneOf:
+            - $ref: "#/components/schemas/RunStage"
+            - type: "null"
+        attempt:
+          type: integer
+          minimum: 1
+        errorCode:
+          type: [string, "null"]
+        errorMessage:
+          type: [string, "null"]
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: [string, "null"]
+          format: date-time
+        modelInvocations:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelInvocation"
+        stages:
+          type: array
+          items:
+            $ref: "#/components/schemas/RunStageRecord"
+      additionalProperties: false
+    KnowledgeDocument:
+      type: object
+      required:
+        [
+          id,
+          title,
+          sourceType,
+          status,
+          checksum,
+          mimeType,
+          sizeBytes,
+          createdAt,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        sourceType:
+          type: string
+          enum: [UPLOAD, SEED]
+        fileId:
+          type: [string, "null"]
+          format: uuid
+        status:
+          $ref: "#/components/schemas/KnowledgeDocumentStatus"
+        checksum:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+        mimeType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+          minimum: 0
+        errorCode:
+          type: [string, "null"]
+        errorMessage:
+          type: [string, "null"]
+        indexedAt:
+          type: [string, "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    KnowledgeDocumentPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/KnowledgeDocument"
+    KnowledgeDocumentCreateRequest:
+      type: object
+      required: [title, fileId]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        fileId:
+          type: string
+          format: uuid
+      additionalProperties: false
+    ResearchTask:
+      type: object
+      required: [id, workspaceId, topic, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceId:
+          type: string
+          format: uuid
+        topic:
+          type: string
+        status:
+          $ref: "#/components/schemas/ResearchTaskStatus"
+        currentStage:
+          oneOf:
+            - $ref: "#/components/schemas/RunStage"
+            - type: "null"
+        mcpToolId:
+          type: [string, "null"]
+          format: uuid
+        currentRunId:
+          type: [string, "null"]
+          format: uuid
+        failureCode:
+          type: [string, "null"]
+        failureMessage:
+          type: [string, "null"]
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: [string, "null"]
+          format: date-time
+        finishedAt:
+          type: [string, "null"]
+          format: date-time
+    ResearchTaskDetail:
+      allOf:
+        - $ref: "#/components/schemas/ResearchTask"
+        - type: object
+          required: [stages, mcpInvocations, sources]
+          properties:
+            stages:
+              type: array
+              items:
+                $ref: "#/components/schemas/RunStageRecord"
+            approvals:
+              type: array
+              items:
+                $ref: "#/components/schemas/Approval"
+            mcpInvocations:
+              type: array
+              items:
+                $ref: "#/components/schemas/McpInvocation"
+            sources:
+              type: array
+              items:
+                $ref: "#/components/schemas/Citation"
+            artifact:
+              oneOf:
+                - $ref: "#/components/schemas/ArtifactDetail"
+                - type: "null"
+    ResearchTaskPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/ResearchTask"
+    ResearchTaskCreateRequest:
+      type: object
+      required: [topic, mcpToolId]
+      properties:
+        topic:
+          type: string
+          minLength: 4
+          maxLength: 500
+        mcpToolId:
+          type: string
+          format: uuid
+      additionalProperties: false
+    ResearchTaskRetryRequest:
+      type: object
+      properties:
+        fromStage:
+          type: ["string", "null"]
+          enum: [TOOL, GENERATION, null]
+          description: 为空时从失败阶段重试；只允许 TOOL 或 GENERATION。
+      additionalProperties: false
+    Approval:
+      type: object
+      required:
+        [
+          id,
+          researchTaskId,
+          runId,
+          stage,
+          attempt,
+          status,
+          actionType,
+          toolName,
+          paramsSha256,
+          createdAt,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        researchTaskId:
+          type: string
+          format: uuid
+        runId:
+          type: string
+          format: uuid
+        stage:
+          $ref: "#/components/schemas/RunStage"
+        attempt:
+          type: integer
+          minimum: 1
+        status:
+          $ref: "#/components/schemas/ApprovalStatus"
+        actionType:
+          type: string
+          const: MCP_TOOL_CALL
+        toolName:
+          type: string
+        paramsPreview:
+          type: [object, "null"]
+          additionalProperties: true
+        paramsSha256:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+        requestedBy:
+          type: string
+          format: uuid
+        decidedBy:
+          type: [string, "null"]
+          format: uuid
+        decidedAt:
+          type: [string, "null"]
+          format: date-time
+        decisionComment:
+          type: [string, "null"]
+        expiresAt:
+          type: [string, "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    ApprovalDecisionRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          $ref: "#/components/schemas/ApprovalDecision"
+        comment:
+          type: [string, "null"]
+          maxLength: 500
+      additionalProperties: false
+    ApprovalPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Approval"
+    McpInvocation:
+      type: object
+      required: [id, toolName, status, paramsSha256, startedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        toolName:
+          type: string
+        status:
+          $ref: "#/components/schemas/McpInvocationStatus"
+        paramsSha256:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+        resultSha256:
+          type: [string, "null"]
+          pattern: "^[a-f0-9]{64}$"
+        durationMs:
+          type: [integer, "null"]
+        errorCode:
+          type: [string, "null"]
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: [string, "null"]
+          format: date-time
+      additionalProperties: false
+    ArtifactCitation:
+      type: object
+      required: [ordinal, sourceType, title, snippet]
+      properties:
+        ordinal:
+          type: integer
+          minimum: 1
+        sourceType:
+          type: string
+          enum: [FILE, KNOWLEDGE, MCP]
+        fileId:
+          type: [string, "null"]
+          format: uuid
+        knowledgeDocumentId:
+          type: [string, "null"]
+          format: uuid
+        mcpInvocationId:
+          type: [string, "null"]
+          format: uuid
+        title:
+          type: string
+        snippet:
+          type: string
+          maxLength: 1000
+        locatorType:
+          oneOf:
+            - $ref: "#/components/schemas/LocatorType"
+            - type: "null"
+        pageNo:
+          type: [integer, "null"]
+        sheetName:
+          type: [string, "null"]
+        paragraphNo:
+          type: [integer, "null"]
+      additionalProperties: false
+    ArtifactVersion:
+      type: object
+      required:
+        [id, version, contentType, sizeBytes, sha256, createdAt, citations]
+      properties:
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          minimum: 1
+        contentType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+        sha256:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+        summary:
+          type: [string, "null"]
+        createdAt:
+          type: string
+          format: date-time
+        citations:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtifactCitation"
+      additionalProperties: false
+    Artifact:
+      type: object
+      required:
+        [
+          id,
+          workspaceId,
+          kind,
+          title,
+          status,
+          currentVersion,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceId:
+          type: string
+          format: uuid
+        researchTaskId:
+          type: [string, "null"]
+          format: uuid
+        kind:
+          type: string
+          const: REPORT
+        title:
+          type: string
+        status:
+          $ref: "#/components/schemas/ArtifactStatus"
+        currentVersion:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ArtifactDetail:
+      allOf:
+        - $ref: "#/components/schemas/Artifact"
+        - type: object
+          required: [currentVersionDetail]
+          properties:
+            currentVersionDetail:
+              oneOf:
+                - $ref: "#/components/schemas/ArtifactVersion"
+                - type: "null"
+    ArtifactPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Artifact"
+    ArtifactVersionPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/ArtifactVersion"
+    Model:
+      type: object
+      required:
+        [id, modelKey, displayName, contextWindow, maxOutputTokens, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        modelKey:
+          type: string
+        displayName:
+          type: string
+        contextWindow:
+          type: integer
+        maxOutputTokens:
+          type: integer
+        capabilities:
+          type: [object, "null"]
+          additionalProperties: true
+        inputPricePer1M:
+          type: [number, "null"]
+        outputPricePer1M:
+          type: [number, "null"]
+        status:
+          type: string
+          enum: [ACTIVE, DISABLED]
+      additionalProperties: false
+    ModelPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Model"
+    ModelProvider:
+      type: object
+      required: [id, code, name, protocol, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        protocol:
+          type: string
+          const: OPENAI_COMPATIBLE
+        status:
+          type: string
+          enum: [ACTIVE, DISABLED]
+      additionalProperties: false
+    ModelProviderPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/ModelProvider"
+    McpServer:
+      type: object
+      required: [id, code, name, transport, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        transport:
+          type: string
+          enum: [HTTP, STDIO]
+        status:
+          type: string
+          enum: [ACTIVE, DISABLED]
+      additionalProperties: false
+    McpServerPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/McpServer"
+    McpTool:
+      type: object
+      required: [id, name, riskLevel, requiresApproval, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        serverId:
+          type: [string, "null"]
+          format: uuid
+        name:
+          type: string
+        description:
+          type: [string, "null"]
+        riskLevel:
+          $ref: "#/components/schemas/McpToolRisk"
+        requiresApproval:
+          type: boolean
+        status:
+          type: string
+          enum: [ACTIVE, DISABLED]
+      additionalProperties: false
+    McpToolPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/McpTool"
+    UserPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/UserSummary"
+    UserCreateRequest:
+      type: object
+      required: [username, displayName, password, roles]
+      properties:
+        username:
+          type: string
+          pattern: "^[A-Za-z0-9][A-Za-z0-9._-]{2,99}$"
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        password:
+          type: string
+          minLength: 12
+          maxLength: 200
+          format: password
+        roles:
+          type: array
+          minItems: 1
+          items:
+            type: string
+      additionalProperties: false
+    UserStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: "#/components/schemas/UserStatus"
+      additionalProperties: false
+    UserRolesRequest:
+      type: object
+      required: [roles]
+      properties:
+        roles:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+      additionalProperties: false
+    TenantCreateRequest:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          pattern: "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+          description: 租户代码，创建后不可修改；platform 为保留值。
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+      additionalProperties: false
+    TenantUpdateRequest:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/TenantStatus"
+        retentionDays:
+          type: integer
+          minimum: 30
+          maximum: 3650
+      additionalProperties: false
+    TenantPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/TenantSummary"

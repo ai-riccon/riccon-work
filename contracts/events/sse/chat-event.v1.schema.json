@@ -1,0 +1,308 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://riccon.example/contracts/events/sse/chat-event.v1.schema.json",
+  "title": "Riccon 对话 SSE 事件 v1",
+  "description": "Worker 产生、API 转发给浏览器的对话流事件。每帧 event: 为 eventType，data: 为本 schema 的 JSON。禁止在 delta 之外附带提示词、文件原文或工具结果原文。",
+  "$defs": {
+    "envelope": {
+      "type": "object",
+      "required": [
+        "eventId",
+        "eventType",
+        "version",
+        "occurredAt",
+        "tenantId",
+        "runId",
+        "messageId",
+        "traceId",
+        "data"
+      ],
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "eventType": {
+          "type": "string",
+          "enum": [
+            "riccon.chat.started.v1",
+            "riccon.chat.delta.v1",
+            "riccon.chat.citation.v1",
+            "riccon.chat.completed.v1",
+            "riccon.chat.failed.v1",
+            "riccon.chat.stopped.v1"
+          ]
+        },
+        "version": {
+          "type": "integer",
+          "const": 1
+        },
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "runId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "messageId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "本次回答的 assistant 消息 ID。"
+        },
+        "traceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "data": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "citation": {
+      "type": "object",
+      "required": ["ordinal", "sourceType", "title", "snippet"],
+      "properties": {
+        "ordinal": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sourceType": {
+          "type": "string",
+          "enum": ["FILE", "KNOWLEDGE"]
+        },
+        "fileId": {
+          "type": ["string", "null"],
+          "format": "uuid"
+        },
+        "knowledgeDocumentId": {
+          "type": ["string", "null"],
+          "format": "uuid"
+        },
+        "chunkId": {
+          "type": ["string", "null"],
+          "format": "uuid"
+        },
+        "locatorType": {
+          "type": "string",
+          "enum": ["PAGE", "SHEET", "PARAGRAPH"]
+        },
+        "pageNo": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "sheetName": {
+          "type": ["string", "null"]
+        },
+        "cellRange": {
+          "type": ["string", "null"]
+        },
+        "paragraphNo": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "title": {
+          "type": "string"
+        },
+        "snippet": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "score": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "started": {
+      "type": "object",
+      "required": ["modelId", "modelKey"],
+      "properties": {
+        "modelId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "modelKey": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "delta": {
+      "type": "object",
+      "required": ["delta"],
+      "properties": {
+        "delta": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "citationData": {
+      "type": "object",
+      "required": ["citations"],
+      "properties": {
+        "citations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/citation"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "completed": {
+      "type": "object",
+      "required": ["finishReason"],
+      "properties": {
+        "finishReason": {
+          "type": "string",
+          "enum": ["stop", "length", "error"]
+        },
+        "promptTokens": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "completionTokens": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "firstTokenMs": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "failed": {
+      "type": "object",
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^RICCON-[A-Z]+-[0-9]{3}$"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "stopped": {
+      "type": "object",
+      "required": ["reason"],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "enum": ["USER_CANCELLED", "CLIENT_DISCONNECT", "PERMISSION_REVOKED"]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "#/$defs/envelope"
+    },
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "eventType": {
+              "const": "riccon.chat.started.v1"
+            },
+            "data": {
+              "$ref": "#/$defs/started"
+            }
+          },
+          "required": ["eventType", "data"]
+        },
+        {
+          "properties": {
+            "eventType": {
+              "const": "riccon.chat.delta.v1"
+            },
+            "data": {
+              "$ref": "#/$defs/delta"
+            }
+          },
+          "required": ["eventType", "data"]
+        },
+        {
+          "properties": {
+            "eventType": {
+              "const": "riccon.chat.citation.v1"
+            },
+            "data": {
+              "$ref": "#/$defs/citationData"
+            }
+          },
+          "required": ["eventType", "data"]
+        },
+        {
+          "properties": {
+            "eventType": {
+              "const": "riccon.chat.completed.v1"
+            },
+            "data": {
+              "$ref": "#/$defs/completed"
+            }
+          },
+          "required": ["eventType", "data"]
+        },
+        {
+          "properties": {
+            "eventType": {
+              "const": "riccon.chat.failed.v1"
+            },
+            "data": {
+              "$ref": "#/$defs/failed"
+            }
+          },
+          "required": ["eventType", "data"]
+        },
+        {
+          "properties": {
+            "eventType": {
+              "const": "riccon.chat.stopped.v1"
+            },
+            "data": {
+              "$ref": "#/$defs/stopped"
+            }
+          },
+          "required": ["eventType", "data"]
+        }
+      ]
+    }
+  ],
+  "examples": [
+    {
+      "eventId": "01930000-0000-7000-8000-000000000011",
+      "eventType": "riccon.chat.delta.v1",
+      "version": 1,
+      "occurredAt": "2026-11-17T10:00:01Z",
+      "tenantId": "tenant-a",
+      "runId": "01930000-0000-7000-8000-000000000012",
+      "messageId": "01930000-0000-7000-8000-000000000013",
+      "traceId": "01J00000000000000000000000",
+      "data": {
+        "delta": "根据上传的 PDF，"
+      }
+    }
+  ]
+}

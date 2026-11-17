@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://riccon.example/contracts/events/outbox/agent-run-requested.v1.schema.json",
+  "title": "riccon.agent.run.requested.v1",
+  "description": "API 创建报告任务并在同一事务写 agent_run 与 outbox 后发出。Worker 以条件更新领取 run；重复投递不得第二次执行。",
+  "allOf": [
+    {
+      "$ref": "../envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "required": ["eventType", "producer", "payload"],
+      "properties": {
+        "eventType": {
+          "const": "riccon.agent.run.requested.v1"
+        },
+        "producer": {
+          "const": "api"
+        },
+        "payload": {
+          "type": "object",
+          "required": ["runId", "researchTaskId", "stage", "attempt"],
+          "properties": {
+            "runId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "researchTaskId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "stage": {
+              "type": "string",
+              "enum": ["RETRIEVAL", "TOOL", "APPROVAL", "GENERATION"],
+              "description": "首个要执行的阶段；M02 创建时固定 RETRIEVAL。"
+            },
+            "attempt": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  ]
+}

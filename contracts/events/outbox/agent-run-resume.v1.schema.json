@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://riccon.example/contracts/events/outbox/agent-run-resume.v1.schema.json",
+  "title": "riccon.agent.run.resume.v1",
+  "description": "审批通过后由 API 在审批事务内写入；Worker 从 GENERATION 阶段继续，不重跑检索与工具阶段。",
+  "allOf": [
+    {
+      "$ref": "../envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "required": ["eventType", "producer", "payload"],
+      "properties": {
+        "eventType": {
+          "const": "riccon.agent.run.resume.v1"
+        },
+        "producer": {
+          "const": "api"
+        },
+        "payload": {
+          "type": "object",
+          "required": [
+            "runId",
+            "researchTaskId",
+            "approvalId",
+            "stage",
+            "attempt"
+          ],
+          "properties": {
+            "runId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "researchTaskId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "approvalId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "stage": {
+              "type": "string",
+              "const": "GENERATION"
+            },
+            "attempt": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  ]
+}

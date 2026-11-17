@@ -131,3 +131,8 @@ M03 评估每日哈希链（`prev_hash` + `event_hash`）与外部锚定。M02 �
 - 测试（M02 建立）：`AUDIT-001` 写失败回滚、`AUDIT-002` 字段完整、`AUDIT-003` UPDATE/DELETE 被拒、`AUDIT-004` 无修改/删除 API、`AUDIT-005` 普通用户 403、`AUDIT-006` 流式中断仍记录 started/failed
 - `E2E-AC-14`、`E2E-AC-15`
 - `docs/security/THREAT-MODEL.md` TM-11、B-04、B-12；合同 `data.retention`、`constraints.compliance`
+
+## 澄清（不改本 ADR 决策）
+
+- 2026-11-17：`event_id` 的数据库表示由 ADR-0012 统一为 UUIDv7 `BINARY(16)`；仍要求时间有序与全局唯一，本文其余字段、分区与 append-only 语义不变。
+- 2026-11-17：M02 目标类型在本文最小列表外增加 `WORKSPACE`、`CONVERSATION`、`KNOWLEDGE_DOCUMENT`、`RESEARCH_TASK`、`RUN`、`APPROVAL`，统一由 `AuditTargetType` 枚举约束；`details` 白名单与禁止字段不变。

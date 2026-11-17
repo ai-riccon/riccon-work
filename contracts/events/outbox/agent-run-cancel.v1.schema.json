@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://riccon.example/contracts/events/outbox/agent-run-cancel.v1.schema.json",
+  "title": "riccon.agent.run.cancel.v1",
+  "description": "员工取消或权限撤销时由 API 写入；Worker 在下一个检查点终止运行，已生成内容保留，不产生新产物。",
+  "allOf": [
+    {
+      "$ref": "../envelope.schema.json"
+    },
+    {
+      "type": "object",
+      "required": ["eventType", "producer", "payload"],
+      "properties": {
+        "eventType": {
+          "const": "riccon.agent.run.cancel.v1"
+        },
+        "producer": {
+          "const": "api"
+        },
+        "payload": {
+          "type": "object",
+          "required": ["runId", "reason"],
+          "properties": {
+            "runId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "reason": {
+              "type": "string",
+              "enum": ["USER_CANCELLED", "PERMISSION_REVOKED"]
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  ]
+}

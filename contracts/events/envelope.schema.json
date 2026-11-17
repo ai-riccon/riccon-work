@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://riccon.example/contracts/events/envelope.schema.json",
+  "title": "Riccon 事件信封 v1",
+  "description": "API 写入 outbox、Worker 消费的跨部署物事件信封。payload 由具体事件 schema 约束；禁止在事件中放置提示词、文件原文、工具结果原文、密钥或完整 PII。",
+  "type": "object",
+  "required": [
+    "eventId",
+    "eventType",
+    "eventVersion",
+    "occurredAt",
+    "tenantId",
+    "traceId",
+    "producer",
+    "idempotencyKey",
+    "payload"
+  ],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "事件 ID，UUIDv7 字符串（与数据库 BINARY(16) 对应）。"
+    },
+    "eventType": {
+      "type": "string",
+      "pattern": "^riccon\\.[a-z0-9]+(\\.[a-z0-9]+)+\\.v[0-9]+$",
+      "description": "稳定事件名，格式 riccon.<domain>.<event>.v<n>。"
+    },
+    "eventVersion": {
+      "type": "integer",
+      "const": 1,
+      "description": "事件 schema 版本；不兼容变更必须新增事件名。"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "事件发生时间，UTC ISO-8601。"
+    },
+    "tenantId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "租户代码；平台级事件为 platform。"
+    },
+    "traceId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "贯穿 API、Worker、日志与审计的追踪 ID。"
+    },
+    "producer": {
+      "type": "string",
+      "enum": ["api", "worker"],
+      "description": "事件生产者；outbox 事件固定为 api。"
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "幂等键；与 tenant_id 组成唯一键，重复投递不得产生第二次副作用。"
+    },
+    "payload": {
+      "type": "object",
+      "description": "事件载荷，由具体事件 schema 约束。"
+    }
+  },
+  "additionalProperties": false
+}

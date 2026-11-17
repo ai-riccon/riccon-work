@@ -20,6 +20,16 @@
       <groupId>com.riccon</groupId>
       <artifactId>riccon-platform-common</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.riccon</groupId>
+      <artifactId>riccon-platform-domain</artifactId>
+    </dependency>
+
+    <!--
+      M02 的 Worker 需要读写运行状态、outbox 与审计，但持久化实现由 Builder 任务加入
+      spring-boot-starter-jdbc 与 mysql-connector-j；本任务只固定共享领域词汇依赖，
+      避免在 M02 业务代码尚未存在时改变 Worker 的启动/测试依赖面。
+    -->
 
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -74,6 +84,31 @@
           <mainClass>com.riccon.worker.WorkerApplication</mainClass>
           <classifier>exec</classifier>
         </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>banned-worker-orm</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <bannedDependencies>
+                  <searchTransitive>true</searchTransitive>
+                  <excludes>
+                    <exclude>org.hibernate:*</exclude>
+                    <exclude>jakarta.persistence:*</exclude>
+                  </excludes>
+                  <message>apps/worker 使用 Spring JDBC；JPA/Hibernate 不得进入 Worker。</message>
+                </bannedDependencies>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
 
       <plugin>

@@ -36,35 +36,43 @@
 apps/api/src/main/java/com/riccon/api/
   ApiApplication.java
   config/            # Spring 配置、SecurityFilterChain
-  <feature>/         # 按业务能力纵向分包：controller/service/repository/domain
+  <feature>/         # 按业务能力纵向分包：controller/service/repository/persistence/domain
 apps/worker/src/main/java/com/riccon/worker/
   WorkerApplication.java
   config/
   agent/             # AgentScope 适配层（M02 起），不得被 api/platform 引用
+  run/persistence/   # 运行、outbox 领取（唯一跨租户例外，见 ADR-0016）
 platform/platform-common/src/main/java/com/riccon/platform/common/
   tenant/            # TenantId、TenantContext
+platform/platform-domain/src/main/java/com/riccon/platform/domain/
+  identity|workspace|file|chat|knowledge|research|model|mcp|audit|contract/
 platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
 ```
 
 规则：
 
-- 包名全小写，根包固定为 `com.riccon.api`、`com.riccon.worker`、`com.riccon.platform.common`。
-- 业务能力按 feature 分包，不按技术层建全局大包；同一 feature 内再分 `controller/service/repository/domain`。
-- `controller` 只做协议转换、校验、鉴权注解；`service` 承载事务与业务规则；`repository` 只做持久化。
+- 包名全小写，根包固定为 `com.riccon.api`、`com.riccon.worker`、`com.riccon.platform.common`、`com.riccon.platform.domain`。
+- 业务能力按 feature 分包，不按技术层建全局大包；同一 feature 内再分 `controller/service/repository/persistence/domain`。
+- `controller` 只做协议转换、校验、鉴权注解；`service` 承载事务与业务规则；`repository` 只做持久化；`persistence` 放 `TenantJdbc` 与行映射，`domain` 放该 feature 的局部值对象。
 - `config` 包只放配置类；`@Configuration` 类必须位于 `..config..`（ArchUnit 强制）。
-- 公共能力先放 `platform-common`；只被一个部署物使用的代码不要下沉。
-- `platform-common` 不得依赖 Spring Web、`jakarta.servlet`、`apps/*`、`io.agentscope`。
+- 公共能力先放 `platform-common`；只被一个部署物使用的代码不要下沉；跨部署物共享的状态/权限/事件常量放 `platform-domain`。
+- `platform-common` 不得依赖 Spring Web、`jakarta.servlet`、`apps/*`、`io.agentscope`；`platform-domain` 不得依赖 Spring、JPA、`apps/*`、`io.agentscope`。
 
 ### 模块边界（机器强制）
 
-| 规则                                                | 执行者                                         |
-| --------------------------------------------------- | ---------------------------------------------- |
-| `apps/api` 与 `platform` 不得依赖 `io.agentscope..` | ArchUnit + Maven Enforcer `bannedDependencies` |
-| 只有 `apps/worker` 可以依赖 agentscope              | ArchUnit + Enforcer                            |
-| `api` 与 `worker` 不得互相编译依赖                  | ArchUnit                                       |
-| `platform` 不得依赖 `apps/*`                        | ArchUnit                                       |
-| `platform-common` 不得依赖 Spring/Web               | ArchUnit                                       |
-| MVC 分层单向：controller → service → repository     | ArchUnit `layeredArchitecture`                 |
+| 规则                                                          | 执行者                                         |
+| ------------------------------------------------------------- | ---------------------------------------------- |
+| `apps/api` 与 `platform` 不得依赖 `io.agentscope..`           | ArchUnit + Maven Enforcer `bannedDependencies` |
+| 只有 `apps/worker` 可以依赖 agentscope                        | ArchUnit + Enforcer                            |
+| `api` 与 `worker` 不得互相编译依赖                            | ArchUnit                                       |
+| `platform` 不得依赖 `apps/*`                                  | ArchUnit                                       |
+| `platform-common` 不得依赖 Spring/Web                         | ArchUnit                                       |
+| `platform-domain` 不得依赖 Spring/JPA/agentscope              | ArchUnit + Enforcer                            |
+| 项目禁止 JPA/Hibernate（`jakarta.persistence`/`hibernate`）   | ArchUnit + Enforcer                            |
+| `JdbcClient` 只能出现在 `..persistence..`                     | ArchUnit                                       |
+| `TenantJdbc` 只能位于 `..persistence..`                       | ArchUnit                                       |
+| `PlatformJdbc` 只能在 `..admin..` 使用                        | ArchUnit（M03 前允许空）                       |
+| MVC 分层单向：controller → service → repository → persistence | ArchUnit `layeredArchitecture`                 |
 
 规则文件：`platform/platform-architecture-tests/src/test/java/com/riccon/architecture/ModuleBoundaryTest.java`。规则失败时修改依赖方向，禁止用 `@ArchIgnore` 或放宽规则绕过；确需例外时写 ADR 并在规则中显式标注。
 
@@ -108,6 +116,8 @@ platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
 - 不使用 `var` 隐藏关键类型；局部变量类型明显时可用。
 - 不使用 Java 21 预览特性（如未定稿的 ScopedValue/虚拟线程 API 变更），避免构建依赖 `--enable-preview`。
 - 显式关闭资源：`try-with-resources` 优先；`TenantContext` 必须用 `try (TenantScope ...)`。
+- 业务 ID 统一 `java.util.UUID`（UUIDv7）；只在 `..persistence..` 转 `BINARY(16)`，controller/service 不暴露字节数组。
+- 状态值使用 `platform-domain` 的枚举名；数据库存枚举名（大写），不得在业务代码写状态字符串字面量。
 
 ## 6. Spring Boot 4.1 约定
 
@@ -118,6 +128,8 @@ platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
 - **异常**：REST 边界统一转换为 `ProblemDetail`；业务异常在 M02 建立基类，禁止把 `Exception` 直接抛出控制器。
 - **事务**：`@Transactional` 只放在 service 的公共方法；只读查询标注 `readOnly = true`；禁止在 controller 开启事务。
 - **安全**：新增端点默认被 `denyAll()` 覆盖；需要放行时必须显式列出路径并说明理由，禁止 `anyRequest().permitAll()`。
+- **数据访问**：M02 使用 Spring JDBC（`JdbcClient`），不引入 JPA/Hibernate；`JdbcClient` 只能注入 `..persistence..`，业务代码只依赖 `TenantJdbc`。SQL 必须参数绑定，禁止拼接用户输入。
+- **会话与 CSRF**：使用 Spring Session JDBC + `HttpSessionCsrfTokenRepository`；写操作必须校验 `X-CSRF-TOKEN`；登录后轮换会话，登出失效（ADR-0013）。
 - **健康检查**：`/actuator/health` 保持无认证、无外部依赖；不要把模型/MCP 探活塞进 readiness。
 - **日志**：使用 SLF4J，不直接依赖 Logback API。
 - **启动类**：排除 `UserDetailsServiceAutoConfiguration` 的基线不得移除，除非认证方案已落地并评审。
@@ -176,11 +188,17 @@ platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
 
 - 只使用 Flyway；迁移文件位于 `apps/api/src/main/resources/db/migration`。
 - 命名：`V{n}__{snake_case_描述}.sql`，序号连续，不修改已应用的文件。
-- 每个业务表必须包含：`id`、`tenant_id`、`created_at`、`updated_at`；需要软删除时加 `deleted_at`。
-- 索引必须以 `tenant_id` 开头或包含 `tenant_id`，除非是全局字典表并写 ADR。
+- 每个业务实体表必须包含：`id`、`tenant_id`、`created_at`、`updated_at`；需要软删除时加 `deleted_at`。关联表与密钥表可使用自然复合主键（如 `(tenant_id, role_id, permission_code)`），不额外生成 `id`。
+- 主键 `(tenant_id, id)`，`id` 为应用生成的 UUIDv7，数据库 `BINARY(16)`；禁止自增主键与 `VARCHAR(36)` 存 UUID。
+- 索引必须以 `tenant_id` 开头或包含 `tenant_id`，除非是全局字典表并写 ADR；全局表与特殊索引例外见 ADR-0012。
+- 唯一键以 `tenant_id` 开头；结构性父子关系使用复合外键 `(tenant_id, parent_id)`。
+- 时间列使用 `DATETIME(6)`（UTC），禁止 `TIMESTAMP`；连接初始化必须 `SET time_zone='+00:00'`。
+- 状态列使用 `VARCHAR(32)` + `CHECK`，值必须与 `platform-domain` 枚举名一致；禁止 MySQL `ENUM`。
+- 表、关键列、CHECK 与特殊索引必须有中文 `COMMENT` 或 `--` 注释；迁移头部说明状态机、幂等与例外。
 - 迁移只向前兼容：新增列允许 `NULL` 或带默认值；重命名/删除必须分两步并保留回滚脚本。
 - 破坏性变更（删表、删列、改类型、数据回填）必须有 ADR、回滚脚本和 sandbox 演练记录。
 - 禁止在迁移中使用 `DROP DATABASE`、跨库写入或依赖生产数据。
+- 审计触发器需要迁移账号具备 `TRIGGER`，binlog 开启时需 `log_bin_trust_function_creators=1`；不可用时迁移失败，不得降级为无触发器。
 - 大表变更必须评估锁表时间，并在 RUNBOOK 记录操作窗口。
 
 ## 12. 安全基线
@@ -188,7 +206,8 @@ platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
 - **默认拒绝**：安全过滤器链默认 `denyAll()`；只放行健康检查。新增白名单路径必须评审。
 - **最小权限**：数据库账号只授予所需库表权限；生产不使用 root。
 - **租户隔离**：所有业务查询必须带 `tenant_id`；`TenantContext.require()` 失败时不得降级为全租户查询。
-- **认证与会话**：M02 前不得上线任何登录接口；认证方案落地后必须覆盖 CSRF、会话固定、登出、密码策略。
+- **认证与会话**：M02 使用 Spring Session JDBC 服务端会话；Cookie `HttpOnly`、`SameSite=Lax`、非本地 `Secure`；登录后轮换会话 ID，登出失效；密码 bcrypt 12；统一失败提示；登录限流与锁定；所有写操作校验 CSRF 令牌（ADR-0013）。
+- **CSRF**：`X-CSRF-TOKEN` 来自 `GET /api/v1/auth/csrf` 或登录响应；不使用 JS 可读的 CSRF Cookie；缺失/过期返回 403。
 - **输入校验**：所有外部输入在 controller 边界校验；文件上传限制类型、大小和存储路径；禁止路径穿越。
 - **SSRF**：模型网关与 MCP 端点使用允许列表；禁止用户可控 URL 直接出网。
 - **提示注入**：检索内容与工具返回一律视为数据；不得拼接进系统指令；高风险工具必须 HITL。
@@ -203,6 +222,8 @@ platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
 - 禁止 N+1 查询；批量查询使用 `IN` 或 join，并在测试中验证查询次数。
 - 外部调用（模型、MCP、对象存储）必须设置连接/读取超时和重试上限；重试只用于幂等操作。
 - 大文件走流式处理，禁止一次性读入内存；上传大小上限在配置中显式声明。
+- SSE 必须设置空闲超时（默认 60 秒）与总时长上限；客户端断开后停止上游模型调用。
+- outbox 领取使用 `FOR UPDATE SKIP LOCKED`，批量有上限；禁止无界轮询或全表扫描。
 - 性能敏感变更必须附 k6 或基准测试证据；未达到预算不得发布。
 
 ## 14. Git 与提交
@@ -216,13 +237,14 @@ platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
 
 ## 15. 评审检查清单
 
-- [ ] 依赖方向符合模块边界，agentscope 未出现在 api/platform。
-- [ ] 新增端点默认被拒绝，白名单有理由。
+- [ ] 依赖方向符合模块边界，agentscope 未出现在 api/platform；未引入 JPA/Hibernate。
+- [ ] 新增端点默认被拒绝，白名单有理由；写操作校验 CSRF。
 - [ ] 所有外部输入已校验，错误使用 `ProblemDetail` + 稳定错误码。
 - [ ] 日志无 PII/密钥，关键路径带 `tenantId`/`traceId`。
 - [ ] 公共类/方法有中文 Javadoc，复杂流程有中文行级注释。
 - [ ] 新增/修改行为有对应测试，覆盖率门槛通过。
-- [ ] 数据库迁移可向前兼容，破坏性变更附 ADR 与回滚脚本。
+- [ ] 数据库迁移可向前兼容，租户键/索引/复合外键符合 ADR-0012，破坏性变更附 ADR 与回滚脚本。
+- [ ] 契约（OpenAPI/事件 schema）已同步，事件幂等键与 SSE 事件经过校验。
 - [ ] 性能预算与超时/重试已评估。
 - [ ] `./mvnw -q -T1C verify` 与 `./mvnw -q spotless:check` 通过。
 - [ ] 文档已同步，或记录 no-impact 理由。
