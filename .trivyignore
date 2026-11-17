@@ -1,0 +1,18 @@
+# Riccon B-06 依赖漏洞例外清单
+#
+# 规则：
+# 1. 只有 docs/adr/ADR-0011-b06-dependency-exceptions.md 明确记录的 CVE 才能出现在这里；
+# 2. 每条必须带原因注释与到期日（exp），到期后 Trivy 重新报错；
+# 3. 禁止使用包名、路径通配或空泛 ID；新增例外必须先改 ADR 再改本文件。
+#
+# 复核时间：M03 gate 或 2026-12-31，取早者。到期未复核视为 B-06 失败。
+
+# MCP Java SDK 0.17.2（经 agentscope-core 2.0.5 传递引入）的服务器端漏洞：
+# - CVE-2026-35568（HIGH，DNS rebinding）与 CVE-2026-34237（MEDIUM，通配 CORS）
+#   均位于 SDK 内置的 HTTP/SSE server 侧。
+# - Riccon worker 只使用 MCP client（stdio 与受白名单约束的 HTTP 端点），
+#   不在进程内启动 MCP server；M02 无入站 MCP 端点，沙箱默认 network=none。
+# - 升级阻塞：agentscope 2.0.5 调用 McpJsonMapper.getDefault()，该方法自 0.18.0 起移除，
+#   1.0.x 与其二进制不兼容（实测 NoSuchMethodError）。升级 agentscope 后必须删除以下两行。
+CVE-2026-35568 exp:2026-12-31
+CVE-2026-34237 exp:2026-12-31

@@ -38,6 +38,15 @@
     <spring-ai.version>2.0.2</spring-ai.version>
     <agentscope.version>2.0.5</agentscope.version>
     <springdoc.version>3.2.0</springdoc.version>
+    <!--
+      依赖安全补丁版本（B-06）：
+      1) opentelemetry.version 覆盖传递引入的 1.62.0，修复 CVE-2026-118259（MEDIUM）；
+      2) MCP Java SDK 无法升级：agentscope-core 2.0.5 调用 McpJsonMapper.getDefault()，
+         该方法在 0.18.0 起被移除，1.0.x 与 agentscope 2.0.5 二进制不兼容。
+         CVE-2026-35568 / CVE-2026-34237 按 ADR-0011 作为补偿控制例外，不做版本覆盖。
+      见 docs/adr/ADR-0011-b06-dependency-exceptions.md。
+    -->
+    <opentelemetry-bom.version>1.67.0</opentelemetry-bom.version>
 
     <!-- 构建与质量工具 -->
     <archunit.version>1.5.1</archunit.version>
@@ -72,6 +81,21 @@
         <groupId>io.agentscope</groupId>
         <artifactId>agentscope-core</artifactId>
         <version>${agentscope.version}</version>
+      </dependency>
+
+      <!--
+        MCP Java SDK 保持 agentscope 2.0.5 声明的 0.17.2：
+        0.18.0 起移除了 agentscope 调用的 McpJsonMapper.getDefault()，升级即 NoSuchMethodError。
+        例外与补偿控制见 ADR-0011。
+      -->
+
+      <!-- 对齐 OpenTelemetry 稳定版工件，避免只升 api 导致 context/common 版本漂移。 -->
+      <dependency>
+        <groupId>io.opentelemetry</groupId>
+        <artifactId>opentelemetry-bom</artifactId>
+        <version>${opentelemetry-bom.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
       </dependency>
 
       <dependency>

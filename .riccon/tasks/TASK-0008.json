@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0008",
+  "module_id": "M02",
+  "title": "B-06 依赖安全处置与例外决策",
+  "owner": "riccon/architect",
+  "status": "in_progress",
+  "write_scope": [
+    "pom.xml",
+    "apps/worker/pom.xml",
+    "package.json",
+    "apps/web/package.json",
+    "pnpm-lock.yaml",
+    ".trivyignore",
+    "docs/adr/**",
+    "docs/security/**"
+  ],
+  "acceptance": [
+    "critical/high 按 runtime 与 dev/build 分类并有 pnpm why / Maven tree 证据",
+    "可安全修复的依赖用 override/patch 修复，build/test/e2e 通过",
+    "不可修复项写 ADR + .trivyignore 例外 + 补偿控制，B-06 状态更新",
+    "commands.security 重新执行并记录 exit code",
+    "不修改业务功能代码"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-17T10:29:03.081Z",
+  "updated_at": "2026-11-17T10:49:40.541Z",
+  "baseline_commit": "9c64dcefd8c4f3a76793f463041f2e3ddb09455e"
+}
