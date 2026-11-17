@@ -20,7 +20,7 @@ M01 尚未建立 `apps/web`，因此合同里带 `pnpm -w ...` 的命令只能�
 ./mvnw -q -T1C -DskipTests dependency:go-offline
 
 # 前端（TASK-0003 建立 package.json 后）
-# pnpm -w install --frozen-lockfile
+# pnpm install --frozen-lockfile
 ```
 
 ## 测试栈

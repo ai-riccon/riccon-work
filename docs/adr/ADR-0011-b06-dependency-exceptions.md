@@ -1,8 +1,9 @@
 # ADR-0011：B-06 依赖安全处置与例外
 
-Status: proposed
+Status: accepted
 Scope: M02 gate；例外仅限 worker 以 MCP client 方式使用 agentscope 的场景
 Date: 2026-11-17
+Accepted: 2026-11-17 by user via DEC-0005 (accept); B-06 closed for M02, exception expiry 2026-12-31 or M03 gate, whichever is earlier.
 关联: TASK-0008、M01 review F-002、`docs/security/THREAT-MODEL.md` B-06/T-01-2/第 9 节、ADR-0004、ADR-0005
 
 ## Context

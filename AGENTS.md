@@ -147,7 +147,7 @@ repo_map:
   infra: deploy
   contracts: contracts
 commands:
-  install: "./mvnw -q -T1C -DskipTests dependency:go-offline && pnpm -w install --frozen-lockfile"
+  install: "./mvnw -q -T1C -DskipTests dependency:go-offline && pnpm install --frozen-lockfile"
   build: "./mvnw -q -T1C -DskipTests package && pnpm -w build"
   format: "./mvnw -q spotless:apply && pnpm -w format"
   lint: "./mvnw -q spotless:check && pnpm -w lint"
