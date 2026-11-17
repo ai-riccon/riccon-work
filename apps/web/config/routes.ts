@@ -27,6 +27,23 @@ export const routes: RicconRoute[] = [
   { path: '/', redirect: '/chat' },
   { path: '/chat', component: '@/pages/chat', title: '工作空间' },
   {
+    path: '/research',
+    component: '@/layouts/workspace',
+    routes: [
+      { path: '/research', redirect: '/research/tasks' },
+      {
+        path: '/research/tasks',
+        component: '@/pages/research',
+        title: '市场调研报告',
+      },
+      {
+        path: '/research/:researchTaskId',
+        component: '@/pages/research/detail',
+        title: '报告任务详情',
+      },
+    ],
+  },
+  {
     path: '/admin',
     component: '@/layouts/admin',
     routes: [

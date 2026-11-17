@@ -24,6 +24,13 @@ describe('路由表', () => {
     ]);
   });
 
+  it('报告任务列表与详情使用独立布局', () => {
+    expect(findRouteByPath('/research')?.component).toBe('@/layouts/workspace');
+    expect(findRouteByPath('/research/tasks')?.component).toBe('@/pages/research');
+    expect(findRouteByPath('/research/:researchTaskId')?.component).toBe('@/pages/research/detail');
+    expect(findRouteByPath('/research/tasks')?.title).toBe('市场调研报告');
+  });
+
   it('登录页与 404 兜底页存在', () => {
     expect(findRouteByPath('/login')?.component).toBe('@/pages/login');
     expect(findRouteByPath('*')?.component).toBe('@/pages/404');

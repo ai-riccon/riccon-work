@@ -2,7 +2,16 @@ import { describe, expect, it, vi } from 'vitest';
 import { ApiClient } from './client';
 import { ApiError } from './errors';
 import type { ChatEvent, SessionInfo } from './types';
-import { DEMO_SESSION, makeFile } from '@/test/fake-api';
+import {
+  DEMO_SESSION,
+  GRANTED_MCP_TOOL,
+  makeApproval,
+  makeArtifact,
+  makeFile,
+  makeResearchDetail,
+  makeResearchTask,
+  ARTIFACT_MARKDOWN,
+} from '@/test/fake-api';
 
 /** 记录 fetch 调用。 */
 interface FetchCall {
@@ -295,5 +304,176 @@ describe('ApiClient', () => {
 
     await expect(client.logout()).resolves.toBeUndefined();
     await expect(client.listWorkspaces()).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it('报告任务接口使用契约路径与幂等键', async () => {
+    const { fn, calls } = createFetch((url) => {
+      if (url.endsWith('/auth/csrf')) return json({ headerName: 'X-CSRF-TOKEN', token: 'csrf' });
+      if (url.includes('/research-tasks?')) {
+        return json({ page: 1, size: 100, total: 0, totalPages: 0, items: [] });
+      }
+      if (url.endsWith('/research-tasks')) return json(makeResearchTask(), 201);
+      if (url.endsWith('/research-tasks/task-1')) return json(makeResearchDetail());
+      if (url.endsWith('/research-tasks/task-1/retry')) return json(makeResearchTask(), 202);
+      if (url.endsWith('/mcp-tools?page=1&size=100')) {
+        return json({ page: 1, size: 100, total: 1, totalPages: 1, items: [GRANTED_MCP_TOOL] });
+      }
+      if (url.endsWith('/approvals/approval-1/decision')) return json(makeApproval());
+      if (url.endsWith('/artifacts/artifact-1/versions/2')) {
+        return json(makeArtifact().currentVersionDetail);
+      }
+      if (url.endsWith('/artifacts/artifact-1/versions/2/download-url')) {
+        return json({
+          url: 'https://objects.test/report.md',
+          expiresAt: '2026-11-17T09:00:00.000Z',
+        });
+      }
+      return json({}, 404);
+    });
+    const client = new ApiClient({ baseUrl: 'http://api.test', fetchImpl: fn });
+
+    await client.listResearchTasks('w1', 'FAILED');
+    await client.createResearchTask(
+      'w1',
+      { topic: '市场调研', mcpToolId: 'tool-1' },
+      'idem-create-1',
+    );
+    await client.getResearchTask('task-1');
+    await client.retryResearchTask('task-1', { fromStage: 'TOOL' }, 'idem-retry-1');
+    await client.listGrantedMcpTools();
+    await client.decideApproval(
+      'approval-1',
+      { decision: 'REJECT', comment: '数据范围过大' },
+      'idem-approval-1',
+    );
+    await client.getArtifactVersion('artifact-1', 2);
+    await client.getArtifactDownloadUrl('artifact-1', 2);
+
+    expect(
+      calls.some((call) => call.url.endsWith('/research-tasks?page=1&size=100&status=FAILED')),
+    ).toBe(true);
+    const create = calls.find((call) => call.url.endsWith('/research-tasks'));
+    expect(create?.init.method).toBe('POST');
+    expect((create?.init.headers as Record<string, string>)['Idempotency-Key']).toBe(
+      'idem-create-1',
+    );
+    expect(create?.init.body).toBe(JSON.stringify({ topic: '市场调研', mcpToolId: 'tool-1' }));
+
+    const retry = calls.find((call) => call.url.endsWith('/research-tasks/task-1/retry'));
+    expect(retry?.init.body).toBe(JSON.stringify({ fromStage: 'TOOL' }));
+    expect((retry?.init.headers as Record<string, string>)['Idempotency-Key']).toBe('idem-retry-1');
+
+    const decision = calls.find((call) => call.url.endsWith('/approvals/approval-1/decision'));
+    expect(decision?.init.body).toBe(
+      JSON.stringify({ decision: 'REJECT', comment: '数据范围过大' }),
+    );
+    expect((decision?.init.headers as Record<string, string>)['Idempotency-Key']).toBe(
+      'idem-approval-1',
+    );
+  });
+
+  it('读取产物正文时不向对象存储发送 Cookie', async () => {
+    const { fn, calls } = createFetch((url) => {
+      if (url.endsWith('/auth/csrf')) return json({ headerName: 'X-CSRF-TOKEN', token: 'csrf' });
+      if (url.endsWith('/download-url')) {
+        return json({
+          url: 'https://objects.test/report.md',
+          expiresAt: '2026-11-17T09:00:00.000Z',
+        });
+      }
+      if (url === 'https://objects.test/report.md') {
+        return new Response(ARTIFACT_MARKDOWN, {
+          status: 200,
+          headers: { 'Content-Type': 'text/markdown' },
+        });
+      }
+      return json({}, 404);
+    });
+    const client = new ApiClient({ baseUrl: 'http://api.test', fetchImpl: fn });
+
+    await expect(client.fetchArtifactContent('artifact-1', 1)).resolves.toContain('市场规模与增长');
+    const objectCall = calls.find((call) => call.url === 'https://objects.test/report.md');
+    expect(objectCall?.init.credentials).toBe('omit');
+    expect(objectCall?.init.cache).toBe('no-store');
+    expect((objectCall?.init.headers as Record<string, string>).Accept).toBe(
+      'text/markdown, text/plain;q=0.9, */*;q=0.1',
+    );
+  });
+
+  it('相对预签名地址拼接 baseUrl，正文超限给出不可重试错误', async () => {
+    let contentLength = 0;
+    const { fn, calls } = createFetch((url) => {
+      if (url.endsWith('/download-url')) {
+        return json({ url: '/objects/report.md', expiresAt: '2026-11-17T09:00:00.000Z' });
+      }
+      if (url === 'http://api.test/objects/report.md') {
+        return new Response('正文', {
+          status: 200,
+          headers: { 'Content-Length': String(contentLength) },
+        });
+      }
+      return json({}, 404);
+    });
+    const client = new ApiClient({ baseUrl: 'http://api.test', fetchImpl: fn });
+
+    await expect(client.fetchArtifactContent('artifact-1', 1)).resolves.toBe('正文');
+    expect(calls.some((call) => call.url === 'http://api.test/objects/report.md')).toBe(true);
+
+    contentLength = 2 * 1024 * 1024 + 1;
+    await expect(client.fetchArtifactContent('artifact-1', 1)).rejects.toMatchObject({
+      status: 422,
+      code: 'RICCON-CLIENT-ARTIFACT-TOO-LARGE',
+      retryable: false,
+    });
+  });
+
+  it('正文超过字符上限、对象存储失败与网络失败都归一为 ApiError', async () => {
+    const { fn } = createFetch((url) => {
+      if (url.endsWith('/download-url')) {
+        return json({
+          url: 'https://objects.test/report.md',
+          expiresAt: '2026-11-17T09:00:00.000Z',
+        });
+      }
+      if (url === 'https://objects.test/forbidden.md') return problem(403, 'RICCON-AUTH-403');
+      if (url === 'https://objects.test/network.md') throw new TypeError('fetch failed');
+      return new Response('x'.repeat(2 * 1024 * 1024 + 1), { status: 200 });
+    });
+    const client = new ApiClient({ fetchImpl: fn });
+
+    await expect(client.fetchArtifactContent('artifact-1', 1)).rejects.toMatchObject({
+      code: 'RICCON-CLIENT-ARTIFACT-TOO-LARGE',
+    });
+
+    const forbiddenClient = new ApiClient({
+      fetchImpl: createFetch((url) => {
+        if (url.endsWith('/download-url')) {
+          return json({
+            url: 'https://objects.test/forbidden.md',
+            expiresAt: '2026-11-17T09:00:00.000Z',
+          });
+        }
+        return problem(403, 'RICCON-AUTH-403');
+      }).fn,
+    });
+    await expect(forbiddenClient.fetchArtifactContent('artifact-1', 1)).rejects.toMatchObject({
+      status: 403,
+    });
+
+    const networkClient = new ApiClient({
+      fetchImpl: createFetch((url) => {
+        if (url.endsWith('/download-url')) {
+          return json({
+            url: 'https://objects.test/network.md',
+            expiresAt: '2026-11-17T09:00:00.000Z',
+          });
+        }
+        throw new TypeError('fetch failed');
+      }).fn,
+    });
+    await expect(networkClient.fetchArtifactContent('artifact-1', 1)).rejects.toMatchObject({
+      status: 0,
+      kind: 'network',
+    });
   });
 });

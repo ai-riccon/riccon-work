@@ -37,3 +37,8 @@ export function useNavigate() {
 export function useLocation() {
   return { pathname: '/admin/overview' };
 }
+
+/** useParams 替身：组件测试通过 props 注入路由参数，这里返回空对象。 */
+export function useParams(): Record<string, string | undefined> {
+  return {};
+}

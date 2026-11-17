@@ -1,14 +1,23 @@
 import { ApiError, isAbortError, toApiError } from './errors';
 import { parseChatEvent, parseSseStream } from './sse';
 import type {
+  Approval,
+  ApprovalDecisionRequest,
+  ArtifactVersion,
   ChatEvent,
   Conversation,
   ConversationDetail,
   CsrfToken,
   DownloadUrl,
   LoginRequest,
+  McpTool,
   Message,
   Page,
+  ResearchTask,
+  ResearchTaskCreateRequest,
+  ResearchTaskDetail,
+  ResearchTaskRetryRequest,
+  ResearchTaskStatus,
   SendMessageRequest,
   SessionInfo,
   Workspace,
@@ -62,10 +71,59 @@ export interface RicconApi {
     signal?: AbortSignal,
   ): AsyncGenerator<ChatEvent, void, void>;
   stopGeneration(conversationId: string, runId: string): Promise<void>;
+  listResearchTasks(workspaceId: string, status?: ResearchTaskStatus): Promise<Page<ResearchTask>>;
+  createResearchTask(
+    workspaceId: string,
+    input: ResearchTaskCreateRequest,
+    idempotencyKey?: string,
+  ): Promise<ResearchTask>;
+  getResearchTask(researchTaskId: string): Promise<ResearchTaskDetail>;
+  retryResearchTask(
+    researchTaskId: string,
+    input?: ResearchTaskRetryRequest,
+    idempotencyKey?: string,
+  ): Promise<ResearchTask>;
+  listGrantedMcpTools(): Promise<Page<McpTool>>;
+  decideApproval(
+    approvalId: string,
+    input: ApprovalDecisionRequest,
+    idempotencyKey?: string,
+  ): Promise<Approval>;
+  getArtifactVersion(artifactId: string, version: number): Promise<ArtifactVersion>;
+  getArtifactDownloadUrl(artifactId: string, version: number): Promise<DownloadUrl>;
+  fetchArtifactContent(artifactId: string, version: number, signal?: AbortSignal): Promise<string>;
 }
 
 /** 安全方法以外的请求需要 CSRF 令牌。 */
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+/** 在线预览正文的字符上限；超过后仅允许下载，避免一次性读入过大对象。 */
+const MAX_ARTIFACT_CONTENT_CHARS = 2 * 1024 * 1024;
+
+/**
+ * 构造“正文过大”的客户端错误。
+ *
+ * @returns 不可重试的 ApiError
+ */
+function artifactTooLargeError(): ApiError {
+  return new ApiError('报告正文超过在线预览上限，请下载后查看。', {
+    status: 422,
+    code: 'RICCON-CLIENT-ARTIFACT-TOO-LARGE',
+    retryable: false,
+  });
+}
+
+/**
+ * 判断是否为绝对 URL。
+ *
+ * 预签名地址在生产环境是对象存储的绝对 URL，演示适配层则返回同源相对路径。
+ *
+ * @param value 待判断的地址
+ * @returns 是否以 http/https 开头
+ */
+function isAbsoluteUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value);
+}
 
 /** 生成 UUID；优先使用浏览器/Node 内置实现，测试环境缺失时退化为时间戳。 */
 function randomId(): string {
@@ -350,6 +408,205 @@ export class ApiClient implements RicconApi {
       body: { runId },
       extraHeaders: { 'Idempotency-Key': randomId() },
     });
+  }
+
+  /**
+   * 列出工作空间内的报告任务。
+   *
+   * @param workspaceId 工作空间 ID
+   * @param status 可选状态过滤
+   * @returns 任务分页，取前 100 个
+   */
+  listResearchTasks(workspaceId: string, status?: ResearchTaskStatus): Promise<Page<ResearchTask>> {
+    const params = new URLSearchParams({ page: '1', size: '100' });
+    if (status) {
+      params.set('status', status);
+    }
+    return this.request<Page<ResearchTask>>(
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/research-tasks?${params.toString()}`,
+    );
+  }
+
+  /**
+   * 创建市场调研报告任务。
+   *
+   * 契约要求必须带 Idempotency-Key；同一用户重复提交同一键返回既有任务。
+   * 调用方可以传入稳定的键来安全重试，未提供时生成一次性 UUID。
+   *
+   * @param workspaceId 工作空间 ID
+   * @param input 主题与授权的 MCP 工具
+   * @param idempotencyKey 幂等键
+   * @returns 已创建或已存在的任务
+   */
+  createResearchTask(
+    workspaceId: string,
+    input: ResearchTaskCreateRequest,
+    idempotencyKey = randomId(),
+  ): Promise<ResearchTask> {
+    return this.request<ResearchTask>(
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/research-tasks`,
+      {
+        method: 'POST',
+        body: input,
+        extraHeaders: { 'Idempotency-Key': idempotencyKey },
+      },
+    );
+  }
+
+  /**
+   * 读取报告任务详情与时间线。
+   *
+   * @param researchTaskId 报告任务 ID
+   * @returns 任务详情
+   */
+  getResearchTask(researchTaskId: string): Promise<ResearchTaskDetail> {
+    return this.request<ResearchTaskDetail>(
+      `/api/v1/research-tasks/${encodeURIComponent(researchTaskId)}`,
+    );
+  }
+
+  /**
+   * 重试失败的阶段。
+   *
+   * 契约只允许 TOOL 或 GENERATION；沿用同一任务与产物，避免重复产物。
+   *
+   * @param researchTaskId 报告任务 ID
+   * @param input 起始阶段；为空表示服务端按失败阶段重试
+   * @param idempotencyKey 幂等键
+   * @returns 已受理的任务摘要
+   */
+  retryResearchTask(
+    researchTaskId: string,
+    input: ResearchTaskRetryRequest = {},
+    idempotencyKey = randomId(),
+  ): Promise<ResearchTask> {
+    const body: ResearchTaskRetryRequest = {};
+    if (input.fromStage) {
+      body.fromStage = input.fromStage;
+    }
+    return this.request<ResearchTask>(
+      `/api/v1/research-tasks/${encodeURIComponent(researchTaskId)}/retry`,
+      {
+        method: 'POST',
+        body,
+        extraHeaders: { 'Idempotency-Key': idempotencyKey },
+      },
+    );
+  }
+
+  /**
+   * 列出本租户已授权的 MCP 工具。
+   *
+   * @returns 工具分页，取前 100 个
+   */
+  listGrantedMcpTools(): Promise<Page<McpTool>> {
+    return this.request<Page<McpTool>>('/api/v1/mcp-tools?page=1&size=100');
+  }
+
+  /**
+   * 批准或拒绝外部工具调用。
+   *
+   * 重复提交同一决定由服务端幂等返回；调用方应复用同一个幂等键，
+   * 避免响应丢失后的重试被当成新的决定。
+   *
+   * @param approvalId 审批 ID
+   * @param input 决定与可选备注
+   * @param idempotencyKey 幂等键
+   * @returns 审批结果
+   */
+  decideApproval(
+    approvalId: string,
+    input: ApprovalDecisionRequest,
+    idempotencyKey = randomId(),
+  ): Promise<Approval> {
+    return this.request<Approval>(`/api/v1/approvals/${encodeURIComponent(approvalId)}/decision`, {
+      method: 'POST',
+      body: input,
+      extraHeaders: { 'Idempotency-Key': idempotencyKey },
+    });
+  }
+
+  /**
+   * 读取指定产物版本元数据。
+   *
+   * @param artifactId 产物 ID
+   * @param version 版本号
+   * @returns 版本详情
+   */
+  getArtifactVersion(artifactId: string, version: number): Promise<ArtifactVersion> {
+    return this.request<ArtifactVersion>(
+      `/api/v1/artifacts/${encodeURIComponent(artifactId)}/versions/${version}`,
+    );
+  }
+
+  /**
+   * 获取产物正文的预签名下载地址。
+   *
+   * 契约要求 TTL 不超过 300 秒，调用方不应缓存或转存该 URL。
+   *
+   * @param artifactId 产物 ID
+   * @param version 版本号
+   * @returns 短时下载地址
+   */
+  getArtifactDownloadUrl(artifactId: string, version: number): Promise<DownloadUrl> {
+    return this.request<DownloadUrl>(
+      `/api/v1/artifacts/${encodeURIComponent(artifactId)}/versions/${version}/download-url`,
+    );
+  }
+
+  /**
+   * 读取产物正文文本（Markdown）。
+   *
+   * 正文存放在对象存储，API 只返回预签名 URL；这里先取 URL 再直接读取对象，
+   * 不复用 API 客户端的 `Accept: application/json` 与 Cookie：
+   * - 预签名 URL 可能指向不同源，携带 Cookie 会扩大凭据暴露面；
+   * - 对象存储返回 text/markdown，按 JSON 解析会失败。
+   *
+   * 预览设置 2 MiB 上限，超过时提示用户下载后查看，避免把大对象读入内存。
+   *
+   * @param artifactId 产物 ID
+   * @param version 版本号
+   * @param signal 取消信号
+   * @returns Markdown 正文
+   */
+  async fetchArtifactContent(
+    artifactId: string,
+    version: number,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    const download = await this.getArtifactDownloadUrl(artifactId, version);
+    const url = isAbsoluteUrl(download.url)
+      ? download.url
+      : `${this.baseUrl}${download.url.startsWith('/') ? '' : '/'}${download.url}`;
+
+    try {
+      const fetchImpl = await this.resolveFetch();
+      const response = await fetchImpl(url, {
+        method: 'GET',
+        headers: { Accept: 'text/markdown, text/plain;q=0.9, */*;q=0.1' },
+        // 预签名 URL 自带授权，不向对象存储发送同源 Cookie。
+        credentials: 'omit',
+        cache: 'no-store',
+        signal,
+      });
+      if (!response.ok) {
+        throw await toApiError(response);
+      }
+      const declaredBytes = Number(response.headers.get('content-length') ?? '0');
+      if (declaredBytes > MAX_ARTIFACT_CONTENT_CHARS) {
+        throw artifactTooLargeError();
+      }
+      const text = await response.text();
+      if (text.length > MAX_ARTIFACT_CONTENT_CHARS) {
+        throw artifactTooLargeError();
+      }
+      return text;
+    } catch (error) {
+      if (isAbortError(error) || error instanceof ApiError) {
+        throw error;
+      }
+      throw ApiError.network(error);
+    }
   }
 
   /**

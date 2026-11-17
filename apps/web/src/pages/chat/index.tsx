@@ -340,6 +340,7 @@ export default function ChatPage({
             </div>
           </div>
           <div className="chat-header-actions">
+            <Button onClick={() => navigate('/research')}>市场调研报告</Button>
             <Typography.Text>{auth.session.user.displayName}</Typography.Text>
             <Button
               icon={<LogoutOutlined />}

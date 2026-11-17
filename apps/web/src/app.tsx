@@ -25,6 +25,9 @@ export function rootContainer(container: ReactNode) {
           colorLink: '#0958d9',
           colorTextSecondary: '#595959',
           colorTextTertiary: '#595959',
+          // antd 默认 placeholder #bfbfbf 在白色背景上对比度仅 1.83:1，不满足 WCAG AA；
+          // 输入框与下拉占位符统一使用 #595959（约 7:1），同时保持“次要”视觉层级。
+          colorTextPlaceholder: '#595959',
           borderRadius: 8,
         },
       }}

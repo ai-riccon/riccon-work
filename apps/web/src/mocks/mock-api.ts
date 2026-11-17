@@ -1,8 +1,15 @@
 import type {
+  Approval,
+  ArtifactDetail,
   ChatEvent,
   Citation,
   Conversation,
+  McpInvocation,
+  McpTool,
   Message,
+  ResearchTask,
+  ResearchTaskDetail,
+  RunStageRecord,
   SessionInfo,
   Workspace,
   WorkspaceFile,
@@ -35,10 +42,20 @@ const PARSE_FINISH_AFTER_MS = 900;
 /** SSE 增量间隔；E2E 有足够时间点击停止。 */
 const DELTA_INTERVAL_MS = 180;
 
+/** J2 阶段推进时间；与轮询间隔配合，保证 E2E 1 秒内能看到阶段切换。 */
+const RESEARCH_RETRIEVAL_MS = 500;
+const RESEARCH_TOOL_MS = 600;
+const RESEARCH_GENERATION_MS = 800;
+
 /** 演示工作空间与用户。 */
 const DEMO_WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
 const DEMO_USER_ID = '22222222-2222-4222-8222-222222222222';
 const DEMO_TENANT_ID = 'tenant-acme';
+
+/** 演示 MCP 工具与知识库文档 ID；只用于合成数据，不对应真实对象。 */
+const DEMO_MCP_TOOL_ID = '44444444-4444-4444-8444-444444444444';
+const DEMO_KNOWLEDGE_ID_ONE = '55555555-5555-4555-8555-555555555555';
+const DEMO_KNOWLEDGE_ID_TWO = '66666666-6666-4666-8666-666666666666';
 
 /** 演示文件/消息的创建时间基准，避免每次刷新随机变化。 */
 const BASE_TIME = '2026-11-17T08:00:00.000Z';
@@ -58,6 +75,34 @@ interface MockState {
   files: WorkspaceFile[];
   /** 文件 ID -> 解析终态。 */
   parseOutcomes: Record<string, MockParseOutcome>;
+  /** J2 报告任务内部状态；对外只暴露契约字段。 */
+  researchTasks: MockResearchTask[];
+  /** 本租户已授权的 MCP 工具。 */
+  mcpTools: McpTool[];
+  /** 创建任务的幂等键 -> 任务 ID。 */
+  researchIdempotency: Record<string, string>;
+}
+
+/** 演示任务可触发的失败路径；由主题关键词选择，便于 E2E 复现。 */
+type MockResearchMode = 'success' | 'tool-failure' | 'generation-failure' | 'no-sources';
+
+/** 演示任务阶段。 */
+type MockResearchPhase =
+  'retrieval' | 'waiting-approval' | 'tool' | 'generation' | 'done' | 'failed' | 'cancelled';
+
+/** J2 演示任务；内部字段不进入 API 响应。 */
+interface MockResearchTask {
+  task: ResearchTask;
+  mode: MockResearchMode;
+  phase: MockResearchPhase;
+  /** 当前阶段开始时间（毫秒），用于按真实时间推进。 */
+  phaseStartedAtMs: number;
+  stages: RunStageRecord[];
+  approvals: Approval[];
+  invocations: McpInvocation[];
+  sources: Citation[];
+  artifact: ArtifactDetail | null;
+  artifactBody: string | null;
 }
 
 interface ActiveRun {
@@ -122,6 +167,19 @@ function createInitialState(): MockState {
     messages: {},
     files: [],
     parseOutcomes: {},
+    researchTasks: [],
+    mcpTools: [
+      {
+        id: DEMO_MCP_TOOL_ID,
+        serverId: null,
+        name: 'market_data_lookup',
+        description: '只读市场数据查询（演示数据，不连接真实外部系统）',
+        riskLevel: 'READ',
+        requiresApproval: true,
+        status: 'ACTIVE',
+      },
+    ],
+    researchIdempotency: {},
   };
 }
 
@@ -148,6 +206,12 @@ function loadState(): MockState {
       files: Array.isArray(parsed.files) ? parsed.files : [],
       messages: parsed.messages ?? {},
       parseOutcomes: parsed.parseOutcomes ?? {},
+      researchTasks: Array.isArray(parsed.researchTasks) ? parsed.researchTasks : [],
+      mcpTools:
+        Array.isArray(parsed.mcpTools) && parsed.mcpTools.length > 0
+          ? parsed.mcpTools
+          : createInitialState().mcpTools,
+      researchIdempotency: parsed.researchIdempotency ?? {},
     } as MockState;
   } catch {
     return createInitialState();
@@ -240,6 +304,11 @@ function sessionInfo(state: MockState): SessionInfo {
       'conversation.write',
       'file.read',
       'file.upload',
+      'report.read',
+      'report.create',
+      'report.approve',
+      'artifact.read',
+      'mcp.read',
     ],
     csrfToken: state.csrfToken,
     expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
@@ -765,6 +834,742 @@ function match(pattern: RegExp, path: string): RegExpMatchArray | null {
 }
 
 /**
+ * 根据主题选择演示路径。
+ *
+ * 关键词只用于演示失败/重试与空检索，不影响生产代码。
+ *
+ * @param topic 调研主题
+ * @returns 演示模式
+ */
+function researchModeForTopic(topic: string): MockResearchMode {
+  if (/工具失败|超时/.test(topic)) {
+    return 'tool-failure';
+  }
+  if (/生成失败/.test(topic)) {
+    return 'generation-failure';
+  }
+  if (/无结果|没有资料/.test(topic)) {
+    return 'no-sources';
+  }
+  return 'success';
+}
+
+/**
+ * 构造两条知识库命中。
+ *
+ * @returns 合成引用
+ */
+function buildDemoSources(): Citation[] {
+  return [
+    {
+      ordinal: 1,
+      sourceType: 'KNOWLEDGE',
+      knowledgeDocumentId: DEMO_KNOWLEDGE_ID_ONE,
+      chunkId: null,
+      locatorType: 'PARAGRAPH',
+      paragraphNo: 4,
+      title: '知识库：2025 中国企业协同办公市场研究',
+      snippet: '2025 年国内协同办公市场规模约为 320 亿元，同比增长 18%，头部厂商份额继续集中。',
+      score: 0.92,
+    },
+    {
+      ordinal: 2,
+      sourceType: 'KNOWLEDGE',
+      knowledgeDocumentId: DEMO_KNOWLEDGE_ID_TWO,
+      chunkId: null,
+      locatorType: 'PARAGRAPH',
+      paragraphNo: 9,
+      title: '知识库：协同办公行业竞争格局摘录',
+      snippet: '中腰部厂商通过行业解决方案与私有化部署差异化竞争，客户续费率是主要观察指标。',
+      score: 0.84,
+    },
+  ];
+}
+
+/**
+ * 构造审批记录。
+ *
+ * @param mock 演示任务
+ * @param attempt 工具阶段尝试号
+ * @param now 当前时间（毫秒）
+ * @returns 待审批记录
+ */
+function createResearchApproval(mock: MockResearchTask, attempt: number, now: number): Approval {
+  const paramsPreview: Record<string, unknown> = {
+    market: mock.task.topic.slice(0, 60),
+    region: '华东',
+    period: '2025',
+    fields: 'market_size,growth_rate',
+  };
+  const createdAt = new Date(now).toISOString();
+  return {
+    id: nextId('approval'),
+    researchTaskId: mock.task.id,
+    runId: mock.task.currentRunId ?? nextId('run'),
+    stage: 'TOOL',
+    attempt,
+    status: 'PENDING',
+    actionType: 'MCP_TOOL_CALL',
+    toolName: 'market_data_lookup',
+    paramsPreview,
+    paramsSha256: pseudoSha256(JSON.stringify(paramsPreview)),
+    requestedBy: DEMO_USER_ID,
+    decidedBy: null,
+    decidedAt: null,
+    decisionComment: null,
+    expiresAt: new Date(now + 15 * 60 * 1000).toISOString(),
+    createdAt,
+  };
+}
+
+/**
+ * 生成报告正文 Markdown。
+ *
+ * @param title 报告标题
+ * @param sources 检索来源
+ * @param invocation 成功的工具调用
+ * @returns Markdown 正文
+ */
+function buildReportBody(
+  title: string,
+  sources: Citation[],
+  invocation: McpInvocation | null,
+): string {
+  const sourceTitles = sources.map((source) => `${source.title}（[${source.ordinal}]）`);
+  return [
+    `# ${title}`,
+    '',
+    '## 摘要',
+    '本报告基于租户知识库检索与一次经人工审批的只读市场数据调用生成，结论仅用于演示，不代表真实市场数据。',
+    '',
+    '## 市场规模与增长',
+    '2025 年国内协同办公市场规模约为 320 亿元，同比增长 18%[1]。',
+    '- 头部厂商依靠生态与私有化交付能力保持份额',
+    '- 中腰部厂商通过行业方案与数据工具提升续费率',
+    '',
+    '## 竞争格局',
+    '竞争焦点从通用功能转向行业数据、权限隔离与可审计的 Agent 能力[2]。',
+    invocation
+      ? `MCP 工具 ${invocation.toolName} 返回的演示数据用于核对市场规模与增速[3]。`
+      : '本次报告未使用外部工具数据。',
+    '',
+    '## 结论与建议',
+    '建议先以部门级知识库和只读工具验证闭环，再逐步开放写操作与跨部门共享。',
+    '',
+    '## 数据来源',
+    ...sourceTitles.map((item) => `- ${item}`),
+    ...(invocation
+      ? [`- MCP 工具 ${invocation.toolName}（耗时 ${invocation.durationMs ?? 0} ms）`]
+      : []),
+  ].join('\n');
+}
+
+/**
+ * 确保任务只有一个产物；重复生成沿用同一产物，版本不重复递增。
+ *
+ * @param mock 演示任务
+ * @param now 当前时间（毫秒）
+ */
+function ensureResearchArtifact(mock: MockResearchTask, now: number): void {
+  if (mock.artifact) {
+    return;
+  }
+  const invocation =
+    [...mock.invocations].reverse().find((item) => item.status === 'SUCCEEDED') ?? null;
+  const title = `${mock.task.topic} · 市场调研报告`.slice(0, 300);
+  const body = buildReportBody(title, mock.sources, invocation);
+  const nowIso = new Date(now).toISOString();
+  const citations = [
+    ...mock.sources.map((source) => ({
+      ordinal: source.ordinal,
+      sourceType: 'KNOWLEDGE' as const,
+      knowledgeDocumentId: source.knowledgeDocumentId ?? null,
+      title: source.title,
+      snippet: source.snippet,
+      locatorType: source.locatorType ?? null,
+      pageNo: source.pageNo ?? null,
+      sheetName: source.sheetName ?? null,
+      paragraphNo: source.paragraphNo ?? null,
+    })),
+    ...(invocation
+      ? [
+          {
+            ordinal: mock.sources.length + 1,
+            sourceType: 'MCP' as const,
+            mcpInvocationId: invocation.id,
+            title: `MCP：${invocation.toolName}`,
+            snippet: '返回 3 条市场规模与增速记录（演示数据）。',
+            locatorType: null,
+            pageNo: null,
+            sheetName: null,
+            paragraphNo: null,
+          },
+        ]
+      : []),
+  ];
+  const artifactId = nextId('artifact');
+  mock.artifact = {
+    id: artifactId,
+    workspaceId: mock.task.workspaceId,
+    researchTaskId: mock.task.id,
+    kind: 'REPORT',
+    title,
+    status: 'SAVED',
+    currentVersion: 1,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+    currentVersionDetail: {
+      id: nextId('artifact-version'),
+      version: 1,
+      contentType: 'text/markdown',
+      sizeBytes: Math.max(1, body.length),
+      sha256: pseudoSha256(body),
+      summary: '报告基于知识库检索与经审批的市场数据工具生成，覆盖市场规模、竞争格局与建议。',
+      createdAt: nowIso,
+      citations,
+    },
+  };
+  mock.artifactBody = body;
+}
+
+/**
+ * 完成检索阶段。
+ *
+ * @param mock 演示任务
+ * @param now 当前时间（毫秒）
+ */
+function completeResearchRetrieval(mock: MockResearchTask, now: number): void {
+  const nowIso = new Date(now).toISOString();
+  const record = mock.stages.find((stage) => stage.stage === 'RETRIEVAL' && stage.attempt === 1);
+  if (record) {
+    record.finishedAt = nowIso;
+  }
+  if (mock.mode === 'no-sources') {
+    if (record) {
+      record.status = 'FAILED';
+      record.errorCode = 'RICCON-RESEARCH-404';
+    }
+    mock.task.status = 'FAILED';
+    mock.task.currentStage = null;
+    mock.task.failureCode = 'RICCON-RESEARCH-404';
+    mock.task.failureMessage = '未检索到相关资料，请调整主题后重新创建任务。';
+    mock.task.finishedAt = nowIso;
+    mock.phase = 'failed';
+    return;
+  }
+  if (record) {
+    record.status = 'SUCCEEDED';
+    record.details = { hitCount: 2 };
+  }
+  mock.sources = buildDemoSources();
+  mock.task.status = 'WAITING_APPROVAL';
+  mock.task.currentStage = 'APPROVAL';
+  mock.approvals.push(createResearchApproval(mock, 1, now));
+  mock.phase = 'waiting-approval';
+  mock.phaseStartedAtMs = now;
+}
+
+/**
+ * 完成工具阶段：成功则进入生成，失败则保留记录并标记任务失败。
+ *
+ * @param mock 演示任务
+ * @param now 当前时间（毫秒）
+ */
+function completeResearchTool(mock: MockResearchTask, now: number): void {
+  const nowIso = new Date(now).toISOString();
+  const invocation = mock.invocations.find((item) => item.status === 'STARTED');
+  const record = mock.stages
+    .filter((stage) => stage.stage === 'TOOL' && stage.status === 'RUNNING')
+    .sort((left, right) => right.attempt - left.attempt)[0];
+
+  if (mock.mode === 'tool-failure') {
+    if (record) {
+      record.status = 'FAILED';
+      record.errorCode = 'RICCON-MCP-504';
+      record.finishedAt = nowIso;
+    }
+    if (invocation) {
+      invocation.status = 'FAILED';
+      invocation.errorCode = 'RICCON-MCP-504';
+      invocation.durationMs = Math.max(0, now - Date.parse(invocation.startedAt));
+      invocation.finishedAt = nowIso;
+    }
+    mock.task.status = 'FAILED';
+    mock.task.currentStage = null;
+    mock.task.failureCode = 'RICCON-MCP-504';
+    mock.task.failureMessage = '外部数据工具响应超时（演示），请重试工具阶段。';
+    mock.task.finishedAt = nowIso;
+    mock.phase = 'failed';
+    return;
+  }
+
+  if (record) {
+    record.status = 'SUCCEEDED';
+    record.finishedAt = nowIso;
+    record.details = {
+      ...(record.details ?? {}),
+      resultSummary: '返回 3 条市场规模与增速记录（演示数据）。',
+    };
+  }
+  if (invocation) {
+    invocation.status = 'SUCCEEDED';
+    invocation.resultSha256 = pseudoSha256('demo-market-data-result');
+    invocation.durationMs = Math.max(0, now - Date.parse(invocation.startedAt));
+    invocation.finishedAt = nowIso;
+  }
+  mock.task.status = 'RUNNING';
+  mock.task.currentStage = 'GENERATION';
+  const attempt = mock.stages.filter((stage) => stage.stage === 'GENERATION').length + 1;
+  mock.stages.push({
+    stage: 'GENERATION',
+    attempt,
+    status: 'RUNNING',
+    startedAt: nowIso,
+    finishedAt: null,
+    details: null,
+  });
+  mock.phase = 'generation';
+  mock.phaseStartedAtMs = now;
+}
+
+/**
+ * 完成生成阶段。
+ *
+ * @param mock 演示任务
+ * @param now 当前时间（毫秒）
+ */
+function completeResearchGeneration(mock: MockResearchTask, now: number): void {
+  const nowIso = new Date(now).toISOString();
+  const record = mock.stages
+    .filter((stage) => stage.stage === 'GENERATION' && stage.status === 'RUNNING')
+    .sort((left, right) => right.attempt - left.attempt)[0];
+
+  if (mock.mode === 'generation-failure') {
+    if (record) {
+      record.status = 'FAILED';
+      record.errorCode = 'RICCON-MODEL-500';
+      record.finishedAt = nowIso;
+    }
+    mock.task.status = 'FAILED';
+    mock.task.currentStage = null;
+    mock.task.failureCode = 'RICCON-MODEL-500';
+    mock.task.failureMessage = '报告生成失败（演示），已完成阶段记录已保留。';
+    mock.task.finishedAt = nowIso;
+    mock.phase = 'failed';
+    return;
+  }
+
+  if (record) {
+    record.status = 'SUCCEEDED';
+    record.finishedAt = nowIso;
+  }
+  ensureResearchArtifact(mock, now);
+  mock.task.status = 'SUCCEEDED';
+  mock.task.currentStage = null;
+  mock.task.finishedAt = nowIso;
+  mock.phase = 'done';
+}
+
+/**
+ * 按真实时间推进所有演示任务。
+ *
+ * 每次读取任务时推进，刷新后仍能继续；与解析状态同一思路，避免后台定时器在
+ * 测试或页面关闭后继续运行。循环用于一次补完多个已到期阶段。
+ *
+ * @param state mock 状态
+ */
+function advanceResearchTasks(state: MockState): void {
+  const now = Date.now();
+  let changed = false;
+  for (const mock of state.researchTasks) {
+    let progressed = true;
+    while (progressed) {
+      progressed = false;
+      if (mock.phase === 'retrieval' && now - mock.phaseStartedAtMs >= RESEARCH_RETRIEVAL_MS) {
+        completeResearchRetrieval(mock, now);
+        progressed = true;
+        changed = true;
+      } else if (mock.phase === 'tool' && now - mock.phaseStartedAtMs >= RESEARCH_TOOL_MS) {
+        completeResearchTool(mock, now);
+        progressed = true;
+        changed = true;
+      } else if (
+        mock.phase === 'generation' &&
+        now - mock.phaseStartedAtMs >= RESEARCH_GENERATION_MS
+      ) {
+        completeResearchGeneration(mock, now);
+        progressed = true;
+        changed = true;
+      }
+    }
+  }
+  if (changed) {
+    persist(state);
+  }
+}
+
+/**
+ * 构造任务摘要响应。
+ *
+ * @param mock 演示任务
+ * @returns 契约 ResearchTask
+ */
+function researchTaskSummary(mock: MockResearchTask): ResearchTask {
+  return { ...mock.task };
+}
+
+/**
+ * 构造任务详情响应。
+ *
+ * 只返回 OpenAPI 声明的字段，内部 phase/mode 不泄漏。
+ *
+ * @param mock 演示任务
+ * @returns 契约 ResearchTaskDetail
+ */
+function researchTaskDetail(mock: MockResearchTask): ResearchTaskDetail {
+  return {
+    ...mock.task,
+    stages: [...mock.stages].sort(compareStages),
+    approvals: [...mock.approvals].sort(
+      (left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt),
+    ),
+    mcpInvocations: [...mock.invocations].sort(
+      (left, right) => Date.parse(left.startedAt) - Date.parse(right.startedAt),
+    ),
+    sources: [...mock.sources],
+    artifact: mock.artifact,
+  };
+}
+
+/**
+ * 阶段时间线排序：有开始时间在前，其后按阶段尝试号。
+ *
+ * @param left 左记录
+ * @param right 右记录
+ * @returns 排序值
+ */
+function compareStages(left: RunStageRecord, right: RunStageRecord): number {
+  const leftTime = left.startedAt ? Date.parse(left.startedAt) : Number.MAX_SAFE_INTEGER;
+  const rightTime = right.startedAt ? Date.parse(right.startedAt) : Number.MAX_SAFE_INTEGER;
+  if (leftTime !== rightTime) {
+    return leftTime - rightTime;
+  }
+  return left.attempt - right.attempt;
+}
+
+/**
+ * 查找任务。
+ *
+ * @param state mock 状态
+ * @param taskId 任务 ID
+ * @returns 演示任务或 undefined
+ */
+function findResearchTask(state: MockState, taskId: string): MockResearchTask | undefined {
+  return state.researchTasks.find((item) => item.task.id === taskId);
+}
+
+/**
+ * 应用审批决定。
+ *
+ * @param state mock 状态
+ * @param approvalId 审批 ID
+ * @param decision 批准或拒绝
+ * @param comment 备注
+ * @returns Response
+ */
+function decideResearchApproval(
+  state: MockState,
+  approvalId: string,
+  decision: 'APPROVE' | 'REJECT',
+  comment: string | null,
+): Response {
+  advanceResearchTasks(state);
+  const mock = state.researchTasks.find((item) =>
+    item.approvals.some((approval) => approval.id === approvalId),
+  );
+  const approval = mock?.approvals.find((item) => item.id === approvalId);
+  if (!mock || !approval) {
+    return problem(404, 'RICCON-TENANT-404', '审批不存在', '审批不存在或已被处理。');
+  }
+  if (approval.status !== 'PENDING') {
+    const alreadyDecided = approval.status === (decision === 'APPROVE' ? 'APPROVED' : 'REJECTED');
+    if (alreadyDecided) {
+      return json(approval);
+    }
+    return problem(409, 'RICCON-APPROVAL-409', '审批已处理', '该审批已作出相反决定。');
+  }
+
+  const now = Date.now();
+  const nowIso = new Date(now).toISOString();
+  approval.status = decision === 'APPROVE' ? 'APPROVED' : 'REJECTED';
+  approval.decidedBy = DEMO_USER_ID;
+  approval.decidedAt = nowIso;
+  approval.decisionComment = comment;
+
+  if (decision === 'REJECT') {
+    mock.stages.push({
+      stage: 'APPROVAL',
+      attempt: approval.attempt,
+      status: 'FAILED',
+      errorCode: 'RICCON-APPROVAL-REJECTED',
+      startedAt: approval.createdAt,
+      finishedAt: nowIso,
+      details: null,
+    });
+    mock.stages.push({
+      stage: 'TOOL',
+      attempt: approval.attempt,
+      status: 'SKIPPED',
+      startedAt: null,
+      finishedAt: null,
+      details: null,
+    });
+    mock.stages.push({
+      stage: 'GENERATION',
+      attempt: 1,
+      status: 'SKIPPED',
+      startedAt: null,
+      finishedAt: null,
+      details: null,
+    });
+    mock.task.status = 'CANCELLED';
+    mock.task.currentStage = null;
+    mock.task.failureCode = 'RICCON-APPROVAL-REJECTED';
+    mock.task.failureMessage = '审批被拒绝，任务已终止，未生成报告。';
+    mock.task.finishedAt = nowIso;
+    mock.phase = 'cancelled';
+    persist(state);
+    return json(approval);
+  }
+
+  mock.stages.push({
+    stage: 'APPROVAL',
+    attempt: approval.attempt,
+    status: 'SUCCEEDED',
+    startedAt: approval.createdAt,
+    finishedAt: nowIso,
+    details: { approvalId: approval.id },
+  });
+  mock.stages.push({
+    stage: 'TOOL',
+    attempt: approval.attempt,
+    status: 'RUNNING',
+    startedAt: nowIso,
+    finishedAt: null,
+    details: {
+      toolName: approval.toolName,
+      paramsPreview: approval.paramsPreview,
+    },
+  });
+  const invocationId = nextId('invocation');
+  const runningToolRecord = mock.stages
+    .filter((stage) => stage.stage === 'TOOL' && stage.status === 'RUNNING')
+    .sort((left, right) => right.attempt - left.attempt)[0];
+  if (runningToolRecord?.details) {
+    runningToolRecord.details.invocationId = invocationId;
+  }
+  mock.invocations.push({
+    id: invocationId,
+    toolName: approval.toolName,
+    status: 'STARTED',
+    paramsSha256: approval.paramsSha256,
+    resultSha256: null,
+    durationMs: null,
+    errorCode: null,
+    startedAt: nowIso,
+    finishedAt: null,
+  });
+  mock.task.status = 'RUNNING';
+  mock.task.currentStage = 'TOOL';
+  mock.task.failureCode = null;
+  mock.task.failureMessage = null;
+  mock.task.finishedAt = null;
+  mock.phase = 'tool';
+  mock.phaseStartedAtMs = now;
+  persist(state);
+  return json(approval);
+}
+
+/**
+ * 重试失败阶段。
+ *
+ * @param state mock 状态
+ * @param taskId 任务 ID
+ * @param fromStage 请求阶段
+ * @returns Response
+ */
+function retryResearchTaskMock(
+  state: MockState,
+  taskId: string,
+  fromStage: 'TOOL' | 'GENERATION' | null,
+): Response {
+  advanceResearchTasks(state);
+  const mock = findResearchTask(state, taskId);
+  if (!mock) {
+    return problem(404, 'RICCON-TENANT-404', '任务不存在', '报告任务不存在或已被删除。');
+  }
+  if (mock.task.status !== 'FAILED') {
+    return problem(409, 'RICCON-RESEARCH-409', '任务不可重试', '只有失败任务可以重试。');
+  }
+  const lastFailedStage = [...mock.stages]
+    .reverse()
+    .find((stage) => stage.status === 'FAILED')?.stage;
+  const stage = fromStage ?? (lastFailedStage as 'TOOL' | 'GENERATION' | undefined) ?? null;
+  if (stage !== 'TOOL' && stage !== 'GENERATION') {
+    return problem(
+      409,
+      'RICCON-RESEARCH-409',
+      '阶段不可重试',
+      '检索阶段失败需调整主题后重新创建任务。',
+    );
+  }
+
+  const now = Date.now();
+  const nowIso = new Date(now).toISOString();
+  mock.task.status = stage === 'TOOL' ? 'WAITING_APPROVAL' : 'RUNNING';
+  mock.task.currentStage = stage === 'TOOL' ? 'APPROVAL' : 'GENERATION';
+  mock.task.failureCode = null;
+  mock.task.failureMessage = null;
+  mock.task.finishedAt = null;
+  mock.mode = 'success';
+
+  if (stage === 'TOOL') {
+    const attempt =
+      Math.max(
+        0,
+        ...mock.stages.filter((item) => item.stage === 'TOOL').map((item) => item.attempt),
+      ) + 1;
+    mock.approvals.push(createResearchApproval(mock, attempt, now));
+    mock.phase = 'waiting-approval';
+    mock.phaseStartedAtMs = now;
+  } else {
+    const attempt =
+      Math.max(
+        0,
+        ...mock.stages.filter((item) => item.stage === 'GENERATION').map((item) => item.attempt),
+      ) + 1;
+    mock.stages.push({
+      stage: 'GENERATION',
+      attempt,
+      status: 'RUNNING',
+      startedAt: nowIso,
+      finishedAt: null,
+      details: null,
+    });
+    mock.phase = 'generation';
+    mock.phaseStartedAtMs = now;
+  }
+  persist(state);
+  return json(researchTaskSummary(mock), 202);
+}
+
+/**
+ * 创建演示报告任务。
+ *
+ * @param state mock 状态
+ * @param body 请求体
+ * @param idempotencyKey 幂等键
+ * @returns Response
+ */
+function createResearchTaskMock(
+  state: MockState,
+  body: Record<string, unknown> | null,
+  idempotencyKey: string,
+): Response {
+  if (idempotencyKey.length < 8 || idempotencyKey.length > 128) {
+    return problem(
+      400,
+      'RICCON-RESEARCH-400',
+      '缺少幂等键',
+      '创建报告任务必须带有效的 Idempotency-Key。',
+    );
+  }
+  const idempotencyKeyForUser = `${DEMO_USER_ID}:${idempotencyKey}`;
+  const existingId = state.researchIdempotency[idempotencyKeyForUser];
+  if (existingId) {
+    const existing = findResearchTask(state, existingId);
+    if (existing) {
+      return json(researchTaskSummary(existing), 201);
+    }
+  }
+
+  const topic = typeof body?.topic === 'string' ? body.topic.trim() : '';
+  const mcpToolId = typeof body?.mcpToolId === 'string' ? body.mcpToolId : '';
+  if (topic.length < 4 || topic.length > 500) {
+    return problem(400, 'RICCON-RESEARCH-400', '主题不合法', '调研主题需为 4–500 个字符。');
+  }
+  const tool = state.mcpTools.find((item) => item.id === mcpToolId && item.status === 'ACTIVE');
+  if (!tool) {
+    return problem(403, 'RICCON-MCP-403', '工具不可用', '所选 MCP 工具未授权或已停用。');
+  }
+
+  const now = Date.now();
+  const nowIso = new Date(now).toISOString();
+  const taskId = nextId('research');
+  const task: ResearchTask = {
+    id: taskId,
+    workspaceId: state.workspace.id,
+    topic,
+    status: 'RUNNING',
+    currentStage: 'RETRIEVAL',
+    mcpToolId,
+    currentRunId: nextId('run'),
+    failureCode: null,
+    failureMessage: null,
+    createdAt: nowIso,
+    startedAt: nowIso,
+    finishedAt: null,
+  };
+  const mock: MockResearchTask = {
+    task,
+    mode: researchModeForTopic(topic),
+    phase: 'retrieval',
+    phaseStartedAtMs: now,
+    stages: [
+      {
+        stage: 'RETRIEVAL',
+        attempt: 1,
+        status: 'RUNNING',
+        startedAt: nowIso,
+        finishedAt: null,
+        details: { query: topic.slice(0, 80) },
+      },
+    ],
+    approvals: [],
+    invocations: [],
+    sources: [],
+    artifact: null,
+    artifactBody: null,
+  };
+  state.researchTasks.unshift(mock);
+  state.researchIdempotency[idempotencyKeyForUser] = taskId;
+  persist(state);
+  return json(researchTaskSummary(mock), 201);
+}
+
+/**
+ * 分页响应。
+ *
+ * @param items 列表
+ * @returns Page
+ */
+function page<T>(items: T[]): {
+  page: number;
+  size: number;
+  total: number;
+  totalPages: number;
+  items: T[];
+} {
+  return {
+    page: 1,
+    size: 100,
+    total: items.length,
+    totalPages: items.length > 0 ? 1 : 0,
+    items,
+  };
+}
+
+/**
  * 处理一次性请求；返回 null 表示路径未匹配。
  *
  * @param state mock 状态
@@ -821,6 +1626,130 @@ function routeRequest(
 
   if (path === '/api/v1/workspaces' && method === 'GET') {
     return json({ page: 1, size: 100, total: 1, totalPages: 1, items: [state.workspace] });
+  }
+
+  const researchTasksMatch = match(/^\/api\/v1\/workspaces\/([^/]+)\/research-tasks$/, path);
+  if (researchTasksMatch) {
+    const workspaceId = decodeURIComponent(researchTasksMatch[1]);
+    if (workspaceId !== state.workspace.id) {
+      return problem(404, 'RICCON-TENANT-404', '工作空间不存在', '工作空间不存在或已被删除。');
+    }
+    if (method === 'GET') {
+      advanceResearchTasks(state);
+      const status = new URL(path, 'http://mock.local').searchParams.get('status');
+      const items = state.researchTasks
+        .filter((mockTask) => !status || mockTask.task.status === status)
+        .map(researchTaskSummary)
+        .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
+      return json(page(items));
+    }
+    if (method === 'POST') {
+      const csrfError = requireCsrf(state, init);
+      if (csrfError) return csrfError;
+      const idempotencyKey = new Headers(init?.headers).get('Idempotency-Key') ?? '';
+      return createResearchTaskMock(state, readJsonBody(init), idempotencyKey);
+    }
+  }
+
+  const researchTaskMatch = match(/^\/api\/v1\/research-tasks\/([^/]+)$/, path);
+  if (researchTaskMatch && method === 'GET') {
+    advanceResearchTasks(state);
+    const mockTask = findResearchTask(state, decodeURIComponent(researchTaskMatch[1]));
+    return mockTask
+      ? json(researchTaskDetail(mockTask))
+      : problem(404, 'RICCON-TENANT-404', '任务不存在', '报告任务不存在或已被删除。');
+  }
+
+  const researchRetryMatch = match(/^\/api\/v1\/research-tasks\/([^/]+)\/retry$/, path);
+  if (researchRetryMatch && method === 'POST') {
+    const csrfError = requireCsrf(state, init);
+    if (csrfError) return csrfError;
+    const body = readJsonBody(init);
+    const requestedStage = body?.fromStage;
+    if (
+      requestedStage !== undefined &&
+      requestedStage !== null &&
+      requestedStage !== 'TOOL' &&
+      requestedStage !== 'GENERATION'
+    ) {
+      return problem(400, 'RICCON-RESEARCH-400', '阶段不合法', '仅允许重试 TOOL 或 GENERATION。');
+    }
+    return retryResearchTaskMock(
+      state,
+      decodeURIComponent(researchRetryMatch[1]),
+      (requestedStage as 'TOOL' | 'GENERATION' | null | undefined) ?? null,
+    );
+  }
+
+  if (path === '/api/v1/mcp-tools' && method === 'GET') {
+    return json(page(state.mcpTools.filter((tool) => tool.status === 'ACTIVE')));
+  }
+
+  const approvalDecisionMatch = match(/^\/api\/v1\/approvals\/([^/]+)\/decision$/, path);
+  if (approvalDecisionMatch && method === 'POST') {
+    const csrfError = requireCsrf(state, init);
+    if (csrfError) return csrfError;
+    const body = readJsonBody(init);
+    const decision = body?.decision;
+    if (decision !== 'APPROVE' && decision !== 'REJECT') {
+      return problem(
+        400,
+        'RICCON-APPROVAL-400',
+        '决定不合法',
+        '审批决定必须为 APPROVE 或 REJECT。',
+      );
+    }
+    const rawComment = typeof body?.comment === 'string' ? body.comment.trim() : '';
+    if (rawComment.length > 500) {
+      return problem(400, 'RICCON-APPROVAL-400', '备注过长', '审批备注不能超过 500 个字符。');
+    }
+    return decideResearchApproval(
+      state,
+      decodeURIComponent(approvalDecisionMatch[1]),
+      decision,
+      rawComment || null,
+    );
+  }
+
+  const artifactDownloadMatch = match(
+    /^\/api\/v1\/artifacts\/([^/]+)\/versions\/(\d+)\/download-url$/,
+    path,
+  );
+  if (artifactDownloadMatch && method === 'GET') {
+    const artifactId = decodeURIComponent(artifactDownloadMatch[1]);
+    const version = Number(artifactDownloadMatch[2]);
+    const mockTask = state.researchTasks.find(
+      (item) => item.artifact?.id === artifactId && item.artifact.currentVersion === version,
+    );
+    if (!mockTask?.artifact) {
+      return problem(404, 'RICCON-TENANT-404', '产物不存在', '产物或版本不存在。');
+    }
+    return json({
+      url: `/api/v1/mock/artifacts/${encodeURIComponent(artifactId)}/versions/${version}/content`,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    });
+  }
+
+  const artifactContentMatch = match(
+    /^\/api\/v1\/mock\/artifacts\/([^/]+)\/versions\/(\d+)\/content$/,
+    path,
+  );
+  if (artifactContentMatch && method === 'GET') {
+    const artifactId = decodeURIComponent(artifactContentMatch[1]);
+    const version = Number(artifactContentMatch[2]);
+    const mockTask = state.researchTasks.find(
+      (item) => item.artifact?.id === artifactId && item.artifact.currentVersion === version,
+    );
+    if (!mockTask?.artifactBody) {
+      return problem(404, 'RICCON-TENANT-404', '产物正文不存在', '产物正文不存在或已被删除。');
+    }
+    return new Response(mockTask.artifactBody, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/markdown; charset=utf-8',
+        'Cache-Control': 'no-store',
+      },
+    });
   }
 
   const conversationsMatch = match(/^\/api\/v1\/workspaces\/([^/]+)\/conversations$/, path);

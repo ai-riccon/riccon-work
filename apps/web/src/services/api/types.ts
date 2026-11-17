@@ -295,6 +295,192 @@ export type ChatEvent =
   | ChatFailedEvent
   | ChatStoppedEvent;
 
+/** 报告任务状态，对应 OpenAPI `ResearchTaskStatus`。 */
+export type ResearchTaskStatus =
+  'PENDING' | 'RUNNING' | 'WAITING_APPROVAL' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+
+/** 报告任务阶段，对应 OpenAPI `RunStage`。 */
+export type RunStage = 'RETRIEVAL' | 'TOOL' | 'APPROVAL' | 'GENERATION';
+
+/** 阶段状态，对应 OpenAPI `StageStatus`。 */
+export type StageStatus = 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'SKIPPED';
+
+/** 审批状态，对应 OpenAPI `ApprovalStatus`。 */
+export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'CANCELLED';
+
+/** 审批决定，对应 OpenAPI `ApprovalDecision`。 */
+export type ApprovalDecision = 'APPROVE' | 'REJECT';
+
+/** MCP 调用状态，对应 OpenAPI `McpInvocationStatus`。 */
+export type McpInvocationStatus = 'STARTED' | 'SUCCEEDED' | 'FAILED' | 'DENIED';
+
+/** MCP 工具风险级别，对应 OpenAPI `McpToolRisk`。 */
+export type McpToolRisk = 'READ' | 'WRITE';
+
+/** 产物状态，对应 OpenAPI `ArtifactStatus`。 */
+export type ArtifactStatus = 'DRAFT' | 'SAVED' | 'DELETED';
+
+/** 产物引用来源类型，对应 OpenAPI `ArtifactCitation.sourceType`。 */
+export type ArtifactSourceType = 'FILE' | 'KNOWLEDGE' | 'MCP';
+
+/** 报告任务摘要，对应 OpenAPI `ResearchTask`。 */
+export interface ResearchTask {
+  id: string;
+  workspaceId: string;
+  topic: string;
+  status: ResearchTaskStatus;
+  currentStage?: RunStage | null;
+  mcpToolId?: string | null;
+  currentRunId?: string | null;
+  failureCode?: string | null;
+  failureMessage?: string | null;
+  createdAt: string;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+}
+
+/** 阶段记录 details 的白名单键；后端可附加其他脱敏字段。 */
+export interface RunStageDetails {
+  /** 检索主题或查询摘要。 */
+  query?: string;
+  /** 检索命中数。 */
+  hitCount?: number;
+  /** 对应的 MCP 调用 ID。 */
+  invocationId?: string;
+  /** 审批入参的脱敏摘要。 */
+  paramsPreview?: Record<string, unknown> | null;
+  /** 工具结果的脱敏摘要。 */
+  resultSummary?: string;
+  [key: string]: unknown;
+}
+
+/** 阶段时间线记录，对应 OpenAPI `RunStageRecord`。 */
+export interface RunStageRecord {
+  stage: RunStage;
+  attempt: number;
+  status: StageStatus;
+  errorCode?: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  /** 服务端白名单摘要；只包含脱敏后的查询、命中数、工具调用 ID 等。 */
+  details?: RunStageDetails | null;
+}
+
+/** 审批记录，对应 OpenAPI `Approval`。 */
+export interface Approval {
+  id: string;
+  researchTaskId: string;
+  runId: string;
+  stage: RunStage;
+  attempt: number;
+  status: ApprovalStatus;
+  actionType: 'MCP_TOOL_CALL';
+  toolName: string;
+  paramsPreview?: Record<string, unknown> | null;
+  paramsSha256: string;
+  requestedBy?: string;
+  decidedBy?: string | null;
+  decidedAt?: string | null;
+  decisionComment?: string | null;
+  expiresAt?: string | null;
+  createdAt: string;
+}
+
+/** MCP 调用记录，对应 OpenAPI `McpInvocation`。 */
+export interface McpInvocation {
+  id: string;
+  toolName: string;
+  status: McpInvocationStatus;
+  paramsSha256: string;
+  resultSha256?: string | null;
+  durationMs?: number | null;
+  errorCode?: string | null;
+  startedAt: string;
+  finishedAt?: string | null;
+}
+
+/** 已授权 MCP 工具，对应 OpenAPI `McpTool`。 */
+export interface McpTool {
+  id: string;
+  serverId?: string | null;
+  name: string;
+  description?: string | null;
+  riskLevel: McpToolRisk;
+  requiresApproval: boolean;
+  status: 'ACTIVE' | 'DISABLED';
+}
+
+/** 产物引用条目，对应 OpenAPI `ArtifactCitation`。 */
+export interface ArtifactCitation {
+  ordinal: number;
+  sourceType: ArtifactSourceType;
+  fileId?: string | null;
+  knowledgeDocumentId?: string | null;
+  mcpInvocationId?: string | null;
+  title: string;
+  snippet: string;
+  locatorType?: LocatorType | null;
+  pageNo?: number | null;
+  sheetName?: string | null;
+  paragraphNo?: number | null;
+}
+
+/** 产物版本，对应 OpenAPI `ArtifactVersion`；正文在对象存储中。 */
+export interface ArtifactVersion {
+  id: string;
+  version: number;
+  contentType: string;
+  sizeBytes: number;
+  sha256: string;
+  summary?: string | null;
+  createdAt: string;
+  citations: ArtifactCitation[];
+}
+
+/** 产物摘要，对应 OpenAPI `Artifact`。 */
+export interface Artifact {
+  id: string;
+  workspaceId: string;
+  researchTaskId?: string | null;
+  kind: 'REPORT';
+  title: string;
+  status: ArtifactStatus;
+  currentVersion: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 产物详情，对应 OpenAPI `ArtifactDetail`。 */
+export interface ArtifactDetail extends Artifact {
+  currentVersionDetail: ArtifactVersion | null;
+}
+
+/** 报告任务详情，对应 OpenAPI `ResearchTaskDetail`。 */
+export interface ResearchTaskDetail extends ResearchTask {
+  stages: RunStageRecord[];
+  approvals?: Approval[];
+  mcpInvocations: McpInvocation[];
+  sources: Citation[];
+  artifact?: ArtifactDetail | null;
+}
+
+/** 创建报告任务请求，对应 OpenAPI `ResearchTaskCreateRequest`。 */
+export interface ResearchTaskCreateRequest {
+  topic: string;
+  mcpToolId: string;
+}
+
+/** 重试报告任务请求，对应 OpenAPI `ResearchTaskRetryRequest`。 */
+export interface ResearchTaskRetryRequest {
+  fromStage?: 'TOOL' | 'GENERATION' | null;
+}
+
+/** 审批决定请求，对应 OpenAPI `ApprovalDecisionRequest`。 */
+export interface ApprovalDecisionRequest {
+  decision: ApprovalDecision;
+  comment?: string | null;
+}
+
 /** 前端展示用的会话消息；与后端 Message 分离，便于表达流式与失败状态。 */
 export interface ChatMessage {
   /** 前端本地 key，打开历史消息时使用服务端 id。 */
