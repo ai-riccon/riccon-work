@@ -83,6 +83,7 @@ public class ResearchTaskJdbc {
                        current_stage = :stage,
                        current_run_id = COALESCE(current_run_id, :runId),
                        started_at = COALESCE(started_at, NOW(6)),
+                       finished_at = NULL,
                        failure_code = NULL,
                        failure_message = NULL
                  WHERE tenant_id = :tenantId
@@ -110,7 +111,8 @@ public class ResearchTaskJdbc {
                 UPDATE research_task
                    SET status = 'WAITING_APPROVAL',
                        current_stage = :stage,
-                       current_run_id = COALESCE(current_run_id, :runId)
+                       current_run_id = COALESCE(current_run_id, :runId),
+                       finished_at = NULL
                  WHERE tenant_id = :tenantId
                    AND id = :taskId
                    AND (current_run_id IS NULL OR current_run_id = :runId)
