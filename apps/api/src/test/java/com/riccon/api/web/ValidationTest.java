@@ -52,6 +52,15 @@ class ValidationTest {
         assertThatThrownBy(() -> Validation.requireRange(29, "days", 30, 3650)).isInstanceOf(BadRequestException.class);
     }
 
+    /** 请求体必须非空。 */
+    @Test
+    void requireBodyRejectsNull() {
+        assertThat(Validation.requireBody("body")).isEqualTo("body");
+        assertThatThrownBy(() -> Validation.requireBody(null))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("request body");
+    }
+
     /** 必填对象。 */
     @Test
     void requireNonNullRejectsNull() {

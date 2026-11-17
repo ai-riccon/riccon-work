@@ -12,6 +12,7 @@ import com.riccon.api.identity.dto.UserStatusRequest;
 import com.riccon.api.identity.dto.UserSummaryResponse;
 import com.riccon.api.web.AuthenticationSupport;
 import com.riccon.api.web.RequestContext;
+import com.riccon.api.web.Validation;
 import com.riccon.platform.common.tenant.TenantContext;
 import com.riccon.platform.domain.identity.PermissionCodes;
 import jakarta.servlet.http.HttpServletRequest;
@@ -78,6 +79,7 @@ public class TenantUserController {
     @RequirePermission(PermissionCodes.TENANT_USER_MANAGE)
     public UserSummaryResponse createUser(
             @RequestBody UserCreateRequest body, Authentication authentication, HttpServletRequest request) {
+        Validation.requireBody(body);
         RicconPrincipal actor = AuthenticationSupport.requirePrincipal(authentication);
         return tenantUserAdminService.createUser(TenantContext.require(), body, actor, false, meta(request));
     }
@@ -98,6 +100,7 @@ public class TenantUserController {
             @RequestBody UserStatusRequest body,
             Authentication authentication,
             HttpServletRequest request) {
+        Validation.requireBody(body);
         RicconPrincipal actor = AuthenticationSupport.requirePrincipal(authentication);
         return tenantUserAdminService.updateStatus(
                 TenantContext.require(), userId, body.status(), actor, meta(request));
@@ -119,6 +122,7 @@ public class TenantUserController {
             @RequestBody UserRolesRequest body,
             Authentication authentication,
             HttpServletRequest request) {
+        Validation.requireBody(body);
         RicconPrincipal actor = AuthenticationSupport.requirePrincipal(authentication);
         return tenantUserAdminService.replaceRoles(
                 TenantContext.require(), userId, body.roles(), actor, false, meta(request));

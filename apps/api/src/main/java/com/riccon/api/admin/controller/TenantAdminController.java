@@ -92,6 +92,7 @@ public class TenantAdminController {
     @RequirePermission(PermissionCodes.PLATFORM_TENANT_MANAGE)
     public TenantSummaryResponse createTenant(
             @RequestBody TenantCreateRequest body, Authentication authentication, HttpServletRequest request) {
+        Validation.requireBody(body);
         RicconPrincipal actor = AuthenticationSupport.requirePrincipal(authentication);
         return tenantAdminService.createTenant(body.id(), body.name(), actor, meta(request));
     }
@@ -112,6 +113,7 @@ public class TenantAdminController {
             @RequestBody TenantUpdateRequest body,
             Authentication authentication,
             HttpServletRequest request) {
+        Validation.requireBody(body);
         RicconPrincipal actor = AuthenticationSupport.requirePrincipal(authentication);
         return tenantAdminService.updateTenant(tenantId, body, actor, meta(request));
     }
@@ -150,6 +152,7 @@ public class TenantAdminController {
             @RequestBody UserCreateRequest body,
             Authentication authentication,
             HttpServletRequest request) {
+        Validation.requireBody(body);
         RicconPrincipal actor = AuthenticationSupport.requirePrincipal(authentication);
         return tenantUserAdminService.createUser(TenantId.of(tenantId), body, actor, true, meta(request));
     }
@@ -172,6 +175,7 @@ public class TenantAdminController {
             @RequestBody UserRolesRequest body,
             Authentication authentication,
             HttpServletRequest request) {
+        Validation.requireBody(body);
         RicconPrincipal actor = AuthenticationSupport.requirePrincipal(authentication);
         return tenantUserAdminService.replaceRoles(
                 targetTenant(tenantId), userId, body.roles(), actor, true, meta(request));

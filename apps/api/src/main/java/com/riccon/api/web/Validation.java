@@ -90,6 +90,21 @@ public final class Validation {
     }
 
     /**
+     * 校验请求体非空，避免 JSON 字面量 {@code null} 进入 controller 造成空指针。
+     *
+     * @param body 请求体
+     * @param <T> 类型
+     * @return 原对象
+     * @throws BadRequestException 请求体为空
+     */
+    public static <T> T requireBody(T body) {
+        if (body == null) {
+            throw new BadRequestException("request body is required");
+        }
+        return body;
+    }
+
+    /**
      * 校验可选整数的范围。
      *
      * @param value 值

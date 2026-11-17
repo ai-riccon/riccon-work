@@ -91,6 +91,7 @@ public class AuthController {
     @PostMapping("/login")
     public SessionInfoResponse login(
             @RequestBody LoginRequest body, HttpServletRequest request, HttpServletResponse response) {
+        Validation.requireBody(body);
         // 登录阶段只校验长度：格式错误也走统一 401，不向攻击者暴露租户代码规则。
         String tenantCode = Validation.requireText(body.tenantCode(), "tenantCode", 1, 64);
         String username = Validation.requireText(body.username(), "username", 1, 100);
