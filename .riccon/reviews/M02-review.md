@@ -362,5 +362,5 @@ P0：**无**。P1：F-001/F-002/F-003/F-004 均为 open，按 Riccon 规则不�
 
 - 合同命令：EV-0224 install、EV-0225 build、EV-0226 lint、EV-0227 typecheck、EV-0228 test、EV-0229 coverage、EV-0230 security、EV-0231 a11y、EV-0232 test_e2e（失败）、EV-0233 docs。
 - 真实栈：`.riccon/evidence/TASK-0024/real-stack-summary.json`、`real-stack-j2.json`、`real-stack-checks.json`、`real-stack-db-observations.txt`、`real-stack-playwright.log`、`real-stack-*.log`。
-- 截图/trace：`test-results/*-chromium/`（失败用例）；真实栈报告 JSON 位于 `.riccon/evidence/TASK-0024/real-report.json`。
+- 截图/trace：`test-results/*-chromium/`（失败用例）；真实栈 Playwright 行报告与失败摘要见 `.riccon/evidence/TASK-0024/real-stack-playwright.log`。
 - 证据审计：`riccon evidence list --task TASK-0024 --json`；EV 哈希/字节数逐条核对。
