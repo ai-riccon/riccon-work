@@ -1,0 +1,35 @@
+# command: set -euo pipefail
+COMPOSE=deploy/compose/docker-compose.test.yml
+DB=riccon_v8_check
+ROOT_PW="${RICCON_DB_ROOT_PASSWORD:-riccon_root_test_only}"
+USER_PW="${RICCON_DB_PASSWORD:-riccon_test_only}"
+docker compose -f "$COMPOSE" exec -T -e MYSQL_PWD="$ROOT_PW" mysql mysql --user=root --batch -e "DROP DATABASE IF EXISTS $DB; CREATE DATABASE $DB CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci; GRANT ALL PRIVILEGES ON $DB.* TO 'riccon'@'%'; FLUSH PRIVILEGES;"
+for f in apps/api/src/main/resources/db/migration/V*.sql; do
+  echo "== $f"
+  docker compose -f "$COMPOSE" exec -T -e MYSQL_PWD="$USER_PW" mysql mysql --user=riccon --database="$DB" --batch --show-warnings < "$f"
+done
+COLUMNS=$(docker compose -f "$COMPOSE" exec -T -e MYSQL_PWD="$USER_PW" mysql mysql --user=riccon --database="$DB" --batch --skip-column-names -e "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='$DB' AND table_name='approval' AND column_name IN ('params_ciphertext','params_key_id');")
+CHECKS=$(docker compose -f "$COMPOSE" exec -T -e MYSQL_PWD="$USER_PW" mysql mysql --user=riccon --database="$DB" --batch --skip-column-names -e "SELECT COUNT(*) FROM information_schema.check_constraints WHERE constraint_schema='$DB' AND constraint_name LIKE 'chk_approval_params%';")
+test "$COLUMNS" = "2"
+test "$CHECKS" = "6"
+docker compose -f "$COMPOSE" exec -T -e MYSQL_PWD="$ROOT_PW" mysql mysql --user=root --batch -e "DROP DATABASE $DB;"
+echo "V1-V8 applied on fresh database: columns=$COLUMNS checks=$CHECKS"
+# cwd: /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/opencode/riccon-task0018
+# started_at: 2026-11-18T01:27:20.781+08:00
+# finished_at: 2026-11-18T01:27:28.173+08:00
+# duration_ms: 7390
+# exit_code: 0
+
+# --- stdout ---
+== apps/api/src/main/resources/db/migration/V1__baseline.sql
+== apps/api/src/main/resources/db/migration/V2__identity_and_workspace.sql
+== apps/api/src/main/resources/db/migration/V3__files_knowledge_and_conversation.sql
+== apps/api/src/main/resources/db/migration/V4__research_runs_and_artifacts.sql
+== apps/api/src/main/resources/db/migration/V5__model_gateway_and_mcp.sql
+== apps/api/src/main/resources/db/migration/V6__audit_event.sql
+== apps/api/src/main/resources/db/migration/V7__spring_session.sql
+== apps/api/src/main/resources/db/migration/V8__approval_params_envelope.sql
+V1-V8 applied on fresh database: columns=2 checks=6
+
+# --- stderr ---
+

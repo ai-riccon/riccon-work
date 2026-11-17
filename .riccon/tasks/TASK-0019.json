@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0019",
+  "module_id": "M02",
+  "title": "API J1 会话、消息与 SSE",
+  "owner": "riccon/builder",
+  "status": "review",
+  "write_scope": [
+    "apps/api/src/main/java",
+    "apps/api/src/test",
+    "apps/api/src/main/resources/application.yml",
+    "apps/api/pom.xml"
+  ],
+  "acceptance": [
+    "会话 list/create/get 与消息 list，租户隔离",
+    "发送消息：持久化 user message、assistant 占位、agent_run/outbox，返回 SSE",
+    "消费 worker 内部 SSE 并转发 started/delta/citation/completed/failed/stopped，落库 assistant 消息与引用",
+    "取消、失败、重连语义与 messageId 持久化",
+    "集成测试（mock worker）与 ./mvnw verify 通过"
+  ],
+  "evidence": [
+    "EV-0181",
+    "EV-0182",
+    "EV-0183",
+    "EV-0184",
+    "EV-0185",
+    "EV-0186"
+  ],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-17T16:47:55.635Z",
+  "updated_at": "2026-11-18T02:47:18.997+08:00",
+  "baseline_commit": "385523f",
+  "end_commit": "4568b66"
+}
