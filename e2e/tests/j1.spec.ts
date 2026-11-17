@@ -6,7 +6,7 @@ import { login } from './session';
  * J1 关键旅程 E2E（M02-AC-02/03/04/05/16）：
  * 登录 → 新建会话 → 键盘上传 → 解析成功 → 提问 → 首字 → 引用 → 停止 → 重新打开会话。
  *
- * 使用本地 mock 适配层；不调用真实模型、MCP 或后端。
+ * 请求由真实 ApiClient 发往独立 stub API；不调用真实模型、MCP 或后端。
  */
 test.describe('J1 通用问答与文件处理', () => {
   test('上传、流式引用、停止与重开完整闭环 @a11y', async ({ page }) => {
@@ -22,7 +22,7 @@ test.describe('J1 通用问答与文件处理', () => {
     await fileChooser.setFiles({
       name: '季度报告.pdf',
       mimeType: 'application/pdf',
-      buffer: Buffer.from('%PDF-1.4\n% Riccon mock file\n'),
+      buffer: Buffer.from('%PDF-1.4\n% Riccon stub file\n'),
     });
 
     await expect(page.getByText('解析成功')).toBeVisible({ timeout: 15_000 });

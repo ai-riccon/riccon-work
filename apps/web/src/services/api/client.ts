@@ -3,6 +3,8 @@ import { parseChatEvent, parseSseStream } from './sse';
 import type {
   Approval,
   ApprovalDecisionRequest,
+  Artifact,
+  ArtifactDetail,
   ArtifactVersion,
   ChatEvent,
   Conversation,
@@ -31,10 +33,8 @@ export type FetchLike = typeof fetch;
 export interface ApiClientOptions {
   /** API 基础地址；空字符串表示同源。 */
   baseUrl?: string;
-  /** fetch 实现；默认使用 globalThis.fetch。 */
+  /** fetch 实现；默认使用 globalThis.fetch；测试可注入替身。 */
   fetchImpl?: FetchLike;
-  /** 延迟加载 fetch 实现；用于把演示适配层拆成独立 chunk。 */
-  fetchProvider?: () => Promise<FetchLike>;
   /** 任意需要登录态请求返回 401 时的回调，用于标记会话过期。 */
   onUnauthorized?: () => void;
 }
@@ -89,6 +89,9 @@ export interface RicconApi {
     input: ApprovalDecisionRequest,
     idempotencyKey?: string,
   ): Promise<Approval>;
+  listArtifacts(workspaceId: string): Promise<Page<Artifact>>;
+  getArtifact(artifactId: string): Promise<ArtifactDetail>;
+  listArtifactVersions(artifactId: string): Promise<Page<ArtifactVersion>>;
   getArtifactVersion(artifactId: string, version: number): Promise<ArtifactVersion>;
   getArtifactDownloadUrl(artifactId: string, version: number): Promise<DownloadUrl>;
   fetchArtifactContent(artifactId: string, version: number, signal?: AbortSignal): Promise<string>;
@@ -116,7 +119,7 @@ function artifactTooLargeError(): ApiError {
 /**
  * 判断是否为绝对 URL。
  *
- * 预签名地址在生产环境是对象存储的绝对 URL，演示适配层则返回同源相对路径。
+ * 预签名地址通常是对象存储的绝对 URL；本地反向代理也可能返回同源相对路径。
  *
  * @param value 待判断的地址
  * @returns 是否以 http/https 开头
@@ -142,9 +145,7 @@ function randomId(): string {
 export class ApiClient implements RicconApi {
   private readonly baseUrl: string;
 
-  private fetchImpl: FetchLike | null;
-
-  private readonly fetchProvider?: () => Promise<FetchLike>;
+  private readonly fetchImpl: FetchLike;
 
   private readonly onUnauthorized?: () => void;
 
@@ -157,9 +158,7 @@ export class ApiClient implements RicconApi {
    */
   constructor(options: ApiClientOptions = {}) {
     this.baseUrl = (options.baseUrl ?? '').replace(/\/$/, '');
-    this.fetchImpl =
-      options.fetchImpl ?? (options.fetchProvider ? null : globalThis.fetch.bind(globalThis));
-    this.fetchProvider = options.fetchProvider;
+    this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
     this.onUnauthorized = options.onUnauthorized;
   }
 
@@ -527,6 +526,40 @@ export class ApiClient implements RicconApi {
   }
 
   /**
+   * 列出工作空间内的报告产物。
+   *
+   * @param workspaceId 工作空间 ID
+   * @returns 产物分页，取前 100 个
+   */
+  listArtifacts(workspaceId: string): Promise<Page<Artifact>> {
+    return this.request<Page<Artifact>>(
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/artifacts?page=1&size=100`,
+    );
+  }
+
+  /**
+   * 读取产物及其当前版本。
+   *
+   * @param artifactId 产物 ID
+   * @returns 产物详情
+   */
+  getArtifact(artifactId: string): Promise<ArtifactDetail> {
+    return this.request<ArtifactDetail>(`/api/v1/artifacts/${encodeURIComponent(artifactId)}`);
+  }
+
+  /**
+   * 列出产物的历史版本。
+   *
+   * @param artifactId 产物 ID
+   * @returns 版本分页，取前 100 个
+   */
+  listArtifactVersions(artifactId: string): Promise<Page<ArtifactVersion>> {
+    return this.request<Page<ArtifactVersion>>(
+      `/api/v1/artifacts/${encodeURIComponent(artifactId)}/versions?page=1&size=100`,
+    );
+  }
+
+  /**
    * 读取指定产物版本元数据。
    *
    * @param artifactId 产物 ID
@@ -580,7 +613,7 @@ export class ApiClient implements RicconApi {
       : `${this.baseUrl}${download.url.startsWith('/') ? '' : '/'}${download.url}`;
 
     try {
-      const fetchImpl = await this.resolveFetch();
+      const fetchImpl = this.resolveFetch();
       const response = await fetchImpl(url, {
         method: 'GET',
         headers: { Accept: 'text/markdown, text/plain;q=0.9, */*;q=0.1' },
@@ -663,7 +696,7 @@ export class ApiClient implements RicconApi {
       }
       Object.assign(headers, options.extraHeaders);
 
-      const fetchImpl = await this.resolveFetch();
+      const fetchImpl = this.resolveFetch();
       const response = await fetchImpl(`${this.baseUrl}${path}`, {
         method,
         headers,
@@ -712,7 +745,7 @@ export class ApiClient implements RicconApi {
     },
   ): Promise<Response> {
     const doFetch = async (retried: boolean): Promise<Response> => {
-      const fetchImpl = await this.resolveFetch();
+      const fetchImpl = this.resolveFetch();
       const response = await fetchImpl(`${this.baseUrl}${path}`, {
         method: options.method,
         headers: {
@@ -777,24 +810,15 @@ export class ApiClient implements RicconApi {
   }
 
   /**
-   * 解析 fetch 实现；mock 开关打开时首次请求才加载演示适配层。
+   * 解析 fetch 实现。
+   *
+   * 客户端只持有构造时注入或全局的 fetch，不再有延迟加载分支；
+   * 因此生产包内不存在任何 mock 适配层的动态 import 入口。
    *
    * @returns fetch 函数
    */
-  private async resolveFetch(): Promise<FetchLike> {
-    if (this.fetchImpl) {
-      return this.fetchImpl;
-    }
-    if (!this.fetchProvider) {
-      throw new ApiError('未配置网络实现。', {
-        status: 0,
-        code: 'RICCON-CLIENT-NO-FETCH',
-        retryable: false,
-      });
-    }
-    const resolved = await this.fetchProvider();
-    this.fetchImpl = resolved;
-    return resolved;
+  private resolveFetch(): FetchLike {
+    return this.fetchImpl;
   }
 
   /**
@@ -806,7 +830,7 @@ export class ApiClient implements RicconApi {
     if (this.csrfToken) {
       return this.csrfToken;
     }
-    const fetchImpl = await this.resolveFetch();
+    const fetchImpl = this.resolveFetch();
     const response = await fetchImpl(`${this.baseUrl}/api/v1/auth/csrf`, {
       method: 'GET',
       headers: { Accept: 'application/json' },

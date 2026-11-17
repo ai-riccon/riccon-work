@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import type { RicconApi } from '@/services/api/client';
 import { ApiError, describeApiError } from '@/services/api/errors';
 import { api as defaultApi } from '@/services/api';
-import { IS_MOCK_API, MOCK_CREDENTIALS } from '@/services/api/config';
 import type { LoginRequest } from '@/services/api/types';
 import { authStore, useAuth } from '@/services/auth/auth-store';
 
@@ -208,16 +207,6 @@ export default function LoginPage({
             登录
           </Button>
         </Form>
-
-        {IS_MOCK_API && (
-          <Alert
-            showIcon
-            description={`租户 ${MOCK_CREDENTIALS.tenantCode}，账号 ${MOCK_CREDENTIALS.username}，密码 ${MOCK_CREDENTIALS.password}。演示数据仅保存在当前浏览器会话中。`}
-            style={{ marginTop: 16 }}
-            title="演示模式"
-            type="info"
-          />
-        )}
 
         <Typography.Paragraph style={{ marginBottom: 0, marginTop: 16 }}>
           <Typography.Text type="secondary">

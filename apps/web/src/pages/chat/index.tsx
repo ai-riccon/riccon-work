@@ -31,7 +31,6 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import { api as defaultApi } from '@/services/api';
-import { IS_MOCK_API } from '@/services/api/config';
 import type { RicconApi } from '@/services/api/client';
 import { describeApiError } from '@/services/api/errors';
 import type { ChatMessage, Citation, WorkspaceFile } from '@/services/api/types';
@@ -332,11 +331,6 @@ export default function ChatPage({
                 {auth.session.tenant.name}
                 {controller.workspace ? ` · ${controller.workspace.name}` : ''}
               </Typography.Text>
-              {IS_MOCK_API && (
-                <Tag style={{ color: '#0958d9', background: '#e6f4ff', borderColor: '#91caff' }}>
-                  演示数据
-                </Tag>
-              )}
             </div>
           </div>
           <div className="chat-header-actions">

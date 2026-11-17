@@ -269,6 +269,26 @@ describe('ApiClient', () => {
     expect(onUnauthorized).toHaveBeenCalledTimes(1);
   });
 
+  it('409 审批冲突保留 ProblemDetail 错误码且不可重试', async () => {
+    const { fn } = createFetch((url) => {
+      if (url.endsWith('/auth/csrf')) return json({ headerName: 'X-CSRF-TOKEN', token: 'csrf' });
+      if (url.endsWith('/approvals/approval-1/decision')) {
+        return problem(409, 'RICCON-APPROVAL-409');
+      }
+      return json({}, 404);
+    });
+    const client = new ApiClient({ fetchImpl: fn });
+
+    await expect(
+      client.decideApproval('approval-1', { decision: 'APPROVE' }, 'idem-conflict-1'),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: 'RICCON-APPROVAL-409',
+      retryable: false,
+      kind: 'http',
+    });
+  });
+
   it('网络失败转为 ApiError，取消保持 AbortError 语义', async () => {
     const { fn } = createFetch(() => {
       throw new TypeError('fetch failed');
@@ -319,8 +339,27 @@ describe('ApiClient', () => {
         return json({ page: 1, size: 100, total: 1, totalPages: 1, items: [GRANTED_MCP_TOOL] });
       }
       if (url.endsWith('/approvals/approval-1/decision')) return json(makeApproval());
+      if (url.endsWith('/artifacts/artifact-1')) return json(makeArtifact());
+      if (url.includes('/artifacts/artifact-1/versions?')) {
+        return json({
+          page: 1,
+          size: 100,
+          total: 1,
+          totalPages: 1,
+          items: [makeArtifact().currentVersionDetail],
+        });
+      }
       if (url.endsWith('/artifacts/artifact-1/versions/2')) {
         return json(makeArtifact().currentVersionDetail);
+      }
+      if (url.includes('/workspaces/w1/artifacts?')) {
+        return json({
+          page: 1,
+          size: 100,
+          total: 1,
+          totalPages: 1,
+          items: [makeArtifact()],
+        });
       }
       if (url.endsWith('/artifacts/artifact-1/versions/2/download-url')) {
         return json({
@@ -346,8 +385,19 @@ describe('ApiClient', () => {
       { decision: 'REJECT', comment: '数据范围过大' },
       'idem-approval-1',
     );
+    await client.listArtifacts('w1');
+    await client.getArtifact('artifact-1');
+    await client.listArtifactVersions('artifact-1');
     await client.getArtifactVersion('artifact-1', 2);
     await client.getArtifactDownloadUrl('artifact-1', 2);
+
+    expect(
+      calls.some((call) => call.url.endsWith('/workspaces/w1/artifacts?page=1&size=100')),
+    ).toBe(true);
+    expect(calls.some((call) => call.url.endsWith('/artifacts/artifact-1'))).toBe(true);
+    expect(
+      calls.some((call) => call.url.endsWith('/artifacts/artifact-1/versions?page=1&size=100')),
+    ).toBe(true);
 
     expect(
       calls.some((call) => call.url.endsWith('/research-tasks?page=1&size=100&status=FAILED')),

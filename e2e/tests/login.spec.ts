@@ -4,10 +4,12 @@ import { DEMO_CREDENTIALS, login } from './session';
 
 /**
  * 登录页 E2E：覆盖 M02-AC-01 的成功/失败路径、会话过期入口与可访问性。
- * 认证由本地 mock 适配层完成，不调用真实后端。
+ * 认证请求发往独立 stub API，由真实 ApiClient 完成 Cookie/CSRF 流程。
  */
 test.describe('登录页', () => {
-  test('错误凭据显示统一失败提示，不泄露账号是否存在 @a11y', async ({ page }) => {
+  test('错误凭据显示统一失败提示，不泄露账号是否存在 @a11y', async ({ page, consoleGuard }) => {
+    // 错误凭据必然返回 401；这是用例的预期响应，显式登记后守卫仍会拦截其他错误。
+    consoleGuard.allowNetworkError(/\/api\/v1\/auth\/login$/, 401);
     await page.goto('/login');
     await page.getByPlaceholder('例如 acme').fill(DEMO_CREDENTIALS.tenantCode);
     await page.getByPlaceholder('请输入账号').fill(DEMO_CREDENTIALS.username);

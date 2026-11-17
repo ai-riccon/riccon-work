@@ -447,6 +447,12 @@ export function createFakeApi(overrides: Partial<RicconApi> = {}): RicconApi {
         decidedAt: '2026-11-17T08:04:00.000Z',
       }),
     ),
+    getArtifact: vi.fn(async (artifactId: string) => ({
+      ...makeArtifact(),
+      id: artifactId,
+    })),
+    listArtifactVersions: vi.fn(async () => pageOf([makeArtifact().currentVersionDetail!])),
+    listArtifacts: vi.fn(async () => pageOf([makeArtifact()])),
     getArtifactVersion: vi.fn(async (_artifactId: string, version: number) => {
       const detail = makeArtifact();
       return {

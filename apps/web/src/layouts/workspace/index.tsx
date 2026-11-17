@@ -1,9 +1,8 @@
 import { LogoutOutlined } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from '@umijs/max';
-import { Alert, Button, Flex, Result, Spin, Tag, Typography } from 'antd';
+import { Alert, Button, Flex, Result, Spin, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 import { api as defaultApi } from '@/services/api';
-import { IS_MOCK_API } from '@/services/api/config';
 import type { RicconApi } from '@/services/api/client';
 import { describeApiError } from '@/services/api/errors';
 import { authStore, useAuth } from '@/services/auth/auth-store';
@@ -116,11 +115,6 @@ export default function WorkspaceLayout({
             </Typography.Title>
             <div className="workspace-shell-meta">
               <Typography.Text type="secondary">{auth.session.tenant.name}</Typography.Text>
-              {IS_MOCK_API && (
-                <Tag style={{ color: '#0958d9', background: '#e6f4ff', borderColor: '#91caff' }}>
-                  演示数据
-                </Tag>
-              )}
             </div>
           </div>
 

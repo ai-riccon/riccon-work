@@ -1,53 +1,17 @@
 import { expect, test } from './fixtures';
 import { expectNoSeriousA11yViolations } from './a11y';
+import { approveWithKeyboard, createResearchTask, openResearch } from './research';
 import { login } from './session';
 
 /** 演示调研主题；与查看/重试场景保持可读且足够长。 */
 const TOPIC_SUCCESS = '2026 年中国企业协同办公市场规模与竞争格局';
 
 /**
- * 通过 J1 工作空间头部进入报告任务页。
- *
- * @param page Playwright 页面
- */
-async function openResearch(page: import('@playwright/test').Page): Promise<void> {
-  await page.getByRole('button', { name: '市场调研报告' }).click();
-  await expect(page).toHaveURL(/\/research\/tasks$/);
-  await expect(page.getByRole('heading', { name: '市场调研报告' })).toBeVisible();
-}
-
-/**
- * 创建报告任务并等待进入详情页。
- *
- * @param page Playwright 页面
- * @param topic 调研主题
- */
-async function createTask(page: import('@playwright/test').Page, topic: string): Promise<void> {
-  await page.getByPlaceholder('例如：2026 年中国企业协同办公市场规模与竞争格局').fill(topic);
-  await page.getByRole('combobox', { name: '数据工具' }).click();
-  await page.getByText('market_data_lookup · 只读 · 需审批').click();
-  await page.getByRole('button', { name: /创建\s*报告任务/ }).click();
-  await expect(page).toHaveURL(/\/research\/(?!tasks$)[^/]+$/);
-  await expect(page.getByRole('heading', { name: topic, exact: true })).toBeVisible();
-}
-
-/**
- * 用键盘批准当前待审批项。
- *
- * @param page Playwright 页面
- */
-async function approveWithKeyboard(page: import('@playwright/test').Page): Promise<void> {
-  const approve = page.getByRole('button', { name: /批\s*准/ });
-  await expect(approve).toBeEnabled();
-  await approve.focus();
-  await page.keyboard.press('Enter');
-}
-
-/**
  * J2 市场调研报告关键旅程（M02-AC-06..11/16）：
  * 创建 → 检索 → 审批前暂停 → 批准 → MCP 取数 → 生成 → 引用/下载/重开。
  *
- * 使用本地 mock 适配层；不调用真实模型、MCP 或后端。
+ * 全部请求由真实 ApiClient 发往独立 stub API（`e2e/stub/server.mjs`），
+ * 不使用应用内 mock；stub 只提供合成数据与受控失败路径。
  */
 test.describe('J2 市场调研报告', () => {
   test('创建、审批、工具取数与报告产物完整闭环 @a11y', async ({ page }) => {
@@ -55,7 +19,7 @@ test.describe('J2 市场调研报告', () => {
     await openResearch(page);
     await expectNoSeriousA11yViolations(page);
 
-    await createTask(page, TOPIC_SUCCESS);
+    await createResearchTask(page, TOPIC_SUCCESS);
 
     // 检索完成后任务停在审批前，不生成报告。
     await expect(page.getByText('任务正在等待审批', { exact: true })).toBeVisible();
@@ -124,7 +88,7 @@ test.describe('J2 市场调研报告', () => {
   test('拒绝审批后任务终止且不产生报告', async ({ page }) => {
     await login(page);
     await openResearch(page);
-    await createTask(page, '审批拒绝演示：行业进入策略');
+    await createResearchTask(page, '审批拒绝演示：行业进入策略');
 
     await expect(page.getByText('待审批：调用外部工具', { exact: true })).toBeVisible();
     await page.getByLabel('审批备注（可选）').fill('数据范围超出本次调研需要');
@@ -144,7 +108,7 @@ test.describe('J2 市场调研报告', () => {
   test('MCP 超时后重试工具阶段即可产出报告', async ({ page }) => {
     await login(page);
     await openResearch(page);
-    await createTask(page, '工具失败演示：区域市场数据');
+    await createResearchTask(page, '工具失败演示：区域市场数据');
 
     await expect(page.getByText('待审批：调用外部工具', { exact: true })).toBeVisible();
     await approveWithKeyboard(page);

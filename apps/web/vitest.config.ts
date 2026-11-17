@@ -44,9 +44,7 @@ export default defineConfig({
         'dist/**',
         'coverage/**',
         'config/config.ts',
-        // 演示适配层只在 RICCON_API_MOCK=1 时进入运行时，由 E2E 覆盖；它不是生产代码路径，
-        // 且包含大量刻意构造的失败响应，计入单元覆盖率会挤占真实业务代码的门槛。
-        'src/mocks/**',
+        // 前端不包含 mock 适配层；端到端 stub 独立存放在 e2e/stub，不参与前端覆盖率。
       ],
       thresholds: {
         lines: 80,

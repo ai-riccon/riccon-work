@@ -1,8 +1,8 @@
 import { expect, type Page } from '@playwright/test';
 
 /**
- * E2E 演示凭据；与 `apps/web/src/services/api/config.ts` 的 MOCK_CREDENTIALS 保持一致。
- * 仅在 RICCON_API_MOCK=1 的端到端环境使用，不包含任何真实账号。
+ * E2E 演示凭据；由独立 stub API（`e2e/stub/server.mjs`）校验。
+ * 仅在 E2E 环境使用，不包含任何真实账号。
  */
 export const DEMO_CREDENTIALS = {
   tenantCode: 'acme',

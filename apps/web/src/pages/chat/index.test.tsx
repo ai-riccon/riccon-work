@@ -235,6 +235,28 @@ describe('J1 工作空间', () => {
     expect(api.stopGeneration).toHaveBeenCalledWith('conversation-1', 'run-1');
   });
 
+  it('SSE 中途断线标记失败、保留已生成内容并提供重试', async () => {
+    const api = createFakeApi({
+      listConversations: vi.fn(async () => pageOf([makeConversation()])),
+      getConversation: vi.fn(async () => makeDetail([])),
+      sendMessage: vi.fn(async function* stream() {
+        yield startedEvent();
+        yield deltaEvent('已经生成的内容');
+        // 模拟网络在流结束前中断：生成器抛出普通网络异常。
+        throw new TypeError('fetch failed');
+      }),
+    });
+    renderChat(api);
+
+    await selectConversation('示例会话');
+    sendQuestion('请总结文件');
+
+    expect(await screen.findByText(/已经生成的内容/)).toBeVisible();
+    expect(await screen.findByText('回答生成失败，请重试。')).toBeVisible();
+    expect(screen.getByText(/RICCON-CLIENT-000/)).toBeVisible();
+    expect(screen.getByRole('button', { name: /重\s*试/ })).toBeVisible();
+  });
+
   it('回答完成且无引用时明确提示未检索到资料', async () => {
     const api = createFakeApi({
       listConversations: vi.fn(async () => pageOf([makeConversation()])),
