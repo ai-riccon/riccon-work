@@ -1,0 +1,83 @@
+# command: ruby -ryaml -e "puts YAML.load_file(ARGV[0])['jobs']['backend']['steps'][4]['run']" .github/workflows/ci.yml > /tmp/ci-migration-smoke.sh && sed -n '1,8p' /tmp/ci-migration-smoke.sh && docker compose -f deploy/compose/docker-compose.test.yml down -v && docker compose -f deploy/compose/docker-compose.test.yml up -d --wait && bash /tmp/ci-migration-smoke.sh
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-17T12:17:26.730Z
+# finished_at: 2026-11-17T12:18:05.096Z
+# duration_ms: 38365
+# exit_code: 0
+
+# --- stdout ---
+set -euo pipefail
+COMPOSE="docker compose -f deploy/compose/docker-compose.test.yml"
+mysql_exec() {
+  $COMPOSE exec -T -e MYSQL_PWD="${RICCON_DB_PASSWORD:-riccon_test_only}" \
+    mysql mysql --user=riccon --database=riccon "$@"
+}
+
+# MySQL 8.4 默认开启 binlog，compose 固定 --log-bin-trust-function-creators=1
+log_bin_trust_function_creators=ON
+== apps/api/src/main/resources/db/migration/V1__baseline.sql
+== apps/api/src/main/resources/db/migration/V2__identity_and_workspace.sql
+== apps/api/src/main/resources/db/migration/V3__files_knowledge_and_conversation.sql
+== apps/api/src/main/resources/db/migration/V4__research_runs_and_artifacts.sql
+== apps/api/src/main/resources/db/migration/V5__model_gateway_and_mcp.sql
+== apps/api/src/main/resources/db/migration/V6__audit_event.sql
+== apps/api/src/main/resources/db/migration/V7__spring_session.sql
+tables=36 triggers=2
+
+# --- stderr ---
+ Container riccon-test-object-storage Stopping 
+ Container riccon-test-opensearch Stopping 
+ Container riccon-test-mysql Stopping 
+ Container riccon-test-object-storage Stopped 
+ Container riccon-test-object-storage Removing 
+ Container riccon-test-object-storage Removed 
+ Container riccon-test-mysql Stopped 
+ Container riccon-test-mysql Removing 
+ Container riccon-test-mysql Removed 
+ Container riccon-test-opensearch Stopped 
+ Container riccon-test-opensearch Removing 
+ Container riccon-test-opensearch Removed 
+ Volume riccon-test_object-storage-test-data Removing 
+ Volume riccon-test_mysql-test-data Removing 
+ Network riccon-test_riccon-test-net Removing 
+ Volume riccon-test_opensearch-test-data Removing 
+ Volume riccon-test_mysql-test-data Removed 
+ Volume riccon-test_object-storage-test-data Removed 
+ Volume riccon-test_opensearch-test-data Removed 
+ Network riccon-test_riccon-test-net Removed 
+ Network riccon-test_riccon-test-net Creating 
+ Volume riccon-test_mysql-test-data Creating 
+ Volume riccon-test_opensearch-test-data Creating 
+ Network riccon-test_riccon-test-net Creating 
+ Volume riccon-test_mysql-test-data Creating 
+ Volume riccon-test_opensearch-test-data Creating 
+ Volume riccon-test_object-storage-test-data Creating 
+ Volume riccon-test_object-storage-test-data Creating 
+ Volume riccon-test_opensearch-test-data Created 
+ Volume riccon-test_opensearch-test-data Created 
+ Volume riccon-test_mysql-test-data Created 
+ Volume riccon-test_mysql-test-data Created 
+ Volume riccon-test_object-storage-test-data Created 
+ Volume riccon-test_object-storage-test-data Created 
+ Network riccon-test_riccon-test-net Created 
+ Network riccon-test_riccon-test-net Created 
+ Container riccon-test-opensearch Creating 
+ Container riccon-test-object-storage Creating 
+ Container riccon-test-mysql Creating 
+ Container riccon-test-opensearch Created 
+ Container riccon-test-object-storage Created 
+ Container riccon-test-mysql Created 
+ Container riccon-test-opensearch Starting 
+ Container riccon-test-mysql Starting 
+ Container riccon-test-object-storage Starting 
+ Container riccon-test-object-storage Started 
+ Container riccon-test-opensearch Started 
+ Container riccon-test-mysql Started 
+ Container riccon-test-opensearch Waiting 
+ Container riccon-test-object-storage Waiting 
+ Container riccon-test-mysql Waiting 
+ Container riccon-test-object-storage Healthy 
+ Container riccon-test-mysql Healthy 
+ Container riccon-test-opensearch Healthy 
+ERROR 1644 (45000) at line 1: audit_event is append-only
+ERROR 1644 (45000) at line 1: audit_event is append-only

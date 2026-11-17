@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0129",
+  "task_id": "TASK-0011",
+  "command": "docker compose -f deploy/compose/docker-compose.test.yml exec -T -e MYSQL_PWD=riccon_test_only mysql mysql --user=riccon --database=riccon -e \"UPDATE audit_event SET outcome='FAILURE' WHERE action='migration.smoke';\"",
+  "manual": false,
+  "commit": "7c17ae3c100210358710ac552824d045017cd819",
+  "dirty": false,
+  "exit_code": 1,
+  "output_path": ".riccon/evidence/TASK-0011/EV-0129-2026-11-17T12-16-59-899Z-docker-compose-f-deploy-compose-docker-compose-t.log",
+  "output_sha256": "751d4727083f7831fdd5b24aae21fed7f7925c1d1f66b4826ec723d54452e528",
+  "output_bytes": 486,
+  "agent": "riccon/ops",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-17T12:16:59.337Z",
+  "finished_at": "2026-11-17T12:16:59.599Z",
+  "duration_ms": 259,
+  "note": "期望失败：audit_event UPDATE 被 trg_audit_event_no_update 拒绝（ERROR 1644/45000）",
+  "recorded_at": "2026-11-17T12:16:59.903Z"
+}

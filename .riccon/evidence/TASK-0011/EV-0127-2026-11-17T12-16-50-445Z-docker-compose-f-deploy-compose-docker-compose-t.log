@@ -1,0 +1,18 @@
+# command: docker compose -f deploy/compose/docker-compose.test.yml exec -T -e MYSQL_PWD=riccon_test_only mysql mysql --user=riccon --database=riccon --batch -e "SELECT COUNT(*) AS table_count FROM information_schema.tables WHERE table_schema='riccon'; SELECT COUNT(*) AS trigger_count FROM information_schema.triggers WHERE trigger_schema='riccon'; SELECT trigger_name, event_manipulation, event_object_table FROM information_schema.triggers WHERE trigger_schema='riccon' ORDER BY trigger_name;"
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-17T12:16:49.877Z
+# finished_at: 2026-11-17T12:16:50.149Z
+# duration_ms: 270
+# exit_code: 0
+
+# --- stdout ---
+table_count
+36
+trigger_count
+2
+TRIGGER_NAME	EVENT_MANIPULATION	EVENT_OBJECT_TABLE
+trg_audit_event_no_delete	DELETE	audit_event
+trg_audit_event_no_update	UPDATE	audit_event
+
+# --- stderr ---
+

@@ -1,0 +1,48 @@
+# command: docker compose -f deploy/compose/docker-compose.test.yml up -d --wait && docker compose -f deploy/compose/docker-compose.test.yml ps --format 'table {{.Service}}\t{{.Status}}'
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-17T12:16:00.404Z
+# finished_at: 2026-11-17T12:16:37.513Z
+# duration_ms: 37108
+# exit_code: 0
+
+# --- stdout ---
+SERVICE          STATUS
+mysql            Up 35 seconds (healthy)
+object-storage   Up 36 seconds (healthy)
+opensearch       Up 36 seconds (healthy)
+
+# --- stderr ---
+ Volume riccon-test_mysql-test-data Creating 
+ Volume riccon-test_object-storage-test-data Creating 
+ Volume riccon-test_opensearch-test-data Creating 
+ Volume riccon-test_mysql-test-data Creating 
+ Volume riccon-test_opensearch-test-data Creating 
+ Network riccon-test_riccon-test-net Creating 
+ Volume riccon-test_object-storage-test-data Creating 
+ Network riccon-test_riccon-test-net Creating 
+ Volume riccon-test_mysql-test-data Created 
+ Volume riccon-test_mysql-test-data Created 
+ Volume riccon-test_opensearch-test-data Created 
+ Volume riccon-test_opensearch-test-data Created 
+ Volume riccon-test_object-storage-test-data Created 
+ Volume riccon-test_object-storage-test-data Created 
+ Network riccon-test_riccon-test-net Created 
+ Network riccon-test_riccon-test-net Created 
+ Container riccon-test-opensearch Creating 
+ Container riccon-test-object-storage Creating 
+ Container riccon-test-mysql Creating 
+ Container riccon-test-opensearch Created 
+ Container riccon-test-object-storage Created 
+ Container riccon-test-mysql Created 
+ Container riccon-test-opensearch Starting 
+ Container riccon-test-object-storage Starting 
+ Container riccon-test-mysql Starting 
+ Container riccon-test-opensearch Started 
+ Container riccon-test-object-storage Started 
+ Container riccon-test-mysql Started 
+ Container riccon-test-object-storage Waiting 
+ Container riccon-test-mysql Waiting 
+ Container riccon-test-opensearch Waiting 
+ Container riccon-test-object-storage Healthy 
+ Container riccon-test-mysql Healthy 
+ Container riccon-test-opensearch Healthy

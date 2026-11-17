@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0011",
+  "module_id": "M02",
+  "title": "测试栈 MySQL 触发器权限与迁移验证",
+  "owner": "riccon/ops",
+  "status": "review",
+  "write_scope": [
+    "deploy/compose/docker-compose.test.yml",
+    ".github/workflows/ci.yml",
+    "docs/RUNBOOK.md",
+    "docs/SANDBOX.md"
+  ],
+  "acceptance": [
+    "MySQL 8.4 测试栈允许创建审计触发器（log_bin_trust_function_creators=1）",
+    "全新卷按 V1–V7 迁移成功，36 张表、2 个触发器",
+    "audit_event 的 UPDATE/DELETE 被触发器拒绝",
+    "CI 使用同一 compose 且迁移步骤可复现"
+  ],
+  "evidence": [
+    "EV-0123",
+    "EV-0124",
+    "EV-0125",
+    "EV-0126",
+    "EV-0127",
+    "EV-0128",
+    "EV-0129",
+    "EV-0130",
+    "EV-0131",
+    "EV-0132",
+    "EV-0133",
+    "EV-0134",
+    "EV-0135",
+    "EV-0136",
+    "EV-0137"
+  ],
+  "tools_used": [
+    "docker",
+    "git",
+    "maven"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-17T12:11:48.641Z",
+  "updated_at": "2026-11-17T12:20:34.344Z",
+  "baseline_commit": "4ef45a4",
+  "end_commit": "7c17ae3"
+}

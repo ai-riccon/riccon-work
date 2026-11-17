@@ -1,0 +1,12 @@
+# command: docker compose -f deploy/compose/docker-compose.test.yml exec -T -e MYSQL_PWD=riccon_test_only mysql mysql --user=riccon --database=riccon -e "UPDATE audit_event SET outcome='FAILURE' WHERE action='migration.smoke';"
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-17T12:16:59.337Z
+# finished_at: 2026-11-17T12:16:59.599Z
+# duration_ms: 259
+# exit_code: 1
+
+# --- stdout ---
+
+
+# --- stderr ---
+ERROR 1644 (45000) at line 1: audit_event is append-only

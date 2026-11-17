@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0127",
+  "task_id": "TASK-0011",
+  "command": "docker compose -f deploy/compose/docker-compose.test.yml exec -T -e MYSQL_PWD=riccon_test_only mysql mysql --user=riccon --database=riccon --batch -e \"SELECT COUNT(*) AS table_count FROM information_schema.tables WHERE table_schema='riccon'; SELECT COUNT(*) AS trigger_count FROM information_schema.triggers WHERE trigger_schema='riccon'; SELECT trigger_name, event_manipulation, event_object_table FROM information_schema.triggers WHERE trigger_schema='riccon' ORDER BY trigger_name;\"",
+  "manual": false,
+  "commit": "7c17ae3c100210358710ac552824d045017cd819",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0011/EV-0127-2026-11-17T12-16-50-445Z-docker-compose-f-deploy-compose-docker-compose-t.log",
+  "output_sha256": "1000cedc9af16603f895a812531c0b361ce03ccf7f4cd866d8d564eeb5729186",
+  "output_bytes": 870,
+  "agent": "riccon/ops",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-17T12:16:49.877Z",
+  "finished_at": "2026-11-17T12:16:50.149Z",
+  "duration_ms": 270,
+  "note": "迁移后结构：36 张表、2 个触发器（手工重放无 flyway_schema_history）",
+  "recorded_at": "2026-11-17T12:16:50.447Z"
+}

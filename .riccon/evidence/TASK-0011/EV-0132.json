@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0132",
+  "task_id": "TASK-0011",
+  "command": "ruby -ryaml -e \"puts YAML.load_file(ARGV[0])['jobs']['backend']['steps'][4]['run']\" .github/workflows/ci.yml > /tmp/ci-migration-smoke.sh && sed -n '1,8p' /tmp/ci-migration-smoke.sh && docker compose -f deploy/compose/docker-compose.test.yml down -v && docker compose -f deploy/compose/docker-compose.test.yml up -d --wait && bash /tmp/ci-migration-smoke.sh",
+  "manual": false,
+  "commit": "7c17ae3c100210358710ac552824d045017cd819",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0011/EV-0132-2026-11-17T12-18-05-482Z-ruby-ryaml-e-puts-yaml-load-file-argv-0-jobs-bac.log",
+  "output_sha256": "ff20ce205671c036e0f857880112e3e90b0fbaedfce01b9501e7b2ccc31d8a9d",
+  "output_bytes": 4038,
+  "agent": "riccon/ops",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-17T12:17:26.730Z",
+  "finished_at": "2026-11-17T12:18:05.096Z",
+  "duration_ms": 38365,
+  "note": "从 HEAD 的 ci.yml 抽取后端 job 迁移冒烟步骤，在全新卷上原样执行，验证 CI 步骤可复现",
+  "recorded_at": "2026-11-17T12:18:05.486Z"
+}

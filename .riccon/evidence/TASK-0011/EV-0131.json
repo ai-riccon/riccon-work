@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0131",
+  "task_id": "TASK-0011",
+  "command": "docker compose -f deploy/compose/docker-compose.test.yml exec -T -e MYSQL_PWD=riccon_test_only mysql mysql --user=riccon --database=riccon --batch -e \"SELECT action, outcome FROM audit_event WHERE action='migration.smoke';\"",
+  "manual": false,
+  "commit": "7c17ae3c100210358710ac552824d045017cd819",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0011/EV-0131-2026-11-17T12-17-12-230Z-docker-compose-f-deploy-compose-docker-compose-t.log",
+  "output_sha256": "65011aa9d9c72094fed4593cfed68c7dcbd714863f07d7f05245b736b8c63403",
+  "output_bytes": 475,
+  "agent": "riccon/ops",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-17T12:17:11.671Z",
+  "finished_at": "2026-11-17T12:17:11.924Z",
+  "duration_ms": 251,
+  "note": "UPDATE/DELETE 被拒后靶行仍在，数据未被绕过修改",
+  "recorded_at": "2026-11-17T12:17:12.234Z"
+}

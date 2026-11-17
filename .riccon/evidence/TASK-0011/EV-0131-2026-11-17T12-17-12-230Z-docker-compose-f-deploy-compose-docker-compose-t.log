@@ -1,0 +1,13 @@
+# command: docker compose -f deploy/compose/docker-compose.test.yml exec -T -e MYSQL_PWD=riccon_test_only mysql mysql --user=riccon --database=riccon --batch -e "SELECT action, outcome FROM audit_event WHERE action='migration.smoke';"
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-17T12:17:11.671Z
+# finished_at: 2026-11-17T12:17:11.924Z
+# duration_ms: 251
+# exit_code: 0
+
+# --- stdout ---
+action	outcome
+migration.smoke	SUCCESS
+
+# --- stderr ---
+

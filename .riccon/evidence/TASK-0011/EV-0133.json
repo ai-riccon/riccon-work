@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0133",
+  "task_id": "TASK-0011",
+  "command": "docker rm -f riccon-mysql-1419 >/dev/null 2>&1 || true\ndocker run -d --name riccon-mysql-1419 --network none -e MYSQL_ROOT_PASSWORD=probe_root_only -e MYSQL_DATABASE=probe -e MYSQL_USER=probe -e MYSQL_PASSWORD=probe_only mysql:8.4.13 >/dev/null\nfor i in $(seq 1 60); do docker exec -e MYSQL_PWD=probe_only riccon-mysql-1419 mysql -uprobe probe -e \"SELECT 1\" >/dev/null 2>&1 && break; sleep 2; done\ndocker exec -e MYSQL_PWD=probe_only riccon-mysql-1419 mysql -uprobe probe -e \"SHOW VARIABLES LIKE 'log_bin_trust_function_creators'; CREATE TABLE probe_t (id INT PRIMARY KEY); CREATE TRIGGER trg_probe BEFORE UPDATE ON probe_t FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'nope';\"\nrc=$?\ndocker rm -f riccon-mysql-1419 >/dev/null\nexit $rc",
+  "manual": false,
+  "commit": "7c17ae3c100210358710ac552824d045017cd819",
+  "dirty": false,
+  "exit_code": 1,
+  "output_path": ".riccon/evidence/TASK-0011/EV-0133-2026-11-17T12-18-35-530Z-docker-rm-f-riccon-mysql-1419-dev-null-2-1-true-.log",
+  "output_sha256": "9c2b5b91742a6558ade604942d33d49554502a8c032319983fc7603d9e619710",
+  "output_bytes": 1064,
+  "agent": "riccon/ops",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-17T12:18:25.667Z",
+  "finished_at": "2026-11-17T12:18:35.122Z",
+  "duration_ms": 9453,
+  "note": "反向对照（期望失败）：同样 8.4.13 + 同权限用户，未加该参数时创建触发器报 ERROR 1419，证明是参数而非权限问题",
+  "recorded_at": "2026-11-17T12:18:35.532Z"
+}

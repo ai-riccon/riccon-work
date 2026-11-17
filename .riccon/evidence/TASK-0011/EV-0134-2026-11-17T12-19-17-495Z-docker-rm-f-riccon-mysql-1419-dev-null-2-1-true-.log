@@ -1,0 +1,30 @@
+# command: docker rm -f riccon-mysql-1419 >/dev/null 2>&1 || true
+docker run -d --name riccon-mysql-1419 --network none -e MYSQL_ROOT_PASSWORD=probe_root_only -e MYSQL_DATABASE=probe -e MYSQL_USER=probe -e MYSQL_PASSWORD=probe_only mysql:8.4.13 >/dev/null
+ready=0
+for i in $(seq 1 90); do
+  if docker exec -e MYSQL_PWD=probe_only riccon-mysql-1419 mysql -uprobe probe -e "SELECT 1" >/dev/null 2>&1; then
+    ready=$((ready + 1))
+    [ "$ready" -ge 3 ] && break
+  else
+    ready=0
+  fi
+  sleep 2
+done
+echo "probe server stable after ${i} checks"
+docker exec -e MYSQL_PWD=probe_only riccon-mysql-1419 mysql -uprobe probe -e "SHOW VARIABLES LIKE 'log_bin_trust_function_creators'; CREATE TABLE probe_t (id INT PRIMARY KEY); CREATE TRIGGER trg_probe BEFORE UPDATE ON probe_t FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'nope';"
+rc=$?
+docker rm -f riccon-mysql-1419 >/dev/null
+exit $rc
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-17T12:18:59.099Z
+# finished_at: 2026-11-17T12:19:17.104Z
+# duration_ms: 18004
+# exit_code: 1
+
+# --- stdout ---
+probe server stable after 9 checks
+Variable_name	Value
+log_bin_trust_function_creators	OFF
+
+# --- stderr ---
+ERROR 1419 (HY000) at line 1: You do not have the SUPER privilege and binary logging is enabled (you *might* want to use the less safe log_bin_trust_function_creators variable)

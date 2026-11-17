@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0126",
+  "task_id": "TASK-0011",
+  "command": "set -euo pipefail\nfor f in apps/api/src/main/resources/db/migration/V*.sql; do\n  echo \"== $f\"\n  docker compose -f deploy/compose/docker-compose.test.yml exec -T -e MYSQL_PWD=\"${RICCON_DB_PASSWORD:-riccon_test_only}\" mysql mysql --user=riccon --database=riccon --batch --show-warnings < \"$f\"\ndone\necho \"V1-V7 applied as riccon, no ERROR 1419\"",
+  "manual": false,
+  "commit": "7c17ae3c100210358710ac552824d045017cd819",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0011/EV-0126-2026-11-17T12-16-46-132Z-set-euo-pipefail-for-f-in-apps-api-src-main-reso.log",
+  "output_sha256": "b1705d266b5e505c45de0279682dcab698900702762abee582854cafdcb307d4",
+  "output_bytes": 1100,
+  "agent": "riccon/ops",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-17T12:16:42.633Z",
+  "finished_at": "2026-11-17T12:16:45.804Z",
+  "duration_ms": 3169,
+  "note": "非 SUPER 的 riccon 用户按 V1–V7 顺序重放迁移；binlog 开启且无 ERROR 1419",
+  "recorded_at": "2026-11-17T12:16:46.135Z"
+}

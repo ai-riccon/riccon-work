@@ -1,0 +1,13 @@
+# command: docker compose -f deploy/compose/docker-compose.test.yml exec -T -e MYSQL_PWD=riccon_test_only mysql mysql --user=riccon --database=riccon -e "INSERT INTO audit_event (event_id, occurred_at, tenant_id, actor_type, actor_id, action, outcome, trace_id) VALUES (UNHEX('0192f0a1b2c37d4e8f9012345678abcd'), UTC_TIMESTAMP(6), 'platform', 'SYSTEM', 'system', 'migration.smoke', 'SUCCESS', 'trace-smoke-001'); SELECT action, outcome FROM audit_event WHERE action='migration.smoke';"
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-17T12:16:55.397Z
+# finished_at: 2026-11-17T12:16:55.644Z
+# duration_ms: 245
+# exit_code: 0
+
+# --- stdout ---
+action	outcome
+migration.smoke	SUCCESS
+
+# --- stderr ---
+
