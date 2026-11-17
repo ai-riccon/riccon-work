@@ -6,14 +6,33 @@ spring:
     url: ${RICCON_DB_URL:jdbc:mysql://127.0.0.1:13306/riccon?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8}
     username: ${RICCON_DB_USERNAME:riccon}
     password: ${RICCON_DB_PASSWORD:riccon_test_only}
+    hikari:
+      # ADR-0012：时间统一按 UTC 写入 DATETIME(6)；每条连接建立后显式固定会话时区。
+      connection-init-sql: "SET time_zone = '+00:00'"
   flyway:
     enabled: true
     locations: classpath:db/migration
     validate-on-migrate: true
+  session:
+    jdbc:
+      # 会话表由 Flyway V7 创建，禁止应用自动建表（ADR-0013）。
+      initialize-schema: never
+      table-name: SPRING_SESSION
 
 server:
   port: ${RICCON_API_PORT:8080}
   shutdown: graceful
+  servlet:
+    session:
+      # 空闲 30 分钟滑动续期；登录成功后轮换会话 ID（ADR-0013）。
+      timeout: 30m
+      cookie:
+        name: RICCON_SESSION
+        http-only: true
+        same-site: lax
+        # 本地与测试为 false；preview/production 必须由 TLS 终止并设置为 true。
+        secure: ${RICCON_COOKIE_SECURE:false}
+        path: /
 
 management:
   endpoints:
@@ -31,7 +50,7 @@ management:
 
 springdoc:
   api-docs:
-    # M01 默认关闭 OpenAPI 文档，避免在认证落地前暴露内部描述；M02 按环境开启。
+    # M01 默认关闭 OpenAPI 文档，避免在认证落地前暴露内部描述；需要时由环境显式开启。
     enabled: false
   swagger-ui:
     enabled: false

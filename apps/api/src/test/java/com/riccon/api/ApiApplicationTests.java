@@ -1,41 +1,110 @@
 package com.riccon.api;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import com.riccon.api.support.ApiIntegrationTestSupport;
+import com.riccon.api.support.ApiTestClient;
+import java.util.Map;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * API 应用上下文与安全基线测试。
+ * API 启动、迁移与默认拒绝基线。
  *
- * <p>验证两件事：应用能够启动；在未接入认证时健康检查公开、其它路径默认拒绝。
+ * <p>验证 Testcontainers MySQL 8.4 上 Flyway V1–V7 全部成功、审计触发器存在、健康检查公开，
+ * 以及未认证业务路径返回统一 401 ProblemDetail。
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-class ApiApplicationTests {
+class ApiApplicationTests extends ApiIntegrationTestSupport {
 
-    /** 模拟 HTTP 请求，经过完整的 Spring Security 过滤器链。 */
-    @Autowired
-    private MockMvc mockMvc;
-
-    /** 健康检查端点必须对未认证请求开放。 */
+    /** 健康检查必须公开且数据库可用。 */
     @Test
-    void healthEndpointIsPublic() throws Exception {
-        mockMvc.perform(get("/actuator/health"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("UP"));
+    void healthEndpointIsPublic() {
+        ApiTestClient.ApiResponse response = client.get("/actuator/health");
+        assertThat(response.status()).as(response.body()).isEqualTo(200);
+        assertThat(client.json(response).path("status").asText()).isEqualTo("UP");
     }
 
-    /** 未接入认证前，任何业务路径都必须被默认拒绝。 */
+    /** Flyway 在干净 MySQL 上应用 V1–V7，结构与表数量可核对。 */
     @Test
-    void businessEndpointIsDeniedByDefault() throws Exception {
-        mockMvc.perform(get("/api/v1/unknown")).andExpect(status().is4xxClientError());
+    void flywayAppliesAllMigrationsOnCleanDatabase() {
+        Long migrations = jdbcClient
+                .sql("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1")
+                .query(Long.class)
+                .single();
+        Long tables = jdbcClient
+                .sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'riccon'")
+                .query(Long.class)
+                .single();
+        Long triggers = jdbcClient
+                .sql("SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema = 'riccon'")
+                .query(Long.class)
+                .single();
+        assertThat(migrations).isEqualTo(7L);
+        // 36 张业务/基础设施表 + flyway_schema_history。
+        assertThat(tables).isEqualTo(37L);
+        assertThat(triggers).isEqualTo(2L);
+    }
+
+    /** 会话表必须由 Flyway 创建，且应用关闭自动建表。 */
+    @Test
+    void springSessionTablesExist() {
+        Long sessionTables = jdbcClient.sql("""
+                        SELECT COUNT(*) FROM information_schema.tables
+                        WHERE table_schema = 'riccon' AND table_name IN ('SPRING_SESSION', 'SPRING_SESSION_ATTRIBUTES')
+                        """).query(Long.class).single();
+        assertThat(sessionTables).isEqualTo(2L);
+    }
+
+    /** 未认证读取会话返回统一 401 ProblemDetail。 */
+    @Test
+    void sessionWithoutAuthenticationReturnsProblemDetail() {
+        ApiTestClient.ApiResponse response = client.get("/api/v1/auth/session");
+        assertThat(response.status()).isEqualTo(401);
+        assertThat(response.header("content-type")).startsWith("application/problem+json");
+        assertThat(client.json(response).path("code").asText()).isEqualTo("RICCON-AUTH-401");
+        assertThat(client.json(response).path("traceId").asText()).isNotBlank();
+        assertThat(response.header("X-Trace-Id")).isNotBlank();
+    }
+
+    /** 未认证访问未知业务路径仍是 401，不暴露路由存在性。 */
+    @Test
+    void unknownBusinessPathRequiresAuthentication() {
+        ApiTestClient.ApiResponse response = client.get("/api/v1/unknown");
+        assertThat(response.status()).isEqualTo(401);
+        assertThat(client.json(response).path("code").asText()).isEqualTo("RICCON-AUTH-401");
+    }
+
+    /** 健康检查之外的非 API 路径继续默认拒绝。 */
+    @Test
+    void nonApiPathIsDeniedByDefault() {
+        ApiTestClient.ApiResponse response = client.get("/internal/secret", null, Map.of());
+        assertThat(response.status()).isIn(401, 403);
+        assertThat(client.json(response).path("code").asText()).isIn("RICCON-AUTH-401", "RICCON-AUTH-403");
+    }
+
+    /** 引导管理员创建必须写 user.created 与 permission.changed 审计，且不泄露密码。 */
+    @Test
+    void bootstrapAdminCreationIsAudited() {
+        assertThat(auditRows("user.created"))
+                .filteredOn(row -> "platform".equals(row.tenantId()) && "SYSTEM".equals(row.actorType()))
+                .anySatisfy(row -> assertThat(row.details()).contains("PLATFORM_ADMIN"));
+        assertThat(auditRows("permission.changed"))
+                .filteredOn(row -> "platform".equals(row.tenantId()) && "SYSTEM".equals(row.actorType()))
+                .anySatisfy(row ->
+                        assertThat(row.details()).contains("PLATFORM_ADMIN").contains("grant"));
+    }
+
+    /** 验证 test profile 的引导管理员已创建并带平台管理员角色。 */
+    @Test
+    @DisplayName("TEN-019 引导管理员属于 platform 租户且拥有 PLATFORM_ADMIN")
+    void bootstrapAdminBelongsToPlatformTenant() {
+        Long admins = jdbcClient.sql("""
+                        SELECT COUNT(*)
+                        FROM app_user u
+                        JOIN user_role ur ON ur.tenant_id = u.tenant_id AND ur.user_id = u.id
+                        JOIN role r ON r.tenant_id = ur.tenant_id AND r.id = ur.role_id
+                        WHERE u.tenant_id = 'platform' AND u.username = 'platform-admin' AND r.code = 'PLATFORM_ADMIN'
+                        """).query(Long.class).single();
+        assertThat(admins).isEqualTo(1L);
     }
 }

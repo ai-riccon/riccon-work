@@ -1,8 +1,15 @@
 spring:
-  # 单元/上下文测试不连接真实数据库：M01 没有业务查询，连接数据库只会让测试依赖沙箱。
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
-      - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration
+  # 集成测试使用 Testcontainers MySQL 8.4，Flyway 在容器内按 V1–V7 建库；不再排除 DataSource。
   flyway:
-    enabled: false
+    enabled: true
+    clean-disabled: true
+  session:
+    jdbc:
+      initialize-schema: never
+
+riccon:
+  bootstrap:
+    admin:
+      # 仅测试上下文使用的引导账号；密码是测试占位值，不对应任何真实环境。
+      username: platform-admin
+      password: test-bootstrap-password-12
