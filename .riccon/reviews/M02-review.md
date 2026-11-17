@@ -343,7 +343,7 @@ P0：**无**。P1：F-001/F-002/F-003 均为 open，按 Riccon 规则不能通�
 5. **文件发送竞态**：`send` 应从当前 `files` 状态派生附件，而不是依赖 effect 同步的 ref，或在上传/解析完成时同步更新 ref。
 6. **性能合同**：补 `e2e/perf/mvc-smoke.js` 或修改合同命令；当前 F-007 使 M02 性能 DoD 无法由合同命令复现。
 7. **范围**：AC-02 的 5 种格式、AC-05/AC-11 的失败路径、AC-16 的键盘路径仍需真实栈/集成证据；本次只验证了 DOCX 与主要成功/拒绝路径。
-8. **墙钟**：M02 已超过 8h 模块上限；DEC-0007 仍 open（默认 A 16h 未答复）。即使修复上述 P1，`riccon gate check --module M02` 仍会因 wall_clock 失败，需 Lead 先处理决策或显式 `--allow-overrun`。
+8. **墙钟**：验证期间观察到 `.riccon/modules/M02.json` 的 `wall_clock_limit_hours` 已由 8 调整为 16（与 DEC-0007 默认 A 一致），当前 elapsed 约 12.5h 未超 16h；DEC-0007 仍为 open/未回答，Lead 应在 gate 前确认决策状态。
 
 ## 8. 未验证 / 不声称
 
