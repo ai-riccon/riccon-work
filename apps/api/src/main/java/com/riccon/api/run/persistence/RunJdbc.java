@@ -46,6 +46,17 @@ public class RunJdbc {
             )
             """;
 
+    /** 插入报告任务运行；按 chk_agent_run_kind，RESEARCH_REPORT 必须绑定 research_task_id。 */
+    private static final String INSERT_RESEARCH = """
+            INSERT INTO agent_run (
+                tenant_id, id, kind, research_task_id, user_id, status, attempt, max_attempts,
+                trace_id, created_at, updated_at
+            ) VALUES (
+                :tenantId, :id, 'RESEARCH_REPORT', :researchTaskId, :userId, 'PENDING', 1, 3,
+                :traceId, :createdAt, :createdAt
+            )
+            """;
+
     /** 按租户读取运行快照。 */
     private static final String FIND_CHAT = """
             SELECT id, kind, status, conversation_id, user_id, attempt
@@ -100,6 +111,21 @@ public class RunJdbc {
              WHERE tenant_id = :tenantId
                AND id = :runId
                AND status IN ('PENDING', 'RUNNING', 'RETRY_WAIT', 'WAITING_APPROVAL')
+            """;
+
+    /**
+     * 审批通过后把运行从等待审批恢复为 RUNNING。
+     *
+     * <p>只接受 WAITING_APPROVAL：重复决定或已被取消的运行影响 0 行，调用方据此返回冲突而不是重复投递。
+     * 租约由 Worker 领取 resume 事件时重新建立，API 不写 lease 字段。
+     */
+    private static final String MARK_RESUMED = """
+            UPDATE agent_run
+               SET status = 'RUNNING',
+                   updated_at = :now
+             WHERE tenant_id = :tenantId
+               AND id = :runId
+               AND status = 'WAITING_APPROVAL'
             """;
 
     /**
@@ -173,6 +199,39 @@ public class RunJdbc {
     }
 
     /**
+     * 插入 PENDING 报告任务运行。
+     *
+     * @param tenantId 当前租户
+     * @param runId 运行 ID
+     * @param researchTaskId 报告任务 ID
+     * @param userId 发起人
+     * @param traceId 追踪 ID
+     * @param now 创建时间
+     */
+    public void insertResearchPending(
+            TenantId tenantId, UUID runId, UUID researchTaskId, UUID userId, String traceId, Instant now) {
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("id", BinaryUuids.toBytes(runId));
+        params.put("researchTaskId", BinaryUuids.toBytes(researchTaskId));
+        params.put("userId", BinaryUuids.toBytes(userId));
+        params.put("traceId", traceId);
+        params.put("createdAt", SqlTimestamps.toDatabase(now));
+        tenantJdbc.insert(tenantId, INSERT_RESEARCH, params);
+    }
+
+    /**
+     * 按租户读取任意类别运行快照。
+     *
+     * @param tenantId 当前租户
+     * @param runId 运行 ID
+     * @return 运行快照；不存在或属于其他租户时为空
+     */
+    public Optional<RunSnapshot> findRun(TenantId tenantId, UUID runId) {
+        return tenantJdbc.queryOne(
+                tenantId, FIND_CHAT, Map.of("runId", BinaryUuids.toBytes(runId)), RunJdbc::mapSnapshot);
+    }
+
+    /**
      * 按租户读取运行快照。
      *
      * @param tenantId 当前租户
@@ -181,18 +240,40 @@ public class RunJdbc {
      */
     public Optional<RunSnapshot> findChat(TenantId tenantId, UUID runId) {
         return tenantJdbc.queryOne(
+                tenantId, FIND_CHAT, Map.of("runId", BinaryUuids.toBytes(runId)), RunJdbc::mapSnapshot);
+    }
+
+    /**
+     * 把等待审批的运行恢复为 RUNNING。
+     *
+     * @param tenantId 当前租户
+     * @param runId 运行 ID
+     * @param now 当前时间
+     * @return 受影响行数；运行不在 WAITING_APPROVAL 时为 0
+     */
+    public int markResumed(TenantId tenantId, UUID runId, Instant now) {
+        return tenantJdbc.update(
                 tenantId,
-                FIND_CHAT,
-                Map.of("runId", BinaryUuids.toBytes(runId)),
-                (rs, rowNum) -> new RunSnapshot(
-                        BinaryUuids.fromBytes(rs.getBytes("id")),
-                        RunKind.valueOf(rs.getString("kind")),
-                        RunStatus.valueOf(rs.getString("status")),
-                        rs.getBytes("conversation_id") == null
-                                ? null
-                                : BinaryUuids.fromBytes(rs.getBytes("conversation_id")),
-                        BinaryUuids.fromBytes(rs.getBytes("user_id")),
-                        rs.getInt("attempt")));
+                MARK_RESUMED,
+                Map.of("runId", BinaryUuids.toBytes(runId), "now", SqlTimestamps.toDatabase(now)));
+    }
+
+    /**
+     * 映射运行快照行。
+     *
+     * @param rs 结果集
+     * @param rowNum 行号
+     * @return 运行快照
+     * @throws java.sql.SQLException 列读取失败
+     */
+    private static RunSnapshot mapSnapshot(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+        return new RunSnapshot(
+                BinaryUuids.fromBytes(rs.getBytes("id")),
+                RunKind.valueOf(rs.getString("kind")),
+                RunStatus.valueOf(rs.getString("status")),
+                rs.getBytes("conversation_id") == null ? null : BinaryUuids.fromBytes(rs.getBytes("conversation_id")),
+                BinaryUuids.fromBytes(rs.getBytes("user_id")),
+                rs.getInt("attempt"));
     }
 
     /**

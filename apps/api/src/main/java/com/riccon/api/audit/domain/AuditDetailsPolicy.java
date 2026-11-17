@@ -31,6 +31,12 @@ public final class AuditDetailsPolicy {
                     AdditionalAuditActions.MESSAGE_SENT,
                     Set.of("userMessageId", "assistantMessageId", "runId", "attachmentCount")),
             Map.entry(AdditionalAuditActions.MESSAGE_STOPPED, Set.of("messageId", "runId", "reason")),
+            Map.entry(
+                    AdditionalAuditActions.RESEARCH_TASK_CREATED,
+                    Set.of("researchTaskId", "workspaceId", "runId", "mcpToolId")),
+            // ADR-0007 第 2 节：审批审计只允许审批 ID、决定、审批人与工具名。
+            Map.entry(AuditActions.APPROVAL_DECIDED, Set.of("approvalId", "decision", "approverUserId", "toolName")),
+            Map.entry(AdditionalAuditActions.ARTIFACT_DOWNLOADED, Set.of("artifactId", "version")),
             Map.entry(AdditionalAuditActions.TENANT_ACCESS_DENIED, Set.of("attemptedTenant", "reason")));
 
     /** 任何情况下都不允许出现的敏感键（大小写不敏感）。 */

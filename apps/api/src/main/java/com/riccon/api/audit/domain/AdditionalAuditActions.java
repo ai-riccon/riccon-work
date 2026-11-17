@@ -24,6 +24,12 @@ public final class AdditionalAuditActions {
     /** 员工停止生成，或客户端断开导致上游取消；已生成内容保留。 */
     public static final String MESSAGE_STOPPED = "message.stopped";
 
+    /** 员工创建市场调研报告任务，并在同一事务写入运行与 outbox。 */
+    public static final String RESEARCH_TASK_CREATED = "research.task.created";
+
+    /** 员工获取报告产物下载地址；只记录产物与版本，不记录 URL 与对象 key。 */
+    public static final String ARTIFACT_DOWNLOADED = "artifact.downloaded";
+
     /** 工具类禁止实例化。 */
     private AdditionalAuditActions() {}
 }

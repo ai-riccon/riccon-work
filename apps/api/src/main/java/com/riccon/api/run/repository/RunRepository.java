@@ -74,6 +74,44 @@ public class RunRepository {
     }
 
     /**
+     * 创建 PENDING 报告任务运行。
+     *
+     * @param tenantId 当前租户
+     * @param runId 运行 ID
+     * @param researchTaskId 报告任务 ID
+     * @param userId 发起人
+     * @param traceId 追踪 ID
+     * @param now 创建时间
+     */
+    public void createResearchPending(
+            TenantId tenantId, UUID runId, UUID researchTaskId, UUID userId, String traceId, Instant now) {
+        runJdbc.insertResearchPending(tenantId, runId, researchTaskId, userId, traceId, now);
+    }
+
+    /**
+     * 按租户读取任意类别运行快照。
+     *
+     * @param tenantId 当前租户
+     * @param runId 运行 ID
+     * @return 运行快照
+     */
+    public Optional<RunSnapshot> findRun(TenantId tenantId, UUID runId) {
+        return runJdbc.findRun(tenantId, runId);
+    }
+
+    /**
+     * 把等待审批的运行恢复为 RUNNING。
+     *
+     * @param tenantId 当前租户
+     * @param runId 运行 ID
+     * @param now 当前时间
+     * @return 受影响行数
+     */
+    public int markResumed(TenantId tenantId, UUID runId, Instant now) {
+        return runJdbc.markResumed(tenantId, runId, now);
+    }
+
+    /**
      * 把运行推进到 RUNNING。
      *
      * @param tenantId 当前租户
