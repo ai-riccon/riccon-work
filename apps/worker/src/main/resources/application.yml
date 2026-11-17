@@ -1,6 +1,21 @@
 spring:
   application:
     name: riccon-worker
+  datasource:
+    # 本地默认值对应 deploy/compose/docker-compose.test.yml 的非默认端口；生产必须由环境变量注入。
+    url: ${RICCON_DB_URL:jdbc:mysql://127.0.0.1:13306/riccon?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8}
+    username: ${RICCON_DB_USERNAME:riccon}
+    password: ${RICCON_DB_PASSWORD:riccon_test_only}
+    hikari:
+      # Worker 轮询与租户任务并发有限，连接池保持小规模；生产按实例数调整。
+      maximum-pool-size: ${RICCON_DB_POOL_SIZE:10}
+      connection-timeout: 3000
+  flyway:
+    # 迁移只由 apps/api 执行（ADR-0010）；Worker 不包含迁移资源，也不加载 Flyway。
+    enabled: false
+  sql:
+    init:
+      mode: never
 
 server:
   port: ${RICCON_WORKER_PORT:8081}
@@ -16,5 +31,45 @@ management:
       probes:
         enabled: true
       show-details: never
+
+riccon:
+  worker:
+    schema:
+      # 启动时读取 flyway_schema_history 最大成功版本；与代码期望版本不一致则拒绝启动。
+      validation-enabled: true
+    outbox:
+      # 单队列跨租户领取；批量、租约与退避见 ADR-0008/ADR-0016。
+      scheduling-enabled: true
+      poll-interval: 500ms
+      poll-initial-delay: 5s
+      batch-size: 10
+      lease-duration: 90s
+      max-attempts: 3
+      retry-delays: 2s,8s,30s
+      retry-jitter: 200ms
+    storage:
+      # 对象存储只通过服务端生成的 key 访问；默认凭据仅用于本地测试栈。
+      endpoint: ${RICCON_S3_ENDPOINT:http://127.0.0.1:19000}
+      region: ${RICCON_S3_REGION:us-east-1}
+      access-key: ${RICCON_S3_ACCESS_KEY:riccon_test_only}
+      secret-key: ${RICCON_S3_SECRET_KEY:riccon_test_only_secret}
+      bucket: ${RICCON_S3_BUCKET:riccon}
+      path-style: ${RICCON_S3_PATH_STYLE:true}
+    opensearch:
+      # M02 每个租户一个索引别名 riccon-kb-{tenantId}；索引名由 TenantContext 派生。
+      url: ${RICCON_OPENSEARCH_URL:http://127.0.0.1:19200}
+      username: ${RICCON_OPENSEARCH_USERNAME:}
+      password: ${RICCON_OPENSEARCH_PASSWORD:}
+      connect-timeout: 2s
+      request-timeout: 30s
+      index-prefix: riccon-kb
+      index-version: v1
+    embedding:
+      # M02 使用确定性哈希向量占位；真实模型接入在后续任务替换 EmbeddingModel Bean。
+      dimensions: 64
+    parse:
+      max-file-bytes: 52428800
+      chunk-size: 800
+      chunk-overlap: 80
 
 # M01 不配置任何模型或 MCP 凭据；M02 起通过环境变量注入，禁止写入仓库与镜像。

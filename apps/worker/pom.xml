@@ -15,6 +15,16 @@
   <name>riccon-worker</name>
   <description>Riccon 异步 Agent 运行与 MCP 代理：唯一允许依赖 agentscope 的部署物</description>
 
+  <properties>
+    <!--
+      M02 Worker 新增的第三方库版本。仅本模块使用，不属于合同 stack.versions；
+      升级时必须同步安全扫描与许可证检查（合同 constraints.licensing）。
+    -->
+    <pdfbox.version>3.0.8</pdfbox.version>
+    <poi.version>5.5.1</poi.version>
+    <aws-sdk.version>2.59.2</aws-sdk.version>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>com.riccon</groupId>
@@ -26,14 +36,56 @@
     </dependency>
 
     <!--
-      M02 的 Worker 需要读写运行状态、outbox 与审计，但持久化实现由 Builder 任务加入
-      spring-boot-starter-jdbc 与 mysql-connector-j；本任务只固定共享领域词汇依赖，
-      避免在 M02 业务代码尚未存在时改变 Worker 的启动/测试依赖面。
+      M02 使用 Spring JDBC（无 ORM），见 ADR-0009 与 ADR-0012。
+      Worker 只读取/推进运行、outbox、file_parse 与 knowledge_*，不执行 Flyway。
     -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.mysql</groupId>
+      <artifactId>mysql-connector-j</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- 文件解析：PDF 使用 PDFBox；DOCX/XLSX 使用 POI OOXML。均为 Apache-2.0。 -->
+    <dependency>
+      <groupId>org.apache.pdfbox</groupId>
+      <artifactId>pdfbox</artifactId>
+      <version>${pdfbox.version}</version>
+      <exclusions>
+        <!-- 项目统一使用 spring-jcl 提供 commons-logging API，避免双绑定。 -->
+        <exclusion>
+          <groupId>commons-logging</groupId>
+          <artifactId>commons-logging</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.poi</groupId>
+      <artifactId>poi-ooxml</artifactId>
+      <version>${poi.version}</version>
+    </dependency>
+
+    <!-- S3 协议客户端：测试与私有化部署使用 S3 兼容对象存储（ADR-0002）。 -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
+      <version>${aws-sdk.version}</version>
+    </dependency>
 
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-webmvc</artifactId>
+    </dependency>
+    <!--
+      Boot 4 的 webmvc starter 不再默认带入 Jackson；Worker 需要解析 outbox payload
+      与 OpenSearch JSON，因此显式引入 JSON starter。
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-json</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -71,6 +123,22 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-webmvc-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!--
+      Testcontainers 2.x（Boot 4.1 BOM 管理）：MySQL 与 S3 兼容存储使用真实容器，
+      OpenSearch 使用 GenericContainer。MinIO 官方镜像已不可公开获取，按 ADR-0002
+      使用 RustFS 容器验证同一套 S3 协议。
+    -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-mysql</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

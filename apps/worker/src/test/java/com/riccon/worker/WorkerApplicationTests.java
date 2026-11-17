@@ -6,14 +6,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
 
 /** Worker 应用上下文与健康检查测试。 */
-@SpringBootTest
-@AutoConfigureMockMvc
-class WorkerApplicationTests {
+class WorkerApplicationTests extends WorkerIntegrationTestBase {
 
     /** 模拟内部 HTTP 请求，经过安全过滤器链。 */
     @Autowired
@@ -27,7 +23,7 @@ class WorkerApplicationTests {
                 .andExpect(jsonPath("$.status").value("UP"));
     }
 
-    /** 除健康检查外的路径在 M01 默认拒绝。 */
+    /** 除健康检查外的路径默认拒绝。 */
     @Test
     void otherEndpointsAreDeniedByDefault() throws Exception {
         mockMvc.perform(get("/internal/unknown")).andExpect(status().is4xxClientError());
