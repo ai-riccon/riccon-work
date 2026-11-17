@@ -1,0 +1,38 @@
+# command: pnpm -w e2e
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-18T06:27:19.009+08:00
+# finished_at: 2026-11-18T06:28:42.434+08:00
+# duration_ms: 83424
+# exit_code: 0
+
+# --- stdout ---
+
+> riccon-work@0.1.0 e2e /Users/ricky/Documents/projects/riccon-work
+> playwright test --config e2e/playwright.config.ts
+
+
+Running 17 tests using 1 worker
+
+  ✓   1 [chromium] › e2e/tests/admin.spec.ts:10:3 › 管理端布局 › 渲染 ProLayout 与占位菜单且无严重可访问性问题 @a11y (5.4s)
+  ✓   2 [chromium] › e2e/tests/chat.spec.ts:10:3 › 员工端工作空间 › 登录后展示租户、会话列表与空态，无严重可访问性问题 @a11y (2.8s)
+  ✓   3 [chromium] › e2e/tests/chat.spec.ts:18:3 › 员工端工作空间 › 新建会话后展示 J1 问答空态 (2.2s)
+  ✓   4 [chromium] › e2e/tests/errors.spec.ts:12:3 › API 错误语义 › 未登录访问受保护接口返回 ProblemDetail 401 (988ms)
+  ✓   5 [chromium] › e2e/tests/errors.spec.ts:30:3 › API 错误语义 › 服务端会话失效后写请求返回 401，页面回到登录页并提示过期 (2.2s)
+  ✓   6 [chromium] › e2e/tests/errors.spec.ts:47:3 › API 错误语义 › 报告任务列表 403 显示无权限态且可返回工作空间 (2.9s)
+  ✓   7 [chromium] › e2e/tests/errors.spec.ts:60:3 › API 错误语义 › 审批冲突 409 时提示已刷新最新结果，任务保持待审批 (4.9s)
+  ✓   8 [chromium] › e2e/tests/j1.spec.ts:12:3 › J1 通用问答与文件处理 › 上传、流式引用、停止与重开完整闭环 @a11y (7.0s)
+  ✓   9 [chromium] › e2e/tests/j2.spec.ts:17:3 › J2 市场调研报告 › 创建、审批、工具取数与报告产物完整闭环 @a11y (12.6s)
+  ✓  10 [chromium] › e2e/tests/j2.spec.ts:88:3 › J2 市场调研报告 › 拒绝审批后任务终止且不产生报告 (5.1s)
+  ✓  11 [chromium] › e2e/tests/j2.spec.ts:108:3 › J2 市场调研报告 › MCP 超时后重试工具阶段即可产出报告 (8.8s)
+  ✓  12 [chromium] › e2e/tests/login.spec.ts:10:3 › 登录页 › 错误凭据显示统一失败提示，不泄露账号是否存在 @a11y (2.5s)
+  ✓  13 [chromium] › e2e/tests/login.spec.ts:25:3 › 登录页 › 正确凭据进入工作空间并显示租户名 @a11y (2.8s)
+  ✓  14 [chromium] › e2e/tests/login.spec.ts:33:3 › 登录页 › 375px 宽度无横向滚动 (1.3s)
+  ✓  15 [chromium] › e2e/tests/navigation.spec.ts:9:1 › 根路径跳转登录，登录后可访问管理端 (3.8s)
+  ✓  16 [chromium] › e2e/tests/responsive.spec.ts:21:3 › 窄屏布局 › 员工端工作空间在 375px 下无横向滚动 (2.2s)
+  ✓  17 [chromium] › e2e/tests/responsive.spec.ts:32:3 › 窄屏布局 › 报告任务列表、详情与产物在 375px 下无横向滚动 (6.9s)
+
+  17 passed (1.4m)
+
+# --- stderr ---
+[WebServer] (node:91779) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
