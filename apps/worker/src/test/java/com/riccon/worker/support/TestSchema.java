@@ -49,6 +49,70 @@ public final class TestSchema {
     }
 
     /**
+     * external 热栈的 schema 校验与首次初始化。
+     *
+     * <p>热栈库在首次使用时执行与默认模式相同的权威迁移；后续运行只校验
+     * {@code flyway_schema_history} 的最大成功版本。版本落后或超前时立即失败，要求显式
+     * {@code pnpm test-services reset}，绝不在未知 schema 上继续跑测试。
+     *
+     * @param jdbcUrl 测试数据库 URL
+     * @param username 用户名
+     * @param password 密码
+     * @param expectedVersion 期望的最大成功版本
+     */
+    public static void ensureSchema(String jdbcUrl, String username, String password, int expectedVersion) {
+        Integer current = currentVersion(jdbcUrl, username, password);
+        if (current == null) {
+            applyMigrations(jdbcUrl, username, password);
+            createFlywayHistory(jdbcUrl, username, password, expectedVersion);
+            return;
+        }
+        if (current != expectedVersion) {
+            throw new IllegalStateException("external test schema version mismatch: expected=" + expectedVersion
+                    + " actual=" + current + "; reset it with: pnpm test-services reset --namespace <namespace>");
+        }
+    }
+
+    /**
+     * 读取热栈库当前的 Flyway 最大成功版本。
+     *
+     * @param jdbcUrl 测试数据库 URL
+     * @param username 用户名
+     * @param password 密码
+     * @return 无 {@code flyway_schema_history} 表时返回 {@code null}
+     */
+    private static Integer currentVersion(String jdbcUrl, String username, String password) {
+        try (Connection connection = DriverManager.getConnection(jdbcUrl, username, password);
+                Statement statement = connection.createStatement()) {
+            try (var result = statement.executeQuery("""
+                    SELECT COUNT(*) FROM information_schema.tables
+                     WHERE table_schema = DATABASE() AND table_name = 'flyway_schema_history'
+                    """)) {
+                result.next();
+                if (result.getInt(1) == 0) {
+                    return null;
+                }
+            }
+            try (var result = statement.executeQuery("""
+                    SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history WHERE success = 1
+                    """)) {
+                result.next();
+                int version = result.getInt(1);
+                if (result.wasNull()) {
+                    throw new IllegalStateException("external test schema has no successful migration; reset it with: "
+                            + "pnpm test-services reset --namespace <namespace>");
+                }
+                return version;
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException(
+                    "external test schema is unreadable at " + jdbcUrl + "; prepare it with: "
+                            + "pnpm test-services prepare --namespace <namespace>",
+                    exception);
+        }
+    }
+
+    /**
      * 按版本顺序执行所有迁移。
      *
      * @param jdbcUrl 测试数据库 URL

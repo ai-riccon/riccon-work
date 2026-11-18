@@ -19,9 +19,13 @@ import tools.jackson.databind.JsonNode;
 /**
  * API 集成测试基类。
  *
- * <p>使用真实 MySQL 8.4（Testcontainers）与随机端口 Tomcat，Flyway 在上下文启动时按 V1–V8 建库，
+ * <p>默认使用真实 MySQL 8.4（Testcontainers）与随机端口 Tomcat，Flyway 在上下文启动时按 V1–V9 建库，
  * 引导管理员由 test profile 环境变量创建。所有测试共享同一容器与 Spring 上下文，避免重复建库；
  * 测试数据使用唯一租户代码隔离。
+ *
+ * <p>仅当显式设置 {@code RICCON_TEST_SERVICES=external} 且提供
+ * {@code RICCON_TEST_SERVICES_NAMESPACE} 时，改为复用 compose 热测试栈；见
+ * {@link ExternalTestServices}。默认与 CI 行为不变。
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -39,7 +43,12 @@ public abstract class ApiIntegrationTestSupport {
                     "--collation-server=utf8mb4_0900_ai_ci");
 
     static {
-        MYSQL.start();
+        if (ExternalTestServices.enabled()) {
+            // 显式 opt-in：连接 compose 热栈，并用命名锁阻止并行 agent 共用同一数据库。
+            ExternalTestServices.verifyAndLock();
+        } else {
+            MYSQL.start();
+        }
     }
 
     /** 随机端口。 */
@@ -62,12 +71,18 @@ public abstract class ApiIntegrationTestSupport {
     }
 
     /**
-     * 注入 Testcontainers 数据源。
+     * 注入数据源：默认使用一次性容器，external 模式使用 compose 热栈的命名空间数据库。
      *
      * @param registry 动态属性注册表
      */
     @DynamicPropertySource
     static void datasourceProperties(DynamicPropertyRegistry registry) {
+        if (ExternalTestServices.enabled()) {
+            registry.add("spring.datasource.url", ExternalTestServices::jdbcUrl);
+            registry.add("spring.datasource.username", ExternalTestServices::username);
+            registry.add("spring.datasource.password", ExternalTestServices::password);
+            return;
+        }
         String jdbcUrl = MYSQL.getJdbcUrl();
         String separator = jdbcUrl.contains("?") ? "&" : "?";
         registry.add(

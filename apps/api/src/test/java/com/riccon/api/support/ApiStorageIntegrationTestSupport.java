@@ -23,19 +23,21 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
  *
  * <p>按 ADR-0002 使用 RustFS（S3 协议）容器；与 MySQL 基类共享数据库，但动态属性不同会创建独立 Spring
  * 上下文。所有测试断言都通过真实 S3 客户端或预签名 URL 完成，不使用内存替身。
+ *
+ * <p>external 模式下不启动容器，复用 compose 测试栈的 RustFS，并使用带 namespace 的桶名隔离。
  */
 public abstract class ApiStorageIntegrationTestSupport extends ApiIntegrationTestSupport {
 
-    /** 测试桶名。 */
-    protected static final String BUCKET = "riccon-test";
+    /** 测试桶名；external 模式带 namespace，默认模式沿用原值。 */
+    protected static final String BUCKET = ExternalTestServices.bucketName();
 
-    /** 测试访问键，仅用于容器。 */
-    private static final String ACCESS_KEY = "riccon_test_only";
+    /** 测试访问键，仅用于测试栈。 */
+    private static final String ACCESS_KEY = ExternalTestServices.storageAccessKey();
 
-    /** 测试密钥，仅用于容器。 */
-    private static final String SECRET_KEY = "riccon_test_only_secret";
+    /** 测试密钥，仅用于测试栈。 */
+    private static final String SECRET_KEY = ExternalTestServices.storageSecretKey();
 
-    /** RustFS 容器。 */
+    /** RustFS 容器；external 模式不启动。 */
     private static final GenericContainer<?> OBJECT_STORAGE = new GenericContainer<>(
                     DockerImageName.parse("rustfs/rustfs:1.0.6"))
             .withEnv("RUSTFS_VOLUMES", "/data")
@@ -51,7 +53,9 @@ public abstract class ApiStorageIntegrationTestSupport extends ApiIntegrationTes
                     .withStartupTimeout(Duration.ofSeconds(60)));
 
     static {
-        OBJECT_STORAGE.start();
+        if (!ExternalTestServices.enabled()) {
+            OBJECT_STORAGE.start();
+        }
         createBucket();
     }
 
@@ -118,11 +122,14 @@ public abstract class ApiStorageIntegrationTestSupport extends ApiIntegrationTes
     }
 
     /**
-     * 构造容器端点。
+     * 构造对象存储端点。
      *
      * @return S3 端点
      */
     private static String endpoint() {
+        if (ExternalTestServices.enabled()) {
+            return ExternalTestServices.storageEndpoint();
+        }
         return "http://" + OBJECT_STORAGE.getHost() + ":" + OBJECT_STORAGE.getMappedPort(9000);
     }
 

@@ -58,7 +58,7 @@ class S3FileContentReaderTest extends WorkerIntegrationTestBase {
                 PutObjectRequest.builder().bucket(BUCKET).key(key).build(), RequestBody.fromBytes(new byte[16]));
         FileRecord file = new FileRecord(fileId, "large.pdf", FileFormat.PDF, "application/pdf", 16, key);
         StorageProperties storage = new StorageProperties(
-                storageEndpoint(), "us-east-1", "riccon_test_only", "riccon_test_only_secret", BUCKET, true);
+                storageEndpoint(), "us-east-1", storageAccessKey(), storageSecretKey(), BUCKET, true);
         S3FileContentReader tiny = new S3FileContentReader(s3Client, storage, new ParseProperties(4, 100, 10));
 
         assertThatThrownBy(() -> tiny.read(TenantId.of(tenant), file))

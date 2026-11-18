@@ -32,11 +32,11 @@ class ApiApplicationTests extends ApiIntegrationTestSupport {
                 .query(Long.class)
                 .single();
         Long tables = jdbcClient
-                .sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'riccon'")
+                .sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE()")
                 .query(Long.class)
                 .single();
         Long triggers = jdbcClient
-                .sql("SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema = 'riccon'")
+                .sql("SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema = DATABASE()")
                 .query(Long.class)
                 .single();
         assertThat(migrations).isEqualTo(9L);
@@ -50,11 +50,11 @@ class ApiApplicationTests extends ApiIntegrationTestSupport {
     void workspaceVisibilityIsTightened() {
         String nullable = jdbcClient.sql("""
                         SELECT IS_NULLABLE FROM information_schema.columns
-                         WHERE table_schema = 'riccon' AND table_name = 'workspace' AND column_name = 'visibility'
+                         WHERE table_schema = DATABASE() AND table_name = 'workspace' AND column_name = 'visibility'
                         """).query(String.class).single();
         Long scopeChecks = jdbcClient.sql("""
                         SELECT COUNT(*) FROM information_schema.table_constraints
-                         WHERE table_schema = 'riccon' AND table_name = 'workspace'
+                         WHERE table_schema = DATABASE() AND table_name = 'workspace'
                            AND constraint_name = 'chk_workspace_scope' AND constraint_type = 'CHECK'
                         """).query(Long.class).single();
         assertThat(nullable).isEqualTo("NO");
@@ -66,7 +66,7 @@ class ApiApplicationTests extends ApiIntegrationTestSupport {
     void springSessionTablesExist() {
         Long sessionTables = jdbcClient.sql("""
                         SELECT COUNT(*) FROM information_schema.tables
-                        WHERE table_schema = 'riccon' AND table_name IN ('SPRING_SESSION', 'SPRING_SESSION_ATTRIBUTES')
+                        WHERE table_schema = DATABASE() AND table_name IN ('SPRING_SESSION', 'SPRING_SESSION_ATTRIBUTES')
                         """).query(Long.class).single();
         assertThat(sessionTables).isEqualTo(2L);
     }

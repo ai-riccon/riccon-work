@@ -1,6 +1,7 @@
 package com.riccon.worker;
 
 import com.riccon.worker.persistence.SchemaVersionChecker;
+import com.riccon.worker.support.ExternalTestServices;
 import com.riccon.worker.support.TestCredentials;
 import com.riccon.worker.support.TestDataFactory;
 import com.riccon.worker.support.TestSchema;
@@ -35,40 +36,55 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * Worker 集成测试基类。
  *
- * <p>启动真实 MySQL、OpenSearch 与 RustFS（S3 兼容，ADR-0002 替代不可用的 MinIO 镜像），
+ * <p>默认启动真实 MySQL、OpenSearch 与 RustFS（S3 兼容，ADR-0002 替代不可用的 MinIO 镜像），
  * 执行 {@code apps/api} 的权威迁移并写入 Flyway 版本记录。所有子类共享同一组容器，
  * 每个测试前清空业务表；测试不依赖 {@code Thread.sleep}，等待使用容器 wait strategy 与数据库状态断言。
+ *
+ * <p>仅当显式设置 {@code RICCON_TEST_SERVICES=external} 且提供
+ * {@code RICCON_TEST_SERVICES_NAMESPACE} 时，改为复用 compose 热测试栈；见
+ * {@link ExternalTestServices}。默认与 CI 行为不变；迁移/回滚测试不经过本类。
  */
 @SpringBootTest(properties = {"riccon.worker.outbox.scheduling-enabled=false"})
 @AutoConfigureMockMvc
 public abstract class WorkerIntegrationTestBase {
 
-    /** 测试桶名；与动态属性保持一致。 */
-    protected static final String BUCKET = "riccon-test";
+    /** 测试桶名；external 模式带 namespace，默认模式沿用原值。 */
+    protected static final String BUCKET = ExternalTestServices.bucketName();
 
-    /** S3 测试凭据，仅用于容器。 */
-    private static final String S3_ACCESS_KEY = "riccon_test_only";
+    /** S3 测试凭据，仅用于测试栈。 */
+    private static final String S3_ACCESS_KEY = ExternalTestServices.storageAccessKey();
 
-    /** S3 测试密钥，仅用于容器。 */
-    private static final String S3_SECRET_KEY = "riccon_test_only_secret";
+    /** S3 测试密钥，仅用于测试栈。 */
+    private static final String S3_SECRET_KEY = ExternalTestServices.storageSecretKey();
 
-    /** MySQL 容器。 */
+    /** MySQL 容器；external 模式不启动。 */
     protected static MySQLContainer mysql;
 
-    /** OpenSearch 容器。 */
+    /** OpenSearch 容器；external 模式不启动。 */
     protected static GenericContainer<?> openSearch;
 
-    /** RustFS S3 兼容容器。 */
+    /** RustFS S3 兼容容器；external 模式不启动。 */
     protected static GenericContainer<?> objectStorage;
 
     static {
-        startContainers();
-        TestSchema.applyMigrations(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
-        TestSchema.createFlywayHistory(
-                mysql.getJdbcUrl(),
-                mysql.getUsername(),
-                mysql.getPassword(),
-                SchemaVersionChecker.EXPECTED_SCHEMA_VERSION);
+        if (ExternalTestServices.enabled()) {
+            // 显式 opt-in：连接 compose 热栈；数据库已由 prepare 创建时校验版本并跳过迁移。
+            ExternalTestServices.verifyAndLock();
+            TestSchema.ensureSchema(
+                    ExternalTestServices.jdbcUrl(),
+                    ExternalTestServices.username(),
+                    ExternalTestServices.password(),
+                    SchemaVersionChecker.EXPECTED_SCHEMA_VERSION);
+            ExternalTestServices.purgeSearchIndices();
+        } else {
+            startContainers();
+            TestSchema.applyMigrations(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
+            TestSchema.createFlywayHistory(
+                    mysql.getJdbcUrl(),
+                    mysql.getUsername(),
+                    mysql.getPassword(),
+                    SchemaVersionChecker.EXPECTED_SCHEMA_VERSION);
+        }
         createBucket();
     }
 
@@ -153,15 +169,22 @@ public abstract class WorkerIntegrationTestBase {
     }
 
     /**
-     * 注入容器地址；容器在静态块启动，属性在 Spring 上下文创建前可用。
+     * 注入连接地址；默认容器在静态块启动，external 模式使用 compose 热栈。
      *
      * @param registry 动态属性注册表
      */
     @DynamicPropertySource
     static void registerProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
+        if (ExternalTestServices.enabled()) {
+            registry.add("spring.datasource.url", ExternalTestServices::jdbcUrl);
+            registry.add("spring.datasource.username", ExternalTestServices::username);
+            registry.add("spring.datasource.password", ExternalTestServices::password);
+            registry.add("riccon.worker.opensearch.index-prefix", ExternalTestServices::indexPrefix);
+        } else {
+            registry.add("spring.datasource.url", mysql::getJdbcUrl);
+            registry.add("spring.datasource.username", mysql::getUsername);
+            registry.add("spring.datasource.password", mysql::getPassword);
+        }
         registry.add("spring.datasource.hikari.maximum-pool-size", () -> "8");
         registry.add("riccon.worker.storage.endpoint", WorkerIntegrationTestBase::storageEndpoint);
         registry.add("riccon.worker.storage.access-key", () -> S3_ACCESS_KEY);
@@ -244,11 +267,26 @@ public abstract class WorkerIntegrationTestBase {
     }
 
     /**
+     * 返回共享 MySQL 容器；仅供需要独立数据库的 schema 版本测试在默认模式复用。
+     *
+     * <p>external 模式返回 {@code null}；调用方必须改用一次性容器，不能把 schema 版本测试
+     * 指向热栈数据库。
+     *
+     * @return 默认模式返回已启动的共享容器
+     */
+    public static MySQLContainer sharedMysql() {
+        return mysql;
+    }
+
+    /**
      * 返回对象存储端点。
      *
      * @return HTTP 端点
      */
     protected static String storageEndpoint() {
+        if (ExternalTestServices.enabled()) {
+            return ExternalTestServices.storageEndpoint();
+        }
         return "http://127.0.0.1:" + objectStorage.getMappedPort(9000);
     }
 
@@ -258,6 +296,27 @@ public abstract class WorkerIntegrationTestBase {
      * @return HTTP 端点
      */
     protected static String openSearchEndpoint() {
+        if (ExternalTestServices.enabled()) {
+            return ExternalTestServices.openSearchUrl();
+        }
         return "http://127.0.0.1:" + openSearch.getMappedPort(9200);
+    }
+
+    /**
+     * 返回 S3 访问键；供需要独立构造 StorageProperties 的测试使用。
+     *
+     * @return 访问键
+     */
+    protected static String storageAccessKey() {
+        return S3_ACCESS_KEY;
+    }
+
+    /**
+     * 返回 S3 密钥；供需要独立构造 StorageProperties 的测试使用。
+     *
+     * @return 访问密钥
+     */
+    protected static String storageSecretKey() {
+        return S3_SECRET_KEY;
     }
 }
