@@ -79,7 +79,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-001：账号列表只返回本租户。 */
     @Test
     @DisplayName("TEN-001 账号列表只返回本租户")
-    void tenantUserListIsTenantScoped() {
+    void ten001_tenantUserListIsTenantScoped() {
         LoginSession platform = loginPlatformAdmin();
         String tenantA = uniqueTenantCode("tena");
         String tenantB = uniqueTenantCode("tenb");
@@ -99,7 +99,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-002：请求头、查询参数与请求体伪造租户标识均不能跨租户。 */
     @Test
     @DisplayName("TEN-002 伪造租户标识被拒绝或忽略")
-    void forgedTenantIdentifiersAreRejectedOrIgnored() {
+    void ten002_forgedTenantIdentifiersAreRejectedOrIgnored() {
         LoginSession platform = loginPlatformAdmin();
         String tenantA = uniqueTenantCode("tena");
         String tenantB = uniqueTenantCode("tenb");
@@ -136,7 +136,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-003：读取他租户会话返回统一 404。 */
     @Test
     @DisplayName("TEN-003 跨租户会话读取 404")
-    void crossTenantConversationReadIsNotFound() {
+    void ten003_crossTenantConversationReadIsNotFound() {
         CrossTenantFixture fixture = crossTenantFixture();
         ApiTestClient.ApiResponse response = get(fixture.aAdmin(), "/api/v1/conversations/" + fixture.bConversation());
         assertNotFound(response);
@@ -146,7 +146,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-004：修改/删除他租户会话返回统一 404，目标数据不变。 */
     @Test
     @DisplayName("TEN-004 跨租户会话修改/删除 404 且数据不变")
-    void crossTenantConversationMutationsAreRejected() {
+    void ten004_crossTenantConversationMutationsAreRejected() {
         CrossTenantFixture fixture = crossTenantFixture();
 
         ApiTestClient.ApiResponse patch = client.patch(
@@ -174,7 +174,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-005：读取他租户文件元数据返回统一 404。 */
     @Test
     @DisplayName("TEN-005 跨租户文件元数据 404")
-    void crossTenantFileMetadataIsNotFound() {
+    void ten005_crossTenantFileMetadataIsNotFound() {
         CrossTenantFixture fixture = crossTenantFixture();
         ApiTestClient.ApiResponse response = get(fixture.aAdmin(), "/api/v1/files/" + fixture.bFile());
         assertNotFound(response);
@@ -184,7 +184,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-006：跨租户下载被拒；A 的签名 URL 被篡改到 B 前缀时对象存储拒绝。 */
     @Test
     @DisplayName("TEN-006 跨租户下载与签名 URL 篡改被拒")
-    void crossTenantDownloadAndSignatureTamperingAreRejected() throws Exception {
+    void ten006_crossTenantDownloadAndSignatureTamperingAreRejected() throws Exception {
         CrossTenantFixture fixture = crossTenantFixture();
         String aFile = upload(
                         fixture.aAdmin(), fixture.aPersonal(), "a-tenant.pdf", "application/pdf", TestFiles.pdf(), null)
@@ -213,7 +213,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-007：读取他租户产物返回统一 404。 */
     @Test
     @DisplayName("TEN-007 跨租户产物读取 404")
-    void crossTenantArtifactReadIsNotFound() {
+    void ten007_crossTenantArtifactReadIsNotFound() {
         CrossTenantFixture fixture = crossTenantFixture();
         ApiTestClient.ApiResponse response = get(fixture.aAdmin(), "/api/v1/artifacts/" + fixture.bArtifact());
         assertNotFound(response);
@@ -223,7 +223,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-008：产物列表只返回本租户/本空间。 */
     @Test
     @DisplayName("TEN-008 产物列表租户隔离")
-    void crossTenantArtifactListIsEmpty() {
+    void ten008_crossTenantArtifactListIsEmpty() {
         CrossTenantFixture fixture = crossTenantFixture();
         ApiTestClient.ApiResponse response =
                 get(fixture.aAdmin(), "/api/v1/workspaces/" + fixture.bWorkspace() + "/artifacts");
@@ -238,7 +238,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-009：客户端不能指定其他租户索引；知识库列表按租户隔离。 */
     @Test
     @DisplayName("TEN-009 检索索引不可由客户端指定")
-    void clientCannotSelectForeignIndex() {
+    void ten009_clientCannotSelectForeignIndex() {
         CrossTenantFixture fixture = crossTenantFixture();
         String docId = createKnowledgeDocument(fixture.bAdmin(), fixture.bPersonal(), "B 租户知识文档");
 
@@ -254,7 +254,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-010：读取他租户知识库文档返回统一 404。 */
     @Test
     @DisplayName("TEN-010 跨租户知识库文档 404")
-    void crossTenantKnowledgeDocumentIsNotFound() {
+    void ten010_crossTenantKnowledgeDocumentIsNotFound() {
         CrossTenantFixture fixture = crossTenantFixture();
         String docId = createKnowledgeDocument(fixture.bAdmin(), fixture.bPersonal(), "B 租户知识文档");
         ApiTestClient.ApiResponse response = get(fixture.aAdmin(), "/api/v1/knowledge/documents/" + docId);
@@ -265,7 +265,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-011：租户管理员不能访问平台接口；平台管理员可调用并写审计。 */
     @Test
     @DisplayName("TEN-011 平台接口角色边界")
-    void platformApiRequiresPlatformAdmin() {
+    void ten011_platformApiRequiresPlatformAdmin() {
         LoginSession platform = loginPlatformAdmin();
         String tenant = uniqueTenantCode("tena");
         createTenant(platform, tenant);
@@ -285,7 +285,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-012：普通员工访问审计接口被拒，响应不含审计内容。 */
     @Test
     @DisplayName("TEN-012 普通员工不能读取审计")
-    void memberCannotReadAudit() {
+    void ten012_memberCannotReadAudit() {
         CrossTenantFixture fixture = crossTenantFixture();
         ApiTestClient.ApiResponse member = get(fixture.bMember().session(), "/api/v1/audit/events");
         assertThat(member.status()).isIn(403, 404);
@@ -299,7 +299,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-013：篡改对象 key 前缀被拒绝。 */
     @Test
     @DisplayName("TEN-013 对象 key 前缀篡改被拒")
-    void objectKeyPrefixTamperingIsRejected() throws Exception {
+    void ten013_objectKeyPrefixTamperingIsRejected() throws Exception {
         CrossTenantFixture fixture = crossTenantFixture();
         String aFile = upload(
                         fixture.aAdmin(), fixture.aPersonal(), "prefix.pdf", "application/pdf", TestFiles.pdf(), null)
@@ -325,7 +325,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-014：服务令牌的租户与运行绑定。 */
     @Test
     @DisplayName("TEN-014 服务令牌绑定租户与运行")
-    void serviceTokenIsBoundToRunTenant() {
+    void ten014_serviceTokenIsBoundToRunTenant() {
         CrossTenantFixture fixture = crossTenantFixture();
         ensureModelCatalog();
 
@@ -365,7 +365,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-015：未携带租户的线程快速失败，且 HTTP 请求不把租户泄漏到测试线程。 */
     @Test
     @DisplayName("TEN-015 缺失租户快速失败且不跨线程泄漏")
-    void missingTenantFailsFast() {
+    void ten015_missingTenantFailsFast() {
         CrossTenantFixture fixture = crossTenantFixture();
         assertThat(TenantContext.get()).isEmpty();
         assertThatThrownBy(TenantContext::require).isInstanceOf(IllegalStateException.class);
@@ -377,7 +377,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-016：M03 未启用跨请求共享缓存；重复跨租户读取仍 404。 */
     @Test
     @DisplayName("TEN-016 缓存键租户前缀守卫")
-    void noSharedCacheIsEnabled() {
+    void ten016_noSharedCacheIsEnabled() {
         CrossTenantFixture fixture = crossTenantFixture();
         assertThat(applicationContext.getBeanNamesForType(org.springframework.cache.CacheManager.class))
                 .isEmpty();
@@ -390,7 +390,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-017：服务令牌跨 run/跨租户使用被 Worker 拒绝。 */
     @Test
     @DisplayName("TEN-017 服务令牌跨 run 与跨租户使用被拒")
-    void serviceTokenReplayAcrossRunsIsRejected() throws Exception {
+    void ten017_serviceTokenReplayAcrossRunsIsRejected() throws Exception {
         CrossTenantFixture fixture = crossTenantFixture();
         UUID userId = fixture.aAdminId();
         UUID runA = UUID.randomUUID();
@@ -418,7 +418,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-018：跨租户 ID 枚举的状态、错误码与响应字段一致。 */
     @Test
     @DisplayName("TEN-018 跨租户 ID 枚举无响应差异")
-    void enumerationResponsesAreIndistinguishable() {
+    void ten018_enumerationResponsesAreIndistinguishable() {
         CrossTenantFixture fixture = crossTenantFixture();
         String missing = UUID.randomUUID().toString();
 
@@ -439,7 +439,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-019：审计事件 tenant_id 与 actor 所属租户一致；平台事件为 platform。 */
     @Test
     @DisplayName("TEN-019 审计租户与 actor 一致")
-    void auditTenantMatchesActor() {
+    void ten019_auditTenantMatchesActor() {
         LoginSession platform = loginPlatformAdmin();
         String tenant = uniqueTenantCode("tena");
         createTenant(platform, tenant);
@@ -463,7 +463,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-020：M03 无审计导出接口，任何导出路径不返回数据。 */
     @Test
     @DisplayName("TEN-020 导出能力缺失时一律拒绝")
-    void exportEndpointsAreAbsent() {
+    void ten020_exportEndpointsAreAbsent() {
         CrossTenantFixture fixture = crossTenantFixture();
         for (String path :
                 List.of("/api/v1/audit/exports", "/api/v1/audit/events/export", "/api/v1/audit/export-requests")) {
@@ -476,7 +476,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-021：读取他租户部门、成员与空间统一 404。 */
     @Test
     @DisplayName("TEN-021 跨租户部门与空间读取 404")
-    void crossTenantDepartmentReadsAreRejected() {
+    void ten021_crossTenantDepartmentReadsAreRejected() {
         CrossTenantFixture fixture = crossTenantFixture();
         UUID bDepartment = createDepartment(fixture.aPlatform(), fixture.bTenant(), "B 秘密部门");
 
@@ -490,7 +490,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-022：用他租户部门/空间 ID 创建或修改被拒，不产生跨租户关联。 */
     @Test
     @DisplayName("TEN-022 跨租户部门/空间写入被拒")
-    void crossTenantWritesAreRejected() {
+    void ten022_crossTenantWritesAreRejected() {
         CrossTenantFixture fixture = crossTenantFixture();
         UUID bDepartment = createDepartment(fixture.aPlatform(), fixture.bTenant(), "B 部门" + randomSuffix());
 
@@ -527,7 +527,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-023：把 B 租户账号加入 A 租户部门/CUSTOM 空间返回 404，不泄露账号存在性。 */
     @Test
     @DisplayName("TEN-023 跨租户账号加入被拒")
-    void crossTenantAccountCannotJoin() {
+    void ten023_crossTenantAccountCannotJoin() {
         CrossTenantFixture fixture = crossTenantFixture();
         UUID aDepartment = createDepartment(fixture.aPlatform(), fixture.aTenant(), "A 部门" + randomSuffix());
         UUID bUserId = fixture.bMemberId();
@@ -548,7 +548,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-024：部门/空间审计事件的 tenant_id 与 actor 一致，details 无 PII。 */
     @Test
     @DisplayName("TEN-024 部门/空间审计租户与白名单")
-    void departmentAndWorkspaceAuditAreTenantScoped() {
+    void ten024_departmentAndWorkspaceAuditAreTenantScoped() {
         CrossTenantFixture fixture = crossTenantFixture();
         UUID department = createDepartment(fixture.aPlatform(), fixture.aTenant(), "审计部门" + randomSuffix());
         JsonNode workspace = createWorkspaceAsAdmin(fixture.aAdmin(), department, "审计空间", "DEPT");
@@ -572,7 +572,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-025：读取/修改他租户空间成员统一 404。 */
     @Test
     @DisplayName("TEN-025 跨租户空间成员操作 404")
-    void crossTenantWorkspaceMembersAreRejected() {
+    void ten025_crossTenantWorkspaceMembersAreRejected() {
         CrossTenantFixture fixture = crossTenantFixture();
         ApiTestClient.ApiResponse list =
                 get(fixture.aAdmin(), "/api/v1/workspaces/" + fixture.bCustomWorkspace() + "/members");
@@ -590,7 +590,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-026：跨租户移交/停用部门被拒，目标租户数据不变。 */
     @Test
     @DisplayName("TEN-026 跨租户部门管理被拒")
-    void crossTenantDepartmentAdministrationIsRejected() {
+    void ten026_crossTenantDepartmentAdministrationIsRejected() {
         CrossTenantFixture fixture = crossTenantFixture();
         UUID aDepartment = createDepartment(fixture.aPlatform(), fixture.aTenant(), "A 部门" + randomSuffix());
         UUID bDepartment = createDepartment(fixture.aPlatform(), fixture.bTenant(), "B 目标部门");
@@ -624,7 +624,7 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
     /** TEN-027：平台部门端点的目标租户 404/409、部门不匹配 404、角色 403 与响应字段边界。 */
     @Test
     @DisplayName("TEN-027 平台部门端点边界")
-    void platformDepartmentEndpointsAreBounded() {
+    void ten027_platformDepartmentEndpointsAreBounded() {
         CrossTenantFixture fixture = crossTenantFixture();
         UUID aDepartment = createDepartment(fixture.aPlatform(), fixture.aTenant(), "A 部门" + randomSuffix());
 

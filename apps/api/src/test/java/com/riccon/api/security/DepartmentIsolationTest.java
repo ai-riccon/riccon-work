@@ -28,7 +28,7 @@ class DepartmentIsolationTest extends SecurityTestSupport {
     /** DEPT-001：他部门员工持有空间 ID 访问详情与列表，统一 404 且不泄露名称/数量。 */
     @Test
     @DisplayName("DEPT-001 他部门访问空间详情与列表统一 404")
-    void otherDepartmentWorkspaceIsInvisible() {
+    void dept001_otherDepartmentWorkspaceIsInvisible() {
         Fixture fixture = fixture("dept001");
         String secretName = "销售部机密集群";
 
@@ -53,7 +53,7 @@ class DepartmentIsolationTest extends SecurityTestSupport {
     /** DEPT-002：他部门员工持有会话、文件、报告任务、产物 ID 直接访问，统一 404 且无对象元数据。 */
     @Test
     @DisplayName("DEPT-002 他部门访问会话/文件/报告/产物统一 404")
-    void otherDepartmentObjectsAreInvisible() {
+    void dept002_otherDepartmentObjectsAreInvisible() {
         Fixture fixture = fixture("dept002");
         String conversationId = createConversation(fixture.tenantAdmin(), fixture.departmentWorkspace());
         String fileId = upload(
@@ -97,7 +97,7 @@ class DepartmentIsolationTest extends SecurityTestSupport {
     /** DEPT-003：他部门员工请求文件/产物下载，统一 404；响应不签发 URL、不泄露对象存储 key。 */
     @Test
     @DisplayName("DEPT-003 他部门下载文件与产物被拒且不签发 URL")
-    void otherDepartmentDownloadsAreRejected() {
+    void dept003_otherDepartmentDownloadsAreRejected() {
         Fixture fixture = fixture("dept003");
         String fileId = upload(
                         fixture.tenantAdmin(),
@@ -142,7 +142,7 @@ class DepartmentIsolationTest extends SecurityTestSupport {
     /** DEPT-004：同部门另一成员访问个人空间会话/文件统一 404；个人对象不出现在部门列表与知识库。 */
     @Test
     @DisplayName("DEPT-004 个人空间对同部门成员仍私有")
-    void personalWorkspaceStaysPrivateWithinDepartment() {
+    void dept004_personalWorkspaceStaysPrivateWithinDepartment() {
         Fixture fixture = fixture("dept004");
         String personalConversation = createConversation(fixture.tenantAdmin(), fixture.adminPersonal());
         String personalFile = upload(
@@ -171,7 +171,7 @@ class DepartmentIsolationTest extends SecurityTestSupport {
     /** DEPT-005：单主部门约束不可绕过；跨租户账号 404；移除负责人 409。 */
     @Test
     @DisplayName("DEPT-005 单主部门与负责人约束")
-    void singleDepartmentConstraintCannotBeBypassed() {
+    void dept005_singleDepartmentConstraintCannotBeBypassed() {
         Fixture fixture = fixture("dept005");
         CreatedMember candidate = createMember(fixture.platform(), fixture.tenant());
         assertThat(addDepartmentMember(fixture.platform(), fixture.tenant(), fixture.departmentA(), candidate.id())
@@ -212,7 +212,7 @@ class DepartmentIsolationTest extends SecurityTestSupport {
     /** DEPT-006：部门停用后下一次请求即 404，重新启用恢复原可见面。 */
     @Test
     @DisplayName("DEPT-006 部门停用立即撤销访问，启用后恢复")
-    void disabledDepartmentRevokesAccessImmediately() {
+    void dept006_disabledDepartmentRevokesAccessImmediately() {
         Fixture fixture = fixture("dept006");
         String conversationId = createConversation(fixture.tenantAdmin(), fixture.departmentWorkspace());
         assertThat(get(fixture.sibling().session(), "/api/v1/workspaces/" + fixture.departmentWorkspace())
@@ -239,7 +239,7 @@ class DepartmentIsolationTest extends SecurityTestSupport {
     /** DEPT-007：成员移出部门后 DEPT/CUSTOM 访问均失效，残留成员行不授权。 */
     @Test
     @DisplayName("DEPT-007 成员移出后部门空间访问立即失效")
-    void removedMemberLosesDepartmentAccess() {
+    void dept007_removedMemberLosesDepartmentAccess() {
         Fixture fixture = fixture("dept007");
         assertThat(addWorkspaceMember(
                                 fixture.manager(),
@@ -290,7 +290,7 @@ class DepartmentIsolationTest extends SecurityTestSupport {
     /** DEPT-008：他部门负责人不能管理本部门空间；负责人移交后旧负责人 403、新负责人 200 并审计。 */
     @Test
     @DisplayName("DEPT-008 负责人越权与移交")
-    void managerCannotCrossManageAndTransferTakesEffect() {
+    void dept008_managerCannotCrossManageAndTransferTakesEffect() {
         Fixture fixture = fixture("dept008");
         assertThat(transferDepartmentManager(
                                 fixture.platform(),
@@ -341,7 +341,7 @@ class DepartmentIsolationTest extends SecurityTestSupport {
     /** DEPT-009：空间枚举的 404 状态、错误码与响应结构一致，不泄露其他部门存在性。 */
     @Test
     @DisplayName("DEPT-009 空间枚举不泄露存在性")
-    void enumerationDoesNotRevealExistence() {
+    void dept009_enumerationDoesNotRevealExistence() {
         Fixture fixture = fixture("dept009");
         String missing = UUID.randomUUID().toString();
 
@@ -377,7 +377,7 @@ class DepartmentIsolationTest extends SecurityTestSupport {
     /** DEPT-010：知识库引用租户级可读但源文件 404；M03 无审计导出接口。 */
     @Test
     @DisplayName("DEPT-010 知识库租户级引用与源文件边界")
-    void knowledgeIsTenantWideButSourceFileStaysScoped() {
+    void dept010_knowledgeIsTenantWideButSourceFileStaysScoped() {
         Fixture fixture = fixture("dept010");
         String fileId = upload(
                         fixture.tenantAdmin(),
