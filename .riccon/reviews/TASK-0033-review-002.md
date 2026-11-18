@@ -15,6 +15,7 @@ created_at: 2026-11-18T15:51:13+08:00
 evidence:
   - EV-0304
   - EV-0306
+  - EV-0307
 findings:
   - id: F-001
     severity: P1
@@ -105,14 +106,14 @@ findings:
 
 ## 独立验证（干净树，HEAD 59d8f4c）
 
-| 命令                                                                                                                    | 退出码 | 结果                                              |
-| ----------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------- |
-| `git status --short`                                                                                                    | 0      | 空；HEAD `59d8f4c`                                |
-| `git show --stat 1a16ee4`                                                                                               | 0      | 仅 6 个 docs/contracts 文件；无 V9/PRODUCT/AGENTS |
-| `git diff --stat d468a8d..1a16ee4 -- apps/api/src/main/resources/db/migration/V9__organization_and_workspace_scope.sql` | 0      | **空**；V9 未改，EV-0304 的空库迁移测试仍适用     |
-| `git diff --stat d468a8d..1a16ee4 -- docs/PRODUCT.md AGENTS.md`                                                         | 0      | **空**                                            |
-| `npx --yes @redocly/cli@1.34.3 lint contracts/openapi.yaml`                                                             | 0      | valid；本轮独立 EV 见回执/`EV-0307`               |
-| `riccon contract validate --strict --project .`                                                                         | 0      | 0 errors, 0 warnings                              |
+| 命令                                                                                                                    | 退出码 | 结果                                                        |
+| ----------------------------------------------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------- |
+| `git status --short`                                                                                                    | 0      | 空；HEAD `59d8f4c`                                          |
+| `git show --stat 1a16ee4`                                                                                               | 0      | 仅 6 个 docs/contracts 文件；无 V9/PRODUCT/AGENTS           |
+| `git diff --stat d468a8d..1a16ee4 -- apps/api/src/main/resources/db/migration/V9__organization_and_workspace_scope.sql` | 0      | **空**；V9 未改，EV-0304 的空库迁移测试仍适用               |
+| `git diff --stat d468a8d..1a16ee4 -- docs/PRODUCT.md AGENTS.md`                                                         | 0      | **空**                                                      |
+| `npx --yes @redocly/cli@1.34.3 lint contracts/openapi.yaml`                                                             | 0      | valid；**EV-0307**（architect 的 EV-0306 仅作对照，不依赖） |
+| `riccon contract validate --strict --project .`                                                                         | 0      | 0 errors, 0 warnings                                        |
 
 未跑 full verify、V9 迁移测试、E2E、security、axe：按提速要求，本轮只审计划与契约；V9 未变的 diff 是复用 EV-0304 的依据。
 
