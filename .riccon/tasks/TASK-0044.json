@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0044",
+  "module_id": "M03",
+  "title": "M03-B4 独立评审：内容贯通与旧谓词清理",
+  "owner": "riccon/verifier",
+  "status": "in_progress",
+  "write_scope": [
+    ".riccon/reviews/tasks/**"
+  ],
+  "acceptance": [
+    "所有内容入口先 requireAccessible；workspace 包外无旧可见性 SQL/owner-only 谓词",
+    "共享空间成员可读写消息；个人空间仅 owner；跨部门/跨租户统一 404；对象级创建人/上传者 403 语义符合 ADR/OpenAPI",
+    "ChatSubmissionService 发送/停止、FileRepository 知识库来源、RunDetailService 四类 run 不泄露且无 TOCTOU",
+    "ConversationApiTest/RunDetailApiTest 断言更新为空间语义且未削弱；ContentScopeApiTest/ChatScopeApiTest 覆盖 DEPT-002/003/004",
+    "独立跑关键定向测试；核对 EV-0318 的 576 tests 与覆盖率；无删测/跳测",
+    "写 TASK-0043-review.md verdict；无 V9/workspace 谓词/config/前端改动；B4 可进入 B1b/B5"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-18T19:38:58.898+08:00",
+  "updated_at": "2026-11-18T19:39:04.856+08:00",
+  "baseline_commit": "953d59b8888e39b9ce5bef6f901c3cd844f2376f"
+}
