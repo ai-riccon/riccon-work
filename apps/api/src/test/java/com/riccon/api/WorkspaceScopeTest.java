@@ -1,6 +1,7 @@
 package com.riccon.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.riccon.api.persistence.BinaryUuids;
 import com.riccon.api.support.ApiTestClient;
@@ -11,6 +12,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataAccessException;
 import tools.jackson.databind.JsonNode;
 
 /**
@@ -19,7 +21,8 @@ import tools.jackson.databind.JsonNode;
  * <p>使用真实 MySQL 8.4（Testcontainers）与真实迁移，覆盖：
  *
  * <ul>
- *   <li>{@code DEPT}/{@code CUSTOM}/{@code PRIVATE}/{@code TENANT} 与 {@code visibility = NULL} 的可见性；
+ *   <li>{@code DEPT}/{@code CUSTOM}/{@code PRIVATE}/{@code TENANT} 的可见性；
+ *   <li>V9 收紧后 {@code visibility = NULL} 的旧写法被数据库拒绝；
  *   <li>列表、详情与计数使用同一谓词；
  *   <li>租户管理员、部门负责人、普通成员的 403/404 边界与跨部门隔离；
  *   <li>CUSTOM 成员加入/移出的 409/204 与部门归属约束；
@@ -185,23 +188,21 @@ class WorkspaceScopeTest extends DepartmentTestSupport {
         assertThat(client.json(convert).path("code").asText()).isEqualTo("RICCON-REQUEST-400");
     }
 
-    /** M02 旧代码写入的 visibility NULL 不被放大：团队空间不可见，个人空间仅 owner。 */
+    /**
+     * V9 收紧后 visibility 已是 NOT NULL：M02 旧代码写 NULL 的路径必须在数据库层失败，
+     * 不再依赖谓词对 NULL 做降级。该用例由 B3 的 expand 期负向断言改为 contract 期负向断言。
+     */
     @Test
-    @DisplayName("visibility NULL 不越权可见")
-    void nullVisibilityWorkspace_isNotOverExposed() {
+    @DisplayName("V9 收紧后 visibility NULL 被数据库拒绝")
+    void nullVisibilityWorkspace_isRejectedAfterTightening() {
         ScopeFixture fixture = scopeFixture();
-        String legacyTeam = seedTeamWorkspaceWithNullVisibility(fixture.tenant(), fixture.adminId(), "NULL 团队空间");
-        String legacyPersonal =
-                seedPersonalWorkspaceWithNullVisibility(fixture.tenant(), fixture.siblingId(), "NULL 个人空间");
-
-        assertThatNotFound(get(fixture.admin(), legacyTeam));
-        assertThatNotFound(get(fixture.sibling(), legacyTeam));
-        assertThat(listIds(list(fixture.admin()))).doesNotContain(legacyTeam);
-
-        ApiTestClient.ApiResponse personal = get(fixture.sibling(), legacyPersonal);
-        assertThat(personal.status()).as(personal.body()).isEqualTo(200);
-        assertThat(client.json(personal).path("visibility").asText()).isEqualTo("PRIVATE");
-        assertThatNotFound(get(fixture.admin(), legacyPersonal));
+        assertThatThrownBy(() -> seedTeamWorkspaceWithNullVisibility(fixture.tenant(), fixture.adminId(), "NULL 团队空间"))
+                .isInstanceOf(DataAccessException.class)
+                .hasMessageContaining("visibility");
+        assertThatThrownBy(() ->
+                        seedPersonalWorkspaceWithNullVisibility(fixture.tenant(), fixture.siblingId(), "NULL 个人空间"))
+                .isInstanceOf(DataAccessException.class)
+                .hasMessageContaining("visibility");
     }
 
     /** 部门停用后成员立即失去空间访问，负责人管理入口也停止。 */

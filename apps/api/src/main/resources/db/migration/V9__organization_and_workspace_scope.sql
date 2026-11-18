@@ -1,16 +1,22 @@
 -- =============================================================================
--- V9：组织与部门数据范围（M03 唯一迁移；发布前由 Builder 在同一文件收紧）
+-- V9：组织与部门数据范围（M03 唯一迁移；已在发布前于本文件内收紧）
 --
 -- 依据 docs/adr/ADR-0018-m03-organization-and-department-scope.md：
 --   * 单级部门、单主部门；app_user.department_id 直接列 + 复合外键；
 --   * workspace 增加 department_id 与 visibility；历史 TEAM 空间回填为 TENANT，
 --     保持 M02“团队空间对本租户启用员工可见”的既有可见面，不猜部门；
 --   * workspace_member 只服务 CUSTOM 可见性；
---   * 本迁移不删除、不改类型、不重建 M02 表；旧代码在滚动发布期间可继续插入。
+--   * 本迁移不删除、不改类型、不重建 M02 表。
 --
--- V9 尚未发布：本提交先保证 M02 旧代码兼容（visibility 允许 NULL）；
--- Builder 完成代码切换后直接修正本文件，回填 NULL 并收紧为 NOT NULL + 严格 CHECK，
--- 不新增 V10（ADR-0018 6.2）。
+-- 发布前提（ADR-0018 6.2 F-009，M03-B1b）：
+--   * B3 已让所有生产写入方写 visibility，B4 已让所有内容入口走 requireAccessible，
+--     因此本文件在同一个 V9 内完成 expand -> contract：先加 NULL 列兼容既有 M02 行，
+--     再回填旧行、改 NOT NULL、加严格 CHECK；
+--   * V9 尚未发布，才允许原地收紧。已经应用过旧版（宽松）V9 的持久环境不得修改本文件，
+--     必须新增 V10 前向迁移并保留 V9 校验和（ADR-0018 6.2）；重做测试库优先 drop/recreate，
+--     禁止用 flyway repair 掩盖 checksum；
+--   * 回滚步骤见 ADR-0018 6.3：先停 API/Worker 写入并排空旧实例、做全量备份，再在非生产库
+--     执行回滚 SQL；flyway_schema_history 的 V9 行由维护账号按 ADR-0010 处理，应用账号不得删除。
 --
 -- 时间口径：DATETIME(6) UTC；所有租户表复合键，唯一键/索引以 tenant_id 开头。
 -- =============================================================================
@@ -57,19 +63,14 @@ ALTER TABLE app_user
 --   TENANT ：仅 M02 历史团队空间，本租户启用员工可见，禁止新建；
 --   DEPT   ：所属部门当前启用成员可见；
 --   CUSTOM ：所属部门当前启用成员中，workspace_member 显式列出的成员可见。
+--
+-- expand 阶段：先加可空列，保证既有 M02 行在回填前保持原状，也便于在同一迁移内按 kind 回填。
 ALTER TABLE workspace
     ADD COLUMN department_id BINARY(16) NULL COMMENT '所属部门；PERSONAL 与历史 TENANT 为空',
-    ADD COLUMN visibility VARCHAR(16) NULL COMMENT 'PRIVATE|TENANT|DEPT|CUSTOM；发布前由 Builder 回填并收紧 NOT NULL',
+    ADD COLUMN visibility VARCHAR(16) NULL COMMENT 'PRIVATE|TENANT|DEPT|CUSTOM；回填后收紧为 NOT NULL',
     ADD KEY idx_workspace_department (tenant_id, department_id, visibility, status, updated_at),
     ADD CONSTRAINT fk_workspace_department
-        FOREIGN KEY (tenant_id, department_id) REFERENCES department (tenant_id, id),
-    -- 宽松 CHECK：只拒绝“已填写但组合非法”的值；NULL 留给旧代码，发布前收紧。
-    ADD CONSTRAINT chk_workspace_scope CHECK (
-        (visibility IS NULL AND department_id IS NULL)
-        OR (kind = 'PERSONAL' AND visibility = 'PRIVATE' AND department_id IS NULL)
-        OR (kind = 'TEAM' AND visibility = 'TENANT' AND department_id IS NULL)
-        OR (kind = 'TEAM' AND visibility IN ('DEPT', 'CUSTOM') AND department_id IS NOT NULL)
-    );
+        FOREIGN KEY (tenant_id, department_id) REFERENCES department (tenant_id, id);
 
 -- CUSTOM 空间的显式成员。DEPT 成员由 app_user.department_id 派生，不冗余写行。
 CREATE TABLE workspace_member (
@@ -92,7 +93,8 @@ CREATE TABLE workspace_member (
   COLLATE = utf8mb4_0900_ai_ci
   COMMENT = '自定义可见空间的显式成员（M03）';
 
--- 回填既有空间：不猜部门，保持 M02 可见面。
+-- contract 阶段 1：回填既有空间。ADD COLUMN 后所有既有行的 visibility 都是 NULL，
+-- 因此这正是“旧代码可能写入的 NULL”集合；按 kind 回填，不猜部门、保持 M02 可见面。
 UPDATE workspace
    SET visibility = 'PRIVATE'
  WHERE kind = 'PERSONAL'
@@ -102,6 +104,19 @@ UPDATE workspace
    SET visibility = 'TENANT'
  WHERE kind = 'TEAM'
    AND visibility IS NULL;
+
+-- contract 阶段 2：无默认值地收紧为 NOT NULL。若仍有未覆盖的行，迁移在此失败（fail-closed），
+-- 不允许用默认值把未知数据静默变成某个可见性。
+ALTER TABLE workspace
+    MODIFY COLUMN visibility VARCHAR(16) NOT NULL COMMENT 'PRIVATE|TENANT|DEPT|CUSTOM；TENANT 仅历史 M02 空间';
+
+-- contract 阶段 3：ADR-0018 6.2 的严格组合。TENANT 只用于历史团队空间；新建/更新必须 DEPT/CUSTOM。
+ALTER TABLE workspace
+    ADD CONSTRAINT chk_workspace_scope CHECK (
+        (kind = 'PERSONAL' AND visibility = 'PRIVATE' AND department_id IS NULL)
+        OR (kind = 'TEAM' AND visibility = 'TENANT' AND department_id IS NULL)
+        OR (kind = 'TEAM' AND visibility IN ('DEPT', 'CUSTOM') AND department_id IS NOT NULL)
+    );
 
 -- 权限字典：
 --   department.read：普通员工/租户管理员读取自己部门与成员列表；

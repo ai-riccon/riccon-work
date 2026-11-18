@@ -11,8 +11,8 @@ import org.junit.jupiter.api.Test;
 /**
  * API 启动、迁移与默认拒绝基线。
  *
- * <p>验证 Testcontainers MySQL 8.4 上 Flyway V1–V9 全部成功、审计触发器存在、健康检查公开，
- * 以及未认证业务路径返回统一 401 ProblemDetail。
+ * <p>验证 Testcontainers MySQL 8.4 上 Flyway V1–V9 全部成功（V9 已在发布前于同一文件内收紧）、
+ * 审计触发器存在、健康检查公开，以及未认证业务路径返回统一 401 ProblemDetail。
  */
 class ApiApplicationTests extends ApiIntegrationTestSupport {
 
@@ -40,9 +40,25 @@ class ApiApplicationTests extends ApiIntegrationTestSupport {
                 .query(Long.class)
                 .single();
         assertThat(migrations).isEqualTo(9L);
-        // 38 张业务/基础设施表 + flyway_schema_history。
+        // 38 张业务/基础设施表 + flyway_schema_history；V9 新增 department/workspace_member。
         assertThat(tables).isEqualTo(39L);
         assertThat(triggers).isEqualTo(2L);
+    }
+
+    /** V9 已收紧：可见性列 NOT NULL，严格 workspace scope CHECK 存在（ADR-0018 §6.2）。 */
+    @Test
+    void workspaceVisibilityIsTightened() {
+        String nullable = jdbcClient.sql("""
+                        SELECT IS_NULLABLE FROM information_schema.columns
+                         WHERE table_schema = 'riccon' AND table_name = 'workspace' AND column_name = 'visibility'
+                        """).query(String.class).single();
+        Long scopeChecks = jdbcClient.sql("""
+                        SELECT COUNT(*) FROM information_schema.table_constraints
+                         WHERE table_schema = 'riccon' AND table_name = 'workspace'
+                           AND constraint_name = 'chk_workspace_scope' AND constraint_type = 'CHECK'
+                        """).query(Long.class).single();
+        assertThat(nullable).isEqualTo("NO");
+        assertThat(scopeChecks).isEqualTo(1L);
     }
 
     /** 会话表必须由 Flyway 创建，且应用关闭自动建表。 */

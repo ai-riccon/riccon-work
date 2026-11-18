@@ -93,6 +93,9 @@ public final class TestDataFactory {
     /**
      * 创建个人工作空间。
      *
+     * <p>V9 收紧后 visibility 为 NOT NULL（ADR-0018 §6.2），测试种子必须与生产写入方一致，
+     * 显式写 PRIVATE + 空部门；否则 MySQL 严格模式会拒绝插入。
+     *
      * @param tenantId 租户
      * @param userId 所有者
      * @return 工作空间 ID
@@ -102,9 +105,10 @@ public final class TestDataFactory {
         jdbcClient
                 .sql("""
                         INSERT INTO workspace
-                            (tenant_id, id, kind, name, owner_user_id, personal_owner_user_id, created_by)
+                            (tenant_id, id, kind, name, owner_user_id, personal_owner_user_id, created_by,
+                             department_id, visibility)
                         VALUES
-                            (:tenantId, :id, 'PERSONAL', :name, :userId, :userId, :userId)
+                            (:tenantId, :id, 'PERSONAL', :name, :userId, :userId, :userId, NULL, 'PRIVATE')
                         """)
                 .param("tenantId", tenantId)
                 .param("id", UuidBinary.toBytes(workspaceId))
