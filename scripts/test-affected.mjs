@@ -256,6 +256,19 @@ function unique(values) {
 }
 
 /**
+ * 合并理由并去掉重复的句末标点。
+ *
+ * @param {Iterable<string>} values 理由集合
+ * @returns {string}
+ */
+function joinReasons(values) {
+  const parts = [...values]
+    .map((value) => String(value).trim().replace(/[。；]+$/, ""))
+    .filter(Boolean);
+  return parts.length ? `${parts.join("；")}。` : "";
+}
+
+/**
  * 递归列出文件；跳过构建产物与依赖目录。
  *
  * @param {string} absoluteDir 绝对目录
@@ -397,14 +410,66 @@ class SuggestionSet {
   constructor() {
     /** @type {Map<string, {title: string, command: string, reason: string, files: Set<string>}>} */
     this.groups = new Map();
+    /** 按模块聚合 Java 测试类，避免多个文件命中同一模块时只保留第一个命令。 */
+    this.java = new Map();
+    /** 前端 vitest 聚合。 */
+    this.web = { tests: new Set(), reasons: new Set(), files: new Set() };
+    /** E2E spec 聚合。 */
+    this.e2e = { specs: new Set(), reasons: new Set(), files: new Set() };
     /** @type {Array<{file: string, note: string}>} */
     this.manual = [];
     /** @type {Array<{file: string, note: string}>} */
     this.ignored = [];
     /** @type {Array<{file: string, note: string}>} */
     this.unknown = [];
-    /** @type {Map<string, {command: string, files: string[]}>} */
+    /** @type {Map<string, {command: string, reason: string}>} */
     this.nodeChecks = new Map();
+  }
+
+  /**
+   * 聚合一个 Java 定向测试类。
+   *
+   * @param {"api"|"worker"} module 模块
+   * @param {string} simpleName 测试类简单名
+   * @param {string} reason 理由
+   * @param {string} file 触发文件
+   */
+  addJavaTest(module, simpleName, reason, file) {
+    const entry = this.java.get(module) ?? {
+      names: new Set(),
+      reasons: new Set(),
+      files: new Set(),
+    };
+    entry.names.add(simpleName);
+    entry.reasons.add(reason);
+    entry.files.add(file);
+    this.java.set(module, entry);
+  }
+
+  /**
+   * 聚合一个 Web vitest 文件。
+   *
+   * @param {string} testFile 相对 apps/web 的测试路径
+   * @param {string} reason 理由
+   * @param {string} file 触发文件
+   */
+  addWebTest(testFile, reason, file) {
+    this.web.tests.add(testFile);
+    this.web.reasons.add(reason);
+    this.web.files.add(file);
+  }
+
+  /**
+   * 聚合一个 E2E spec。
+   *
+   * @param {string} spec 相对仓库根的 spec 路径
+   * @param {string} reason 理由
+   * @param {string} file 触发文件
+   */
+  addE2eSpec(spec, reason, file) {
+    this.e2e.specs.add(spec);
+    this.e2e.reasons.add(reason);
+    this.e2e.files.add(file);
   }
 
   /**
@@ -421,7 +486,7 @@ class SuggestionSet {
     if (existing) {
       existing.files.add(file);
       if (!existing.reason.includes(reason)) {
-        existing.reason = `${existing.reason}；${reason}`;
+        existing.reason = joinReasons([existing.reason, reason]);
       }
       return;
     }
@@ -500,7 +565,41 @@ class SuggestionSet {
     lines.push(`变更来源：${source}`);
     lines.push("");
 
-    const groups = [...this.groups.values()];
+    const groups = [];
+    for (const [module, entry] of [...this.java.entries()].sort(
+      ([left], [right]) => left.localeCompare(right),
+    )) {
+      const names = [...entry.names].sort();
+      groups.push({
+        title: `${module.toUpperCase()} 定向测试`,
+        command:
+          `./mvnw -q -pl apps/${module} -am test -Dtest=${names.join(",")} ` +
+          "-DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false",
+        reason: joinReasons(entry.reasons),
+        files: [...entry.files].sort(),
+      });
+    }
+    if (this.web.tests.size) {
+      const tests = [...this.web.tests].sort();
+      groups.push({
+        title: "前端定向测试（vitest）",
+        command: `pnpm --filter @riccon/web exec vitest run ${tests.map(shellQuote).join(" ")}`,
+        reason: joinReasons(this.web.reasons),
+        files: [...this.web.files].sort(),
+      });
+    }
+    if (this.e2e.specs.size) {
+      const specs = [...this.e2e.specs].sort();
+      groups.push({
+        title: "E2E 定向测试",
+        command: `pnpm -w e2e -- ${specs.map(shellQuote).join(" ")}`,
+        reason: joinReasons(this.e2e.reasons),
+        files: [...this.e2e.files].sort(),
+      });
+    }
+    for (const group of this.groups.values()) {
+      groups.push({ ...group, files: [...group.files].sort() });
+    }
     if (groups.length) {
       lines.push("## 建议命令");
       lines.push("");
@@ -948,17 +1047,9 @@ function analyzeJavaTestFile(file, module, suggestions) {
  * @param {SuggestionSet} suggestions 输出
  */
 function addJavaTests(module, file, tests, reason, suggestions) {
-  const names = unique(tests.map((test) => test.simpleName)).sort();
-  const command =
-    `./mvnw -q -pl apps/${module} -am test -Dtest=${names.join(",")} ` +
-    "-DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false";
-  suggestions.addCommand(
-    `${module}-tests`,
-    `${module.toUpperCase()} 定向测试`,
-    command,
-    reason,
-    file,
-  );
+  for (const test of tests) {
+    suggestions.addJavaTest(module, test.simpleName, reason, file);
+  }
 }
 
 /**
@@ -1094,14 +1185,9 @@ function analyzeWebFile(file, suggestions) {
  * @param {SuggestionSet} suggestions 输出
  */
 function addWebTests(testFiles, file, reason, suggestions) {
-  const command = `pnpm --filter @riccon/web exec vitest run ${testFiles.map(shellQuote).join(" ")}`;
-  suggestions.addCommand(
-    "web-tests",
-    "前端定向测试（vitest）",
-    command,
-    reason,
-    file,
-  );
+  for (const testFile of testFiles) {
+    suggestions.addWebTest(testFile, reason, file);
+  }
 }
 
 /**
@@ -1122,13 +1208,7 @@ function analyzeE2eFile(file, suggestions) {
       );
       return;
     }
-    suggestions.addCommand(
-      "e2e-tests",
-      "E2E 定向测试",
-      `pnpm -w e2e -- ${shellQuote(file)}`,
-      "直接变更的 Playwright spec。",
-      file,
-    );
+    suggestions.addE2eSpec(file, "直接变更的 Playwright spec。", file);
     return;
   }
   if (file.startsWith("e2e/real/")) {
