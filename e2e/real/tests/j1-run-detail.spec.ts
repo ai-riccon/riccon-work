@@ -44,7 +44,8 @@ test.describe('真实栈 J1 运行详情', () => {
     await expect(drawer.locator('tbody').getByText('成功').first()).toBeVisible();
 
     // 首字必须体现真实增量时间，而不是整段流耗时（F-002/F-008 的直接回归点）。
-    const firstTokenCell = drawer.locator('tbody tr').first().locator('td').nth(3);
+    const invocationRow = drawer.getByRole('row').filter({ hasText: 'fake-chat' }).first();
+    const firstTokenCell = invocationRow.getByRole('cell').nth(3);
     await expect(firstTokenCell).toBeVisible();
     const firstTokenText = (await firstTokenCell.textContent()) ?? '';
     const firstTokenMs = firstTokenText.includes(' s')
