@@ -9,7 +9,12 @@ import {
 export const STUB_URL = `http://127.0.0.1:${Number(process.env.E2E_STUB_PORT ?? 8124)}`;
 
 /** stub 可模拟的错误场景；只影响错误路径用例，不改变正常业务数据。 */
-export type StubScenario = 'none' | 'research-list-403' | 'mcp-tools-403' | 'approval-409';
+export type StubScenario =
+  | 'none'
+  | 'research-list-403'
+  | 'mcp-tools-403'
+  | 'approval-409'
+  | 'citation-source-404';
 
 /** stub 控制面；控制端点不属于产品 OpenAPI，仅 E2E 使用。 */
 export interface StubControl {
@@ -19,6 +24,8 @@ export interface StubControl {
   setScenario: (name: StubScenario) => Promise<void>;
   /** 让所有服务端会话失效，用于验证 401 → 会话过期页面。 */
   revokeSessions: () => Promise<void>;
+  /** 播种 M03 部门/空间演示数据；只影响当前用例。 */
+  seedM03: () => Promise<void>;
 }
 
 /**
@@ -43,6 +50,10 @@ function createStubControl(request: APIRequestContext): StubControl {
     revokeSessions: async () => {
       const response = await request.post(`${STUB_URL}/__stub__/revoke-sessions`);
       expect(response.ok(), 'stub 会话失效失败').toBe(true);
+    },
+    seedM03: async () => {
+      const response = await request.post(`${STUB_URL}/__stub__/m03-seed`);
+      expect(response.ok(), 'stub M03 数据播种失败').toBe(true);
     },
   };
 }

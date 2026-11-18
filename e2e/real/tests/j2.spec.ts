@@ -107,7 +107,7 @@ test.describe('真实栈 J2', () => {
 
     // 产物元数据：报告标题、引用清单与数据来源。
     await expect(page.getByRole('heading', { name: '报告产物' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: '引用清单' })).toBeVisible();
+    await expect(page.locator('#artifact-citations-title')).toBeVisible();
     await expect(page.getByRole('button', { name: '定位检索阶段' }).first()).toBeVisible();
     await expect(page.getByText('MCP 工具 market_data').first()).toBeVisible();
 

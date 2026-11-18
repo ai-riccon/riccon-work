@@ -62,6 +62,113 @@ const DEMO_KNOWLEDGE_ID_ONE = '55555555-5555-4555-8555-555555555555';
 const DEMO_KNOWLEDGE_ID_TWO = '66666666-6666-4666-8666-666666666666';
 const DEMO_MODEL_ID = '33333333-3333-4333-8333-333333333333';
 
+/** M03 stub 账号与租户；只用于 E2E 合成数据，不对应真实身份。 */
+const M03_TENANT_ACME = 'tenant-acme';
+const M03_TENANT_BETA = 'tenant-beta';
+const M03_TENANT_SUSPENDED = 'tenant-suspended';
+const M03_PLATFORM_TENANT = 'platform';
+const M03_ADMIN_USER_ID = '77777777-7777-4777-8777-777777777777';
+const M03_MANAGER_USER_ID = '88888888-8888-4888-8888-888888888888';
+const M03_OUTSIDER_USER_ID = '99999999-9999-4999-8999-999999999999';
+const M03_ADMIN_USERNAME = 'admin';
+const M03_MANAGER_USERNAME = 'manager';
+const M03_OUTSIDER_USERNAME = 'outsider';
+const M03_PLATFORM_USERNAME = 'platform-admin';
+const M03_DEMO_DISPLAY_NAME = '演示员工';
+const M03_MEMBER_USER_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+const M03_MEMBER_USERNAME = 'wangmin';
+const M03_MEMBER_DISPLAY_NAME = '王敏';
+const M03_MANAGER_DISPLAY_NAME = '李强';
+const M03_OUTSIDER_DISPLAY_NAME = '赵敏';
+const M03_ADMIN_DISPLAY_NAME = '王芳';
+const M03_PLATFORM_DISPLAY_NAME = '赵蕾';
+const M03_SALES_DEPARTMENT_ID = 'dept-sales';
+const M03_MARKETING_DEPARTMENT_ID = 'dept-marketing';
+const M03_SALES_WORKSPACE_ID = 'ws-sales-project';
+const M03_SOURCE_UNAVAILABLE_FILE_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const M03_SOURCE_UNAVAILABLE_FILE_NAME = '销售部市场分析.pdf';
+
+/**
+ * E2E 登录账号表；key 为 `tenantCode/username`。
+ *
+ * 平台管理员只用于 /admin 部门管理页；租户管理员、负责人与普通成员用于空间共享与知识库边界。
+ */
+const M03_CREDENTIALS = {
+  'acme/demo': {
+    password: 'demo1234',
+    persona: 'member',
+    userId: DEMO_USER_ID,
+    username: 'demo',
+    displayName: M03_DEMO_DISPLAY_NAME,
+    roles: ['MEMBER'],
+    permissions: ['workspace.read', 'conversation.read', 'department.read', 'knowledge.read'],
+    tenantId: M03_TENANT_ACME,
+    tenantName: '示例企业',
+  },
+  'acme/wangmin': {
+    password: 'wangmin1234',
+    persona: 'member',
+    userId: M03_MEMBER_USER_ID,
+    username: M03_MEMBER_USERNAME,
+    displayName: M03_MEMBER_DISPLAY_NAME,
+    roles: ['MEMBER'],
+    permissions: ['workspace.read', 'conversation.read', 'department.read', 'knowledge.read'],
+    tenantId: M03_TENANT_ACME,
+    tenantName: '示例企业',
+  },
+  'acme/manager': {
+    password: 'manager1234',
+    persona: 'manager',
+    userId: M03_MANAGER_USER_ID,
+    username: M03_MANAGER_USERNAME,
+    displayName: M03_MANAGER_DISPLAY_NAME,
+    roles: ['MEMBER'],
+    permissions: ['workspace.read', 'conversation.read', 'department.read', 'knowledge.read'],
+    tenantId: M03_TENANT_ACME,
+    tenantName: '示例企业',
+  },
+  'acme/admin': {
+    password: 'admin1234',
+    persona: 'tenant-admin',
+    userId: M03_ADMIN_USER_ID,
+    username: M03_ADMIN_USERNAME,
+    displayName: M03_ADMIN_DISPLAY_NAME,
+    roles: ['TENANT_ADMIN'],
+    permissions: [
+      'workspace.read',
+      'workspace.write',
+      'conversation.read',
+      'department.read',
+      'knowledge.read',
+      'knowledge.manage',
+    ],
+    tenantId: M03_TENANT_ACME,
+    tenantName: '示例企业',
+  },
+  'acme/outsider': {
+    password: 'outsider1234',
+    persona: 'outsider',
+    userId: M03_OUTSIDER_USER_ID,
+    username: M03_OUTSIDER_USERNAME,
+    displayName: M03_OUTSIDER_DISPLAY_NAME,
+    roles: ['MEMBER'],
+    permissions: ['workspace.read', 'conversation.read', 'department.read', 'knowledge.read'],
+    tenantId: M03_TENANT_ACME,
+    tenantName: '示例企业',
+  },
+  'platform/platform-admin': {
+    password: 'platform1234',
+    persona: 'platform-admin',
+    userId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    username: M03_PLATFORM_USERNAME,
+    displayName: M03_PLATFORM_DISPLAY_NAME,
+    roles: ['PLATFORM_ADMIN'],
+    permissions: ['platform.tenant.manage', 'platform.department.manage'],
+    tenantId: M03_PLATFORM_TENANT,
+    tenantName: '平台',
+  },
+};
+
 /** 合成时间基准，保证刷新后详情时间稳定可读。 */
 const BASE_TIME = '2026-11-17T08:00:00.000Z';
 
@@ -115,6 +222,98 @@ function createInitialState() {
       },
     ],
     researchIdempotency: {},
+    // M03：平台租户元数据、部门与团队空间；所有写操作只改内存。
+    tenants: [
+      {
+        id: M03_TENANT_ACME,
+        name: '示例企业',
+        status: 'ACTIVE',
+        plan: 'standard',
+        retentionDays: 180,
+        createdAt: BASE_TIME,
+      },
+      {
+        id: M03_TENANT_BETA,
+        name: 'Beta 演示企业',
+        status: 'ACTIVE',
+        plan: 'standard',
+        retentionDays: 180,
+        createdAt: BASE_TIME,
+      },
+      {
+        id: M03_TENANT_SUSPENDED,
+        name: '暂停租户',
+        status: 'SUSPENDED',
+        plan: 'standard',
+        retentionDays: 180,
+        createdAt: BASE_TIME,
+      },
+    ],
+    users: [
+      {
+        id: DEMO_USER_ID,
+        tenantId: M03_TENANT_ACME,
+        username: 'demo',
+        displayName: M03_DEMO_DISPLAY_NAME,
+        email: null,
+        status: 'ACTIVE',
+        roles: ['MEMBER'],
+        lastLoginAt: BASE_TIME,
+        createdAt: BASE_TIME,
+        departmentId: null,
+      },
+      {
+        id: M03_MEMBER_USER_ID,
+        tenantId: M03_TENANT_ACME,
+        username: M03_MEMBER_USERNAME,
+        displayName: M03_MEMBER_DISPLAY_NAME,
+        email: null,
+        status: 'ACTIVE',
+        roles: ['MEMBER'],
+        lastLoginAt: BASE_TIME,
+        createdAt: BASE_TIME,
+        departmentId: null,
+      },
+      {
+        id: M03_MANAGER_USER_ID,
+        tenantId: M03_TENANT_ACME,
+        username: M03_MANAGER_USERNAME,
+        displayName: M03_MANAGER_DISPLAY_NAME,
+        email: null,
+        status: 'ACTIVE',
+        roles: ['MEMBER'],
+        lastLoginAt: BASE_TIME,
+        createdAt: BASE_TIME,
+        departmentId: null,
+      },
+      {
+        id: M03_OUTSIDER_USER_ID,
+        tenantId: M03_TENANT_ACME,
+        username: M03_OUTSIDER_USERNAME,
+        displayName: M03_OUTSIDER_DISPLAY_NAME,
+        email: null,
+        status: 'ACTIVE',
+        roles: ['MEMBER'],
+        lastLoginAt: BASE_TIME,
+        createdAt: BASE_TIME,
+        departmentId: null,
+      },
+      {
+        id: M03_ADMIN_USER_ID,
+        tenantId: M03_TENANT_ACME,
+        username: M03_ADMIN_USERNAME,
+        displayName: M03_ADMIN_DISPLAY_NAME,
+        email: null,
+        status: 'ACTIVE',
+        roles: ['TENANT_ADMIN'],
+        lastLoginAt: BASE_TIME,
+        createdAt: BASE_TIME,
+        departmentId: null,
+      },
+    ],
+    departments: [],
+    teamWorkspaces: [],
+    workspaceMembers: {},
   };
 }
 
@@ -177,39 +376,53 @@ function resetAll() {
  * @param session 会话记录
  * @returns OpenAPI SessionInfo
  */
+/** 员工端完整权限；部门管理入口仍由服务端角色与部门负责人关系决定。 */
+const MEMBER_PERMISSIONS = [
+  'workspace.read',
+  'conversation.read',
+  'conversation.write',
+  'file.read',
+  'file.upload',
+  'report.read',
+  'report.create',
+  'report.approve',
+  'artifact.read',
+  'mcp.read',
+  'department.read',
+  'knowledge.read',
+];
+
+/**
+ * 构造当前会话响应。
+ *
+ * @param session 会话记录
+ * @returns OpenAPI SessionInfo
+ */
 function sessionInfo(session) {
+  const account = session.account ?? M03_CREDENTIALS['acme/demo'];
+  const isMemberPersona = ['member', 'manager', 'outsider'].includes(account.persona);
+  const tenant = state.tenants.find((item) => item.id === account.tenantId);
   return {
     authenticated: true,
     user: {
-      id: DEMO_USER_ID,
-      username: DEMO_CREDENTIALS.username,
-      displayName: '演示员工',
+      id: account.userId,
+      username: account.username,
+      displayName: account.displayName,
       email: null,
       status: 'ACTIVE',
-      roles: ['MEMBER'],
+      roles: account.roles,
       lastLoginAt: BASE_TIME,
       createdAt: BASE_TIME,
     },
     tenant: {
-      id: DEMO_TENANT_ID,
-      name: '示例企业',
-      status: 'ACTIVE',
-      retentionDays: 180,
+      id: account.tenantId,
+      name: tenant?.name ?? account.tenantName,
+      status: tenant?.status ?? 'ACTIVE',
+      retentionDays: tenant?.retentionDays ?? 180,
       createdAt: BASE_TIME,
     },
-    roles: ['MEMBER'],
-    permissions: [
-      'workspace.read',
-      'conversation.read',
-      'conversation.write',
-      'file.read',
-      'file.upload',
-      'report.read',
-      'report.create',
-      'report.approve',
-      'artifact.read',
-      'mcp.read',
-    ],
+    roles: account.roles,
+    permissions: isMemberPersona ? MEMBER_PERMISSIONS : account.permissions,
     csrfToken: session.csrfToken,
     expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
   };
@@ -552,6 +765,29 @@ function citationForFile(file, ordinal) {
 }
 
 /**
+ * 构造一条跨部门知识库来源引用；源文件对当前账号不可访问，用于验证 404 文案。
+ *
+ * @returns 引用快照
+ */
+function unavailableSourceCitation() {
+  return {
+    ordinal: 1,
+    sourceType: 'KNOWLEDGE',
+    fileId: M03_SOURCE_UNAVAILABLE_FILE_ID,
+    knowledgeDocumentId: DEMO_KNOWLEDGE_ID_ONE,
+    chunkId: 'chunk-other-department',
+    title: M03_SOURCE_UNAVAILABLE_FILE_NAME,
+    snippet: '演示引用片段：该文档属于其他部门的共享空间，引用可展示但源文件不可访问。',
+    score: 0.76,
+    locatorType: 'PAGE',
+    pageNo: 3,
+    paragraphNo: null,
+    sheetName: null,
+    cellRange: null,
+  };
+}
+
+/**
  * 生成合成回答。
  *
  * @param question 用户问题
@@ -761,7 +997,10 @@ function handleSendMessage(req, res, conversation, raw) {
   conversation.updatedAt = new Date().toISOString();
   conversation.lastMessageAt = conversation.updatedAt;
 
-  const citations = usableFiles.slice(0, 2).map((file, index) => citationForFile(file, index + 1));
+  const citations =
+    scenario === 'citation-source-404'
+      ? [unavailableSourceCitation()]
+      : usableFiles.slice(0, 2).map((file, index) => citationForFile(file, index + 1));
   const wantsNoCitation = /无引用|无资料|没有资料/.test(content);
   const effectiveCitations = wantsNoCitation ? [] : citations;
   const answer = buildAnswer(content, effectiveCitations);
@@ -1627,6 +1866,11 @@ function handleControl(req, res, pathname, raw) {
     writeResult(res, json({ ok: true, scenario }));
     return true;
   }
+  if (pathname === '/__stub__/m03-seed' && req.method === 'POST') {
+    seedM03State();
+    writeResult(res, json({ ok: true, departments: state.departments.length }));
+    return true;
+  }
   if (pathname === '/__stub__/revoke-sessions' && req.method === 'POST') {
     // 模拟会话在服务端失效：保留业务数据，只清空会话表。
     sessions.clear();
@@ -1721,6 +1965,268 @@ function handleObject(req, res, pathname) {
  * @param raw 请求体
  * @returns 是否已处理
  */
+
+/**
+ * 读取当前会话账号。
+ *
+ * @param session 会话
+ * @returns 账号对象或 null
+ */
+function currentAccount(session) {
+  return session?.account ?? null;
+}
+
+/**
+ * 查找租户部门。
+ *
+ * @param tenantId 租户
+ * @param departmentId 部门
+ * @returns 部门或 undefined
+ */
+function findDepartment(tenantId, departmentId) {
+  return state.departments.find(
+    (department) => department.tenantId === tenantId && department.id === departmentId,
+  );
+}
+
+/**
+ * 统计部门当前启用成员数。
+ *
+ * @param departmentId 部门
+ * @returns 成员数
+ */
+function departmentMemberCount(departmentId) {
+  return state.users.filter(
+    (user) => user.departmentId === departmentId && user.status === 'ACTIVE',
+  ).length;
+}
+
+/**
+ * 部门响应；只含组织元数据与展示名。
+ *
+ * @param department 部门
+ * @returns Department
+ */
+function departmentResponse(department) {
+  const manager = department.managerUserId
+    ? state.users.find((user) => user.id === department.managerUserId)
+    : null;
+  return {
+    id: department.id,
+    name: department.name,
+    status: department.status,
+    managerUserId: department.managerUserId ?? null,
+    managerDisplayName: manager?.displayName ?? null,
+    memberCount: departmentMemberCount(department.id),
+    createdAt: department.createdAt,
+    updatedAt: department.updatedAt,
+  };
+}
+
+/**
+ * 部门成员响应；不复用 UserSummary，避免泄露邮箱、角色与最近登录。
+ *
+ * @param user 账号
+ * @returns DepartmentMember
+ */
+function departmentMemberResponse(user) {
+  return {
+    id: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    status: user.status,
+  };
+}
+
+/**
+ * 按账号范围列出部门：普通员工只看本人部门，租户管理员看全部。
+ *
+ * @param account 当前账号
+ * @returns 部门列表
+ */
+function scopedDepartments(account) {
+  if (!account) {
+    return [];
+  }
+  if (account.persona === 'tenant-admin') {
+    return state.departments.filter((department) => department.tenantId === account.tenantId);
+  }
+  if (account.persona === 'platform-admin') {
+    return [];
+  }
+  const user = state.users.find((item) => item.id === account.userId);
+  return state.departments.filter(
+    (department) =>
+      department.tenantId === account.tenantId && department.id === user?.departmentId,
+  );
+}
+
+/**
+ * 判断账号是否可管理指定部门：租户管理员或该部门负责人。
+ *
+ * @param account 账号
+ * @param department 部门
+ * @returns 可管理返回 true
+ */
+function canManageDepartment(account, department) {
+  if (!account || !department || department.tenantId !== account.tenantId) {
+    return false;
+  }
+  return (
+    account.persona === 'tenant-admin' || department.managerUserId === account.userId
+  );
+}
+
+/**
+ * 判断团队空间是否可被账号访问。
+ *
+ * @param account 账号
+ * @param workspace 团队空间
+ * @returns 可访问返回 true
+ */
+function canAccessTeamWorkspace(account, workspace) {
+  if (!account || workspace.tenantId !== account.tenantId) {
+    return false;
+  }
+  const user = state.users.find((item) => item.id === account.userId);
+  if (!user?.departmentId) {
+    return false;
+  }
+  if (workspace.visibility === 'TENANT') {
+    return true;
+  }
+  if (workspace.departmentId !== user.departmentId) {
+    return false;
+  }
+  const department = findDepartment(account.tenantId, user.departmentId);
+  if (!department || department.status !== 'ACTIVE') {
+    return false;
+  }
+  if (workspace.visibility === 'DEPT') {
+    return true;
+  }
+  if (workspace.visibility === 'CUSTOM') {
+    return (state.workspaceMembers[workspace.id] ?? []).includes(account.userId);
+  }
+  return false;
+}
+
+/**
+ * 团队空间响应。
+ *
+ * @param workspace 团队空间
+ * @returns ManagedWorkspace
+ */
+function workspaceResponse(workspace) {
+  const department = workspace.departmentId
+    ? state.departments.find((item) => item.id === workspace.departmentId)
+    : null;
+  return {
+    id: workspace.id,
+    kind: 'TEAM',
+    name: workspace.name,
+    description: workspace.description ?? null,
+    ownerUserId: workspace.ownerUserId,
+    departmentId: workspace.departmentId ?? null,
+    departmentName: department?.name ?? null,
+    visibility: workspace.visibility,
+    status: workspace.status ?? 'ACTIVE',
+    createdAt: workspace.createdAt,
+    updatedAt: workspace.updatedAt,
+  };
+}
+
+/**
+ * 当前账号可见的团队空间。
+ *
+ * @param account 账号
+ * @returns 团队空间列表
+ */
+function accessibleTeamWorkspaces(account) {
+  return state.teamWorkspaces.filter((workspace) => canAccessTeamWorkspace(account, workspace));
+}
+
+/**
+ * 当前账号可见的部门空间管理列表；负责人和租户管理员能看到本部门全部空间。
+ *
+ * @param account 账号
+ * @param department 部门
+ * @returns 空间列表
+ */
+function manageableDepartmentWorkspaces(account, department) {
+  if (!canManageDepartment(account, department)) {
+    return [];
+  }
+  return state.teamWorkspaces.filter(
+    (workspace) =>
+      workspace.tenantId === account.tenantId && workspace.departmentId === department.id,
+  );
+}
+
+/**
+ * 账号所属租户的启用账号列表。
+ *
+ * @param tenantId 租户
+ * @returns 用户列表
+ */
+function tenantUsers(tenantId) {
+  return state.users.filter(
+    (user) => user.tenantId === tenantId && user.status === 'ACTIVE',
+  );
+}
+
+/**
+ * 播种 M03 演示数据：销售部/市场部、负责人、普通成员与一个部门空间。
+ *
+ * 只由 E2E 控制端点调用，不在 reset 默认状态中，避免影响 M02 用例。
+ */
+function seedM03State() {
+  state.departments = [
+    {
+      id: M03_SALES_DEPARTMENT_ID,
+      tenantId: M03_TENANT_ACME,
+      name: '销售部',
+      status: 'ACTIVE',
+      managerUserId: M03_MANAGER_USER_ID,
+      createdAt: BASE_TIME,
+      updatedAt: BASE_TIME,
+    },
+    {
+      id: M03_MARKETING_DEPARTMENT_ID,
+      tenantId: M03_TENANT_ACME,
+      name: '市场部',
+      status: 'ACTIVE',
+      managerUserId: null,
+      createdAt: BASE_TIME,
+      updatedAt: BASE_TIME,
+    },
+  ];
+  state.users = state.users.map((user) => {
+    if (user.id === M03_MEMBER_USER_ID || user.id === M03_MANAGER_USER_ID) {
+      return { ...user, departmentId: M03_SALES_DEPARTMENT_ID };
+    }
+    if (user.id === M03_OUTSIDER_USER_ID) {
+      return { ...user, departmentId: M03_MARKETING_DEPARTMENT_ID };
+    }
+    return user;
+  });
+  state.teamWorkspaces = [
+    {
+      id: M03_SALES_WORKSPACE_ID,
+      tenantId: M03_TENANT_ACME,
+      name: '销售部项目空间',
+      description: '销售部共享空间（E2E 合成数据）',
+      ownerUserId: M03_MANAGER_USER_ID,
+      departmentId: M03_SALES_DEPARTMENT_ID,
+      visibility: 'DEPT',
+      status: 'ACTIVE',
+      createdAt: BASE_TIME,
+      updatedAt: BASE_TIME,
+    },
+  ];
+  state.workspaceMembers = {};
+}
+
 function handleApi(req, res, url, raw) {
   const { pathname, searchParams } = url;
   const method = req.method ?? 'GET';
@@ -1745,15 +2251,14 @@ function handleApi(req, res, url, raw) {
       return true;
     }
     const body = readJson(raw);
-    const matches =
-      body?.tenantCode === DEMO_CREDENTIALS.tenantCode &&
-      body?.username === DEMO_CREDENTIALS.username &&
-      body?.password === DEMO_CREDENTIALS.password;
-    if (!matches) {
+    const key = `${body?.tenantCode}/${body?.username}`;
+    const account = M03_CREDENTIALS[key];
+    if (!account || body?.password !== account.password) {
       writeResult(res, problem(401, 'RICCON-AUTH-001', '登录失败', '租户代码、账号或密码不正确。'));
       return true;
     }
     session.authenticated = true;
+    session.account = account;
     session.csrfToken = `stub-csrf-${nextId('csrf')}`;
     if (created) {
       res.setHeader(
@@ -1790,9 +2295,570 @@ function handleApi(req, res, url, raw) {
     return true;
   }
 
-  if (pathname === '/api/v1/workspaces' && method === 'GET') {
-    writeResult(res, json(page([state.workspace])));
+  // ---------- M03：平台部门管理 ----------
+  const adminTenantMatch = /^\/api\/v1\/admin\/tenants\/([^/]+)\/departments(?:\/([^/]+))?(?:\/(disable|enable|members|manager))?(?:\/([^/]+))?$/.exec(
+    pathname,
+  );
+  if (pathname === '/api/v1/admin/tenants' && method === 'GET') {
+    const account = currentAccount(session);
+    if (account?.persona !== 'platform-admin') {
+      writeResult(res, problem(403, 'RICCON-AUTH-403', '没有权限', '只有平台管理员可以管理租户。'));
+      return true;
+    }
+    writeResult(res, json(page(state.tenants)));
     return true;
+  }
+
+  const adminUserListMatch = /^\/api\/v1\/admin\/tenants\/([^/]+)\/users$/.exec(pathname);
+  if (adminUserListMatch && method === 'GET') {
+    const account = currentAccount(session);
+    if (account?.persona !== 'platform-admin') {
+      writeResult(res, problem(403, 'RICCON-AUTH-403', '没有权限', '只有平台管理员可以管理部门。'));
+      return true;
+    }
+    const tenantId = decodeURIComponent(adminUserListMatch[1]);
+    writeResult(
+      res,
+      json(
+        page(
+          tenantUsers(tenantId).map((user) => ({
+            id: user.id,
+            username: user.username,
+            displayName: user.displayName,
+            email: user.email ?? null,
+            status: user.status,
+            roles: user.roles,
+            lastLoginAt: user.lastLoginAt ?? null,
+            createdAt: user.createdAt,
+          })),
+        ),
+      ),
+    );
+    return true;
+  }
+
+  if (adminTenantMatch) {
+    const account = currentAccount(session);
+    if (account?.persona !== 'platform-admin') {
+      writeResult(res, problem(403, 'RICCON-AUTH-403', '没有权限', '只有平台管理员可以管理部门。'));
+      return true;
+    }
+    const tenantId = decodeURIComponent(adminTenantMatch[1]);
+    const departmentId = adminTenantMatch[2] ? decodeURIComponent(adminTenantMatch[2]) : null;
+    const action = adminTenantMatch[3] ?? null;
+    const suffix = adminTenantMatch[4] ? decodeURIComponent(adminTenantMatch[4]) : null;
+    const tenant = state.tenants.find((item) => item.id === tenantId);
+    if (!tenant) {
+      writeResult(res, problem(404, 'RICCON-TENANT-404', '租户不存在', '目标租户不存在。'));
+      return true;
+    }
+    if (tenant.status !== 'ACTIVE') {
+      writeResult(
+        res,
+        problem(409, 'RICCON-CONFLICT-409', '租户已暂停', '目标租户已暂停，部门管理暂不可用。'),
+      );
+      return true;
+    }
+    if (!departmentId && method === 'GET') {
+      writeResult(
+        res,
+        json(
+          page(
+            state.departments
+              .filter((department) => department.tenantId === tenantId)
+              .sort(
+                (left, right) =>
+                  left.name.localeCompare(right.name, 'zh-CN') || left.id.localeCompare(right.id),
+              )
+              .map(departmentResponse),
+          ),
+        ),
+      );
+      return true;
+    }
+    if (!departmentId && method === 'POST') {
+      const csrfError = requireCsrf(session, req);
+      if (csrfError) {
+        writeResult(res, csrfError);
+        return true;
+      }
+      const body = readJson(raw);
+      const name = typeof body?.name === 'string' ? body.name.trim() : '';
+      if (!name) {
+        writeResult(res, problem(400, 'RICCON-REQUEST-400', '参数无效', '部门名称不能为空。'));
+        return true;
+      }
+      if (
+        state.departments.some(
+          (department) => department.tenantId === tenantId && department.name === name,
+        )
+      ) {
+        writeResult(
+          res,
+          problem(409, 'RICCON-DEPT-409', '部门名称冲突', '同一租户内部门名称必须唯一。'),
+        );
+        return true;
+      }
+      const now = new Date().toISOString();
+      const department = {
+        id: `dept-${nextId('dept')}`,
+        tenantId,
+        name,
+        status: 'ACTIVE',
+        managerUserId: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      state.departments = [...state.departments, department];
+      writeResult(res, json(departmentResponse(department), 201));
+      return true;
+    }
+
+    const department = departmentId
+      ? findDepartment(tenantId, departmentId)
+      : null;
+    if (!department) {
+      writeResult(
+        res,
+        problem(404, 'RICCON-TENANT-404', '部门不存在', '部门不存在或不属于该租户。'),
+      );
+      return true;
+    }
+
+    if (!action && method === 'PATCH') {
+      const csrfError = requireCsrf(session, req);
+      if (csrfError) {
+        writeResult(res, csrfError);
+        return true;
+      }
+      if (department.status !== 'ACTIVE') {
+        writeResult(
+          res,
+          problem(409, 'RICCON-DEPT-409', '部门已停用', '停用部门需先启用后再改名。'),
+        );
+        return true;
+      }
+      const body = readJson(raw);
+      const name = typeof body?.name === 'string' ? body.name.trim() : '';
+      if (!name) {
+        writeResult(res, problem(400, 'RICCON-REQUEST-400', '参数无效', '部门名称不能为空。'));
+        return true;
+      }
+      if (
+        state.departments.some(
+          (item) =>
+            item.tenantId === tenantId && item.id !== department.id && item.name === name,
+        )
+      ) {
+        writeResult(
+          res,
+          problem(409, 'RICCON-DEPT-409', '部门名称冲突', '同一租户内部门名称必须唯一。'),
+        );
+        return true;
+      }
+      department.name = name;
+      department.updatedAt = new Date().toISOString();
+      writeResult(res, json(departmentResponse(department)));
+      return true;
+    }
+
+    if (!action && method === 'GET' && !departmentId) {
+      writeResult(res, json(page([])));
+      return true;
+    }
+
+    if ((action === 'disable' || action === 'enable') && method === 'POST') {
+      const csrfError = requireCsrf(session, req);
+      if (csrfError) {
+        writeResult(res, csrfError);
+        return true;
+      }
+      department.status = action === 'disable' ? 'DISABLED' : 'ACTIVE';
+      department.updatedAt = new Date().toISOString();
+      writeResult(res, json(departmentResponse(department)));
+      return true;
+    }
+
+    if (action === 'members' && !suffix && method === 'GET') {
+      const members = state.users
+        .filter((user) => user.departmentId === department.id && user.status === 'ACTIVE')
+        .map(departmentMemberResponse);
+      writeResult(res, json(page(members)));
+      return true;
+    }
+
+    if (action === 'members' && !suffix && method === 'POST') {
+      const csrfError = requireCsrf(session, req);
+      if (csrfError) {
+        writeResult(res, csrfError);
+        return true;
+      }
+      const body = readJson(raw);
+      const user = state.users.find(
+        (item) => item.id === body?.userId && item.tenantId === tenantId,
+      );
+      if (!user) {
+        writeResult(res, problem(404, 'RICCON-TENANT-404', '账号不存在', '账号不存在。'));
+        return true;
+      }
+      if (user.departmentId) {
+        writeResult(
+          res,
+          problem(409, 'RICCON-DEPT-409', '账号已属于部门', '同一账号只能属于一个部门。'),
+        );
+        return true;
+      }
+      user.departmentId = department.id;
+      writeResult(res, json(departmentMemberResponse(user), 201));
+      return true;
+    }
+
+    if (action === 'members' && suffix && method === 'DELETE') {
+      const csrfError = requireCsrf(session, req);
+      if (csrfError) {
+        writeResult(res, csrfError);
+        return true;
+      }
+      if (department.managerUserId === suffix) {
+        writeResult(
+          res,
+          problem(409, 'RICCON-DEPT-409', '负责人不能移出', '请先移交负责人。'),
+        );
+        return true;
+      }
+      const user = state.users.find((item) => item.id === suffix);
+      if (user?.departmentId === department.id) {
+        user.departmentId = null;
+      }
+      res.writeHead(204, { 'Cache-Control': 'no-store' });
+      res.end();
+      return true;
+    }
+
+    if (action === 'manager' && method === 'PUT') {
+      const csrfError = requireCsrf(session, req);
+      if (csrfError) {
+        writeResult(res, csrfError);
+        return true;
+      }
+      const body = readJson(raw);
+      const user = state.users.find(
+        (item) =>
+          item.id === body?.userId &&
+          item.tenantId === tenantId &&
+          item.departmentId === department.id &&
+          item.status === 'ACTIVE',
+      );
+      if (!user) {
+        writeResult(
+          res,
+          problem(404, 'RICCON-TENANT-404', '账号不存在', '负责人必须是本部门当前启用成员。'),
+        );
+        return true;
+      }
+      department.managerUserId = user.id;
+      department.updatedAt = new Date().toISOString();
+      writeResult(res, json(departmentResponse(department)));
+      return true;
+    }
+  }
+
+  // ---------- M03：租户内部门只读与空间共享 ----------
+  if (pathname === '/api/v1/departments' && method === 'GET') {
+    const account = currentAccount(session);
+    writeResult(res, json(page(scopedDepartments(account).map(departmentResponse))));
+    return true;
+  }
+
+  const departmentMembersMatch = /^\/api\/v1\/departments\/([^/]+)\/members$/.exec(pathname);
+  if (departmentMembersMatch && method === 'GET') {
+    const account = currentAccount(session);
+    const departmentId = decodeURIComponent(departmentMembersMatch[1]);
+    const department = findDepartment(account?.tenantId, departmentId);
+    const user = state.users.find((item) => item.id === account?.userId);
+    const allowed =
+      department &&
+      (account.persona === 'tenant-admin' || user?.departmentId === departmentId);
+    if (!allowed) {
+      writeResult(res, problem(404, 'RICCON-TENANT-404', '部门不存在', '部门不存在。'));
+      return true;
+    }
+    const members = state.users
+      .filter((item) => item.departmentId === departmentId && item.status === 'ACTIVE')
+      .map(departmentMemberResponse);
+    writeResult(res, json(page(members)));
+    return true;
+  }
+
+  const departmentWorkspacesMatch = /^\/api\/v1\/departments\/([^/]+)\/workspaces$/.exec(pathname);
+  if (departmentWorkspacesMatch) {
+    const account = currentAccount(session);
+    const departmentId = decodeURIComponent(departmentWorkspacesMatch[1]);
+    const department = findDepartment(account?.tenantId, departmentId);
+    if (!department) {
+      writeResult(res, problem(404, 'RICCON-TENANT-404', '部门不存在', '部门不存在。'));
+      return true;
+    }
+    if (!canManageDepartment(account, department)) {
+      const user = state.users.find((item) => item.id === account?.userId);
+      if (user?.departmentId === departmentId) {
+        writeResult(res, problem(403, 'RICCON-AUTH-403', '没有权限', '只有负责人可以管理空间。'));
+      } else {
+        writeResult(res, problem(404, 'RICCON-TENANT-404', '部门不存在', '部门不存在。'));
+      }
+      return true;
+    }
+    if (department.status !== 'ACTIVE') {
+      writeResult(res, problem(400, 'RICCON-REQUEST-400', '部门已停用', '停用部门不能管理空间。'));
+      return true;
+    }
+    if (method === 'GET') {
+      writeResult(
+        res,
+        json(page(manageableDepartmentWorkspaces(account, department).map(workspaceResponse))),
+      );
+      return true;
+    }
+    if (method === 'POST') {
+      const csrfError = requireCsrf(session, req);
+      if (csrfError) {
+        writeResult(res, csrfError);
+        return true;
+      }
+      const body = readJson(raw);
+      const visibility = body?.visibility ?? 'DEPT';
+      if (visibility !== 'DEPT' && visibility !== 'CUSTOM') {
+        writeResult(
+          res,
+          problem(400, 'RICCON-REQUEST-400', '可见性无效', '只能创建本部门或指定成员空间。'),
+        );
+        return true;
+      }
+      const name = typeof body?.name === 'string' ? body.name.trim() : '';
+      if (!name) {
+        writeResult(res, problem(400, 'RICCON-REQUEST-400', '参数无效', '空间名称不能为空。'));
+        return true;
+      }
+      const now = new Date().toISOString();
+      const workspace = {
+        id: nextId('workspace'),
+        tenantId: account.tenantId,
+        name,
+        description: typeof body?.description === 'string' ? body.description : null,
+        ownerUserId: account.userId,
+        departmentId,
+        visibility,
+        status: 'ACTIVE',
+        createdAt: now,
+        updatedAt: now,
+      };
+      state.teamWorkspaces = [...state.teamWorkspaces, workspace];
+      writeResult(res, json(workspaceResponse(workspace), 201));
+      return true;
+    }
+  }
+
+  if (pathname === '/api/v1/workspaces' && method === 'GET') {
+    const account = currentAccount(session);
+    const kind = searchParams.get('kind');
+    const items =
+      kind === 'PERSONAL'
+        ? [state.workspace]
+        : kind === 'TEAM'
+          ? accessibleTeamWorkspaces(account).map(workspaceResponse)
+          : [state.workspace, ...accessibleTeamWorkspaces(account).map(workspaceResponse)];
+    writeResult(res, json(page(items)));
+    return true;
+  }
+
+  if (pathname === '/api/v1/workspaces' && method === 'POST') {
+    const account = currentAccount(session);
+    if (account?.persona !== 'tenant-admin') {
+      writeResult(res, problem(403, 'RICCON-AUTH-403', '没有权限', '只有租户管理员可以创建空间。'));
+      return true;
+    }
+    const csrfError = requireCsrf(session, req);
+    if (csrfError) {
+      writeResult(res, csrfError);
+      return true;
+    }
+    const body = readJson(raw);
+    const department = findDepartment(account.tenantId, body?.departmentId);
+    if (!department || department.status !== 'ACTIVE') {
+      writeResult(res, problem(404, 'RICCON-TENANT-404', '部门不存在', '部门不存在。'));
+      return true;
+    }
+    const visibility = body?.visibility ?? 'DEPT';
+    if (visibility !== 'DEPT' && visibility !== 'CUSTOM') {
+      writeResult(res, problem(400, 'RICCON-REQUEST-400', '可见性无效', '可见性无效。'));
+      return true;
+    }
+    const now = new Date().toISOString();
+    const workspace = {
+      id: nextId('workspace'),
+      tenantId: account.tenantId,
+      name: typeof body?.name === 'string' ? body.name.trim() : '',
+      description: typeof body?.description === 'string' ? body.description : null,
+      ownerUserId: account.userId,
+      departmentId: department.id,
+      visibility,
+      status: 'ACTIVE',
+      createdAt: now,
+      updatedAt: now,
+    };
+    state.teamWorkspaces = [...state.teamWorkspaces, workspace];
+    writeResult(res, json(workspaceResponse(workspace), 201));
+    return true;
+  }
+
+  const workspaceMatch = /^\/api\/v1\/workspaces\/([^/]+)$/.exec(pathname);
+  if (workspaceMatch && (method === 'GET' || method === 'PATCH')) {
+    const account = currentAccount(session);
+    const workspaceId = decodeURIComponent(workspaceMatch[1]);
+    const workspace = state.teamWorkspaces.find(
+      (item) => item.id === workspaceId && item.tenantId === account?.tenantId,
+    );
+    if (!workspace) {
+      if (workspaceId === state.workspace.id) {
+        writeResult(res, json(state.workspace));
+        return true;
+      }
+      writeResult(res, problem(404, 'RICCON-TENANT-404', '工作空间不存在', '工作空间不存在。'));
+      return true;
+    }
+    if (method === 'GET') {
+      if (!canAccessTeamWorkspace(account, workspace)) {
+        writeResult(res, problem(404, 'RICCON-TENANT-404', '工作空间不存在', '工作空间不存在。'));
+        return true;
+      }
+      writeResult(res, json(workspaceResponse(workspace)));
+      return true;
+    }
+    const csrfError = requireCsrf(session, req);
+    if (csrfError) {
+      writeResult(res, csrfError);
+      return true;
+    }
+    const department = findDepartment(account.tenantId, workspace.departmentId);
+    if (!canManageDepartment(account, department)) {
+      writeResult(
+        res,
+        canAccessTeamWorkspace(account, workspace)
+          ? problem(403, 'RICCON-AUTH-403', '没有权限', '只有负责人或租户管理员可以修改空间。')
+          : problem(404, 'RICCON-TENANT-404', '工作空间不存在', '工作空间不存在。'),
+      );
+      return true;
+    }
+    const body = readJson(raw);
+    if (typeof body?.name === 'string' && body.name.trim()) {
+      workspace.name = body.name.trim();
+    }
+    if (typeof body?.description === 'string') {
+      workspace.description = body.description;
+    }
+    if (typeof body?.visibility === 'string') {
+      if (body.visibility !== 'DEPT' && body.visibility !== 'CUSTOM') {
+        writeResult(res, problem(400, 'RICCON-REQUEST-400', '可见性无效', '可见性无效。'));
+        return true;
+      }
+      if (body.visibility !== workspace.visibility) {
+        workspace.visibility = body.visibility;
+        state.workspaceMembers[workspace.id] = [];
+      }
+    }
+    workspace.updatedAt = new Date().toISOString();
+    writeResult(res, json(workspaceResponse(workspace)));
+    return true;
+  }
+
+  const workspaceMembersMatch = /^\/api\/v1\/workspaces\/([^/]+)\/members(?:\/([^/]+))?$/.exec(
+    pathname,
+  );
+  if (workspaceMembersMatch) {
+    const account = currentAccount(session);
+    const workspaceId = decodeURIComponent(workspaceMembersMatch[1]);
+    const targetUserId = workspaceMembersMatch[2]
+      ? decodeURIComponent(workspaceMembersMatch[2])
+      : null;
+    const workspace = state.teamWorkspaces.find(
+      (item) => item.id === workspaceId && item.tenantId === account?.tenantId,
+    );
+    if (!workspace) {
+      writeResult(res, problem(404, 'RICCON-TENANT-404', '工作空间不存在', '工作空间不存在。'));
+      return true;
+    }
+    const department = findDepartment(account.tenantId, workspace.departmentId);
+    if (!canManageDepartment(account, department)) {
+      writeResult(
+        res,
+        canAccessTeamWorkspace(account, workspace)
+          ? problem(403, 'RICCON-AUTH-403', '没有权限', '只有负责人或租户管理员可以管理成员。')
+          : problem(404, 'RICCON-TENANT-404', '工作空间不存在', '工作空间不存在。'),
+      );
+      return true;
+    }
+    if (!targetUserId && method === 'GET') {
+      if (workspace.visibility !== 'CUSTOM') {
+        writeResult(res, json(page([])));
+        return true;
+      }
+      const members = (state.workspaceMembers[workspace.id] ?? [])
+        .map((userId) => state.users.find((user) => user.id === userId))
+        .filter(Boolean)
+        .map((user) => ({
+          userId: user.id,
+          username: user.username,
+          displayName: user.displayName,
+        }));
+      writeResult(res, json(page(members)));
+      return true;
+    }
+    if (!targetUserId && method === 'POST') {
+      const csrfError = requireCsrf(session, req);
+      if (csrfError) {
+        writeResult(res, csrfError);
+        return true;
+      }
+      const body = readJson(raw);
+      const user = state.users.find(
+        (item) =>
+          item.id === body?.userId &&
+          item.tenantId === account.tenantId &&
+          item.departmentId === workspace.departmentId &&
+          item.status === 'ACTIVE',
+      );
+      if (!user) {
+        writeResult(res, problem(404, 'RICCON-TENANT-404', '账号不存在', '账号不存在。'));
+        return true;
+      }
+      const existing = state.workspaceMembers[workspace.id] ?? [];
+      if (existing.includes(user.id)) {
+        writeResult(
+          res,
+          problem(409, 'RICCON-DEPT-409', '成员已存在', '该账号已是空间显式成员。'),
+        );
+        return true;
+      }
+      state.workspaceMembers[workspace.id] = [...existing, user.id];
+      writeResult(
+        res,
+        json({ userId: user.id, username: user.username, displayName: user.displayName }, 201),
+      );
+      return true;
+    }
+    if (targetUserId && method === 'DELETE') {
+      const csrfError = requireCsrf(session, req);
+      if (csrfError) {
+        writeResult(res, csrfError);
+        return true;
+      }
+      state.workspaceMembers[workspace.id] = (state.workspaceMembers[workspace.id] ?? []).filter(
+        (userId) => userId !== targetUserId,
+      );
+      res.writeHead(204, { 'Cache-Control': 'no-store' });
+      res.end();
+      return true;
+    }
   }
 
   // 场景：报告任务列表返回 403，用于验证页面无权限态。

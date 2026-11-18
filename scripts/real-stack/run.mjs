@@ -322,11 +322,24 @@ try {
   );
   phases.securityChecks = checks.status === 0 ? "passed" : "failed";
 
+  const m03 = spawnSync("node", ["scripts/real-stack/m03-checks.mjs"], {
+    cwd: repoRoot,
+    env: { ...process.env, REAL_SEED_OUT: SEED_FILE },
+    encoding: "utf8",
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  writeFileSync(
+    path.join(evidenceDir, "real-stack-m03-checks.log"),
+    `${m03.stdout ?? ""}\n${m03.stderr ?? ""}`,
+  );
+  phases.m03Checks = m03.status === 0 ? "passed" : "failed";
+
   const summary = {
     status:
       phases.browserE2e === "passed" &&
       phases.j2Journey === "passed" &&
-      phases.securityChecks === "passed"
+      phases.securityChecks === "passed" &&
+      phases.m03Checks === "passed"
         ? "passed"
         : "failed",
     generatedAt: new Date().toISOString(),
