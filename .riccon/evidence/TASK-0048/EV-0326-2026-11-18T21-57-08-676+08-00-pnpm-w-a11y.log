@@ -1,0 +1,73 @@
+# command: pnpm -w a11y
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-18T21:56:10.037+08:00
+# finished_at: 2026-11-18T21:57:08.262+08:00
+# duration_ms: 58224
+# exit_code: 1
+
+# --- stdout ---
+
+> riccon-work@0.1.0 a11y /Users/ricky/Documents/projects/riccon-work
+> playwright test --config e2e/playwright.config.ts --grep @a11y
+
+
+Running 8 tests using 1 worker
+
+  ✓  1 [chromium] › e2e/tests/admin.spec.ts:10:3 › 管理端布局 › 渲染 ProLayout 与占位菜单且无严重可访问性问题 @a11y (6.6s)
+  ✓  2 [chromium] › e2e/tests/chat.spec.ts:10:3 › 员工端工作空间 › 登录后展示租户、会话列表与空态，无严重可访问性问题 @a11y (3.1s)
+  ✓  3 [chromium] › e2e/tests/j1.spec.ts:12:3 › J1 通用问答与文件处理 › 上传、流式引用、停止与重开完整闭环 @a11y (7.6s)
+  ✓  4 [chromium] › e2e/tests/j1.spec.ts:67:3 › J1 通用问答与文件处理 › 回答完成后按需查看运行详情与模型调用记录 @a11y (6.4s)
+  ✓  5 [chromium] › e2e/tests/j2.spec.ts:17:3 › J2 市场调研报告 › 创建、审批、工具取数与报告产物完整闭环 @a11y (13.2s)
+  ✓  6 [chromium] › e2e/tests/login.spec.ts:10:3 › 登录页 › 错误凭据显示统一失败提示，不泄露账号是否存在 @a11y (2.8s)
+  ✓  7 [chromium] › e2e/tests/login.spec.ts:25:3 › 登录页 › 正确凭据进入工作空间并显示租户名 @a11y (3.1s)
+  ✘  8 [chromium] › e2e/tests/m03.spec.ts:234:3 › M03 部门与空间共享 › E2E-M03-07 部门管理页 axe 无 serious/critical @a11y (4.6s)
+
+
+  1) [chromium] › e2e/tests/m03.spec.ts:234:3 › M03 部门与空间共享 › E2E-M03-07 部门管理页 axe 无 serious/critical @a11y 
+
+    Error: 发现 serious/critical 可访问性问题：
+    color-contrast (serious): Elements must meet minimum color contrast ratio thresholds -> .ant-tag | .ant-btn-dangerous > span
+    label-content-name-mismatch (serious): Elements must have their visible text as part of their accessible name -> .ant-btn-dangerous
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 0
+    Received length: 2
+    Received array:  [{"description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds", "help": "Elements must meet minimum color contrast ratio thresholds", "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright", "id": "color-contrast", "impact": "serious", "nodes": [{"all": [], "any": [{"data": {"bgColor": "#f6ffed", "contrastRatio": 3.37, "expectedContrastRatio": "4.5:1", "fgColor": "#389e0d", "fontSize": "9.0pt (12px)", "fontWeight": "normal", "messageKey": null}, "id": "color-contrast", "impact": "serious", "message": "Element has insufficient color contrast of 3.37 (foreground color: #389e0d, background color: #f6ffed, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1", "relatedNodes": [{"html": "<span class=\"ant-tag ant-tag-filled ant-tag-green css-var-_r_0_\">启用</span>", "target": [".ant-tag"]}]}], "failureSummary": "Fix any of the following:
+      Element has insufficient color contrast of 3.37 (foreground color: #389e0d, background color: #f6ffed, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1", "html": "<span class=\"ant-tag ant-tag-filled ant-tag-green css-var-_r_0_\">启用</span>", "impact": "serious", "none": [], "target": [".ant-tag"]}, {"all": [], "any": [{"data": {"bgColor": "#ffffff", "contrastRatio": 3.26, "expectedContrastRatio": "4.5:1", "fgColor": "#ff4d4f", "fontSize": "10.5pt (14px)", "fontWeight": "normal", "messageKey": null}, "id": "color-contrast", "impact": "serious", "message": "Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1", "relatedNodes": [{"html": "<button aria-label=\"停用：销售部\" type=\"button\" class=\"ant-btn css-var-_r_0_ ant-btn-default ant-btn-dangerous ant-btn-color-dangerous ant-btn-variant-outlined ant-btn-sm\"><span>停 用</span></button>", "target": [".ant-btn-dangerous"]}]}], "failureSummary": "Fix any of the following:
+      Element has insufficient color contrast of 3.26 (foreground color: #ff4d4f, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1", "html": "<span>停 用</span>", "impact": "serious", "none": [], "target": [".ant-btn-dangerous > span"]}], "tags": ["cat.color", "wcag2aa", "wcag143", "TTv5", "TT13.c", "EN-301-549", "EN-9.1.4.3", "ACT", "RGAAv4", "RGAA-3.2.1"]}, {"description": "Ensure that elements labelled through their content must have their visible text as part of their accessible name", "help": "Elements must have their visible text as part of their accessible name", "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=playwright", "id": "label-content-name-mismatch", "impact": "serious", "nodes": [{"all": [], "any": [{"data": null, "id": "label-content-name-mismatch", "impact": "serious", "message": "Text inside the element is not included in the accessible name", "relatedNodes": []}], "failureSummary": "Fix any of the following:
+      Text inside the element is not included in the accessible name", "html": "<button aria-label=\"停用：销售部\" type=\"button\" class=\"ant-btn css-var-_r_0_ ant-btn-default ant-btn-dangerous ant-btn-color-dangerous ant-btn-variant-outlined ant-btn-sm\"><span>停 用</span></button>", "impact": "serious", "none": [], "target": [".ant-btn-dangerous"]}], "tags": ["cat.semantics", "wcag21a", "wcag253", "EN-301-549", "EN-9.2.5.3", "RGAAv4", "RGAA-6.1.5"]}]
+
+       at a11y.ts:28
+
+      26 |     .join('\n');
+      27 |
+    > 28 |   expect(blocking, `发现 serious/critical 可访问性问题：\n${detail}`).toHaveLength(0);
+         |                                                              ^
+      29 | }
+      30 |
+        at expectNoSeriousA11yViolations (/Users/ricky/Documents/projects/riccon-work/e2e/tests/a11y.ts:28:62)
+        at /Users/ricky/Documents/projects/riccon-work/e2e/tests/m03.spec.ts:246:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/m03-M03-部门与空间共享-E2E-M03-07-部门管理页-axe-无-serious-critical-a11y-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/m03-M03-部门与空间共享-E2E-M03-07-部门管理页-axe-无-serious-critical-a11y-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/m03-M03-部门与空间共享-E2E-M03-07-部门管理页-axe-无-serious-critical-a11y-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/m03-M03-部门与空间共享-E2E-M03-07-部门管理页-axe-无-serious-critical-a11y-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › e2e/tests/m03.spec.ts:234:3 › M03 部门与空间共享 › E2E-M03-07 部门管理页 axe 无 serious/critical @a11y 
+  7 passed (56.4s)
+ ELIFECYCLE  Command failed with exit code 1.
+
+# --- stderr ---
+[WebServer] (node:65237) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)

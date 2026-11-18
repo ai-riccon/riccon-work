@@ -1,0 +1,127 @@
+{
+  "status": "passed",
+  "generatedAt": "2026-11-18T14:00:11.368Z",
+  "auditActions": {
+    "approval.decided": 4,
+    "artifact.downloaded": 5,
+    "artifact.saved": 2,
+    "auth.login.failed": 1,
+    "auth.login.succeeded": 16,
+    "file.deleted": 1,
+    "file.uploaded": 6,
+    "mcp.tool.invoked": 2,
+    "message.sent": 4,
+    "model.invocation.completed": 10,
+    "model.invocation.started": 10,
+    "permission.changed": 1,
+    "research.task.created": 4,
+    "session.created": 5,
+    "tenant.created": 2,
+    "user.created": 4
+  },
+  "mcpTools": {
+    "alphaTotal": 1,
+    "betaTotal": 0,
+    "grantedToolId": "0192f0a0-0000-7000-8000-000000000004"
+  },
+  "runs": {
+    "j1RunId": "01a1eef4-9d45-78f3-a1b3-7a734ce497c2",
+    "j2RunId": "01a1eef5-1120-7206-86e9-2acd4b31061b",
+    "j1FirstTokenMs": 68,
+    "j1DurationMs": 3148,
+    "dbFirstTokenMs": 68
+  },
+  "appendOnly": {
+    "updateExit": 1,
+    "deleteExit": 1,
+    "updateError": "ERROR 1644 (45000) at line 1: audit_event is append-only",
+    "deleteError": "ERROR 1644 (45000) at line 1: audit_event is append-only"
+  },
+  "crossTenantChecks": [
+    {
+      "name": "conversation",
+      "url": "/api/v1/conversations/01a1eef5-2e0d-7baf-86aa-74cf1b95e98d",
+      "status": 404
+    },
+    {
+      "name": "task",
+      "url": "/api/v1/research-tasks/01a1eef5-1120-7ccb-ac21-129418ef8e50",
+      "status": 404
+    },
+    {
+      "name": "artifact",
+      "url": "/api/v1/artifacts/01a1eef5-2268-7b1b-b64a-f623807332cc",
+      "status": 404
+    },
+    {
+      "name": "artifactVersion",
+      "url": "/api/v1/artifacts/01a1eef5-2268-7b1b-b64a-f623807332cc/versions/1",
+      "status": 404
+    },
+    {
+      "name": "artifactDownload",
+      "url": "/api/v1/artifacts/01a1eef5-2268-7b1b-b64a-f623807332cc/versions/1/download-url",
+      "status": 404
+    },
+    {
+      "name": "artifactContent",
+      "url": "/api/v1/artifacts/01a1eef5-2268-7b1b-b64a-f623807332cc/versions/1/content",
+      "status": 404
+    },
+    {
+      "name": "knowledgeDocument",
+      "url": "/api/v1/knowledge/documents/01a1eef4-0a5f-7de5-aa33-4857e60cfa77",
+      "status": 404
+    },
+    {
+      "name": "file",
+      "url": "/api/v1/files/01a1eef4-01d7-7cfc-80c4-fc00bea3ceab",
+      "status": 404
+    }
+  ],
+  "observations": {
+    "artifactContent": {
+      "bytes": 2156,
+      "contentType": "text/markdown;charset=UTF-8",
+      "cacheControl": "no-store"
+    },
+    "crossTenantToolCreate": "400 RICCON-REQUEST-400",
+    "j1RunId": "01a1eef4-9d45-78f3-a1b3-7a734ce497c2",
+    "j1FirstTokenMs": 68,
+    "j1InvocationDurationMs": 3148,
+    "dbFirstTokenMs": 68,
+    "crossTenantRuns": "404/404",
+    "oversizedContent": {
+      "status": 413,
+      "code": "RICCON-ARTIFACT-413"
+    }
+  },
+  "gaps": [
+    {
+      "endpoint": "/api/v1/models",
+      "status": 404,
+      "code": "RICCON-REQUEST-404"
+    },
+    {
+      "endpoint": "/api/v1/admin/model-providers",
+      "status": 404,
+      "code": "RICCON-REQUEST-404"
+    },
+    {
+      "endpoint": "/api/v1/admin/models",
+      "status": 404,
+      "code": "RICCON-REQUEST-404"
+    },
+    {
+      "endpoint": "/api/v1/admin/mcp-servers",
+      "status": 404,
+      "code": "RICCON-REQUEST-404"
+    },
+    {
+      "endpoint": "/api/v1/admin/mcp-tools",
+      "status": 404,
+      "code": "RICCON-REQUEST-404"
+    }
+  ]
+}
+
