@@ -140,7 +140,7 @@ M03 不引入跨请求共享缓存；成员移出、部门停用、负责人移�
 | `department.read`            | 否               | 是             | 是（仅本人部门）                       |
 | `workspace.write`            | 否               | 是             | 否（服务层按负责人关系授权本部门空间） |
 
-审计动作：`department.created/renamed/disabled/enabled/member.added/member.removed/manager.changed`、`workspace.created/updated/visibility.changed/member.added/member.removed`；目标类型新增 `DEPARTMENT`。跨租户部门事件沿用 M02 管理员口径：`tenant_id=platform`，目标租户写入 `details.targetTenantId`；details 只允许 UUID、计数、枚举与部门名，不含姓名、邮箱、成员名单或业务内容（ADR-0018 §5、ADR-0007）。
+审计动作：`department.created/renamed/disabled/enabled/member.added/member.removed/manager.changed`、`workspace.created/updated/visibility.changed/member.added/member.removed`；目标类型新增 `DEPARTMENT`。跨租户部门事件沿用 M02 管理员口径：`tenant_id=platform`，目标租户写入 `details.targetTenantId`；目标租户的 M10 审计可见模型需 M10 设计。details 只允许 UUID、计数、枚举与部门名，不含姓名、邮箱、成员名单或业务内容（ADR-0018 §5、ADR-0007）。
 
 ### API 摘要
 
@@ -161,7 +161,7 @@ M03 不引入跨请求共享缓存；成员移出、部门停用、负责人移�
 
 ### 交付计划
 
-Builder 任务边界、写范围、验收和验证命令见 ADR-0018 §8：5 个 Builder 任务（领域词汇/V9 收紧、平台部门后端、空间可见性与访问判定、内容贯通、Web 管理界面）+ Verifier 独立 `DEPT-001..010`、`TEN-027`、`E2E-M03-01/02` 与 a11y。Builder 写 `IT-DEPT-*` 与代码级测试；Verifier 不改生产代码。
+Builder 任务边界、写范围、验收和验证命令见 ADR-0018 §8：6 个 Builder 任务（B1a 领域词汇/共享接口、B2 平台部门后端、B3 空间可见性、B4 内容贯通、B1b V9 收紧与迁移测试、B5 Web 管理界面）+ Verifier 独立 `DEPT-001..010`、`TEN-027`、`E2E-M03-01/02/07` 与 a11y。Builder 写 `IT-DEPT-*` 与代码级测试；Verifier 不改生产代码。
 
 ## 契约
 

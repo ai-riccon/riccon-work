@@ -293,13 +293,15 @@ M03 不新增文档级/部门级 ACL（M05）。`knowledge_document`、`knowledg
 6. `department.created_by` 是逻辑引用，不建复合外键：平台管理员属于 `platform` 租户，跨租户创建时无法满足目标租户的 `app_user` 复合外键；权威操作者在 `audit_event.actor_id`。
 7. 创建/删除均不触碰 M02 既有行，除上述两列回填；不删除、不改类型、不重建表。
 
-#### 6.2 发布前收紧（Builder 直接修正 V9，不新增 V10）
+#### 6.2 发布前收紧（B1b，必须在 B3/B4 之后）
 
-V9 尚未发布，Builder 在 API 代码已全部写 `visibility` 后**直接修正 V9**：
+V9 尚未发布，但收紧不能与代码顺序脱节：
 
-1. 把旧代码可能写入的 `visibility IS NULL` 行按 `kind` 回填为 `PRIVATE`/`TENANT`；
-2. `visibility` 改 `NOT NULL`；
-3. 收紧 CHECK 为：
+- **B1a 不改 V9**：只新增领域词汇、权限/审计常量、共享接口和对应单测；V9 保持 expand 状态（`visibility` 允许 `NULL`），M02 的 `WorkspaceJdbc.insert` 仍可运行。
+- **B3/B4 完成后再收紧**：B3 把 `WorkspaceJdbc.insert` 改为写 `visibility`，B4 把会话/文件/报告/运行等入口统一到 `requireAccessible`；B1b 才修改 V9：
+  1. 把旧代码可能写入的 `visibility IS NULL` 行按 `kind` 回填为 `PRIVATE`/`TENANT`；
+  2. `visibility` 改 `NOT NULL`；
+  3. 收紧 CHECK 为：
 
 ```sql
 (kind = 'PERSONAL' AND visibility = 'PRIVATE' AND department_id IS NULL)
@@ -307,7 +309,13 @@ OR (kind = 'TEAM' AND visibility = 'TENANT' AND department_id IS NULL)
 OR (kind = 'TEAM' AND visibility IN ('DEPT', 'CUSTOM') AND department_id IS NOT NULL)
 ```
 
-这是 ADR-0010 的 expand → contract 两阶段，但两个阶段都在 V9 文件内完成，不新增 V10；V9 在 M03 发布前可变，发布后按 Flyway 校验和冻结。
+- **B1b 必须补迁移语义测试**（F-008）：先在 Testcontainers 应用 V1–V8，插入 M02 租户/角色/个人空间/团队空间/非法组合种子数据，再应用 V9；断言 `PERSONAL→PRIVATE`、`TEAM→TENANT`、`department.read`/`platform.department.manage` 角色回填、复合外键与 CHECK。空库应用通过不算完成。
+- **B1b 必须做回滚演练**：在数据库副本执行 §6.3 SQL，验证回到 V8 且 M02 数据可读；演练记录进入 M03 评审包。
+- **B1b 运行前提**（F-009）：
+  - 只在非生产库执行；先停 API/Worker 写入，排空旧 API 实例，再修改 V9；
+  - 已应用旧版 V9（`6b41244`/`d468a8d` 或更早的 pre-tightening 版本）的持久环境，**不得**修改 V9 文件，必须新增 V10 前向迁移并保留 V9 校验和；
+  - 禁止用 `flyway repair` 掩盖 checksum；测试库优先 drop/recreate。
+- 这是 ADR-0010 的 expand → contract 两阶段，但两个阶段都在 V9 文件内完成（未发布前提），不新增 V10；V9 在 M03 发布前可变，发布后按 Flyway 校验和冻结。
 
 #### 6.3 回滚
 
@@ -398,16 +406,40 @@ DELETE FROM permission WHERE code IN ('department.read', 'platform.department.ma
 
 ### 8. 交付计划与 Builder 边界
 
-M03 拆成 5 个 Builder 任务 + 1 个 Verifier 独立验证任务。写范围不重叠；每个任务 `write_scope ≤ 8`、`acceptance ≤ 6`。Builder 写生产代码与代码级集成测试（`IT-DEPT-*`）；Verifier 独立写 `DEPT-001..010` 安全套件、`E2E-M03-01/02` 与 a11y，不改生产代码。
+M03 拆成 **6 个 Builder 任务（B1a/B1b 拆分）** + 1 个 Verifier 独立验证任务。每个任务 `write_scope ≤ 8`、`acceptance ≤ 6`；B1a 先定义共享词汇与接口，B1b 在 B3/B4 之后收紧 V9。
 
-| 任务                        | 内容                                                                                                                  | 主要写范围                                                                                                                                                                              | 验收（≤6）                                                                                                     | 测试归属                                            |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| M03-B1 领域词汇与 V9 收紧   | `WorkspaceVisibility`、`department.read`/`platform.department.manage`、审计常量、`RoleDefinitions`；发布前直接收紧 V9 | `platform/platform-domain/src/main/java/com/riccon/platform/domain/**`、`apps/api/.../identity/domain/RoleDefinitions.java`、`apps/api/src/main/resources/db/migration/V9__*.sql`       | 权限码/枚举/审计动作存在；V9 回填 NULL 并收紧 CHECK；平台/租户角色含正确权限；ArchUnit 通过                    | Builder 单测 + 迁移测试                             |
-| M03-B2 部门后端             | 平台管理员跨租户部门元数据端点、租户只读部门端点、成员/负责人、审计、错误语义                                         | `apps/api/src/main/java/com/riccon/api/admin/department/**`、`apps/api/src/main/java/com/riccon/api/department/**`、`apps/api/src/test/java/com/riccon/api/DepartmentAdminApiTest.java` | 平台管理员创建/改名/停用/启用；加/移成员单主部门；负责人移交；目标租户 404/停用 409；租户管理员 403；审计      | Builder `IT-DEPT-001/004`                           |
-| M03-B3 空间可见性与访问判定 | `WorkspaceJdbc` 谓词、`WorkspaceService.requireAccessible/requireManageable`、空间成员端点、历史 TENANT 只读          | `apps/api/src/main/java/com/riccon/api/workspace/**`、`apps/api/src/test/java/com/riccon/api/WorkspaceApiTest.java`、`WorkspaceScopeTest.java`                                          | 列表只含可访问；跨部门 404；CUSTOM 成员；负责人只能管本部门；旧测试更新                                        | Builder `IT-DEPT-002/003`                           |
-| M03-B4 内容贯通             | 会话/文件/报告/产物/运行改走空间访问；共享空间对象语义；知识库明示由 B5 做 UI                                         | `apps/api/src/main/java/com/riccon/api/chat/**`、`file/**`、`research/**`、`run/**`、`apps/api/src/test/java/com/riccon/api/*ScopeApiTest.java`                                         | 部门空间内会话/文件/报告可见可继续；个人空间他人 404；下载 404；审计不回归                                     | Builder 集成测试                                    |
-| M03-B5 Web 与管理界面       | 平台管理员租户部门管理页、空间可见性/成员、知识库明示、路由/客户端类型；租户管理端不出现部门管理入口                  | `apps/web/config/routes.ts`、`apps/web/src/pages/admin/tenants/**`、`apps/web/src/pages/chat/**`、`apps/web/src/services/api/**`、`apps/web/src/services/workspaces/**`                 | 平台管理员部门 CRUD/成员/负责人 UI；空间可见性/成员；知识库固定文案；375 px 无横向滚动；错误/空/无权限态       | Builder 组件测试；Verifier `E2E-M03-01/02`、`@a11y` |
-| M03-V 独立验证              | 部门维度越权套件、跨租户平台部门端点、M02 回归、E2E、a11y、评审                                                       | `apps/api/src/test/java/com/riccon/api/security/**`（或 verifier 约定目录）、`e2e/**`                                                                                                   | `DEPT-001..010` 零 skip；平台管理员只能碰元数据；`TEN-001..027` 回归；`E2E-M03-01/02`；axe 无 serious/critical | Verifier 独立写                                     |
+**依赖图**
+
+```text
+B1a ──> B2 ──> B3 ──> B4 ──> B1b
+  │             │             │
+  └────────────> B5 <──────────┘   （B5 在 B2/B3 后启动；B4 仅影响知识库演示数据）
+B4 + B1b + B5 ──> M03-V（Verifier）
+```
+
+- B1a 的 `OrganizationDirectory` 只读接口由 B2 实现、B3 消费；B2 的“移出部门成员清理 CUSTOM 行”在自己部门仓储内用单事务 SQL 完成，不依赖 B3，从而消除 B2/B3 循环。
+- B1b 依赖 B4，因为只有 B4 完成后所有写入方都写 `visibility`、所有内容入口都走 `requireAccessible`，才能安全收紧 V9。
+- B5 可在 B2/B3 后并行启动；知识库演示数据依赖 B4，但不阻塞部门管理页。
+
+| 任务                        | 内容                                                                                                                                                                                                                                       | 主要写范围                                                                                                                                                                                                                                                                                                        | 验收（≤6）                                                                                                                                                                                                                                                   | 测试归属                                               |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| M03-B1a 领域词汇与共享接口  | `WorkspaceVisibility`、`department.read`/`platform.department.manage`、`AuditActions`/`AuditTargetType`、`RoleDefinitions`、`AuditDetailsPolicy`、`ErrorCodes`、`OrganizationDirectory` 只读接口；同步 `PermissionCodes` 注释；**不碰 V9** | `platform/platform-domain/src/main/java/com/riccon/platform/domain/**`、`apps/api/.../identity/domain/RoleDefinitions.java`、`apps/api/.../audit/domain/AuditDetailsPolicy.java`、`apps/api/.../error/ErrorCodes.java`、`apps/api/.../organization/**`、`AuditDetailsPolicyTest.java`、`RoleDefinitionsTest.java` | 权限/枚举/审计常量存在；`PLATFORM_ADMIN` 含 `platform.department.manage`，租户角色不含部门管理；`AuditDetailsPolicy` 覆盖部门/空间动作；`ErrorCodes.RICCON_DEPT_409` 存在；`OrganizationDirectory` 接口可被 B2 实现；`PermissionCodes` 注释同步              | Builder 单测                                           |
+| M03-B2 部门后端             | 平台管理员跨租户部门元数据端点、租户只读部门端点、成员/负责人、审计、错误语义；移出成员时在本部门仓储内单事务清理 CUSTOM 行                                                                                                                | `apps/api/.../admin/department/**`、`apps/api/.../department/**`、`DepartmentAdminApiTest.java`、`DepartmentTestSupport.java`                                                                                                                                                                                     | 平台管理员创建/改名/停用/启用；加/移成员单主部门；负责人移交；目标租户 404/停用 409；租户管理员 403；`409` 响应 `code=RICCON-DEPT-409`；审计 details 通过 `AuditDetailsPolicy`；移出成员清理 CUSTOM 行                                                       | Builder `IT-DEPT-001/004`                              |
+| M03-B3 空间可见性与访问判定 | `WorkspaceJdbc` 单一谓词、`WorkspaceService.requireAccessible/requireManageable`、空间成员端点、历史 TENANT 只读；B2 接口实现消费                                                                                                          | `apps/api/.../workspace/**`、`WorkspaceApiTest.java`、`WorkspaceScopeTest.java`                                                                                                                                                                                                                                   | 列表/详情同一谓词；跨部门 404；`requireManageable` 仅租户管理员或本部门负责人；CUSTOM 成员；`DEPT`/`PERSONAL` 拒绝成员行；workspace 包内无第二份可见性 SQL                                                                                                   | Builder `IT-DEPT-002/003`                              |
+| M03-B4 内容贯通             | 会话/文件/报告/产物/运行统一走 `requireAccessible`；删除旧 owner-only/重复谓词；共享空间对象语义；知识库明示由 B5 做 UI                                                                                                                    | `apps/api/.../chat/**`、`file/**`、`research/**`、`run/**`、`*ScopeApiTest.java`                                                                                                                                                                                                                                  | 所有列表/详情/消息/下载/运行详情先过 `requireAccessible`；删除 `FileJdbc.WORKSPACE_VISIBLE`；`ConversationJdbc.findOwned/listOwned` 不再是共享空间唯一判据；移除 `RunDetailService` CHAT owner-only 分支；DEPT-002/003/004 覆盖消息与 run detail；审计不回归 | Builder 集成测试                                       |
+| M03-B1b V9 收紧与迁移测试   | 在 B4 后修改 V9：回填 NULL、`NOT NULL`、严格 CHECK；补 V1–V8 seed → V9 迁移测试、权限/FK/CHECK 断言与回滚演练；更新 `ApiApplicationTests`                                                                                                  | `apps/api/src/main/resources/db/migration/V9__*.sql`、`apps/api/src/test/java/com/riccon/api/migration/**`、`ApiApplicationTests.java`                                                                                                                                                                            | V1–V8 seed 后 V9 回填/权限/FK/CHECK 通过；回滚 SQL 回到 V8 且 M02 数据可读；空库通过不算；已应用旧 V9 的环境改用 V10 前向迁移；全量构建绿                                                                                                                    | Builder 迁移测试                                       |
+| M03-B5 Web 与管理界面       | 平台管理员租户部门管理页、空间可见性/成员、知识库明示、路由/客户端类型；租户管理端不出现部门管理入口；AC-21 部门管理页段                                                                                                                   | `apps/web/config/routes.ts`、`apps/web/src/pages/admin/tenants/**`、`apps/web/src/pages/chat/**`、`apps/web/src/services/api/**`、`apps/web/src/services/workspaces/**`                                                                                                                                           | 平台管理员部门 CRUD/成员/负责人 UI；租户管理端无部门管理入口；空间可见性/成员；知识库固定文案；AC-21 的 `E2E-M03-07` 只验部门管理页段；375 px 无横向滚动                                                                                                     | Builder 组件测试；Verifier `E2E-M03-01/02/07`、`@a11y` |
+| M03-V 独立验证              | 部门维度越权套件、跨租户平台部门端点、M02 回归、E2E、a11y、评审                                                                                                                                                                            | `apps/api/src/test/java/com/riccon/api/security/**`（或 verifier 约定目录）、`e2e/**`                                                                                                                                                                                                                             | `DEPT-001..010` 零 skip；平台管理员只能碰元数据；`TEN-001..027` 回归；`E2E-M03-01/02`；`E2E-M03-07` 仅部门管理页段；axe 无 serious/critical；AC-07 演员按平台管理员                                                                                          | Verifier 独立写                                        |
+
+验收口径补充（不改 PRODUCT）：
+
+- **F-002 归属说明**：`AuditDetailsPolicy` 与 `ErrorCodes` 放在 B1a，而不是 B2。理由是它们是跨 B2/B3/B4 共用的 fail-closed 词汇与稳定错误码；集中在 B1a 可避免三个任务并发修改同一白名单/错误码文件。B2 的 `DepartmentAdminApiTest` 必须断言 `409` 的 `code=RICCON-DEPT-409`。
+- **F-003 AC 映射**：M03-AC-07 的部门成员移出/负责人移交由平台管理员执行；负责人只失去/获得空间管理能力，最终断言（下一次请求 404、旧负责人失去管理入口）不变。M03-AC-21 的 `E2E-M03-07` 在 M03 **只验部门管理页段**；OIDC/审计查询/导出全旅程归 M10。AC-08..18 不在 M03 计划。
+- **F-004 历史数据**：M03 E2E 使用**不含历史 TEAM 空间**的租户 fixture；含 M02 遗留 `TENANT` 空间的租户在 M03 评审包登记为已知例外（R-11），AC-03 不声称在历史数据上字面成立。
+- **F-005 审计可查询性**：跨租户部门事件写 `platform` 租户 + `details.targetTenantId`；目标租户的 M10 审计查询需显式授权/单独设计。M03 评审包记录该缺口，M10 任务卡必须承接。
+- **F-007 单一谓词**：B3/B4 验收要求删除 `FileJdbc.WORKSPACE_VISIBLE`、替换 `ConversationJdbc.findOwned/listOwned` 的共享空间唯一判据、移除 `RunDetailService` CHAT owner-only 分支；Verifier 的 DEPT-002/003/004 直接覆盖消息与 run detail。建议增加 grep/ArchUnit 守卫，禁止 `kind = 'TEAM'` 可见性 SQL 出现在 `workspace` 包外。
+- **F-013 AC-21**：`E2E-M03-07` 在 B5/V 验收中只映射部门管理页；M10 补齐 OIDC/审计全旅程。
+- **F-015 注释**：B1a 同步 `PermissionCodes` 注释（V2 + V9 新增码），不改既有码值语义。
 
 验证命令（不改合同命令）：
 

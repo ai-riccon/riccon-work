@@ -303,26 +303,6 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
-    delete:
-      tags: [Workspace]
-      operationId: deleteWorkspace
-      summary: 归档工作空间
-      description: 软删除；个人空间禁止删除（409）。归档不删除历史会话与产物。
-      x-riccon-permission: workspace.write
-      parameters:
-        - $ref: "#/components/parameters/WorkspaceId"
-        - $ref: "#/components/parameters/CsrfToken"
-      responses:
-        "204":
-          description: 已归档
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
   /api/v1/workspaces/{workspaceId}/members:
     get:
       tags: [Workspace]

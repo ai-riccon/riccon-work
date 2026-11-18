@@ -32,7 +32,8 @@ M01 只建立了命名约定，没有具体契约。若 M02 让 API 与 Worker �
 - 列表强制分页：`page` 1 开始，`size` 默认 20、最大 100；禁止无界查询。
 - 每个操作声明 `x-riccon-permission`，实现必须在 URL + 方法级做双重 RBAC 校验；前端守卫只作 UX。
 - 写操作可带 `Idempotency-Key`；创建报告任务、审批决定与重试必须使用。幂等键与主体、资源绑定，不跨用户复用。
-- 下载只返回预签名 URL，TTL ≤ 300 秒；URL 绑定对象 key，客户端不能传入 key。
+- 下载默认返回预签名 URL，TTL ≤ 300 秒；URL 绑定对象 key，客户端不能传入 key。
+- 例外：产物正文 ≤ 2 MiB 时提供同源 `GET /api/v1/artifacts/{artifactId}/versions/{version}/content`，用于浏览器内预览；仍先校验租户与空间归属，响应 `Cache-Control: no-store`，超限返回 `RICCON-ARTIFACT-413` 并提示改用预签名 URL。该同源路径不改变“对象 key 不出现在响应”的约束。
 
 ### 3. 事件信封与幂等
 

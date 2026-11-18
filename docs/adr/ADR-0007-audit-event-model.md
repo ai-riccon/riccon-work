@@ -5,7 +5,7 @@ Date: 2026-11-17
 
 ## Context
 
-T4 与合同要求：登录、文件上传/删除、会话创建、模型调用、MCP 调用、审批、权限变更和数据导出必须留痕；审计至少保留 180 天；append-only，禁止在线删除，导出需审批；审计写入失败时业务请求失败（M02-AC-14/15）。M02 只要求写入与禁止普通员工访问，审计查询与导出在 M03。需要在不引入消息中间件的前提下，给出可执行的事件模型、表结构和失败语义。
+T4 与合同要求：登录、文件上传/删除、会话创建、模型调用、MCP 调用、审批、权限变更和数据导出必须留痕；审计至少保留 180 天；append-only，禁止在线删除，导出需审批；审计写入失败时业务请求失败（M02-AC-14/15）。M02 只要求写入与禁止普通员工访问，审计查询与导出在 M10（DEC-0011/DEC-0013）。需要在不引入消息中间件的前提下，给出可执行的事件模型、表结构和失败语义。
 
 ## Decision
 
@@ -52,8 +52,8 @@ T4 与合同要求：登录、文件上传/删除、会话创建、模型调用�
 | `mcp.tool.invoked`           | 一次 MCP 工具调用结束                    | `toolName`、`paramsSha256`、`resultSha256`、`durationMs`、`approvalId` | M02-AC-08/14 |
 | `approval.decided`           | 员工批准/拒绝审批                        | `approvalId`、`decision`、`approverUserId`、`toolName`                 | M02-AC-09/14 |
 | `artifact.saved`             | 报告产物保存                             | `artifactId`、`reportRunId`、`version`                                 | M02-AC-10/14 |
-| `data.exported`              | 审计/业务数据导出（M03）                 | `exportId`、`scope`、`rowCount`、`approvalId`                          | M03          |
-| `audit.queried`              | 查询审计（M03）                          | `filtersHash`、`rowCount`                                              | M03          |
+| `data.exported`              | 审计/业务数据导出（M10）                 | `exportId`、`scope`、`rowCount`、`approvalId`                          | M10          |
+| `audit.queried`              | 查询审计（M10）                          | `filtersHash`、`rowCount`                                              | M10          |
 
 模型调用固定为 `started + completed/failed` 两条。`started` 在打开模型流之前写入，确保即使进程崩溃也留有调用痕迹；`completed/failed` 在响应终止前写入。缺少 `completed/failed` 的 `started` 事件是运维告警信号。
 
@@ -98,18 +98,19 @@ M02 至少落地第 1、2 层；第 3 层在 M09 完成。触发器与“无删�
 - 提示词、模型回答、文件原文、知识库原文、MCP 请求/响应原文；
 - 完整 PII（邮箱、手机号、身份证号）。
 
-需要引用内容时存 SHA-256 与长度，不存原文。`source_ip` 只在登录事件中记录，视为安全审计数据，不展示给普通管理员；M03 查询接口默认不返回，需显式字段选择。
+需要引用内容时存 SHA-256 与长度，不存原文。`source_ip` 只在登录事件中记录，视为安全审计数据，不展示给普通管理员；M10 查询接口默认不返回，需显式字段选择。
 
 ### 6. 查询、导出与保留
 
 - **M02**：不提供审计查询 API；员工与租户管理员均无法访问审计表。审计只写不读，满足 AC-15。
-- **M03**：平台管理员可查询全部租户；租户管理员仅本租户。查询强制分页（默认 20，最大 100），每次查询写 `audit.queried`。
-- **导出**：仅平台管理员发起，必须经过审批决策并绑定 `release`/环境；导出文件加密、短期有效，写 `data.exported`；禁止直接 SQL 导出给客户。
+- **M03**：不提供审计查询/导出；DEC-0013 将两项后移到 M10。
+- **M10**：平台管理员可查询全部租户；租户管理员仅本租户。查询强制分页（默认 20，最大 100），每次查询写 `audit.queried`。平台来源的部门事件（`tenant_id=platform` + `details.targetTenantId`）是否对目标租户管理员可见，由 M10 显式设计；M03 不声称。
+- **导出**：M10 实现；仅平台管理员发起，必须经过审批决策并绑定 `release`/环境；导出文件加密、短期有效，写 `data.exported`；禁止直接 SQL 导出给客户。
 - **保留**：至少 180 天。M02 不实现删除；M09 由维护账号按月 `DROP PARTITION` 删除超过保留期的分区，支持 legal hold 暂停。用户删除请求不删除审计（合同要求），actor 使用不可逆用户 ID。
 
 ### 7. 完整性增强（后置）
 
-M03 评估每日哈希链（`prev_hash` + `event_hash`）与外部锚定。M02 不引入，因为分区删除与链式校验需要额外的跨分区锚点设计；当前以触发器、权限与数据库备份保证基本完整性。
+M10 评估每日哈希链（`prev_hash` + `event_hash`）与外部锚定。M02/M03 不引入，因为分区删除与链式校验需要额外的跨分区锚点设计；当前以触发器、权限与数据库备份保证基本完整性。
 
 ## Consequences
 
@@ -122,7 +123,7 @@ M03 评估每日哈希链（`prev_hash` + `event_hash`）与外部锚定。M02 �
 - **只写日志文件**：实现快，但不可查询、可被轮转删除、无法保证 180 天，不满足合同。
 - **Kafka/独立审计服务**：扩展性好，但 M02 不引入消息中间件，运维成本与故障面增大。
 - **软删除 + 定期清理**：允许在线修改/删除，违反 append-only。
-- **M02 就上哈希链**：更强篡改证据，但与月分区删除、轮换和查询复杂度叠加，收益低于成本；M03 再评估。
+- **M02 就上哈希链**：更强篡改证据，但与月分区删除、轮换和查询复杂度叠加，收益低于成本；M10 再评估。
 - **审计与业务分库**：隔离更好，但引入分布式事务或最终一致，M02 过度设计。
 
 ## Evidence
@@ -137,5 +138,5 @@ M03 评估每日哈希链（`prev_hash` + `event_hash`）与外部锚定。M02 �
 - 2026-11-17：`event_id` 的数据库表示由 ADR-0012 统一为 UUIDv7 `BINARY(16)`；仍要求时间有序与全局唯一，本文其余字段、分区与 append-only 语义不变。
 - 2026-11-17：M02 目标类型在本文最小列表外增加 `WORKSPACE`、`CONVERSATION`、`KNOWLEDGE_DOCUMENT`、`RESEARCH_TASK`、`RUN`、`APPROVAL`，统一由 `AuditTargetType` 枚举约束；`details` 白名单与禁止字段不变。
 - 2026-11-18：`approval.params_preview` 恢复为本文第 5 节要求的**脱敏摘要**，不再保存完整工具参数；完整参数由 `params_ciphertext` + `params_key_id` 加密保存，只在审批通过后由 Worker 解密重放（ADR-0017、V8 迁移）。`mcp.tool.invoked` 仍只允许 `paramsSha256`/`resultSha256`，`approval.decided` 仍只允许审批 ID、决定、审批人与工具名；审计 `details` 不得出现参数预览、密文或明文。
-- 2026-11-18：DEC-0015 允许平台管理员跨租户管理租户**部门元数据**（部门、成员归属、负责人），复用 `/api/v1/admin/tenants/{tenantId}` 路径。审计沿用 `TenantUserAdminService` 口径：事件 `tenant_id` 写操作者租户（`platform`），目标租户只进入 `details.targetTenantId`，`target_id` 写部门 ID；平台管理员仍不得读取目标租户业务内容。本文第 6 节“M03 平台管理员可查询全部租户审计”由 DEC-0013 后移，M03 不提供审计查询/导出，M10 再实现。
+- 2026-11-18：DEC-0015 允许平台管理员跨租户管理租户**部门元数据**（部门、成员归属、负责人），复用 `/api/v1/admin/tenants/{tenantId}` 路径。审计沿用 `TenantUserAdminService` 口径：事件 `tenant_id` 写操作者租户（`platform`），目标租户只进入 `details.targetTenantId`，`target_id` 写部门 ID；平台管理员仍不得读取目标租户业务内容。本文第 6 节原 M03 审计查询/导出已按 DEC-0013 后移到 M10；平台来源部门事件对目标租户的可见模型由 M10 设计。
 - 2026-11-18：M03 部门管理新增 `AuditTargetType.DEPARTMENT`；`department.*` 动作的 details 白名单见 ADR-0018 第 5 节，禁止姓名、邮箱、成员名单与业务内容。
