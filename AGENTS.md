@@ -39,11 +39,11 @@ product:
     - id: M01
       title: "工程基线与 agentscope 冒烟"
       goal: "monorepo 骨架、CI、合同命令可运行、agentscope 2.0.5 五项冒烟（状态后端、沙箱、MCP、HITL、流式）、威胁模型初稿"
-      status: planned
+      status: done
     - id: M02
       title: "MVC：云工作空间与办公协同闭环"
       goal: "登录、租户、基础 RBAC、云工作空间、通用问答与文件处理、市场调研报告闭环（知识库引用、1 个 MCP 工具、HITL、产物）、网关最小闭环、审计、E2E"
-      status: planned
+      status: done
     - id: M03
       title: "权限纵深与组织模型"
       goal: "组织/部门、数据范围、越权测试套件、OIDC/SSO、审计查询"
