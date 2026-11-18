@@ -1,10 +1,11 @@
 # ADR-0011：B-06 依赖安全处置与例外
 
 Status: accepted
-Scope: M02 gate；例外仅限 worker 以 MCP client 方式使用 agentscope 的场景
-Date: 2026-11-17
-Accepted: 2026-11-17 by user via DEC-0005 (accept); B-06 closed for M02, exception expiry 2026-12-31 or M03 gate, whichever is earlier.
-关联: TASK-0008、M01 review F-002、`docs/security/THREAT-MODEL.md` B-06/T-01-2/第 9 节、ADR-0004、ADR-0005
+Reopened: 2026-11-18（DEC-0012，续期至 2027-03-31 或 M07 gate，取早）
+Scope: M02–M07；例外仅限 worker 以 MCP client 方式使用 agentscope 的场景
+Date: 2026-11-17（重开：2026-11-18）
+Accepted: 2026-11-17 by user via DEC-0005（M02）；2026-11-18 by user via DEC-0012（重开，例外延至 **2027-03-31 或 M07 gate，取早者**）。
+关联: TASK-0008、TASK-0033、M01 review F-002、`docs/security/THREAT-MODEL.md` B-06/T-01-2/第 8/9 节、ADR-0004、ADR-0005、DEC-0012
 
 ## Context
 
@@ -82,7 +83,7 @@ MCP 升级已实测失败（不可强行升级）：
 | CVE-2026-35568 | HIGH   | `io.modelcontextprotocol.sdk:mcp-core:0.17.2` | `agentscope-core:2.0.5 → mcp:0.17.2 → mcp-core` | 修复版本 1.0.0；与 agentscope 2.0.5 二进制不兼容（见上）         |
 | CVE-2026-34237 | MEDIUM | `io.modelcontextprotocol.sdk:mcp-core:0.17.2` | 同上                                            | 修复版本 1.0.1/1.1.1/0.18.3；0.18.3 也会触发 `getDefault()` 缺失 |
 
-**补偿控制**（缺一不可，M02 gate 由 verifier 核对）：
+**补偿控制**（缺一不可，M03/M07 gate 由 verifier 核对）：
 
 1. Riccon 只做 MCP **client**：stdio 子进程或租户白名单内的 HTTP 端点；worker 不启动 SDK 内置 HTTP/SSE server，也没有入站 MCP 监听端口（`IT-SEC-002`、`MCP-001`）。
 2. MCP 工具来自**静态白名单**（M02 仅 1 个只读工具），工具调用全量 HITL，参数最小化（TM-14/TM-15、`IT-HITL-001`）。
@@ -90,7 +91,7 @@ MCP 升级已实测失败（不可强行升级）：
 4. DNS rebinding 与通配 CORS 的受影响面是 SDK server；上述四点确保该代码路径在 Riccon 不可达。
 5. 审计覆盖 `mcp.tool.invoked`，可核对工具、参数/结果 hash、耗时（`MCP-007`）。
 
-**到期与复核**：`2026-12-31` 或 M03 gate，取早者。任一条件发生必须重开本 ADR 并删除 `.trivyignore` 条目：agentscope 升级到使用 MCP SDK ≥ 1.0.1 的版本；M02 之后引入入站 MCP server 或管理员自助注册（M07）；Trivy 报告 fixed 版本变化。
+**到期与复核**：`2027-03-31` 或 M07 gate，取早者（DEC-0012，2026-11-18 重开续期）。任一条件发生必须重开本 ADR 并删除 `.trivyignore` 条目：agentscope 升级到使用 MCP SDK ≥ 1.0.1 的版本；M03 之后引入入站 MCP server 或管理员自助注册（M07）；Trivy 报告 fixed 版本变化。复核时间提前到 M07 gate 或 2027-03-31，取早者；到期未复核视为 B-06 失败。
 
 **B-06 关闭条件**：`commands.security` 退出码 0，且 `.trivyignore` 只包含本 ADR 列出的 CVE、每条有 `exp` 与注释；例外获得 Lead/用户书面风险接受后，B-06 才可关闭。技术处置完成不等于风险接受完成。
 
@@ -111,8 +112,30 @@ MCP 升级已实测失败（不可强行升级）：
 处置约定：
 
 - 这些项**不得**进入 `.trivyignore` 以外的“静默通过”路径；它们本来就被 Trivy 的生产依赖扫描排除，因此不需要 ignore 条目；
-- 发布前（B-11/M09）运行一次 `--include-dev-deps` 扫描并人工评估；M03 gate 前逐项决定升级或记录新的例外；
+- 发布前（B-11/M09）运行一次 `--include-dev-deps` 扫描并人工评估；M10 gate 前逐项决定升级或记录新的例外（PRODUCT §8.4 R-10）；
 - 新增任何 `dependencies` 项时，必须同时确认它是否会进入 `dist/`；进入产物的依赖必须出现在生产扫描结果中。
+
+### 6. 2026-11-18 重开核查（DEC-0012）
+
+M03 启动时按 DEC-0010 要求重开本 ADR。核查结论：**升级 agentscope 不能消除 CVE-2026-35568 / CVE-2026-34237**，维持例外与补偿控制，延至 2027-03-31 或 M07 gate（取早）。
+
+| 核查项                     | 结果                                                                                                           | 证据                                                                                                               |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| agentscope 最新稳定版      | `2.0.5`；`2.1.0-BETA1` 为 2026-11-14 发布的预发布版，不是稳定版                                                | Maven Central `io/agentscope/agentscope-core/maven-metadata.xml`，`lastUpdated=20261114`；版本列表含 `2.1.0-BETA1` |
+| `2.1.0-BETA1` 的 MCP 依赖  | 仍为 `io.modelcontextprotocol.sdk:mcp:0.17.2`                                                                  | `agentscope-core-2.1.0-BETA1.pom` 第 112–116 行                                                                    |
+| `0.17.x` 是否还有后续补丁  | 否，`0.17.0/0.17.1/0.17.2` 之后进入 `0.18.x`；`0.17.2` 是 0.17.x 末版                                          | Maven Central `mcp-core/maven-metadata.xml`                                                                        |
+| 升级到 0.18.x/1.x 是否可行 | 不可行：agentscope 2.0.5 调用 `McpJsonMapper.getDefault()`，0.18.0 起移除，实测 `NoSuchMethodError`（第 3 节） | TASK-0008 实测；`javap` 核验                                                                                       |
+| 补偿控制是否变化           | 不变化：仅 MCP client、无入站 MCP server、沙箱 `network=none`、静态工具白名单、全量 HITL、审计                 | 第 4 节补偿控制 1–5                                                                                                |
+| 例外到期                   | **2027-03-31 或 M07 gate（取早）**                                                                             | DEC-0012；`.trivyignore` 两行 `exp:2027-03-31`                                                                     |
+
+重新打开条件（任一满足即必须重开并删除 `.trivyignore` 两行）：
+
+1. agentscope 发布稳定版并依赖 MCP SDK ≥ 1.0.1（或等价修复版本），且 MCP 五项冒烟与 `./mvnw -q -T1C verify` 通过；
+2. M03 之后引入入站 MCP server、管理员自助注册或 M07 的凭据托管/代理能力；
+3. Trivy 对 `CVE-2026-35568`/`CVE-2026-34237` 报告新的 fixed 版本，或 `mcp-core` 被直接替换；
+4. 2027-03-31 或 M07 gate 到期，取早者。
+
+到期未完成上述任一动作，B-06 重新失败，M07 gate 不得通过。
 
 ## Consequences
 
@@ -138,3 +161,8 @@ MCP 升级已实测失败（不可强行升级）：
 - 产物检查：`grep -rl axios|immer|katex|decode-uri apps/web/dist` 无匹配（仅 XProvider 上下文键 `mermaid` 字符串，非 mermaid/katex 代码）。
 - 扫描后：`trivy fs --scanners vuln,secret,misconfig --skip-dirs node_modules --skip-dirs target --skip-dirs .git --exit-code 1 .` → exit 0（EV-0090）；仅 2 条 CVE 被 `.trivyignore` 抑制（`--show-suppressed` 可复核）。
 - 构建链残余：`trivy fs --scanners vuln --include-dev-deps ...` → 1 HIGH / 7 MEDIUM / 1 LOW（均在上表）。
+- 2026-11-18 重开核查：
+  - `curl -s https://repo1.maven.org/maven2/io/agentscope/agentscope-core/maven-metadata.xml` → 版本列表含 `2.0.5`、`2.1.0-BETA1`，`lastUpdated=20261114`；无 `2.1.0` 正式版。
+  - `curl -s https://repo1.maven.org/maven2/io/agentscope/agentscope-core/2.1.0-BETA1/agentscope-core-2.1.0-BETA1.pom` → `io.modelcontextprotocol.sdk:mcp:0.17.2`。
+  - `curl -s https://repo1.maven.org/maven2/io/modelcontextprotocol/sdk/mcp-core/maven-metadata.xml` → `0.17.0/0.17.1/0.17.2`，无 0.17.x 后续补丁。
+  - 本仓库 `pom.xml` 的 `agentscope.version=2.0.5`，MCP 依赖保持传递版本 0.17.2（`./mvnw -pl apps/worker dependency:tree -Dincludes=io.modelcontextprotocol.sdk`）。
