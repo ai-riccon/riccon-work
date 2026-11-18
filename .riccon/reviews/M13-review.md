@@ -20,6 +20,7 @@ reviewed_evidence:
   - EV-0357
   - EV-0358
   - EV-0359
+  - EV-0361
 dod:
   acceptance: true
   build: true
@@ -32,7 +33,7 @@ dod:
 dod_evidence:
   acceptance:
     - EV-0354
-    - EV-0356
+    - EV-0361
   build:
     - EV-0352
   tests:
@@ -40,7 +41,7 @@ dod_evidence:
   coverage:
     - EV-0355
   e2e:
-    - EV-0356
+    - EV-0361
   docs:
     - EV-0353
 findings:
@@ -69,7 +70,12 @@ findings:
     status: accepted
     title: "PRODUCT 的 AC-07 演员、AC-21 分段、AC-03 历史数据口径仍为原始文本"
     evidence: "ADR-0018 §8 与 TASK-0033 评审已登记；本补丁不修改 PRODUCT，不声称已解决。"
-created_at: 2026-11-19T01:45:00+08:00
+  - id: F-006
+    severity: P3
+    status: accepted
+    title: "AntD Select 键盘关闭后隐藏 listbox 缺少 accessible name"
+    evidence: "仅在扫描前先打开/关闭工作空间 Select 时触发 aria-input-field-name；合同 a11y 8/8 在初始态通过。后续设计系统或 AntD 升级统一处理，不阻塞 M13。"
+created_at: 2026-11-19T01:55:00+08:00
 ---
 
 # M13 模块评审：M03 验收补丁
@@ -87,7 +93,7 @@ M13 可进入 gate 前置收口：Lead 需将 TASK-0051（`end_commit: 410cddd`�
 | build：`./mvnw -q -T1C -DskipTests package && pnpm -w build`                  | EV-0352 | exit 0，`dirty=false`                                                                               |
 | test：`./mvnw -q -T1C verify && pnpm -w test`                                 | EV-0354 | exit 0；Java **628 tests**（api 316 / worker 263 / platform 49），frontend **212 tests**，0 skipped |
 | coverage：`./mvnw -q -T1C verify jacoco:report && pnpm -w test -- --coverage` | EV-0355 | exit 0；Java 行 **89.75%** / 分支 **72.21%**；frontend 行 **87.67%** / 分支 **80.51%**              |
-| test_e2e：`docker compose ... up -d --wait && pnpm -w e2e`                    | EV-0356 | exit 0；**26/26** Playwright（含 M13 3 条、M03 4 条、M02 全部回归）                                 |
+| test_e2e：`docker compose ... up -d --wait && pnpm -w e2e` | EV-0361 | exit 0；**26/26** Playwright（含 M13 3 条、M03 4 条、M02 全部回归）                                 |
 | a11y：`pnpm -w a11y`                                                          | EV-0357 | exit 0；**8/8**，无 serious/critical                                                                |
 | security：Trivy fs vuln/secret/misconfig                                      | EV-0358 | exit 0；无未抑制 finding；例外有 ADR-0011 依据                                                      |
 | real-stack：`REAL_EVIDENCE_TASK=TASK-0052 node scripts/real-stack/run.mjs`    | EV-0359 | exit 0；browserE2e **10/10**、J2、security、m03Checks 全部 passed                                   |
@@ -99,12 +105,12 @@ M13 可进入 gate 前置收口：Lead 需将 TASK-0051（`end_commit: 410cddd`�
 
 | 补丁项 / AC           | 结论         | 独立证据                                                                                                                                                                             |
 | --------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| R-M03-01（M03-AC-01） | **pass**     | EV-0356：成员端显示“所属部门：销售部”；未分配账号显示“未分配部门”；停用部门显示“综合部 + 已停用”；租户管理员显示“角色：租户管理员”且不误报销售部。375px 无横向滚动、axe 通过         |
-| R-M03-02（M03-AC-02） | **pass**     | EV-0356：可管理空间重命名成功，列表与工作空间切换器更新；409/403/404 均有中文文案；TENANT 历史空间无重命名入口；普通成员无“工作空间共享”入口                                         |
-| R-M03-03（M03-AC-04） | **pass**     | EV-0356：从 chat 部门空间进入 `/research/tasks?workspaceId=ws-sales-project`，研究页选中销售部空间，部门报告可见并可打开；默认个人空间不显示部门报告；他部门成员列表/详情 API 均 404 |
-| M03-AC-03/05/06/07    | pass（回归） | EV-0356 全量 E2E；EV-0354 M03 DEPT 套件                                                                                                                                              |
+| R-M03-01（M03-AC-01） | **pass**     | EV-0361：成员端显示“所属部门：销售部”；未分配账号显示“未分配部门”；停用部门显示“综合部 + 已停用”；租户管理员显示“角色：租户管理员”且不误报销售部。375px 无横向滚动、axe 通过         |
+| R-M03-02（M03-AC-02） | **pass**     | EV-0361：可管理空间重命名成功，列表与工作空间切换器更新；409/403/404 均有中文文案；TENANT 历史空间无重命名入口；普通成员无“工作空间共享”入口                                         |
+| R-M03-03（M03-AC-04） | **pass**     | EV-0361：从 chat 部门空间进入 `/research/tasks?workspaceId=ws-sales-project`，研究页选中销售部空间，部门报告可见并可打开；默认个人空间不显示部门报告；他部门成员列表/详情 API 均 404 |
+| M03-AC-03/05/06/07    | pass（回归） | EV-0361 全量 E2E；EV-0354 M03 DEPT 套件                                                                                                                                              |
 | M03-AC-19/20          | pass（回归） | EV-0354 DEPT-001..010、TEN-001..027，0 skip                                                                                                                                          |
-| M03-AC-21             | pass         | EV-0357 8/8；EV-0356 M13 375px/键盘段                                                                                                                                                |
+| M03-AC-21             | pass         | EV-0357 8/8；EV-0361 M13 375px/键盘段                                                                                                                                                |
 | M03-AC-08..18         | 不适用       | 归 M10，未冒充 M13/M03 交付                                                                                                                                                          |
 
 ## DoD 结论
@@ -120,6 +126,7 @@ M13 可进入 gate 前置收口：Lead 需将 TASK-0051（`end_commit: 410cddd`�
 - **F-003（P3 accepted）**：重命名 409/403/404 的 UI 文案由 stub 场景覆盖；真实服务端授权边界由 M03 DEPT 套件覆盖，真实栈不覆盖该 UI 错误分支。
 - **F-004（P2 accepted）**：历史 TENANT 空间全租户可见且不可转换（R-11）；本补丁只验证无重命名入口。
 - **F-005（P3 accepted）**：PRODUCT 文档漂移（AC-07 演员、AC-21 分段、AC-03 历史数据口径）仍未改，ADR-0018 §8 登记，不在 M13 修复。
+- **F-006（P3 accepted）**：键盘打开/关闭 AntD 工作空间 Select 后，隐藏 listbox 缺少 accessible name；合同 a11y 8/8 在初始态扫描通过，键盘路径本身已验证；后续设计系统/AntD 升级统一处理。
 - 知识库仍为租户级共享（R-01）；M13 未改变。
 
 ## Gate 就绪
