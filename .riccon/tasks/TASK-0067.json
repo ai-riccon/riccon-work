@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0067",
+  "module_id": "M10",
+  "title": "M10-B1 独立评审：OIDC/会话/共享词汇",
+  "owner": "riccon/verifier",
+  "status": "in_progress",
+  "write_scope": [
+    ".riccon/reviews/tasks/**"
+  ],
+  "acceptance": [
+    "配置 Secret 脱敏/issuer 唯一/PKCE+nonce+state 一次性/无 userinfo",
+    "成功会话轮换/CSRF；失败清理 401 且无 OidcUser/ID Token/授权请求",
+    "自动联合登出/IdP 不可达本地提示；不存 access/refresh/ID token",
+    "共享审计词汇/白名单允许 promptTokens；B3 权限回填缺口显式记录",
+    "独立跑 OIDC 套件；核对 EV-0402 673 tests/覆盖率；无删测/跳测",
+    "写 TASK-0065-review.md verdict；B2/B3 启动条件与写范围缺口"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-19T07:59:24.699+08:00",
+  "updated_at": "2026-11-19T07:59:25.550+08:00",
+  "baseline_commit": "fb6661baf1519e0efebf1170fb86d84281e4d1d7"
+}
