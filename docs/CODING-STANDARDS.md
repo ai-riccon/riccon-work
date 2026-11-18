@@ -203,6 +203,14 @@ platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
 - 并行 builder/verifier 同一时间只允许一个全量套件运行，避免 Docker/MySQL/CPU 争抢导致假失败；定向测试可并行。
 - 本地热测试栈（若启用）只用于单 agent 内层循环，默认与 CI 仍使用隔离容器；迁移/回滚测试必须使用一次性容器。
 
+### 10.2 热测试栈与受影响测试（操作补充）
+
+- 本节只补充操作方式，不改变 §10.1 的分层、取证与 gate 结论；L1/L2/L3 仍以 §10.1 为准。
+- 本地热栈必须显式 opt-in：`RICCON_TEST_SERVICES=external` + 每个 agent 唯一的 `RICCON_TEST_SERVICES_NAMESPACE`；同一 namespace 同时只允许一个测试 JVM，命名锁失败时不得强行复用。
+- `node scripts/test-affected.mjs` / `pnpm test:affected` 只根据 git 变更给出 L1 定向命令，不录 EV，不能替代 L2/L3 的合同全量测试与 verifier 证据。
+- 迁移、回滚与 schema 版本测试始终使用一次性容器，不得指向热栈。
+- 默认、CI 与模块 gate 不设置 `RICCON_TEST_SERVICES`，仍使用 Testcontainers；启动/停止/重置、namespace 规则与故障处理见 `docs/RUNBOOK.md` 的“热测试栈与受影响测试”。
+
 ## 11. 数据库与迁移
 
 - 只使用 Flyway；迁移文件位于 `apps/api/src/main/resources/db/migration`。

@@ -47,6 +47,62 @@ docker compose -f deploy/compose/docker-compose.test.yml down -v
 
 测试凭据通过环境变量覆盖：`RICCON_DB_PASSWORD`、`RICCON_DB_ROOT_PASSWORD`、`RICCON_S3_ACCESS_KEY`、`RICCON_S3_SECRET_KEY`。默认值只用于本地测试，禁止用于任何共享环境。
 
+### 热测试栈与受影响测试（M12，可选）
+
+M12 起本地内层循环可显式复用同一套 compose 服务；默认、CI 与模块 gate 不启用。启动/停止/重置统一通过脚本操作，不另造服务：
+
+```bash
+# 启动、状态、停止（默认保留数据卷）
+node scripts/test-services.mjs start
+node scripts/test-services.mjs status
+node scripts/test-services.mjs stop
+
+# 停止并删除数据卷（会清空 MySQL / OpenSearch / RustFS 的全部测试数据）
+node scripts/test-services.mjs stop --volumes
+
+# 为当前 agent 创建独立 namespace：只建空库并授权，首次测试由 Flyway/TestSchema 初始化
+node scripts/test-services.mjs prepare --namespace builder-0054
+
+# 显式运行 external 测试
+export RICCON_TEST_SERVICES=external
+export RICCON_TEST_SERVICES_NAMESPACE=builder-0054
+./mvnw -q -T1C verify
+
+# 重建 namespace（丢弃数据库并清理该前缀的 OpenSearch 索引）
+node scripts/test-services.mjs reset --namespace builder-0054
+```
+
+约束：
+
+- 每个 agent 使用自己的 namespace；数据库、S3 桶和 OpenSearch 索引前缀都按 namespace 派生。同一 namespace 只允许一个测试 JVM，第二个会被 MySQL 命名锁拒绝（`already in use by another test JVM`）；禁止多个 agent 并行共用。
+- 启动 compose 与运行测试必须使用同一组凭据环境变量，否则会出现认证失败。
+- 迁移、回滚与 schema 版本测试始终使用一次性容器（`V9MigrationTest`；`SchemaVersionCheckerTest` 的 external 分支也会自建容器），不得连接热栈。
+- 热栈只用于 L1 内层循环，不能作为任务完成或模块 gate 证据；L2/L3 仍按 `docs/CODING-STANDARDS.md` §10.1 运行合同命令并由 verifier 独立取证。
+- 细节与 baseline 见 M12-A：`RICCON_TEST_SERVICES_NAMESPACE` 必填、`scripts/test-services.mjs benchmark` 可用于本机对比，但基准结果同样不是 gate 证据。
+
+受影响测试映射只用于内层循环，输出建议命令而不自动执行：
+
+```bash
+pnpm test:affected -- --dry-run              # 工作树相对 HEAD + 未跟踪文件
+pnpm test:affected -- --staged --dry-run     # 暂存区变更 + 未跟踪文件
+pnpm test:affected -- --base HEAD~1 --dry-run
+```
+
+无法从变更文件唯一定位测试时，脚本会打印原因并回退到 API/Worker 模块全量或前端全量；无法识别的路径以非零退出，不会静默返回空建议。该命令不录证据，也不能替代合同 `test`/`coverage`/E2E。
+
+常见故障：
+
+| 现象                                               | 处理                                                                                                  |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `status` 报连接失败或 compose 未启动               | `node scripts/test-services.mjs start`；确认 Docker Desktop 已运行，端口 13306/19200/19000 未被占用。 |
+| 端口 13306、19200、19000 被占用                    | 停止占用进程；这些端口由测试 compose 固定，不要为热栈另改端口或复制一套服务。                         |
+| 测试启动报 `external test schema version mismatch` | `node scripts/test-services.mjs reset --namespace <ns>` 后重跑；禁止用 `flyway repair` 掩盖。         |
+| 报 `already in use by another test JVM`            | 同一 namespace 已有测试 JVM；结束该进程或改用唯一 namespace，禁止并行共用。                           |
+| MySQL 认证失败                                     | 启动 compose 与运行测试使用同一组 `RICCON_DB_PASSWORD`/`RICCON_S3_*` 环境变量。                       |
+| 外部库残留数据导致断言异常                         | `reset --namespace <ns>` 重建数据库；S3 对象 key 含 UUID，彻底清空用 `stop --volumes`。               |
+| OpenSearch 旧索引干扰                              | `reset --namespace <ns>` 清理 `riccon-kb-<ns>-` 前缀索引；测试基类启动时也会清理当前 namespace 前缀。 |
+| 迁移/回滚测试误连热栈                              | 检查是否误设 `RICCON_TEST_SERVICES`；迁移测试必须使用一次性容器。                                     |
+
 ## 本地运行
 
 ```bash
