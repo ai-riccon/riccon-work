@@ -1,0 +1,59 @@
+# command: node --check scripts/test-affected.mjs && node scripts/test-affected.mjs --dry-run --base HEAD~1 && git diff --check
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-19T03:23:14.257+08:00
+# finished_at: 2026-11-19T03:23:14.647+08:00
+# duration_ms: 388
+# exit_code: 0
+
+# --- stdout ---
+变更文件（4）：
+  - docs/CODING-STANDARDS.md
+  - docs/RUNBOOK.md
+  - package.json
+  - scripts/test-affected.mjs
+
+# 受影响测试建议（L1 内层循环）
+
+> 不能作为任务完成或模块 gate 证据；L2/L3 仍按 docs/CODING-STANDARDS.md §10.1
+> 执行合同 test/coverage/E2E，并由 verifier 独立取证。
+> 模式：--dry-run（脚本只输出命令，不执行）。
+
+变更来源：工作树相对 HEAD~1（git diff --name-only） + 未跟踪文件
+
+## 建议命令
+
+### [1] 前端全量（根 package/lock）
+
+```bash
+pnpm -w test
+```
+
+触发文件：
+- package.json
+
+理由：根 workspace/依赖变更影响全部前端测试；如改动依赖先执行 pnpm install --frozen-lockfile。
+
+## 脚本语法检查
+
+- scripts/test-affected.mjs：`node --check scripts/test-affected.mjs`（Node 脚本语法检查）
+
+## 手册检查（无自动化测试映射）
+
+- docs/CODING-STANDARDS.md：文档变更：无自动化测试；核对文档中的命令与 scripts/README 是否一致，必要时手动执行示例命令。
+- docs/RUNBOOK.md：文档变更：无自动化测试；核对文档中的命令与 scripts/README 是否一致，必要时手动执行示例命令。
+- scripts/test-affected.mjs：修改映射脚本后运行 `node scripts/test-affected.mjs --dry-run --base HEAD~1` 验证输出。
+
+## 汇总（可复制）
+
+```bash
+pnpm -w test
+node --check scripts/test-affected.mjs
+```
+
+提醒：
+- 迁移/回滚与 schema 版本测试必须使用一次性容器，不得连接 external 热栈。
+- external 热栈仅用于单 agent L1；默认/CI/gate 仍使用 Testcontainers。
+- 运行前先确认工作树与提交范围；本脚本不替代 §10.1 的 L2/L3。
+
+# --- stderr ---
+
