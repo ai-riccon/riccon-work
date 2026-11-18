@@ -1,19 +1,20 @@
 openapi: 3.1.0
 info:
   title: Riccon API
-  version: 1.1.0-m03
+  version: 1.2.0-m10
   description: |
-    Riccon M03 公开 REST 契约（J1 通用问答与文件处理、J2 市场调研报告、部门与空间数据范围）。
+    Riccon M10 公开 REST 契约（J1 通用问答与文件处理、J2 市场调研报告、部门与空间数据范围、OIDC/SSO、审计查询与导出）。
 
     ## 认证与会话
-    - 登录使用内置账号：`tenantCode + username + password`；租户代码即 `tenant.id`。
+    - 内置账号：`tenantCode + username + password`；租户代码即 `tenant.id`。
+    - 企业账号：每租户 1 个 OIDC IdP，授权码 + PKCE + nonce；入口 `GET /api/v1/auth/oidc/authorize/{registrationId}`，回调用同一会话层。
     - 会话存储在 MySQL（Spring Session JDBC），Cookie 名 `RICCON_SESSION`，`HttpOnly`、`SameSite=Lax`，非本地环境 `Secure`。
-    - 不使用 JWT；登出即使会话失效。OIDC/SSO 属 M10，不改变本契约的会话语义。
+    - 不使用 JWT；浏览器、响应体、日志与会话中不出现 access token、refresh token 或 ID token。OIDC 账号按 issuer + subject 显式绑定，不按邮箱自动关联。
 
     ## CSRF
     - 先调用 `GET /api/v1/auth/csrf` 获取令牌；登录后响应会返回新的 `csrfToken`。
     - 所有 `POST/PUT/PATCH/DELETE` 必须带 `X-CSRF-TOKEN`；缺失或过期返回 403 `RICCON-AUTH-403`。
-    - 登录接口同样受 CSRF 保护；匿名会话只承载 CSRF 令牌，不承载业务数据。
+    - 登录接口同样受 CSRF 保护；匿名会话只承载 CSRF 令牌，不承载业务数据。OIDC 授权入口与回调是顶层 GET 导航，不使用 CSRF 令牌。
 
     ## 租户与部门隔离
     - 租户只从已认证主体派生；请求体、查询参数、请求头中的 `tenantId` 一律忽略，不一致时拒绝并审计。
@@ -23,19 +24,25 @@ info:
     - 跨部门对象与管理操作同样统一 404；可见但无管理能力返回 403；错误响应不含空间内容。
     - 所有列表强制分页：`page` 从 1 开始，`size` 默认 20、最大 100。
 
+    ## 审计查询与导出（M10）
+    - 查询只读：`GET /api/v1/audit-events`，权限 `audit.read`；租户从主体派生，时间范围必须带偏移且不超过 180 天。
+    - 导出需审批：申请人不得自批；同租户另一管理员审批，单管理员租户由平台管理员审批（仅元数据）。
+    - 只有申请人可下载；批准后 24 小时过期；CSV 流不落盘；不含 `source_ip`、token、凭据、原文或邮箱。
+    - 平台管理员不能查询目标租户审计明细；平台来源事件对目标租户不可见（DEC-0013、M03 F-009）。
+
     ## 错误
     统一使用 RFC 9457 `application/problem+json`，至少包含 `type/title/status/code/traceId`。
     错误码格式 `RICCON-<DOMAIN>-<NNN>`；禁止返回堆栈、SQL、内部主机、密钥或完整提示词。
-    部门/空间成员关系冲突使用 `RICCON-DEPT-409`；跨租户/跨部门/不可见统一 `RICCON-TENANT-404`。
+    部门/空间成员关系冲突使用 `RICCON-DEPT-409`；跨租户/跨部门/不可见统一 `RICCON-TENANT-404`；OIDC 绑定冲突使用 `RICCON-OIDC-409`；审计查询/导出使用 `RICCON-AUDIT-*`。
 
     ## 流式
     `POST /api/v1/conversations/{conversationId}/messages` 返回 `text/event-stream`，
     事件载荷见 `contracts/events/sse/chat-event.v1.schema.json`；报告进度事件见
-    `contracts/events/sse/run-progress.v1.schema.json`。
+    `contracts/events/sse/run-progress.v1.schema.json`。审计导出下载返回 `text/csv`，不是流式事件。
 
-    ## M03 范围外
-    OIDC/SSO 与审计查询/导出审批（M10）、模型路由与配额（M04）、文档级 ACL/OCR（M05）、MCP 注册与凭据托管（M07）。
-    知识库在 M03 仍为租户级共享，界面必须明示；文档级权限不在本契约中定义。
+    ## 范围外（M10 后置）
+    MFA、审计哈希链/完整性证明、平台管理员跨租户审计明细、模型路由与配额（M04）、文档级 ACL/OCR（M05）、MCP 注册与凭据托管（M07）。
+    知识库仍为租户级共享，界面必须明示；文档级权限不在本契约中定义。
   contact:
     name: Riccon 架构组
   license:
@@ -64,35 +71,34 @@ tags:
     description: 报告产物与版本
   - name: Catalog
     description: 租户可见的模型与 MCP 工具
+  - name: Audit
+    description: 审计只读查询、导出申请/审批与策略
   - name: Admin
-    description: 平台只读目录与租户/账号管理
+    description: 平台只读目录、租户/账号管理与导出审批
 security:
   - sessionCookie: []
 x-riccon-deferred:
-  - id: oidc-sso
-    status: M10
-    reason: M03 只做部门与数据范围；OIDC 授权码 + PKCE 与账号绑定在 M10。
-  - id: audit-query
-    status: M10
-    reason: M03 只依赖 append-only 审计写入；查询接口与保留策略展示在 M10。
-  - id: audit-export
-    status: M10
-    reason: 导出审批、另一管理员批准、文件时效与导出审计在 M10 设计。
   - id: platform-cross-tenant-audit
     status: M10+
-    reason: 平台管理员跨租户审计明细需显式授权与独立审计；M03 明确不提供（DEC-0013）。
+    reason: 平台管理员跨租户审计明细需显式授权、二次确认与独立审计；M10 只允许平台查询 platform 租户自身事件（DEC-0013、M03 F-009）。
+  - id: mfa
+    status: M10+
+    reason: M10 不强制 MFA、不校验 acr/amr；IdP 可能自行启用，但平台不声称强认证（DEC-0013）。
+  - id: audit-hash-chain
+    status: M10+
+    reason: M10 继续依赖 append-only 触发器与最小权限；不提供 prev_hash/event_hash 或外部锚定（DEC-0013）。
   - id: model-routing-quota
     status: M04
-    reason: M03 仍只有单一部署级 OpenAI 兼容端点。
+    reason: M10 仍只有单一部署级 OpenAI 兼容端点。
   - id: knowledge-acl-ocr
     status: M05
-    reason: M03 知识库为租户级共享，仅界面明示；文档级/部门级 ACL 在 M05。
+    reason: M10 知识库仍为租户级共享；文档级/部门级 ACL 在 M05。
   - id: mcp-registration-credentials
     status: M07
-    reason: M03 仍只允许平台内置白名单，不提供注册 UI 与凭据托管。
+    reason: M10 仍只允许平台内置白名单，不提供注册 UI 与凭据托管。
   - id: workspace-archive
     status: M04
-    reason: 归档/生命周期与保留策略在 M04/M09 统一设计；M03 不实现归档端点。
+    reason: 归档/生命周期与保留策略在 M04/M09 统一设计；M10 不实现归档端点。
 paths:
   /api/v1/auth/csrf:
     get:
@@ -178,16 +184,109 @@ paths:
       tags: [Auth]
       operationId: logout
       summary: 登出
-      description: 使当前会话失效并写 `auth.logout` 审计。
+      description: |
+        使本地会话立即失效并写 `auth.logout` 审计；浏览器后退不能恢复登录态。
+        若当前会话来自 OIDC 且租户配置了 end-session 端点，响应头 `X-Riccon-Federated-Logout-Url` 提供可选的 IdP 联合登出地址（不含 token）。
+        本地登出始终成功；IdP 不可达不影响本地登出，也不声称自动结束 IdP 会话。
       parameters:
         - $ref: "#/components/parameters/CsrfToken"
       responses:
         "204":
           description: 已登出
+          headers:
+            X-Riccon-Federated-Logout-Url:
+              description: 可选；IdP RP-Initiated Logout 地址（绝对 HTTPS，带 client_id 与 post_logout_redirect_uri，不含 token）。
+              schema:
+                type: string
+                format: uri
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/auth/oidc/providers:
+    get:
+      tags: [Auth]
+      operationId: getOidcProviderAvailability
+      summary: 查询租户企业账号登录可用性
+      description: |
+        匿名可调用；未知租户、未配置 IdP、已停用与租户不存在统一返回 `enabled=false`，不返回租户名、IdP 地址或错误差异。
+        仅用于登录页决定是否展示“企业账号登录”入口。
+      security: []
+      parameters:
+        - name: tenantCode
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+            pattern: "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+      responses:
+        "200":
+          description: 企业登录可用性
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcProviderAvailability"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/auth/oidc/authorize/{registrationId}:
+    get:
+      tags: [Auth]
+      operationId: startOidcAuthorization
+      summary: 发起企业账号登录
+      description: |
+        顶层浏览器导航；服务端在会话中保存 state、nonce 与 PKCE verifier 后 302 到 IdP 授权端点。
+        `registrationId` 为 `tenant-{tenantCode}`；未配置 IdP 返回 404。该端点不返回 JSON。
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/OidcRegistrationId"
+      responses:
+        "302":
+          description: 重定向到 IdP 授权端点
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/auth/oidc/callback/{registrationId}:
+    get:
+      tags: [Auth]
+      operationId: completeOidcAuthorization
+      summary: OIDC 登录回调
+      description: |
+        IdP 回调入口。校验 state/nonce/PKCE 与 ID Token 后建立既有会话并轮换 CSRF；成功后 302 到工作空间。
+        失败时 302 到 `/login?oidcError=<原因码>`，原因码为 `idp_unavailable`、`state_invalid`、`access_denied`、
+        `account_not_bound`、`account_disabled`、`tenant_unavailable`、`issuer_mismatch`、`rate_limited`、`login_failed`。
+        响应不包含 IdP 原始错误、token、code、state、内部地址或堆栈。
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/OidcRegistrationId"
+      responses:
+        "302":
+          description: 成功回到工作空间，或失败回到登录页并带 `oidcError`
+          headers:
+            Location:
+              schema:
+                type: string
+            Set-Cookie:
+              description: 成功时的会话 Cookie（HttpOnly、SameSite=Lax、非本地 Secure）
+              schema:
+                type: string
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
   /api/v1/workspaces:
@@ -1498,6 +1597,249 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+  /api/v1/audit-events:
+    get:
+      tags: [Audit]
+      operationId: listAuditEvents
+      summary: 查询审计事件（只读）
+      description: |
+        按时间范围、动作、操作者、对象与结果过滤；租户只从已认证主体派生，不接受 `tenantId`。
+        时间参数必须带偏移（如 `2026-11-01T00:00:00+08:00`）；缺省为最近 24 小时；最大跨度 180 天。
+        排序固定 `occurredAt DESC, eventId DESC`；`page` 最大 200、`size` 最大 100。
+        不返回 `source_ip`；查询成功后写 `audit.queried`。无创建/修改/删除接口。
+      x-riccon-permission: audit.read
+      parameters:
+        - $ref: "#/components/parameters/OccurredFrom"
+        - $ref: "#/components/parameters/OccurredTo"
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+        - name: actorId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: targetType
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/AuditTargetType"
+        - name: targetId
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 64
+        - name: outcome
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/AuditOutcome"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 审计分页
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditEventPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/audit-events/policy:
+    get:
+      tags: [Audit]
+      operationId: getAuditPolicy
+      summary: 获取审计保留与导出策略
+      description: 返回保留天数、最大可查范围、分页上限、已知动作列表与导出限制；界面据此显示保留策略与可查范围。
+      x-riccon-permission: audit.read
+      responses:
+        "200":
+          description: 审计策略
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditPolicy"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/audit-exports:
+    get:
+      tags: [Audit]
+      operationId: listAuditExports
+      summary: 列出本租户审计导出请求
+      description: 只返回本租户导出请求元数据；按 `createdAt` 倒序。
+      x-riccon-permission: audit.read
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/AuditExportStatus"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 导出请求分页
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditExportRequestPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Audit]
+      operationId: createAuditExportRequest
+      summary: 发起审计导出申请
+      description: |
+        服务端按 `filter` 计算预计行数；超过导出上限返回 400。申请进入 `PENDING_APPROVAL`，不立即生成文件。
+        申请人不得审批自己的请求；批准后 24 小时过期。
+      x-riccon-permission: audit.read
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuditExportCreateRequest"
+      responses:
+        "201":
+          description: 已提交申请
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditExportRequest"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/audit-exports/{exportId}:
+    get:
+      tags: [Audit]
+      operationId: getAuditExportRequest
+      summary: 读取审计导出请求
+      x-riccon-permission: audit.read
+      parameters:
+        - $ref: "#/components/parameters/AuditExportId"
+      responses:
+        "200":
+          description: 导出请求
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditExportRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/audit-exports/{exportId}/decision:
+    post:
+      tags: [Audit]
+      operationId: decideAuditExportRequest
+      summary: 审批审计导出请求
+      description: |
+        同租户审批；审批人不得是申请人（403）。只允许从 `PENDING_APPROVAL` 条件更新，已决定或并发审批返回 409。
+        批准后写审批审计并设置 `expiresAt`。
+      x-riccon-permission: audit.export.approve
+      parameters:
+        - $ref: "#/components/parameters/AuditExportId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuditExportDecisionRequest"
+      responses:
+        "200":
+          description: 已审批
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditExportRequest"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/audit-exports/{exportId}/download:
+    get:
+      tags: [Audit]
+      operationId: downloadAuditExport
+      summary: 下载审计导出 CSV
+      description: |
+        只有申请人本人可下载；必须已批准且未过期。CSV 为 UTF-8 BOM，前 4 行为 `#` 前缀元数据
+        （exportId、generatedAt、filters、rowCount），随后是表头与数据。不落盘、无预签名 URL。
+        字段白名单不含 `source_ip`、token、凭据、原文或邮箱；每次成功下载写 `data.exported`。
+      x-riccon-permission: audit.read
+      parameters:
+        - $ref: "#/components/parameters/AuditExportId"
+      responses:
+        "200":
+          description: CSV 文件流
+          headers:
+            Content-Disposition:
+              description: attachment; filename="audit-export-{exportId}.csv"
+              schema:
+                type: string
+            Cache-Control:
+              description: no-store
+              schema:
+                type: string
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "410":
+          $ref: "#/components/responses/Gone"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/v1/users:
     get:
       tags: [Admin]
@@ -1611,6 +1953,81 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /api/v1/users/{userId}/oidc-binding:
+    put:
+      tags: [Admin]
+      operationId: bindTenantUserOidcIdentity
+      summary: 将租户账号绑定到 OIDC 身份
+      description: |
+        `issuer` 必须等于本租户配置的 issuer；成功后在事务内把账号转为 `authSource=OIDC`、
+        写入 issuer/subject 并删除本地密码凭据，角色保持不变。写 `user.oidc.bound` 审计。
+        同一身份已绑定其他账号、账号已绑定其他身份或唯一键冲突返回 409 `RICCON-OIDC-409`。
+      x-riccon-permission: tenant.user.manage
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcBindingRequest"
+      responses:
+        "200":
+          description: 已绑定
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/users/{userId}/oidc-binding/remove:
+    post:
+      tags: [Admin]
+      operationId: unbindTenantUserOidcIdentity
+      summary: 解除 OIDC 绑定并恢复本地密码
+      description: |
+        恢复 `authSource=LOCAL`、清空 issuer/subject 并写入新密码凭据；写 `user.oidc.unbound` 审计。
+        用于 IdP 配置错误或企业账号停用后的恢复；没有“无凭据解绑”。
+      x-riccon-permission: tenant.user.manage
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcUnbindRequest"
+      responses:
+        "200":
+          description: 已恢复本地账号
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/v1/admin/tenants:
     get:
       tags: [Admin]
@@ -1776,6 +2193,78 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/v1/admin/tenants/{tenantId}/users/{userId}/oidc-binding:
+    put:
+      tags: [Admin]
+      operationId: bindTenantUserOidcIdentityForPlatform
+      summary: 平台管理员绑定目标租户账号到 OIDC 身份
+      description: 语义同租户端；目标租户不存在或账号不属于该租户统一 404；写 `user.oidc.bound` 审计。
+      x-riccon-permission: platform.tenant.manage
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/UserId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcBindingRequest"
+      responses:
+        "200":
+          description: 已绑定
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/admin/tenants/{tenantId}/users/{userId}/oidc-binding/remove:
+    post:
+      tags: [Admin]
+      operationId: unbindTenantUserOidcIdentityForPlatform
+      summary: 平台管理员解除目标租户账号的 OIDC 绑定并恢复本地密码
+      description: 语义同租户端；没有“无凭据解绑”；写 `user.oidc.unbound` 审计。
+      x-riccon-permission: platform.tenant.manage
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/UserId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcUnbindRequest"
+      responses:
+        "200":
+          description: 已恢复本地账号
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/v1/admin/tenants/{tenantId}/departments:
     get:
       tags: [Admin]
@@ -2064,6 +2553,79 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+  /api/v1/admin/tenants/{tenantId}/audit-exports:
+    get:
+      tags: [Admin]
+      operationId: listTenantAuditExportsForPlatform
+      summary: 平台管理员列出目标租户审计导出请求
+      description: |
+        只返回导出请求元数据（申请人、过滤器、预计行数、状态、审批人、过期时间），不返回审计内容、不提供下载。
+        用于单管理员租户的导出审批。
+      x-riccon-permission: platform.audit.export.approve
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/AuditExportStatus"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 导出请求分页
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditExportRequestPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/admin/tenants/{tenantId}/audit-exports/{exportId}/decision:
+    post:
+      tags: [Admin]
+      operationId: decideTenantAuditExportForPlatform
+      summary: 平台管理员审批目标租户审计导出请求
+      description: |
+        仅用于单管理员租户；平台管理员只能看/决定请求元数据，不能下载或查询审计内容。
+        批准后写 `audit.export.approved` 到 `platform` 租户并带 `details.targetTenantId`；自批、跨租户、已决定或并发审批被拒。
+      x-riccon-permission: platform.audit.export.approve
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/AuditExportId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuditExportDecisionRequest"
+      responses:
+        "200":
+          description: 已审批
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditExportRequest"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/v1/admin/model-providers:
     get:
       tags: [Admin]
@@ -2265,6 +2827,39 @@ components:
         type: string
         minLength: 1
         maxLength: 64
+    OidcRegistrationId:
+      name: registrationId
+      in: path
+      required: true
+      description: OIDC 注册 ID，固定为 `tenant-{tenantCode}`。
+      schema:
+        type: string
+        pattern: "^tenant-[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+    AuditExportId:
+      name: exportId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    OccurredFrom:
+      name: occurredFrom
+      in: query
+      required: false
+      description: 起始时间，ISO 8601 且必须带偏移；缺省为最近 24 小时。
+      schema:
+        type: string
+        format: date-time
+        example: "2026-11-01T00:00:00+08:00"
+    OccurredTo:
+      name: occurredTo
+      in: query
+      required: false
+      description: 结束时间，ISO 8601 且必须带偏移；与起始时间跨度不超过 180 天。
+      schema:
+        type: string
+        format: date-time
+        example: "2026-11-19T23:59:59+08:00"
   headers:
     TraceId:
       description: 本次请求的 traceId；与错误响应和审计一致。
@@ -2297,7 +2892,13 @@ components:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
     Conflict:
-      description: 状态冲突、重复请求或多部门/重复成员冲突（部门成员冲突使用 `RICCON-DEPT-409`）
+      description: 状态冲突、重复请求、多部门/重复成员冲突（部门成员冲突使用 `RICCON-DEPT-409`）、OIDC 绑定冲突（`RICCON-OIDC-409`）或审计导出状态冲突（`RICCON-AUDIT-409`）
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Gone:
+      description: 审计导出已过期（`RICCON-AUDIT-410`）
       content:
         application/problem+json:
           schema:
@@ -2401,6 +3002,42 @@ components:
           maxLength: 200
           format: password
       additionalProperties: false
+    OidcProviderAvailability:
+      type: object
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+        providerName:
+          type: [string, "null"]
+          description: 仅 enabled=true 时返回；未知租户/未配置统一 enabled=false
+      additionalProperties: false
+    OidcBindingRequest:
+      type: object
+      required: [issuer, subject]
+      properties:
+        issuer:
+          type: string
+          format: uri
+          maxLength: 255
+          description: 必须等于本租户配置的 issuer（规范化后）
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: IdP 的 subject（sub）；不存邮箱、不按邮箱匹配
+      additionalProperties: false
+    OidcUnbindRequest:
+      type: object
+      required: [newPassword]
+      properties:
+        newPassword:
+          type: string
+          minLength: 12
+          maxLength: 200
+          format: password
+          description: 恢复本地账号时设置的新密码；账号转回 LOCAL
+      additionalProperties: false
     SessionInfo:
       type: object
       required:
@@ -2456,6 +3093,8 @@ components:
         departmentName:
           type: [string, "null"]
           description: 主部门名；停用部门仍显示名称
+        authSource:
+          $ref: "#/components/schemas/AuthSource"
         lastLoginAt:
           type: [string, "null"]
           format: date-time
@@ -2485,6 +3124,10 @@ components:
     UserStatus:
       type: string
       enum: [ACTIVE, DISABLED]
+    AuthSource:
+      type: string
+      enum: [LOCAL, OIDC]
+      description: LOCAL 使用本地密码；OIDC 使用 issuer + subject 绑定且没有本地密码凭据
     TenantStatus:
       type: string
       enum: [ACTIVE, SUSPENDED]
@@ -2588,6 +3231,236 @@ components:
           type: integer
           format: int64
           minimum: 0
+    AuditActorType:
+      type: string
+      enum: [USER, SERVICE, SYSTEM]
+    AuditOutcome:
+      type: string
+      enum: [SUCCESS, FAILURE, DENIED]
+    AuditTargetType:
+      type: string
+      enum:
+        [
+          SESSION,
+          WORKSPACE,
+          DEPARTMENT,
+          FILE,
+          CONVERSATION,
+          KNOWLEDGE_DOCUMENT,
+          RESEARCH_TASK,
+          RUN,
+          ARTIFACT,
+          MODEL,
+          MCP_TOOL,
+          USER,
+          ROLE,
+          TENANT,
+          AUDIT,
+          AUDIT_EXPORT,
+        ]
+    AuditEvent:
+      type: object
+      required:
+        [
+          eventId,
+          occurredAt,
+          tenantId,
+          actorType,
+          actorId,
+          action,
+          outcome,
+          traceId,
+        ]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        occurredAt:
+          type: string
+          format: date-time
+          description: 带偏移的 ISO 8601；数据库存 UTC
+        tenantId:
+          type: string
+        actorType:
+          $ref: "#/components/schemas/AuditActorType"
+        actorId:
+          type: string
+          maxLength: 64
+        actorDisplayName:
+          type: [string, "null"]
+          description: 读取时按当前账号解析，仅 USER；非历史快照，不含邮箱
+        action:
+          type: string
+          maxLength: 100
+        targetType:
+          oneOf:
+            - $ref: "#/components/schemas/AuditTargetType"
+            - type: "null"
+        targetId:
+          type: [string, "null"]
+          maxLength: 64
+        outcome:
+          $ref: "#/components/schemas/AuditOutcome"
+        traceId:
+          type: string
+          maxLength: 64
+        details:
+          type: [object, "null"]
+          additionalProperties: true
+          description: 写入时已通过白名单的 JSON；读取/导出时再执行禁止键检查
+      additionalProperties: false
+    AuditEventPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/AuditEvent"
+    AuditExportLimits:
+      type: object
+      required: [ttlHours, rowLimit]
+      properties:
+        ttlHours:
+          type: integer
+          minimum: 1
+          maximum: 168
+        rowLimit:
+          type: integer
+          minimum: 1
+          maximum: 50000
+      additionalProperties: false
+    AuditPolicy:
+      type: object
+      required:
+        [
+          retentionDays,
+          maxRangeDays,
+          pageSizeMax,
+          maxPage,
+          actions,
+          exportLimits,
+        ]
+      properties:
+        retentionDays:
+          type: integer
+          minimum: 180
+        maxRangeDays:
+          type: integer
+          const: 180
+        pageSizeMax:
+          type: integer
+          const: 100
+        maxPage:
+          type: integer
+          const: 200
+        actions:
+          type: array
+          items:
+            type: string
+        exportLimits:
+          $ref: "#/components/schemas/AuditExportLimits"
+      additionalProperties: false
+    AuditFilter:
+      type: object
+      properties:
+        occurredFrom:
+          type: string
+          format: date-time
+          description: 带偏移；省略时服务端按最近 24 小时解析并固化
+        occurredTo:
+          type: string
+          format: date-time
+          description: 带偏移；与 from 跨度不超过 180 天；省略时按当前时间解析并固化
+        action:
+          type: string
+          maxLength: 100
+        actorId:
+          type: string
+          format: uuid
+        targetType:
+          $ref: "#/components/schemas/AuditTargetType"
+        targetId:
+          type: string
+          maxLength: 64
+        outcome:
+          $ref: "#/components/schemas/AuditOutcome"
+      additionalProperties: false
+    AuditExportCreateRequest:
+      type: object
+      required: [filter]
+      properties:
+        filter:
+          $ref: "#/components/schemas/AuditFilter"
+      additionalProperties: false
+    AuditExportStatus:
+      type: string
+      enum: [PENDING_APPROVAL, APPROVED, REJECTED, EXPIRED]
+      description: |
+        存储状态为 PENDING_APPROVAL/APPROVED/REJECTED；EXPIRED 由 `approved` 且 `expiresAt` 已过派生，
+        仅用于响应展示，不改变数据库状态。
+    AuditExportDecision:
+      type: string
+      enum: [APPROVE, REJECT]
+    AuditExportDecisionRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          $ref: "#/components/schemas/AuditExportDecision"
+        comment:
+          type: [string, "null"]
+          maxLength: 500
+          description: 审批意见；只存导出记录，不进入审计 details
+      additionalProperties: false
+    AuditExportRequest:
+      type: object
+      required: [id, status, requestedBy, filter, estimatedRowCount, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/AuditExportStatus"
+        requestedBy:
+          type: string
+          format: uuid
+        requestedByDisplayName:
+          type: [string, "null"]
+        filter:
+          $ref: "#/components/schemas/AuditFilter"
+        estimatedRowCount:
+          type: integer
+          minimum: 0
+        approvedBy:
+          type: [string, "null"]
+          format: uuid
+        approvedByDisplayName:
+          type: [string, "null"]
+        decidedAt:
+          type: [string, "null"]
+          format: date-time
+        decisionComment:
+          type: [string, "null"]
+        expiresAt:
+          type: [string, "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    AuditExportRequestPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/AuditExportRequest"
     Workspace:
       type: object
       required:
@@ -3791,7 +4664,7 @@ components:
                 $ref: "#/components/schemas/UserSummary"
     UserCreateRequest:
       type: object
-      required: [username, displayName, password, roles]
+      required: [username, displayName, roles]
       properties:
         username:
           type: string
@@ -3800,17 +4673,43 @@ components:
           type: string
           minLength: 1
           maxLength: 200
+        authSource:
+          $ref: "#/components/schemas/AuthSource"
         password:
-          type: string
+          type: [string, "null"]
           minLength: 12
           maxLength: 200
           format: password
+          description: authSource=LOCAL（或省略）时必填；OIDC 时必须为空
+        issuer:
+          type: [string, "null"]
+          format: uri
+          maxLength: 255
+          description: authSource=OIDC 时必填；必须等于本租户配置的 issuer
+        subject:
+          type: [string, "null"]
+          maxLength: 255
+          description: authSource=OIDC 时必填
         roles:
           type: array
           minItems: 1
           items:
             type: string
       additionalProperties: false
+      description: |
+        `authSource` 省略视为 `LOCAL`。LOCAL 必须提供 `password`；OIDC 必须提供 `issuer` + `subject` 且不得提供 `password`。
+      if:
+        properties:
+          authSource:
+            const: OIDC
+        required: [authSource]
+      then:
+        required: [issuer, subject]
+        properties:
+          password:
+            type: "null"
+      else:
+        required: [password]
     UserStatusRequest:
       type: object
       required: [status]

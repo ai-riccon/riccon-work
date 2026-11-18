@@ -44,6 +44,8 @@ Evidence:
 | ADR-0016 | Worker outbox 跨租户领取例外与租户绑定                      | accepted |
 | ADR-0017 | 审批参数加密重放与脱敏预览                                  | accepted |
 | ADR-0018 | M03 组织模型、空间可见性与部门数据范围                      | proposed |
+| ADR-0019 | M10 OIDC/SSO：每租户 1 个 IdP、授权码 + PKCE、显式绑定      | proposed |
+| ADR-0020 | M10 审计查询、导出审批与平台跨租户审计边界                  | proposed |
 
 说明：
 
@@ -53,3 +55,4 @@ Evidence:
 - ADR-0012 统一了 ADR-0007/0008 中“ULID”的表述：标识仍要求时间有序，但实际使用 UUIDv7 `BINARY(16)`；ADR-0007/0008 的审计与 outbox 语义不变。
 - ADR-0016 是 ADR-0009 的显式例外：只允许 Worker 领取 outbox 时跨租户读取任务元数据，领取后必须回到 `TenantJdbc`。
 - ADR-0018 为 M03 架构提案，状态 `proposed`，待 verifier/lead/ops 在 M03 gate 前评审；DEC-0014 已确认产品口径，但 ADR 本身不自行标 `accepted`。
+- ADR-0019/0020 为 M10 架构提案，状态 `proposed`；DEC-0013/DEC-0014 已确认后移与导出审批口径，但 OIDC 配置来源、审计查询/导出实现与平台边界仍需 Lead/Verifier/Ops 评审，未批准前不得进入实现。

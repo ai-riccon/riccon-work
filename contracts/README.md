@@ -81,21 +81,23 @@ contracts/
 ## 4. REST 约定
 
 - 认证：会话 Cookie `RICCON_SESSION`（HttpOnly、SameSite=Lax、非本地 Secure）；不使用 JWT。
+- OIDC：每租户 1 个 IdP，授权码 + PKCE + nonce；授权入口/回调是顶层 302 导航；不保存或回传 access/refresh/ID token（ADR-0019）。
 - CSRF：所有非安全方法带 `X-CSRF-TOKEN`；令牌来自 `GET /api/v1/auth/csrf` 或登录响应。
 - 租户：只从会话主体派生；忽略请求体/查询/请求头中的 `tenantId`。
-- 分页：`page` 从 1 开始，`size` 默认 20、最大 100；禁止无界查询。
+- 分页：`page` 从 1 开始，`size` 默认 20、最大 100；禁止无界查询。审计查询另有 `page ≤ 200`、时间跨度 ≤ 180 天。
 - 错误：RFC 9457 `application/problem+json`，至少 `type/title/status/code/traceId`；
-  跨租户与跨部门对象统一 404 `RICCON-TENANT-404`；部门/空间成员冲突使用 `RICCON-DEPT-409`。
-- 下载：服务端校验归属后签发预签名 URL，TTL ≤ 300 秒；URL 绑定对象 key。
-- 幂等：`Idempotency-Key` 用于创建报告任务、审批决定、重试；同一主体重复请求返回既有结果。
+  跨租户与跨部门对象统一 404 `RICCON-TENANT-404`；部门/空间成员冲突使用 `RICCON-DEPT-409`；OIDC 绑定冲突使用 `RICCON-OIDC-409`；审计查询/导出使用 `RICCON-AUDIT-*`。
+- 下载：业务文件由服务端校验归属后签发预签名 URL，TTL ≤ 300 秒；URL 绑定对象 key。审计导出是例外：CSV 由 API 流式生成，不写对象存储、无预签名 URL，只有申请人可在批准有效期内下载。
+- 幂等：`Idempotency-Key` 用于创建报告任务、审批决定、重试；同一主体重复请求返回既有结果。审计导出审批使用状态条件更新，不做幂等重放。
 
 ## 5. 安全边界
 
 - `openapi.yaml` 只描述浏览器/租户网络可达的 `/api/v1`；`internal-api.yaml` 只描述集群内部可达的 `/internal/v1`。
 - 平台管理员的租户部门管理使用 `/api/v1/admin/tenants/{tenantId}/departments`，权限 `platform.department.manage`；只返回组织元数据，不返回目标租户业务内容。
+- 平台管理员的审计导出审批使用 `/api/v1/admin/tenants/{tenantId}/audit-exports`，权限 `platform.audit.export.approve`；只返回审批元数据，不返回审计内容、不提供下载。
 - Worker 不接受浏览器 Cookie，不提供通用 CRUD 或管理接口；内部调用使用 HMAC-SHA256 短期令牌。
 - 契约中不得出现真实密钥、token、租户真实数据或 PII；示例使用 `tenant-a`、`user-0001` 等占位符。
-- 审计查询与导出、OIDC/SSO（M10）、模型路由与配额（M04）、文档 ACL/OCR（M05）、MCP 注册与凭据托管（M07）不在 M03 契约中定义；
+- 审计哈希链、MFA、平台跨租户审计明细、模型路由与配额（M04）、文档 ACL/OCR（M05）、MCP 注册与凭据托管（M07）不在 M10 契约中定义；
   `openapi.yaml` 的 `x-riccon-deferred` 记录后置范围。
 
 ## 6. 校验

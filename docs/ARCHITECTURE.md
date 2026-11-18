@@ -2,14 +2,14 @@
 
 ## 评审状态
 
-| 检查                        | 状态    | 记录                                                                             |
-| --------------------------- | ------- | -------------------------------------------------------------------------------- |
-| Architect 草案              | pass    | M03 ADR-0018 `proposed`；M02 ADR-0001..0017                                      |
-| Lead 完整性/合同一致性      | pass    | 本次 M03 评审                                                                    |
-| 用户批准（不可逆/高成本项） | pending | M03 无不可逆项；DEC-0003 许可仍是 release blocker；DEC-0015 已批准平台管理员边界 |
-| Verifier 可测试性/安全边界  | pass    | REV-TASK-0033-002；REV-M02-003                                                   |
-| Ops 可运维/可回滚           | pending | M03 回滚待 B1b 演练；M09 Helm/备份/升级                                          |
-| 安全/合规评审（如适用）     | pending | 威胁模型已更新；M03 gate 安全评审待做                                            |
+| 检查                        | 状态    | 记录                                                                                           |
+| --------------------------- | ------- | ---------------------------------------------------------------------------------------------- |
+| Architect 草案              | pass    | M10 ADR-0019/0020 `proposed`；M03 ADR-0018 `proposed`；M02 ADR-0001..0017                      |
+| Lead 完整性/合同一致性      | pending | M10 待评审；M03 已通过                                                                         |
+| 用户批准（不可逆/高成本项） | pending | DEC-0013/0014/0015 已确认产品口径；ADR-0019/0020 本身未批准；DEC-0003 许可仍是 release blocker |
+| Verifier 可测试性/安全边界  | pending | M10 待评审；REV-TASK-0033-002、REV-M02-003、REV-M03-001 为既有记录                             |
+| Ops 可运维/可回滚           | pending | M10 IdP Secret 注入/轮换、V10 索引与回滚演练待评审；M09 Helm/备份/升级                         |
+| 安全/合规评审（如适用）     | pending | 威胁模型已更新到 M10 设计；M03/M10 gate 安全评审待做                                           |
 
 状态值：`draft`、`pending`、`pass`、`changes-requested`；不可逆或高成本决策未经用户批准，不进入实现。历史无记录用 `legacy`/`not-recorded`。
 
@@ -61,6 +61,26 @@ Riccon 是面向企业私有化部署的多租户 AI 协同办公系统。员工
                         `-- 审计事件 -> audit_event（同事务，append-only）
 ```
 
+### 身份与审计（M10）
+
+```text
+OIDC 登录（顶层浏览器导航）
+浏览器 -> apps/api /auth/oidc/authorize/{registrationId}
+        -> 企业 IdP（授权码 + PKCE + state/nonce）
+        -> apps/api /auth/oidc/callback/{registrationId}
+             |-- 会话内校验 state/nonce，换 token，校验 ID Token（iss/aud/exp/签名）
+             |-- 丢弃 token；按 (tenant_id, issuer, subject) 查账号并检查启用
+             |-- 轮换会话 ID/CSRF，写 RicconPrincipal 到 Spring Session
+             `-- 审计 auth.login.succeeded/failed（同事务 fail-closed）
+
+审计查询/导出
+浏览器 -> apps/api /audit-events（只读，租户来自主体）
+        -> TenantJdbc -> audit_event（时间范围 + 租户索引）
+        -> 写 audit.queried
+        -> /audit-exports 申请 -> 另一管理员审批 -> 申请人下载 CSV 流
+        -> 写 audit.export.* / data.exported；导出不落盘
+```
+
 ### Agent 任务
 
 ```text
@@ -82,7 +102,7 @@ API 不执行 Agent；Worker 不面向浏览器。任务契约、SSE 事件与�
 
 ## 数据模型
 
-M02 数据模型由 ADR-0012 定稿，M03 组织与数据范围由 ADR-0018 定稿；迁移位于 `apps/api/src/main/resources/db/migration`（V2–V9，V1 不修改；V9 尚未发布，Builder 在发布前直接收紧约束，不新增 V10）。
+M02 数据模型由 ADR-0012 定稿，M03 组织与数据范围由 ADR-0018 定稿，M10 身份与审计由 ADR-0019/0020 定稿；迁移位于 `apps/api/src/main/resources/db/migration`（V2–V10；V1 不修改；V9 已在 M03 发布后冻结；V10 为 M10 只增不减的 additive 迁移）。
 
 ### 标识与租户键
 
@@ -94,23 +114,23 @@ M02 数据模型由 ADR-0012 定稿，M03 组织与数据范围由 ADR-0018 定�
 
 ### 表分组
 
-| 分组         | 表                                                                                                                                                    | 说明                                                           |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| 身份与租户   | `tenant`、`app_user`、`user_credential`、`role`、`permission`、`role_permission`、`user_role`                                                         | 内置账号；M10 接入 OIDC（issuer/subject 字段已预留）           |
-| 组织与部门   | `department`、`app_user.department_id`                                                                                                                | 单级部门、单主部门；M03 新增                                   |
-| 工作空间     | `workspace`、`workspace_member`                                                                                                                       | 个人/团队；可见性 `PRIVATE`/`TENANT`/`DEPT`/`CUSTOM`；M03 扩展 |
-| 文件与知识库 | `file`、`file_parse`、`file_chunk`、`knowledge_document`、`knowledge_chunk`                                                                           | 原文在对象存储；分块与定位在 MySQL；知识库 M03 仍租户级        |
-| 会话与引用   | `conversation`、`message`、`message_citation`                                                                                                         | `seq` 保证顺序；引用保存标题/片段/页码/工作表/段落快照         |
-| 任务与运行   | `research_task`、`agent_run`、`agent_run_stage`、`approval`、`agent_run_outbox`                                                                       | J2 状态机、阶段时间线、HITL 与幂等投递                         |
-| 产物         | `artifact`、`artifact_version`、`artifact_citation`                                                                                                   | 一个任务最多一个产物；版本唯一；引用清单可核对                 |
-| 模型与 MCP   | `model_provider`、`model`、`tenant_data_key`、`provider_credential`、`model_invocation`、`mcp_server`、`mcp_tool`、`mcp_tool_grant`、`mcp_invocation` | 凭据信封加密；M02 单一部署级模型端点                           |
-| 审计         | `audit_event`                                                                                                                                         | 只追加；触发器拒绝 UPDATE/DELETE；M10 才提供查询/导出          |
-| 会话存储     | `SPRING_SESSION`、`SPRING_SESSION_ATTRIBUTES`                                                                                                         | 基础设施表，租户从主体派生                                     |
+| 分组         | 表                                                                                                                                                    | 说明                                                                                    |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 身份与租户   | `tenant`、`app_user`、`user_credential`、`role`、`permission`、`role_permission`、`user_role`                                                         | 内置账号；M10 接入 OIDC（`auth_source`/issuer/subject 已由 V2 预留，无新列）            |
+| 组织与部门   | `department`、`app_user.department_id`                                                                                                                | 单级部门、单主部门；M03 新增                                                            |
+| 工作空间     | `workspace`、`workspace_member`                                                                                                                       | 个人/团队；可见性 `PRIVATE`/`TENANT`/`DEPT`/`CUSTOM`；M03 扩展                          |
+| 文件与知识库 | `file`、`file_parse`、`file_chunk`、`knowledge_document`、`knowledge_chunk`                                                                           | 原文在对象存储；分块与定位在 MySQL；知识库 M03 仍租户级                                 |
+| 会话与引用   | `conversation`、`message`、`message_citation`                                                                                                         | `seq` 保证顺序；引用保存标题/片段/页码/工作表/段落快照                                  |
+| 任务与运行   | `research_task`、`agent_run`、`agent_run_stage`、`approval`、`agent_run_outbox`                                                                       | J2 状态机、阶段时间线、HITL 与幂等投递                                                  |
+| 产物         | `artifact`、`artifact_version`、`artifact_citation`                                                                                                   | 一个任务最多一个产物；版本唯一；引用清单可核对                                          |
+| 模型与 MCP   | `model_provider`、`model`、`tenant_data_key`、`provider_credential`、`model_invocation`、`mcp_server`、`mcp_tool`、`mcp_tool_grant`、`mcp_invocation` | 凭据信封加密；M02 单一部署级模型端点                                                    |
+| 审计         | `audit_event`、`audit_export_request`                                                                                                                 | 只追加；触发器拒绝 UPDATE/DELETE；M10 提供只读查询与流式导出，导出申请/审批记录单独存表 |
+| 会话存储     | `SPRING_SESSION`、`SPRING_SESSION_ATTRIBUTES`                                                                                                         | 基础设施表，租户从主体派生                                                              |
 
 ### 删除与保留
 
 - 会话与产物写入 `retention_expires_at`（默认 180 天）；账号只禁用不删除；文件/会话/知识库文档软删除。
-- 审计至少保留 180 天；M02 无删除 API，M09 由维护账号按分区 `DROP PARTITION`。
+- 审计至少保留 180 天；M02 无删除 API，M09 由维护账号按分区 `DROP PARTITION`。M10 增加只读查询与导出，不改变 append-only；导出文件不落盘，`audit_export_request` 记录随审计保留策略由 M09 清理。
 - 迁移只向前；破坏性变更按 ADR-0010 的 expand → contract 两阶段，回滚以前向修复 + 备份恢复为主。
 
 ## M03 组织与部门数据范围
@@ -153,7 +173,7 @@ M03 不引入跨请求共享缓存；成员移出、部门停用、负责人移�
 | `department.read`            | 否               | 是             | 是（仅本人部门）                       |
 | `workspace.write`            | 否               | 是             | 否（服务层按负责人关系授权本部门空间） |
 
-审计动作：`department.created/renamed/disabled/enabled/member.added/member.removed/manager.changed`、`workspace.created/updated/visibility.changed/member.added/member.removed`；目标类型新增 `DEPARTMENT`。跨租户部门事件沿用 M02 管理员口径：`tenant_id=platform`，目标租户写入 `details.targetTenantId`；目标租户的 M10 审计可见模型需 M10 设计。details 只允许 UUID、计数、枚举与部门名，不含姓名、邮箱、成员名单或业务内容（ADR-0018 §5、ADR-0007）。
+审计动作：`department.created/renamed/disabled/enabled/member.added/member.removed/manager.changed`、`workspace.created/updated/visibility.changed/member.added/member.removed`；目标类型新增 `DEPARTMENT`。跨租户部门事件沿用 M02 管理员口径：`tenant_id=platform`，目标租户写入 `details.targetTenantId`；M10 的结论是目标租户不可见这些平台来源事件，见 ADR-0020 §3 与 M03 F-009。details 只允许 UUID、计数、枚举与部门名，不含姓名、邮箱、成员名单或业务内容（ADR-0018 §5、ADR-0007）。
 
 ### API 摘要
 
@@ -176,17 +196,52 @@ M03 不引入跨请求共享缓存；成员移出、部门停用、负责人移�
 
 Builder 任务边界、写范围、验收和验证命令见 ADR-0018 §8：6 个 Builder 任务（B1a 领域词汇/共享接口、B2 平台部门后端、B3 空间可见性、B4 内容贯通、B1b V9 收紧与迁移测试、B5 Web 管理界面）+ Verifier 独立 `DEPT-001..010`、`TEN-027`、`E2E-M03-01/02/07` 与 a11y。Builder 写 `IT-DEPT-*` 与代码级测试；Verifier 不改生产代码。
 
+## M10 身份与审计纵深
+
+M10 的完整决策见 `docs/adr/ADR-0019-m10-oidc-sso.md` 与 `docs/adr/ADR-0020-m10-audit-query-export.md`（均为 `proposed`）。本节只给实现者需要的最小地图。
+
+### 身份（OIDC/SSO）
+
+- **每租户 1 个 IdP，配置只来自部署 Secret**：`RICCON_OIDC_IDPS`（JSON 数组）提供 `tenantCode`、`issuer`、`clientId`、`clientSecret`、可选 `providerName`/`scopes`/`endSessionEndpoint`/`enabled`。M10 不建 `tenant_idp_config` 表、不提供运维 UI；未配置即关闭企业登录，内置账号不受影响。
+- **协议**：Authorization Code + PKCE（S256）+ OIDC nonce；registrationId `tenant-{tenantCode}`；授权入口 `/api/v1/auth/oidc/authorize/{registrationId}`，回调 `/api/v1/auth/oidc/callback/{registrationId}`；ID Token 只校验 `iss`/`aud`/`exp`/nonce/签名，之后丢弃。
+- **无 token**：access/refresh/ID token 不写会话、不写库、不写日志、不回传浏览器；使用 no-op `OAuth2AuthorizedClientRepository`。会话仍是 `RICCON_SESSION` + Spring Session JDBC（ADR-0013）；成功后轮换会话 ID 与 CSRF，`RicconPrincipal` 落既有安全上下文，权限每请求查库。
+- **账号**：身份键 `(tenant_id, issuer, subject)`；不自动开通、不按邮箱关联；管理员显式绑定已有账号（转换 `auth_source=OIDC`、删除本地密码凭据）或直接创建 OIDC 账号；同邮箱不同 issuer 生成不同账号；提供“解绑并设置本地密码”的恢复路径。
+- **错误态**：`idp_unavailable`、`state_invalid`、`access_denied`、`account_not_bound`、`account_disabled`、`tenant_unavailable`、`issuer_mismatch`、`rate_limited`、`login_failed`；登录页按原因给下一步，不回显 IdP 原始错误、token、内部地址或堆栈。
+- **登出**：本地登出权威，始终成功；IdP `end_session_endpoint` 可用时通过响应头 `X-Riccon-Federated-Logout-Url` 提供显式联合登出动作，不声称 IdP 不可达时自动完成。并发会话允许，M10 不做全局踢出；账号禁用下一次请求生效。
+- **后置**：MFA、多 IdP、IdP 组映射、SCIM/LDAP、自动开通、平台管理员 OIDC 登录。MFA 不检查 `acr`/`amr`，不声称强认证（DEC-0013）。
+
+### 审计查询与导出
+
+- **只读查询**：`GET /api/v1/audit-events`（`audit.read`），租户只从主体派生；时间范围必带偏移、默认最近 24h、最大 180 天；动作/操作者/对象/结果过滤；固定 `occurred_at DESC, event_id DESC`；`page` 1..200、`size` ≤100；不返回 `source_ip`。查询写 `audit.queried`。
+- **导出**：`POST /api/v1/audit-exports` 申请（服务端计算预计行数，默认上限 10,000）；同租户另一管理员用 `audit.export.approve` 审批，禁止自批；单管理员租户由平台管理员通过 `/api/v1/admin/tenants/{tenantId}/audit-exports` 审批（仅元数据）。批准后 `expires_at = decided_at + 24h`（上限 7 天）；只有申请人可下载。
+- **不落盘**：下载是 `text/csv` 流，含 `#` 元数据（exportId、generatedAt、filters、rowCount）、固定字段白名单与 `details`；不含密码哈希、token、模型/MCP 凭据、文件原文、邮箱、`source_ip`。过期 410；无持久文件、无预签名 URL、无清理作业。每次成功下载写 `data.exported`。
+- **平台边界**：平台管理员只能查询 `platform` 租户自身事件；不能读取目标租户审计明细。M03 平台来源事件（`tenant_id=platform` + `details.targetTenantId`）在 M10 对目标租户仍不可见（M03 F-009）；跨租户可见模型需另立 ADR（DEC-0013/OQ-13）。
+- **保留/索引**：审计保留 ≥180 天，不随租户保留期缩短；M09 按分区清理。V10 新增 `(tenant_id, action, occurred_at)`、`(tenant_id, actor_id, occurred_at)` 索引；不改变分区与 append-only 触发器。
+- **后置**：MFA、审计哈希链、跨租户审计明细、导出归档/常驻链接、在线删除、定时导出。
+
+### 契约与迁移摘要
+
+| 能力     | 端点                                                                                                                                            |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| 企业登录 | `GET /auth/oidc/providers`、`GET /auth/oidc/authorize/{registrationId}`、`GET /auth/oidc/callback/{registrationId}`                             |
+| 账号绑定 | `PUT /users/{userId}/oidc-binding`、`POST /users/{userId}/oidc-binding/remove`（平台管理端同路径族）                                            |
+| 审计查询 | `GET /audit-events`、`GET /audit-events/policy`                                                                                                 |
+| 导出     | `POST /audit-exports`、`GET /audit-exports`、`GET /audit-exports/{id}`、`POST /audit-exports/{id}/decision`、`GET /audit-exports/{id}/download` |
+| 平台审批 | `GET /admin/tenants/{tenantId}/audit-exports`、`POST /admin/tenants/{tenantId}/audit-exports/{id}/decision`                                     |
+
+- V10 单迁移：`audit_export_request`、两个 `audit_event` 索引、`audit.read`/`audit.export.approve`/`platform.audit.export.approve` 权限与角色回填。OIDC 无 schema 变更。回滚 SQL 见 ADR-0020 §5.4；worker schema 期望版本 9→10。
+
 ## 契约
 
 - REST 前缀 `/api/v1`；破坏性变更升 `/api/v2`，不允许在同一版本内改变字段语义。
 - 错误响应使用 RFC 9457 `ProblemDetail`，扩展字段至少包含 `code`、`traceId`、`tenantId`（脱敏后）。
-- 契约目录（M02 建立，M03 扩展）：
-  - `contracts/openapi.yaml`：认证、工作空间与部门、文件、会话、知识库、报告任务、审批、产物、模型/MCP 目录与账号管理；
-  - `contracts/internal-api.yaml`：API → Worker 内部 HTTP/SSE，仅集群内可达（M03 无变更）；
+- 契约目录（M02 建立，M03/M10 扩展）：
+  - `contracts/openapi.yaml`：认证（含 M10 OIDC）、工作空间与部门、文件、会话、知识库、报告任务、审批、产物、模型/MCP 目录、账号管理（含 OIDC 绑定）、审计查询/导出与平台导出审批；
+  - `contracts/internal-api.yaml`：API → Worker 内部 HTTP/SSE，仅集群内可达（M03/M10 无变更）；
   - `contracts/events/`：outbox 信封与事件 JSON Schema、SSE 事件 schema；
   - `contracts/README.md`：版本、兼容、幂等与安全规则。
 - 事件命名：`riccon.<domain>.<event>.v1`；事件必须带 `eventId`、`occurredAt`、`tenantId`、`traceId`、`idempotencyKey`。
-- 审计查询/导出（M10）、OIDC/SSO（M10）、模型路由/配额（M04）、文档 ACL/OCR（M05）、MCP 注册/凭据托管（M07）不在 M03 契约中定义，OpenAPI 用 `x-riccon-deferred` 标注。
+- M10 契约版本 `1.2.0-m10`：OIDC/SSO、审计查询、导出审批已定义；`x-riccon-deferred` 明确标注 MFA、审计哈希链、平台跨租户审计明细、模型路由/配额（M04）、文档 ACL/OCR（M05）、MCP 注册/凭据托管（M07）。
 - OpenAPI 契约手工维护为 `contracts/openapi.yaml`；实现可用 springdoc 生成运行时描述并在契约测试中与契约对比。M01 默认关闭文档端点，M02 按环境开启。
 
 ## 安全与隐私
@@ -194,12 +249,12 @@ Builder 任务边界、写范围、验收和验证命令见 ADR-0018 §8：6 个
 - **默认拒绝**：`apps/api` 与 `apps/worker` 的过滤器链只放行 `/actuator/health`，其余请求在 M02 前一律拒绝。
 - **无默认用户**：排除 Spring Boot 内存用户自动配置，避免生成默认密码。
 - **租户隔离**：`TenantContext` 基于 ThreadLocal，入口 Filter 打开作用域，出口关闭；跨线程必须显式传递。M02 接入异步/响应式链路时按 ADR-0003 扩展。
-- **认证**：M02 使用内置账号 + Spring Session JDBC 服务端会话；Cookie `HttpOnly`、`SameSite=Lax`、非本地 `Secure`；登录后轮换会话 ID，登出失效；所有写操作校验 `X-CSRF-TOKEN`。不使用 JWT。OIDC Authorization Code/PKCE 在 M10 接入，复用同一会话层（ADR-0013）。
-- **登录防护**：统一失败提示、bcrypt 12、连续 5 次失败锁定 15 分钟、进程内按 IP + 租户限流；登录成功/失败/登出写审计。
-- **密钥**：只从环境变量或密钥管理服务读取；禁止写入仓库、镜像、日志、证据和提示词。
+- **认证**：M02 使用内置账号 + Spring Session JDBC 服务端会话；Cookie `HttpOnly`、`SameSite=Lax`、非本地 `Secure`；登录后轮换会话 ID，登出失效；所有写操作校验 `X-CSRF-TOKEN`。不使用 JWT。M10 OIDC 使用 Authorization Code + PKCE + nonce，复用同一会话层（ADR-0013/0019）；access/refresh/ID token 不落会话、不落库、不落日志。
+- **登录防护**：统一失败提示、bcrypt 12、连续 5 次失败锁定 15 分钟、进程内按 IP + 租户限流；登录成功/失败/登出写审计。OIDC 失败使用稳定原因码，不回显 IdP 原始错误。
+- **密钥**：只从环境变量或密钥管理服务读取；禁止写入仓库、镜像、日志、证据和提示词。OIDC `clientSecret` 走同一模式，配置只从 Secret 注入。
 - **MCP**：工具白名单、参数校验、超时与出网限制；高风险工具必须人工审批。
 - **提示注入**：知识库与 MCP 返回内容一律视为不可信数据，不进入系统指令；M02 建立注入用例集。
-- **审计**：模型、工具、MCP、权限和租户变更必须留痕；审计写入失败时业务失败，不允许静默丢弃。
+- **审计**：模型、工具、MCP、权限和租户变更必须留痕；审计写入失败时业务失败，不允许静默丢弃。M10 查询只读、强制租户与时间范围；导出需另一管理员审批、申请人不得自批、只有申请人可下载、CSV 字段白名单、无持久文件、过期即不可下载。平台管理员不读取目标租户审计明细。
 
 ## 性能预算
 
@@ -245,6 +300,11 @@ Builder 任务边界、写范围、验收和验证命令见 ADR-0018 §8：6 个
 | 部门成员关系陈旧或缓存导致移出后仍可访问        | 中     | 高（跨部门泄露） | 每请求查库；无跨请求缓存；成员移出/部门停用/负责人移交下一次请求生效；`DEPT-007`                   |
 | M02 遗留 `TENANT` 空间在 M03 仍全租户可见       | 中     | 中（租户内越权） | M03 不提供转换；评审列遗留清单；转换在 M04/M09 设计；新空间禁止 `TENANT`（R-11）                   |
 | 知识库租户级共享被误读为部门隔离                | 中     | 中（预期错位）   | 界面固定明示；源文件打开/下载仍走空间 404；M05 文档 ACL                                            |
+| IdP 配置漂移/密钥轮换失败导致企业登录不可用     | 中     | 高（无法登录）   | 配置启动校验；内置账号兜底；滚动重启；`oidc-binding/remove` 恢复本地密码；M09 运行手册             |
+| OIDC token 或 IdP 原始错误泄漏到浏览器/日志     | 低     | 高（账号接管）   | 不存 token；no-op authorized client；失败只映射原因码；`SEC-OIDC-001`；日志脱敏                    |
+| 审计导出被审批绕过或跨租户读取                  | 低     | 高（批量泄露）   | 申请人≠审批人；只有申请人下载；平台审批仅元数据；`TEN-028..030`、`SEC-AUDIT-001`                   |
+| 深层分页/大范围查询拖慢审计库                   | 中     | 中（可用性）     | 最大 180 天、page ≤200、size ≤100、导出上限 10,000、V10 索引；M09 观测慢查询                       |
+| 流式导出在有效期内重复生成导致行数变化          | 中     | 低（结果解释）   | `occurredTo` 固定；CSV 元数据写实际 `rowCount`；审批记录与 `data.exported` 可核对                  |
 
 ## 相关决策
 
@@ -266,3 +326,5 @@ Builder 任务边界、写范围、验收和验证命令见 ADR-0018 §8：6 个
 - `docs/adr/ADR-0016-worker-outbox-claim-cross-tenant.md`
 - `docs/adr/ADR-0017-approval-params-encrypted-replay.md`
 - `docs/adr/ADR-0018-m03-organization-and-department-scope.md`
+- `docs/adr/ADR-0019-m10-oidc-sso.md`
+- `docs/adr/ADR-0020-m10-audit-query-export.md`
