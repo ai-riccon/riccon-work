@@ -31,7 +31,7 @@ product:
     - "agentscope Team/Workflow preview 的可视化编排（M06 自研 DAG Studio 属于 v1）"
   success_metrics:
     - "12 周内 M02（MVC）可演示"
-    - "24 周内完成 M02–M06 私有化 v1"
+    - "24 周内完成 M02–M06（含 M10/M03b）私有化 v1"
     - "MVC 旅程 J1/J2 E2E 通过，跨租户越权用例零漏检"
     - "假模型基准下首字 p95 不超过 3 秒"
     - "审计覆盖模型、工具、MCP 与权限变更"
@@ -46,7 +46,11 @@ product:
       status: done
     - id: M03
       title: "权限纵深与组织模型"
-      goal: "组织/部门、数据范围、越权测试套件、OIDC/SSO、审计查询"
+      goal: "组织/部门、部门数据范围、部门维度越权测试套件"
+      status: building
+    - id: M10
+      title: "身份与审计纵深（M03b）"
+      goal: "OIDC/SSO、审计查询与导出审批、身份与导出越权用例"
       status: planned
     - id: M04
       title: "模型网关纵深"
@@ -329,10 +333,10 @@ budget:
 | `riccon-contract`                | lead、architect | 合同变更 | 改合同前必须加载                 |
 | `riccon-verify`                  | verifier        | 验证     | DoD、假绿识别、E2E、安全         |
 | `riccon-docs`                    | 全员            | 文档     | 最小文档规则                     |
-| `x-components`                   | builder（前端） | M02 起    | Bubble、Sender、Conversations 等 |
-| `x-chat-provider` / `use-x-chat` | builder（前端） | M02 起    | 流式消息与自定义 Provider        |
-| `x-markdown` / `x-request`       | builder（前端） | M02 起    | 富文本流式渲染与请求封装         |
-| `x-card`                         | builder（前端） | M06 起    | Agent 动态富交互 UI，按需加载    |
+| `x-components`                   | builder（前端） | M02 起   | Bubble、Sender、Conversations 等 |
+| `x-chat-provider` / `use-x-chat` | builder（前端） | M02 起   | 流式消息与自定义 Provider        |
+| `x-markdown` / `x-request`       | builder（前端） | M02 起   | 富文本流式渲染与请求封装         |
+| `x-card`                         | builder（前端） | M06 起   | Agent 动态富交互 UI，按需加载    |
 | `browser`                        | verifier、lead  | 审阅     | 人工 UX 抽查，不作为门禁证据     |
 
 ### 明确不用
