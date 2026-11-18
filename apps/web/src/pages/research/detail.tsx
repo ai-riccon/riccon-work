@@ -10,6 +10,7 @@ import {
   describeResearchFailure,
   formatDateTime,
   formatShortId,
+  isTerminalResearchStatus,
   researchStatusColor,
   researchStatusLabel,
   STAGE_LABELS,
@@ -174,6 +175,12 @@ export default function ResearchDetailPage({
     ? { id: auth.session.user.id, displayName: auth.session.user.displayName }
     : null;
   const retryStage = failure?.stage === 'GENERATION' ? 'GENERATION' : 'TOOL';
+  const terminal = isTerminalResearchStatus(detail.status);
+  // 终态任务的 currentStage 可能尚未收尾；不再展示“当前阶段”，避免误读为仍在运行。
+  const activeStage = terminal ? null : detail.currentStage;
+  const artifactContentUrl = detail.artifact?.currentVersionDetail
+    ? api.getArtifactContentUrl(detail.artifact.id, detail.artifact.currentVersionDetail.version)
+    : null;
 
   return (
     <div className="research-page">
@@ -187,9 +194,9 @@ export default function ResearchDetailPage({
           <StatusTag tone={researchStatusColor(detail.status)}>
             {researchStatusLabel(detail.status)}
           </StatusTag>
-          {detail.currentStage && (
+          {activeStage && (
             <Typography.Text type="secondary">
-              当前阶段：{STAGE_LABELS[detail.currentStage]}
+              当前阶段：{STAGE_LABELS[activeStage]}
             </Typography.Text>
           )}
           <Typography.Text type="secondary">
@@ -205,7 +212,7 @@ export default function ResearchDetailPage({
 
       <div aria-live="polite" className="research-sr-only">
         {`任务状态：${researchStatusLabel(detail.status)}${
-          detail.currentStage ? `；当前阶段：${STAGE_LABELS[detail.currentStage]}` : ''
+          activeStage ? `；当前阶段：${STAGE_LABELS[activeStage]}` : ''
         }`}
       </div>
 
@@ -307,6 +314,7 @@ export default function ResearchDetailPage({
       />
 
       <ArtifactPanel
+        artifactContentUrl={artifactContentUrl}
         body={controller.artifactBody}
         bodyError={controller.artifactBodyError}
         bodyLoading={controller.artifactBodyLoading}

@@ -1960,6 +1960,32 @@ function handleApi(req, res, url, raw) {
     return true;
   }
 
+  const artifactContentMatch = /^\/api\/v1\/artifacts\/([^/]+)\/versions\/(\d+)\/content$/.exec(
+    pathname,
+  );
+  if (artifactContentMatch && method === 'GET') {
+    const artifactId = decodeURIComponent(artifactContentMatch[1]);
+    const version = Number(artifactContentMatch[2]);
+    const task = state.researchTasks.find(
+      (item) => item.artifact?.id === artifactId && item.artifact.currentVersion === version,
+    );
+    if (!task?.artifact || !task.artifactBody) {
+      writeResult(res, problem(404, 'RICCON-TENANT-404', '产物不存在', '产物或版本不存在。'));
+      return true;
+    }
+    // 同源内容端点：模拟 API 代理对象存储，浏览器不直接访问预签名地址。
+    const payload = Buffer.from(task.artifactBody, 'utf8');
+    res.writeHead(200, {
+      'Content-Type':
+        task.artifact.currentVersionDetail?.contentType ?? 'text/markdown; charset=utf-8',
+      'Content-Length': payload.length,
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    res.end(payload);
+    return true;
+  }
+
   const artifactsMatch = /^\/api\/v1\/workspaces\/([^/]+)\/artifacts$/.exec(pathname);
   if (artifactsMatch && method === 'GET') {
     if (decodeURIComponent(artifactsMatch[1]) !== state.workspace.id) {

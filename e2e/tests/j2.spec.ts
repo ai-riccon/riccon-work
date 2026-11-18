@@ -15,6 +15,13 @@ const TOPIC_SUCCESS = '2026 年中国企业协同办公市场规模与竞争格�
  */
 test.describe('J2 市场调研报告', () => {
   test('创建、审批、工具取数与报告产物完整闭环 @a11y', async ({ page }) => {
+    const artifactRequests: string[] = [];
+    page.on('request', (request) => {
+      const url = request.url();
+      if (url.includes('/artifacts/') && url.includes('/versions/')) {
+        artifactRequests.push(url);
+      }
+    });
     await login(page);
     await openResearch(page);
     await expectNoSeriousA11yViolations(page);
@@ -65,6 +72,14 @@ test.describe('J2 市场调研报告', () => {
     await page.getByRole('button', { name: /下载 Markdown/ }).click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/\.md$/);
+
+    // 正文与下载都走 API 同源 content 端点，不再直连对象存储预签名地址。
+    expect(
+      artifactRequests.some((url) =>
+        /\/api\/v1\/artifacts\/[^/]+\/versions\/\d+\/content$/.test(url),
+      ),
+    ).toBe(true);
+    expect(artifactRequests.some((url) => url.includes('/objects/'))).toBe(false);
 
     await expectNoSeriousA11yViolations(page);
 

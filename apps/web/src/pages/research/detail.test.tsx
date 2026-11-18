@@ -222,6 +222,65 @@ describe('报告任务详情页', () => {
     expect(screen.queryByRole('button', { name: /下载 Markdown/ })).not.toBeInTheDocument();
   });
 
+  it('审批拒绝进入终态后不再显示进行中，并补刷一次阶段收尾', async () => {
+    const rejectedApproval = makeApproval({
+      status: 'REJECTED',
+      decidedBy: DEMO_SESSION.user.id,
+      decidedAt: '2026-11-17T08:04:00.000Z',
+    });
+    // 第 1 次：等待审批；第 2 次：任务已取消但阶段尚未收尾；第 3 次：阶段已收尾。
+    const stale = makeResearchDetail({
+      status: 'CANCELLED',
+      currentStage: 'TOOL',
+      failureCode: 'RICCON-APPROVAL-REJECTED',
+      failureMessage: '审批被拒绝，任务已终止，未生成报告。',
+      stages: [
+        ...RESEARCH_STAGES,
+        { stage: 'APPROVAL', attempt: 1, status: 'RUNNING' },
+        { stage: 'TOOL', attempt: 1, status: 'RUNNING' },
+        { stage: 'GENERATION', attempt: 1, status: 'SKIPPED' },
+      ],
+      approvals: [rejectedApproval],
+    });
+    const settled: ResearchTaskDetail = {
+      ...stale,
+      currentStage: null,
+      finishedAt: '2026-11-17T08:04:00.000Z',
+      stages: [
+        ...RESEARCH_STAGES,
+        { stage: 'APPROVAL', attempt: 1, status: 'FAILED' },
+        { stage: 'TOOL', attempt: 1, status: 'SKIPPED' },
+        { stage: 'GENERATION', attempt: 1, status: 'SKIPPED' },
+      ],
+    };
+    let detailCalls = 0;
+    const api = createFakeApi({
+      getResearchTask: vi.fn(async () => {
+        detailCalls += 1;
+        if (detailCalls === 1) {
+          return makeResearchDetail();
+        }
+        return detailCalls === 2 ? stale : settled;
+      }),
+      decideApproval: vi.fn(async () => rejectedApproval),
+    });
+    renderDetail(api);
+
+    fireEvent.click(await screen.findByRole('button', { name: /拒\s*绝/ }));
+
+    expect(await screen.findByText('任务已终止')).toBeVisible();
+    // 即使阶段收尾滞后，终态任务也不能显示“进行中”。
+    expect(screen.queryByText('进行中')).not.toBeInTheDocument();
+    await waitFor(
+      () => {
+        expect(detailCalls).toBeGreaterThanOrEqual(3);
+      },
+      { timeout: 2_000 },
+    );
+    expect(api.getResearchTask).toHaveBeenCalledTimes(3);
+    expect(screen.getAllByText('已跳过').length).toBeGreaterThan(0);
+  });
+
   it('工具失败时显示原因并可重试阶段，保留旧调用记录', async () => {
     const failedInvocation = makeInvocation({
       id: 'invocation-failed',
@@ -383,16 +442,6 @@ describe('报告任务详情页', () => {
     const api = createFakeApi({
       getResearchTask: vi.fn(async () => succeededDetail()),
     });
-    const createObjectURL = vi.fn(() => 'blob:report');
-    const revokeObjectURL = vi.fn();
-    Object.defineProperty(globalThis.URL, 'createObjectURL', {
-      configurable: true,
-      value: createObjectURL,
-    });
-    Object.defineProperty(globalThis.URL, 'revokeObjectURL', {
-      configurable: true,
-      value: revokeObjectURL,
-    });
     const anchorClick = vi
       .spyOn(HTMLAnchorElement.prototype, 'click')
       .mockImplementation(() => undefined);
@@ -434,23 +483,30 @@ describe('报告任务详情页', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: /下载 Markdown/ }));
-    expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(anchorClick).toHaveBeenCalled();
+    expect(api.getArtifactContentUrl).toHaveBeenCalledWith('artifact-1', 1);
     anchorClick.mockRestore();
     expect(api.fetchArtifactContent).toHaveBeenCalledWith('artifact-1', 1, expect.anything());
   });
 
-  it('正文加载失败时提示并可重试；非 Markdown 只提示下载', async () => {
+  it('正文加载失败时提示并可重试；下载按钮仍可用', async () => {
     const api = createFakeApi({
       getResearchTask: vi.fn(async () => succeededDetail()),
       fetchArtifactContent: vi.fn(async () => {
         throw new ApiError('服务不可用', { status: 500, code: 'RICCON-INTERNAL-500' });
       }),
     });
+    const anchorClick = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
     const { unmount } = renderDetail(api);
 
     expect(await screen.findByText('报告正文加载失败')).toBeVisible();
-    expect(screen.getByRole('button', { name: /下载 Markdown/ })).toBeDisabled();
+    const download = screen.getByRole('button', { name: /下载 Markdown/ });
+    expect(download).toBeEnabled();
+    fireEvent.click(download);
+    expect(anchorClick).toHaveBeenCalled();
+    anchorClick.mockRestore();
     fireEvent.click(
       within(screen.getByText('报告正文加载失败').closest('.ant-alert') as HTMLElement).getByRole(
         'button',
@@ -474,7 +530,8 @@ describe('报告任务详情页', () => {
     renderDetail(unsupportedApi);
     expect(await screen.findByText('暂不支持在线预览')).toBeVisible();
     expect(unsupportedApi.fetchArtifactContent).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: /下载 Markdown/ })).toBeDisabled();
+    // 非 Markdown 不做在线预览，但仍可通过同源 content 端点下载。
+    expect(screen.getByRole('button', { name: /下载产物/ })).toBeEnabled();
   });
 
   it('没有引用或数据来源时给出明确空态', async () => {

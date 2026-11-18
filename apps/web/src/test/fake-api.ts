@@ -514,6 +514,10 @@ export function createFakeApi(overrides: Partial<RicconApi> = {}): RicconApi {
       url: `https://files.example.test/artifacts/${artifactId}/versions/${version}`,
       expiresAt: '2026-11-17T09:00:00.000Z',
     })),
+    getArtifactContentUrl: vi.fn(
+      (artifactId: string, version: number) =>
+        `/api/v1/artifacts/${artifactId}/versions/${version}/content`,
+    ),
     fetchArtifactContent: vi.fn(async () => ARTIFACT_MARKDOWN),
   };
 

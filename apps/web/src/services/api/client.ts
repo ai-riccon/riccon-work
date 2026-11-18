@@ -50,6 +50,8 @@ interface RequestOptions {
   signal?: AbortSignal;
   /** 幂等键等附加请求头。 */
   extraHeaders?: Record<string, string>;
+  /** 可选缓存策略；产物正文预览必须绕过浏览器缓存。 */
+  cache?: RequestCache;
 }
 
 /** 员工端 J1 需要的最小 API 能力集合。 */
@@ -95,6 +97,7 @@ export interface RicconApi {
   getArtifact(artifactId: string): Promise<ArtifactDetail>;
   listArtifactVersions(artifactId: string): Promise<Page<ArtifactVersion>>;
   getArtifactVersion(artifactId: string, version: number): Promise<ArtifactVersion>;
+  getArtifactContentUrl(artifactId: string, version: number): string;
   getArtifactDownloadUrl(artifactId: string, version: number): Promise<DownloadUrl>;
   fetchArtifactContent(artifactId: string, version: number, signal?: AbortSignal): Promise<string>;
 }
@@ -116,18 +119,6 @@ function artifactTooLargeError(): ApiError {
     code: 'RICCON-CLIENT-ARTIFACT-TOO-LARGE',
     retryable: false,
   });
-}
-
-/**
- * 判断是否为绝对 URL。
- *
- * 预签名地址通常是对象存储的绝对 URL；本地反向代理也可能返回同源相对路径。
- *
- * @param value 待判断的地址
- * @returns 是否以 http/https 开头
- */
-function isAbsoluteUrl(value: string): boolean {
-  return /^https?:\/\//i.test(value);
 }
 
 /** 生成 UUID；优先使用浏览器/Node 内置实现，测试环境缺失时退化为时间戳。 */
@@ -587,6 +578,20 @@ export class ApiClient implements RicconApi {
   }
 
   /**
+   * 生成产物正文的同源内容地址。
+   *
+   * 下载按钮直接使用该地址，由 API 以流式方式代理对象存储内容；
+   * 同源地址会携带会话 Cookie，不依赖对象存储 CORS，也不把正文读入内存。
+   *
+   * @param artifactId 产物 ID
+   * @param version 版本号
+   * @returns 同源内容 URL
+   */
+  getArtifactContentUrl(artifactId: string, version: number): string {
+    return `${this.baseUrl}/api/v1/artifacts/${encodeURIComponent(artifactId)}/versions/${version}/content`;
+  }
+
+  /**
    * 获取产物正文的预签名下载地址。
    *
    * 契约要求 TTL 不超过 300 秒，调用方不应缓存或转存该 URL。
@@ -604,10 +609,9 @@ export class ApiClient implements RicconApi {
   /**
    * 读取产物正文文本（Markdown）。
    *
-   * 正文存放在对象存储，API 只返回预签名 URL；这里先取 URL 再直接读取对象，
-   * 不复用 API 客户端的 `Accept: application/json` 与 Cookie：
-   * - 预签名 URL 可能指向不同源，携带 Cookie 会扩大凭据暴露面；
-   * - 对象存储返回 text/markdown，按 JSON 解析会失败。
+   * 正文通过 API 同源内容端点读取，不直接访问对象存储：
+   * - 同源请求复用会话 Cookie，不向跨源对象存储暴露凭据，也不依赖其 CORS 配置；
+   * - API 负责租户与版本授权，正文不会被对象存储地址绕过。
    *
    * 预览设置 2 MiB 上限，超过时提示用户下载后查看，避免把大对象读入内存。
    *
@@ -621,24 +625,17 @@ export class ApiClient implements RicconApi {
     version: number,
     signal?: AbortSignal,
   ): Promise<string> {
-    const download = await this.getArtifactDownloadUrl(artifactId, version);
-    const url = isAbsoluteUrl(download.url)
-      ? download.url
-      : `${this.baseUrl}${download.url.startsWith('/') ? '' : '/'}${download.url}`;
-
     try {
-      const fetchImpl = this.resolveFetch();
-      const response = await fetchImpl(url, {
-        method: 'GET',
-        headers: { Accept: 'text/markdown, text/plain;q=0.9, */*;q=0.1' },
-        // 预签名 URL 自带授权，不向对象存储发送同源 Cookie。
-        credentials: 'omit',
-        cache: 'no-store',
-        signal,
-      });
-      if (!response.ok) {
-        throw await toApiError(response);
-      }
+      const response = await this.performRequest(
+        `/api/v1/artifacts/${encodeURIComponent(artifactId)}/versions/${version}/content`,
+        'GET',
+        {
+          signal,
+          cache: 'no-store',
+          extraHeaders: { Accept: 'text/markdown, text/plain;q=0.9, */*;q=0.1' },
+        },
+        false,
+      );
       const declaredBytes = Number(response.headers.get('content-length') ?? '0');
       if (declaredBytes > MAX_ARTIFACT_CONTENT_CHARS) {
         throw artifactTooLargeError();
@@ -716,6 +713,7 @@ export class ApiClient implements RicconApi {
         headers,
         body,
         credentials: 'same-origin',
+        cache: options.cache,
         signal: options.signal,
       });
 

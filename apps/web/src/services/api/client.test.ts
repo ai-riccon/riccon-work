@@ -423,6 +423,9 @@ describe('ApiClient', () => {
     await client.listArtifactVersions('artifact-1');
     await client.getArtifactVersion('artifact-1', 2);
     await client.getArtifactDownloadUrl('artifact-1', 2);
+    expect(client.getArtifactContentUrl('artifact-1', 2)).toBe(
+      'http://api.test/api/v1/artifacts/artifact-1/versions/2/content',
+    );
 
     expect(
       calls.some((call) => call.url.endsWith('/workspaces/w1/artifacts?page=1&size=100')),
@@ -455,16 +458,10 @@ describe('ApiClient', () => {
     );
   });
 
-  it('读取产物正文时不向对象存储发送 Cookie', async () => {
+  it('读取产物正文使用同源 content 端点并携带会话凭据', async () => {
     const { fn, calls } = createFetch((url) => {
       if (url.endsWith('/auth/csrf')) return json({ headerName: 'X-CSRF-TOKEN', token: 'csrf' });
-      if (url.endsWith('/download-url')) {
-        return json({
-          url: 'https://objects.test/report.md',
-          expiresAt: '2026-11-17T09:00:00.000Z',
-        });
-      }
-      if (url === 'https://objects.test/report.md') {
+      if (url.endsWith('/artifacts/artifact-1/versions/1/content')) {
         return new Response(ARTIFACT_MARKDOWN, {
           status: 200,
           headers: { 'Content-Type': 'text/markdown' },
@@ -475,21 +472,23 @@ describe('ApiClient', () => {
     const client = new ApiClient({ baseUrl: 'http://api.test', fetchImpl: fn });
 
     await expect(client.fetchArtifactContent('artifact-1', 1)).resolves.toContain('市场规模与增长');
-    const objectCall = calls.find((call) => call.url === 'https://objects.test/report.md');
-    expect(objectCall?.init.credentials).toBe('omit');
-    expect(objectCall?.init.cache).toBe('no-store');
-    expect((objectCall?.init.headers as Record<string, string>).Accept).toBe(
+    const contentCall = calls.find((call) =>
+      call.url.endsWith('/artifacts/artifact-1/versions/1/content'),
+    );
+    expect(contentCall?.url).toBe('http://api.test/api/v1/artifacts/artifact-1/versions/1/content');
+    // 同源请求携带会话 Cookie，不再直连对象存储预签名地址。
+    expect(contentCall?.init.credentials).toBe('same-origin');
+    expect(contentCall?.init.cache).toBe('no-store');
+    expect((contentCall?.init.headers as Record<string, string>).Accept).toBe(
       'text/markdown, text/plain;q=0.9, */*;q=0.1',
     );
+    expect(calls.some((call) => call.url.endsWith('/download-url'))).toBe(false);
   });
 
-  it('相对预签名地址拼接 baseUrl，正文超限给出不可重试错误', async () => {
+  it('同源 content 端点响应超限给出不可重试错误', async () => {
     let contentLength = 0;
     const { fn, calls } = createFetch((url) => {
-      if (url.endsWith('/download-url')) {
-        return json({ url: '/objects/report.md', expiresAt: '2026-11-17T09:00:00.000Z' });
-      }
-      if (url === 'http://api.test/objects/report.md') {
+      if (url.endsWith('/artifacts/artifact-1/versions/1/content')) {
         return new Response('正文', {
           status: 200,
           headers: { 'Content-Length': String(contentLength) },
@@ -500,7 +499,11 @@ describe('ApiClient', () => {
     const client = new ApiClient({ baseUrl: 'http://api.test', fetchImpl: fn });
 
     await expect(client.fetchArtifactContent('artifact-1', 1)).resolves.toBe('正文');
-    expect(calls.some((call) => call.url === 'http://api.test/objects/report.md')).toBe(true);
+    expect(
+      calls.some(
+        (call) => call.url === 'http://api.test/api/v1/artifacts/artifact-1/versions/1/content',
+      ),
+    ).toBe(true);
 
     contentLength = 2 * 1024 * 1024 + 1;
     await expect(client.fetchArtifactContent('artifact-1', 1)).rejects.toMatchObject({
@@ -510,47 +513,27 @@ describe('ApiClient', () => {
     });
   });
 
-  it('正文超过字符上限、对象存储失败与网络失败都归一为 ApiError', async () => {
-    const { fn } = createFetch((url) => {
-      if (url.endsWith('/download-url')) {
-        return json({
-          url: 'https://objects.test/report.md',
-          expiresAt: '2026-11-17T09:00:00.000Z',
-        });
-      }
-      if (url === 'https://objects.test/forbidden.md') return problem(403, 'RICCON-AUTH-403');
-      if (url === 'https://objects.test/network.md') throw new TypeError('fetch failed');
-      return new Response('x'.repeat(2 * 1024 * 1024 + 1), { status: 200 });
-    });
-    const client = new ApiClient({ fetchImpl: fn });
+  it('正文超过字符上限、权限失败与网络失败都归一为 ApiError', async () => {
+    const { fn } = createFetch(
+      () => new Response('x'.repeat(2 * 1024 * 1024 + 1), { status: 200 }),
+    );
+    const client = new ApiClient({ baseUrl: 'http://api.test', fetchImpl: fn });
 
     await expect(client.fetchArtifactContent('artifact-1', 1)).rejects.toMatchObject({
       code: 'RICCON-CLIENT-ARTIFACT-TOO-LARGE',
     });
 
     const forbiddenClient = new ApiClient({
-      fetchImpl: createFetch((url) => {
-        if (url.endsWith('/download-url')) {
-          return json({
-            url: 'https://objects.test/forbidden.md',
-            expiresAt: '2026-11-17T09:00:00.000Z',
-          });
-        }
-        return problem(403, 'RICCON-AUTH-403');
-      }).fn,
+      baseUrl: 'http://api.test',
+      fetchImpl: createFetch(() => problem(403, 'RICCON-AUTH-403')).fn,
     });
     await expect(forbiddenClient.fetchArtifactContent('artifact-1', 1)).rejects.toMatchObject({
       status: 403,
     });
 
     const networkClient = new ApiClient({
-      fetchImpl: createFetch((url) => {
-        if (url.endsWith('/download-url')) {
-          return json({
-            url: 'https://objects.test/network.md',
-            expiresAt: '2026-11-17T09:00:00.000Z',
-          });
-        }
+      baseUrl: 'http://api.test',
+      fetchImpl: createFetch(() => {
         throw new TypeError('fetch failed');
       }).fn,
     });

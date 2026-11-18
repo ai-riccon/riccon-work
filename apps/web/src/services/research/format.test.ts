@@ -271,6 +271,35 @@ describe('J2 展示规则', () => {
     expect(describeResearchFailure(detail).retryable).toBe(false);
   });
 
+  it('终态任务中陈旧的运行中阶段按终态展示', () => {
+    const rejected = makeApproval({
+      status: 'REJECTED',
+      decidedBy: 'user-2',
+      decidedAt: '2026-11-17T08:04:00.000Z',
+      decisionComment: '数据范围过大',
+    });
+    const stale = makeResearchDetail({
+      status: 'CANCELLED',
+      currentStage: 'TOOL',
+      failureCode: 'RICCON-APPROVAL-REJECTED',
+      failureMessage: '审批被拒绝，任务已终止。',
+      approvals: [rejected],
+      stages: [
+        ...RESEARCH_STAGES,
+        // 模拟取消事件尚未收尾：阶段仍是 RUNNING，但任务已经终态。
+        { stage: 'APPROVAL', attempt: 1, status: 'RUNNING' },
+        { stage: 'TOOL', attempt: 1, status: 'RUNNING' },
+        { stage: 'GENERATION', attempt: 1, status: 'SKIPPED' },
+      ],
+    });
+    const timeline = buildStageTimeline(stale);
+
+    expect(timeline.every((item) => item.status !== 'RUNNING')).toBe(true);
+    expect(timeline[1].status).toBe('SKIPPED');
+    expect(timeline[2].status).toBe('FAILED');
+    expect(timeline[3].status).toBe('SKIPPED');
+  });
+
   it('完成的详情所有阶段成功并挂载最后一次工具调用', () => {
     const invocation = makeInvocation();
     const succeeded = makeResearchDetail({

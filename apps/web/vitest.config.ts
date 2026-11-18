@@ -28,6 +28,9 @@ export default defineConfig({
     environment: 'node',
     setupFiles: ['./src/test/setup.ts'],
     include: ['config/**/*.test.ts', 'src/**/*.test.{ts,tsx}'],
+    // 覆盖率插桩后 jsdom 首屏渲染明显变慢；统一放宽单测超时，避免把插桩开销误报为产品失败。
+    testTimeout: 15_000,
+    hookTimeout: 15_000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],

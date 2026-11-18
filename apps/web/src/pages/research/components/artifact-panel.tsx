@@ -22,6 +22,8 @@ export interface ArtifactPanelProps {
   body: string | null;
   bodyLoading: boolean;
   bodyError: string | null;
+  /** 产物正文的同源下载地址；为空表示当前没有可下载版本。 */
+  artifactContentUrl: string | null;
   highlightedAnchor: string | null;
   onReloadBody: () => void;
   onLocate: (anchorId: string) => void;
@@ -30,7 +32,7 @@ export interface ArtifactPanelProps {
 /**
  * 展示报告产物：标题、摘要、分节正文、引用清单与数据来源。
  *
- * 正文从对象存储按版本读取；引用清单中的每条记录都可定位到任务时间线，
+ * 正文通过 API 同源内容端点按版本读取；引用清单中的每条记录都可定位到任务时间线，
  * 让审批、工具调用与报告结论能人工抽查对应关系。
  *
  * @param props 任务详情、正文与回调
@@ -41,6 +43,7 @@ export function ArtifactPanel({
   body,
   bodyLoading,
   bodyError,
+  artifactContentUrl,
   highlightedAnchor,
   onReloadBody,
   onLocate,
@@ -50,30 +53,24 @@ export function ArtifactPanel({
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   /**
-   * 用已加载的正文生成 Markdown 下载。
+   * 通过同源内容端点下载报告。
    *
-   * 不直接跳转预签名 URL：对象存储地址可能跨域，浏览器会离开当前页面；
-   * 用 Blob 下载可以保留任务上下文，并在失败时给出可读提示。
+   * 下载地址与 API 同源并携带会话 Cookie，不依赖对象存储 CORS；
+   * 不把正文读入内存，因此正文超过在线预览上限时仍可下载。
    */
   const handleDownload = (): void => {
-    if (!body || !version) {
+    if (!artifact || !version || !artifactContentUrl) {
+      setDownloadError('暂未找到可下载的产物版本，请稍后重试。');
       return;
     }
     setDownloadError(null);
-    if (typeof URL.createObjectURL !== 'function') {
-      setDownloadError('当前浏览器不支持直接下载，请复制正文或稍后重试。');
-      return;
-    }
-    const blob = new Blob([body], { type: version.contentType || 'text/markdown;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = reportDownloadFilename(artifact?.title ?? '市场调研报告');
+    anchor.href = artifactContentUrl;
+    anchor.download = reportDownloadFilename(artifact.title ?? '市场调研报告');
     anchor.rel = 'noopener';
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
-    globalThis.setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
   if (!artifact || !version) {
@@ -101,12 +98,8 @@ export function ArtifactPanel({
       <Card
         extra={
           <Space wrap>
-            <Button
-              disabled={!body || !previewable}
-              icon={<DownloadOutlined />}
-              onClick={handleDownload}
-            >
-              下载 Markdown
+            <Button icon={<DownloadOutlined />} onClick={handleDownload}>
+              {previewable ? '下载 Markdown' : '下载产物'}
             </Button>
             <Button
               icon={<ReloadOutlined />}
@@ -152,7 +145,7 @@ export function ArtifactPanel({
         {!previewable ? (
           <Alert
             showIcon
-            description={`该报告正文格式为 ${version.contentType}，暂不支持在线预览；请通过产物下载接口获取。`}
+            description={`该报告正文格式为 ${version.contentType}，暂不支持在线预览；请点击右上角“下载产物”获取。`}
             title="暂不支持在线预览"
             type="info"
           />

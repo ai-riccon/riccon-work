@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RicconApi } from '@/services/api/client';
 import { ApiError, describeApiError, isAbortError } from '@/services/api/errors';
 import type { ApprovalDecision, ArtifactDetail, ResearchTaskDetail } from '@/services/api/types';
-import { isMarkdownContent } from '@/services/research/format';
+import { isMarkdownContent, isTerminalResearchStatus } from '@/services/research/format';
 
 /** 任务详情加载阶段。 */
 export type ResearchDetailPhase = 'loading' | 'ready' | 'forbidden' | 'notFound' | 'error';
@@ -34,6 +34,14 @@ const ACTIVE_STATUSES = new Set<ResearchTaskDetail['status']>([
 
 /** 默认轮询间隔；报告阶段以秒级推进，无需更密集的请求。 */
 const DEFAULT_POLL_INTERVAL_MS = 900;
+
+/**
+ * 终态后补刷延迟。
+ *
+ * 任务终态可能先于阶段收尾返回；停止轮询后等待一个很短的时间再读一次详情，
+ * 让 Worker 完成阶段收尾，同时不把“立即停止轮询”退化成持续轮询。
+ */
+const TERMINAL_REFRESH_DELAY_MS = 300;
 
 /**
  * 生成幂等键。
@@ -86,6 +94,9 @@ export function useResearchTask(
   const retryKeyRef = useRef<string | null>(null);
   const bodyKeyRef = useRef<string | null>(null);
   const bodyAbortRef = useRef<AbortController | null>(null);
+  const previousStatusRef = useRef<ResearchTaskDetail['status'] | null>(null);
+  const terminalStatusRef = useRef<ResearchTaskDetail['status'] | null>(null);
+  const terminalRefreshKeyRef = useRef<string | null>(null);
 
   /**
    * 读取产物正文；Markdown 才在线预览，其他类型由界面提示下载。
@@ -165,6 +176,16 @@ export function useResearchTask(
         if (token !== loadTokenRef.current) {
           return;
         }
+        // 已观察到终态后，忽略仍在路上的陈旧“活跃”响应，避免竞态把状态拉回运行中；
+        // 显式重试会把 retryingRef 置为 true，允许 FAILED 合法地回到活跃态。
+        if (
+          terminalStatusRef.current &&
+          !isTerminalResearchStatus(next.status) &&
+          !retryingRef.current
+        ) {
+          return;
+        }
+        terminalStatusRef.current = isTerminalResearchStatus(next.status) ? next.status : null;
         setDetail(next);
         setPhase('ready');
         setError(null);
@@ -210,6 +231,9 @@ export function useResearchTask(
     bodyKeyRef.current = null;
     decisionKeysRef.current.clear();
     retryKeyRef.current = null;
+    previousStatusRef.current = null;
+    terminalStatusRef.current = null;
+    terminalRefreshKeyRef.current = null;
     setActionError(null);
     void load(false);
     return () => {
@@ -219,12 +243,14 @@ export function useResearchTask(
   }, [load]);
 
   // 仅活跃任务轮询；终态、无权限与错误态停止。
+  const pollingActive = detail !== null && !isTerminalResearchStatus(detail.status);
   useEffect(() => {
-    if (!detail || !ACTIVE_STATUSES.has(detail.status)) {
+    if (!pollingActive) {
       return;
     }
     const timer = window.setInterval(() => {
-      if (pollInFlightRef.current) {
+      // 审批/重试动作进行时不并发轮询，避免动作后的刷新被陈旧响应覆盖。
+      if (pollInFlightRef.current || decidingRef.current || retryingRef.current) {
         return;
       }
       pollInFlightRef.current = true;
@@ -235,7 +261,34 @@ export function useResearchTask(
     return () => {
       window.clearInterval(timer);
     };
-  }, [detail, load, pollIntervalMs]);
+  }, [load, pollIntervalMs, pollingActive]);
+
+  // 从活跃态进入终态后补刷一次详情：任务终态可能先于阶段收尾返回。
+  useEffect(() => {
+    if (!detail) {
+      return;
+    }
+    const previous = previousStatusRef.current;
+    previousStatusRef.current = detail.status;
+    if (!isTerminalResearchStatus(detail.status)) {
+      return;
+    }
+    // 首次加载就是终态时不补刷；只处理“运行中 → 终态”的跃迁。
+    if (!previous || !ACTIVE_STATUSES.has(previous)) {
+      return;
+    }
+    const key = `${taskId}:${detail.status}:${detail.finishedAt ?? ''}`;
+    if (terminalRefreshKeyRef.current === key) {
+      return;
+    }
+    terminalRefreshKeyRef.current = key;
+    const timer = window.setTimeout(() => {
+      void load(true);
+    }, TERMINAL_REFRESH_DELAY_MS);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [detail, load, taskId]);
 
   /**
    * 批准或拒绝审批。

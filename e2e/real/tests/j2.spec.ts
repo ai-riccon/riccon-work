@@ -61,6 +61,14 @@ async function expectRetrievalSources(page: Page): Promise<string> {
  */
 test.describe('真实栈 J2', () => {
   test('创建→检索来源→审批→产物与引用', async ({ page }) => {
+    // 记录产物请求路径，证明正文走同源 content 端点而不是对象存储。
+    const artifactRequests: string[] = [];
+    page.on('request', (request) => {
+      const url = request.url();
+      if (url.includes('/artifacts/') && url.includes('/versions/')) {
+        artifactRequests.push(url);
+      }
+    });
     await login(page);
     await createResearchTask(page, '2026 年中国企业协同办公市场规模与竞争格局');
 
@@ -106,12 +114,20 @@ test.describe('真实栈 J2', () => {
     }));
     expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth);
 
-    // 产物正文必须在浏览器可读；预签名 URL 需要对象存储 CORS，失败时下载按钮保持 disabled。
+    // 产物正文必须通过 API 同源 content 端点可读，下载按钮随即可用；不再依赖对象存储 CORS。
     const download = page.getByRole('button', { name: '下载 Markdown' });
-    await expect(download, '产物正文未能加载，下载按钮应可用；检查预签名 URL 的 CORS').toBeEnabled({
+    await expect(download, '产物正文未能通过同源 content 端点加载，下载按钮应可用').toBeEnabled({
       timeout: 30_000,
     });
     await expect(page.getByText('报告正文加载失败')).toHaveCount(0);
+    expect(
+      artifactRequests.some((url) => url.endsWith('/content')),
+      '产物正文应通过同源 content 端点读取',
+    ).toBe(true);
+    expect(
+      artifactRequests.some((url) => url.includes('/objects/')),
+      '产物正文不应直连对象存储',
+    ).toBe(false);
   });
 
   test('拒绝审批后任务终止、阶段不再运行、无产物', async ({ page }) => {
@@ -125,9 +141,10 @@ test.describe('真实栈 J2', () => {
     await expect(page.getByText('任务已终止').first()).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText('任务已终止，未生成报告。')).toBeVisible();
     const timeline = page.locator('section[aria-labelledby="research-timeline-title"]');
-    // 已知 P2：前端在 CANCELLED 后停止轮询，Worker 收尾阶段不会自动刷新；记录刷新前的陈旧状态。
+    // 任务已终态时阶段不得继续显示“进行中”，即使 Worker 的阶段收尾略晚于任务状态。
     const staleRunning = await timeline.getByText('进行中').count();
     console.log(`REAL_J2_REJECT_STALE_RUNNING_STAGES=${staleRunning}`);
+    expect(staleRunning, '终态后时间线不应再显示进行中').toBe(0);
     // 刷新读取权威终态；Worker 可能尚未处理取消事件，重复刷新直到阶段收尾。
     await expect
       .poll(

@@ -52,6 +52,18 @@ const STAGE_STATUS_LABELS: Record<StageStatus | 'PENDING', string> = {
   PENDING: '等待中',
 };
 
+/**
+ * 判断报告任务是否已进入终态。
+ *
+ * 终态到达后不再轮询；终态任务的阶段不允许继续显示为“进行中”。
+ *
+ * @param status 任务状态
+ * @returns 是否为 SUCCEEDED/FAILED/CANCELLED
+ */
+export function isTerminalResearchStatus(status: ResearchTaskStatus): boolean {
+  return status === 'SUCCEEDED' || status === 'FAILED' || status === 'CANCELLED';
+}
+
 /** 审批状态中文名。 */
 const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
   PENDING: '待审批',
@@ -436,7 +448,8 @@ export function buildStageTimeline(detail: ResearchTaskDetail): StageTimelineIte
     const latestRecord = records.length > 0 ? records[records.length - 1] : null;
     const approval = stage === 'TOOL' || stage === 'APPROVAL' ? latestApproval : null;
     const invocation = stage === 'TOOL' ? latestInvocation : null;
-    const status = resolveStageStatus(detail, stage, latestRecord, latestApproval, failed.stage);
+    const resolved = resolveStageStatus(detail, stage, latestRecord, latestApproval, failed.stage);
+    const status = settleTerminalStageStatus(detail, stage, resolved, latestApproval);
 
     return {
       stage,
@@ -498,6 +511,37 @@ function resolveStageStatus(
     return 'SUCCEEDED';
   }
   return 'PENDING';
+}
+
+/**
+ * 修正终态任务中尚未收尾的阶段状态。
+ *
+ * 任务终态可能先于阶段收尾返回（例如审批拒绝后取消事件仍由 Worker 异步处理）；
+ * 此时后端记录可能短暂保留 RUNNING。任务已是终态时阶段不可能继续运行，
+ * 因此把陈旧的 RUNNING 按最终语义展示，避免用户看到“进行中”却不再轮询。
+ *
+ * @param detail 任务详情
+ * @param stage 阶段
+ * @param status 聚合状态
+ * @param latestApproval 最新审批
+ * @returns 修正后的状态
+ */
+function settleTerminalStageStatus(
+  detail: Pick<ResearchTaskDetail, 'status'>,
+  stage: RunStage,
+  status: StageStatus | 'PENDING',
+  latestApproval: Approval | null,
+): StageStatus | 'PENDING' {
+  if (status !== 'RUNNING' || !isTerminalResearchStatus(detail.status)) {
+    return status;
+  }
+  if (detail.status === 'SUCCEEDED') {
+    return 'SUCCEEDED';
+  }
+  if (stage === 'APPROVAL' && latestApproval?.status === 'REJECTED') {
+    return 'FAILED';
+  }
+  return 'SKIPPED';
 }
 
 /**
