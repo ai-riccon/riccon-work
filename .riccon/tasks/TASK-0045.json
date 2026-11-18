@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0045",
+  "module_id": "M03",
+  "title": "M03-B1b V9 收紧与迁移测试",
+  "owner": "riccon/builder",
+  "status": "in_progress",
+  "write_scope": [
+    "apps/api/src/main/resources/db/migration/V9__organization_and_workspace_scope.sql",
+    "apps/api/src/test/java/com/riccon/api/migration/**",
+    "apps/api/src/test/java/com/riccon/api/ApiApplicationTests.java"
+  ],
+  "acceptance": [
+    "V9 在 V1–V8 seed 数据上应用：PERSONAL→PRIVATE、TEAM→TENANT、NULL 回填；visibility NOT NULL + 严格 CHECK；M02 数据可读",
+    "权限/角色回填：department.read 给 MEMBER/TENANT_ADMIN；platform.department.manage 仅 platform PLATFORM_ADMIN；无 department.manage",
+    "FK/CHECK/唯一键覆盖：app_user.department_id、workspace scope 组合、workspace_member、department status；非法组合被拒",
+    "回滚 SQL 在 DB 副本回到 V8 且 M02 数据可读；记录非生产库重置/旧 API 排空/checksum 处理，不使用 flyway repair",
+    "ApiApplicationTests 迁移数/表数/触发器更新；worker schema 版本保持 9；全量 verify 通过",
+    "迁移测试使用一次性 Testcontainers；不碰 V9 之外生产代码/前端/config；不删/跳测试"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-18T19:54:49.508+08:00",
+  "updated_at": "2026-11-18T19:54:54.638+08:00",
+  "baseline_commit": "6ab90bd3e12a4c5063c0f5c37dc1f661ba9fc394"
+}
