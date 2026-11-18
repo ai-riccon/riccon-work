@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0025",
+  "module_id": "M02",
+  "title": "API 验收缺口：mcp-tools、runs、sources、拒绝阶段",
+  "owner": "riccon/builder",
+  "status": "review",
+  "write_scope": [
+    "apps/api/**"
+  ],
+  "acceptance": [
+    "GET /api/v1/mcp-tools 授权列表，J2 UI 可加载工具",
+    "GET /api/v1/runs/{runId} 返回模型调用/状态，跨租户 404",
+    "research stage details.sources 映射到响应，AC-07 可见来源",
+    "API 契约测试覆盖 mcp-tools/runs/sources",
+    "为 Web 提供 run 详情所需字段",
+    "./mvnw verify 与集成测试通过"
+  ],
+  "evidence": [
+    "EV-0234",
+    "EV-0235"
+  ],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-18T07:45:26.766+08:00",
+  "updated_at": "2026-11-18T08:19:44.199+08:00",
+  "baseline_commit": "d703563a0bb6ee0910a8e8d4faa1007aa885a344",
+  "end_commit": "553ca51"
+}
