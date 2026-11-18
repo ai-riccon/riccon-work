@@ -1,0 +1,81 @@
+
+Running 10 tests using 1 worker
+
+[1/10] [chromium] › e2e/real/tests/a11y.spec.ts:11:3 › 真实栈可访问性 › 登录页与 J1 工作空间无 serious/critical，375px 无横向滚动
+[2/10] [chromium] › e2e/real/tests/a11y.spec.ts:42:3 › 真实栈可访问性 › J2 报告页无 serious/critical，375px 无横向滚动
+[3/10] [chromium] › e2e/real/tests/j1-fast-send.spec.ts:14:3 › 真实栈 J1 快速发送 › 解析成功后立即发送仍携带 fileIds 并产生引用
+[chromium] › e2e/real/tests/j1-fast-send.spec.ts:14:3 › 真实栈 J1 快速发送 › 解析成功后立即发送仍携带 fileIds 并产生引用
+REAL_J1_FAST_REQUEST_BODY={"content":"快速发送验证：文件的增长趋势","clientMessageId":"3ad38a3f-8b5c-41e6-9310-f825d9bd2018","fileIds":["01a1ecbc-1a67-7187-98f9-95068b1c31a0"]}
+
+[4/10] [chromium] › e2e/real/tests/j1-first-token.spec.ts:27:3 › 真实栈首字预算 › 提交问题后 3 秒内出现首字，且正文逐段增长
+[chromium] › e2e/real/tests/j1-first-token.spec.ts:27:3 › 真实栈首字预算 › 提交问题后 3 秒内出现首字，且正文逐段增长
+REAL_FIRST_TOKEN_MS=326 wall=385 firstLength=10
+
+REAL_GROWTH_SAMPLES=[10,30,39,60,70,80,100,110,130]
+
+[5/10] [chromium] › e2e/real/tests/j1-run-detail.spec.ts:15:3 › 真实栈 J1 运行详情 › 回答完成后可打开运行详情并看到模型调用记录
+[chromium] › e2e/real/tests/j1-run-detail.spec.ts:15:3 › 真实栈 J1 运行详情 › 回答完成后可打开运行详情并看到模型调用记录
+REAL_RUN_DETAIL_FIRST_TOKEN_MS=73
+
+[6/10] [chromium] › e2e/real/tests/j1.spec.ts:15:3 › 真实栈 J1 › 上传、解析、提问、引用与重开
+[chromium] › e2e/real/tests/j1.spec.ts:15:3 › 真实栈 J1 › 上传、解析、提问、引用与重开
+REAL_J1_REQUEST_BODY={"content":"请总结真实栈文件中的市场规模与竞争格局","clientMessageId":"f45532f0-fb5e-4836-8a6b-af3445c90a6b","fileIds":["01a1ecbc-7104-7f70-b5b8-b798e52a32bd"]}
+
+[7/10] [chromium] › e2e/real/tests/j2.spec.ts:63:3 › 真实栈 J2 › 创建→检索来源→审批→产物与引用
+[chromium] › e2e/real/tests/j2.spec.ts:63:3 › 真实栈 J2 › 创建→检索来源→审批→产物与引用
+REAL_J2_SNIPPET_LENGTH=18 REAL_J2_SNIPPET=2026 年中国企业协同办公市场研究
+
+  1) [chromium] › e2e/real/tests/j2.spec.ts:63:3 › 真实栈 J2 › 创建→检索来源→审批→产物与引用 ───────────────────────
+
+    Error: 产物正文未能加载，下载按钮应可用；检查预签名 URL 的 CORS
+
+    expect(locator).toBeEnabled() failed
+
+    Locator:  getByRole('button', { name: '下载 Markdown' })
+    Expected: enabled
+    Received: disabled
+    Timeout:  30000ms
+
+    Call log:
+      - 产物正文未能加载，下载按钮应可用；检查预签名 URL 的 CORS getByRole('button', { name: '下载 Markdown' }) with timeout 30000ms
+      - waiting for getByRole('button', { name: '下载 Markdown' })
+        63 × locator resolved to <button disabled type="button" class="ant-btn css-pbsm9t css-var-_r_0_ ant-btn-default ant-btn-color-default ant-btn-variant-outlined">…</button>
+           - unexpected value "disabled"
+
+
+      109 |     // 产物正文必须在浏览器可读；预签名 URL 需要对象存储 CORS，失败时下载按钮保持 disabled。
+      110 |     const download = page.getByRole('button', { name: '下载 Markdown' });
+    > 111 |     await expect(download, '产物正文未能加载，下载按钮应可用；检查预签名 URL 的 CORS').toBeEnabled({
+          |                                                                 ^
+      112 |       timeout: 30_000,
+      113 |     });
+      114 |     await expect(page.getByText('报告正文加载失败')).toHaveCount(0);
+        at /Users/ricky/Documents/projects/riccon-work/e2e/real/tests/j2.spec.ts:111:65
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/j2-真实栈-J2-创建→检索来源→审批→产物与引用-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/j2-真实栈-J2-创建→检索来源→审批→产物与引用-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/j2-真实栈-J2-创建→检索来源→审批→产物与引用-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/j2-真实栈-J2-创建→检索来源→审批→产物与引用-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[8/10] [chromium] › e2e/real/tests/j2.spec.ts:117:3 › 真实栈 J2 › 拒绝审批后任务终止、阶段不再运行、无产物
+[chromium] › e2e/real/tests/j2.spec.ts:117:3 › 真实栈 J2 › 拒绝审批后任务终止、阶段不再运行、无产物
+REAL_J2_SNIPPET_LENGTH=18 REAL_J2_SNIPPET=2026 年中国企业协同办公市场研究
+
+REAL_J2_REJECT_STALE_RUNNING_STAGES=2
+
+[9/10] [chromium] › e2e/real/tests/login.spec.ts:9:3 › 真实栈登录 › 正确凭据进入租户工作空间并显示租户名
+[10/10] [chromium] › e2e/real/tests/login.spec.ts:15:3 › 真实栈登录 › 错误凭据只显示统一失败提示
+  1 failed
+    [chromium] › e2e/real/tests/j2.spec.ts:63:3 › 真实栈 J2 › 创建→检索来源→审批→产物与引用 ────────────────────────
+  9 passed (1.6m)
+
