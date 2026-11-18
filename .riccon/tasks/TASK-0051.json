@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0051",
+  "module_id": "M13",
+  "title": "修复 R-M03-01..03：成员部门、空间重命名、部门报告入口",
+  "owner": "riccon/builder",
+  "status": "in_progress",
+  "write_scope": [
+    "apps/web/src/pages/chat/**",
+    "apps/web/src/pages/research/**",
+    "apps/web/src/services/workspaces/**",
+    "apps/web/src/services/api/**",
+    "apps/web/src/layouts/workspace/**",
+    "apps/web/src/pages/admin/tenants/**"
+  ],
+  "acceptance": [
+    "R-M03-01：员工端显示当前主部门；未分配显示未分配部门；停用部门显示名称与停用提示",
+    "R-M03-02：可管理且非 TENANT 的空间提供重命名，复用 PATCH name；普通成员无入口；409/403/404 文案",
+    "R-M03-03：研究页支持按可访问空间选择，部门成员看到并打开该空间报告；默认个人空间不变；他部门 404",
+    "三项均有组件/页面测试；不删、不跳过、不降低既有断言",
+    "typecheck/lint/test/build/a11y 通过；无 in-app mock；类型对齐 OpenAPI",
+    "不碰后端、迁移、contracts、AGENTS、PRODUCT、E2E；完整 E2E 由 verifier 复验"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-19T00:14:46.939+08:00",
+  "updated_at": "2026-11-19T00:15:11.381+08:00",
+  "baseline_commit": "932f1df8ce92a0bb5ce7fbb2e41b00ff57554e98"
+}
