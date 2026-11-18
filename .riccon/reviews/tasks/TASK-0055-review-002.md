@@ -23,7 +23,7 @@ findings:
     title: "迁移文件映射只建议 API V9MigrationTest + API 模块全量，未提示 worker SchemaVersionCheckerTest"
     severity: P3
     status: accepted
-    evidence: "scripts/test-affected.mjs:893-907 迁移分支；apps/worker/src/test/java/com/riccon/worker/persistence/SchemaVersionCheckerTest.java:30-38 持有 schema 版本期望；§10.1 已要求迁移类变更在 L2 跑全量。"
+    evidence: "scripts/test-affected.mjs:883-898 迁移分支；apps/worker/src/main/java/com/riccon/worker/persistence/SchemaVersionChecker.java:29 定义 EXPECTED_SCHEMA_VERSION，SchemaVersionCheckerTest.java:58/79/92 引用；§10.1 已要求迁移类变更在 L2 跑全量。"
   - id: F-003
     title: "根 package.json 变更只映射前端全量，不提示 e2e/a11y script 变更"
     severity: P3
