@@ -85,6 +85,11 @@ const M03_PLATFORM_DISPLAY_NAME = '赵蕾';
 const M03_SALES_DEPARTMENT_ID = 'dept-sales';
 const M03_MARKETING_DEPARTMENT_ID = 'dept-marketing';
 const M03_SALES_WORKSPACE_ID = 'ws-sales-project';
+const M03_ARCHIVED_DEPARTMENT_ID = 'dept-archived';
+const M03_TENANT_WORKSPACE_ID = 'ws-legacy-tenant';
+const M03_DEPT_RESEARCH_TASK_ID = 'research-dept-1';
+const M03_UNASSIGNED_USER_ID = 'f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1';
+const M03_DISABLED_USER_ID = 'f2f2f2f2-f2f2-4f2f-8f2f-f2f2f2f2f2f2';
 const M03_DEPT_CONVERSATION_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const M03_DEPT_FILE_ID = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const M03_SOURCE_UNAVAILABLE_FILE_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -113,6 +118,28 @@ const M03_CREDENTIALS = {
     userId: M03_MEMBER_USER_ID,
     username: M03_MEMBER_USERNAME,
     displayName: M03_MEMBER_DISPLAY_NAME,
+    roles: ['MEMBER'],
+    permissions: ['workspace.read', 'conversation.read', 'department.read', 'knowledge.read'],
+    tenantId: M03_TENANT_ACME,
+    tenantName: '示例企业',
+  },
+  'acme/unassigned': {
+    password: 'unassigned1234',
+    persona: 'member',
+    userId: M03_UNASSIGNED_USER_ID,
+    username: 'unassigned',
+    displayName: '未分配员工',
+    roles: ['MEMBER'],
+    permissions: ['workspace.read', 'conversation.read', 'department.read', 'knowledge.read'],
+    tenantId: M03_TENANT_ACME,
+    tenantName: '示例企业',
+  },
+  'acme/disabled': {
+    password: 'disabled1234',
+    persona: 'member',
+    userId: M03_DISABLED_USER_ID,
+    username: 'disabled',
+    displayName: '停用员工',
     roles: ['MEMBER'],
     permissions: ['workspace.read', 'conversation.read', 'department.read', 'knowledge.read'],
     tenantId: M03_TENANT_ACME,
@@ -269,6 +296,30 @@ function createInitialState() {
         tenantId: M03_TENANT_ACME,
         username: M03_MEMBER_USERNAME,
         displayName: M03_MEMBER_DISPLAY_NAME,
+        email: null,
+        status: 'ACTIVE',
+        roles: ['MEMBER'],
+        lastLoginAt: BASE_TIME,
+        createdAt: BASE_TIME,
+        departmentId: null,
+      },
+      {
+        id: M03_UNASSIGNED_USER_ID,
+        tenantId: M03_TENANT_ACME,
+        username: 'unassigned',
+        displayName: '未分配员工',
+        email: null,
+        status: 'ACTIVE',
+        roles: ['MEMBER'],
+        lastLoginAt: BASE_TIME,
+        createdAt: BASE_TIME,
+        departmentId: null,
+      },
+      {
+        id: M03_DISABLED_USER_ID,
+        tenantId: M03_TENANT_ACME,
+        username: 'disabled',
+        displayName: '停用员工',
         email: null,
         status: 'ACTIVE',
         roles: ['MEMBER'],
@@ -1541,7 +1592,7 @@ function findResearchTask(taskId) {
  * @param idempotencyKey 幂等键
  * @returns 响应
  */
-function createResearchTask(body, idempotencyKey) {
+function createResearchTask(body, idempotencyKey, workspaceId) {
   if (idempotencyKey.length < 8 || idempotencyKey.length > 128) {
     return problem(
       400,
@@ -1575,7 +1626,7 @@ function createResearchTask(body, idempotencyKey) {
   const task = {
     task: {
       id: taskId,
-      workspaceId: state.workspace.id,
+      workspaceId,
       topic,
       status: 'RUNNING',
       currentStage: 'RETRIEVAL',
@@ -2114,6 +2165,34 @@ function canAccessTeamWorkspace(account, workspace) {
 }
 
 /**
+ * 判断空间 ID 是否存在于当前 stub 状态。
+ *
+ * @param workspaceId 空间 ID
+ * @returns 存在返回 true
+ */
+function isKnownWorkspaceId(workspaceId) {
+  return (
+    workspaceId === state.workspace.id ||
+    state.teamWorkspaces.some((workspace) => workspace.id === workspaceId)
+  );
+}
+
+/**
+ * 判断当前账号是否有权读取指定空间（用于报告任务与详情）。
+ *
+ * @param account 当前账号
+ * @param workspaceId 空间 ID
+ * @returns 可访问返回 true
+ */
+function canAccessWorkspace(account, workspaceId) {
+  if (workspaceId === state.workspace.id) {
+    return true;
+  }
+  const workspace = state.teamWorkspaces.find((item) => item.id === workspaceId);
+  return workspace ? canAccessTeamWorkspace(account, workspace) : false;
+}
+
+/**
  * 团队空间响应。
  *
  * @param workspace 团队空间
@@ -2202,6 +2281,15 @@ function seedM03State() {
       createdAt: BASE_TIME,
       updatedAt: BASE_TIME,
     },
+    {
+      id: M03_ARCHIVED_DEPARTMENT_ID,
+      tenantId: M03_TENANT_ACME,
+      name: '综合部',
+      status: 'DISABLED',
+      managerUserId: null,
+      createdAt: BASE_TIME,
+      updatedAt: BASE_TIME,
+    },
   ];
   state.users = state.users.map((user) => {
     if (user.id === M03_MEMBER_USER_ID || user.id === M03_MANAGER_USER_ID) {
@@ -2209,6 +2297,9 @@ function seedM03State() {
     }
     if (user.id === M03_OUTSIDER_USER_ID) {
       return { ...user, departmentId: M03_MARKETING_DEPARTMENT_ID };
+    }
+    if (user.id === M03_DISABLED_USER_ID) {
+      return { ...user, departmentId: M03_ARCHIVED_DEPARTMENT_ID };
     }
     return user;
   });
@@ -2221,6 +2312,18 @@ function seedM03State() {
       ownerUserId: M03_MANAGER_USER_ID,
       departmentId: M03_SALES_DEPARTMENT_ID,
       visibility: 'DEPT',
+      status: 'ACTIVE',
+      createdAt: BASE_TIME,
+      updatedAt: BASE_TIME,
+    },
+    {
+      id: M03_TENANT_WORKSPACE_ID,
+      tenantId: M03_TENANT_ACME,
+      name: '历史全租户空间',
+      description: 'M02 遗留 TENANT 空间（E2E 合成数据）',
+      ownerUserId: M03_MANAGER_USER_ID,
+      departmentId: null,
+      visibility: 'TENANT',
       status: 'ACTIVE',
       createdAt: BASE_TIME,
       updatedAt: BASE_TIME,
@@ -2289,6 +2392,66 @@ function seedM03State() {
       deletedAt: null,
     },
   ];
+  const deptResearchTask = {
+    task: {
+      id: M03_DEPT_RESEARCH_TASK_ID,
+      workspaceId: M03_SALES_WORKSPACE_ID,
+      topic: '销售部季度市场调研',
+      status: 'SUCCEEDED',
+      currentStage: null,
+      mcpToolId: DEMO_MCP_TOOL_ID,
+      currentRunId: 'run-dept-research-1',
+      failureCode: null,
+      failureMessage: null,
+      createdAt: BASE_TIME,
+      startedAt: BASE_TIME,
+      finishedAt: BASE_TIME,
+    },
+    mode: 'success',
+    phase: 'done',
+    phaseStartedAtMs: Date.parse(BASE_TIME),
+    stages: [
+      {
+        stage: 'RETRIEVAL',
+        attempt: 1,
+        status: 'SUCCEEDED',
+        startedAt: BASE_TIME,
+        finishedAt: BASE_TIME,
+        details: { query: '销售部季度市场调研' },
+      },
+    ],
+    approvals: [],
+    invocations: [
+      {
+        id: 'invocation-dept-1',
+        toolName: 'market_data_lookup',
+        status: 'SUCCEEDED',
+        paramsSha256: pseudoSha256('销售部季度市场调研'),
+        resultSha256: pseudoSha256('销售部季度市场调研-result'),
+        durationMs: 120,
+        errorCode: null,
+        startedAt: BASE_TIME,
+        finishedAt: BASE_TIME,
+      },
+    ],
+    sources: [
+      {
+        ordinal: 1,
+        sourceType: 'KNOWLEDGE',
+        knowledgeDocumentId: DEMO_KNOWLEDGE_ID_ONE,
+        title: '销售部客户清单',
+        snippet: '销售部重点客户与季度采购计划摘要。',
+        locatorType: 'PAGE',
+        pageNo: 1,
+        paragraphNo: null,
+        sheetName: null,
+      },
+    ],
+    artifact: null,
+    artifactBody: null,
+  };
+  ensureResearchArtifact(deptResearchTask, Date.parse(BASE_TIME));
+  state.researchTasks = [deptResearchTask];
 }
 
 function handleApi(req, res, url, raw) {
@@ -2813,6 +2976,21 @@ function handleApi(req, res, url, raw) {
       );
       return true;
     }
+    if (scenario === 'rename-409') {
+      writeResult(
+        res,
+        problem(409, 'RICCON-DEPT-409', '空间名称冲突', 'workspace name already exists'),
+      );
+      return true;
+    }
+    if (scenario === 'rename-403') {
+      writeResult(res, problem(403, 'RICCON-AUTH-403', '没有权限', 'forbidden'));
+      return true;
+    }
+    if (scenario === 'rename-404') {
+      writeResult(res, problem(404, 'RICCON-TENANT-404', '空间不存在', 'not found'));
+      return true;
+    }
     const body = readJson(raw);
     if (typeof body?.name === 'string' && body.name.trim()) {
       workspace.name = body.name.trim();
@@ -2928,7 +3106,11 @@ function handleApi(req, res, url, raw) {
   // 场景：报告任务列表返回 403，用于验证页面无权限态。
   const researchTasksMatch = /^\/api\/v1\/workspaces\/([^/]+)\/research-tasks$/.exec(pathname);
   if (researchTasksMatch) {
-    if (decodeURIComponent(researchTasksMatch[1]) !== state.workspace.id) {
+    const researchWorkspaceId = decodeURIComponent(researchTasksMatch[1]);
+    if (
+      !isKnownWorkspaceId(researchWorkspaceId) ||
+      !canAccessWorkspace(currentAccount(session), researchWorkspaceId)
+    ) {
       writeResult(
         res,
         problem(404, 'RICCON-TENANT-404', '工作空间不存在', '工作空间不存在或已被删除。'),
@@ -2943,6 +3125,7 @@ function handleApi(req, res, url, raw) {
       advanceResearchTasks();
       const status = searchParams.get('status');
       const items = state.researchTasks
+        .filter((task) => task.task.workspaceId === researchWorkspaceId)
         .filter((task) => !status || task.task.status === status)
         .map(researchTaskSummary)
         .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
@@ -2955,7 +3138,14 @@ function handleApi(req, res, url, raw) {
         writeResult(res, csrfError);
         return true;
       }
-      writeResult(res, createResearchTask(readJson(raw), req.headers['idempotency-key'] ?? ''));
+      writeResult(
+        res,
+        createResearchTask(
+          readJson(raw),
+          req.headers['idempotency-key'] ?? '',
+          researchWorkspaceId,
+        ),
+      );
       return true;
     }
   }
@@ -2964,9 +3154,10 @@ function handleApi(req, res, url, raw) {
   if (researchTaskMatch && method === 'GET') {
     advanceResearchTasks();
     const task = findResearchTask(decodeURIComponent(researchTaskMatch[1]));
+    const accessible = task && canAccessWorkspace(currentAccount(session), task.task.workspaceId);
     writeResult(
       res,
-      task
+      accessible
         ? json(researchTaskDetail(task))
         : problem(404, 'RICCON-TENANT-404', '任务不存在', '报告任务不存在或已被删除。'),
     );

@@ -14,7 +14,10 @@ export type StubScenario =
   | 'research-list-403'
   | 'mcp-tools-403'
   | 'approval-409'
-  | 'citation-source-404';
+  | 'citation-source-404'
+  | 'rename-409'
+  | 'rename-403'
+  | 'rename-404';
 
 /** stub 控制面；控制端点不属于产品 OpenAPI，仅 E2E 使用。 */
 export interface StubControl {

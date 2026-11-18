@@ -17,6 +17,8 @@ export const M03_CREDENTIALS = {
   manager: { tenantCode: 'acme', username: 'manager', password: 'manager1234' },
   tenantAdmin: { tenantCode: 'acme', username: 'admin', password: 'admin1234' },
   outsider: { tenantCode: 'acme', username: 'outsider', password: 'outsider1234' },
+  unassigned: { tenantCode: 'acme', username: 'unassigned', password: 'unassigned1234' },
+  disabled: { tenantCode: 'acme', username: 'disabled', password: 'disabled1234' },
   platformAdmin: { tenantCode: 'platform', username: 'platform-admin', password: 'platform1234' },
 } as const;
 
