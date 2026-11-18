@@ -370,7 +370,10 @@ budget:
 - Architect 的 ARCHITECTURE/ADR 需经 Lead、用户（不可逆/高成本项）、Verifier、Ops 评审；未批准的 ADR 保持 `proposed`；结论写入 `docs/ARCHITECTURE.md` 评审状态表。
 - Builder 只把任务移到 `review`，不自行 `done`；高风险任务（认证、权限、迁移、并发、安全、AI 工具调用）在 done 前必须有独立 Verifier 评审。
 - 任务级/架构级独立评审写到 `.riccon/reviews/tasks/<task>-review.md`，由 `task-review.schema.json` 校验；模块评审写到 `.riccon/reviews/<module>-review.md`。任务评审不参与模块 gate，高风险任务 closeout 必须引用。
-- 模块 gate 通过后，先由 Product 在 `docs/ACCEPTANCE.md` 做预验收；预验收 `pass` 后才提交用户最终验收（accepted/rejected/conditional）；用户未 accepted 不进入下一个用户可见模块。
+- 模块 gate 通过后、模块 done 前，先由 Product 在 `docs/ACCEPTANCE.md` 做预验收；Product `pass` 后才标记 done，再提交用户最终验收（accepted/rejected/conditional）。用户未 accepted 不进入下一个用户可见模块。验收失败用 `kind: fix` + `fixes_module`，或在显式决策后重开；不要只靠标题或 `depends_on`。
+- 模块过大时在构建前拆分，用 `split_from`/`aliases` 记录关系；模块 ID 仍为 `M` + 数字。任务进入 `in_progress` 前模块必须是 `building`，依赖全部 done；一个任务只承载一个可独立验收的用户可见结果。
+- 模块评审的 AC 对账必须引用 AC 原文的用户可见结果；AC 要求界面、文案或入口时，API 证据不能单独判 pass，必须绑定 UI/E2E 证据。
+- 模块 `product_acceptance` 记录 `product_status`/`user_status`/decision_id；`docs/ACCEPTANCE.md` 保留详细 AC 表与证据。
 - 所有时间默认北京时间（`Asia/Shanghai`，UTC+08:00）；API/日志/事件/UI 使用带偏移的 ISO 8601；数据库存储按合同/ADR（当前 MySQL `DATETIME(6)` UTC，见 ADR-0008/0012）。
 - 验证分层：L1 迭代跑定向测试/编译；L2 任务收尾跑受影响模块一次全量并录 EV；L3 模块 gate 由 verifier 跑合同 test/coverage/E2E/a11y/security。`verify` 已含 worker，不得同一任务重复跑 worker 全量；共享层/契约/迁移变更必须全量一次；最终证据在干净提交上录制，探索性失败不录，负向安全证据保留；并行 agent 同一时间只跑一个全量套件。
 - 合同变更：加载 `riccon-contract` → 修改受管区块 → `riccon contract sync` → `riccon contract validate --strict`；决策不可覆盖，只追加。

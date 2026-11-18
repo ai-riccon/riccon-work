@@ -94,8 +94,9 @@ Product 预验收不检查实现细节、安全边界或测试充分性；这些
 
 ## 规则
 
-- Product 预验收未 `pass` 前，不提交用户最终验收。
-- 模块 gate 未通过前，不提交用户最终验收。
-- 用户未 `accepted` 前，不进入下一个用户可见模块；最终产品验收未 `accepted` 前，不进入生产发布。
-- `conditional` 必须列出条件和截止时间，并建立后续任务。
+- gate 检查通过后、模块标记 done 前，先完成 Product 预验收；Product 未 `pass` 前不能把模块标为 done。
+- 模块 done 后再提交用户最终验收；用户未 `accepted` 前，不进入下一个用户可见模块；最终产品验收未 `accepted` 前，不进入生产发布。
+- 用模块的 `product_acceptance` 记录两层结论：`product_status` 和 `user_status`；本文件保留详细 AC 表和证据。
+- 验收失败用 `kind: fix` + `fixes_module` 建修复模块，或在显式决策后重新打开；不要只靠标题或 `depends_on`。
+- `rejected`/`conditional` 必须列出条件、截止时间和后续任务。
 - 验收结论不替代 gate、release check 或生产批准。
