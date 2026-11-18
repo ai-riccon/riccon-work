@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0048",
+  "module_id": "M03",
+  "title": "M03-V1 独立验收测试：DEPT/TEN/E2E/a11y",
+  "owner": "riccon/verifier",
+  "status": "in_progress",
+  "write_scope": [
+    "apps/api/src/test/java/com/riccon/api/security/**",
+    "e2e/**",
+    "scripts/real-stack/**"
+  ],
+  "acceptance": [
+    "DEPT-001..010 零 skip/xfail：列表/详情/下载/检索/成员移出/负责人越权；跨部门/跨租户 404",
+    "TEN-001..027 回归；平台部门端点 404/409/403；响应不含业务内容/账号信息",
+    "E2E-M03-01/02/07 stub 全旅程；真实栈 J1/J2 回归；无 in-app mock",
+    "axe 无 serious/critical；375px 无横向滚动；键盘完成部门管理关键路径",
+    "安全/审计检查：跨租户/跨部门无泄露，审计无 PII；不改生产源码；测试在干净提交上取证"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-18T21:17:32.416+08:00",
+  "updated_at": "2026-11-18T21:17:41.094+08:00",
+  "baseline_commit": "f830ab8c591ddfef90b41865bdf5c561af67dccc"
+}
