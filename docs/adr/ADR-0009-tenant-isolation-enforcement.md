@@ -166,5 +166,5 @@ grep -E 'skipped="[1-9]|failures="[1-9]|errors="[1-9]' apps/api/target/surefire-
 ## 澄清（M03 扩展，不改本 ADR 决策）
 
 - 2026-11-18：M03 在租户边界内增加部门数据范围，强制点仍是本 ADR 第 3 节的 `TenantJdbc` 与第 4 节的复合键；新增空间访问谓词见 ADR-0018。
-- `TEN` 套件在 M03 扩展到 `TEN-021..026`（部门/空间/成员跨租户），编号连续、不重排；新增 `DEPT-001..010`，使用 `@Tag("dept-isolation")`，与 `tenant-isolation` 同套件运行。
+- `TEN` 套件在 M03 扩展到 `TEN-021..027`（部门/空间/成员跨租户，027 为平台部门端点），编号连续、不重排；新增 `DEPT-001..010`，使用 `@Tag("dept-isolation")`，与 `tenant-isolation` 同套件运行。
 - 平台管理员跨租户查看租户业务/审计明细仍不在 M03 范围（DEC-0013）；本 ADR 第 1 节的平台/租户角色分离不变。

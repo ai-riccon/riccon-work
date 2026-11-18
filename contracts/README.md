@@ -92,6 +92,7 @@ contracts/
 ## 5. 安全边界
 
 - `openapi.yaml` 只描述浏览器/租户网络可达的 `/api/v1`；`internal-api.yaml` 只描述集群内部可达的 `/internal/v1`。
+- 平台管理员的租户部门管理使用 `/api/v1/admin/tenants/{tenantId}/departments`，权限 `platform.department.manage`；只返回组织元数据，不返回目标租户业务内容。
 - Worker 不接受浏览器 Cookie，不提供通用 CRUD 或管理接口；内部调用使用 HMAC-SHA256 短期令牌。
 - 契约中不得出现真实密钥、token、租户真实数据或 PII；示例使用 `tenant-a`、`user-0001` 等占位符。
 - 审计查询与导出、OIDC/SSO（M10）、模型路由与配额（M04）、文档 ACL/OCR（M05）、MCP 注册与凭据托管（M07）不在 M03 契约中定义；

@@ -69,7 +69,7 @@ API 不执行 Agent；Worker 不面向浏览器。任务契约、SSE 事件与�
 
 ## 数据模型
 
-M02 数据模型由 ADR-0012 定稿，M03 组织与数据范围由 ADR-0018 定稿；迁移位于 `apps/api/src/main/resources/db/migration`（V2–V9，V1 不修改；M03 的 V10 收紧约束由 Builder 在代码切换后交付）。
+M02 数据模型由 ADR-0012 定稿，M03 组织与数据范围由 ADR-0018 定稿；迁移位于 `apps/api/src/main/resources/db/migration`（V2–V9，V1 不修改；V9 尚未发布，Builder 在发布前直接收紧约束，不新增 V10）。
 
 ### 标识与租户键
 
@@ -102,12 +102,13 @@ M02 数据模型由 ADR-0012 定稿，M03 组织与数据范围由 ADR-0018 定�
 
 ## M03 组织与部门数据范围
 
-M03 的完整决策见 `docs/adr/ADR-0018-m03-organization-and-department-scope.md`（`proposed`，M03 gate 前评审）。本节只给实现者需要的最小地图。
+M03 的完整决策见 `docs/adr/ADR-0018-m03-organization-and-department-scope.md`（`proposed`，M03 gate 前评审）与 DEC-0015。本节只给实现者需要的最小地图。
 
 ### 组织模型
 
 - 单级部门：`department(tenant_id, id)`，`name` 租户内唯一；`manager_user_id` 是关系字段，不是 RBAC 角色。
 - 单主部门：`app_user.department_id` 直接列 + 复合外键；多部门归属后移（DEC-0014）。
+- **管理主体**：平台管理员跨租户管理租户部门元数据，复用 `/api/v1/admin/tenants/{tenantId}` 路径族；只操作部门、成员归属、负责人，不读取目标租户业务内容。租户管理员不获得部门管理权限；部门负责人只管理本部门空间（DEC-0015）。
 - 部门停用只改 `status`/`disabled_at`，保留成员归属；访问判定同时检查 `department.status='ACTIVE'`，停用后下一次请求即失去该部门空间访问。
 - 负责人必须是本部门当前启用成员；移除负责人必须先移交（409）。
 
@@ -116,14 +117,14 @@ M03 的完整决策见 `docs/adr/ADR-0018-m03-organization-and-department-scope.
 | `kind`     | `visibility` | `department_id` | 访问范围                                     |
 | ---------- | ------------ | --------------- | -------------------------------------------- |
 | `PERSONAL` | `PRIVATE`    | 空              | 仅 `owner_user_id`                           |
-| `TEAM`     | `TENANT`     | 空              | 本租户启用员工；仅 M02 历史迁移，禁止新建    |
+| `TEAM`     | `TENANT`     | 空              | 本租户启用员工；仅 M02 历史迁移、只读        |
 | `TEAM`     | `DEPT`       | 必填            | 该部门当前启用成员                           |
 | `TEAM`     | `CUSTOM`     | 必填            | 该部门当前启用成员且在 `workspace_member` 中 |
 
-- M03 之后新建团队空间必须给部门，只允许 `DEPT|CUSTOM`；历史 `TENANT` 空间由租户管理员单向转换并写审计。
+- M03 之后新建团队空间必须给部门，只允许 `DEPT`/`CUSTOM`；历史 `TENANT` 空间只读，M03 不提供转换，转换在 M04/M09 设计专用迁移。
 - `workspace_member` 只服务 `CUSTOM`；`DEPT` 成员由 `app_user.department_id` 派生。
 - 个人空间保持仅本人；任何成员行写入个人空间都拒绝。
-- 租户管理员只管理结构（部门、空间元数据、可见性、成员），**不因管理员身份自动读取业务内容**；内容访问与普通成员同一谓词。
+- 租户管理员保留 M02 的 `workspace.write` 空间管理能力，但不管理部门元数据；平台管理员不管理业务空间；内容访问对所有角色使用同一空间谓词。
 
 ### 访问判定
 
@@ -133,34 +134,34 @@ M03 不引入跨请求共享缓存；成员移出、部门停用、负责人移�
 
 ### 权限与审计
 
-| 权限码              | `MEMBER` | `TENANT_ADMIN` | 部门负责人                                         |
-| ------------------- | -------- | -------------- | -------------------------------------------------- |
-| `department.read`   | 是       | 是             | 是                                                 |
-| `department.manage` | 否       | 是             | 否（创建/停用部门仍由租户管理员负责）              |
-| `workspace.write`   | 否       | 是             | 否（服务层按负责人关系授权部门空间管理）           |
-| 部门成员/负责人管理 | 否       | 是             | 是（仅本部门；`department.read` + 服务层资源判定） |
+| 权限码                       | `PLATFORM_ADMIN` | `TENANT_ADMIN` | `MEMBER` / 部门负责人                  |
+| ---------------------------- | ---------------- | -------------- | -------------------------------------- |
+| `platform.department.manage` | 是               | 否             | 否                                     |
+| `department.read`            | 否               | 是             | 是（仅本人部门）                       |
+| `workspace.write`            | 否               | 是             | 否（服务层按负责人关系授权本部门空间） |
 
-审计动作：`department.created/renamed/disabled/enabled/member.added/member.removed/manager.changed`、`workspace.created/updated/visibility.changed/member.added/member.removed`；目标类型新增 `DEPARTMENT`。details 只允许 UUID、计数、枚举与部门名，不含姓名、邮箱、成员名单或业务内容（ADR-0018 §5）。
+审计动作：`department.created/renamed/disabled/enabled/member.added/member.removed/manager.changed`、`workspace.created/updated/visibility.changed/member.added/member.removed`；目标类型新增 `DEPARTMENT`。跨租户部门事件沿用 M02 管理员口径：`tenant_id=platform`，目标租户写入 `details.targetTenantId`；details 只允许 UUID、计数、枚举与部门名，不含姓名、邮箱、成员名单或业务内容（ADR-0018 §5、ADR-0007）。
 
 ### API 摘要
 
-| 能力                | 端点                                                                                                                             |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| 部门 CRUD/停用/启用 | `GET` / `POST /api/v1/departments`、`PATCH /departments/{id}`、`POST /departments/{id}/disable`、`POST /departments/{id}/enable` |
-| 部门成员/负责人     | `GET` / `POST /departments/{id}/members`、`DELETE /departments/{id}/members/{userId}`、`PUT /departments/{id}/manager`           |
-| 部门空间管理        | `GET` / `POST /departments/{id}/workspaces`、`POST /workspaces`（管理员）、`PATCH /workspaces/{id}`                              |
-| CUSTOM 成员         | `GET` / `POST /workspaces/{id}/members`、`DELETE /workspaces/{id}/members/{userId}`                                              |
-| 知识库口径          | 知识库端点不变；界面固定明示“全租户共享，文档级权限在后续版本”；引用打开源文件仍走空间判定                                       |
+| 能力             | 端点                                                                                                                                |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 部门读取（只读） | `GET /api/v1/departments`、`GET /api/v1/departments/{id}/members`（普通员工本人部门，租户管理员本租户全部）                         |
+| 部门空间管理     | `GET` / `POST /api/v1/departments/{id}/workspaces`、`POST /workspaces`（租户管理员）、`PATCH /workspaces/{id}`                      |
+| CUSTOM 成员      | `GET` / `POST /workspaces/{id}/members`、`DELETE /workspaces/{id}/members/{userId}`                                                 |
+| 平台部门管理     | `GET` / `POST /api/v1/admin/tenants/{tenantId}/departments`、`PATCH /.../departments/{id}`、`POST /.../disable`、`POST /.../enable` |
+| 平台成员/负责人  | `GET` / `POST /.../departments/{id}/members`、`DELETE /.../members/{userId}`、`PUT /.../manager`                                    |
+| 知识库口径       | 知识库端点不变；界面固定明示“全租户共享，文档级权限在后续版本”；引用打开源文件仍走空间判定                                          |
 
 ### 迁移与回滚
 
-- V9（expand）：新增 `department`、`workspace_member`、`app_user.department_id`、`workspace.department_id/visibility`、权限与角色回填；历史 `PERSONAL→PRIVATE`、`TEAM→TENANT`，不猜部门、不删除数据。
-- V10（contract，Builder 交付）：回填旧代码可能写入的 `NULL` 可见性，改 `NOT NULL` 并收紧 CHECK。
-- 回滚优先“前向修复 + 备份恢复”；V9 的精确回退 SQL 见 ADR-0018 §6.3。只有 `apps/api` 执行 Flyway，worker 保持关闭并校验 schema 版本。
+- V9（唯一迁移，发布前可变）：新增 `department`、`workspace_member`、`app_user.department_id`、`workspace.department_id/visibility`、`department.read` / `platform.department.manage` 权限与角色回填；历史 `PERSONAL→PRIVATE`、`TEAM→TENANT`，不猜部门、不删除数据。
+- 发布前由 Builder 直接修正 V9：回填旧代码可能写入的 `NULL` 可见性，改 `NOT NULL` 并收紧 CHECK；不新增 V10。
+- 回滚优先“前向修复 + 备份恢复”；V9 的精确回退 SQL 见 ADR-0018 §6.3。只有 `apps/api` 执行 Flyway，worker 保持关闭并校验 schema 版本（V9 → 9）。
 
 ### 交付计划
 
-Builder 任务边界、写范围、验收和验证命令见 ADR-0018 §8：5 个 Builder 任务（领域词汇/V10、部门后端、空间可见性与访问判定、内容贯通、Web 管理界面）+ Verifier 独立 `DEPT-001..010`、`E2E-M03-01/02` 与 a11y。Builder 写 `IT-DEPT-*` 与代码级测试；Verifier 不改生产代码。
+Builder 任务边界、写范围、验收和验证命令见 ADR-0018 §8：5 个 Builder 任务（领域词汇/V9 收紧、平台部门后端、空间可见性与访问判定、内容贯通、Web 管理界面）+ Verifier 独立 `DEPT-001..010`、`TEN-027`、`E2E-M03-01/02` 与 a11y。Builder 写 `IT-DEPT-*` 与代码级测试；Verifier 不改生产代码。
 
 ## 契约
 
@@ -229,7 +230,7 @@ Builder 任务边界、写范围、验收和验证命令见 ADR-0018 §8：5 个
 | 审计触发器需要迁移账号权限                      | 中     | 高（迁移失败）   | 迁移账号需 `TRIGGER`；binlog 开启时需 `log_bin_trust_function_creators=1`，写入 RUNBOOK 与部署检查 |
 | 会话表成为登录关键路径                          | 低     | 中（无法登录）   | MySQL 健康检查、会话过期清理、备份包含 `SPRING_SESSION*`                                           |
 | 部门成员关系陈旧或缓存导致移出后仍可访问        | 中     | 高（跨部门泄露） | 每请求查库；无跨请求缓存；成员移出/部门停用/负责人移交下一次请求生效；`DEPT-007`                   |
-| M02 遗留 `TENANT` 空间在转换前仍全租户可见      | 中     | 中（租户内越权） | 只允许管理员单向转换为部门空间并审计；M03 评审列清单；新空间禁止 `TENANT`（R-11）                  |
+| M02 遗留 `TENANT` 空间在 M03 仍全租户可见       | 中     | 中（租户内越权） | M03 不提供转换；评审列遗留清单；转换在 M04/M09 设计；新空间禁止 `TENANT`（R-11）                   |
 | 知识库租户级共享被误读为部门隔离                | 中     | 中（预期错位）   | 界面固定明示；源文件打开/下载仍走空间 404；M05 文档 ACL                                            |
 
 ## 相关决策

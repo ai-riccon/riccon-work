@@ -137,3 +137,5 @@ M03 评估每日哈希链（`prev_hash` + `event_hash`）与外部锚定。M02 �
 - 2026-11-17：`event_id` 的数据库表示由 ADR-0012 统一为 UUIDv7 `BINARY(16)`；仍要求时间有序与全局唯一，本文其余字段、分区与 append-only 语义不变。
 - 2026-11-17：M02 目标类型在本文最小列表外增加 `WORKSPACE`、`CONVERSATION`、`KNOWLEDGE_DOCUMENT`、`RESEARCH_TASK`、`RUN`、`APPROVAL`，统一由 `AuditTargetType` 枚举约束；`details` 白名单与禁止字段不变。
 - 2026-11-18：`approval.params_preview` 恢复为本文第 5 节要求的**脱敏摘要**，不再保存完整工具参数；完整参数由 `params_ciphertext` + `params_key_id` 加密保存，只在审批通过后由 Worker 解密重放（ADR-0017、V8 迁移）。`mcp.tool.invoked` 仍只允许 `paramsSha256`/`resultSha256`，`approval.decided` 仍只允许审批 ID、决定、审批人与工具名；审计 `details` 不得出现参数预览、密文或明文。
+- 2026-11-18：DEC-0015 允许平台管理员跨租户管理租户**部门元数据**（部门、成员归属、负责人），复用 `/api/v1/admin/tenants/{tenantId}` 路径。审计沿用 `TenantUserAdminService` 口径：事件 `tenant_id` 写操作者租户（`platform`），目标租户只进入 `details.targetTenantId`，`target_id` 写部门 ID；平台管理员仍不得读取目标租户业务内容。本文第 6 节“M03 平台管理员可查询全部租户审计”由 DEC-0013 后移，M03 不提供审计查询/导出，M10 再实现。
+- 2026-11-18：M03 部门管理新增 `AuditTargetType.DEPARTMENT`；`department.*` 动作的 details 白名单见 ADR-0018 第 5 节，禁止姓名、邮箱、成员名单与业务内容。

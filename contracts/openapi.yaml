@@ -18,7 +18,8 @@ info:
     ## 租户与部门隔离
     - 租户只从已认证主体派生；请求体、查询参数、请求头中的 `tenantId` 一律忽略，不一致时拒绝并审计。
     - 跨租户对象统一返回 404 `RICCON-TENANT-404`，不泄露对象是否存在。
-    - 空间访问：个人空间仅本人；部门空间按 `DEPT`/`CUSTOM` 可见性；历史 `TENANT` 空间仅 M02 迁移存在，禁止新建。
+    - 空间访问：个人空间仅本人；部门空间按 `DEPT`/`CUSTOM` 可见性；历史 `TENANT` 空间仅 M02 迁移存在，禁止新建、M03 只读。
+    - 部门元数据（部门、成员归属、负责人）只由平台管理员通过 `/api/v1/admin/tenants/{tenantId}/departments` 管理，权限 `platform.department.manage`；租户端只保留读取本人部门与空间管理。
     - 跨部门对象与管理操作同样统一 404；可见但无管理能力返回 403；错误响应不含空间内容。
     - 所有列表强制分页：`page` 从 1 开始，`size` 默认 20、最大 100。
 
@@ -274,8 +275,7 @@ paths:
       summary: 修改工作空间
       description: |
         重命名、改描述、切换 `DEPT`/`CUSTOM` 可见性；仅租户管理员或本部门负责人可操作。
-        历史 `TENANT` 空间可同时提供 `departmentId` 与 `visibility` 单向转换为部门空间。
-        服务层按空间部门与负责人关系判定，跨部门管理返回 404。
+        `TENANT` 历史空间在 M03 只读，不提供转换；跨部门管理返回 404。
       x-riccon-permission: workspace.read
       parameters:
         - $ref: "#/components/parameters/WorkspaceId"
@@ -1413,21 +1413,15 @@ paths:
   /api/v1/departments:
     get:
       tags: [Departments]
-      operationId: listDepartments
-      summary: 列出本租户部门
-      description: 返回部门名、状态、负责人与成员数；停用部门保留成员归属但不授权空间访问。
+      operationId: getMyDepartment
+      summary: 读取本人所属部门
+      description: |
+        普通员工只返回本人当前所属部门（0 或 1 条）；租户管理员返回本租户全部部门（只读，用于空间管理），不提供部门写入。
+        平台管理员管理租户部门使用 `/api/v1/admin/tenants/{tenantId}/departments`。
       x-riccon-permission: department.read
-      parameters:
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/PageSize"
-        - name: status
-          in: query
-          required: false
-          schema:
-            $ref: "#/components/schemas/DepartmentStatus"
       responses:
         "200":
-          description: 部门列表
+          description: 本人部门（可能为空）
           content:
             application/json:
               schema:
@@ -1438,128 +1432,12 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalError"
-    post:
-      tags: [Departments]
-      operationId: createDepartment
-      summary: 创建部门
-      description: 部门名租户内唯一；名称冲突返回 409 `RICCON-DEPT-409`。创建后可加入成员并任命负责人。
-      x-riccon-permission: department.manage
-      parameters:
-        - $ref: "#/components/parameters/CsrfToken"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DepartmentCreateRequest"
-      responses:
-        "201":
-          description: 已创建
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Department"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "500":
-          $ref: "#/components/responses/InternalError"
-  /api/v1/departments/{departmentId}:
-    patch:
-      tags: [Departments]
-      operationId: renameDepartment
-      summary: 重命名部门
-      description: 仅启用部门可重命名；停用部门冻结，启用后再改。名称冲突 409。
-      x-riccon-permission: department.manage
-      parameters:
-        - $ref: "#/components/parameters/DepartmentId"
-        - $ref: "#/components/parameters/CsrfToken"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DepartmentUpdateRequest"
-      responses:
-        "200":
-          description: 已更新
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Department"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "500":
-          $ref: "#/components/responses/InternalError"
-  /api/v1/departments/{departmentId}/disable:
-    post:
-      tags: [Departments]
-      operationId: disableDepartment
-      summary: 停用部门
-      description: 幂等；成员归属保留，但该部门空间与对象在下一次请求起不可访问（统一 404）。仅在状态变化时写审计。
-      x-riccon-permission: department.manage
-      parameters:
-        - $ref: "#/components/parameters/DepartmentId"
-        - $ref: "#/components/parameters/CsrfToken"
-      responses:
-        "200":
-          description: 已停用或本来已停用
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Department"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalError"
-  /api/v1/departments/{departmentId}/enable:
-    post:
-      tags: [Departments]
-      operationId: enableDepartment
-      summary: 启用部门
-      description: 幂等；恢复原成员关系与部门空间访问。仅在状态变化时写审计。
-      x-riccon-permission: department.manage
-      parameters:
-        - $ref: "#/components/parameters/DepartmentId"
-        - $ref: "#/components/parameters/CsrfToken"
-      responses:
-        "200":
-          description: 已启用或本来已启用
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Department"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalError"
   /api/v1/departments/{departmentId}/members:
     get:
       tags: [Departments]
-      operationId: listDepartmentMembers
-      summary: 列出部门成员
-      description: 租户管理员可查看任意部门；部门负责人只能查看本部门，其他部门 404。
+      operationId: listMyDepartmentMembers
+      summary: 列出本人所属部门成员
+      description: 普通员工只能访问本人所属部门；租户管理员可访问本租户任意部门（只读）；其他部门统一 404。成员列表只含账号展示字段，不含邮箱、角色或最近登录。
       x-riccon-permission: department.read
       parameters:
         - $ref: "#/components/parameters/DepartmentId"
@@ -1578,104 +1456,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalError"
-    post:
-      tags: [Departments]
-      operationId: addDepartmentMember
-      summary: 加入部门成员
-      description: |
-        账号必须在本租户且启用；已在其他部门或已在本部门返回 409 `RICCON-DEPT-409`（单主部门）。
-        他租户账号返回 404，响应不显示账号是否存在。
-        租户管理员可管理任意部门；部门负责人只能管理本部门。
-      x-riccon-permission: department.read
-      parameters:
-        - $ref: "#/components/parameters/DepartmentId"
-        - $ref: "#/components/parameters/CsrfToken"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DepartmentMemberRequest"
-      responses:
-        "201":
-          description: 已加入
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DepartmentMember"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "500":
-          $ref: "#/components/responses/InternalError"
-  /api/v1/departments/{departmentId}/members/{userId}:
-    delete:
-      tags: [Departments]
-      operationId: removeDepartmentMember
-      summary: 移出部门成员
-      description: 幂等；成员不存在返回 204。移除当前负责人返回 409（先移交）；移出后清理该用户在本部门 CUSTOM 空间的成员行。租户管理员可管理任意部门；负责人只能管理本部门且不能移出自己。
-      x-riccon-permission: department.read
-      parameters:
-        - $ref: "#/components/parameters/DepartmentId"
-        - $ref: "#/components/parameters/UserId"
-        - $ref: "#/components/parameters/CsrfToken"
-      responses:
-        "204":
-          description: 已移出或本来不是成员
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "500":
-          $ref: "#/components/responses/InternalError"
-  /api/v1/departments/{departmentId}/manager:
-    put:
-      tags: [Departments]
-      operationId: transferDepartmentManager
-      summary: 任命/移交部门负责人
-      description: |
-        目标必须是本部门当前启用成员。租户管理员可任命任意部门；当前负责人可移交本部门。
-        同一人重复提交返回 200 且不写重复审计；移交后旧负责人下一次请求失去管理能力。
-      x-riccon-permission: department.read
-      parameters:
-        - $ref: "#/components/parameters/DepartmentId"
-        - $ref: "#/components/parameters/CsrfToken"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DepartmentManagerRequest"
-      responses:
-        "200":
-          description: 已任命或本来是该负责人
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Department"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
   /api/v1/departments/{departmentId}/workspaces:
@@ -2016,6 +1796,294 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/v1/admin/tenants/{tenantId}/departments:
+    get:
+      tags: [Admin]
+      operationId: listTenantDepartmentsForPlatform
+      summary: 平台管理员列出目标租户部门
+      description: |
+        只返回目标租户的组织元数据（部门名、状态、负责人、成员数），不返回会话、文件、报告、产物或审计内容。
+        目标租户不存在或部门不属于该租户统一 404；目标租户已暂停返回 409。
+      x-riccon-permission: platform.department.manage
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/DepartmentStatus"
+      responses:
+        "200":
+          description: 部门列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepartmentPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Admin]
+      operationId: createTenantDepartmentForPlatform
+      summary: 平台管理员在目标租户创建部门
+      description: 部门名在目标租户内唯一；名称冲突 409 `RICCON-DEPT-409`。创建人记录为平台管理员，但不写入目标租户业务数据。
+      x-riccon-permission: platform.department.manage
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepartmentCreateRequest"
+      responses:
+        "201":
+          description: 已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/admin/tenants/{tenantId}/departments/{departmentId}:
+    patch:
+      tags: [Admin]
+      operationId: renameTenantDepartmentForPlatform
+      summary: 平台管理员重命名目标租户部门
+      description: 仅启用部门可重命名；停用部门冻结，启用后再改。部门不属于目标租户统一 404。
+      x-riccon-permission: platform.department.manage
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/DepartmentId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepartmentUpdateRequest"
+      responses:
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/admin/tenants/{tenantId}/departments/{departmentId}/disable:
+    post:
+      tags: [Admin]
+      operationId: disableTenantDepartmentForPlatform
+      summary: 平台管理员停用目标租户部门
+      description: 幂等；成员归属保留，但该部门空间与对象在下一次请求起不可访问（统一 404）。仅在状态变化时写审计。
+      x-riccon-permission: platform.department.manage
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/DepartmentId"
+        - $ref: "#/components/parameters/CsrfToken"
+      responses:
+        "200":
+          description: 已停用或本来已停用
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/admin/tenants/{tenantId}/departments/{departmentId}/enable:
+    post:
+      tags: [Admin]
+      operationId: enableTenantDepartmentForPlatform
+      summary: 平台管理员启用目标租户部门
+      description: 幂等；恢复原成员关系与部门空间访问。仅在状态变化时写审计。
+      x-riccon-permission: platform.department.manage
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/DepartmentId"
+        - $ref: "#/components/parameters/CsrfToken"
+      responses:
+        "200":
+          description: 已启用或本来已启用
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/admin/tenants/{tenantId}/departments/{departmentId}/members:
+    get:
+      tags: [Admin]
+      operationId: listTenantDepartmentMembersForPlatform
+      summary: 平台管理员列出目标租户部门成员
+      description: 只返回账号展示字段；目标租户/部门不匹配统一 404，不返回业务内容。
+      x-riccon-permission: platform.department.manage
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/DepartmentId"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 成员列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepartmentMemberPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Admin]
+      operationId: addTenantDepartmentMemberForPlatform
+      summary: 平台管理员把账号加入目标租户部门
+      description: |
+        账号必须属于目标租户且启用；已在其他部门或已在本部门返回 409 `RICCON-DEPT-409`（单主部门）。
+        跨租户账号返回 404，响应不显示账号是否存在；不读取该账号业务内容。
+      x-riccon-permission: platform.department.manage
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/DepartmentId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepartmentMemberRequest"
+      responses:
+        "201":
+          description: 已加入
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepartmentMember"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/admin/tenants/{tenantId}/departments/{departmentId}/members/{userId}:
+    delete:
+      tags: [Admin]
+      operationId: removeTenantDepartmentMemberForPlatform
+      summary: 平台管理员把账号移出目标租户部门
+      description: 幂等；成员不存在返回 204。移除当前负责人返回 409（先移交）；移出后清理该用户在本部门 CUSTOM 空间的成员行。
+      x-riccon-permission: platform.department.manage
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/DepartmentId"
+        - $ref: "#/components/parameters/UserId"
+        - $ref: "#/components/parameters/CsrfToken"
+      responses:
+        "204":
+          description: 已移出或本来不是成员
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/admin/tenants/{tenantId}/departments/{departmentId}/manager:
+    put:
+      tags: [Admin]
+      operationId: transferTenantDepartmentManagerForPlatform
+      summary: 平台管理员任命/移交目标租户部门负责人
+      description: 目标必须是该部门当前启用成员；同一人重复提交返回 200 且不写重复审计；移交后旧负责人下一次请求失去空间管理能力。
+      x-riccon-permission: platform.department.manage
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/DepartmentId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepartmentManagerRequest"
+      responses:
+        "200":
+          description: 已任命或本来是该负责人
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/v1/admin/model-providers:
     get:
       tags: [Admin]
@@ -2635,17 +2703,12 @@ components:
         visibility:
           type: string
           enum: [DEPT, CUSTOM]
-          description: 历史 TENANT 空间转换时与 departmentId 一起提供
-        departmentId:
-          type: string
-          format: uuid
-          description: 仅当当前空间为历史 TENANT 且 department_id 为空时允许，单向转换
+          description: 只允许在 DEPT/CUSTOM 之间切换；TENANT 历史空间在 M03 只读
       additionalProperties: false
       anyOf:
         - required: [name]
         - required: [description]
         - required: [visibility]
-        - required: [departmentId]
     Department:
       type: object
       required: [id, name, status, memberCount, createdAt, updatedAt]
