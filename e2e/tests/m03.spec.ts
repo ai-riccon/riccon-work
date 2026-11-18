@@ -25,7 +25,11 @@ async function expectNoHorizontalScroll(page: import('@playwright/test').Page): 
 test.describe('M03 部门与空间共享', () => {
   test('E2E-M03-01 平台管理员创建部门、加移成员并任命负责人', async ({ page }) => {
     await loginAs(page, M03_CREDENTIALS.platformAdmin, '赵蕾');
-    await page.goto('/admin/tenants');
+    await page.goto('/admin/overview');
+    const tenantNav = page.getByRole('link', { name: '租户管理' });
+    await expect(tenantNav).toBeVisible();
+    await tenantNav.click();
+    await expect(page).toHaveURL(/\/admin\/tenants$/);
     await expect(page.getByText('租户与部门', { exact: true })).toBeVisible();
     await expect(page.getByText('示例企业')).toBeVisible();
 
@@ -91,6 +95,40 @@ test.describe('M03 部门与空间共享', () => {
     await loginAs(page, M03_CREDENTIALS.manager, '李强');
     await expect(page.getByText('知识库为全租户共享，文档级权限在后续版本提供。')).toBeVisible();
 
+    // M03-AC-03/04：切换到部门空间，会话与文件按该空间加载并可继续使用。
+    const workspaceSelector = page.getByRole('combobox', { name: '切换工作空间' });
+    await expect(workspaceSelector).toBeVisible();
+    await workspaceSelector.click();
+    await page
+      .locator('.ant-select-dropdown:visible .ant-select-item-option')
+      .filter({ hasText: '销售部项目空间' })
+      .click();
+    await expect(page.locator('.chat-workspace-select')).toContainText('销售部项目空间');
+    await expect(page.getByRole('button', { name: /销售部部门会话/ })).toBeVisible();
+    await page.getByRole('button', { name: /销售部部门会话/ }).click();
+    await expect(page.getByText('销售部本周新增 3 家重点客户，详见客户清单。')).toBeVisible();
+    const departmentFile = page.locator('.chat-file-item').filter({ hasText: '销售部客户清单.pdf' });
+    await expect(departmentFile.getByText('解析成功', { exact: true })).toBeVisible();
+
+    const composer = page.getByPlaceholder('输入问题，Enter 发送，Shift+Enter 换行');
+    await composer.fill('继续汇总客户风险');
+    await composer.press('Enter');
+    await expect(page.getByText('继续汇总客户风险')).toBeVisible();
+    await expect(page.getByText(/根据你上传的文件《销售部客户清单\.pdf》/)).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // 切回个人空间，验证切换后旧空间会话/文件被清空。
+    await workspaceSelector.click();
+    await page
+      .locator('.ant-select-dropdown:visible .ant-select-item-option')
+      .filter({ hasText: '我的工作空间' })
+      .click();
+    await expect(page.locator('.chat-workspace-select')).toContainText('我的工作空间');
+    await expect(page.getByText('销售部本周新增 3 家重点客户，详见客户清单。')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /销售部部门会话/ })).toHaveCount(0);
+    await expect(page.locator('.chat-file-item').filter({ hasText: '销售部客户清单.pdf' })).toHaveCount(0);
+
     await expect(page.getByRole('button', { name: '工作空间共享' })).toBeVisible();
     await page.getByRole('button', { name: '工作空间共享' }).click();
     const sharingDrawer = page.getByRole('dialog').filter({ hasText: '工作空间共享' });
@@ -130,26 +168,19 @@ test.describe('M03 部门与空间共享', () => {
     await memberDialog.getByRole('button', { name: '加入空间' }).click();
     await expect(memberDialog.getByText('王敏')).toBeVisible();
 
-    await memberDialog.getByRole('combobox', { name: '添加本部门成员' }).click();
-    await page
-      .locator('.ant-select-dropdown:visible .ant-select-item-option')
-      .filter({ hasText: '李强（manager）' })
-      .click();
-    await memberDialog.getByRole('button', { name: '加入空间' }).click();
-    await expect(memberDialog.getByText('李强')).toBeVisible();
     await memberDialog.getByRole('button', { name: '关闭' }).click();
     await page.keyboard.press('Escape');
 
-    // 刷新后负责人仍是显式成员，CUSTOM 空间保持可见且可管理。
+    // F-003：负责人未把自己加入 CUSTOM，刷新后仍能从部门空间列表看到并管理。
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Riccon 工作空间' })).toBeVisible();
     await page.getByRole('button', { name: '工作空间共享' }).click();
-    await expect(
-      page
-        .getByRole('dialog')
-        .locator('.workspace-sharing-item')
-        .filter({ hasText: '重点客户空间' }),
-    ).toBeVisible();
+    const reloadedCustomSpace = page
+      .getByRole('dialog')
+      .locator('.workspace-sharing-item')
+      .filter({ hasText: '重点客户空间' });
+    await expect(reloadedCustomSpace).toBeVisible();
+    await expect(reloadedCustomSpace.getByRole('button', { name: '管理成员' })).toBeVisible();
     await page.keyboard.press('Escape');
 
     // 普通成员看不到管理入口，但仍看到知识库共享范围。
@@ -176,7 +207,6 @@ test.describe('M03 部门与空间共享', () => {
 
     await stub.setScenario('citation-source-404');
     consoleGuard.allowNetworkError(/\/api\/v1\/files\/[^/]+\/download-url$/, 404);
-    const composer = page.getByPlaceholder('输入问题，Enter 发送，Shift+Enter 换行');
     await composer.fill('请总结这份销售资料');
     await composer.press('Enter');
     await expect(page.getByText(/根据你上传的文件/)).toBeVisible({ timeout: 10_000 });

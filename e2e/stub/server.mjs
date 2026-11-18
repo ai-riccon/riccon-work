@@ -85,6 +85,8 @@ const M03_PLATFORM_DISPLAY_NAME = '赵蕾';
 const M03_SALES_DEPARTMENT_ID = 'dept-sales';
 const M03_MARKETING_DEPARTMENT_ID = 'dept-marketing';
 const M03_SALES_WORKSPACE_ID = 'ws-sales-project';
+const M03_DEPT_CONVERSATION_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const M03_DEPT_FILE_ID = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const M03_SOURCE_UNAVAILABLE_FILE_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const M03_SOURCE_UNAVAILABLE_FILE_NAME = '销售部市场分析.pdf';
 
@@ -2225,6 +2227,68 @@ function seedM03State() {
     },
   ];
   state.workspaceMembers = {};
+  const seededAt = BASE_TIME;
+  state.conversations = [
+    {
+      id: M03_DEPT_CONVERSATION_ID,
+      workspaceId: M03_SALES_WORKSPACE_ID,
+      title: '销售部部门会话',
+      status: 'ACTIVE',
+      lastMessageAt: seededAt,
+      createdAt: seededAt,
+      updatedAt: seededAt,
+    },
+  ];
+  state.messages[M03_DEPT_CONVERSATION_ID] = [
+    {
+      id: 'message-dept-user-1',
+      conversationId: M03_DEPT_CONVERSATION_ID,
+      seq: 1,
+      role: 'USER',
+      content: '请汇总销售部本周客户进展',
+      status: 'COMPLETED',
+      citations: [],
+      createdAt: seededAt,
+    },
+    {
+      id: 'message-dept-assistant-1',
+      conversationId: M03_DEPT_CONVERSATION_ID,
+      seq: 2,
+      role: 'ASSISTANT',
+      content: '销售部本周新增 3 家重点客户，详见客户清单。',
+      status: 'COMPLETED',
+      citations: [],
+      createdAt: seededAt,
+    },
+  ];
+  state.files = [
+    {
+      id: M03_DEPT_FILE_ID,
+      workspaceId: M03_SALES_WORKSPACE_ID,
+      conversationId: M03_DEPT_CONVERSATION_ID,
+      originalName: '销售部客户清单.pdf',
+      format: 'PDF',
+      mimeType: 'application/pdf',
+      sizeBytes: 48,
+      sha256: pseudoSha256('销售部客户清单.pdf:48'),
+      status: 'AVAILABLE',
+      parse: {
+        id: 'parse-dept-file-1',
+        attempt: 1,
+        status: 'SUCCEEDED',
+        parserVersion: 'stub-parser-1',
+        pageCount: 1,
+        sheetCount: null,
+        chunkCount: 2,
+        errorCode: null,
+        errorMessage: null,
+        startedAt: seededAt,
+        finishedAt: seededAt,
+      },
+      createdAt: seededAt,
+      deletedAt: null,
+    },
+  ];
 }
 
 function handleApi(req, res, url, raw) {
@@ -3118,7 +3182,10 @@ function handleApi(req, res, url, raw) {
   const conversationsMatch = /^\/api\/v1\/workspaces\/([^/]+)\/conversations$/.exec(pathname);
   if (conversationsMatch) {
     const workspaceId = decodeURIComponent(conversationsMatch[1]);
-    if (workspaceId !== state.workspace.id) {
+    const knownWorkspace =
+      workspaceId === state.workspace.id ||
+      state.teamWorkspaces.some((item) => item.id === workspaceId);
+    if (!knownWorkspace) {
       writeResult(
         res,
         problem(404, 'RICCON-TENANT-404', '工作空间不存在', '工作空间不存在或已被删除。'),
@@ -3126,9 +3193,9 @@ function handleApi(req, res, url, raw) {
       return true;
     }
     if (method === 'GET') {
-      const items = [...state.conversations].sort(
-        (left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt),
-      );
+      const items = state.conversations
+        .filter((item) => item.workspaceId === workspaceId)
+        .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
       writeResult(res, json(page(items)));
       return true;
     }
@@ -3206,7 +3273,10 @@ function handleApi(req, res, url, raw) {
   const filesMatch = /^\/api\/v1\/workspaces\/([^/]+)\/files$/.exec(pathname);
   if (filesMatch) {
     const workspaceId = decodeURIComponent(filesMatch[1]);
-    if (workspaceId !== state.workspace.id) {
+    const knownWorkspace =
+      workspaceId === state.workspace.id ||
+      state.teamWorkspaces.some((item) => item.id === workspaceId);
+    if (!knownWorkspace) {
       writeResult(
         res,
         problem(404, 'RICCON-TENANT-404', '工作空间不存在', '工作空间不存在或已被删除。'),
@@ -3226,7 +3296,9 @@ function handleApi(req, res, url, raw) {
         writeResult(res, problem(400, 'RICCON-FILE-400', '上传请求无效', '缺少文件。'));
         return true;
       }
-      const conversation = state.conversations.find((item) => item.id === conversationId);
+      const conversation = state.conversations.find(
+        (item) => item.id === conversationId && item.workspaceId === workspaceId,
+      );
       if (!conversation) {
         writeResult(res, problem(404, 'RICCON-TENANT-404', '会话不存在', '会话不存在或已被删除。'));
         return true;
@@ -3303,6 +3375,7 @@ function handleApi(req, res, url, raw) {
       advanceParses();
       const conversationId = searchParams.get('conversationId');
       const items = state.files
+        .filter((file) => file.workspaceId === workspaceId)
         .filter((file) => file.status !== 'DELETED')
         .filter((file) => !conversationId || file.conversationId === conversationId)
         .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
