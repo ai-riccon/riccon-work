@@ -72,7 +72,7 @@ test.describe('真实栈 J2', () => {
     await expect(page.getByText('待审批：调用外部工具')).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText('报告已生成')).toHaveCount(0);
 
-    await page.getByRole('button', { name: '批准', exact: true }).click();
+    await page.getByRole('button', { name: '批准' }).click();
     await expect(page.getByText('报告已生成').first()).toBeVisible({ timeout: 120_000 });
 
     // 审批时间线：审批人、审批时间与决定。
@@ -115,7 +115,7 @@ test.describe('真实栈 J2', () => {
 
     await expectRetrievalSources(page);
     await expect(page.getByText('待审批：调用外部工具')).toBeVisible({ timeout: 60_000 });
-    await page.getByRole('button', { name: '拒绝', exact: true }).click();
+    await page.getByRole('button', { name: '拒绝' }).click();
 
     await expect(page.getByText('任务已终止').first()).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText('任务已终止，未生成报告。')).toBeVisible();

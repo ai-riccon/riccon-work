@@ -31,7 +31,9 @@ test.describe('真实栈首字预算', () => {
     await page.getByRole('button', { name: /上传文件/ }).click();
     const chooser = await chooserPromise;
     await chooser.setFiles(DOCX);
-    await expect(page.getByText('解析成功')).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator('.chat-file-item').first().getByText('解析成功', { exact: true })).toBeVisible({
+      timeout: 60_000,
+    });
 
     const composer = page.getByPlaceholder('输入问题，Enter 发送，Shift+Enter 换行');
     await composer.fill('请总结真实栈文件的增长趋势');

@@ -21,9 +21,11 @@ test.describe('真实栈 J1', () => {
     await page.getByRole('button', { name: /上传文件/ }).click();
     const chooser = await chooserPromise;
     await chooser.setFiles(DOCX);
-    await expect(page.getByText('解析成功')).toBeVisible({ timeout: 60_000 });
-    // 解析状态渲染后等待一个短周期，确保前端把文件状态同步到发送时的引用集合。
-    await page.waitForTimeout(2_000);
+    await expect(
+      page.locator('.chat-file-item').first().getByText('解析成功', { exact: true }),
+    ).toBeVisible({
+      timeout: 60_000,
+    });
 
     const composer = page.getByPlaceholder('输入问题，Enter 发送，Shift+Enter 换行');
     await composer.fill(QUESTION);

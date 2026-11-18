@@ -19,7 +19,11 @@ test.describe('真实栈 J1 运行详情', () => {
     await page.getByRole('button', { name: /上传文件/ }).click();
     const chooser = await chooserPromise;
     await chooser.setFiles(DOCX);
-    await expect(page.getByText('解析成功')).toBeVisible({ timeout: 60_000 });
+    await expect(
+      page.locator('.chat-file-item').first().getByText('解析成功', { exact: true }),
+    ).toBeVisible({
+      timeout: 60_000,
+    });
 
     const composer = page.getByPlaceholder('输入问题，Enter 发送，Shift+Enter 换行');
     await composer.fill('请总结真实栈文件的增长趋势');
@@ -35,8 +39,8 @@ test.describe('真实栈 J1 运行详情', () => {
     await expect(drawer).toBeVisible();
     await expect(drawer.getByText('模型调用')).toBeVisible();
     await expect(drawer.getByText('fake-chat')).toBeVisible();
-    await expect(drawer.getByText('首字')).toBeVisible();
-    await expect(drawer.getByText('耗时')).toBeVisible();
+    await expect(drawer.getByRole('columnheader', { name: '首字' })).toBeVisible();
+    await expect(drawer.getByRole('columnheader', { name: '耗时' })).toBeVisible();
     await expect(drawer.locator('tbody').getByText('成功').first()).toBeVisible();
 
     // 首字必须体现真实增量时间，而不是整段流耗时（F-002/F-008 的直接回归点）。
