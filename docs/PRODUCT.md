@@ -1,5 +1,26 @@
 # 产品
 
+## 评审状态
+
+| 检查                   | 状态 | 记录                                                       |
+| ---------------------- | ---- | ---------------------------------------------------------- |
+| Product 草案           | pass | M03 见 §8；M01/M02 无前置评审记录，记 legacy               |
+| Lead 完整性/合同一致性 | pass | 本次 M03 评审；M01/M02 legacy                              |
+| 用户范围批准           | pass | DEC-0010/0011/0014/0015；M01/M02 无单独范围决策，记 legacy |
+| Architect 可行性       | pass | ADR-0018（proposed，已评审）；M02 ADR-0001..0017           |
+| Verifier AC 可验证性   | pass | REV-TASK-0033-002；M02 REV-M02-003；M01 REV-M01-001        |
+
+状态值：`draft`、`pending`、`pass`、`changes-requested`；历史无记录用 `legacy`/`not-recorded`，不伪造 pass。
+
+### 按模块
+
+| 模块 | Product 草案 | Lead 完整性 | 用户范围批准                           | Architect 可行性                              | Verifier 可验证性         |
+| ---- | ------------ | ----------- | -------------------------------------- | --------------------------------------------- | ------------------------- |
+| M01  | legacy       | legacy      | legacy                                 | pass（ADR-0001..0004）                        | pass（REV-M01-001）       |
+| M02  | legacy       | legacy      | legacy（合同初始批准，无单独范围决策） | pass（ADR-0005..0017）                        | pass（REV-M02-003）       |
+| M03  | pass（§8）   | pass        | pass（DEC-0010/0011/0014/0015）        | pass（ADR-0018 proposed，TASK-0033 评审通过） | pass（REV-TASK-0033-002） |
+| M10  | pending      | pending     | pending                                | pending                                       | pending                   |
+
 私有化优先的多租户企业 AI 协同办公系统。办公套件做入口，平台做内核；v1 只证明员工侧价值。
 
 ## 1. 目标

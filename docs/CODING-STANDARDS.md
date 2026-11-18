@@ -119,6 +119,14 @@ platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
 - 业务 ID 统一 `java.util.UUID`（UUIDv7）；只在 `..persistence..` 转 `BINARY(16)`，controller/service 不暴露字节数组。
 - 状态值使用 `platform-domain` 的枚举名；数据库存枚举名（大写），不得在业务代码写状态字符串字面量。
 
+## 5.5 时间与时区
+
+- 团队默认时区：`Asia/Shanghai`（UTC+08:00），由合同 `project.timezone` 声明。
+- 数据库目标使用带时区语义的类型（`timestamptz` / `timestamp with time zone`）。当前 MySQL 8.4 没有 `timestamptz`，按 ADR-0008/0012 使用 `DATETIME(6)` 存储 UTC，连接初始化 `SET time_zone='+00:00'`；这是已记录的存储层例外，不得扩散为本地时区存储。
+- API/日志/事件/UI 使用 ISO 8601 带偏移，例如 `2026-11-18T09:30:00+08:00`；禁止只发 `YYYY-MM-DD HH:mm:ss`。
+- 仅存储层使用 UTC；读写边界和展示层必须转换为北京时间；测试注入 `Clock`/`ZoneId`，禁止依赖运行机器本地时区。
+- 修改时间类型、存储口径或展示口径必须写 ADR，并给出迁移与回滚方案。
+
 ## 6. Spring Boot 4.1 约定
 
 - **构造器注入**：禁止 `@Autowired` 字段注入；单构造器可省略注解。
@@ -183,6 +191,17 @@ platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
   - 复现命令：`./mvnw -q -T1C verify jacoco:report`。
 - 测试必须真实执行；0 个测试的命令视为失败，不得用 `-DskipTests` 作为交付证据。
 - 前端 E2E 与覆盖率在 TASK-0003 建立 `apps/web` 后补充，命令以合同 `commands.test_e2e` 为准。
+
+### 10.1 测试执行与证据分层
+
+- **L1 内层循环**：只跑受影响单元/集成测试或 `-DskipTests` 编译；可用后续的受影响测试脚本，但不录 EV，不能用于任务完成或模块 gate。
+- **L2 任务收尾**：低/中风险任务默认只跑受影响模块一次全量；高风险（认证、权限、迁移、并发、安全、AI 工具调用）、跨模块契约/迁移、模块最后一个任务在最终提交上跑一次全量。录 EV 时以最终一次通过为准。
+- **L3 模块 gate**：在最终提交上跑一次完整 `commands.test` + `commands.coverage` + E2E/a11y/security，由 verifier 独立执行并绑定 `dod_evidence`。任务级定向证据不能替代模块 gate 全量。
+- `./mvnw -q -T1C verify` 已包含 API 与 worker 测试；同一任务不得再重复跑 worker 全量。共享层/契约/迁移变更必须全量一次。
+- 同一份代码的全量只跑一次；先提交，再在**主工作树**用 `riccon evidence run` 取证，不先跑一遍再取证，不为取证新建临时 worktree。
+- 长测试必须设置显式超时并保留日志；超时视为失败，不得重试掩盖。
+- 并行 builder/verifier 同一时间只允许一个全量套件运行，避免 Docker/MySQL/CPU 争抢导致假失败；定向测试可并行。
+- 本地热测试栈（若启用）只用于单 agent 内层循环，默认与 CI 仍使用隔离容器；迁移/回滚测试必须使用一次性容器。
 
 ## 11. 数据库与迁移
 

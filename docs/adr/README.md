@@ -5,12 +5,20 @@
 ```text
 # ADR-NNNN: 标题
 Status: proposed | accepted | superseded
+Reviewers: <角色/agent；独立评审者>
+Approved-by: <用户/决策 ID；不可逆或高成本项必填>
+Review-date: <ISO8601 +08:00>
+Supersedes: <ADR-NNNN | none>
 Context:
 Decision:
 Consequences:
 Alternatives:
 Evidence:
 ```
+
+- ADR 默认 `proposed`；未完成 Lead/Verifier/Ops 评审或用户批准（不可逆/高成本项）前，不得改为 `accepted`。
+- `Approved-by` 必须引用真实决策 ID（如 `DEC-0005`）；没有用户批准的高成本项保持 `pending` 或 `proposed`。
+- 被替代的 ADR 保留原文并链接新 ADR；不得删除历史结论。
 
 决策难以逆转时写 ADR：技术栈、数据模型、公开契约、认证/安全、部署架构，或对合同的刻意偏离。
 
