@@ -5,7 +5,8 @@
 // 加密凭据，然后运行 Playwright 浏览器旅程与 J2 HTTP 闭环/安全审计。
 //
 // 退出码：只要浏览器验收（首字预算、J2 创建入口）失败即非零；J2 后端闭环与安全检查失败同样非零。
-// 所有服务的日志写入 `.riccon/evidence/TASK-0024/`，便于评审复核。
+// 所有服务的日志写入 `.riccon/evidence/<REAL_EVIDENCE_TASK>/`（默认 TASK-0024），便于评审复核。
+// 复验时设置 REAL_EVIDENCE_TASK=TASK-00xx，把新证据与旧证据隔离，避免覆盖历史日志。
 
 import { spawn, spawnSync } from "node:child_process";
 import { createHash, createHmac, randomBytes } from "node:crypto";
@@ -19,7 +20,8 @@ import {
 import path from "node:path";
 
 const repoRoot = process.cwd();
-const evidenceDir = path.join(repoRoot, ".riccon/evidence/TASK-0024");
+const evidenceTask = process.env.REAL_EVIDENCE_TASK ?? "TASK-0024";
+const evidenceDir = path.join(repoRoot, ".riccon/evidence", evidenceTask);
 mkdirSync(evidenceDir, { recursive: true });
 
 const API_PORT = Number(process.env.REAL_API_PORT ?? 18080);
@@ -263,6 +265,7 @@ try {
   const playwrightEnv = {
     REAL_WEB_BASE: `http://127.0.0.1:${WEB_PORT}`,
     REAL_SEED_OUT: SEED_FILE,
+    REAL_EVIDENCE_DIR: evidenceDir,
   };
   const playwright = spawnSync(
     "pnpm",
@@ -330,8 +333,8 @@ try {
     phases,
     firstTokenBudget: "3000ms (M02-AC-03)",
     notes: [
-      "浏览器 E2E 覆盖登录、J1 上传/解析/引用/重开、J2 创建入口与首字预算。",
-      "J2 工具列表端点在真实 API 缺失时，浏览器创建入口按验收失败；J2 后端闭环另行通过 HTTP 验证。",
+      "浏览器 E2E 覆盖登录、J1 上传/解析/引用/重开/首字与逐段增长、J1 运行详情、filesRef 快速发送、J2 创建与审批/产物、可访问性。",
+      "J2 后端闭环与安全检查另行通过 HTTP/数据库验证；任何阶段失败都会让本脚本以非零退出。",
     ],
   };
   writeFileSync(

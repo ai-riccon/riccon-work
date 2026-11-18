@@ -3,6 +3,9 @@ import path from 'node:path';
 
 /** 仓库根目录；真实栈服务由 `scripts/real-stack/run.mjs` 启动。 */
 const repoRoot = path.resolve(__dirname, '../..');
+/** 证据目录；复验时由 run.mjs 通过 REAL_EVIDENCE_DIR 指定，默认沿用首次验证目录。 */
+const evidenceDir =
+  process.env.REAL_EVIDENCE_DIR ?? path.join(repoRoot, '.riccon/evidence/TASK-0024');
 
 /**
  * 真实栈 E2E 配置。
@@ -19,10 +22,7 @@ export default defineConfig({
   fullyParallel: false,
   retries: 0,
   workers: 1,
-  reporter: [
-    ['list'],
-    ['json', { outputFile: path.join(repoRoot, '.riccon/evidence/TASK-0024/real-report.json') }],
-  ],
+  reporter: [['list'], ['json', { outputFile: path.join(evidenceDir, 'real-report.json') }]],
   use: {
     baseURL: process.env.REAL_WEB_BASE ?? 'http://127.0.0.1:8092',
     screenshot: 'only-on-failure',

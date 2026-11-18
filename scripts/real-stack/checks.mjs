@@ -7,18 +7,16 @@ import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { ApiClient } from "./lib/http.mjs";
-import { runSql } from "./lib/mysql.mjs";
+import { queryValue, runSql } from "./lib/mysql.mjs";
 
 const root = process.cwd();
 const seedPath =
   process.env.REAL_SEED_OUT ??
   path.join(root, ".riccon/evidence/TASK-0024/real-stack-seed.json");
+const evidenceDir = path.dirname(seedPath);
 const seed = JSON.parse(readFileSync(seedPath, "utf8"));
 const journey = JSON.parse(
-  readFileSync(
-    path.join(root, ".riccon/evidence/TASK-0024/real-stack-j2.json"),
-    "utf8",
-  ),
+  readFileSync(path.join(evidenceDir, "real-stack-j2.json"), "utf8"),
 );
 const masterKey = process.env.RICCON_MASTER_KEY;
 const fakeApiKey = seed.fakeApiKey ?? "fake-model-api-key-real-stack";
@@ -206,11 +204,113 @@ assert.equal(
   "provider credential must not store plaintext",
 );
 
+// ---------- 已实现契约端点：MCP 工具目录与运行详情 ----------
+const alphaTools = await alpha.get("/api/v1/mcp-tools?page=1&size=100");
+assert.equal(
+  alphaTools.status,
+  200,
+  `mcp-tools must be implemented: ${alphaTools.status} ${alphaTools.text}`,
+);
+const grantedTool = (alphaTools.data?.items ?? []).find(
+  (item) => item.id === seed.catalog.mcpToolId,
+);
+assert.ok(grantedTool, "mcp-tools must include the tenant-granted tool");
+assert.equal(grantedTool.name, "market_data");
+assert.equal(grantedTool.riskLevel, "READ");
+assert.equal(grantedTool.requiresApproval, true);
+assert.equal(grantedTool.status, "ACTIVE");
+const betaTools = await beta.get("/api/v1/mcp-tools?page=1&size=100");
+assert.equal(betaTools.status, 200);
+assert.equal(betaTools.data?.total, 0, "beta must not see alpha tool grants");
+
+/**
+ * 把 MySQL HEX(BINARY(16)) 转成带连字符的 UUID。
+ *
+ * @param {string} hex 32 位十六进制
+ * @returns {string} UUID
+ */
+function hexToUuid(hex) {
+  const value = hex.trim().toLowerCase();
+  assert.match(value, /^[0-9a-f]{32}$/);
+  return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
+}
+
+const j1RunHex = queryValue(`
+SELECT HEX(id) FROM agent_run
+ WHERE tenant_id = '${seed.tenants.alpha}' AND kind = 'CHAT'
+ ORDER BY created_at DESC, id DESC LIMIT 1;
+`);
+const j1RunId = hexToUuid(j1RunHex);
+const j1Run = await alpha.get(`/api/v1/runs/${j1RunId}`);
+assert.equal(
+  j1Run.status,
+  200,
+  `J1 run detail must be implemented: ${j1Run.status} ${j1Run.text}`,
+);
+assert.equal(j1Run.data?.kind, "CHAT");
+assert.ok(
+  (j1Run.data?.modelInvocations ?? []).length >= 1,
+  "J1 run detail must expose model invocations",
+);
+const j1ChatInvocation = j1Run.data.modelInvocations.find(
+  (invocation) => invocation.purpose === "CHAT",
+);
+assert.ok(j1ChatInvocation, "J1 run must have a CHAT model invocation");
+assert.equal(j1ChatInvocation.status, "SUCCEEDED");
+assert.ok(
+  Number.isInteger(j1ChatInvocation.firstTokenMs) &&
+    j1ChatInvocation.firstTokenMs < 3000,
+  `J1 firstTokenMs ${j1ChatInvocation.firstTokenMs} must be < 3000`,
+);
+assert.ok(
+  j1ChatInvocation.durationMs >= j1ChatInvocation.firstTokenMs,
+  "J1 duration must not be shorter than first token",
+);
+const dbFirstToken = Number(
+  queryValue(`
+SELECT first_token_ms FROM model_invocation
+ WHERE tenant_id = '${seed.tenants.alpha}' AND purpose = 'CHAT'
+ ORDER BY started_at DESC LIMIT 1;
+`),
+);
+assert.ok(
+  Number.isInteger(dbFirstToken) && dbFirstToken >= 0 && dbFirstToken < 3000,
+  `DB first_token_ms ${dbFirstToken} must be < 3000`,
+);
+
+const j2Run = await alpha.get(`/api/v1/runs/${journey.approvedRunId}`);
+assert.equal(
+  j2Run.status,
+  200,
+  `J2 run detail must be implemented: ${j2Run.status} ${j2Run.text}`,
+);
+assert.equal(j2Run.data?.kind, "RESEARCH_REPORT");
+assert.ok(
+  (j2Run.data?.modelInvocations ?? []).length >= 1,
+  "J2 run detail must expose model invocations",
+);
+
+const betaJ1Run = await beta.get(`/api/v1/runs/${j1RunId}`);
+assert.equal(
+  betaJ1Run.status,
+  404,
+  `cross-tenant J1 run must be 404, got ${betaJ1Run.status}`,
+);
+const betaJ2Run = await beta.get(`/api/v1/runs/${journey.approvedRunId}`);
+assert.equal(
+  betaJ2Run.status,
+  404,
+  `cross-tenant J2 run must be 404, got ${betaJ2Run.status}`,
+);
+observations.j1RunId = j1RunId;
+observations.j1FirstTokenMs = j1ChatInvocation.firstTokenMs;
+observations.j1InvocationDurationMs = j1ChatInvocation.durationMs;
+observations.dbFirstTokenMs = dbFirstToken;
+observations.crossTenantRuns = `${betaJ1Run.status}/${betaJ2Run.status}`;
+
 // ---------- 契约声明的端点缺口 ----------
 const contractEndpoints = [
-  "/api/v1/mcp-tools?page=1&size=100",
   "/api/v1/models",
-  `/api/v1/runs/${journey.approvedTaskId}`,
   "/api/v1/admin/model-providers",
   "/api/v1/admin/models",
   "/api/v1/admin/mcp-servers",
@@ -239,6 +339,18 @@ const summary = {
   status: "passed",
   generatedAt: new Date().toISOString(),
   auditActions: auditCounts,
+  mcpTools: {
+    alphaTotal: alphaTools.data?.total ?? null,
+    betaTotal: betaTools.data?.total ?? null,
+    grantedToolId: grantedTool.id,
+  },
+  runs: {
+    j1RunId,
+    j2RunId: journey.approvedRunId,
+    j1FirstTokenMs: j1ChatInvocation.firstTokenMs,
+    j1DurationMs: j1ChatInvocation.durationMs,
+    dbFirstTokenMs: dbFirstToken,
+  },
   appendOnly: {
     updateExit: updateAttempt.status,
     deleteExit: deleteAttempt.status,
@@ -254,7 +366,7 @@ const summary = {
   gaps,
 };
 writeFileSync(
-  path.join(root, ".riccon/evidence/TASK-0024/real-stack-checks.json"),
+  path.join(evidenceDir, "real-stack-checks.json"),
   `${JSON.stringify(summary, null, 2)}\n`,
 );
 console.log(JSON.stringify(summary, null, 2));
