@@ -32,14 +32,16 @@ test.describe('M13 M03 验收补丁', () => {
     const departmentBadge = page.getByTestId('current-department');
     await expect(departmentBadge).toContainText('所属部门：');
     await expect(departmentBadge).toContainText('销售部');
+    await expectNoHorizontalScroll(page);
+    await expectNoSeriousA11yViolations(page);
+
+    // 键盘可达：选择器可由焦点 + Enter 打开，Escape 关闭。
     const workspaceSelector = page.getByRole('combobox', { name: '切换工作空间' });
     await workspaceSelector.focus();
     await expect(workspaceSelector).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page.locator('.ant-select-dropdown:visible')).toBeVisible();
     await page.keyboard.press('Escape');
-    await expectNoHorizontalScroll(page);
-    await expectNoSeriousA11yViolations(page);
 
     await page.context().clearCookies();
     await loginAs(page, M03_CREDENTIALS.unassigned, '未分配员工');
