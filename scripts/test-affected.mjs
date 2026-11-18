@@ -263,7 +263,11 @@ function unique(values) {
  */
 function joinReasons(values) {
   const parts = [...values]
-    .map((value) => String(value).trim().replace(/[。；]+$/, ""))
+    .map((value) =>
+      String(value)
+        .trim()
+        .replace(/[。；]+$/, ""),
+    )
     .filter(Boolean);
   return parts.length ? `${parts.join("；")}。` : "";
 }
@@ -373,14 +377,6 @@ const WEB_TESTS = walkFiles(path.join(repoRoot, "apps/web"))
   )
   .sort();
 
-/** 收集 E2E spec 文件（相对仓库根）。 */
-const E2E_SPECS = walkFiles(path.join(repoRoot, "e2e"))
-  .filter((absolute) => /\.spec\.ts$/.test(path.basename(absolute)))
-  .map((absolute) =>
-    path.relative(repoRoot, absolute).split(path.sep).join("/"),
-  )
-  .sort();
-
 /**
  * 生成可复制的命令；只在必要时加单引号。
  *
@@ -414,8 +410,15 @@ class SuggestionSet {
     this.java = new Map();
     /** 前端 vitest 聚合。 */
     this.web = { tests: new Set(), reasons: new Set(), files: new Set() };
-    /** E2E spec 聚合。 */
-    this.e2e = { specs: new Set(), reasons: new Set(), files: new Set() };
+    /** E2E spec 聚合：default 走 stub 配置，real 走真实栈配置。 */
+    this.e2e = {
+      specs: new Set(),
+      reasons: new Set(),
+      files: new Set(),
+      realSpecs: new Set(),
+      realReasons: new Set(),
+      realFiles: new Set(),
+    };
     /** @type {Array<{file: string, note: string}>} */
     this.manual = [];
     /** @type {Array<{file: string, note: string}>} */
@@ -465,8 +468,15 @@ class SuggestionSet {
    * @param {string} spec 相对仓库根的 spec 路径
    * @param {string} reason 理由
    * @param {string} file 触发文件
+   * @param {boolean} real 是否为真实栈配置（e2e/real）
    */
-  addE2eSpec(spec, reason, file) {
+  addE2eSpec(spec, reason, file, real = false) {
+    if (real) {
+      this.e2e.realSpecs.add(spec);
+      this.e2e.realReasons.add(reason);
+      this.e2e.realFiles.add(file);
+      return;
+    }
     this.e2e.specs.add(spec);
     this.e2e.reasons.add(reason);
     this.e2e.files.add(file);
@@ -591,10 +601,21 @@ class SuggestionSet {
     if (this.e2e.specs.size) {
       const specs = [...this.e2e.specs].sort();
       groups.push({
-        title: "E2E 定向测试",
-        command: `pnpm -w e2e -- ${specs.map(shellQuote).join(" ")}`,
+        title: "E2E 定向测试（stub 配置）",
+        command: `pnpm -w exec playwright test --config e2e/playwright.config.ts ${specs.map(shellQuote).join(" ")}`,
         reason: joinReasons(this.e2e.reasons),
         files: [...this.e2e.files].sort(),
+      });
+    }
+    if (this.e2e.realSpecs.size) {
+      const specs = [...this.e2e.realSpecs].sort();
+      groups.push({
+        title: "真实栈 E2E 定向测试（real 配置）",
+        command: `pnpm -w exec playwright test --config e2e/real/playwright.real.config.ts ${specs
+          .map(shellQuote)
+          .join(" ")}`,
+        reason: `${joinReasons(this.e2e.realReasons)}真实栈测试需要先启动 scripts/real-stack/run.mjs 与目标环境；未启动时 --list 只验证过滤，不要当作执行通过。`,
+        files: [...this.e2e.realFiles].sort(),
       });
     }
     for (const group of this.groups.values()) {
@@ -685,6 +706,9 @@ class SuggestionSet {
     );
     lines.push(
       "- external 热栈仅用于单 agent L1；默认/CI/gate 仍使用 Testcontainers。",
+    );
+    lines.push(
+      "- E2E 定向命令可追加 `--list` 验证只列出目标 spec；真实栈命令执行前需启动 scripts/real-stack/run.mjs。",
     );
     lines.push("- 运行前先确认工作树与提交范围；本脚本不替代 §10.1 的 L2/L3。");
     return lines.join("\n");
@@ -1197,12 +1221,44 @@ function addWebTests(testFiles, file, reason, suggestions) {
  * @param {SuggestionSet} suggestions 输出
  */
 function analyzeE2eFile(file, suggestions) {
+  const realConfig = "e2e/real/playwright.real.config.ts";
+  if (file.startsWith("e2e/real/")) {
+    // 必须先于 .spec.ts 判断：real spec 也要走真实栈配置，不能落到 stub 配置。
+    if (file.endsWith(".spec.ts")) {
+      if (!existsSync(path.join(repoRoot, file))) {
+        suggestions.addCommand(
+          "e2e-real-full",
+          "真实栈 E2E 全量（spec 删除/重命名）",
+          `pnpm -w exec playwright test --config ${realConfig}`,
+          "spec 已删除/重命名，回退真实栈 E2E 全量；执行前需启动 scripts/real-stack/run.mjs。",
+          file,
+        );
+        return;
+      }
+      suggestions.addE2eSpec(
+        file,
+        "直接变更的真实栈 Playwright spec。",
+        file,
+        true,
+      );
+      return;
+    }
+    // 真实栈配置、fixture 或 helper 变化影响全部 real spec。
+    suggestions.addCommand(
+      "e2e-real-full",
+      "真实栈 E2E 全量（real 配置/fixture）",
+      `pnpm -w exec playwright test --config ${realConfig}`,
+      "e2e/real 配置、fixture 或 helper 变更影响全部真实栈 spec；执行前需启动 scripts/real-stack/run.mjs。",
+      file,
+    );
+    return;
+  }
   if (file.endsWith(".spec.ts")) {
     if (!existsSync(path.join(repoRoot, file))) {
       suggestions.addCommand(
         "e2e-full",
         "E2E 全量（spec 删除/重命名）",
-        "pnpm -w e2e",
+        "pnpm -w exec playwright test --config e2e/playwright.config.ts",
         "spec 已删除/重命名，回退 E2E 全量。",
         file,
       );
@@ -1211,17 +1267,10 @@ function analyzeE2eFile(file, suggestions) {
     suggestions.addE2eSpec(file, "直接变更的 Playwright spec。", file);
     return;
   }
-  if (file.startsWith("e2e/real/")) {
-    suggestions.addManual(
-      file,
-      "真实栈 E2E 编排：不进入模块 gate；按 docs/RUNBOOK.md 与 scripts/real-stack 手动运行。",
-    );
-    return;
-  }
   suggestions.addCommand(
     "e2e-full",
     "E2E 全量（共享配置/stub/fixture）",
-    "pnpm -w e2e",
+    "pnpm -w exec playwright test --config e2e/playwright.config.ts",
     "E2E 配置、stub 或共享 fixture 变更可能影响全部 spec，回退 E2E 全量。",
     file,
   );
