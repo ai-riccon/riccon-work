@@ -164,6 +164,7 @@ test.describe('真实栈 J2', () => {
     for (const marker of ['# ', '## 摘要', '## 引用清单', 'MCP 工具']) {
       expect(downloaded, `下载正文缺少 ${marker}`).toContain(marker);
     }
+    console.log(`REAL_J2_DOWNLOAD_BYTES=${Buffer.byteLength(downloaded, 'utf8')}`);
     expect(corsErrors, `浏览器出现 CORS 错误：${corsErrors.join(' | ')}`).toEqual([]);
     expect(objectStorageFailures, '产物正文不应请求对象存储').toEqual([]);
   });
@@ -199,6 +200,13 @@ test.describe('真实栈 J2', () => {
     await page.waitForTimeout(1_500);
     const settledRequests = detailRequests.length;
     await page.waitForTimeout(2_200);
+    console.log(
+      `REAL_J2_REJECT_DETAIL_REQUESTS settled=${settledRequests} total=${detailRequests.length}`,
+    );
+    expect(
+      settledRequests,
+      '活跃期应观察到至少一次详情请求，避免“停止轮询”断言空转',
+    ).toBeGreaterThan(0);
     expect(
       detailRequests.length,
       `终态后仍在轮询详情端点：${detailRequests.length - settledRequests} 次`,
