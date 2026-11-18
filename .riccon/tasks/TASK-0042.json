@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0042",
+  "module_id": "M03",
+  "title": "M03-B3 独立评审：空间可见性与授权",
+  "owner": "riccon/verifier",
+  "status": "in_progress",
+  "write_scope": [
+    ".riccon/reviews/tasks/**"
+  ],
+  "acceptance": [
+    "WorkspaceJdbc 单一谓词覆盖 list/count/detail；PERSONAL/DEPT/CUSTOM/TENANT 与 visibility NULL 处理正确；无第二份 workspace 可见性 SQL",
+    "requireAccessible 签名不变；requireManageable 仅租户管理员或本部门负责人；404/403 语义与无缓存成立",
+    "部门空间创建/PATCH/CUSTOM 成员端点符合 ADR；新建空间必须启用部门；TENANT 不可新建/转换；404/409/204 正确",
+    "追认的三处夹具改动仅为创建部门与传 departmentId，未降低断言；B4 仍承接 owner-only 断言更新",
+    "独立跑 WorkspaceApiTest/WorkspaceScopeTest；核对 EV-0316 的 568 tests 与覆盖率；无删测/跳测",
+    "写 TASK-0041-review.md verdict；边界无 V9/内容入口/前端/config 改动；B3 可进入 B4"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-18T18:50:16.594+08:00",
+  "updated_at": "2026-11-18T18:50:21.414+08:00",
+  "baseline_commit": "715ad66251782ecc9fe26d054e69400f4d3702db"
+}

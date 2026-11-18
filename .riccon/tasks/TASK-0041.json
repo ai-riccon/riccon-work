@@ -4,11 +4,14 @@
   "module_id": "M03",
   "title": "M03-B3 空间可见性与访问判定",
   "owner": "riccon/builder",
-  "status": "blocked",
+  "status": "review",
   "write_scope": [
     "apps/api/src/main/java/com/riccon/api/workspace/**",
     "apps/api/src/test/java/com/riccon/api/WorkspaceApiTest.java",
-    "apps/api/src/test/java/com/riccon/api/WorkspaceScopeTest.java"
+    "apps/api/src/test/java/com/riccon/api/WorkspaceScopeTest.java",
+    "apps/api/src/test/java/com/riccon/api/ConversationApiTest.java",
+    "apps/api/src/test/java/com/riccon/api/FileLifecycleApiTest.java",
+    "apps/api/src/test/java/com/riccon/api/support/FileApiTestSupport.java"
   ],
   "acceptance": [
     "WorkspaceJdbc 单一谓词覆盖 list/count/detail：PERSONAL 仅 owner、DEPT 当前启用部门、CUSTOM 显式成员且当前部门、TENANT 历史只读",
@@ -24,6 +27,7 @@
   "tools_used": [],
   "blocker": "实现与全量 verify 已完成（EV-0316），但 M03 创建契约变更导致 ConversationApiTest/FileLifecycleApiTest/FileApiTestSupport 必须同步；这三个文件不在 write_scope，内核拒绝进入 review。请 Lead 扩展 write_scope 后由 Lead/Verifier 复核。",
   "created_at": "2026-11-18T18:20:16.525+08:00",
-  "updated_at": "2026-11-18T18:48:24.916+08:00",
-  "baseline_commit": "07beffd1ce27df686651aebdf0c71008a3bad402"
+  "updated_at": "2026-11-18T18:50:10.330+08:00",
+  "baseline_commit": "07beffd1ce27df686651aebdf0c71008a3bad402",
+  "end_commit": "2f90d0e"
 }
