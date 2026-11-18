@@ -35,5 +35,7 @@ public enum AuditTargetType {
     /** 租户。 */
     TENANT,
     /** 审计自身（M10 查询）。 */
-    AUDIT
+    AUDIT,
+    /** 审计导出请求（M10，target_id 为导出请求 ID）。 */
+    AUDIT_EXPORT
 }

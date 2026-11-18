@@ -65,4 +65,8 @@ public interface PermissionCodes {
     String PLATFORM_MCP_READ = "platform.mcp.read";
     /** 审计查询（M10 启用；M02/M03 只写不读，权限码先保留）。 */
     String AUDIT_READ = "audit.read";
+    /** 审批同租户审计导出申请（M10，仅租户管理员；ADR-0020 第 2 节）。 */
+    String AUDIT_EXPORT_APPROVE = "audit.export.approve";
+    /** 平台管理员审批单管理员租户的审计导出申请（M10，仅元数据；ADR-0020 第 2 节）。 */
+    String PLATFORM_AUDIT_EXPORT_APPROVE = "platform.audit.export.approve";
 }

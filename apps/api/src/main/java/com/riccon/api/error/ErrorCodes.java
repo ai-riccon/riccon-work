@@ -68,6 +68,27 @@ public final class ErrorCodes {
     /** 对话流空闲或总时长超过上限。 */
     public static final String CHAT_STREAM_TIMEOUT = "RICCON-CHAT-504";
 
+    /** OIDC 绑定请求非法：issuer 与租户配置不一致、请求体缺字段或 subject 非法（M10，ADR-0019 第 3/7 节）。 */
+    public static final String OIDC_INVALID_REQUEST = "RICCON-OIDC-400";
+
+    /** OIDC 身份已被其他账号绑定、账号已绑定其他身份或唯一键冲突（M10，ADR-0019 第 3/7 节）。 */
+    public static final String OIDC_BINDING_CONFLICT = "RICCON-OIDC-409";
+
+    /** 审计查询时间范围、过滤器或分页非法，或预计导出行数超过上限（M10，ADR-0020 第 6.2 节）。 */
+    public static final String AUDIT_INVALID_REQUEST = "RICCON-AUDIT-400";
+
+    /** 有审计权限但业务拒绝：自批、非申请人下载、平台租户导出、平台审批多管理员租户（M10）。 */
+    public static final String AUDIT_FORBIDDEN = "RICCON-AUDIT-403";
+
+    /** 审计导出状态不允许该操作、并发审批冲突、下载时实际行数超限（M10）。 */
+    public static final String AUDIT_CONFLICT = "RICCON-AUDIT-409";
+
+    /** 审计导出已过期（M10）。 */
+    public static final String AUDIT_EXPORT_EXPIRED = "RICCON-AUDIT-410";
+
+    /** 读取审计时发现白名单外或敏感的 details 键，fail-closed（M10）。 */
+    public static final String AUDIT_DETAILS_INVALID = "RICCON-AUDIT-500";
+
     /** 未预期内部错误；响应不包含堆栈、SQL 或内部主机。 */
     public static final String INTERNAL = "RICCON-COMMON-500";
 

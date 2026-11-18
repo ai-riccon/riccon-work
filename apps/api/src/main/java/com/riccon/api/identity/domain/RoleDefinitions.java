@@ -13,6 +13,10 @@ import java.util.Set;
  * 第 4 节）。部门负责人不是 RBAC 角色，而由 {@code department.manager_user_id} 资源关系表达，因此本类不新增
  * 角色码。新租户开通（{@code TenantAdminService}）与空库引导（{@code BootstrapAdminRunner}）都读取本类，
  * 不维护第二份角色定义。
+ *
+ * <p>M10 说明：{@code audit.read} 已在 V2 权限字典中，B1 直接授予租户管理员与平台管理员。
+ * {@code audit.export.approve}/{@code platform.audit.export.approve} 的字典行由 V10（B3）写入并回填既有角色；
+ * B1 不能提前把它们写进本类，否则在 V10 之前开通租户会触发 {@code role_permission} 外键失败。
  */
 public final class RoleDefinitions {
 
@@ -52,14 +56,18 @@ public final class RoleDefinitions {
             PermissionCodes.MCP_READ,
             PermissionCodes.DEPARTMENT_READ,
             PermissionCodes.TENANT_USER_MANAGE,
-            PermissionCodes.TENANT_ROLE_MANAGE);
+            PermissionCodes.TENANT_ROLE_MANAGE,
+            // M10：租户管理员可查询本租户审计（audit.read 自 M02 已在权限字典）。
+            PermissionCodes.AUDIT_READ);
 
     /** 平台管理员只管理平台目录与租户元数据（含部门元数据），不读取租户业务内容。 */
     private static final Set<String> PLATFORM_ADMIN_PERMISSIONS = Set.of(
             PermissionCodes.PLATFORM_TENANT_MANAGE,
             PermissionCodes.PLATFORM_DEPARTMENT_MANAGE,
             PermissionCodes.PLATFORM_MODEL_READ,
-            PermissionCodes.PLATFORM_MCP_READ);
+            PermissionCodes.PLATFORM_MCP_READ,
+            // M10：平台管理员只能查询平台租户自身审计（跨租户明细 defer）。
+            PermissionCodes.AUDIT_READ);
 
     /** 租户管理员角色定义。 */
     private static final RoleDefinition TENANT_ADMIN =

@@ -49,6 +49,38 @@ public interface AuditActions {
     String DATA_EXPORTED = "data.exported";
     /** 查询审计（M10）。 */
     String AUDIT_QUERIED = "audit.queried";
+    /** 发起审计导出申请（M10，ADR-0020 第 2 节）。 */
+    String AUDIT_EXPORT_REQUESTED = "audit.export.requested";
+    /** 批准审计导出申请（M10，ADR-0020 第 2 节）。 */
+    String AUDIT_EXPORT_APPROVED = "audit.export.approved";
+    /** 拒绝审计导出申请（M10，ADR-0020 第 2 节）。 */
+    String AUDIT_EXPORT_REJECTED = "audit.export.rejected";
+
+    /**
+     * 平台管理员更新租户状态或保留策略（M02 起已写入，M10 提升为共享词汇）。
+     *
+     * <p>M10 开放审计查询后，任何已写入的动作都必须是稳定词汇，避免查询/导出出现“未知动作”。
+     */
+    String TENANT_UPDATED = "tenant.updated";
+    /** 已认证请求携带与主体不一致的租户标识被拒绝（M02 起已写入，M10 提升为共享词汇）。 */
+    String TENANT_ACCESS_DENIED = "tenant.access.denied";
+    /** 删除会话（软删除；M02 起已写入，M10 提升为共享词汇）。 */
+    String SESSION_DELETED = "session.deleted";
+    /** 发送消息并创建对话运行（M02 起已写入，M10 提升为共享词汇）。 */
+    String MESSAGE_SENT = "message.sent";
+    /** 停止生成或客户端断开取消（M02 起已写入，M10 提升为共享词汇）。 */
+    String MESSAGE_STOPPED = "message.stopped";
+    /** 创建市场调研报告任务（M02 起已写入，M10 提升为共享词汇）。 */
+    String RESEARCH_TASK_CREATED = "research.task.created";
+    /** 获取报告产物下载地址（M02 起已写入，M10 提升为共享词汇）。 */
+    String ARTIFACT_DOWNLOADED = "artifact.downloaded";
+    /** Worker 运行发起人已禁用，运行被拒绝（M10 提升为共享词汇，API 读取策略同样识别）。 */
+    String USER_ACCESS_DENIED = "user.access.denied";
+
+    /** 管理员把账号绑定到 OIDC 身份（M10-B2 写入，B1 定义词汇）。 */
+    String USER_OIDC_BOUND = "user.oidc.bound";
+    /** 管理员解除 OIDC 绑定并恢复本地密码（M10-B2 写入，B1 定义词汇）。 */
+    String USER_OIDC_UNBOUND = "user.oidc.unbound";
 
     /** 平台管理员创建租户部门（M03，ADR-0018 第 5 节）。 */
     String DEPARTMENT_CREATED = "department.created";

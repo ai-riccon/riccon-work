@@ -10,6 +10,10 @@ import java.util.Set;
  * <p>ADR-0007 第 5 节与 ADR-0018 第 5 节要求 details 只写入白名单字段，禁止密码、token、Cookie、密钥、
  * 提示词、原文、部门成员名单与完整 PII。本类在写入数据库前执行校验；未列出的动作只允许空 details，
  * 新增动作必须显式扩展白名单。
+ *
+ * <p>M10：本类同时是审计读取（B3）的 action-aware 白名单，因此必须包含 worker 写入的模型/MCP/产物动作，
+ * 并允许 {@code promptTokens}/{@code completionTokens} 等白名单指标。判断顺序必须是“白名单优先”，
+ * 不能再用 {@code token}/{@code secret}/{@code content} 子串规则误杀合法键（ADR-0020 F-003）。
  */
 public final class AuditDetailsPolicy {
 
@@ -64,14 +68,73 @@ public final class AuditDetailsPolicy {
                     AuditActions.WORKSPACE_VISIBILITY_CHANGED,
                     Set.of("workspaceId", "visibility", "previousVisibility", "departmentId")),
             Map.entry(AuditActions.WORKSPACE_MEMBER_ADDED, Set.of("workspaceId", "userId")),
-            Map.entry(AuditActions.WORKSPACE_MEMBER_REMOVED, Set.of("workspaceId", "userId")));
+            Map.entry(AuditActions.WORKSPACE_MEMBER_REMOVED, Set.of("workspaceId", "userId")),
+            // M10 审计查询/导出（ADR-0020 第 6.1 节）：只写哈希、计数与 ID，不写 filters 原文或导出内容。
+            Map.entry(AuditActions.AUDIT_QUERIED, Set.of("filtersHash", "rowCount")),
+            Map.entry(
+                    AuditActions.AUDIT_EXPORT_REQUESTED,
+                    Set.of(
+                            "exportId",
+                            "filtersHash",
+                            "estimatedRowCount",
+                            "status",
+                            "occurredFrom",
+                            "occurredTo",
+                            "action",
+                            "actorId",
+                            "targetType",
+                            "targetId",
+                            "outcome")),
+            Map.entry(
+                    AuditActions.AUDIT_EXPORT_APPROVED,
+                    Set.of(
+                            "exportId",
+                            "decision",
+                            "estimatedRowCount",
+                            "filtersHash",
+                            "targetTenantId",
+                            "occurredFrom",
+                            "occurredTo",
+                            "action",
+                            "actorId",
+                            "targetType",
+                            "targetId",
+                            "outcome")),
+            Map.entry(
+                    AuditActions.AUDIT_EXPORT_REJECTED,
+                    Set.of(
+                            "exportId",
+                            "decision",
+                            "estimatedRowCount",
+                            "filtersHash",
+                            "targetTenantId",
+                            "occurredFrom",
+                            "occurredTo",
+                            "action",
+                            "actorId",
+                            "targetType",
+                            "targetId",
+                            "outcome")),
+            Map.entry(AuditActions.DATA_EXPORTED, Set.of("exportId", "scope", "rowCount", "filtersHash")),
+            // M10 OIDC 绑定（ADR-0019 第 3 节）：只存用户 ID 与 identity 哈希，不存 subject 原文或邮箱。
+            Map.entry(
+                    AuditActions.USER_OIDC_BOUND, Set.of("userId", "issuerHash", "subjectHash", "previousAuthSource")),
+            Map.entry(AuditActions.USER_OIDC_UNBOUND, Set.of("userId", "issuerHash")),
+            // Worker 侧已写入的动作；API 读取策略必须识别同一白名单（ADR-0020 F-003/F-005）。
+            Map.entry(AdditionalAuditActions.USER_ACCESS_DENIED, Set.of("userId", "reason")),
+            Map.entry(AuditActions.MODEL_INVOCATION_STARTED, Set.of("modelId", "purpose")),
+            Map.entry(
+                    AuditActions.MODEL_INVOCATION_COMPLETED,
+                    Set.of("modelId", "durationMs", "promptTokens", "completionTokens")),
+            Map.entry(AuditActions.MODEL_INVOCATION_FAILED, Set.of("modelId", "durationMs", "errorCode", "retryable")),
+            Map.entry(
+                    AuditActions.MCP_TOOL_INVOKED,
+                    Set.of("toolName", "paramsSha256", "resultSha256", "durationMs", "approvalId")),
+            Map.entry(AuditActions.ARTIFACT_SAVED, Set.of("artifactId", "reportRunId", "version")));
 
     /** 任何情况下都不允许出现的敏感键（大小写不敏感）。 */
     private static final Set<String> FORBIDDEN_KEYS =
             Set.of("password", "token", "cookie", "secret", "credential", "prompt", "content", "email", "phone");
-
-    /** ADR-0007 明确允许的文件审计键；它包含 forbidden 子串 "content"，但只表示 MIME，不含原文。 */
-    private static final Set<String> FORBIDDEN_KEY_EXCEPTIONS = Set.of("contenttype");
 
     /** details 单值最大长度，避免把原文写入审计。 */
     private static final int MAX_VALUE_LENGTH = 200;
@@ -94,15 +157,17 @@ public final class AuditDetailsPolicy {
             if (key == null || key.isBlank()) {
                 throw new IllegalArgumentException("audit detail key must not be blank");
             }
+            // 白名单优先：promptTokens/completionTokens/sessionIdHash/contentType 等合法指标不能被
+            // "token"/"content" 子串规则误杀；只有白名单外的键才执行敏感词检查（ADR-0020 F-003）。
+            if (allowed.contains(key)) {
+                validateValue(key, entry.getValue());
+                continue;
+            }
             String normalizedKey = key.toLowerCase(java.util.Locale.ROOT);
-            if (FORBIDDEN_KEYS.stream().anyMatch(normalizedKey::contains)
-                    && !FORBIDDEN_KEY_EXCEPTIONS.contains(normalizedKey)) {
+            if (FORBIDDEN_KEYS.stream().anyMatch(normalizedKey::contains)) {
                 throw new IllegalArgumentException("audit detail key is forbidden: " + key);
             }
-            if (!allowed.contains(key)) {
-                throw new IllegalArgumentException("audit detail key is not allowed for " + action + ": " + key);
-            }
-            validateValue(key, entry.getValue());
+            throw new IllegalArgumentException("audit detail key is not allowed for " + action + ": " + key);
         }
     }
 

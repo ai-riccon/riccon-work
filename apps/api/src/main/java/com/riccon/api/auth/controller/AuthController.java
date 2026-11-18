@@ -12,6 +12,7 @@ import com.riccon.api.identity.dto.LoginRequest;
 import com.riccon.api.identity.dto.SessionInfoResponse;
 import com.riccon.api.identity.dto.TenantSummaryResponse;
 import com.riccon.api.identity.dto.UserSummaryResponse;
+import com.riccon.api.oidc.service.OidcLogoutService;
 import com.riccon.api.web.RequestContext;
 import com.riccon.api.web.Validation;
 import jakarta.servlet.http.HttpServletRequest;
@@ -53,20 +54,26 @@ public class AuthController {
     /** CSRF 令牌仓储，用于登录后轮换令牌。 */
     private final CsrfTokenRepository csrfTokenRepository;
 
+    /** OIDC 联合登出地址（不调用 IdP）。 */
+    private final OidcLogoutService oidcLogoutService;
+
     /**
      * 创建认证控制器。
      *
      * @param authService 认证服务
      * @param securityContextRepository 安全上下文仓储
      * @param csrfTokenRepository CSRF 令牌仓储
+     * @param oidcLogoutService OIDC 联合登出地址
      */
     public AuthController(
             AuthService authService,
             SecurityContextRepository securityContextRepository,
-            CsrfTokenRepository csrfTokenRepository) {
+            CsrfTokenRepository csrfTokenRepository,
+            OidcLogoutService oidcLogoutService) {
         this.authService = authService;
         this.securityContextRepository = securityContextRepository;
         this.csrfTokenRepository = csrfTokenRepository;
+        this.oidcLogoutService = oidcLogoutService;
     }
 
     /**
@@ -123,19 +130,28 @@ public class AuthController {
     }
 
     /**
-     * 登出：写审计后使会话失效。
+     * 登出：写审计后使本地会话失效。
+     *
+     * <p>DEC-0017 A：本地登出先执行且是权威结果，不依赖 IdP 可达性；若当前账号为 OIDC 且租户配置了
+     * end-session，响应头返回联合登出地址，SPA 随后做顶层导航。不保存 ID Token，因此不使用 id_token_hint。
      *
      * @param authentication 当前认证
      * @param request HTTP 请求
+     * @param response HTTP 响应
      */
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void logout(Authentication authentication, HttpServletRequest request) {
+    public void logout(Authentication authentication, HttpServletRequest request, HttpServletResponse response) {
         RicconPrincipal principal = requirePrincipal(authentication);
+        // 先计算联登地址（只读本地配置/账号来源）；即使 IdP 不可达也照常返回，由浏览器负责导航。
+        oidcLogoutService
+                .federatedLogoutUrl(principal)
+                .ifPresent(url -> response.setHeader(OidcLogoutService.FEDERATED_LOGOUT_HEADER, url));
         authService.logout(principal, loginContext(request));
         SecurityContextHolder.clearContext();
         HttpSession session = request.getSession(false);
         if (session != null) {
+            // 只失效当前会话：其他并发会话按 ADR-0019 第 5 节保留。
             session.invalidate();
         }
     }
