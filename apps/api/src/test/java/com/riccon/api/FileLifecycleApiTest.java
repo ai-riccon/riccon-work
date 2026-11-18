@@ -301,7 +301,7 @@ class FileLifecycleApiTest extends FileApiTestSupport {
     @DisplayName("会话不属于工作空间时返回 404")
     void upload_conversationFromOtherWorkspace_returnsNotFound() {
         TenantFixture fixture = tenantFixture();
-        JsonNode team = createTeam(fixture.admin(), "另一个空间");
+        JsonNode team = createDepartmentTeam(fixture, "另一个空间");
         UUID conversationId = createConversation(fixture.tenant(), fixture.memberWorkspace(), userId(fixture.member()));
         ApiTestClient.ApiResponse response = uploadRaw(
                 fixture.member(),
@@ -311,6 +311,76 @@ class FileLifecycleApiTest extends FileApiTestSupport {
                 TestFiles.pdf(),
                 conversationId.toString());
         assertThat(response.status()).isEqualTo(404);
+    }
+
+    /**
+     * 创建部门并把管理员与普通成员加入部门，再在该部门下创建 DEPT 团队空间。
+     *
+     * <p>M03 起团队空间必须有部门；该测试仍验证“会话不属于工作空间”的 404，因此两个账号都必须在部门内，
+     * 避免把 404 误归因于空间不可见。
+     *
+     * @param fixture 租户夹具
+     * @param name 空间名
+     * @return 空间 JSON
+     */
+    private JsonNode createDepartmentTeam(TenantFixture fixture, String name) {
+        UUID departmentId = createDepartment(fixture.platform(), fixture.tenant(), "文件部门" + randomSuffix());
+        addDepartmentMember(fixture.platform(), fixture.tenant(), departmentId, userId(fixture.admin()));
+        addDepartmentMember(fixture.platform(), fixture.tenant(), departmentId, userId(fixture.member()));
+        ApiTestClient.ApiResponse response = client.post(
+                "/api/v1/workspaces",
+                client.jsonBody("name", name, "departmentId", departmentId.toString()),
+                fixture.admin().sessionCookie(),
+                fixture.admin().csrfToken(),
+                Map.of());
+        assertThat(response.status()).as(response.body()).isEqualTo(201);
+        return client.json(response);
+    }
+
+    /**
+     * 通过平台管理员创建部门。
+     *
+     * @param platform 平台管理员会话
+     * @param tenant 租户
+     * @param name 部门名
+     * @return 部门 ID
+     */
+    private UUID createDepartment(LoginSession platform, String tenant, String name) {
+        ApiTestClient.ApiResponse response = client.post(
+                "/api/v1/admin/tenants/" + tenant + "/departments",
+                client.jsonBody("name", name),
+                platform.sessionCookie(),
+                platform.csrfToken(),
+                Map.of());
+        assertThat(response.status()).as(response.body()).isEqualTo(201);
+        return UUID.fromString(client.json(response).path("id").asText());
+    }
+
+    /**
+     * 把账号加入部门。
+     *
+     * @param platform 平台管理员会话
+     * @param tenant 租户
+     * @param departmentId 部门 ID
+     * @param userId 账号 ID
+     */
+    private void addDepartmentMember(LoginSession platform, String tenant, UUID departmentId, String userId) {
+        ApiTestClient.ApiResponse response = client.post(
+                "/api/v1/admin/tenants/" + tenant + "/departments/" + departmentId + "/members",
+                client.jsonBody("userId", userId),
+                platform.sessionCookie(),
+                platform.csrfToken(),
+                Map.of());
+        assertThat(response.status()).as(response.body()).isEqualTo(201);
+    }
+
+    /**
+     * 生成唯一后缀。
+     *
+     * @return 8 位后缀
+     */
+    private static String randomSuffix() {
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 8);
     }
 
     /**

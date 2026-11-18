@@ -49,16 +49,19 @@ public abstract class FileApiTestSupport extends ApiStorageIntegrationTestSuppor
     }
 
     /**
-     * 创建团队空间。
+     * 在指定部门下创建团队空间。
+     *
+     * <p>M03 起团队空间必须归属启用部门；调用方负责先创建部门并把需要的账号加入部门。
      *
      * @param session 租户管理员会话
+     * @param departmentId 部门 ID
      * @param name 名称
      * @return 工作空间 JSON
      */
-    protected JsonNode createTeam(LoginSession session, String name) {
+    protected JsonNode createTeam(LoginSession session, UUID departmentId, String name) {
         ApiTestClient.ApiResponse response = client.post(
                 "/api/v1/workspaces",
-                client.jsonBody("name", name),
+                client.jsonBody("name", name, "departmentId", departmentId.toString()),
                 session.sessionCookie(),
                 session.csrfToken(),
                 Map.of());
