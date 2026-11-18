@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0026",
+  "module_id": "M02",
+  "title": "Worker 首字流式修复与指标",
+  "owner": "riccon/builder",
+  "status": "review",
+  "write_scope": [
+    "apps/worker/**"
+  ],
+  "acceptance": [
+    "用 180ms 分片假模型证明首字在 500ms 内到达 SSE",
+    "修复 AgentScope/Agent 聚合导致的 delta 缓冲",
+    "first_token_ms 记录首个可见增量，不接近 duration",
+    "HITL/MCP/工具/流式回归测试与 ./mvnw verify 通过",
+    "审批拒绝后 TOOL/APPROVAL 阶段标记终态，不再 RUNNING"
+  ],
+  "evidence": [
+    "EV-0236",
+    "EV-0237",
+    "EV-0238",
+    "EV-0239",
+    "EV-0240",
+    "EV-0241",
+    "EV-0242",
+    "EV-0243"
+  ],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-18T07:45:27.031+08:00",
+  "updated_at": "2026-11-18T09:57:56.408+08:00",
+  "baseline_commit": "82f86e8",
+  "end_commit": "3ed8400"
+}
