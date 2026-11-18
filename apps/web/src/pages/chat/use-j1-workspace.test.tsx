@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { WorkspaceFile } from '@/services/api/types';
+import type { Workspace, WorkspaceFile } from '@/services/api/types';
 import {
   DEMO_SESSION,
+  DEMO_WORKSPACE,
   createFakeApi,
   makeConversation,
   makeDetail,
@@ -115,5 +116,80 @@ describe('J1 文件快照竞态', () => {
 
     expect(sentBody(api)).toEqual(expect.objectContaining({ content: '新会话的问题' }));
     expect(sentBody(api).fileIds ?? []).toEqual([]);
+  });
+});
+
+/** 部门共享空间夹具；用于验证工作空间切换。 */
+const TEAM_WORKSPACE: Workspace = {
+  id: 'workspace-team',
+  kind: 'TEAM',
+  name: '销售部项目空间',
+  description: '销售部共享空间',
+  ownerUserId: 'user-1',
+  status: 'ACTIVE',
+  createdAt: '2026-11-18T08:00:00.000Z',
+  updatedAt: '2026-11-18T08:00:00.000Z',
+};
+
+describe('J1 工作空间切换', () => {
+  it('切换后按目标空间加载会话，并清空旧会话与文件', async () => {
+    const api = createFakeApi({
+      listWorkspaces: vi.fn(async () => pageOf([DEMO_WORKSPACE, TEAM_WORKSPACE])),
+      listConversations: vi.fn(async (workspaceId: string) =>
+        workspaceId === TEAM_WORKSPACE.id
+          ? pageOf([
+              makeConversation({
+                id: 'team-conversation',
+                workspaceId: TEAM_WORKSPACE.id,
+                title: '部门会话',
+              }),
+            ])
+          : pageOf([makeConversation()]),
+      ),
+      getConversation: vi.fn(async () => makeDetail([])),
+      listFiles: vi.fn(async () => pageOf([makeFile({ id: 'file-personal' })])),
+    });
+    const { result } = renderHook(() => useJ1Workspace(api, DEMO_SESSION, 60_000));
+
+    await waitFor(() => {
+      expect(result.current.phase).toBe('ready');
+    });
+    await act(async () => {
+      await result.current.selectConversation('conversation-1');
+    });
+    expect(result.current.activeConversationId).toBe('conversation-1');
+
+    await act(async () => {
+      await result.current.selectWorkspace(TEAM_WORKSPACE.id);
+    });
+
+    expect(result.current.workspace?.id).toBe(TEAM_WORKSPACE.id);
+    expect(result.current.activeConversationId).toBeNull();
+    expect(result.current.conversations.map((item) => item.id)).toEqual(['team-conversation']);
+    expect(result.current.files).toEqual([]);
+    expect(api.listConversations).toHaveBeenLastCalledWith(TEAM_WORKSPACE.id);
+  });
+
+  it('未知或不可访问的空间不会触发切换', async () => {
+    const api = createFakeApi({
+      listWorkspaces: vi.fn(async () => pageOf([DEMO_WORKSPACE])),
+      listConversations: vi.fn(async () => pageOf([])),
+    });
+    const { result } = renderHook(() => useJ1Workspace(api, DEMO_SESSION, 60_000));
+
+    await waitFor(() => {
+      expect(result.current.phase).toBe('ready');
+    });
+    const callCount = (api.listConversations as unknown as { mock: { calls: unknown[] } }).mock
+      .calls.length;
+
+    await act(async () => {
+      await result.current.selectWorkspace('workspace-not-visible');
+    });
+
+    expect(result.current.workspace?.id).toBe(DEMO_WORKSPACE.id);
+    expect(
+      (api.listConversations as unknown as { mock: { calls: unknown[] } }).mock.calls,
+    ).toHaveLength(callCount);
   });
 });

@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ChatEvent, Citation, WorkspaceFile } from '@/services/api/types';
+import type { ChatEvent, Citation, Workspace, WorkspaceFile } from '@/services/api/types';
 import { ApiError } from '@/services/api/errors';
 import { authStore } from '@/services/auth/auth-store';
 import {
   DEMO_SESSION,
+  DEMO_WORKSPACE,
   completedEvent,
   createFakeApi,
   makeConversation,
@@ -543,5 +544,46 @@ describe('J1 工作空间', () => {
     expect(await screen.findByText(/停止请求未送达/)).toBeVisible();
     expect(screen.getByText('保留内容')).toBeVisible();
     expect(await screen.findByText('已停止生成')).toBeVisible();
+  });
+});
+
+/** 部门共享空间夹具；用于验证聊天页空间切换器。 */
+const TEAM_WORKSPACE: Workspace = {
+  id: 'workspace-team',
+  kind: 'TEAM',
+  name: '销售部项目空间',
+  description: '销售部共享空间',
+  ownerUserId: 'user-1',
+  status: 'ACTIVE',
+  createdAt: '2026-11-18T08:00:00.000Z',
+  updatedAt: '2026-11-18T08:00:00.000Z',
+};
+
+describe('工作空间切换器', () => {
+  it('选择部门空间后加载该空间的会话', async () => {
+    const api = createFakeApi({
+      listWorkspaces: vi.fn(async () => pageOf([DEMO_WORKSPACE, TEAM_WORKSPACE])),
+      listConversations: vi.fn(async (workspaceId: string) =>
+        workspaceId === TEAM_WORKSPACE.id
+          ? pageOf([
+              makeConversation({
+                id: 'team-conversation',
+                workspaceId: TEAM_WORKSPACE.id,
+                title: '部门会话',
+              }),
+            ])
+          : pageOf([]),
+      ),
+    });
+    renderChat(api);
+
+    const selector = await screen.findByRole('combobox', { name: '切换工作空间' });
+    fireEvent.mouseDown(selector);
+    fireEvent.click(await screen.findByTitle('销售部项目空间'));
+
+    await waitFor(() => {
+      expect(api.listConversations).toHaveBeenLastCalledWith(TEAM_WORKSPACE.id);
+    });
+    expect(await screen.findByRole('button', { name: '部门会话' })).toBeVisible();
   });
 });

@@ -12,7 +12,7 @@ describe('路由表', () => {
     expect(findRouteByPath('/admin')?.component).toBe('@/layouts/admin');
   });
 
-  it('管理端默认进入总览页，且至少有两个占位菜单', () => {
+  it('管理端默认进入总览页，并提供总览、租户与设置入口', () => {
     const admin = findRouteByPath('/admin');
     expect(admin?.routes?.[0]).toEqual({
       path: '/admin',
@@ -20,6 +20,7 @@ describe('路由表', () => {
     });
     expect(adminNavigation.map((item) => item.path)).toEqual([
       '/admin/overview',
+      '/admin/tenants',
       '/admin/settings',
     ]);
   });

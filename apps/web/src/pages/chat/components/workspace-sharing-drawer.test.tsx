@@ -334,3 +334,20 @@ describe('工作空间共享抽屉', () => {
     expect(await screen.findByText('销售部项目空间')).toBeVisible();
   });
 });
+
+describe('负责人部门空间管理列表', () => {
+  it('未加入 CUSTOM 空间时仍能从部门管理列表看到并管理', async () => {
+    const custom = makeSpace({ visibility: 'CUSTOM', name: '重点客户空间' });
+    const api = makeApi({
+      listTeamWorkspaces: vi.fn(async () => pageOf([])),
+      listDepartmentWorkspaces: vi.fn(async () => pageOf([custom])),
+    });
+    renderDrawer(api);
+
+    expect(await screen.findByText('重点客户空间')).toBeInTheDocument();
+    expect(api.listDepartmentWorkspaces).toHaveBeenCalledWith('dept-sales');
+    expect(screen.getByRole('button', { name: '管理成员' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '改可见性' })).toBeInTheDocument();
+    expect(screen.getByText('指定成员')).toBeInTheDocument();
+  });
+});

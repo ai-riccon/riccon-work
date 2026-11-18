@@ -18,6 +18,10 @@ describe('管理端 ProLayout 布局', () => {
       'href',
       '/admin/overview',
     );
+    expect(screen.getByRole('link', { name: /租户管理/ })).toHaveAttribute(
+      'href',
+      '/admin/tenants',
+    );
     expect(screen.getByRole('link', { name: /系统设置/ })).toHaveAttribute(
       'href',
       '/admin/settings',

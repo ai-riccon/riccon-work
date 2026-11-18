@@ -23,6 +23,7 @@ import {
   Empty,
   Flex,
   Result,
+  Select,
   Skeleton,
   Space,
   Spin,
@@ -384,10 +385,23 @@ export default function ChatPage({
               Riccon 工作空间
             </Typography.Title>
             <div className="chat-header-meta">
-              <Typography.Text type="secondary">
-                {auth.session.tenant.name}
-                {controller.workspace ? ` · ${controller.workspace.name}` : ''}
-              </Typography.Text>
+              <Typography.Text type="secondary">{auth.session.tenant.name}</Typography.Text>
+              <Select
+                aria-label="切换工作空间"
+                className="chat-workspace-select"
+                loading={controller.conversationsLoading}
+                onChange={(workspaceId) => {
+                  setActiveCitation(null);
+                  setActiveRunId(null);
+                  void controller.selectWorkspace(String(workspaceId));
+                }}
+                options={controller.workspaces.map((workspace) => ({
+                  label: workspace.name,
+                  value: workspace.id,
+                }))}
+                size="small"
+                value={controller.workspace?.id}
+              />
             </div>
           </div>
           <div className="chat-header-actions">

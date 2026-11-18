@@ -32,6 +32,10 @@ export interface J1WorkspaceController {
   phase: WorkspacePhase;
   error: string | null;
   workspace: Workspace | null;
+  /** 当前账号可访问的启用工作空间；用于页面切换器。 */
+  workspaces: Workspace[];
+  /** 切换到指定工作空间，并按空间重新加载会话。 */
+  selectWorkspace: (workspaceId: string) => Promise<void>;
   conversations: Conversation[];
   conversationsLoading: boolean;
   creatingConversation: boolean;
@@ -82,6 +86,7 @@ export function useJ1Workspace(
   const [phase, setPhase] = useState<WorkspacePhase>('loading');
   const [error, setError] = useState<string | null>(null);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [conversationsLoading, setConversationsLoading] = useState(false);
   const [creatingConversation, setCreatingConversation] = useState(false);
@@ -151,7 +156,9 @@ export function useJ1Workspace(
     setMessagesError(null);
     try {
       const page = await api.listWorkspaces();
-      const nextWorkspace = page.items.find((item) => item.status === 'ACTIVE') ?? null;
+      const activeWorkspaces = page.items.filter((item) => item.status === 'ACTIVE');
+      setWorkspaces(activeWorkspaces);
+      const nextWorkspace = activeWorkspaces[0] ?? null;
       workspaceRef.current = nextWorkspace;
       setWorkspace(nextWorkspace);
       if (!nextWorkspace) {
@@ -249,6 +256,67 @@ export function useJ1Workspace(
   const stop = useCallback(async (): Promise<void> => {
     await stopStreaming(false);
   }, [stopStreaming]);
+
+  /**
+   * 切换工作空间并重新加载会话。
+   *
+   * 只接受服务端返回的可访问空间；切换时同步清空旧会话、文件与消息，
+   * 防止上一空间的残留内容短暂出现在新空间。部门空间与个人空间使用同一加载路径。
+   *
+   * @param workspaceId 目标工作空间 ID
+   */
+  const selectWorkspace = useCallback(
+    async (workspaceId: string): Promise<void> => {
+      const target = workspaces.find((item) => item.id === workspaceId) ?? null;
+      if (!target || target.id === workspaceRef.current?.id) {
+        return;
+      }
+
+      await stopStreaming(true);
+      const token = loadTokenRef.current + 1;
+      loadTokenRef.current = token;
+      workspaceRef.current = target;
+      setWorkspace(target);
+      setPhase('ready');
+      setError(null);
+      setActionError(null);
+      activeIdRef.current = null;
+      setActiveConversationId(null);
+      setMessages([]);
+      setMessagesError(null);
+      setUploadErrors([]);
+      setConversations([]);
+      commitFiles(() => []);
+      setConversationsLoading(true);
+
+      try {
+        const conversationPage = await api.listConversations(target.id);
+        if (token !== loadTokenRef.current) {
+          return;
+        }
+        setConversations(conversationPage.items);
+      } catch (loadError) {
+        if (token !== loadTokenRef.current) {
+          return;
+        }
+        if (loadError instanceof ApiError && loadError.status === 403) {
+          setPhase('forbidden');
+          setError(describeApiError(loadError, '没有访问工作空间的权限。'));
+        } else if (loadError instanceof ApiError && loadError.status === 401) {
+          setPhase('error');
+          setError('登录状态已失效，请重新登录。');
+        } else {
+          setPhase('error');
+          setError(describeApiError(loadError, '工作空间会话加载失败，请重试。'));
+        }
+      } finally {
+        if (token === loadTokenRef.current) {
+          setConversationsLoading(false);
+        }
+      }
+    },
+    [api, commitFiles, stopStreaming, workspaces],
+  );
 
   /**
    * 切换会话并加载消息与文件。
@@ -609,6 +677,8 @@ export function useJ1Workspace(
     phase,
     error,
     workspace,
+    workspaces,
+    selectWorkspace,
     conversations,
     conversationsLoading,
     creatingConversation,

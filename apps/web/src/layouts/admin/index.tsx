@@ -1,4 +1,4 @@
-import { DashboardOutlined, SettingOutlined } from '@ant-design/icons';
+import { ApartmentOutlined, DashboardOutlined, SettingOutlined } from '@ant-design/icons';
 import { ProLayout } from '@ant-design/pro-components';
 import { Link, Outlet, useLocation } from '@umijs/max';
 import type { ReactNode } from 'react';
@@ -7,6 +7,7 @@ import { adminNavigation } from '../../../config/routes';
 /** 管理端菜单图标映射，路径与 config/routes.ts 中的 adminNavigation 保持一致。 */
 const MENU_ICONS: Record<string, ReactNode> = {
   '/admin/overview': <DashboardOutlined />,
+  '/admin/tenants': <ApartmentOutlined />,
   '/admin/settings': <SettingOutlined />,
 };
 

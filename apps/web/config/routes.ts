@@ -109,9 +109,15 @@ export interface NavigationItem {
   label: string;
 }
 
-/** 管理端左侧菜单：M01 只有总览与设置两个占位入口。 */
+/**
+ * 管理端左侧菜单。
+ *
+ * 租户管理是平台管理员入口；菜单可见性不代替服务端 `platform.department.manage`
+ * 鉴权，普通租户账号直接访问仍会得到 403。
+ */
 export const adminNavigation: NavigationItem[] = [
   { path: '/admin/overview', label: '管理总览' },
+  { path: '/admin/tenants', label: '租户管理' },
   { path: '/admin/settings', label: '系统设置' },
 ];
 

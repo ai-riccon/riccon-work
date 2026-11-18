@@ -311,7 +311,16 @@ export default function TenantDepartmentsPage({
                   <li className="department-list-item" key={department.id}>
                     <div className="department-list-main">
                       <Typography.Text strong>{department.name}</Typography.Text>
-                      <Tag color={active ? 'green' : 'default'}>{active ? '启用' : '已停用'}</Tag>
+                      <Tag
+                        color={active ? 'green' : 'default'}
+                        style={
+                          active
+                            ? { color: '#237804', background: '#f6ffed', borderColor: '#b7eb8f' }
+                            : undefined
+                        }
+                      >
+                        {active ? '启用' : '已停用'}
+                      </Tag>
                       <Typography.Text>成员 {department.memberCount} 人</Typography.Text>
                       <Typography.Text type="secondary">
                         负责人：{department.managerDisplayName ?? '未任命'}
@@ -336,9 +345,11 @@ export default function TenantDepartmentsPage({
                       </Button>
                       <Button
                         aria-label={`${active ? '停用' : '启用'}：${department.name}`}
+                        autoInsertSpace={false}
                         danger={active}
                         onClick={() => setToggleTarget(department)}
                         size="small"
+                        style={active ? { color: '#a8071a', borderColor: '#ffa39e' } : undefined}
                       >
                         {active ? '停用' : '启用'}
                       </Button>

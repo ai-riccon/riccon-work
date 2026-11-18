@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Drawer, Empty, Flex, Skeleton, Tag, Typography } from 'antd';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { WorkspaceManagementApi } from '@/services/api/client';
-import type { Department, ManagedWorkspace, Workspace } from '@/services/api/types';
+import type { Department, ManagedWorkspace, Page, Workspace } from '@/services/api/types';
 import { describeWorkspaceError } from '@/services/workspaces/errors';
 import {
   canManageWorkspace,
@@ -58,20 +58,44 @@ export function WorkspaceSharingDrawer({
   );
 
   /**
-   * 加载可访问的团队空间。
+   * 加载团队空间。
+   *
+   * 内容可见谓词（`GET /workspaces?kind=TEAM`）不能覆盖“负责人未把自己加入 CUSTOM”的场景，
+   * 因此同时读取每个可管理部门的元数据列表（`GET /departments/{id}/workspaces`）并合并去重。
+   * 部门列表失败时保留内容可见结果；全部失败才展示错误，避免一个辅助请求遮蔽管理入口。
    */
   const load = useCallback(async (): Promise<void> => {
     setLoading(true);
     setLoadError(null);
     try {
-      const page = await api.listTeamWorkspaces();
-      setSpaces(page.items);
+      const requests: Promise<Page<ManagedWorkspace>>[] = [api.listTeamWorkspaces()];
+      manageableDepartments.forEach((department) => {
+        requests.push(api.listDepartmentWorkspaces(department.id));
+      });
+      const results = await Promise.allSettled(requests);
+      const merged = new Map<string, ManagedWorkspace>();
+      let firstFailure: unknown = null;
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          result.value.items.forEach((workspace) => {
+            if (!merged.has(workspace.id)) {
+              merged.set(workspace.id, workspace);
+            }
+          });
+        } else if (firstFailure === null) {
+          firstFailure = result.reason;
+        }
+      });
+      if (merged.size === 0 && firstFailure !== null) {
+        throw firstFailure;
+      }
+      setSpaces([...merged.values()]);
     } catch (failure) {
       setLoadError(describeWorkspaceError(failure, '空间列表加载失败，请重试。'));
     } finally {
       setLoading(false);
     }
-  }, [api]);
+  }, [api, manageableDepartments]);
 
   useEffect(() => {
     void load();

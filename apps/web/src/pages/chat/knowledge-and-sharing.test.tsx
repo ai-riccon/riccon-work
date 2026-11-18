@@ -88,7 +88,10 @@ describe('工作空间共享入口与知识库明示', () => {
     const entry = await screen.findByRole('button', { name: '工作空间共享' });
     fireEvent.click(entry);
 
-    await screen.findByRole('dialog', { name: '工作空间共享' });
+    // antd 在 jsdom 中给 Select 与 Drawer 复用同一个标题 id，导致 dialog 的可访问名丢失；
+    // 这里按 DOM 角色定位，生产浏览器中标题仍由 antd 正常关联。
+    await screen.findByRole('dialog');
+    expect(await screen.findByText('可管理部门')).toBeVisible();
     expect(await screen.findByText('可管理部门')).toBeVisible();
     expect(screen.getByText('销售部')).toBeVisible();
     expect(screen.getByText(/当前是个人空间，仅你本人可见/)).toBeVisible();
