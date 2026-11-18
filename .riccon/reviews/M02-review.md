@@ -293,58 +293,58 @@ created_at: 2026-11-18T11:52:00+08:00
 
 ## 1. 结论先行
 
-| 项目 | 结果 |
-| --- | --- |
+| 项目                  | 结果                                                                                                                                                                   |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 首字预算（M02-AC-03） | **pass**：真实浏览器实测 **326ms**（前两次 321/325ms），正文 250ms 采样序列 `[10,30,39,60,70,80,100,110,130]` 严格增长；DB `first_token_ms=72ms`，`duration_ms=3162ms` |
-| J1 主链路 | **pass**：登录、上传、解析、提问、4 条引用、刷新重开；快速发送请求体含 `fileIds` |
-| J1 运行详情 | **pass**：真实 UI 抽屉显示 `fake-chat`、首字 73ms、耗时 3.2s、状态成功；API `/runs/{runId}` 200，跨租户 404 |
-| J2 创建与检索 | **pass**：真实 UI 工具列表可加载并创建任务；审批前展示 4 条来源、标题与片段；阶段 `details.sources=4` |
-| J2 审批 | **pass**：批准后 4 阶段 SUCCEEDED、5 条引用（4 KNOWLEDGE + 1 MCP）；拒绝后任务终止、无产物、审批记录含决定/审批人/时间；后端阶段 SKIPPED |
-| J2 产物正文 | **fail（P1/F-012）**：浏览器读取预签名 URL 被 CORS 拒绝，正文区域显示“报告正文加载失败”，下载按钮 disabled；报告标题、摘要、引用清单与数据来源仍可见 |
-| 跨租户 | **pass**：7 类对象 + J1/J2 运行详情均 404；beta 工具目录 total=0 |
-| 审计 append-only | **pass**：16 类动作有记录；UPDATE/DELETE 均 ERROR 1644 `audit_event is append-only` |
-| a11y / 375px | **pass（真实栈已覆盖 J2 正常态）**：J1 页面、J2 列表与 J2 详情 axe 无 serious/critical，375px 无横向滚动 |
-| 合同命令 | build/lint/typecheck/test/coverage/security/a11y/docs 通过；`test_e2e` 因 F-012 退出 1 |
+| J1 主链路             | **pass**：登录、上传、解析、提问、4 条引用、刷新重开；快速发送请求体含 `fileIds`                                                                                       |
+| J1 运行详情           | **pass**：真实 UI 抽屉显示 `fake-chat`、首字 73ms、耗时 3.2s、状态成功；API `/runs/{runId}` 200，跨租户 404                                                            |
+| J2 创建与检索         | **pass**：真实 UI 工具列表可加载并创建任务；审批前展示 4 条来源、标题与片段；阶段 `details.sources=4`                                                                  |
+| J2 审批               | **pass**：批准后 4 阶段 SUCCEEDED、5 条引用（4 KNOWLEDGE + 1 MCP）；拒绝后任务终止、无产物、审批记录含决定/审批人/时间；后端阶段 SKIPPED                               |
+| J2 产物正文           | **fail（P1/F-012）**：浏览器读取预签名 URL 被 CORS 拒绝，正文区域显示“报告正文加载失败”，下载按钮 disabled；报告标题、摘要、引用清单与数据来源仍可见                   |
+| 跨租户                | **pass**：7 类对象 + J1/J2 运行详情均 404；beta 工具目录 total=0                                                                                                       |
+| 审计 append-only      | **pass**：16 类动作有记录；UPDATE/DELETE 均 ERROR 1644 `audit_event is append-only`                                                                                    |
+| a11y / 375px          | **pass（真实栈已覆盖 J2 正常态）**：J1 页面、J2 列表与 J2 详情 axe 无 serious/critical，375px 无横向滚动                                                               |
+| 合同命令              | build/lint/typecheck/test/coverage/security/a11y/docs 通过；`test_e2e` 因 F-012 退出 1                                                                                 |
 
 ## 2. 验收标准逐条对账
 
-| AC | 结果 | 说明 / 证据 |
-| --- | --- | --- |
-| M02-AC-01 登录 | **pass** | 真实栈浏览器：正确凭据进入 `tenant-alpha`、显示租户名；错误凭据只显示统一提示。EV-0268。 |
-| M02-AC-02 上传/解析 | **partial** | 真实栈 DOCX 上传/解析/4 分块引用通过；PDF/XLSX/PNG/JPEG 仅 Maven 集成测试覆盖，未逐格式跑真实浏览器。 |
-| M02-AC-03 首字 ≤3s、逐步增长、停止 | **pass（停止为 stub）** | 326ms、增长采样严格递增；`first_token_ms` 与总耗时已分离。停止按钮由 stub E2E 覆盖，真实栈未重复测量。 |
-| M02-AC-04 引用可定位 | **pass** | 真实 J1 显示 4 条 `market.docx` 引用，抽屉显示“第 1 段”；快速发送仍带 `fileIds` 并产生引用。EV-0268。 |
-| M02-AC-05 失败/重试 | **not verified（真实栈）** | 真实栈未注入模型/解析故障；stub E2E 与 Maven 集成测试覆盖。 |
-| M02-AC-06 J2 创建入口 | **pass** | 真实 UI 加载 `market_data · 只读 · 需审批`，创建后进入任务详情；`/api/v1/mcp-tools` 200。EV-0268。 |
-| M02-AC-07 检索来源 | **pass** | 审批前 UI/HTTP 均见 4 条来源、标题、定位与片段；`details.sources=4`、任务级 `sources=4`；无结果提示在 stub 覆盖。 |
-| M02-AC-08 MCP 工具阶段 | **pass** | 审批预览含工具名与脱敏参数；批准后 MCP 调用成功，阶段详情含 `invocationId`/`resultSummary`；真实 UI 显示工具与数据来源。 |
-| M02-AC-09 审批通过/拒绝 | **pass（有 P2 显示缺陷）** | 批准/拒绝均通过；审批卡片显示审批人 `Alpha 员工`、时间与决定。拒绝后前端刷新前阶段仍显示“进行中”，见 F-013（P2）。 |
-| M02-AC-10 报告产物 | **fail** | 产物元数据、摘要、引用清单与数据来源可见，但正文在浏览器不可读、下载禁用；根因 F-012（P1）。 |
-| M02-AC-11 MCP 超时/生成失败重试 | **not verified（真实栈）** | stub E2E 与 Worker 集成测试覆盖；真实栈未注入超时/生成失败。 |
-| M02-AC-12 跨租户对象 | **pass** | 会话、任务、产物、版本、下载 URL、知识库文档、文件 7 类 404；J1/J2 运行详情 404/404；响应不含 A 内容。EV-0268。 |
-| M02-AC-13 越权套件零 skip | **partial** | Maven 524 tests、0 skipped；前端 147 tests、0 skipped；真实栈覆盖主要对象、工具、运行与应用层管理入口，未覆盖未来 M03/M04 全部 admin 接口。 |
-| M02-AC-14 审计覆盖 | **pass** | 真实库 16 类动作：登录、文件上传/删除、会话、消息、模型调用开始/完成、MCP、审批、任务、产物、权限变更等；tenant_id 非空。EV-0268。 |
-| M02-AC-15 审计不可改删 | **pass** | `audit_event` UPDATE/DELETE 均被触发器以 1644 拒绝；API 无删除/修改端点。EV-0268。 |
-| M02-AC-16 状态、375px、键盘 | **partial** | 真实 J1/J2 列表/J2 详情 axe 无 serious/critical、375px 无横向滚动；键盘上传/审批仅 stub E2E 覆盖。 |
+| AC                                 | 结果                       | 说明 / 证据                                                                                                                                 |
+| ---------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| M02-AC-01 登录                     | **pass**                   | 真实栈浏览器：正确凭据进入 `tenant-alpha`、显示租户名；错误凭据只显示统一提示。EV-0268。                                                    |
+| M02-AC-02 上传/解析                | **partial**                | 真实栈 DOCX 上传/解析/4 分块引用通过；PDF/XLSX/PNG/JPEG 仅 Maven 集成测试覆盖，未逐格式跑真实浏览器。                                       |
+| M02-AC-03 首字 ≤3s、逐步增长、停止 | **pass（停止为 stub）**    | 326ms、增长采样严格递增；`first_token_ms` 与总耗时已分离。停止按钮由 stub E2E 覆盖，真实栈未重复测量。                                      |
+| M02-AC-04 引用可定位               | **pass**                   | 真实 J1 显示 4 条 `market.docx` 引用，抽屉显示“第 1 段”；快速发送仍带 `fileIds` 并产生引用。EV-0268。                                       |
+| M02-AC-05 失败/重试                | **not verified（真实栈）** | 真实栈未注入模型/解析故障；stub E2E 与 Maven 集成测试覆盖。                                                                                 |
+| M02-AC-06 J2 创建入口              | **pass**                   | 真实 UI 加载 `market_data · 只读 · 需审批`，创建后进入任务详情；`/api/v1/mcp-tools` 200。EV-0268。                                          |
+| M02-AC-07 检索来源                 | **pass**                   | 审批前 UI/HTTP 均见 4 条来源、标题、定位与片段；`details.sources=4`、任务级 `sources=4`；无结果提示在 stub 覆盖。                           |
+| M02-AC-08 MCP 工具阶段             | **pass**                   | 审批预览含工具名与脱敏参数；批准后 MCP 调用成功，阶段详情含 `invocationId`/`resultSummary`；真实 UI 显示工具与数据来源。                    |
+| M02-AC-09 审批通过/拒绝            | **pass（有 P2 显示缺陷）** | 批准/拒绝均通过；审批卡片显示审批人 `Alpha 员工`、时间与决定。拒绝后前端刷新前阶段仍显示“进行中”，见 F-013（P2）。                          |
+| M02-AC-10 报告产物                 | **fail**                   | 产物元数据、摘要、引用清单与数据来源可见，但正文在浏览器不可读、下载禁用；根因 F-012（P1）。                                                |
+| M02-AC-11 MCP 超时/生成失败重试    | **not verified（真实栈）** | stub E2E 与 Worker 集成测试覆盖；真实栈未注入超时/生成失败。                                                                                |
+| M02-AC-12 跨租户对象               | **pass**                   | 会话、任务、产物、版本、下载 URL、知识库文档、文件 7 类 404；J1/J2 运行详情 404/404；响应不含 A 内容。EV-0268。                             |
+| M02-AC-13 越权套件零 skip          | **partial**                | Maven 524 tests、0 skipped；前端 147 tests、0 skipped；真实栈覆盖主要对象、工具、运行与应用层管理入口，未覆盖未来 M03/M04 全部 admin 接口。 |
+| M02-AC-14 审计覆盖                 | **pass**                   | 真实库 16 类动作：登录、文件上传/删除、会话、消息、模型调用开始/完成、MCP、审批、任务、产物、权限变更等；tenant_id 非空。EV-0268。          |
+| M02-AC-15 审计不可改删             | **pass**                   | `audit_event` UPDATE/DELETE 均被触发器以 1644 拒绝；API 无删除/修改端点。EV-0268。                                                          |
+| M02-AC-16 状态、375px、键盘        | **partial**                | 真实 J1/J2 列表/J2 详情 axe 无 serious/critical、375px 无横向滚动；键盘上传/审批仅 stub E2E 覆盖。                                          |
 
 **模块验收**：J1 E2E 基本成立；J2 E2E 因 AC-10 失败；跨租户与审计成立；合同命令除 `test_e2e` 外通过。`dod.acceptance=false`、`dod.e2e=false`。
 
 ## 3. 合同命令执行（TASK-0029，HEAD=`c476264`）
 
-| 合同项 | 命令 | EV | 退出码 | 观察 |
-| --- | --- | --- | --- | --- |
-| install | `./mvnw -q -T1C -DskipTests dependency:go-offline && pnpm install --frozen-lockfile` | EV-0258 | 0 | lockfile 未变 |
-| build | `./mvnw -q -T1C -DskipTests package && pnpm -w build` | EV-0259 | 0 | API/Worker exec jar 与 web dist 生成 |
-| lint | `./mvnw -q spotless:check && pnpm -w lint` | EV-0260 | 0 | Spotless、ESLint、Prettier 通过 |
-| typecheck | `pnpm -w typecheck` | EV-0261 | 0 | `tsc --noEmit` 通过 |
-| test | `./mvnw -q -T1C verify && pnpm -w test` | EV-0262 | 0 | 后端 93 reports / **524 tests**，0 failure/error/skip；前端 **147 tests**，0 skip |
-| coverage | `./mvnw -q -T1C verify jacoco:report && pnpm -w test -- --coverage` | EV-0263 | 0 | api line 90.25%/branch 71.19%；worker 87.89%/70.77%；platform-common 98.55%/98.15%；web lines 86.85%/branches 79.67%；均过 80/70 |
-| security | `trivy fs --scanners vuln,secret,misconfig --skip-dirs node_modules --skip-dirs target --skip-dirs .git --exit-code 1 .` | EV-0264 | 0 | 0 可见 critical/high；MCP CVE 按 ADR-0011/DEC-0005 抑制 |
-| a11y | `pnpm -w a11y` | EV-0265 | 0 | stub E2E 7 个 @a11y 用例通过（含 J1 运行详情与 J2 完整闭环） |
-| test_e2e | `docker compose -f deploy/compose/docker-compose.test.yml up -d --wait && pnpm -w e2e && REAL_EVIDENCE_TASK=TASK-0029 node scripts/real-stack/run.mjs` | EV-0268 | **1** | stub E2E 19 passed；真实栈 9 passed / 1 failed（F-012）；J2 HTTP 闭环与安全检查通过 |
-| docs | docs/contracts 存在性与 diff | EV-0269 | 0 | `docs/PRODUCT.md`、`ARCHITECTURE.md`、`CODING-STANDARDS.md`、`THREAT-MODEL.md`、`RUNBOOK.md`、`contracts/openapi.yaml` 存在 |
-| evidence audit | `node scripts/real-stack/audit-evidence.mjs` | EV-0270 | 0 | 169 条活动 EV 全部存在、哈希/字节数匹配、dirty=false、commit 为祖先；无重复/孤立 |
-| perf | `k6 run e2e/perf/mvc-smoke.js` | — | — | **未执行**：文件仍不存在，见 F-007；作为 M03/M09 前置，不计入 M02 module DoD |
+| 合同项         | 命令                                                                                                                                                   | EV      | 退出码 | 观察                                                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | ------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| install        | `./mvnw -q -T1C -DskipTests dependency:go-offline && pnpm install --frozen-lockfile`                                                                   | EV-0258 | 0      | lockfile 未变                                                                                                                    |
+| build          | `./mvnw -q -T1C -DskipTests package && pnpm -w build`                                                                                                  | EV-0259 | 0      | API/Worker exec jar 与 web dist 生成                                                                                             |
+| lint           | `./mvnw -q spotless:check && pnpm -w lint`                                                                                                             | EV-0260 | 0      | Spotless、ESLint、Prettier 通过                                                                                                  |
+| typecheck      | `pnpm -w typecheck`                                                                                                                                    | EV-0261 | 0      | `tsc --noEmit` 通过                                                                                                              |
+| test           | `./mvnw -q -T1C verify && pnpm -w test`                                                                                                                | EV-0262 | 0      | 后端 93 reports / **524 tests**，0 failure/error/skip；前端 **147 tests**，0 skip                                                |
+| coverage       | `./mvnw -q -T1C verify jacoco:report && pnpm -w test -- --coverage`                                                                                    | EV-0263 | 0      | api line 90.25%/branch 71.19%；worker 87.89%/70.77%；platform-common 98.55%/98.15%；web lines 86.85%/branches 79.67%；均过 80/70 |
+| security       | `trivy fs --scanners vuln,secret,misconfig --skip-dirs node_modules --skip-dirs target --skip-dirs .git --exit-code 1 .`                               | EV-0264 | 0      | 0 可见 critical/high；MCP CVE 按 ADR-0011/DEC-0005 抑制                                                                          |
+| a11y           | `pnpm -w a11y`                                                                                                                                         | EV-0265 | 0      | stub E2E 7 个 @a11y 用例通过（含 J1 运行详情与 J2 完整闭环）                                                                     |
+| test_e2e       | `docker compose -f deploy/compose/docker-compose.test.yml up -d --wait && pnpm -w e2e && REAL_EVIDENCE_TASK=TASK-0029 node scripts/real-stack/run.mjs` | EV-0268 | **1**  | stub E2E 19 passed；真实栈 9 passed / 1 failed（F-012）；J2 HTTP 闭环与安全检查通过                                              |
+| docs           | docs/contracts 存在性与 diff                                                                                                                           | EV-0269 | 0      | `docs/PRODUCT.md`、`ARCHITECTURE.md`、`CODING-STANDARDS.md`、`THREAT-MODEL.md`、`RUNBOOK.md`、`contracts/openapi.yaml` 存在      |
+| evidence audit | `node scripts/real-stack/audit-evidence.mjs`                                                                                                           | EV-0270 | 0      | 169 条活动 EV 全部存在、哈希/字节数匹配、dirty=false、commit 为祖先；无重复/孤立                                                 |
+| perf           | `k6 run e2e/perf/mvc-smoke.js`                                                                                                                         | —       | —      | **未执行**：文件仍不存在，见 F-007；作为 M03/M09 前置，不计入 M02 module DoD                                                     |
 
 说明：EV-0266/EV-0267 是本次复验中真实栈用例自身定位器缺陷导致的失败尝试（已修正用例后重跑），保留用于追溯；产品失败以 EV-0268 为准。EV-0268 的 `test_e2e` 非零仅由 F-012 造成。
 
@@ -376,22 +376,22 @@ created_at: 2026-11-18T11:52:00+08:00
 
 ## 5. Findings
 
-| ID | 级别 | 状态 | 发现 | 位置 / 复现 | 观察 vs 期望 |
-| --- | --- | --- | --- | --- | --- |
-| F-001 | P1 | fixed | J2 真实 UI 无法选择 MCP 工具 | 旧：`/api/v1/mcp-tools` 404；现 EV-0268 真实 UI 加载 `market_data · 只读 · 需审批` 并创建任务；checks `alphaTotal=1`、`betaTotal=0` | 已从 404 修复为按租户返回授权工具 |
-| F-002 | P1 | fixed | 真实链路首字被缓冲到流结束 | 旧：4380ms；现 EV-0268 首字 326ms、正文严格增长；DB 72ms vs duration 3162ms | 已满足 ≤3s 且逐段到达 |
-| F-003 | P1 | fixed | J2 检索无来源/片段 | 旧：`details.sources=0`；现 4 条来源、片段与定位，审批前 UI 可见 | 已满足 AC-07 |
-| F-004 | P1 | fixed | J1 运行详情端点缺失 | 旧：404；现 UI 抽屉与 API `/runs/{runId}` 均可用，跨租户 404 | 已满足 PRODUCT J1 模型调用记录 |
-| F-005 | P2 | fixed | 拒绝审批后 TOOL/APPROVAL 仍 RUNNING | `AgentRunCancelHandler.handlesTerminalRun` + `skipRunningStages`；EV-0268 数据库与 HTTP 均为 SKIPPED | 后端已修复；前端陈旧显示另立 F-013 |
-| F-006 | P2 | fixed | J1 filesRef 竞态 | `use-j1-workspace.ts` 同步 `commitFiles`；EV-0268 解析成功即发送请求体含 `fileIds` | 已修复 |
-| F-007 | P2 | accepted | `commands.perf` 指向不存在脚本 | `AGENTS.md commands.perf`；仓库无 `e2e/perf/` | M03/M09 前置；M02 无 k6 p95 证据，本次只做重复单次测量 |
-| F-008 | P2 | fixed | `first_token_ms` 记录整段流耗时 | EV-0268 DB 72ms vs duration 3162ms | 指标已能区分首字与总耗时 |
-| F-009 | P3 | open | J1 回答以原始 Markdown 展示 | EV-0268 页面快照可见 `## 市场规模与增长` | 期望 Markdown 渲染或明确纯文本策略；不阻断 |
-| F-010 | P3 | fixed | J2 a11y 只覆盖错误态 | EV-0268 J2 正常详情 axe 0 serious/critical、375px 无横向滚动；EV-0265 7 个 @a11y 用例 | 已覆盖正常创建/审批/产物路径 |
-| F-011 | P2 | accepted | `/models` 与 4 个 admin 目录端点 404 | EV-0268 `real-stack-checks.json.gaps` | 契约漂移；M04/M07 前补齐或删除声明 |
-| F-012 | P1 | open | J2 产物正文浏览器不可读、下载 disabled | `apps/web/src/services/api/client.ts:619-636` 直接 fetch 预签名 URL；`deploy/compose/docker-compose.test.yml` object-storage 无 CORS；`docs/RUNBOOK.md` 无 CORS 配置；EV-0268 | 浏览器 console CORS、`net::ERR_FAILED`；期望正文可读且下载可用 |
-| F-013 | P2 | open | 拒绝后前端停止轮询，刷新前阶段仍“进行中” | `apps/web/src/pages/research/use-research-task.ts:221-238` 只在 PENDING/RUNNING/WAITING_APPROVAL 轮询；`detail.tsx` 无终态后刷新 | 实测 2 个“进行中”；刷新后 0；后端已是 SKIPPED |
-| F-014 | P3 | open | 首条检索片段是文档标题段 | `apps/worker/.../AgentRunRequestedHandler.java:510-526` 对 chunk 1 生成 snippet | 片段非空且非来源 ID/标题字段，但信息量低；第 2–4 条为正文数据 |
+| ID    | 级别 | 状态     | 发现                                                                                | 位置 / 复现                                                                                                                                                                   | 观察 vs 期望                                                   |
+| ----- | ---- | -------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| F-001 | P1   | fixed    | J2 真实 UI 无法选择 MCP 工具                                                        | 旧：`/api/v1/mcp-tools` 404；现 EV-0268 真实 UI 加载 `market_data · 只读 · 需审批` 并创建任务；checks `alphaTotal=1`、`betaTotal=0`                                           | 已从 404 修复为按租户返回授权工具                              |
+| F-002 | P1   | fixed    | 真实链路首字被缓冲到流结束                                                          | 旧：4380ms；现 EV-0268 首字 326ms、正文严格增长；DB 72ms vs duration 3162ms                                                                                                   | 已满足 ≤3s 且逐段到达                                          |
+| F-003 | P1   | fixed    | J2 检索无来源/片段                                                                  | 旧：`details.sources=0`；现 4 条来源、片段与定位，审批前 UI 可见                                                                                                              | 已满足 AC-07                                                   |
+| F-004 | P1   | fixed    | J1 运行详情端点缺失                                                                 | 旧：404；现 UI 抽屉与 API `/runs/{runId}` 均可用，跨租户 404                                                                                                                  | 已满足 PRODUCT J1 模型调用记录                                 |
+| F-005 | P2   | fixed    | 拒绝审批后 TOOL/APPROVAL 仍 RUNNING                                                 | `AgentRunCancelHandler.handlesTerminalRun` + `skipRunningStages`；EV-0268 数据库与 HTTP 均为 SKIPPED                                                                          | 后端已修复；前端陈旧显示另立 F-013                             |
+| F-006 | P2   | fixed    | J1 filesRef 竞态                                                                    | `use-j1-workspace.ts` 同步 `commitFiles`；EV-0268 解析成功即发送请求体含 `fileIds`                                                                                            | 已修复                                                         |
+| F-007 | P2   | accepted | `commands.perf` 指向不存在脚本；`commands.deploy_preview` 指向不存在的 compose 文件 | `AGENTS.md commands.perf`；仓库无 `e2e/perf/`；`deploy/compose/docker-compose.preview.yml` 不存在                                                                             | M03/M09 前置；M02 无 k6 p95 证据，本次只做重复单次测量         |
+| F-008 | P2   | fixed    | `first_token_ms` 记录整段流耗时                                                     | EV-0268 DB 72ms vs duration 3162ms                                                                                                                                            | 指标已能区分首字与总耗时                                       |
+| F-009 | P3   | open     | J1 回答以原始 Markdown 展示                                                         | EV-0268 页面快照可见 `## 市场规模与增长`                                                                                                                                      | 期望 Markdown 渲染或明确纯文本策略；不阻断                     |
+| F-010 | P3   | fixed    | J2 a11y 只覆盖错误态                                                                | EV-0268 J2 正常详情 axe 0 serious/critical、375px 无横向滚动；EV-0265 7 个 @a11y 用例                                                                                         | 已覆盖正常创建/审批/产物路径                                   |
+| F-011 | P2   | accepted | `/models` 与 4 个 admin 目录端点 404                                                | EV-0268 `real-stack-checks.json.gaps`                                                                                                                                         | 契约漂移；M04/M07 前补齐或删除声明                             |
+| F-012 | P1   | open     | J2 产物正文浏览器不可读、下载 disabled                                              | `apps/web/src/services/api/client.ts:619-636` 直接 fetch 预签名 URL；`deploy/compose/docker-compose.test.yml` object-storage 无 CORS；`docs/RUNBOOK.md` 无 CORS 配置；EV-0268 | 浏览器 console CORS、`net::ERR_FAILED`；期望正文可读且下载可用 |
+| F-013 | P2   | open     | 拒绝后前端停止轮询，刷新前阶段仍“进行中”                                            | `apps/web/src/pages/research/use-research-task.ts:221-238` 只在 PENDING/RUNNING/WAITING_APPROVAL 轮询；`detail.tsx` 无终态后刷新                                              | 实测 2 个“进行中”；刷新后 0；后端已是 SKIPPED                  |
+| F-014 | P3   | open     | 首条检索片段是文档标题段                                                            | `apps/worker/.../AgentRunRequestedHandler.java:510-526` 对 chunk 1 生成 snippet                                                                                               | 片段非空且非来源 ID/标题字段，但信息量低；第 2–4 条为正文数据  |
 
 P0：**无**。P1：F-012 **open**，因此 verdict=fail。P2/P3 中 F-007/F-011 已书面接受为后续模块前置；F-009/F-013/F-014 不阻断本轮结论但需记录。
 
@@ -430,7 +430,7 @@ REAL_EVIDENCE_TASK=TASK-0029 node scripts/real-stack/run.mjs
 
 1. **F-012（P1，必须先修）**：对象存储 CORS 或同源代理；修复后重跑 J2 UI 产物正文/下载。当前 M02 无法演示“打开报告正文”。
 2. **F-013（P2）**：终态后刷新一次时间线，或在取消/拒绝后短暂继续轮询，避免用户看到“已终止 + 进行中”的矛盾状态。
-3. **F-007（P2）**：补 `e2e/perf/mvc-smoke.js` 或修改合同；当前只有单次 321–326ms 首字测量，不能声称 p95。
+3. **F-007（P2）**：补 `e2e/perf/mvc-smoke.js` 与 `deploy/compose/docker-compose.preview.yml`（或修改合同）；当前只有单次 321–326ms 首字测量，不能声称 p95。
 4. **F-011（P2）**：M04/M07 前补齐或删除 `/models` 与 admin 目录声明，避免继续契约漂移。
 5. **真实栈覆盖缺口**：AC-02 其余 4 种格式、AC-05/AC-11 失败路径、AC-16 键盘路径仍需真实栈或更强的集成证据。
 6. **墙钟**：M02 已超过原 8h；DEC-0009 已由用户选择提高到 20h，本复验在 20h 内完成。M03 前应复盘拆分粒度，避免再次靠提高上限收尾。
