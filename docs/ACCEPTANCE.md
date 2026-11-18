@@ -16,6 +16,13 @@
 - 验收人：Product、用户
 - 参考：REV-M13-001、REV-M03-001、REV-M03-V1-002、REV-TASK-0033-002、REV-TASK-0037/0039/0041/0043/0045
 
+## 模块关系与验收状态
+
+- **M03**：`feature`，done；原 gate `bc97d1c` + M13 补丁 gate pass；Product `pass`，用户 `accepted`（DEC-0016）。
+- **M13**：`fix`，`fixes_module=M03`；代码 `410cddd`，gate pass（REV-M13-001，EV-0352..EV-0359、EV-0361）；Product 复查 R-M03-01..03 `pass`；用户随 M03 `accepted`（DEC-0016）。
+- **M10**：`feature`，`split_from=M03`，alias `M03b`；planned；M03 user accepted 后才允许启动（当前已满足，但按用户要求先完成 M11/M12 维护）。
+- **M11**：legacy docs-only 模块，TASK-0035/0036 done；无模块 gate；状态保持 planned 并保留 `state validate` warning，后续单独 docs-only closeout 或 handoff 注记，不增加任务、不使用 `--force`。
+
 ## 验收标准（M03，M13 补丁后）
 
 | AC                        | 结果 | 证据                                           | 备注                                                                                                                                                                                                                      |
