@@ -4,7 +4,7 @@
   "module_id": "M03",
   "title": "M03-B3 空间可见性与访问判定",
   "owner": "riccon/builder",
-  "status": "in_progress",
+  "status": "blocked",
   "write_scope": [
     "apps/api/src/main/java/com/riccon/api/workspace/**",
     "apps/api/src/test/java/com/riccon/api/WorkspaceApiTest.java",
@@ -18,10 +18,12 @@
     "消费 OrganizationDirectory，不复制部门查询；跨部门/跨租户统一 404；无第二份 workspace 可见性 SQL",
     "WorkspaceApiTest/WorkspaceScopeTest 覆盖 DEPT/CUSTOM/legacy/404/403；定向测试与一次全量 verify 通过；不碰 V9/内容入口/前端"
   ],
-  "evidence": [],
+  "evidence": [
+    "EV-0316"
+  ],
   "tools_used": [],
-  "blocker": null,
+  "blocker": "实现与全量 verify 已完成（EV-0316），但 M03 创建契约变更导致 ConversationApiTest/FileLifecycleApiTest/FileApiTestSupport 必须同步；这三个文件不在 write_scope，内核拒绝进入 review。请 Lead 扩展 write_scope 后由 Lead/Verifier 复核。",
   "created_at": "2026-11-18T18:20:16.525+08:00",
-  "updated_at": "2026-11-18T18:20:21.605+08:00",
+  "updated_at": "2026-11-18T18:48:24.916+08:00",
   "baseline_commit": "07beffd1ce27df686651aebdf0c71008a3bad402"
 }
