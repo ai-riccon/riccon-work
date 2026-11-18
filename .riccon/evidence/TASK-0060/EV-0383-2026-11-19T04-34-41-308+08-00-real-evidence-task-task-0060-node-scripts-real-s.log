@@ -1,0 +1,41 @@
+# command: REAL_EVIDENCE_TASK=TASK-0060 node scripts/real-stack/run.mjs
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-19T04:31:56.934+08:00
+# finished_at: 2026-11-19T04:34:40.869+08:00
+# duration_ms: 163933
+# exit_code: 0
+
+# --- stdout ---
+[real-stack] reset compose test stack
+[real-stack] started model pid=70778 log=.riccon/evidence/TASK-0060/real-stack-model.log
+[real-stack] started api pid=70783 log=.riccon/evidence/TASK-0060/real-stack-api.log
+[real-stack] started worker pid=70790 log=.riccon/evidence/TASK-0060/real-stack-worker.log
+[real-stack] started web pid=70796 log=.riccon/evidence/TASK-0060/real-stack-web.log
+{
+  "status": "passed",
+  "generatedAt": "2026-11-18T20:34:37.815Z",
+  "phases": {
+    "compose": "passed",
+    "seed": "passed",
+    "browserE2e": "passed",
+    "j2Journey": "passed",
+    "securityChecks": "passed",
+    "m03Checks": "passed"
+  },
+  "firstTokenBudget": "3000ms (M02-AC-03)",
+  "notes": [
+    "浏览器 E2E 覆盖登录、J1 上传/解析/引用/重开/首字与逐段增长、J1 运行详情、filesRef 快速发送、J2 创建与审批/产物、可访问性。",
+    "J2 后端闭环与安全检查另行通过 HTTP/数据库验证；任何阶段失败都会让本脚本以非零退出。"
+  ]
+}
+[real-stack] stopping web pid=70796
+[real-stack] stopping worker pid=70790
+[real-stack] stopping api pid=70783
+[real-stack] stopping model pid=70778
+[real-stack] web exited code=null signal=SIGTERM
+[real-stack] model exited code=null signal=SIGTERM
+[real-stack] api exited code=143 signal=null
+[real-stack] worker exited code=143 signal=null
+
+# --- stderr ---
+
