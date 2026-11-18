@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0041",
+  "module_id": "M03",
+  "title": "M03-B3 空间可见性与访问判定",
+  "owner": "riccon/builder",
+  "status": "in_progress",
+  "write_scope": [
+    "apps/api/src/main/java/com/riccon/api/workspace/**",
+    "apps/api/src/test/java/com/riccon/api/WorkspaceApiTest.java",
+    "apps/api/src/test/java/com/riccon/api/WorkspaceScopeTest.java"
+  ],
+  "acceptance": [
+    "WorkspaceJdbc 单一谓词覆盖 list/count/detail：PERSONAL 仅 owner、DEPT 当前启用部门、CUSTOM 显式成员且当前部门、TENANT 历史只读",
+    "requireAccessible/requireManageable：不可见 404，可见但非负责人/管理员 403；负责人仅本部门空间；无缓存",
+    "部门空间列表/创建、租户管理员创建、PATCH 改名/可见性、CUSTOM 成员增删端点按 ADR；TENANT 不可新建/转换",
+    "新建空间必须启用部门；个人空间不得加成员；重复成员 409；不存在成员 204；列表不泄露其他部门名称/数量",
+    "消费 OrganizationDirectory，不复制部门查询；跨部门/跨租户统一 404；无第二份 workspace 可见性 SQL",
+    "WorkspaceApiTest/WorkspaceScopeTest 覆盖 DEPT/CUSTOM/legacy/404/403；定向测试与一次全量 verify 通过；不碰 V9/内容入口/前端"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-18T18:20:16.525+08:00",
+  "updated_at": "2026-11-18T18:20:21.605+08:00",
+  "baseline_commit": "07beffd1ce27df686651aebdf0c71008a3bad402"
+}
