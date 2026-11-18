@@ -120,6 +120,27 @@ class OpenAiCompatibleChatModelStreamingTest {
     }
 
     /**
+     * 取消订阅后立即终止模型流，且不把取消当错误上报。
+     *
+     * <p>Worker 取消运行时会释放 Agent 与事件流；若阻塞读循环不感知取消，线程会一直占住到
+     * 上游自然结束（或空闲超时）。该用例只取首个增量即取消，断言在远小于整段流的时长内结束。
+     */
+    @Test
+    void cancellingAfterFirstIncrementStopsStreamPromptly() {
+        Msg question = new UserMessage("你好");
+        // 预热：首次订阅的类加载与线程启动开销不计入断言。
+        consumeAll(question);
+        long startedAt = System.nanoTime();
+        ChatResponse first = model.stream(List.of(question), List.of(), null).blockFirst(Duration.ofSeconds(10));
+        long cancelledMs = elapsedMs(startedAt);
+
+        assertThat(first).as("取消前应拿到首个响应").isNotNull();
+        assertThat(cancelledMs)
+                .as("取消后应立即结束，不能等整段流 %dms 的分片", cancelledMs)
+                .isLessThan((long) (SLICES - 2) * FRAME_INTERVAL_MS);
+    }
+
+    /**
      * 计算自开始以来的毫秒数。
      *
      * @param startedAt 开始纳秒
