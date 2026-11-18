@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0054",
+  "module_id": "M12",
+  "title": "M12-A 本地热测试栈与基准",
+  "owner": "riccon/builder",
+  "status": "in_progress",
+  "write_scope": [
+    "apps/api/src/test/**",
+    "apps/worker/src/test/**",
+    "scripts/test-services.mjs",
+    "package.json"
+  ],
+  "acceptance": [
+    "显式 opt-in RICCON_TEST_SERVICES=external；默认/CI 仍启动隔离容器",
+    "API/worker 集成测试复用 compose 的 MySQL/OpenSearch/RustFS；端口、库名、凭据来自 compose；并行 agent 不共用",
+    "reset/唯一租户隔离保留；schema 版本不匹配失败；迁移/回滚测试始终一次性容器",
+    "不改测试断言/数量/覆盖率门槛；默认 ./mvnw verify 与 pnpm -w test 通过",
+    "HitlIntegrationTest/AuthFlowTest 默认 vs 热栈各 3 次中位数；固定启动时间降 ≥40%，全量 verify 不更慢；达不到记录原因",
+    "只改测试/脚本/package scripts；不碰生产源码/迁移/契约/compose/Helm"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-19T02:06:39.985+08:00",
+  "updated_at": "2026-11-19T02:06:46.587+08:00",
+  "baseline_commit": "c469552d4e2dc71c85763b620ebbc92ace37c5cc"
+}
