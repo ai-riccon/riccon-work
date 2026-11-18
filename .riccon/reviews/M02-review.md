@@ -352,7 +352,7 @@ created_at: "2026-11-18T13:09:58+08:00"
 | 跨租户                | **pass**：8 类对象（含新增 content 端点）404；J1/J2 运行详情 404/404；beta 工具目录 total=0；响应不含 A 内容                                                                                          |
 | 审计 append-only      | **pass**：16 类动作有记录（含 `artifact.downloaded` 5 次）；UPDATE/DELETE 均 ERROR 1644 `audit_event is append-only`                                                                                  |
 | a11y / 375px          | **pass**：stub 7 个 @a11y 通过；真实栈 J1、J2 列表与 J2 正常详情 axe 无 serious/critical，375px 无横向滚动                                                                                            |
-| 合同命令              | **pass**：install/build/lint/typecheck/test/coverage/security/a11y/test_e2e/docs 全部 exit 0；证据审计 196 条活动 EV 无问题                                                                         |
+| 合同命令              | **pass**：install/build/lint/typecheck/test/coverage/security/a11y/test_e2e/docs 全部 exit 0；证据审计 196 条活动 EV 通过（9 条显式预期失败、3 条脏证据未引用）                                                                         |
 
 ## 2. 验收标准逐条对账
 
