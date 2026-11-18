@@ -413,6 +413,17 @@ class OidcLoginFlowTest extends ApiIntegrationTestSupport {
         assertThat(unreachable.header("Location")).isEqualTo(absolute("/login?oidcError=idp_unavailable"));
         assertThat(totalSessionCount()).isEqualTo(baseline);
         assertAuditFailure(TENANT_B, "idp_unavailable");
+
+        // 回调限流：达到 IP + tenantCode 失败阈值后直接 rate_limited，不进入 token 交换。
+        for (int index = 0; index < 10; index++) {
+            loginRateLimiter.recordFailure("127.0.0.1", TENANT_A);
+        }
+        long rateLimitBaseline = totalSessionCount();
+        ApiTestClient.ApiResponse rateLimited =
+                client.get("/api/v1/auth/oidc/callback/" + registrationId(TENANT_A) + "?code=none&state=none");
+        assertFailure(rateLimited, "rate_limited");
+        assertThat(totalSessionCount()).isEqualTo(rateLimitBaseline);
+        assertAuditFailure(TENANT_A, "rate_limited");
     }
 
     /** IT-OIDC-007：Cookie/CSRF 与内置账号一致；响应不含 JWT。 */
