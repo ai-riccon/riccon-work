@@ -25,7 +25,10 @@ test.describe('J1 通用问答与文件处理', () => {
       buffer: Buffer.from('%PDF-1.4\n% Riccon stub file\n'),
     });
 
-    await expect(page.getByText('解析成功')).toBeVisible({ timeout: 15_000 });
+    // 用精确文本定位文件行状态，避免匹配空态提示中的“等待解析成功”文案而提前发送。
+    await expect(
+      page.locator('.chat-file-item').first().getByText('解析成功', { exact: true }),
+    ).toBeVisible({ timeout: 15_000 });
 
     const composer = page.getByPlaceholder('输入问题，Enter 发送，Shift+Enter 换行');
     await composer.fill('请总结季度报告');
