@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0065",
+  "module_id": "M10",
+  "title": "M10-B1 OIDC 登录/登出与共享词汇",
+  "owner": "riccon/builder",
+  "status": "in_progress",
+  "write_scope": [
+    "apps/api/src/main/java/com/riccon/api/oidc/**",
+    "apps/api/src/main/java/com/riccon/api/auth/controller/**",
+    "apps/api/src/main/java/com/riccon/api/config/SecurityConfig.java",
+    "apps/api/src/main/java/com/riccon/api/identity/domain/RoleDefinitions.java",
+    "apps/api/src/main/java/com/riccon/api/audit/domain/**",
+    "apps/api/src/main/java/com/riccon/api/error/**",
+    "platform/platform-domain/src/main/java/com/riccon/platform/domain/**",
+    "apps/api/src/test/java/com/riccon/api/m10/oidc/**"
+  ],
+  "acceptance": [
+    "Secret 配置校验/issuer 唯一/secret 脱敏/discovery 缓存/无 userinfo/providers 限流",
+    "Auth Code+PKCE+nonce+state 一次性；会话轮换/CSRF；OIDC-aware SecurityContextRepository；失败清理无 OidcUser/ID Token",
+    "本地登出 + 自动 IdP end-session；IdP 不可达本地成功提示（DEC-0017 A）",
+    "新审计动作/权限/ErrorCodes/AuditDetailsPolicy/RoleDefinitions 唯一 owner；无 token/JWT 落库",
+    "IT-OIDC-001..007 骨架与配置/失败清理/无 userinfo 测试；定向测试通过",
+    "一次全量 verify 通过；不碰 binding/V10/Web；无生产 token 存储"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-19T06:29:52.521+08:00",
+  "updated_at": "2026-11-19T06:29:53.378+08:00",
+  "baseline_commit": "2a0def1879a6953ab96e3d169126627ffdab04a6"
+}
