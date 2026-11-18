@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0039",
+  "module_id": "M03",
+  "title": "M03-B2 部门后端与 OrganizationDirectory",
+  "owner": "riccon/builder",
+  "status": "in_progress",
+  "write_scope": [
+    "apps/api/src/main/java/com/riccon/api/admin/department/**",
+    "apps/api/src/main/java/com/riccon/api/department/**",
+    "apps/api/src/test/java/com/riccon/api/DepartmentAdminApiTest.java",
+    "apps/api/src/test/java/com/riccon/api/DepartmentTestSupport.java"
+  ],
+  "acceptance": [
+    "平台管理员跨租户部门 CRUD；目标租户 404、停用租户 409、租户管理员/普通用户 403",
+    "成员加/移：单主部门；重复或已在其他部门 409；移出当前负责人 409；移出成员同事务清理本部门 CUSTOM 成员行",
+    "负责人移交仅限本部门启用成员，同人幂等；负责人权限与审计正确",
+    "实现 OrganizationDirectory 的部门/负责人/成员查询，显式 TenantId，不依赖 workspace/chat/file",
+    "审计 department.* 通过 AuditDetailsPolicy；409 响应 code=RICCON-DEPT-409；租户端只读部门/成员端点保留",
+    "DepartmentAdminApiTest 覆盖 404/409/403、审计与清理；定向测试与一次全量 verify 通过；不碰 V9/workspace 控制器/前端"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-18T17:38:49.744+08:00",
+  "updated_at": "2026-11-18T17:39:03.254+08:00",
+  "baseline_commit": "5f327e61afe716c9b21b4b1cb93620f74c5dec1e"
+}
