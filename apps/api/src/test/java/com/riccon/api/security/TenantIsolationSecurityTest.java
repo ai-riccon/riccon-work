@@ -39,6 +39,13 @@ import tools.jackson.databind.JsonNode;
 @Tag("tenant-isolation")
 class TenantIsolationSecurityTest extends SecurityTestSupport {
 
+    /** TEN 套件完整性清单：ID 必须出现在 surefire 报告且方法存在。 */
+    @Test
+    @DisplayName("TEN 套件完整性清单 TEN-001..027")
+    void tenSuiteIntegrityManifest() {
+        assertSuiteManifest("TEN", 27, "ten");
+    }
+
     /** mock Worker。 */
     private static final MockWorkerServer WORKER = new MockWorkerServer(SERVICE_SECRET);
 

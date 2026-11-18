@@ -25,6 +25,13 @@ import tools.jackson.databind.JsonNode;
 @Tag("dept-isolation")
 class DepartmentIsolationTest extends SecurityTestSupport {
 
+    /** DEPT 套件完整性清单：ID 必须出现在 surefire 报告且方法存在。 */
+    @Test
+    @DisplayName("DEPT 套件完整性清单 DEPT-001..010")
+    void deptSuiteIntegrityManifest() {
+        assertSuiteManifest("DEPT", 10, "dept");
+    }
+
     /** DEPT-001：他部门员工持有空间 ID 访问详情与列表，统一 404 且不泄露名称/数量。 */
     @Test
     @DisplayName("DEPT-001 他部门访问空间详情与列表统一 404")

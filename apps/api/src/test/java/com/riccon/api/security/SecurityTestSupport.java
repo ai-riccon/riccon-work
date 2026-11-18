@@ -601,6 +601,32 @@ abstract class SecurityTestSupport extends FileApiTestSupport {
     }
 
     /**
+     * 打印并校验套件完整性清单。
+     *
+     * <p>Surefire XML 默认不包含 {@code @DisplayName}，因此把 ID 写入标准输出，供 ADR-0009/威胁模型
+     * 的完整性守卫 grep；同时通过反射确认每个 ID 都有同名测试方法，避免清单与用例脱节。
+     *
+     * @param prefix ID 前缀（TEN/DEPT）
+     * @param count 用例数量
+     * @param methodPrefix 方法名前缀（ten/dept）
+     */
+    protected void assertSuiteManifest(String prefix, int count, String methodPrefix) {
+        List<String> methodNames = java.util.Arrays.stream(getClass().getDeclaredMethods())
+                .map(java.lang.reflect.Method::getName)
+                .toList();
+        StringBuilder manifest = new StringBuilder("SUITE-MANIFEST");
+        for (int index = 1; index <= count; index += 1) {
+            String id = String.format("%s-%03d", prefix, index);
+            String expectedMethod = String.format("%s%03d_", methodPrefix, index);
+            assertThat(methodNames.stream().anyMatch(name -> name.startsWith(expectedMethod)))
+                    .as("missing test method for %s", id)
+                    .isTrue();
+            manifest.append(' ').append(id);
+        }
+        System.out.println(manifest);
+    }
+
+    /**
      * 生成 8 位随机后缀。
      *
      * @return 后缀
