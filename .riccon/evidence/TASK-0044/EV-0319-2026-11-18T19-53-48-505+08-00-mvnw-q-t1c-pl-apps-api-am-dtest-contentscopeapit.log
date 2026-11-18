@@ -1,0 +1,253 @@
+# command: ./mvnw -q -T1C -pl apps/api -am -Dtest=ContentScopeApiTest,ChatScopeApiTest,ConversationApiTest,RunDetailApiTest -Dsurefire.failIfNoSpecifiedTests=false test
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-18T19:52:04.140+08:00
+# finished_at: 2026-11-18T19:53:48.214+08:00
+# duration_ms: 104072
+# exit_code: 0
+
+# --- stdout ---
+19:52:17.098 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.ConversationApiTest]: ConversationApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+19:52:17.437 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.ConversationApiTest
+19:52:17.659 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.ConversationApiTest]: ConversationApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+19:52:17.660 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+19:52:17.662 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.ConversationApiTest
+19:52:17.826 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+19:52:17.831 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+19:52:17.893 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+19:52:19.695 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+19:52:19.697 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+19:52:19.729 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+19:52:19.958 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+19:52:20.610 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: 691b57eb1382888b9216e493020fb3f427578a113845412d9b59393d77ea2918
+19:52:21.469 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT1.510496S
+19:52:21.479 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+19:52:21.479 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+19:52:21.481 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+19:52:21.481 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+19:52:21.627 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: 8ef8a0a697d76a1561024f8ec08e1a9a9b615ce11c0e9abc09dea7d2fff2c9f7
+19:52:22.445 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:60515/riccon using query 'SELECT 1'
+19:52:35.695 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT14.213829S
+19:52:35.695 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:60515/riccon)
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-18T19:52:36.421+08:00  INFO 30210 --- [riccon-api] [           main] com.riccon.api.ConversationApiTest       : Starting ConversationApiTest using Java 21.0.13 with PID 30210 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-18T19:52:36.423+08:00  INFO 30210 --- [riccon-api] [           main] com.riccon.api.ConversationApiTest       : The following 1 profile is active: "test"
+2026-11-18T19:52:39.056+08:00  INFO 30210 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-18T19:52:39.088+08:00  INFO 30210 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-18T19:52:39.089+08:00  INFO 30210 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-18T19:52:39.203+08:00  INFO 30210 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2736 ms
+2026-11-18T19:52:39.651+08:00  INFO 30210 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-18T19:52:39.685+08:00  INFO 30210 --- [riccon-api] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@5dfb30e0
+2026-11-18T19:52:39.689+08:00  INFO 30210 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-18T19:52:39.727+08:00  INFO 30210 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:60515/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-18T19:52:39.942+08:00  INFO 30210 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon`.`flyway_schema_history` does not exist yet
+2026-11-18T19:52:39.950+08:00  INFO 30210 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 9 migrations (execution time 00:00.052s)
+2026-11-18T19:52:39.991+08:00  INFO 30210 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon`.`flyway_schema_history` ...
+2026-11-18T19:52:40.090+08:00  INFO 30210 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: << Empty Schema >>
+2026-11-18T19:52:40.104+08:00  INFO 30210 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "1 - baseline"
+2026-11-18T19:52:40.184+08:00  INFO 30210 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "2 - identity and workspace"
+2026-11-18T19:52:40.459+08:00  INFO 30210 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "3 - files knowledge and conversation"
+2026-11-18T19:52:40.787+08:00  INFO 30210 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "4 - research runs and artifacts"
+2026-11-18T19:52:41.145+08:00  INFO 30210 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "5 - model gateway and mcp"
+2026-11-18T19:52:41.496+08:00  INFO 30210 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "6 - audit event"
+2026-11-18T19:52:41.896+08:00  INFO 30210 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "7 - spring session"
+2026-11-18T19:52:42.010+08:00  INFO 30210 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "8 - approval params envelope"
+2026-11-18T19:52:42.136+08:00  INFO 30210 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "9 - organization and workspace scope"
+2026-11-18T19:52:42.508+08:00  INFO 30210 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 9 migrations to schema `riccon`, now at version v9 (execution time 00:02.023s)
+2026-11-18T19:52:43.110+08:00  INFO 30210 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-18T19:52:43.110+08:00  INFO 30210 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-18T19:52:46.860+08:00  INFO 30210 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoints beneath base path '/actuator'
+2026-11-18T19:52:46.986+08:00  INFO 30210 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 60713 (http) with context path '/'
+2026-11-18T19:52:46.997+08:00  INFO 30210 --- [riccon-api] [           main] com.riccon.api.ConversationApiTest       : Started ConversationApiTest in 11.23 seconds (process running for 32.923)
+2026-11-18T19:52:47.505+08:00  INFO 30210 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin created
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-18T19:52:48.825+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-18T19:52:48.825+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-18T19:52:48.827+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-11-18T19:52:50.638+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-8] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tbed7814a832d conversationId=01a1ee80-a4c6-783d-b28b-161f71cc33ad workspaceId=01a1ee80-a47d-7694-9e89-2973169b4e59
+2026-11-18T19:52:50.693+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-9] c.r.a.chat.service.ConversationService   : conversation.deleted tenantId=tbed7814a832d conversationId=01a1ee80-a4c6-783d-b28b-161f71cc33ad
+2026-11-18T19:52:50.735+08:00  INFO 30210 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=e20a97f3-8c10-41f1-b307-be97f4e113b2 path=/api/v1/conversations/01a1ee80-a4c6-783d-b28b-161f71cc33ad
+2026-11-18T19:52:50.787+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=9342cd0e-8940-4377-89af-ed75ce21dfe2 path=/api/v1/conversations/01a1ee80-a4c6-783d-b28b-161f71cc33ad/messages
+2026-11-18T19:52:51.988+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-9] c.r.a.chat.service.ConversationService   : conversation.created tenantId=t8186db260b08 conversationId=01a1ee80-aa0e-75c1-b8f7-063cba0ade1d workspaceId=01a1ee80-a9e7-732f-84fd-32308177bfde
+2026-11-18T19:52:53.194+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=d64a7194-6861-472a-80a5-c6d1e9b1350b path=/api/v1/conversations/01a1ee80-aa0e-75c1-b8f7-063cba0ade1d
+2026-11-18T19:52:53.226+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=b91b95b9-0e25-427b-95b6-4d9c9226764a path=/api/v1/conversations/01a1ee80-aa0e-75c1-b8f7-063cba0ade1d/messages
+2026-11-18T19:52:53.261+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=f3e331d9-bcc0-4e99-83c9-45ee7f9eeba9 path=/api/v1/conversations/01a1ee80-aa0e-75c1-b8f7-063cba0ade1d
+2026-11-18T19:52:53.292+08:00  INFO 30210 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=47123e7b-3a03-45b0-871c-430ad55c0be5 path=/api/v1/conversations/01a1ee80-aa0e-75c1-b8f7-063cba0ade1d
+2026-11-18T19:52:54.426+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=66fa3926-871b-4a63-994a-29317fb28386 path=/api/v1/workspaces/01a1ee80-b374-7ba5-955a-e7dd445e1d76/conversations
+2026-11-18T19:52:54.459+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=869c639f-7b1c-4967-b2be-15415d71e62d path=/api/v1/workspaces/c2cb7cf9-0855-446b-a48a-cb69911a44e6/conversations
+2026-11-18T19:52:54.493+08:00  INFO 30210 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=052a9273-0f1d-4991-a1a0-671afda84131 path=/api/v1/conversations/5ee3b22b-0d55-4c5a-83c1-9144bd6e6b02
+2026-11-18T19:52:55.595+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-9] c.r.a.chat.service.ConversationService   : conversation.created tenantId=t26e9fa640d40 conversationId=01a1ee80-b827-711b-8d42-43f9d96e1142 workspaceId=01a1ee80-b804-7ba1-8e93-7c0889d89817
+2026-11-18T19:52:58.251+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-1] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tb906cf45033e conversationId=01a1ee80-c286-7963-b1ff-03a7c292b322 workspaceId=01a1ee80-c266-7801-b148-b50916ff4529
+2026-11-18T19:52:58.283+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-2] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tb906cf45033e conversationId=01a1ee80-c2a7-752f-a867-73c2c298869e workspaceId=01a1ee80-c266-7801-b148-b50916ff4529
+2026-11-18T19:52:58.312+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-3] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tb906cf45033e conversationId=01a1ee80-c2c5-756d-b8d2-c6a443dcb6ab workspaceId=01a1ee80-c266-7801-b148-b50916ff4529
+2026-11-18T19:52:58.378+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-5] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tb906cf45033e conversationId=01a1ee80-c306-7f38-8709-ca4043616971 workspaceId=01a1ee80-c2e7-70f2-8723-db03a4243cd3
+2026-11-18T19:52:58.409+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-6] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tb906cf45033e conversationId=01a1ee80-c325-77a0-8a6f-bd49929e8daa workspaceId=01a1ee80-c266-7801-b148-b50916ff4529
+2026-11-18T19:52:58.698+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=99977f72-8deb-4229-ac93-ead24397df44 path=/api/v1/conversations/01a1ee80-c325-77a0-8a6f-bd49929e8daa
+2026-11-18T19:52:58.732+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=513e2565-367f-425e-aba0-cd1e8841891f path=/api/v1/conversations/01a1ee80-c325-77a0-8a6f-bd49929e8daa
+2026-11-18T19:52:58.763+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=5d05d187-c484-4105-84fb-9aae9e7f7c6d path=/api/v1/workspaces/01a1ee80-c266-7801-b148-b50916ff4529/conversations
+2026-11-18T19:52:58.793+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=b0a99082-b01b-499f-9921-15649658f477 path=/api/v1/conversations/01a1ee80-c325-77a0-8a6f-bd49929e8daa
+2026-11-18T19:52:58.813+08:00  INFO 30210 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=fa1acce2-88be-4a68-bb06-eed32d7de9d4 path=/api/v1/workspaces/01a1ee80-c266-7801-b148-b50916ff4529/conversations
+2026-11-18T19:52:58.841+08:00  INFO 30210 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.ChatScopeApiTest]: ChatScopeApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-18T19:52:58.843+08:00  INFO 30210 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.ChatScopeApiTest
+2026-11-18T19:52:58.844+08:00  INFO 30210 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.ChatScopeApiTest]: ChatScopeApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-18T19:52:58.844+08:00  INFO 30210 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-18T19:52:58.846+08:00  INFO 30210 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.ChatScopeApiTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-18T19:52:58.904+08:00  INFO 30210 --- [riccon-api] [           main] com.riccon.api.ChatScopeApiTest          : Starting ChatScopeApiTest using Java 21.0.13 with PID 30210 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-18T19:52:58.905+08:00  INFO 30210 --- [riccon-api] [           main] com.riccon.api.ChatScopeApiTest          : The following 1 profile is active: "test"
+2026-11-18T19:52:59.611+08:00  INFO 30210 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-18T19:52:59.612+08:00  INFO 30210 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-18T19:52:59.612+08:00  INFO 30210 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-18T19:52:59.677+08:00  INFO 30210 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 770 ms
+2026-11-18T19:52:59.714+08:00  INFO 30210 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Starting...
+2026-11-18T19:52:59.726+08:00  INFO 30210 --- [riccon-api] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-2 - Added connection com.mysql.cj.jdbc.ConnectionImpl@30f856b3
+2026-11-18T19:52:59.726+08:00  INFO 30210 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Start completed.
+2026-11-18T19:52:59.728+08:00  INFO 30210 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:60515/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-18T19:52:59.767+08:00  INFO 30210 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 9 migrations (execution time 00:00.020s)
+2026-11-18T19:52:59.780+08:00  INFO 30210 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: 9
+2026-11-18T19:52:59.781+08:00  INFO 30210 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Schema `riccon` is up to date. No migration necessary.
+2026-11-18T19:52:59.872+08:00  INFO 30210 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-18T19:52:59.872+08:00  INFO 30210 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-18T19:53:00.756+08:00  INFO 30210 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoints beneath base path '/actuator'
+2026-11-18T19:53:00.794+08:00  INFO 30210 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 60749 (http) with context path '/'
+2026-11-18T19:53:00.800+08:00  INFO 30210 --- [riccon-api] [           main] com.riccon.api.ChatScopeApiTest          : Started ChatScopeApiTest in 1.934 seconds (process running for 46.725)
+2026-11-18T19:53:00.807+08:00  WARN 30210 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin skipped: platform admin already exists
+2026-11-18T19:53:00.819+08:00  INFO 30210 --- [riccon-api] [o-auto-2-exec-1] o.a.c.c.C.[Tomcat-1].[localhost].[/]     : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-18T19:53:00.819+08:00  INFO 30210 --- [riccon-api] [o-auto-2-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-18T19:53:00.822+08:00  INFO 30210 --- [riccon-api] [o-auto-2-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 3 ms
+2026-11-18T19:53:04.410+08:00  INFO 30210 --- [riccon-api] [o-auto-2-exec-3] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chat-scopef4cc857c9cc1 conversationId=01a1ee80-da97-7b3b-ba63-8555695fbe0c workspaceId=01a1ee80-da76-7ada-b98f-de23ae172006
+2026-11-18T19:53:04.459+08:00  INFO 30210 --- [riccon-api] [o-auto-2-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=3bf83334-2788-4f2e-8653-08b0592de46b path=/api/v1/conversations/01a1ee80-da97-7b3b-ba63-8555695fbe0c/stop
+2026-11-18T19:53:04.493+08:00  INFO 30210 --- [riccon-api] [o-auto-2-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=5524a98f-5435-4d28-96e3-f5025abb43fb path=/api/v1/conversations/01a1ee80-da97-7b3b-ba63-8555695fbe0c/stop
+2026-11-18T19:53:07.961+08:00  INFO 30210 --- [riccon-api] [o-auto-2-exec-1] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chat-scope4cec5e311dcc conversationId=01a1ee80-e875-7eb2-88be-dbc5721817fa workspaceId=01a1ee80-e857-7bc2-bb59-8b401603d0b5
+2026-11-18T19:53:08.001+08:00  INFO 30210 --- [riccon-api] [o-auto-2-exec-2] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chat-scope4cec5e311dcc conversationId=01a1ee80-e89b-743d-a89d-c1cd556a3c5d workspaceId=01a1ee80-e27b-73c7-bc04-c30fffa4fdd8
+2026-11-18T19:53:08.042+08:00  INFO 30210 --- [riccon-api] [o-auto-2-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=9835a39d-3f52-4b1d-a0b0-7fbacc5da81e path=/api/v1/conversations/01a1ee80-e875-7eb2-88be-dbc5721817fa/messages
+2026-11-18T19:53:08.079+08:00  INFO 30210 --- [riccon-api] [o-auto-2-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=59b1917e-5b4d-49d0-aeaf-6739aab75149 path=/api/v1/conversations/01a1ee80-e875-7eb2-88be-dbc5721817fa/messages
+2026-11-18T19:53:08.108+08:00  INFO 30210 --- [riccon-api] [o-auto-2-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=799957b2-bcc1-4da2-a5aa-24a22735e54d path=/api/v1/conversations/01a1ee80-e89b-743d-a89d-c1cd556a3c5d/messages
+2026-11-18T19:53:11.329+08:00  INFO 30210 --- [riccon-api] [o-auto-2-exec-8] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chat-scope4a358db3bc2d conversationId=01a1ee80-f59d-74cd-b698-68177e7af000 workspaceId=01a1ee80-f583-7ab1-976f-9d63432b4d9f
+2026-11-18T19:53:11.355+08:00  INFO 30210 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=8909f01e-8164-4aa2-b770-5ed1f5aff43a path=/api/v1/conversations/01a1ee80-e875-7eb2-88be-dbc5721817fa/messages
+2026-11-18T19:53:14.512+08:00  INFO 30210 --- [riccon-api] [o-auto-2-exec-2] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chat-scopea452362adf1d conversationId=01a1ee81-020c-7dcf-b37d-4908398dd23c workspaceId=01a1ee81-01f2-7988-8c1f-0fece65e6604
+2026-11-18T19:53:14.556+08:00  INFO 30210 --- [riccon-api] [o-auto-2-exec-3] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chat-scopea452362adf1d conversationId=01a1ee81-020c-7dcf-b37d-4908398dd23c runId=01a1ee81-022f-731c-a478-aa17786ac73b userMessageId=01a1ee81-022f-7186-bc80-9c0541d7b974 assistantMessageId=01a1ee81-022f-7208-9652-0ad0c0977fbf attachments=0
+2026-11-18T19:53:14.691+08:00  INFO 30210 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.ContentScopeApiTest]: ContentScopeApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-18T19:53:14.693+08:00  INFO 30210 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.ContentScopeApiTest
+2026-11-18T19:53:14.694+08:00  INFO 30210 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.ContentScopeApiTest]: ContentScopeApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-18T19:53:14.694+08:00  INFO 30210 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.FileApiTestSupport]: FileApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-18T19:53:14.695+08:00  INFO 30210 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiStorageIntegrationTestSupport]: ApiStorageIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-18T19:53:14.695+08:00  INFO 30210 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-18T19:53:14.696+08:00  INFO 30210 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.ContentScopeApiTest
+2026-11-18T19:53:14.703+08:00  INFO 30210 --- [riccon-api] [           main] tc.rustfs/rustfs:1.0.6                   : Creating container for image: rustfs/rustfs:1.0.6
+2026-11-18T19:53:14.809+08:00  INFO 30210 --- [riccon-api] [           main] tc.rustfs/rustfs:1.0.6                   : Container rustfs/rustfs:1.0.6 is starting: fcfc1b46ba241ae9e5e992fe4b62fa294af643690fb397f607b9f7bdc269e63e
+2026-11-18T19:53:15.151+08:00  INFO 30210 --- [riccon-api] [           main] o.t.c.wait.strategy.HttpWaitStrategy     : /zealous_ellis: Waiting for 60 seconds for URL: http://localhost:60756/health (where port 60756 maps to container port 9000)
+2026-11-18T19:53:15.174+08:00  INFO 30210 --- [riccon-api] [           main] tc.rustfs/rustfs:1.0.6                   : Container rustfs/rustfs:1.0.6 started in PT0.470912S
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-18T19:53:15.721+08:00  INFO 30210 --- [riccon-api] [           main] com.riccon.api.ContentScopeApiTest       : Starting ContentScopeApiTest using Java 21.0.13 with PID 30210 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-18T19:53:15.722+08:00  INFO 30210 --- [riccon-api] [           main] com.riccon.api.ContentScopeApiTest       : The following 1 profile is active: "test"
+2026-11-18T19:53:16.059+08:00  INFO 30210 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-18T19:53:16.060+08:00  INFO 30210 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-18T19:53:16.060+08:00  INFO 30210 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-18T19:53:16.077+08:00  INFO 30210 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 354 ms
+2026-11-18T19:53:16.106+08:00  INFO 30210 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-3 - Starting...
+2026-11-18T19:53:16.115+08:00  INFO 30210 --- [riccon-api] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-3 - Added connection com.mysql.cj.jdbc.ConnectionImpl@55361c14
+2026-11-18T19:53:16.115+08:00  INFO 30210 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-3 - Start completed.
+2026-11-18T19:53:16.117+08:00  INFO 30210 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:60515/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-18T19:53:16.151+08:00  INFO 30210 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 9 migrations (execution time 00:00.014s)
+2026-11-18T19:53:16.164+08:00  INFO 30210 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: 9
+2026-11-18T19:53:16.165+08:00  INFO 30210 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Schema `riccon` is up to date. No migration necessary.
+2026-11-18T19:53:16.262+08:00  INFO 30210 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-18T19:53:16.262+08:00  INFO 30210 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-18T19:53:16.807+08:00  INFO 30210 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoints beneath base path '/actuator'
+2026-11-18T19:53:16.822+08:00  INFO 30210 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 60775 (http) with context path '/'
+2026-11-18T19:53:16.825+08:00  INFO 30210 --- [riccon-api] [           main] com.riccon.api.ContentScopeApiTest       : Started ContentScopeApiTest in 1.142 seconds (process running for 62.75)
+2026-11-18T19:53:16.830+08:00  WARN 30210 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin skipped: platform admin already exists
+2026-11-18T19:53:17.038+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-1] o.a.c.c.C.[Tomcat-2].[localhost].[/]     : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-18T19:53:17.038+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-18T19:53:17.039+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-11-18T19:53:20.457+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-3] c.r.a.chat.service.ConversationService   : conversation.created tenantId=content899f485616da conversationId=01a1ee81-1946-7286-a54f-7f7fd5bf4754 workspaceId=01a1ee81-1926-7c0b-8fb2-5d887d06aba9
+2026-11-18T19:53:20.488+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-4] c.r.a.chat.service.ConversationService   : conversation.created tenantId=content899f485616da conversationId=01a1ee81-1964-7466-b07a-740ffd20e236 workspaceId=01a1ee81-1926-7c0b-8fb2-5d887d06aba9
+2026-11-18T19:53:20.665+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-5] c.riccon.api.file.service.FileService    : file.uploaded tenantId=content899f485616da fileId=01a1ee81-19ac-7e1b-9831-e499af295d94 sizeBytes=48 format=PDF
+2026-11-18T19:53:20.713+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=70c836f1-da90-4237-babd-79db25fa9fcd path=/api/v1/conversations/01a1ee81-1946-7286-a54f-7f7fd5bf4754
+2026-11-18T19:53:20.743+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=87c771d3-a55e-4229-9a3d-6d3414388aed path=/api/v1/conversations/01a1ee81-1946-7286-a54f-7f7fd5bf4754
+2026-11-18T19:53:20.845+08:00  INFO 30210 --- [riccon-api] [-auto-3-exec-10] c.r.a.chat.service.ConversationService   : conversation.deleted tenantId=content899f485616da conversationId=01a1ee81-1964-7466-b07a-740ffd20e236
+2026-11-18T19:53:20.885+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=9fc5eeff-1905-49cc-8ccd-c7192d7b0606 path=/api/v1/files/01a1ee81-19ac-7e1b-9831-e499af295d94
+2026-11-18T19:53:20.945+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-3] c.riccon.api.file.service.FileService    : file.deleted tenantId=content899f485616da fileId=01a1ee81-19ac-7e1b-9831-e499af295d94
+2026-11-18T19:53:24.234+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-6] c.r.a.chat.service.ConversationService   : conversation.created tenantId=content4983b0e3062e conversationId=01a1ee81-2805-7422-9b0a-6069b0f93354 workspaceId=01a1ee81-27e8-7123-b457-863d46174058
+2026-11-18T19:53:24.291+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-7] c.riccon.api.file.service.FileService    : file.uploaded tenantId=content4983b0e3062e fileId=01a1ee81-2828-7f43-a5c1-3eb09241e8c6 sizeBytes=48 format=PDF
+2026-11-18T19:53:24.791+08:00  INFO 30210 --- [riccon-api] [-auto-3-exec-10] c.r.a.research.service.ArtifactService   : artifact.download.url tenantId=content4983b0e3062e artifactId=01a1ee81-285e-7388-80e8-5fc4cd76e28e version=1
+2026-11-18T19:53:28.097+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-6] c.r.a.chat.service.ConversationService   : conversation.created tenantId=content323e8cf61f5e conversationId=01a1ee81-371d-7611-81be-24ac0963b092 workspaceId=01a1ee81-3703-7f88-8252-989c44ad23ee
+2026-11-18T19:53:28.146+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-7] c.riccon.api.file.service.FileService    : file.uploaded tenantId=content323e8cf61f5e fileId=01a1ee81-373a-7db3-99c5-0ea686b29f35 sizeBytes=48 format=PDF
+2026-11-18T19:53:28.216+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-8] c.r.a.chat.service.ConversationService   : conversation.created tenantId=content323e8cf61f5e conversationId=01a1ee81-3793-78a0-aa7f-b1370fd1cbf9 workspaceId=01a1ee81-319a-7b89-bbdc-0353eec3e94d
+2026-11-18T19:53:28.277+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-9] c.riccon.api.file.service.FileService    : file.uploaded tenantId=content323e8cf61f5e fileId=01a1ee81-37be-7d68-bb5b-4548abbf89de sizeBytes=48 format=PDF
+2026-11-18T19:53:28.307+08:00  INFO 30210 --- [riccon-api] [-auto-3-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=06570d07-19c8-4715-8859-ca795e776d82 path=/api/v1/conversations/01a1ee81-371d-7611-81be-24ac0963b092
+2026-11-18T19:53:28.331+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=2ff4e690-7db7-4055-b60d-84f1c1b9e3f6 path=/api/v1/workspaces/01a1ee81-3703-7f88-8252-989c44ad23ee/conversations
+2026-11-18T19:53:28.362+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=089abef5-3c7a-4e34-95e8-e98854720347 path=/api/v1/files/01a1ee81-373a-7db3-99c5-0ea686b29f35
+2026-11-18T19:53:28.390+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=ae7f6584-02c3-4ad0-ac5a-c065489d5ac9 path=/api/v1/files/01a1ee81-373a-7db3-99c5-0ea686b29f35/download-url
+2026-11-18T19:53:28.415+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=8bd4b2d9-8159-495f-8e27-59b32ed08c7f path=/api/v1/workspaces/01a1ee81-3703-7f88-8252-989c44ad23ee/files
+2026-11-18T19:53:28.439+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=2ef2cf6b-fd1e-45af-9bbf-8ce12a012151 path=/api/v1/research-tasks/01a1ee81-3764-70f4-af36-73c78425c44d
+2026-11-18T19:53:28.460+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=4fddcc0a-8a63-47e6-87d2-ca55732e3ec5 path=/api/v1/workspaces/01a1ee81-3703-7f88-8252-989c44ad23ee/research-tasks
+2026-11-18T19:53:28.486+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=e1fc90b0-88f4-4e5f-ada4-95b5ebeb8021 path=/api/v1/artifacts/01a1ee81-3773-7dc7-afcd-66d24b380d8a
+2026-11-18T19:53:28.511+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=855bf670-5ae9-460f-bc16-678de54c9bca path=/api/v1/workspaces/01a1ee81-3703-7f88-8252-989c44ad23ee/artifacts
+2026-11-18T19:53:28.537+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=629798d8-47e6-4a6f-bffa-1bc4697bb3cd path=/api/v1/runs/01a1ee81-3780-720b-8800-4ae8251e46e5
+2026-11-18T19:53:28.565+08:00  INFO 30210 --- [riccon-api] [-auto-3-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=3bf94d59-5dc8-4b1f-b3cd-08bb9f4f8f16 path=/api/v1/runs/01a1ee81-3764-7cfa-ad97-b1d0a4f84bab
+2026-11-18T19:53:28.592+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=d9b8303e-cd02-4819-a912-1f34ac541869 path=/api/v1/conversations/01a1ee81-371d-7611-81be-24ac0963b092
+2026-11-18T19:53:28.619+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=7c3fa771-0a34-4acb-a1b6-141f9defe0eb path=/api/v1/files/01a1ee81-373a-7db3-99c5-0ea686b29f35
+2026-11-18T19:53:28.643+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=450c3b80-8e9a-4150-94cb-9f34013629bb path=/api/v1/conversations/01a1ee81-3793-78a0-aa7f-b1370fd1cbf9
+2026-11-18T19:53:28.669+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=8014cb4a-8e14-4ee1-a345-7d38d743e8df path=/api/v1/files/01a1ee81-37be-7d68-bb5b-4548abbf89de
+2026-11-18T19:53:28.694+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=7a485c6e-0ad7-4d31-a998-366da5e1fefb path=/api/v1/conversations/01a1ee81-3793-78a0-aa7f-b1370fd1cbf9
+2026-11-18T19:53:31.814+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=09e98289-72b2-4f9e-9198-a5b935b935ee path=/api/v1/conversations/01a1ee81-371d-7611-81be-24ac0963b092
+2026-11-18T19:53:31.838+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=bcac809a-1d77-44fa-8424-0e922daec750 path=/api/v1/files/01a1ee81-373a-7db3-99c5-0ea686b29f35
+2026-11-18T19:53:31.859+08:00  INFO 30210 --- [riccon-api] [-auto-3-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=80bc70a8-f769-42ef-8de1-f812ea44ca02 path=/api/v1/research-tasks/01a1ee81-3764-70f4-af36-73c78425c44d
+2026-11-18T19:53:31.881+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=63b5360e-b778-4f30-8377-895c49a785d1 path=/api/v1/artifacts/01a1ee81-3773-7dc7-afcd-66d24b380d8a
+2026-11-18T19:53:31.905+08:00  INFO 30210 --- [riccon-api] [o-auto-3-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=573761a7-a4fe-4f45-9bcb-4f3621b655de path=/api/v1/runs/01a1ee81-3780-720b-8800-4ae8251e46e5
+2026-11-18T19:53:31.920+08:00  INFO 30210 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.RunDetailApiTest]: RunDetailApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-18T19:53:31.921+08:00  INFO 30210 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.RunDetailApiTest
+2026-11-18T19:53:31.923+08:00  INFO 30210 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.RunDetailApiTest]: RunDetailApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-18T19:53:31.923+08:00  INFO 30210 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ResearchApiTestSupport]: ResearchApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-18T19:53:31.923+08:00  INFO 30210 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-18T19:53:31.925+08:00  INFO 30210 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.RunDetailApiTest
+2026-11-18T19:53:33.651+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-8] c.r.a.chat.service.ConversationService   : conversation.created tenantId=rundba6be0f0fb4a conversationId=01a1ee81-4cd0-7980-9b16-e1a8d28a1bc1 workspaceId=01a1ee81-4cb9-7eb8-9494-d4b755b38d60
+2026-11-18T19:53:34.389+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=b27e91fe-4ea5-4ede-9488-d885663480de path=/api/v1/runs/01a1ee81-4cde-7301-9d8f-261f45eda898
+2026-11-18T19:53:36.185+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-7] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tdbd11b792cd8 conversationId=01a1ee81-56b6-7646-aaf5-5643c9190de1 workspaceId=01a1ee81-569a-7c6b-a286-ee6a9f8c70f2
+2026-11-18T19:53:39.659+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-1] c.r.a.chat.service.ConversationService   : conversation.created tenantId=t91cc201236c6 conversationId=01a1ee81-6443-7d57-a99d-ea250fccc45e workspaceId=01a1ee81-5d4b-7465-9f4f-3e749bc2f888
+2026-11-18T19:53:39.703+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=2a1b8108-bc41-4069-b834-c1d7b8fc0f79 path=/api/v1/runs/01a1ee81-645d-799b-b40f-1bf88b64e6f6
+2026-11-18T19:53:39.744+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=2d293ac6-4246-4348-8a0c-bdd8fa3fb2ce path=/api/v1/runs/01a1ee81-645d-799b-b40f-1bf88b64e6f6
+2026-11-18T19:53:39.782+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=4554357f-dd3a-45d3-81a4-c4f1ffe8fbe3 path=/api/v1/runs/525225f3-dbb7-4e74-be94-8de4c38043cf
+2026-11-18T19:53:41.538+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-7] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=t0f7d0d23aa49 taskId=01a1ee81-6b9d-74db-9e82-ac0c538bb23c runId=01a1ee81-6b9d-71ff-94a5-dd0da01420e1 workspaceId=01a1ee81-6b59-77ff-85e2-32f7c7b99f29 toolId=01a1ee81-6b7f-7b75-8b52-f03684051ce6
+2026-11-18T19:53:41.606+08:00  INFO 30210 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=19daa87c-e88d-4f09-8295-28390fe4ac01 path=/api/v1/runs/01a1ee81-6b9d-71ff-94a5-dd0da01420e1
+
+# --- stderr ---
+
