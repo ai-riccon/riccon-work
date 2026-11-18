@@ -68,6 +68,16 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(stageStatus(fixture.runId(), "APPROVAL")).isEqualTo("RUNNING");
         assertThat(approvalCount(fixture.runId(), "PENDING")).isEqualTo(1);
         assertThat(stub.requestCount()).isEqualTo(1);
+        // 审批前检索来源已可见：片段来自分块正文，而不是标题或 ID。
+        JsonNode retrieval = objectMapper.readTree(stageDetails(fixture.runId(), "RETRIEVAL"));
+        JsonNode source = retrieval.path("sources").get(0);
+        assertThat(source.path("ordinal").asInt()).isEqualTo(1);
+        assertThat(source.path("sourceType").asText()).isEqualTo("KNOWLEDGE");
+        assertThat(source.path("snippet").asText()).isEqualTo("市场保持增长。");
+        assertThat(source.path("snippet").asText())
+                .isNotEqualTo(source.path("title").asText());
+        assertThat(source.path("chunkId").asText()).isNotBlank();
+        assertThat(source.path("score").asDouble()).isBetween(0.0, 1.0);
         String rawPreview = approvalPreview(fixture.runId());
         assertThat(rawPreview).as("approval preview").contains("market-data");
         assertThat(objectMapper.readValue(rawPreview, java.util.Map.class))
@@ -112,9 +122,17 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(toolDetails.path("resultSummary").asText()).startsWith("sha256=");
         assertThat(toolDetails.path("invocationId").asText()).isEqualTo(mcpInvocationId(fixture.runId()));
         assertThat(toolDetails.path("approvalId").asText()).isEqualTo(approvalId.toString());
+        assertThat(toolDetails.path("approvalDecision").asText()).isEqualTo("APPROVE");
+        assertThat(toolDetails.path("approvalDecidedBy").asText())
+                .isEqualTo(fixture.userId().toString());
+        assertThat(toolDetails.path("approvalDecidedAt").asText()).isNotBlank();
         JsonNode approvalDetails = objectMapper.readTree(stageDetails(fixture.runId(), "APPROVAL"));
         assertThat(approvalDetails.path("paramsPreview").path("text").asText()).isEqualTo("market-data");
         assertThat(approvalDetails.path("approvalId").asText()).isEqualTo(approvalId.toString());
+        assertThat(approvalDetails.path("approvalDecision").asText()).isEqualTo("APPROVE");
+        assertThat(approvalDetails.path("approvalDecidedBy").asText())
+                .isEqualTo(fixture.userId().toString());
+        assertThat(approvalDetails.path("approvalDecidedAt").asText()).isNotBlank();
         assertThat(auditCount("model.invocation.completed")).isEqualTo(2);
         assertThat(stub.requestCount()).isEqualTo(2);
     }
@@ -264,6 +282,50 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(approvalCount(fixture.runId(), "CANCELLED")).isEqualTo(1);
         assertThat(mcpInvocationCount(fixture.runId())).isZero();
         assertThat(artifactCount(fixture.taskId())).isZero();
+    }
+
+    /**
+     * 真实拒绝路径（API 先置终态再投递取消事件）写入审批决定，重放不覆盖首次时间。
+     */
+    @Test
+    void apiRejectedThenCancelEvent_writesDecisionDetailsIdempotently() {
+        Fixture fixture = fixture("tenant-a");
+        assertThat(poller.pollOnce()).isEqualTo(1);
+        UUID approvalId = approvalId(fixture.runId());
+        reject(fixture.userId(), approvalId);
+        cancelInApiFirst(fixture);
+        UUID cancelEvent = data.publishResearchCancel("tenant-a", fixture.runId(), "USER_CANCELLED");
+
+        assertThat(poller.pollOnce()).isEqualTo(1);
+
+        JsonNode approval = objectMapper.readTree(stageDetails(fixture.runId(), "APPROVAL"));
+        assertThat(approval.path("approvalId").asText()).isEqualTo(approvalId.toString());
+        assertThat(approval.path("approvalDecision").asText()).isEqualTo("REJECT");
+        assertThat(approval.path("approvalDecidedBy").asText())
+                .isEqualTo(fixture.userId().toString());
+        String decidedAt = approval.path("approvalDecidedAt").asText();
+        assertThat(decidedAt).isNotBlank();
+        JsonNode tool = objectMapper.readTree(stageDetails(fixture.runId(), "TOOL"));
+        assertThat(tool.path("approvalDecision").asText()).isEqualTo("REJECT");
+        assertThat(tool.path("approvalDecidedAt").asText()).isEqualTo(decidedAt);
+
+        // 重放取消事件：阶段已 SKIPPED，不重复写详情，也不覆盖首次审批时间。
+        String approvalDetailsBefore = stageDetails(fixture.runId(), "APPROVAL");
+        jdbcClient.sql("""
+                        UPDATE agent_run_outbox
+                           SET status = 'PENDING', attempts = 0, lease_until = NULL,
+                               lease_owner = NULL, available_at = NOW(6)
+                         WHERE id = :id
+                        """).param("id", UuidBinary.toBytes(cancelEvent)).update();
+        assertThat(poller.pollOnce()).isEqualTo(1);
+
+        assertThat(outboxStatus(cancelEvent)).isEqualTo("DONE");
+        assertThat(stageDetails(fixture.runId(), "APPROVAL")).isEqualTo(approvalDetailsBefore);
+        assertThat(objectMapper
+                        .readTree(stageDetails(fixture.runId(), "APPROVAL"))
+                        .path("approvalDecidedAt")
+                        .asText())
+                .isEqualTo(decidedAt);
     }
 
     /** 未授权工具导致不可重试失败，运行 FAILED。 */

@@ -14,6 +14,7 @@ import com.riccon.worker.research.domain.ArtifactVersionRecord;
 import com.riccon.worker.research.domain.ReportCitation;
 import com.riccon.worker.research.domain.ReportDocument;
 import com.riccon.worker.research.domain.ResearchTaskRecord;
+import com.riccon.worker.research.domain.RunStageDetails;
 import com.riccon.worker.research.repository.ArtifactRepository;
 import com.riccon.worker.research.repository.ResearchRepository;
 import com.riccon.worker.research.service.ReportArtifactService.SavedArtifact;
@@ -143,9 +144,14 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(retrieval.path("querySha256").asText()).hasSize(64);
         assertThat(retrieval.path("hitCount").asInt()).isEqualTo(1);
         assertThat(retrieval.path("sources")).hasSize(1);
-        assertThat(retrieval.path("sources").get(0).path("knowledgeDocumentId").asText())
+        JsonNode retrievalSource = retrieval.path("sources").get(0);
+        assertThat(retrievalSource.path("knowledgeDocumentId").asText())
                 .isEqualTo(fixture.documentId().toString());
-        assertThat(retrieval.path("sources").get(0).path("title").asText()).isEqualTo("市场资料");
+        assertThat(retrievalSource.path("title").asText()).isEqualTo("市场资料");
+        assertThat(retrievalSource.path("snippet").asText()).isEqualTo("市场保持增长。");
+        assertThat(retrievalSource.path("snippet").asText())
+                .isNotEqualTo(retrievalSource.path("title").asText());
+        assertThat(retrievalSource.path("chunkId").asText()).isNotBlank();
         JsonNode tool = objectMapper.readTree(stageDetails(fixture.runId(), "TOOL"));
         assertThat(tool.path("paramsPreview").path("text").asText()).isEqualTo("market-data");
         assertThat(tool.path("resultSummary").asText()).startsWith("sha256=");
@@ -319,6 +325,35 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(artifactCount()).isZero();
     }
 
+    /** 检索来源写入截断片段：审批前可见、单行、不超过 200 字符且不落全文。 */
+    @Test
+    void retrievalDetails_includeTruncatedSnippetBeforeApproval() {
+        Fixture fixture = fixture("tenant-a", true);
+        String longContent = "市场增长\n第二段\t包含重复空白 " + "增".repeat(260);
+        jdbcClient
+                .sql("UPDATE knowledge_chunk SET content = :content WHERE document_id = :documentId")
+                .param("content", longContent)
+                .param("documentId", UuidBinary.toBytes(fixture.documentId()))
+                .update();
+
+        assertThat(poller.pollOnce()).isEqualTo(1);
+
+        assertThat(runStatus(fixture.runId())).isEqualTo("WAITING_APPROVAL");
+        assertThat(stageStatus(fixture.runId(), "RETRIEVAL")).isEqualTo("SUCCEEDED");
+        assertThat(stageStatus(fixture.runId(), "APPROVAL")).isEqualTo("RUNNING");
+        JsonNode retrieval = objectMapper.readTree(stageDetails(fixture.runId(), "RETRIEVAL"));
+        JsonNode source = retrieval.path("sources").get(0);
+        String snippet = source.path("snippet").asText();
+        assertThat(snippet).hasSize(RunStageDetails.MAX_SOURCE_SNIPPET_LENGTH);
+        assertThat(snippet).startsWith("市场增长 第二段 包含重复空白 增").endsWith("...");
+        assertThat(snippet).doesNotContain("\n", "\t");
+        assertThat(snippet).isNotEqualTo(longContent);
+        assertThat(source.path("title").asText()).isEqualTo("市场资料");
+        assertThat(source.path("chunkId").asText()).isNotBlank();
+        assertThat(source.path("score").asDouble()).isGreaterThan(0.0);
+        assertThat(retrieval.toString()).doesNotContain(longContent);
+    }
+
     /** 重复投递恢复事件：运行已成功，不再次调用模型或写入版本/引用。 */
     @Test
     void duplicateResumeEvent_doesNotDuplicateArtifactVersionOrCitations() {
@@ -330,6 +365,12 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(poller.pollOnce()).isEqualTo(1);
         int requestsAfterSuccess = stub.requestCount();
         String bodyBefore = readObject(currentVersion().storageKey());
+        String approvalDetailsBefore = stageDetails(fixture.runId(), "APPROVAL");
+        String decidedAtBefore = objectMapper
+                .readTree(approvalDetailsBefore)
+                .path("approvalDecidedAt")
+                .asText();
+        assertThat(decidedAtBefore).isNotBlank();
 
         jdbcClient.sql("""
                         UPDATE agent_run_outbox
@@ -346,6 +387,13 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(versionCount()).isEqualTo(1);
         assertThat(citationCount()).isEqualTo(2);
         assertThat(readObject(currentVersion().storageKey())).isEqualTo(bodyBefore);
+        // 重复 resume 不重写审批详情，首次写入的审批时间保持不变。
+        assertThat(stageDetails(fixture.runId(), "APPROVAL")).isEqualTo(approvalDetailsBefore);
+        assertThat(objectMapper
+                        .readTree(stageDetails(fixture.runId(), "APPROVAL"))
+                        .path("approvalDecidedAt")
+                        .asText())
+                .isEqualTo(decidedAtBefore);
     }
 
     /** 同一任务正文变化时沿用同一产物并递增版本，不产生第二个产物。 */

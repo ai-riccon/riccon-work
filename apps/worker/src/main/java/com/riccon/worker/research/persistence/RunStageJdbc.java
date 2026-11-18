@@ -135,6 +135,38 @@ public class RunStageJdbc {
     }
 
     /**
+     * 把指定阶段尝试标记为 SKIPPED，并写入合并后的详情。
+     *
+     * <p>只更新 RUNNING 行：审批拒绝/取消重复投递时，已收尾的阶段保持首次写入的详情与时间，
+     * 不会被后续事件覆盖。
+     *
+     * @param tenantId 租户
+     * @param runId 运行 ID
+     * @param stage 阶段
+     * @param attemptNo 尝试号
+     * @param detailsJson 白名单摘要 JSON
+     * @return 更新行数；0 表示阶段不存在或已终态
+     */
+    public int skip(TenantId tenantId, UUID runId, String stage, int attemptNo, String detailsJson) {
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("runId", UuidBinary.toBytes(runId));
+        params.put("stage", stage);
+        params.put("attemptNo", attemptNo);
+        params.put("details", detailsJson);
+        return tenantJdbc.update(tenantId, """
+                UPDATE agent_run_stage
+                   SET status = 'SKIPPED',
+                       details = :details,
+                       finished_at = COALESCE(finished_at, NOW(6))
+                 WHERE tenant_id = :tenantId
+                   AND run_id = :runId
+                   AND stage = :stage
+                   AND attempt_no = :attemptNo
+                   AND status = 'RUNNING'
+                """, params);
+    }
+
+    /**
      * 把运行下所有 RUNNING 阶段标记为 SKIPPED。
      *
      * <p>用于审批拒绝与取消：API 可能先把运行置为终态，Worker 的取消处理器随后补齐时间线；

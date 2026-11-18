@@ -45,8 +45,6 @@ import io.agentscope.core.event.AgentEvent;
 import io.agentscope.core.event.AgentResultEvent;
 import io.agentscope.core.event.RequireUserConfirmEvent;
 import io.agentscope.core.message.Msg;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -334,9 +332,9 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                 "sha256=" + toolResult.resultSha256() + ",bytes=" + toolResult.sizeBytes(),
                 null,
                 null,
-                decision(approval),
+                RunStageDetails.decision(approval),
                 approval.decidedBy(),
-                decidedAt(approval));
+                RunStageDetails.decidedAt(approval));
         repository.finishStage(
                 tenantId,
                 runId,
@@ -494,9 +492,9 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                         null,
                         null,
                         null,
-                        decision(approval),
+                        RunStageDetails.decision(approval),
                         approval.decidedBy(),
-                        decidedAt(approval));
+                        RunStageDetails.decidedAt(approval));
         repository.finishStage(
                 tenantId,
                 runId,
@@ -546,37 +544,9 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                 null,
                 null,
                 null,
-                decision(approval),
+                RunStageDetails.decision(approval),
                 approval.decidedBy(),
-                decidedAt(approval));
-    }
-
-    /**
-     * 审批决定名。
-     *
-     * @param approval 审批
-     * @return APPROVE/REJECT；其他终态返回状态名
-     */
-    private static String decision(ApprovalRecord approval) {
-        return switch (approval.status()) {
-            case APPROVED -> "APPROVE";
-            case REJECTED -> "REJECT";
-            default -> approval.status().name();
-        };
-    }
-
-    /**
-     * 审批时间格式化为带偏移的 ISO 8601。
-     *
-     * @param approval 审批
-     * @return 时间字符串；未决定时为 null
-     */
-    private static String decidedAt(ApprovalRecord approval) {
-        if (approval.decidedAt() == null) {
-            return null;
-        }
-        return DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(
-                approval.decidedAt().atOffset(ZoneOffset.UTC));
+                RunStageDetails.decidedAt(approval));
     }
 
     /**

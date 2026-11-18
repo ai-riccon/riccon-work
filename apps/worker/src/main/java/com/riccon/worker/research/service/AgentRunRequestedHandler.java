@@ -490,10 +490,12 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
     }
 
     /**
-     * 构造检索阶段详情，并附带可回溯的来源 ID 清单。
+     * 构造检索阶段详情，并附带可回溯的来源清单。
      *
-     * <p>{@code sources} 是契约允许的额外键，只包含来源 ID、标题与定位，不含知识库原文；
-     * 产物引用清单可据此与检索阶段逐条对齐（M02-AC-10）。
+     * <p>{@code sources} 是契约允许的额外键，只包含来源 ID、标题、定位、截断片段与相关度；
+     * 不写知识库全文，也不生成 HTML。片段先单行化再截断到
+     * {@link RunStageDetails#MAX_SOURCE_SNIPPET_LENGTH}，审批前即可由 API 映射为引用展示。
+     * 产物引用清单可据此与检索阶段逐条对齐（M02-AC-07、M02-AC-10）。
      *
      * @param topic 调研主题
      * @param querySha256 查询摘要
@@ -517,7 +519,12 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
                     source.put(
                             "knowledgeDocumentId", chunk.knowledgeDocumentId().toString());
                 }
+                if (chunk.chunkId() != null) {
+                    source.put("chunkId", chunk.chunkId().toString());
+                }
                 source.put("title", truncate(chunk.title()));
+                source.put("snippet", RunStageDetails.sourceSnippet(chunk.content()));
+                source.put("score", chunk.score());
                 if (chunk.locatorType() != null) {
                     source.put("locatorType", chunk.locatorType().name());
                 }

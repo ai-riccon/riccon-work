@@ -147,6 +147,17 @@ public class ResearchRepository {
     }
 
     /**
+     * 读取运行最近一次审批。
+     *
+     * @param tenantId 租户
+     * @param runId 运行 ID
+     * @return 最近审批；不存在时为空
+     */
+    public Optional<ApprovalRecord> findLatestApproval(TenantId tenantId, UUID runId) {
+        return approvalJdbc.findLatest(tenantId, runId);
+    }
+
+    /**
      * 创建待审批。
      *
      * @param tenantId 租户
@@ -203,6 +214,20 @@ public class ResearchRepository {
      */
     public UUID startStage(TenantId tenantId, UUID runId, String stage, int attemptNo) {
         return stageJdbc.start(tenantId, runId, stage, attemptNo);
+    }
+
+    /**
+     * 把指定阶段尝试标记为 SKIPPED，并写入合并后的详情。
+     *
+     * @param tenantId 租户
+     * @param runId 运行 ID
+     * @param stage 阶段
+     * @param attemptNo 尝试号
+     * @param detailsJson 白名单摘要 JSON
+     * @return 更新行数；0 表示阶段不存在或已终态
+     */
+    public int skipStage(TenantId tenantId, UUID runId, String stage, int attemptNo, String detailsJson) {
+        return stageJdbc.skip(tenantId, runId, stage, attemptNo, detailsJson);
     }
 
     /**

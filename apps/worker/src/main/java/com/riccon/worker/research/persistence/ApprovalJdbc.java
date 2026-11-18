@@ -115,6 +115,48 @@ public class ApprovalJdbc {
     }
 
     /**
+     * 读取运行最近一次审批，用于取消/拒绝事件补齐阶段时间线。
+     *
+     * <p>取消事件 payload 不带尝试号，按尝试号倒序取最新一条；同一尝试只会有一条审批
+     * （唯一键 {@code (tenant_id, run_id, stage, attempt_no)}）。
+     *
+     * @param tenantId 租户
+     * @param runId 运行 ID
+     * @return 最近审批；不存在时为空
+     */
+    public Optional<ApprovalRecord> findLatest(TenantId tenantId, UUID runId) {
+        return tenantJdbc.queryOne(
+                tenantId,
+                """
+                SELECT id, research_task_id, stage, attempt_no, status, mcp_tool_id, tool_name,
+                       params_preview, params_ciphertext, params_key_id, params_sha256, requested_by,
+                       decided_by, decided_at
+                  FROM approval
+                 WHERE tenant_id = :tenantId
+                   AND run_id = :runId
+                 ORDER BY attempt_no DESC, created_at DESC
+                 LIMIT 1
+                """,
+                Map.of("runId", UuidBinary.toBytes(runId)),
+                (rs, rowNum) -> new ApprovalRecord(
+                        UuidBinary.fromBytes(rs.getBytes("id")),
+                        runId,
+                        UuidBinary.fromBytes(rs.getBytes("research_task_id")),
+                        rs.getString("stage"),
+                        rs.getInt("attempt_no"),
+                        ApprovalStatus.valueOf(rs.getString("status")),
+                        UuidBinary.fromBytes(rs.getBytes("mcp_tool_id")),
+                        rs.getString("tool_name"),
+                        rs.getString("params_preview"),
+                        rs.getBytes("params_ciphertext"),
+                        rs.getString("params_key_id"),
+                        rs.getString("params_sha256"),
+                        UuidBinary.fromBytes(rs.getBytes("requested_by")),
+                        rs.getBytes("decided_by") == null ? null : UuidBinary.fromBytes(rs.getBytes("decided_by")),
+                        timestamp(rs.getObject("decided_at", java.time.LocalDateTime.class))));
+    }
+
+    /**
      * 创建待审批记录。
      *
      * @param tenantId 租户

@@ -2,8 +2,11 @@ package com.riccon.worker.research.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.riccon.platform.domain.research.ApprovalStatus;
+import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** 阶段详情与 OpenAPI {@code RunStageDetails} 对齐，并容忍未知键。 */
@@ -89,5 +92,87 @@ class RunStageDetailsTest {
         assertThat(RunStageDetails.fromJson(MAPPER, " ")).isNull();
         assertThat(RunStageDetails.fromJson(MAPPER, "[]")).isNull();
         assertThat(RunStageDetails.fromJson(MAPPER, "{}")).isNotNull();
+    }
+
+    /** 来源片段单行化并截断，不落完整原文。 */
+    @Test
+    void sourceSnippet_truncatesAndCollapsesWhitespace() {
+        String content = "市场增长\n\n第二段\t包含重复空白 " + "增".repeat(260);
+
+        String snippet = RunStageDetails.sourceSnippet(content);
+
+        assertThat(snippet).hasSize(RunStageDetails.MAX_SOURCE_SNIPPET_LENGTH);
+        assertThat(snippet).startsWith("市场增长 第二段 包含重复空白 增");
+        assertThat(snippet).endsWith("...");
+        assertThat(snippet).doesNotContain("\n", "\t");
+        assertThat(snippet).isNotEqualTo(content);
+    }
+
+    /** 空内容返回空片段，调用方仍可写入空字符串。 */
+    @Test
+    void sourceSnippet_nullOrBlank_returnsEmpty() {
+        assertThat(RunStageDetails.sourceSnippet(null)).isEmpty();
+        assertThat(RunStageDetails.sourceSnippet(" \n\t ")).isEmpty();
+    }
+
+    /** 审批决定合并保留未知键，重复合并不改变审批时间。 */
+    @Test
+    void withApprovalDecision_mergesUnknownKeysAndIsIdempotent() throws Exception {
+        UUID decidedBy = UUID.randomUUID();
+        ApprovalRecord approval = new ApprovalRecord(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "APPROVAL",
+                2,
+                ApprovalStatus.REJECTED,
+                UUID.randomUUID(),
+                "market_data",
+                "{\"text\":\"market-data\"}",
+                null,
+                null,
+                null,
+                UUID.randomUUID(),
+                decidedBy,
+                Instant.parse("2026-11-18T03:00:00Z"));
+        String existing = "{\"paramsPreview\":{\"text\":\"market-data\"},\"futureField\":{\"n\":1}}";
+
+        String merged = RunStageDetails.withApprovalDecision(MAPPER, existing, approval);
+        String mergedAgain = RunStageDetails.withApprovalDecision(MAPPER, merged, approval);
+
+        JsonNode node = MAPPER.readTree(merged);
+        assertThat(node.path("paramsPreview").path("text").asText()).isEqualTo("market-data");
+        assertThat(node.path("futureField").path("n").asInt()).isEqualTo(1);
+        assertThat(node.path("approvalDecision").asText()).isEqualTo("REJECT");
+        assertThat(node.path("approvalDecidedBy").asText()).isEqualTo(decidedBy.toString());
+        assertThat(node.path("approvalDecidedAt").asText()).isEqualTo("2026-11-18T03:00:00Z");
+        assertThat(MAPPER.readTree(mergedAgain).path("approvalDecidedAt").asText())
+                .isEqualTo("2026-11-18T03:00:00Z");
+    }
+
+    /** 历史脏详情不阻塞审批时间线收尾。 */
+    @Test
+    void withApprovalDecision_invalidExistingJson_startsWithFreshObject() throws Exception {
+        ApprovalRecord approval = new ApprovalRecord(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "APPROVAL",
+                1,
+                ApprovalStatus.APPROVED,
+                UUID.randomUUID(),
+                "market_data",
+                "{}",
+                null,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                Instant.parse("2026-11-18T03:00:00Z"));
+
+        JsonNode node = MAPPER.readTree(RunStageDetails.withApprovalDecision(MAPPER, "{not-json", approval));
+
+        assertThat(node.path("approvalDecision").asText()).isEqualTo("APPROVE");
+        assertThat(node.path("approvalDecidedAt").asText()).isEqualTo("2026-11-18T03:00:00Z");
     }
 }
