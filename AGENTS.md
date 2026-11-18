@@ -369,6 +369,7 @@ budget:
 - Product 的 brief/AC/non-goals 先经 Lead 完整性/合同一致性评审，再由用户批准范围；随后 Architect 评可行性、Verifier 评可验证性；结论写入 `docs/PRODUCT.md` 评审状态表。
 - Architect 的 ARCHITECTURE/ADR 需经 Lead、用户（不可逆/高成本项）、Verifier、Ops 评审；未批准的 ADR 保持 `proposed`；结论写入 `docs/ARCHITECTURE.md` 评审状态表。
 - Builder 只把任务移到 `review`，不自行 `done`；高风险任务（认证、权限、迁移、并发、安全、AI 工具调用）在 done 前必须有独立 Verifier 评审。
+- 任务级/架构级独立评审写到 `.riccon/reviews/tasks/<task>-review.md`，由 `task-review.schema.json` 校验；模块评审写到 `.riccon/reviews/<module>-review.md`。任务评审不参与模块 gate，高风险任务 closeout 必须引用。
 - 模块 gate 通过后，先由 Product 在 `docs/ACCEPTANCE.md` 做预验收；预验收 `pass` 后才提交用户最终验收（accepted/rejected/conditional）；用户未 accepted 不进入下一个用户可见模块。
 - 所有时间默认北京时间（`Asia/Shanghai`，UTC+08:00）；API/日志/事件/UI 使用带偏移的 ISO 8601；数据库存储按合同/ADR（当前 MySQL `DATETIME(6)` UTC，见 ADR-0008/0012）。
 - 验证分层：L1 迭代跑定向测试/编译；L2 任务收尾跑受影响模块一次全量并录 EV；L3 模块 gate 由 verifier 跑合同 test/coverage/E2E/a11y/security。`verify` 已含 worker，不得同一任务重复跑 worker 全量；共享层/契约/迁移变更必须全量一次；最终证据在干净提交上录制，探索性失败不录，负向安全证据保留；并行 agent 同一时间只跑一个全量套件。
