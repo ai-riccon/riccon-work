@@ -13,7 +13,8 @@ import org.springframework.stereotype.Repository;
 /**
  * 会话仓储。
  *
- * <p>只做持久化编排；可见性、保留期、标题策略与审计由服务层决定。
+ * <p>只做持久化编排；工作空间可见性、保留期、标题策略与审计由服务层决定。M03 起本仓储不按创建人过滤，
+ * 共享空间的成员可以读取同一会话。
  */
 @Repository
 public class ConversationRepository {
@@ -42,53 +43,49 @@ public class ConversationRepository {
     }
 
     /**
-     * 查询创建人可见的会话。
+     * 按租户读取未删除会话。
      *
      * @param tenantId 当前租户
      * @param conversationId 会话 ID
-     * @param userId 创建人
      * @return 会话
      */
-    public Optional<ConversationRecord> findOwned(TenantId tenantId, UUID conversationId, UUID userId) {
-        return conversationJdbc.findOwned(tenantId, conversationId, userId);
+    public Optional<ConversationRecord> findById(TenantId tenantId, UUID conversationId) {
+        return conversationJdbc.findById(tenantId, conversationId);
     }
 
     /**
-     * 锁定并查询创建人可见的会话。
+     * 锁定并查询未删除会话。
      *
      * @param tenantId 当前租户
      * @param conversationId 会话 ID
-     * @param userId 创建人
      * @return 会话
      */
-    public Optional<ConversationRecord> findOwnedForUpdate(TenantId tenantId, UUID conversationId, UUID userId) {
-        return conversationJdbc.findOwnedForUpdate(tenantId, conversationId, userId);
+    public Optional<ConversationRecord> findByIdForUpdate(TenantId tenantId, UUID conversationId) {
+        return conversationJdbc.findByIdForUpdate(tenantId, conversationId);
     }
 
     /**
-     * 统计创建人在指定工作空间的活跃会话。
+     * 统计工作空间内活跃会话。
      *
      * @param tenantId 当前租户
-     * @param userId 创建人
      * @param workspaceId 工作空间 ID
      * @return 总数
      */
-    public long countOwned(TenantId tenantId, UUID userId, UUID workspaceId) {
-        return conversationJdbc.countOwned(tenantId, userId, workspaceId);
+    public long countActive(TenantId tenantId, UUID workspaceId) {
+        return conversationJdbc.countActive(tenantId, workspaceId);
     }
 
     /**
-     * 分页列出创建人在指定工作空间的活跃会话。
+     * 分页列出工作空间内活跃会话。
      *
      * @param tenantId 当前租户
-     * @param userId 创建人
      * @param workspaceId 工作空间 ID
      * @param limit 每页大小
      * @param offset 偏移量
      * @return 会话列表
      */
-    public List<ConversationRecord> listOwned(TenantId tenantId, UUID userId, UUID workspaceId, int limit, int offset) {
-        return conversationJdbc.listOwned(tenantId, userId, workspaceId, limit, offset);
+    public List<ConversationRecord> listActive(TenantId tenantId, UUID workspaceId, int limit, int offset) {
+        return conversationJdbc.listActive(tenantId, workspaceId, limit, offset);
     }
 
     /**
@@ -96,13 +93,12 @@ public class ConversationRepository {
      *
      * @param tenantId 当前租户
      * @param conversationId 会话 ID
-     * @param userId 创建人
      * @param title 新标题
      * @param now 当前时间
      * @return 受影响行数
      */
-    public int updateTitle(TenantId tenantId, UUID conversationId, UUID userId, String title, Instant now) {
-        return conversationJdbc.updateTitle(tenantId, conversationId, userId, title, now);
+    public int updateTitle(TenantId tenantId, UUID conversationId, String title, Instant now) {
+        return conversationJdbc.updateTitle(tenantId, conversationId, title, now);
     }
 
     /**
@@ -110,13 +106,12 @@ public class ConversationRepository {
      *
      * @param tenantId 当前租户
      * @param conversationId 会话 ID
-     * @param userId 创建人
      * @param autoTitle 空标题时使用的自动标题
      * @param now 当前时间
      * @return 受影响行数
      */
-    public int touchAfterMessage(TenantId tenantId, UUID conversationId, UUID userId, String autoTitle, Instant now) {
-        return conversationJdbc.touchAfterMessage(tenantId, conversationId, userId, autoTitle, now);
+    public int touchAfterMessage(TenantId tenantId, UUID conversationId, String autoTitle, Instant now) {
+        return conversationJdbc.touchAfterMessage(tenantId, conversationId, autoTitle, now);
     }
 
     /**
@@ -124,11 +119,10 @@ public class ConversationRepository {
      *
      * @param tenantId 当前租户
      * @param conversationId 会话 ID
-     * @param userId 创建人
      * @param now 当前时间
      * @return 受影响行数
      */
-    public int softDelete(TenantId tenantId, UUID conversationId, UUID userId, Instant now) {
-        return conversationJdbc.softDelete(tenantId, conversationId, userId, now);
+    public int softDelete(TenantId tenantId, UUID conversationId, Instant now) {
+        return conversationJdbc.softDelete(tenantId, conversationId, now);
     }
 }

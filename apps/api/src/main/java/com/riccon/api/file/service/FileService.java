@@ -7,6 +7,7 @@ import com.riccon.api.common.UuidV7;
 import com.riccon.api.config.StorageProperties;
 import com.riccon.api.error.ConflictException;
 import com.riccon.api.error.FileLimitExceededException;
+import com.riccon.api.error.ForbiddenException;
 import com.riccon.api.error.NotFoundException;
 import com.riccon.api.file.domain.FileParseRecord;
 import com.riccon.api.file.domain.FileRecord;
@@ -169,6 +170,7 @@ public class FileService {
                     fileId,
                     workspaceId,
                     conversationId,
+                    actor.userId(),
                     prepared.originalName(),
                     prepared.format(),
                     prepared.mimeType(),
@@ -235,12 +237,13 @@ public class FileService {
     public FilePageResponse list(RicconPrincipal actor, UUID workspaceId, UUID conversationId, PageQuery page) {
         TenantId tenantId = TenantId.of(actor.tenantId());
         workspaceService.requireAccessible(tenantId, workspaceId, actor.userId());
-        long total = fileRepository.countAccessible(tenantId, actor.userId(), workspaceId, conversationId);
-        List<FileResponse> items = fileRepository
-                .listAccessible(tenantId, actor.userId(), workspaceId, conversationId, page.size(), page.offset())
-                .stream()
-                .map(FileResponse::from)
-                .toList();
+        long total = fileRepository.countByWorkspace(tenantId, workspaceId, conversationId);
+        List<FileResponse> items =
+                fileRepository
+                        .listByWorkspace(tenantId, workspaceId, conversationId, page.size(), page.offset())
+                        .stream()
+                        .map(FileResponse::from)
+                        .toList();
         return new FilePageResponse(page.page(), page.size(), total, page.totalPages(total), items);
     }
 
@@ -253,7 +256,7 @@ public class FileService {
      */
     @Transactional(readOnly = true)
     public FileResponse get(RicconPrincipal actor, UUID fileId) {
-        return FileResponse.from(requireVisibleFile(actor, fileId));
+        return FileResponse.from(requireAccessibleFile(actor, fileId));
     }
 
     /**
@@ -269,7 +272,7 @@ public class FileService {
     @Transactional
     public FileResponse retryParse(RicconPrincipal actor, UUID fileId, String traceId) {
         TenantId tenantId = TenantId.of(actor.tenantId());
-        FileRecord file = requireVisibleFileForUpdate(actor, fileId);
+        FileRecord file = requireAccessibleFileForUpdate(actor, fileId);
         FileParseRecord latest = fileRepository
                 .findLatestParse(tenantId, fileId)
                 .orElseThrow(() -> new ConflictException("file has no parse attempt"));
@@ -304,6 +307,7 @@ public class FileService {
                 file.id(),
                 file.workspaceId(),
                 file.conversationId(),
+                file.uploadedBy(),
                 file.originalName(),
                 file.format(),
                 file.mimeType(),
@@ -325,14 +329,17 @@ public class FileService {
      */
     @Transactional(readOnly = true)
     public DownloadUrlResponse downloadUrl(RicconPrincipal actor, UUID fileId) {
-        FileRecord file = requireVisibleFile(actor, fileId);
+        FileRecord file = requireAccessibleFile(actor, fileId);
         Duration ttl = storageProperties.downloadUrlTtl();
         URI url = fileStorage.presignGet(actor.tenantId(), file.storageKey(), ttl);
         return new DownloadUrlResponse(url.toString(), clock.instant().plus(ttl));
     }
 
     /**
-     * 软删除文件并写审计；对象清理由提交后的维护任务执行。
+     * 软删除文件并写审计；只有上传者可以删除，对象清理由提交后的维护任务执行。
+     *
+     * <p>共享空间成员可以查看和下载文件，但删除保持对象级规则：先判定空间访问（不可见统一 404），
+     * 再判定上传者（可见但非上传者返回 403），避免放宽到任意成员删除他人对象（ADR-0018 第 3.2 节）。
      *
      * @param actor 当前员工
      * @param fileId 文件 ID
@@ -342,7 +349,10 @@ public class FileService {
     @Transactional
     public void delete(RicconPrincipal actor, UUID fileId, String traceId, String requestId) {
         TenantId tenantId = TenantId.of(actor.tenantId());
-        FileRecord file = requireVisibleFileForUpdate(actor, fileId);
+        FileRecord file = requireAccessibleFileForUpdate(actor, fileId);
+        if (!file.uploadedBy().equals(actor.userId())) {
+            throw new ForbiddenException("file.delete");
+        }
         Instant now = clock.instant();
         if (fileRepository.softDelete(tenantId, fileId, now) == 0) {
             throw new NotFoundException("file");
@@ -380,29 +390,34 @@ public class FileService {
     }
 
     /**
-     * 查询当前员工可见的可用文件。
+     * 查询当前员工可访问的可用文件。
+     *
+     * <p>先按对象 ID 读取文件，得到所属 {@code workspaceId} 后调用统一空间入口；跨租户、跨部门与
+     * 个人空间他人统一 404。
      *
      * @param actor 当前员工
      * @param fileId 文件 ID
      * @return 文件
      */
-    private FileRecord requireVisibleFile(RicconPrincipal actor, UUID fileId) {
-        return fileRepository
-                .findAccessible(TenantId.of(actor.tenantId()), fileId, actor.userId())
-                .orElseThrow(() -> new NotFoundException("file"));
+    private FileRecord requireAccessibleFile(RicconPrincipal actor, UUID fileId) {
+        TenantId tenantId = TenantId.of(actor.tenantId());
+        FileRecord file = fileRepository.findById(tenantId, fileId).orElseThrow(() -> new NotFoundException("file"));
+        workspaceService.requireAccessible(tenantId, file.workspaceId(), actor.userId());
+        return file;
     }
 
     /**
-     * 锁定并查询当前员工可见的可用文件。
+     * 锁定并查询当前员工可访问的可用文件。
      *
      * @param actor 当前员工
      * @param fileId 文件 ID
      * @return 文件
      */
-    private FileRecord requireVisibleFileForUpdate(RicconPrincipal actor, UUID fileId) {
-        return fileRepository
-                .lockAccessible(TenantId.of(actor.tenantId()), fileId, actor.userId())
-                .orElseThrow(() -> new NotFoundException("file"));
+    private FileRecord requireAccessibleFileForUpdate(RicconPrincipal actor, UUID fileId) {
+        TenantId tenantId = TenantId.of(actor.tenantId());
+        FileRecord file = fileRepository.findById(tenantId, fileId).orElseThrow(() -> new NotFoundException("file"));
+        workspaceService.requireAccessible(tenantId, file.workspaceId(), actor.userId());
+        return fileRepository.findByIdForUpdate(tenantId, fileId).orElseThrow(() -> new NotFoundException("file"));
     }
 
     /**

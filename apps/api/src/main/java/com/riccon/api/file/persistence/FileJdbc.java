@@ -24,15 +24,17 @@ import org.springframework.stereotype.Component;
 /**
  * 文件、解析尝试与会话归属 SQL。
  *
- * <p>所有查询经 {@link TenantJdbc} 强制 {@code tenant_id}；文件可见性同时校验工作空间：个人空间只允许所有者，
- * 团队空间对本租户员工可见。读取时关联最近一次 {@code file_parse}，列表不使用 N+1 查询。
+ * <p>所有查询经 {@link TenantJdbc} 强制 {@code tenant_id}。M03 起文件可见性由所属工作空间的
+ * {@code WorkspaceService.requireAccessible} 决定：本仓储只按 {@code (tenant_id, id)} 与工作空间过滤，
+ * 不再复制 {@code kind = 'TEAM'} 或 owner-only 的可见性条件。读取时关联最近一次 {@code file_parse}，
+ * 列表不使用 N+1 查询。
  */
 @Component
 public class FileJdbc {
 
     /** 文件列。 */
     private static final String FILE_COLUMNS = """
-            f.id, f.workspace_id, f.conversation_id, f.original_name, f.format, f.mime_type,
+            f.id, f.workspace_id, f.conversation_id, f.uploaded_by, f.original_name, f.format, f.mime_type,
             f.size_bytes, f.sha256, f.storage_key, f.status, f.created_at, f.deleted_at
             """;
 
@@ -44,10 +46,6 @@ public class FileJdbc {
             fp.error_code AS parse_error_code, fp.error_message AS parse_error_message,
             fp.started_at AS parse_started_at, fp.finished_at AS parse_finished_at
             """;
-
-    /** 工作空间可见性条件；与 WorkspaceJdbc 保持一致。 */
-    private static final String WORKSPACE_VISIBLE =
-            " w.deleted_at IS NULL AND (w.kind = 'TEAM' OR (w.kind = 'PERSONAL' AND w.owner_user_id = :userId))";
 
     /** 最近一次解析尝试的左连接。 */
     private static final String LATEST_PARSE_JOIN = """
@@ -189,60 +187,51 @@ public class FileJdbc {
     }
 
     /**
-     * 查询对指定用户可见的可用文件。
+     * 按租户读取可用文件。
+     *
+     * <p>不做可见性判断；调用方必须先按文件的 {@code workspace_id} 通过
+     * {@code WorkspaceService.requireAccessible}，再使用本方法的结果。
      *
      * @param tenantId 当前租户
      * @param fileId 文件 ID
-     * @param userId 账号 ID
-     * @return 文件快照；不存在、已删除或不可见时为空
+     * @return 文件快照；不存在、已删除或属于其他租户时为空
      */
-    public Optional<FileRecord> findAccessible(TenantId tenantId, UUID fileId, UUID userId) {
+    public Optional<FileRecord> findById(TenantId tenantId, UUID fileId) {
         return tenantJdbc.queryOne(
-                tenantId,
-                accessibleSql(false),
-                Map.of("fileId", BinaryUuids.toBytes(fileId), "userId", BinaryUuids.toBytes(userId)),
-                FileJdbc::mapRow);
+                tenantId, byIdSql(false), Map.of("fileId", BinaryUuids.toBytes(fileId)), FileJdbc::mapRow);
     }
 
     /**
-     * 锁定并查询对指定用户可见的可用文件。
+     * 锁定并读取可用文件。
      *
      * @param tenantId 当前租户
      * @param fileId 文件 ID
-     * @param userId 账号 ID
      * @return 文件快照；不可见时为空
      */
-    public Optional<FileRecord> lockAccessible(TenantId tenantId, UUID fileId, UUID userId) {
+    public Optional<FileRecord> findByIdForUpdate(TenantId tenantId, UUID fileId) {
         return tenantJdbc.queryOne(
-                tenantId,
-                accessibleSql(true),
-                Map.of("fileId", BinaryUuids.toBytes(fileId), "userId", BinaryUuids.toBytes(userId)),
-                FileJdbc::mapRow);
+                tenantId, byIdSql(true), Map.of("fileId", BinaryUuids.toBytes(fileId)), FileJdbc::mapRow);
     }
 
     /**
-     * 统计可见文件。
+     * 统计工作空间内可用文件。
      *
      * @param tenantId 当前租户
-     * @param userId 账号 ID
      * @param workspaceId 工作空间 ID
      * @param conversationId 可选会话过滤
      * @return 总数
      */
-    public long countAccessible(TenantId tenantId, UUID userId, UUID workspaceId, UUID conversationId) {
+    public long countByWorkspace(TenantId tenantId, UUID workspaceId, UUID conversationId) {
         StringBuilder sql = new StringBuilder("""
                 SELECT COUNT(*)
                   FROM file f
-                  JOIN workspace w ON w.tenant_id = f.tenant_id AND w.id = f.workspace_id
                  WHERE f.tenant_id = :tenantId
                    AND f.workspace_id = :workspaceId
                    AND f.status = 'AVAILABLE'
                    AND f.deleted_at IS NULL
                 """);
-        sql.append(" AND ").append(WORKSPACE_VISIBLE);
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("workspaceId", BinaryUuids.toBytes(workspaceId));
-        params.put("userId", BinaryUuids.toBytes(userId));
         if (conversationId != null) {
             sql.append(" AND f.conversation_id = :conversationId");
             params.put("conversationId", BinaryUuids.toBytes(conversationId));
@@ -251,25 +240,23 @@ public class FileJdbc {
     }
 
     /**
-     * 分页查询可见文件，按创建时间倒序。
+     * 分页查询工作空间可用文件，按创建时间倒序。
      *
      * @param tenantId 当前租户
-     * @param userId 账号 ID
      * @param workspaceId 工作空间 ID
      * @param conversationId 可选会话过滤
      * @param limit 每页大小
      * @param offset 偏移量
      * @return 文件列表
      */
-    public List<FileRecord> listAccessible(
-            TenantId tenantId, UUID userId, UUID workspaceId, UUID conversationId, int limit, int offset) {
+    public List<FileRecord> listByWorkspace(
+            TenantId tenantId, UUID workspaceId, UUID conversationId, int limit, int offset) {
         StringBuilder sql = new StringBuilder("SELECT ")
                 .append(FILE_COLUMNS)
                 .append(", ")
                 .append(PARSE_COLUMNS)
                 .append("""
                           FROM file f
-                          JOIN workspace w ON w.tenant_id = f.tenant_id AND w.id = f.workspace_id
                         """)
                 .append(LATEST_PARSE_JOIN)
                 .append("""
@@ -278,10 +265,8 @@ public class FileJdbc {
                            AND f.status = 'AVAILABLE'
                            AND f.deleted_at IS NULL
                         """);
-        sql.append(" AND ").append(WORKSPACE_VISIBLE);
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("workspaceId", BinaryUuids.toBytes(workspaceId));
-        params.put("userId", BinaryUuids.toBytes(userId));
         if (conversationId != null) {
             sql.append(" AND f.conversation_id = :conversationId");
             params.put("conversationId", BinaryUuids.toBytes(conversationId));
@@ -350,22 +335,20 @@ public class FileJdbc {
     }
 
     /**
-     * 构造文件可见性查询。
+     * 构造按 ID 查询文件 SQL。
      *
      * @param forUpdate 是否加行锁
      * @return SQL
      */
-    private static String accessibleSql(boolean forUpdate) {
+    private static String byIdSql(boolean forUpdate) {
         return "SELECT " + FILE_COLUMNS + ", " + PARSE_COLUMNS + """
                   FROM file f
-                  JOIN workspace w ON w.tenant_id = f.tenant_id AND w.id = f.workspace_id
                 """ + LATEST_PARSE_JOIN + """
                  WHERE f.tenant_id = :tenantId
                    AND f.id = :fileId
                    AND f.status = 'AVAILABLE'
                    AND f.deleted_at IS NULL
-                   AND
-                """ + WORKSPACE_VISIBLE
+                """
                 + (forUpdate ? " FOR UPDATE" : "");
     }
 
@@ -383,6 +366,7 @@ public class FileJdbc {
                 BinaryUuids.fromBytes(rs.getBytes("id")),
                 BinaryUuids.fromBytes(rs.getBytes("workspace_id")),
                 rs.getBytes("conversation_id") == null ? null : BinaryUuids.fromBytes(rs.getBytes("conversation_id")),
+                BinaryUuids.fromBytes(rs.getBytes("uploaded_by")),
                 rs.getString("original_name"),
                 FileFormat.valueOf(rs.getString("format")),
                 rs.getString("mime_type"),

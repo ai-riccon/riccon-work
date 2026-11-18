@@ -14,6 +14,7 @@ import java.util.UUID;
  * @param id 文件 ID
  * @param workspaceId 所属工作空间
  * @param conversationId 上传所在会话，可为空
+ * @param uploadedBy 上传人账号 ID；删除只允许上传者
  * @param originalName 原始文件名
  * @param format 业务格式
  * @param mimeType 服务端嗅探后的 MIME
@@ -29,6 +30,7 @@ public record FileRecord(
         UUID id,
         UUID workspaceId,
         UUID conversationId,
+        UUID uploadedBy,
         String originalName,
         FileFormat format,
         String mimeType,

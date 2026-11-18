@@ -392,7 +392,10 @@ public class ChatService {
     }
 
     /**
-     * 停止生成：校验运行归属后调用 Worker 取消，并原子落库 STOPPED/CANCELLED 与审计。
+     * 停止生成：校验空间访问与对象级停止权限后调用 Worker 取消，并原子落库 STOPPED/CANCELLED 与审计。
+     *
+     * <p>共享空间成员都能看到会话，但只有会话创建人或该运行的发起人可以停止生成（ADR-0018 第 3.2 节）。
+     * 无停止权限与运行不存在统一返回 404，不泄露运行归属。
      *
      * @param actor 当前员工
      * @param conversationId 会话 ID
@@ -405,11 +408,11 @@ public class ChatService {
         Validation.requireBody(request);
         UUID runId = Validation.requireNonNull(request.runId(), "runId");
         TenantId tenantId = TenantId.of(actor.tenantId());
-        ConversationRecord conversation = conversationService.requireOwned(actor, conversationId);
+        ConversationRecord conversation = conversationService.requireAccessible(actor, conversationId);
         RunSnapshot run = runRepository.findChat(tenantId, runId).orElseThrow(() -> new NotFoundException("run"));
         if (run.kind() != RunKind.CHAT
                 || !conversation.id().equals(run.conversationId())
-                || !actor.userId().equals(run.userId())) {
+                || !canStop(actor, conversation, run)) {
             throw new NotFoundException("run");
         }
         if (run.status() == RunStatus.CANCELLED) {
@@ -451,6 +454,18 @@ public class ChatService {
             }
             case NOT_FOUND -> throw new NotFoundException("run");
         }
+    }
+
+    /**
+     * 判断当前员工能否停止该运行：会话创建人或该运行的发起人。
+     *
+     * @param actor 当前员工
+     * @param conversation 会话
+     * @param run 运行
+     * @return 允许停止时返回 {@code true}
+     */
+    private static boolean canStop(RicconPrincipal actor, ConversationRecord conversation, RunSnapshot run) {
+        return actor.userId().equals(conversation.createdBy()) || actor.userId().equals(run.userId());
     }
 
     /**

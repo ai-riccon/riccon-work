@@ -177,7 +177,7 @@ public class ResearchTaskService {
         Optional<ResearchTaskSnapshot> existing =
                 researchTaskRepository.findByIdempotencyKeyForUpdate(tenantId, actor.userId(), idempotencyKey);
         if (existing.isPresent()) {
-            return replayOrConflict(tenantId, existing.get(), topic, mcpToolId);
+            return replayOrConflict(tenantId, actor, existing.get(), topic, mcpToolId);
         }
         if (!researchTaskRepository.isToolAuthorized(tenantId, mcpToolId)) {
             throw new BadRequestException("mcpToolId is not authorized for this tenant");
@@ -209,7 +209,7 @@ public class ResearchTaskService {
             ResearchTaskSnapshot winner = researchTaskRepository
                     .findByIdempotencyKeyForUpdate(tenantId, actor.userId(), idempotencyKey)
                     .orElseThrow(() -> new ConflictException("idempotency key is being processed concurrently"));
-            return replayOrConflict(tenantId, winner, topic, mcpToolId);
+            return replayOrConflict(tenantId, actor, winner, topic, mcpToolId);
         }
         runRepository.createResearchPending(tenantId, runId, taskId, actor.userId(), traceId, now);
         outboxRepository.enqueue(
@@ -302,18 +302,21 @@ public class ResearchTaskService {
      * 幂等重放：主题与工具一致返回既有任务，否则冲突。
      *
      * <p>返回前把任务状态与当前运行同步，保证重放响应与正常读取看到同一状态，而不是创建时的 PENDING 快照。
+     * 同时按既有任务所属工作空间重新判定访问，避免成员被移出部门后通过任意可访问空间重放旧幂等键读取任务。
      *
      * @param tenantId 当前租户
+     * @param actor 当前员工
      * @param existing 既有任务
      * @param topic 本次主题
      * @param mcpToolId 本次工具
      * @return 既有任务响应
      */
     private ResearchTaskResponse replayOrConflict(
-            TenantId tenantId, ResearchTaskSnapshot existing, String topic, UUID mcpToolId) {
+            TenantId tenantId, RicconPrincipal actor, ResearchTaskSnapshot existing, String topic, UUID mcpToolId) {
         if (!existing.topic().equals(topic) || !existing.mcpToolId().equals(mcpToolId)) {
             throw new ConflictException("idempotency key was already used with a different request");
         }
+        workspaceService.requireAccessible(tenantId, existing.workspaceId(), actor.userId());
         researchTaskRepository.syncTask(tenantId, existing.workspaceId(), existing.id());
         ResearchTaskSnapshot refreshed = researchTaskRepository
                 .findById(tenantId, existing.id())

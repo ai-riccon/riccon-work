@@ -2,6 +2,8 @@ package com.riccon.api.run.service;
 
 import com.riccon.api.chat.service.ConversationService;
 import com.riccon.api.error.NotFoundException;
+import com.riccon.api.file.domain.FileRecord;
+import com.riccon.api.file.repository.FileRepository;
 import com.riccon.api.identity.domain.RicconPrincipal;
 import com.riccon.api.research.domain.ResearchTaskSnapshot;
 import com.riccon.api.research.domain.RunStageSnapshot;
@@ -23,13 +25,14 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 运行详情读取。
  *
- * <p>运行 ID 不是访问凭据：先按租户读取，再按运行类别做对象级可见性校验，任何不可见都返回 404 而不是 403，
+ * <p>运行 ID 不是访问凭据：先按租户读取，再按运行对象所属工作空间做访问判定，任何不可见都返回 404 而不是 403，
  * 避免通过状态码探测其他租户或其他员工的对象是否存在（ADR-0009）。
  *
  * <ul>
- *   <li>CHAT：只允许会话所有者读取，与 J1 会话读取口径一致；
- *   <li>RESEARCH_REPORT：只允许能访问报告任务所在工作空间的员工读取；
- *   <li>FILE_PARSE / KNOWLEDGE_INDEX：只允许运行发起人读取；M02 没有共享文件运行详情的需求。
+ *   <li>CHAT：按会话所属工作空间判定，共享空间成员可读取会话运行（ADR-0018 第 3.2 节）；
+ *   <li>RESEARCH_REPORT：按报告任务所属工作空间判定；
+ *   <li>FILE_PARSE：按来源文件所属工作空间判定，个人空间仍只允许所有者；
+ *   <li>KNOWLEDGE_INDEX：知识库在 M03 为租户级共享，但运行详情仍只允许发起人读取，避免暴露他人模型调用明细。
  * </ul>
  */
 @Service
@@ -50,6 +53,9 @@ public class RunDetailService {
     /** 报告任务仓储。 */
     private final ResearchTaskRepository researchTaskRepository;
 
+    /** 文件仓储，用于解析运行的空间归属。 */
+    private final FileRepository fileRepository;
+
     /** 工作空间可见性。 */
     private final WorkspaceService workspaceService;
 
@@ -59,8 +65,9 @@ public class RunDetailService {
      * @param runRepository 运行仓储
      * @param runStageRepository 阶段时间线仓储
      * @param modelInvocationRepository 模型调用记录仓储
-     * @param conversationService 会话可见性
+     * @param conversationService 会话访问判定
      * @param researchTaskRepository 报告任务仓储
+     * @param fileRepository 文件仓储
      * @param workspaceService 工作空间可见性
      */
     public RunDetailService(
@@ -69,6 +76,7 @@ public class RunDetailService {
             ModelInvocationRepository modelInvocationRepository,
             ConversationService conversationService,
             ResearchTaskRepository researchTaskRepository,
+            FileRepository fileRepository,
             WorkspaceService workspaceService) {
         this.runRepository = Objects.requireNonNull(runRepository, "runRepository must not be null");
         this.runStageRepository = Objects.requireNonNull(runStageRepository, "runStageRepository must not be null");
@@ -77,6 +85,7 @@ public class RunDetailService {
         this.conversationService = Objects.requireNonNull(conversationService, "conversationService must not be null");
         this.researchTaskRepository =
                 Objects.requireNonNull(researchTaskRepository, "researchTaskRepository must not be null");
+        this.fileRepository = Objects.requireNonNull(fileRepository, "fileRepository must not be null");
         this.workspaceService = Objects.requireNonNull(workspaceService, "workspaceService must not be null");
     }
 
@@ -100,7 +109,7 @@ public class RunDetailService {
     }
 
     /**
-     * 按运行类别校验对象级可见性。
+     * 按运行对象所属空间校验可见性。
      *
      * @param actor 当前员工
      * @param tenantId 当前租户
@@ -113,7 +122,8 @@ public class RunDetailService {
                 if (run.conversationId() == null) {
                     throw new NotFoundException("run");
                 }
-                conversationService.requireOwned(actor, run.conversationId());
+                // 会话服务会先读取会话所属空间再调用 requireAccessible，不再按会话创建人限制。
+                conversationService.requireAccessible(actor, run.conversationId());
             }
             case RESEARCH_REPORT -> {
                 if (run.researchTaskId() == null) {
@@ -124,7 +134,16 @@ public class RunDetailService {
                         .orElseThrow(() -> new NotFoundException("run"));
                 workspaceService.requireAccessible(tenantId, task.workspaceId(), actor.userId());
             }
-            case FILE_PARSE, KNOWLEDGE_INDEX -> {
+            case FILE_PARSE -> {
+                if (run.fileId() == null) {
+                    throw new NotFoundException("run");
+                }
+                FileRecord file =
+                        fileRepository.findById(tenantId, run.fileId()).orElseThrow(() -> new NotFoundException("run"));
+                workspaceService.requireAccessible(tenantId, file.workspaceId(), actor.userId());
+            }
+            case KNOWLEDGE_INDEX -> {
+                // 知识库在 M03 是租户级共享，但运行详情包含模型调用明细，仍只对发起人开放。
                 if (!run.userId().equals(actor.userId())) {
                     throw new NotFoundException("run");
                 }

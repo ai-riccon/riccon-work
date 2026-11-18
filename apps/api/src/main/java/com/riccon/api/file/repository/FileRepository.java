@@ -3,6 +3,7 @@ package com.riccon.api.file.repository;
 import com.riccon.api.file.domain.FileParseRecord;
 import com.riccon.api.file.domain.FileRecord;
 import com.riccon.api.file.persistence.FileJdbc;
+import com.riccon.api.workspace.persistence.WorkspaceJdbc;
 import com.riccon.platform.common.tenant.TenantId;
 import java.time.Instant;
 import java.util.List;
@@ -15,6 +16,9 @@ import org.springframework.stereotype.Repository;
  * 文件仓储。
  *
  * <p>封装文件、解析尝试与会话归属 SQL；服务层不直接接触 JDBC。所有读取默认排除软删除文件。
+ * 文件可见性由工作空间唯一谓词决定：一般入口由服务层调用 {@code WorkspaceService.requireAccessible}；
+ * 知识库登记需要在文件行锁内同时判定空间，因此本仓储组合 {@link WorkspaceJdbc#findAccessible}，
+ * 不复制任何可见性 SQL。
  */
 @Repository
 public class FileRepository {
@@ -22,13 +26,18 @@ public class FileRepository {
     /** 文件 SQL。 */
     private final FileJdbc fileJdbc;
 
+    /** 工作空间可见性唯一实现点，用于锁定文件的组合判定。 */
+    private final WorkspaceJdbc workspaceJdbc;
+
     /**
      * 创建仓储。
      *
      * @param fileJdbc 文件 SQL
+     * @param workspaceJdbc 工作空间可见性 SQL
      */
-    public FileRepository(FileJdbc fileJdbc) {
+    public FileRepository(FileJdbc fileJdbc, WorkspaceJdbc workspaceJdbc) {
         this.fileJdbc = Objects.requireNonNull(fileJdbc, "fileJdbc must not be null");
+        this.workspaceJdbc = Objects.requireNonNull(workspaceJdbc, "workspaceJdbc must not be null");
     }
 
     /**
@@ -55,56 +64,70 @@ public class FileRepository {
     }
 
     /**
-     * 查询可见文件。
+     * 按租户读取可用文件。
      *
      * @param tenantId 当前租户
      * @param fileId 文件 ID
-     * @param userId 账号 ID
      * @return 文件快照
      */
-    public Optional<FileRecord> findAccessible(TenantId tenantId, UUID fileId, UUID userId) {
-        return fileJdbc.findAccessible(tenantId, fileId, userId);
+    public Optional<FileRecord> findById(TenantId tenantId, UUID fileId) {
+        return fileJdbc.findById(tenantId, fileId);
     }
 
     /**
-     * 锁定并查询可见文件。
+     * 锁定并读取可用文件，同时校验当前员工可访问文件所属工作空间。
+     *
+     * <p>知识库登记使用：文件行锁与空间判定在同一调用内完成，空间判定委托给
+     * {@link WorkspaceJdbc#findAccessible}，保持单一可见性谓词。
      *
      * @param tenantId 当前租户
      * @param fileId 文件 ID
      * @param userId 账号 ID
-     * @return 文件快照
+     * @return 文件快照；不存在或不可见时为空
      */
     public Optional<FileRecord> lockAccessible(TenantId tenantId, UUID fileId, UUID userId) {
-        return fileJdbc.lockAccessible(tenantId, fileId, userId);
+        return fileJdbc.findByIdForUpdate(tenantId, fileId)
+                .filter(file -> workspaceJdbc
+                        .findAccessible(tenantId, file.workspaceId(), userId)
+                        .isPresent());
     }
 
     /**
-     * 统计可见文件。
+     * 锁定并读取可用文件。
      *
      * @param tenantId 当前租户
-     * @param userId 账号 ID
+     * @param fileId 文件 ID
+     * @return 文件快照
+     */
+    public Optional<FileRecord> findByIdForUpdate(TenantId tenantId, UUID fileId) {
+        return fileJdbc.findByIdForUpdate(tenantId, fileId);
+    }
+
+    /**
+     * 统计工作空间可用文件。
+     *
+     * @param tenantId 当前租户
      * @param workspaceId 工作空间 ID
      * @param conversationId 可选会话过滤
      * @return 总数
      */
-    public long countAccessible(TenantId tenantId, UUID userId, UUID workspaceId, UUID conversationId) {
-        return fileJdbc.countAccessible(tenantId, userId, workspaceId, conversationId);
+    public long countByWorkspace(TenantId tenantId, UUID workspaceId, UUID conversationId) {
+        return fileJdbc.countByWorkspace(tenantId, workspaceId, conversationId);
     }
 
     /**
-     * 分页查询可见文件。
+     * 分页查询工作空间可用文件。
      *
      * @param tenantId 当前租户
-     * @param userId 账号 ID
      * @param workspaceId 工作空间 ID
      * @param conversationId 可选会话过滤
      * @param limit 每页大小
      * @param offset 偏移量
      * @return 文件列表
      */
-    public List<FileRecord> listAccessible(
-            TenantId tenantId, UUID userId, UUID workspaceId, UUID conversationId, int limit, int offset) {
-        return fileJdbc.listAccessible(tenantId, userId, workspaceId, conversationId, limit, offset);
+    public List<FileRecord> listByWorkspace(
+            TenantId tenantId, UUID workspaceId, UUID conversationId, int limit, int offset) {
+        return fileJdbc.listByWorkspace(tenantId, workspaceId, conversationId, limit, offset);
     }
 
     /**

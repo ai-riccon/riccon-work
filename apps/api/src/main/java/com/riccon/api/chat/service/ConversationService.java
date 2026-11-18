@@ -17,6 +17,7 @@ import com.riccon.api.chat.repository.ConversationRepository;
 import com.riccon.api.chat.repository.MessageRepository;
 import com.riccon.api.common.UuidV7;
 import com.riccon.api.error.BadRequestException;
+import com.riccon.api.error.ForbiddenException;
 import com.riccon.api.error.NotFoundException;
 import com.riccon.api.identity.domain.RicconPrincipal;
 import com.riccon.api.identity.domain.TenantRecord;
@@ -42,8 +43,10 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 会话与消息读取、会话生命周期。
  *
- * <p>M02 会话由创建人私有：列表只含自己的会话，读取/写入他人会话与跨租户统一 404。会话创建时按租户
- * {@code retention_days} 写入到期时间；首条消息自动生成标题；删除只写 {@code deleted_at}，消息与引用保留。
+ * <p>M03 起会话可见性跟随所属工作空间：列表、详情、消息与停止生成先经
+ * {@link WorkspaceService#requireAccessible} 判定空间访问，再按会话 ID 读取；跨租户、跨部门与个人空间他人
+ * 统一 404。标题修改与会话删除仍只允许创建人（ADR-0018 第 3.2 节）。会话创建时按租户 {@code retention_days}
+ * 写入到期时间；首条消息自动生成标题；删除只写 {@code deleted_at}，消息与引用保留。
  */
 @Service
 public class ConversationService {
@@ -104,7 +107,10 @@ public class ConversationService {
     }
 
     /**
-     * 列出创建人在指定工作空间的会话。
+     * 列出工作空间内的活跃会话。
+     *
+     * <p>空间判定与列表复用同一访问入口：先 {@code requireAccessible}，再按 {@code workspace_id} 查询，
+     * 因此共享空间成员能看到同一空间内的全部活跃会话（ADR-0018 第 3.1/3.2 节）。
      *
      * @param actor 当前员工
      * @param workspaceId 工作空间 ID
@@ -115,11 +121,9 @@ public class ConversationService {
     public ConversationPageResponse list(RicconPrincipal actor, UUID workspaceId, PageQuery page) {
         TenantId tenantId = TenantId.of(actor.tenantId());
         workspaceService.requireAccessible(tenantId, workspaceId, actor.userId());
-        long total = conversationRepository.countOwned(tenantId, actor.userId(), workspaceId);
+        long total = conversationRepository.countActive(tenantId, workspaceId);
         List<ConversationResponse> items =
-                conversationRepository
-                        .listOwned(tenantId, actor.userId(), workspaceId, page.size(), page.offset())
-                        .stream()
+                conversationRepository.listActive(tenantId, workspaceId, page.size(), page.offset()).stream()
                         .map(ConversationResponse::from)
                         .toList();
         return new ConversationPageResponse(page.page(), page.size(), total, page.totalPages(total), items);
@@ -182,7 +186,7 @@ public class ConversationService {
     @Transactional(readOnly = true)
     public ConversationDetailResponse get(RicconPrincipal actor, UUID conversationId) {
         TenantId tenantId = TenantId.of(actor.tenantId());
-        ConversationRecord conversation = requireOwned(actor, conversationId);
+        ConversationRecord conversation = requireAccessible(actor, conversationId);
         List<MessageRecord> messages =
                 messageRepository.listLatest(tenantId, conversation.id(), null, DETAIL_MESSAGE_LIMIT);
         return ConversationDetailResponse.from(
@@ -190,7 +194,7 @@ public class ConversationService {
     }
 
     /**
-     * 修改会话标题。
+     * 修改会话标题；只有创建人可以修改。
      *
      * @param actor 当前员工
      * @param conversationId 会话 ID
@@ -202,9 +206,10 @@ public class ConversationService {
         Validation.requireBody(request);
         String title = Validation.requireText(request.title(), "title", 1, MAX_TITLE_LENGTH);
         TenantId tenantId = TenantId.of(actor.tenantId());
-        ConversationRecord conversation = requireOwned(actor, conversationId);
+        ConversationRecord conversation = requireAccessible(actor, conversationId);
+        requireCreator(actor, conversation);
         Instant now = clock.instant();
-        int updated = conversationRepository.updateTitle(tenantId, conversationId, actor.userId(), title, now);
+        int updated = conversationRepository.updateTitle(tenantId, conversationId, title, now);
         if (updated == 0) {
             throw new NotFoundException("conversation");
         }
@@ -220,7 +225,7 @@ public class ConversationService {
     }
 
     /**
-     * 软删除会话并写 {@code session.deleted} 审计。
+     * 软删除会话并写 {@code session.deleted} 审计；只有创建人可以删除。
      *
      * @param actor 当前员工
      * @param conversationId 会话 ID
@@ -230,9 +235,10 @@ public class ConversationService {
     @Transactional
     public void delete(RicconPrincipal actor, UUID conversationId, String traceId, String requestId) {
         TenantId tenantId = TenantId.of(actor.tenantId());
-        ConversationRecord conversation = requireOwned(actor, conversationId);
+        ConversationRecord conversation = requireAccessible(actor, conversationId);
+        requireCreator(actor, conversation);
         Instant now = clock.instant();
-        if (conversationRepository.softDelete(tenantId, conversationId, actor.userId(), now) == 0) {
+        if (conversationRepository.softDelete(tenantId, conversationId, now) == 0) {
             throw new NotFoundException("conversation");
         }
         auditService.append(AuditEvent.create(
@@ -267,7 +273,7 @@ public class ConversationService {
             throw new BadRequestException("beforeSeq must be >= 1");
         }
         TenantId tenantId = TenantId.of(actor.tenantId());
-        ConversationRecord conversation = requireOwned(actor, conversationId);
+        ConversationRecord conversation = requireAccessible(actor, conversationId);
         long total = messageRepository.countByConversation(tenantId, conversation.id());
         List<MessageResponse> items =
                 messageRepository.listLatest(tenantId, conversation.id(), beforeSeq, page.size()).stream()
@@ -277,18 +283,39 @@ public class ConversationService {
     }
 
     /**
-     * 校验会话属于当前员工。
+     * 读取会话并校验当前员工可访问其所属工作空间。
+     *
+     * <p>访问判定只有一处：先按对象 ID 读取所属 {@code workspaceId}，再调用
+     * {@link WorkspaceService#requireAccessible}；本方法不按创建人过滤，共享空间成员可读取同一会话。
      *
      * @param actor 当前员工
      * @param conversationId 会话 ID
      * @return 会话
-     * @throws NotFoundException 不存在、已删除、属于他人或其他租户
+     * @throws NotFoundException 不存在、已删除、跨租户或所属空间不可访问
      */
     @Transactional(readOnly = true)
-    public ConversationRecord requireOwned(RicconPrincipal actor, UUID conversationId) {
-        return conversationRepository
-                .findOwned(TenantId.of(actor.tenantId()), conversationId, actor.userId())
+    public ConversationRecord requireAccessible(RicconPrincipal actor, UUID conversationId) {
+        TenantId tenantId = TenantId.of(actor.tenantId());
+        ConversationRecord conversation = conversationRepository
+                .findById(tenantId, conversationId)
                 .orElseThrow(() -> new NotFoundException("conversation"));
+        workspaceService.requireAccessible(tenantId, conversation.workspaceId(), actor.userId());
+        return conversation;
+    }
+
+    /**
+     * 校验当前员工是会话创建人。
+     *
+     * <p>共享空间成员可以读取与追加消息，但标题修改和删除仍是创建人对象级权限（ADR-0018 第 3.2 节）。
+     *
+     * @param actor 当前员工
+     * @param conversation 已通过空间判定的会话
+     * @throws ForbiddenException 当前员工不是创建人
+     */
+    private static void requireCreator(RicconPrincipal actor, ConversationRecord conversation) {
+        if (!conversation.createdBy().equals(actor.userId())) {
+            throw new ForbiddenException("conversation.write");
+        }
     }
 
     /**

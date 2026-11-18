@@ -18,6 +18,7 @@ import com.riccon.api.file.repository.FileRepository;
 import com.riccon.api.identity.domain.RicconPrincipal;
 import com.riccon.api.run.repository.RunRepository;
 import com.riccon.api.web.Validation;
+import com.riccon.api.workspace.service.WorkspaceService;
 import com.riccon.platform.common.tenant.TenantId;
 import com.riccon.platform.domain.audit.AuditActorType;
 import com.riccon.platform.domain.audit.AuditOutcome;
@@ -45,7 +46,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>在会话行锁内完成：幂等检查、附件校验、seq 分配、用户消息与 assistant 占位插入、agent_run 创建、会话标题刷新
  * 与 {@code message.sent} 审计。本阶段不调用 Worker；事务提交后由 {@link ChatService} 打开 SSE，避免把网络等待
- * 放进数据库事务。
+ * 放进数据库事务。M03 起共享空间成员都可向同一会话追加消息，写入前先经过工作空间访问判定。
  *
  * <p>按 ADR-0008，J1 流式回答走 API → Worker 直连 SSE，不写 outbox；{@code riccon.agent.run.requested.v1}
  * 的 payload 要求 {@code researchTaskId}，只适用于 J2 报告任务，不能用于 CHAT。
@@ -80,6 +81,9 @@ public class ChatSubmissionService {
     /** 文件仓储，用于校验附件归属。 */
     private final FileRepository fileRepository;
 
+    /** 工作空间可见性。 */
+    private final WorkspaceService workspaceService;
+
     /** 审计写入。 */
     private final AuditService auditService;
 
@@ -93,6 +97,7 @@ public class ChatSubmissionService {
      * @param messageRepository 消息仓储
      * @param runRepository 运行仓储
      * @param fileRepository 文件仓储
+     * @param workspaceService 工作空间可见性
      * @param auditService 审计写入
      * @param clock UTC 时钟
      */
@@ -101,12 +106,14 @@ public class ChatSubmissionService {
             MessageRepository messageRepository,
             RunRepository runRepository,
             FileRepository fileRepository,
+            WorkspaceService workspaceService,
             AuditService auditService,
             Clock clock) {
         this.conversationRepository = Objects.requireNonNull(conversationRepository, "conversationRepository");
         this.messageRepository = Objects.requireNonNull(messageRepository, "messageRepository");
         this.runRepository = Objects.requireNonNull(runRepository, "runRepository");
         this.fileRepository = Objects.requireNonNull(fileRepository, "fileRepository");
+        this.workspaceService = Objects.requireNonNull(workspaceService, "workspaceService");
         this.auditService = Objects.requireNonNull(auditService, "auditService");
         this.clock = Objects.requireNonNull(clock, "clock");
     }
@@ -134,15 +141,20 @@ public class ChatSubmissionService {
         List<UUID> fileIds = normalizeFileIds(request.fileIds());
 
         TenantId tenantId = TenantId.of(actor.tenantId());
+        // 先按对象 ID 读取所属空间并判定访问，再锁定会话行串行分配 seq；共享空间成员都可追加消息。
         ConversationRecord conversation = conversationRepository
-                .findOwnedForUpdate(tenantId, conversationId, actor.userId())
+                .findById(tenantId, conversationId)
+                .orElseThrow(() -> new NotFoundException("conversation"));
+        workspaceService.requireAccessible(tenantId, conversation.workspaceId(), actor.userId());
+        conversation = conversationRepository
+                .findByIdForUpdate(tenantId, conversationId)
                 .orElseThrow(() -> new NotFoundException("conversation"));
         if (messageRepository
                 .findByClientMessageId(tenantId, conversation.id(), clientMessageId)
                 .isPresent()) {
             throw new ConflictException("clientMessageId was already submitted");
         }
-        requireUsableFiles(tenantId, conversation, actor.userId(), fileIds);
+        requireUsableFiles(tenantId, conversation, fileIds);
 
         Instant now = clock.instant();
         long maxSeq = messageRepository.maxSeq(tenantId, conversation.id());
@@ -184,8 +196,7 @@ public class ChatSubmissionService {
             throw new ConflictException("clientMessageId was already submitted");
         }
         String autoTitle = ConversationService.autoTitle(content);
-        if (conversationRepository.touchAfterMessage(tenantId, conversation.id(), actor.userId(), autoTitle, now)
-                == 0) {
+        if (conversationRepository.touchAfterMessage(tenantId, conversation.id(), autoTitle, now) == 0) {
             throw new NotFoundException("conversation");
         }
         Map<String, Object> details = new LinkedHashMap<>();
@@ -252,20 +263,22 @@ public class ChatSubmissionService {
     }
 
     /**
-     * 校验附件均属于当前会话、可用且对当前员工可见。
+     * 校验附件均属于当前会话、可用且所属工作空间与会话一致。
+     *
+     * <p>会话空间已由调用方通过 {@code requireAccessible} 判定；这里再校验文件自身的工作空间与会话一致，
+     * 避免出现“会话可见但附件属于其他空间”的数据不一致被当成可用附件。
      *
      * @param tenantId 当前租户
      * @param conversation 会话
-     * @param userId 当前员工
      * @param fileIds 附件 ID
      */
-    private void requireUsableFiles(
-            TenantId tenantId, ConversationRecord conversation, UUID userId, List<UUID> fileIds) {
+    private void requireUsableFiles(TenantId tenantId, ConversationRecord conversation, List<UUID> fileIds) {
         for (UUID fileId : fileIds) {
             FileRecord file = fileRepository
-                    .findAccessible(tenantId, fileId, userId)
+                    .findById(tenantId, fileId)
                     .orElseThrow(() -> new BadRequestException("file is not available in this conversation"));
-            if (!conversation.id().equals(file.conversationId())) {
+            if (!conversation.id().equals(file.conversationId())
+                    || !conversation.workspaceId().equals(file.workspaceId())) {
                 throw new BadRequestException("file is not available in this conversation");
             }
         }

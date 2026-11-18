@@ -16,7 +16,7 @@ import tools.jackson.databind.JsonNode;
  * 运行详情接口集成测试。
  *
  * <p>覆盖 M02-AC-04 的模型调用可见性：J1 打开会话运行详情时能看到模型标识、开始/结束时间、token 与状态；
- * 同时验证阶段时间线复用、跨租户与他人员工会话统一 404、报告任务运行按工作空间可见性控制。
+ * 同时验证阶段时间线复用、跨租户与个人空间他人会话统一 404、共享空间对话运行对成员可见、报告任务运行按工作空间可见性控制。
  */
 class RunDetailApiTest extends ResearchApiTestSupport {
 
@@ -63,9 +63,9 @@ class RunDetailApiTest extends ResearchApiTestSupport {
         assertThat(invocation.path("finishedAt").isNull()).isFalse();
     }
 
-    /** 跨租户运行与同租户他人会话统一 404，不暴露运行是否存在。 */
+    /** 跨租户运行与个人空间他人会话统一 404，不暴露运行是否存在。 */
     @Test
-    @DisplayName("跨租户或他人会话运行返回 404")
+    @DisplayName("跨租户或个人空间他人运行返回 404")
     void get_invisibleRun_returns404() {
         Fixture first = fixture();
         Fixture second = fixture();
@@ -114,6 +114,35 @@ class RunDetailApiTest extends ResearchApiTestSupport {
         assertThat(otherMember.status()).isEqualTo(404);
     }
 
+    /** 对话运行按会话所属工作空间判定：共享空间成员可读，其他部门统一 404。 */
+    @Test
+    @DisplayName("共享空间对话运行对本部门成员可见")
+    void get_sharedDeptChatRun_visibleToDepartmentMembers() {
+        LoginSession platform = loginPlatformAdmin();
+        String tenant = uniqueTenantCode("rund");
+        createTenant(platform, tenant);
+        LoginSession admin = createAndLoginTenantAdmin(platform, tenant);
+        LoginSession member = createAndLoginMember(platform, tenant);
+        UUID departmentId = createDepartment(platform, tenant, "运行部门" + randomSuffix());
+        addDepartmentMember(platform, tenant, departmentId, userId(admin));
+        addDepartmentMember(platform, tenant, departmentId, userId(member));
+        String teamId = createTeamWorkspace(admin, departmentId, "运行共享空间");
+        String conversationId = createConversation(admin, teamId);
+        UUID runId = seedChatRun(tenant, conversationId, userId(admin), "SUCCEEDED", "GENERATION");
+
+        ApiTestClient.ApiResponse memberView = client.get("/api/v1/runs/" + runId, member.sessionCookie(), Map.of());
+        assertThat(memberView.status()).as(memberView.body()).isEqualTo(200);
+        assertThat(client.json(memberView).path("kind").asText()).isEqualTo("CHAT");
+
+        UUID otherDepartmentId = createDepartment(platform, tenant, "其他运行部门" + randomSuffix());
+        LoginSession outsider = createAndLoginMember(platform, tenant);
+        addDepartmentMember(platform, tenant, otherDepartmentId, userId(outsider));
+        ApiTestClient.ApiResponse otherDepartment =
+                client.get("/api/v1/runs/" + runId, outsider.sessionCookie(), Map.of());
+        assertThat(otherDepartment.status()).isEqualTo(404);
+        assertThat(client.json(otherDepartment).path("code").asText()).isEqualTo("RICCON-TENANT-404");
+    }
+
     /**
      * 创建会话。
      *
@@ -130,6 +159,71 @@ class RunDetailApiTest extends ResearchApiTestSupport {
                 Map.of());
         assertThat(created.status()).as(created.body()).isEqualTo(201);
         return client.json(created).path("id").asText();
+    }
+
+    /**
+     * 通过平台管理员创建部门。
+     *
+     * @param platform 平台管理员会话
+     * @param tenant 租户
+     * @param name 部门名
+     * @return 部门 ID
+     */
+    private UUID createDepartment(LoginSession platform, String tenant, String name) {
+        ApiTestClient.ApiResponse response = client.post(
+                "/api/v1/admin/tenants/" + tenant + "/departments",
+                client.jsonBody("name", name),
+                platform.sessionCookie(),
+                platform.csrfToken(),
+                Map.of());
+        assertThat(response.status()).as(response.body()).isEqualTo(201);
+        return UUID.fromString(client.json(response).path("id").asText());
+    }
+
+    /**
+     * 把账号加入部门。
+     *
+     * @param platform 平台管理员会话
+     * @param tenant 租户
+     * @param departmentId 部门 ID
+     * @param memberId 账号 ID
+     */
+    private void addDepartmentMember(LoginSession platform, String tenant, UUID departmentId, String memberId) {
+        ApiTestClient.ApiResponse response = client.post(
+                "/api/v1/admin/tenants/" + tenant + "/departments/" + departmentId + "/members",
+                client.jsonBody("userId", memberId),
+                platform.sessionCookie(),
+                platform.csrfToken(),
+                Map.of());
+        assertThat(response.status()).as(response.body()).isEqualTo(201);
+    }
+
+    /**
+     * 创建部门团队空间。
+     *
+     * @param admin 租户管理员会话
+     * @param departmentId 部门 ID
+     * @param name 空间名
+     * @return 空间 ID
+     */
+    private String createTeamWorkspace(LoginSession admin, UUID departmentId, String name) {
+        ApiTestClient.ApiResponse response = client.post(
+                "/api/v1/workspaces",
+                client.jsonBody("name", name, "departmentId", departmentId.toString()),
+                admin.sessionCookie(),
+                admin.csrfToken(),
+                Map.of());
+        assertThat(response.status()).as(response.body()).isEqualTo(201);
+        return client.json(response).path("id").asText();
+    }
+
+    /**
+     * 生成唯一后缀。
+     *
+     * @return 8 位后缀
+     */
+    private static String randomSuffix() {
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 8);
     }
 
     /**

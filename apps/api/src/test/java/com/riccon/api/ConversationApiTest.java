@@ -15,7 +15,8 @@ import tools.jackson.databind.JsonNode;
 /**
  * 会话 API 集成测试。
  *
- * <p>覆盖 list/create/get/patch/delete、分页、创建人私有、跨租户 404、保留期、软删除保留消息与审计。
+ * <p>覆盖 list/create/get/patch/delete、分页、共享空间可见性、跨部门/跨租户 404、保留期、软删除保留消息与审计。
+ * 共享空间成员可读取与继续会话，但标题修改和删除仍只允许创建人。
  */
 class ConversationApiTest extends ApiIntegrationTestSupport {
 
@@ -66,10 +67,10 @@ class ConversationApiTest extends ApiIntegrationTestSupport {
                 .anySatisfy(row -> assertThat(row.details()).contains(conversationId));
     }
 
-    /** 分页与创建人私有：同租户管理员看不到普通员工的会话。 */
+    /** 分页与空间可见性：共享空间成员看到同一空间内的全部会话，其他部门不可见。 */
     @Test
-    @DisplayName("会话列表分页且仅创建人可见")
-    void listIsPagedAndOwnerScoped() {
+    @DisplayName("会话列表按工作空间分页且对成员可见")
+    void listIsPagedAndSpaceScoped() {
         LoginSession platform = loginPlatformAdmin();
         String tenant = uniqueTenantCode("t");
         createTenant(platform, tenant);
@@ -78,21 +79,24 @@ class ConversationApiTest extends ApiIntegrationTestSupport {
         UUID departmentId = createDepartment(platform, tenant, "会话部门" + randomSuffix());
         addDepartmentMember(platform, tenant, departmentId, userId(admin));
         addDepartmentMember(platform, tenant, departmentId, userId(member));
+        UUID otherDepartmentId = createDepartment(platform, tenant, "其他部门" + randomSuffix());
+        LoginSession outsider = createAndLoginMember(platform, tenant);
+        addDepartmentMember(platform, tenant, otherDepartmentId, userId(outsider));
         String teamId = createTeamWorkspace(admin, departmentId, "共享空间");
         for (int index = 0; index < 3; index++) {
             createConversation(admin, teamId, "会话 " + index);
         }
         String otherTeamId = createTeamWorkspace(admin, departmentId, "另一个空间");
         createConversation(admin, otherTeamId, "其他空间的会话");
-        createConversation(member, teamId, "员工自己的会话");
+        String memberConversation = createConversation(member, teamId, "员工自己的会话");
 
         JsonNode firstPage = listConversations(admin, teamId, 1, 2);
-        assertThat(firstPage.path("total").asLong()).isEqualTo(3);
+        assertThat(firstPage.path("total").asLong()).isEqualTo(4);
         assertThat(firstPage.path("items")).hasSize(2);
         assertThat(firstPage.path("totalPages").asInt()).isEqualTo(2);
 
         JsonNode secondPage = listConversations(admin, teamId, 2, 2);
-        assertThat(secondPage.path("items")).hasSize(1);
+        assertThat(secondPage.path("items")).hasSize(2);
 
         JsonNode otherWorkspaceList = listConversations(admin, otherTeamId, 1, 20);
         assertThat(otherWorkspaceList.path("total").asLong()).isEqualTo(1);
@@ -103,12 +107,42 @@ class ConversationApiTest extends ApiIntegrationTestSupport {
         JsonNode personalList = listConversations(admin, personalWorkspaceId(admin), 1, 20);
         assertThat(personalList.path("total").asLong()).isZero();
 
+        // M03：共享空间成员可读取同一空间内其他成员创建的会话，不再按 created_by 过滤。
         JsonNode memberList = listConversations(member, teamId, 1, 20);
-        assertThat(memberList.path("total").asLong()).isEqualTo(1);
-        assertThat(memberList.path("items").get(0).path("title").asText()).isEqualTo("员工自己的会话");
+        assertThat(memberList.path("total").asLong()).isEqualTo(4);
+        assertThat(memberList.path("items").toString()).contains("员工自己的会话", "会话 0");
 
         JsonNode adminList = listConversations(admin, teamId, 1, 20);
-        assertThat(adminList.path("items").toString()).doesNotContain("员工自己的会话");
+        assertThat(adminList.path("total").asLong()).isEqualTo(4);
+        assertThat(adminList.path("items").toString()).contains("员工自己的会话");
+
+        ApiTestClient.ApiResponse memberDetail =
+                client.get("/api/v1/conversations/" + memberConversation, admin.sessionCookie(), Map.of());
+        assertThat(memberDetail.status()).as(memberDetail.body()).isEqualTo(200);
+        ApiTestClient.ApiResponse memberMessages = client.get(
+                "/api/v1/conversations/" + memberConversation + "/messages", admin.sessionCookie(), Map.of());
+        assertThat(memberMessages.status()).as(memberMessages.body()).isEqualTo(200);
+
+        // 标题修改与会话删除仍是创建人对象级权限；可见但非创建人返回 403。
+        ApiTestClient.ApiResponse memberPatch = client.patch(
+                "/api/v1/conversations/" + memberConversation,
+                client.jsonBody("title", "他人改名"),
+                admin.sessionCookie(),
+                admin.csrfToken());
+        assertThat(memberPatch.status()).isEqualTo(403);
+        assertThat(client.json(memberPatch).path("code").asText()).isEqualTo("RICCON-AUTH-403");
+        ApiTestClient.ApiResponse memberDelete =
+                client.delete("/api/v1/conversations/" + memberConversation, admin.sessionCookie(), admin.csrfToken());
+        assertThat(memberDelete.status()).isEqualTo(403);
+
+        // 其他部门成员持有会话 ID 直访与列表都统一 404。
+        ApiTestClient.ApiResponse otherDepartmentList =
+                client.get("/api/v1/workspaces/" + teamId + "/conversations", outsider.sessionCookie(), Map.of());
+        assertThat(otherDepartmentList.status()).isEqualTo(404);
+        assertThat(client.json(otherDepartmentList).path("code").asText()).isEqualTo("RICCON-TENANT-404");
+        ApiTestClient.ApiResponse otherDepartmentDetail =
+                client.get("/api/v1/conversations/" + memberConversation, outsider.sessionCookie(), Map.of());
+        assertThat(otherDepartmentDetail.status()).isEqualTo(404);
 
         ApiTestClient.ApiResponse invalidSize =
                 client.get("/api/v1/workspaces/" + teamId + "/conversations?size=101", admin.sessionCookie(), Map.of());
