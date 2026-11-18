@@ -1,6 +1,6 @@
 package com.riccon.api.config;
 
-import com.riccon.api.oidc.service.OidcAwareSecurityContextRepository;
+import com.riccon.api.oidc.infrastructure.OidcAwareSecurityContextRepository;
 import com.riccon.api.web.JsonAccessDeniedHandler;
 import com.riccon.api.web.JsonAuthenticationEntryPoint;
 import jakarta.servlet.Filter;

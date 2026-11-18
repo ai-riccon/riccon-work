@@ -6,6 +6,7 @@ import com.riccon.api.oidc.domain.OidcDiscoveryException;
 import com.riccon.api.oidc.domain.OidcIdpConfig;
 import com.riccon.api.oidc.domain.OidcProviderMetadata;
 import com.riccon.api.oidc.domain.OidcRegistrationIds;
+import com.riccon.api.oidc.infrastructure.OidcDiscoveryClient;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;

@@ -1,4 +1,4 @@
-package com.riccon.api.oidc.service;
+package com.riccon.api.oidc.infrastructure;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

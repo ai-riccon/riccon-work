@@ -1,4 +1,4 @@
-package com.riccon.api.oidc.service;
+package com.riccon.api.oidc.infrastructure;
 
 import com.riccon.api.oidc.domain.OidcConfigurationParser;
 import com.riccon.api.oidc.domain.OidcDiscoveryException;

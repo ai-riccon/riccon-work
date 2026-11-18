@@ -3,7 +3,7 @@ package com.riccon.api.m10.oidc;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.riccon.api.identity.domain.RicconPrincipal;
-import com.riccon.api.oidc.service.OidcAwareSecurityContextRepository;
+import com.riccon.api.oidc.infrastructure.OidcAwareSecurityContextRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;

@@ -1,7 +1,7 @@
 package com.riccon.api.oidc.config;
 
-import com.riccon.api.oidc.service.NoopOAuth2AuthorizedClientRepository;
-import com.riccon.api.oidc.service.OidcDiscoveryClient;
+import com.riccon.api.oidc.infrastructure.NoopOAuth2AuthorizedClientRepository;
+import com.riccon.api.oidc.infrastructure.OidcDiscoveryClient;
 import java.time.Clock;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;

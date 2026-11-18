@@ -8,7 +8,7 @@ import com.riccon.api.oidc.domain.OidcDiscoveryException;
 import com.riccon.api.oidc.domain.OidcIdpConfig;
 import com.riccon.api.oidc.domain.OidcLoginFailureReason;
 import com.riccon.api.oidc.domain.OidcProviderMetadata;
-import com.riccon.api.oidc.service.OidcDiscoveryClient;
+import com.riccon.api.oidc.infrastructure.OidcDiscoveryClient;
 import java.net.ServerSocket;
 import java.time.Duration;
 import java.time.Instant;
