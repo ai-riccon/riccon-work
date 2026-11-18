@@ -4,27 +4,33 @@
   "module_id": "M03",
   "title": "M03 架构：部门与数据范围、B-06 ADR 更新、威胁模型",
   "owner": "riccon/architect",
-  "status": "in_progress",
+  "status": "review",
   "write_scope": [
     "docs/adr/**",
     "docs/ARCHITECTURE.md",
     "docs/security/THREAT-MODEL.md",
     "contracts/**",
     ".trivyignore",
-    "apps/api/src/main/resources/db/migration/**"
+    "apps/api/src/main/resources/db/migration/**",
+    "apps/api/src/test/java/com/riccon/api/ApiApplicationTests.java",
+    "apps/worker/src/main/java/com/riccon/worker/persistence/SchemaVersionChecker.java"
   ],
   "acceptance": [
     "ADR：部门/数据范围模型，覆盖表结构、tenant_id、角色/权限、空间可见性、跨部门 404 语义",
     "重开 ADR-0011：例外延至 2027-03-31 或 M07 gate（DEC-0012），同步 .trivyignore exp 与复核条目",
     "更新威胁模型：部门越权/数据范围新威胁；MFA、审计哈希链、跨租户审计后移登记（DEC-0013）",
-    "更新 ARCHITECTURE 与 OpenAPI：部门、成员、空间可见性端点与错误码；未实现项标 x-riccon-deferred",
-    "完成 V9 迁移（部门、成员、空间可见性/成员）与回滚步骤；仅 apps/api 执行，向前兼容",
-    "给出 M03 builder 任务边界与验证策略；不写功能代码与测试"
+    "更新 ARCHITECTURE 与 OpenAPI：平台管理员跨租户部门管理（DEC-0015）、成员、空间可见性端点与错误码；未实现项标 x-riccon-deferred",
+    "完成 V9 迁移（部门、成员、空间可见性/成员、平台管理员部门授权）与回滚步骤；仅 apps/api 执行，向前兼容",
+    "给出 M03 builder 任务边界与验证策略；除迁移配套的 schema 版本常量与迁移基线断言外，不写功能代码与业务测试"
   ],
-  "evidence": [],
+  "evidence": [
+    "EV-0302",
+    "EV-0303"
+  ],
   "tools_used": [],
   "blocker": null,
   "created_at": "2026-11-18T13:38:46.922+08:00",
-  "updated_at": "2026-11-18T13:38:47.913+08:00",
-  "baseline_commit": "22d2539984f1475e32d0dcfad405583881327927"
+  "updated_at": "2026-11-18T15:15:00.387+08:00",
+  "baseline_commit": "4db2db9",
+  "end_commit": "d468a8d"
 }
