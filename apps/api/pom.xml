@@ -45,6 +45,15 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-security</artifactId>
     </dependency>
+    <!--
+      M10 OIDC/SSO：Spring Boot 4.1 的 canonical OAuth2 Client starter（oauth2Login），
+      复用既有 Spring Security 7 与 Nimbus JOSE，不引入第二套安全/HTTP 栈；见 ADR-0019。
+      版本由 Boot BOM 管理，不单独声明。
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security-oauth2-client</artifactId>
+    </dependency>
     <!-- M02 使用 Spring JDBC（无 ORM），见 ADR-0009 与 ADR-0012。 -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
