@@ -10,6 +10,7 @@ import {
   makeFile,
   makeResearchDetail,
   makeResearchTask,
+  makeRunDetail,
   ARTIFACT_MARKDOWN,
 } from '@/test/fake-api';
 
@@ -324,6 +325,38 @@ describe('ApiClient', () => {
 
     await expect(client.logout()).resolves.toBeUndefined();
     await expect(client.listWorkspaces()).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it('读取运行详情使用契约路径并返回模型调用记录', async () => {
+    const detail = makeRunDetail({
+      id: 'run-1',
+      status: 'FAILED',
+      errorCode: 'RICCON-MODEL-500',
+      modelInvocations: [
+        {
+          ...makeRunDetail().modelInvocations[0],
+          status: 'FAILED',
+          firstTokenMs: null,
+          errorCode: 'RICCON-MODEL-500',
+        },
+      ],
+    });
+    const { fn, calls } = createFetch((url) => {
+      if (url.endsWith('/auth/csrf')) return json({ headerName: 'X-CSRF-TOKEN', token: 'csrf' });
+      if (url.endsWith('/runs/run-1')) return json(detail);
+      return json({}, 404);
+    });
+    const client = new ApiClient({ baseUrl: 'http://api.test', fetchImpl: fn });
+
+    const result = await client.getRun('run-1');
+
+    expect(result.status).toBe('FAILED');
+    expect(result.modelInvocations[0]).toMatchObject({
+      modelKey: 'demo-chat-model',
+      status: 'FAILED',
+      errorCode: 'RICCON-MODEL-500',
+    });
+    expect(calls.some((call) => call.url.endsWith('/api/v1/runs/run-1'))).toBe(true);
   });
 
   it('报告任务接口使用契约路径与幂等键', async () => {

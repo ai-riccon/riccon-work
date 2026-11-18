@@ -60,4 +60,31 @@ test.describe('J1 通用问答与文件处理', () => {
     await expect(page.getByRole('button', { name: /季度报告\.pdf/ })).toBeVisible();
     await expectNoSeriousA11yViolations(page);
   });
+
+  test('回答完成后按需查看运行详情与模型调用记录 @a11y', async ({ page }) => {
+    await login(page);
+    await page.getByRole('button', { name: '新建会话' }).click();
+    await expect(page.getByText('开始 J1 问答')).toBeVisible();
+
+    const composer = page.getByPlaceholder('输入问题，Enter 发送，Shift+Enter 换行');
+    await composer.fill('请介绍你可以怎样协助办公');
+    await composer.press('Enter');
+
+    // 无文件问题会得到合成回答；完成前不出现运行详情入口。
+    await expect(page.getByText(/当前知识库未检索到相关资料/)).toBeVisible({ timeout: 20_000 });
+    const runDetail = page.getByRole('button', { name: '运行详情' });
+    await expect(runDetail).toBeVisible();
+    await runDetail.click();
+
+    const drawer = page.getByRole('dialog');
+    await expect(drawer.getByText('运行详情')).toBeVisible();
+    await expect(drawer.getByText('stub-fake-model')).toBeVisible();
+    await expect(drawer.getByRole('columnheader', { name: '首字' })).toBeVisible();
+    await expect(drawer.getByRole('columnheader', { name: 'Token（入/出）' })).toBeVisible();
+    await expect(drawer.getByText('成功').first()).toBeVisible();
+    await expectNoSeriousA11yViolations(page);
+
+    await page.keyboard.press('Escape');
+    await expect(drawer).toBeHidden();
+  });
 });

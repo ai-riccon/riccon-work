@@ -15,18 +15,19 @@
 ## 覆盖的契约子集
 
 - 认证：`/auth/csrf`、`/auth/login`、`/auth/session`、`/auth/logout`（Cookie + `X-CSRF-TOKEN`）。
-- J1：工作空间、会话、消息 SSE、文件 multipart 上传、解析轮询、解析重试、下载地址。
+- J1：工作空间、会话、消息 SSE、文件 multipart 上传、解析轮询、解析重试、下载地址、运行详情
+  （模型调用记录与首字/耗时/token/状态）。
 - J2：报告任务创建/列表/详情/重试、MCP 工具列表、审批决定、产物列表/详情/版本/下载。
 - SSE：`riccon.chat.started/delta/citation/completed/failed/stopped.v1`，停止与断线会落 STOPPED。
 
 ## 控制端点（测试专用，非产品契约）
 
-| 端点                        | 方法 | 用途                                      |
-| --------------------------- | ---- | ----------------------------------------- |
-| `/__stub__/health`          | GET  | Playwright `webServer` 就绪检查           |
-| `/__stub__/reset`           | POST | 清空业务数据、会话与活动 SSE 运行         |
-| `/__stub__/scenario`        | POST | 切换 `research-list-403` / `approval-409` |
-| `/__stub__/revoke-sessions` | POST | 让服务端会话失效，验证 401 → 登录页       |
+| 端点                        | 方法 | 用途                                                        |
+| --------------------------- | ---- | ----------------------------------------------------------- |
+| `/__stub__/health`          | GET  | Playwright `webServer` 就绪检查                             |
+| `/__stub__/reset`           | POST | 清空业务数据、会话与活动 SSE 运行                           |
+| `/__stub__/scenario`        | POST | 切换 `research-list-403` / `mcp-tools-403` / `approval-409` |
+| `/__stub__/revoke-sessions` | POST | 让服务端会话失效，验证 401 → 登录页                         |
 
 ## 错误路径与 console 守卫
 

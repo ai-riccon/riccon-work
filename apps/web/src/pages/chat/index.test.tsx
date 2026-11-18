@@ -6,11 +6,14 @@ import { ApiError } from '@/services/api/errors';
 import { authStore } from '@/services/auth/auth-store';
 import {
   DEMO_SESSION,
+  completedEvent,
   createFakeApi,
   makeConversation,
   makeDetail,
   makeFile,
   makeMessage,
+  makeModelInvocation,
+  makeRunDetail,
   pageOf,
 } from '@/test/fake-api';
 import { withProviders } from '@/test/render';
@@ -227,6 +230,8 @@ describe('J1 工作空间', () => {
 
     expect(await screen.findByText(/已经生成的内容/)).toBeVisible();
     expect(screen.getByRole('button', { name: /季度报告\.pdf/ })).toBeVisible();
+    // 流式期间不出现运行详情入口，避免详情请求与主回答竞争。
+    expect(screen.queryByRole('button', { name: '运行详情' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '停止生成' }));
 
@@ -284,6 +289,40 @@ describe('J1 工作空间', () => {
 
     expect(await screen.findByText('直接回答。')).toBeVisible();
     expect(await screen.findByText(/未检索到相关资料/)).toBeVisible();
+  });
+
+  it('回答完成后按需打开运行详情，展示模型调用记录', async () => {
+    const api = createFakeApi({
+      listConversations: vi.fn(async () => pageOf([makeConversation()])),
+      getConversation: vi.fn(async () => makeDetail([])),
+      sendMessage: vi.fn(async function* stream() {
+        yield startedEvent();
+        yield deltaEvent('运行详情演示回答。');
+        yield completedEvent();
+      }),
+      getRun: vi.fn(async (runId: string) =>
+        makeRunDetail({
+          id: runId,
+          modelInvocations: [makeModelInvocation({ modelKey: '演示模型', firstTokenMs: 280 })],
+        }),
+      ),
+    });
+    renderChat(api);
+
+    await selectConversation('示例会话');
+    sendQuestion('展示运行详情');
+    expect(await screen.findByText('运行详情演示回答。')).toBeVisible();
+
+    const button = await screen.findByRole('button', { name: '运行详情' });
+    expect(api.getRun).not.toHaveBeenCalled();
+    fireEvent.click(button);
+
+    const drawer = await screen.findByRole('dialog');
+    expect(within(drawer).getByText('运行详情')).toBeVisible();
+    expect(await within(drawer).findByText('演示模型')).toBeVisible();
+    expect(within(drawer).getByText('280 ms')).toBeVisible();
+    expect(within(drawer).getByText('128 / 96')).toBeVisible();
+    expect(api.getRun).toHaveBeenCalledWith('run-1');
   });
 
   it('模型失败显示错误与重试入口，重试会再次发送原问题', async () => {

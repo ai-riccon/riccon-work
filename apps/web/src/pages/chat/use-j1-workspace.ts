@@ -109,13 +109,24 @@ export function useJ1Workspace(
   const loadTokenRef = useRef(0);
   const initializedForRef = useRef<string | null>(null);
 
+  /**
+   * 同步提交文件列表。
+   *
+   * 关键点：`filesRef` 与 React state 必须在同一个同步步骤内更新，不能依赖渲染后的
+   * `useEffect` 回填。否则“解析刚刚成功/上传刚刚完成”时立即发送，`send` 读到的仍是
+   * 上一帧的文件快照，会漏带 `fileIds`，甚至带上上一个会话的文件。
+   *
+   * @param update 基于当前快照计算下一份列表
+   */
+  const commitFiles = useCallback((update: (previous: WorkspaceFile[]) => WorkspaceFile[]) => {
+    const next = update(filesRef.current);
+    filesRef.current = next;
+    setFiles(next);
+  }, []);
+
   useEffect(() => {
     workspaceRef.current = workspace;
   }, [workspace]);
-
-  useEffect(() => {
-    filesRef.current = files;
-  }, [files]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -136,7 +147,7 @@ export function useJ1Workspace(
     activeIdRef.current = null;
     setActiveConversationId(null);
     setMessages([]);
-    setFiles([]);
+    commitFiles(() => []);
     setMessagesError(null);
     try {
       const page = await api.listWorkspaces();
@@ -168,7 +179,7 @@ export function useJ1Workspace(
     } finally {
       setConversationsLoading(false);
     }
-  }, [api]);
+  }, [api, commitFiles]);
 
   // 登录态确定后只初始化一次；退出登录由页面卸载处理。
   useEffect(() => {
@@ -260,7 +271,7 @@ export function useJ1Workspace(
       activeIdRef.current = conversationId;
       setActiveConversationId(conversationId);
       setMessages([]);
-      setFiles([]);
+      commitFiles(() => []);
       setMessagesLoading(true);
       setFilesLoading(true);
       setMessagesError(null);
@@ -278,7 +289,7 @@ export function useJ1Workspace(
           return;
         }
         setMessages(toChatMessages(detail));
-        setFiles(filePage.items);
+        commitFiles(() => filePage.items);
       } catch (loadError) {
         if (token !== loadTokenRef.current) {
           return;
@@ -300,7 +311,7 @@ export function useJ1Workspace(
         }
       }
     },
-    [api, stopStreaming],
+    [api, commitFiles, stopStreaming],
   );
 
   /**
@@ -333,7 +344,7 @@ export function useJ1Workspace(
       setActiveConversationId(conversation.id);
       setMessages([]);
       setMessagesError(null);
-      setFiles([]);
+      commitFiles(() => []);
       setUploadErrors([]);
       setMessagesLoading(false);
       setFilesLoading(false);
@@ -342,7 +353,7 @@ export function useJ1Workspace(
     } finally {
       setCreatingConversation(false);
     }
-  }, [api, creatingConversation, stopStreaming]);
+  }, [api, commitFiles, creatingConversation, stopStreaming]);
 
   /**
    * 上传文件；客户端先做格式、大小与会话数量上限校验。
@@ -380,12 +391,12 @@ export function useJ1Workspace(
       }
 
       if (activeIdRef.current === conversationId) {
-        setFiles((previous) => [...uploaded, ...previous]);
+        commitFiles((previous) => [...uploaded, ...previous]);
         setUploadErrors(errors);
       }
       setUploading(false);
     },
-    [api],
+    [api, commitFiles],
   );
 
   /**
@@ -397,12 +408,12 @@ export function useJ1Workspace(
     async (fileId: string): Promise<void> => {
       try {
         const updated = await api.retryFileParse(fileId);
-        setFiles((previous) => previous.map((file) => (file.id === fileId ? updated : file)));
+        commitFiles((previous) => previous.map((file) => (file.id === fileId ? updated : file)));
       } catch (retryError) {
         setActionError(describeApiError(retryError, '重试解析失败，请稍后再试。'));
       }
     },
-    [api],
+    [api, commitFiles],
   );
 
   /**
@@ -420,10 +431,8 @@ export function useJ1Workspace(
         return;
       }
 
-      const fileIds = filesRef.current
-        .filter((file) => file.status === 'AVAILABLE' && file.parse?.status === 'SUCCEEDED')
-        .map((file) => file.id)
-        .slice(0, 5);
+      // 提交瞬间读取同步维护的 ref，而不是渲染后的 state/effect，保证快速操作也使用同一份文件快照。
+      const fileIds = selectUsableFileIds(filesRef.current);
 
       const clientMessageId = createClientMessageId();
       const userMessage: ChatMessage = {
@@ -582,7 +591,8 @@ export function useJ1Workspace(
               .map((result) => [result.id, result.updated]),
           );
           if (updates.size > 0) {
-            setFiles((previous) => previous.map((file) => updates.get(file.id) ?? file));
+            // 解析状态一落地就同步写入 ref，用户无需等待下一次渲染即可发送并携带该文件。
+            commitFiles((previous) => previous.map((file) => updates.get(file.id) ?? file));
           }
         })
         .finally(() => {
@@ -593,7 +603,7 @@ export function useJ1Workspace(
     return () => {
       window.clearInterval(timer);
     };
-  }, [api, pendingKey, pollIntervalMs]);
+  }, [api, commitFiles, pendingKey, pollIntervalMs]);
 
   return {
     phase,
@@ -624,6 +634,22 @@ export function useJ1Workspace(
     dismissUploadErrors: () => setUploadErrors([]),
     dismissActionError: () => setActionError(null),
   };
+}
+
+/**
+ * 从文件快照中选取可随消息提交的文件 ID。
+ *
+ * 只包含未删除且解析成功的文件，按界面顺序最多 5 个，与契约 `SendMessageRequest.fileIds`
+ * 的上限一致；快照本身由调用方在提交瞬间提供，函数保持纯只读。
+ *
+ * @param files 当前文件快照
+ * @returns 可提交的文件 ID
+ */
+export function selectUsableFileIds(files: WorkspaceFile[]): string[] {
+  return files
+    .filter((file) => file.status === 'AVAILABLE' && file.parse?.status === 'SUCCEEDED')
+    .map((file) => file.id)
+    .slice(0, 5);
 }
 
 /**

@@ -45,6 +45,7 @@ import {
   MAX_FILES_PER_CONVERSATION,
   formatBytes,
 } from '@/services/files/file-validation';
+import { RunDetailDrawer } from './components/run-detail-drawer';
 import { useJ1Workspace } from './use-j1-workspace';
 import './chat.css';
 
@@ -94,6 +95,7 @@ export default function ChatPage({
   const [input, setInput] = useState('');
   const [activeCitation, setActiveCitation] = useState<Citation | null>(null);
   const [citationError, setCitationError] = useState<string | null>(null);
+  const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
@@ -168,6 +170,17 @@ export default function ChatPage({
   );
 
   /**
+   * 打开指定运行详情。
+   *
+   * 只在用户点击时按需加载，不随 SSE 流式事件请求，因此不会阻塞回答生成。
+   *
+   * @param runId 运行 ID
+   */
+  const handleRunDetail = useCallback((runId: string): void => {
+    setActiveRunId(runId);
+  }, []);
+
+  /**
    * 通过预签名 URL 打开原文件。
    */
   const handleOpenFile = async (): Promise<void> => {
@@ -217,11 +230,16 @@ export default function ChatPage({
         placement: 'start' as const,
         avatar: <Avatar icon={<RobotOutlined />} size="small" />,
         contentRender: (content: ChatMessage) => (
-          <AssistantBubble message={content} onCitation={handleCitation} onRetry={handleRetry} />
+          <AssistantBubble
+            message={content}
+            onCitation={handleCitation}
+            onRetry={handleRetry}
+            onRunDetail={handleRunDetail}
+          />
         ),
       },
     }),
-    [handleCitation, handleRetry],
+    [handleCitation, handleRetry, handleRunDetail],
   );
 
   const bubbleItems = useMemo<BubbleItemType[]>(
@@ -712,6 +730,8 @@ export default function ChatPage({
           </Space>
         )}
       </Drawer>
+
+      <RunDetailDrawer api={api} onClose={() => setActiveRunId(null)} runId={activeRunId} />
     </div>
   );
 }
@@ -779,12 +799,15 @@ function AssistantBubble({
   message,
   onCitation,
   onRetry,
+  onRunDetail,
 }: {
   message: ChatMessage;
   onCitation: (citation: Citation) => void;
   onRetry: (assistantMessageId: string) => void;
+  onRunDetail: (runId: string) => void;
 }) {
   const streaming = message.status === 'STREAMING';
+  const runId = message.runId;
   return (
     <div>
       {message.content ? (
@@ -851,6 +874,14 @@ function AssistantBubble({
               重试
             </Button>
           )}
+        </div>
+      )}
+
+      {runId && !streaming && (
+        <div className="message-run-detail">
+          <Button onClick={() => onRunDetail(runId)} size="small" type="link">
+            运行详情
+          </Button>
         </div>
       )}
     </div>

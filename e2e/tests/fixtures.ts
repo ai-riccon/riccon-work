@@ -9,7 +9,7 @@ import {
 export const STUB_URL = `http://127.0.0.1:${Number(process.env.E2E_STUB_PORT ?? 8124)}`;
 
 /** stub 可模拟的错误场景；只影响错误路径用例，不改变正常业务数据。 */
-export type StubScenario = 'none' | 'research-list-403' | 'approval-409';
+export type StubScenario = 'none' | 'research-list-403' | 'mcp-tools-403' | 'approval-409';
 
 /** stub 控制面；控制端点不属于产品 OpenAPI，仅 E2E 使用。 */
 export interface StubControl {

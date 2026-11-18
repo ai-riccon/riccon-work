@@ -20,6 +20,7 @@ import type {
   ResearchTaskDetail,
   ResearchTaskRetryRequest,
   ResearchTaskStatus,
+  RunDetail,
   SendMessageRequest,
   SessionInfo,
   Workspace,
@@ -71,6 +72,7 @@ export interface RicconApi {
     signal?: AbortSignal,
   ): AsyncGenerator<ChatEvent, void, void>;
   stopGeneration(conversationId: string, runId: string): Promise<void>;
+  getRun(runId: string): Promise<RunDetail>;
   listResearchTasks(workspaceId: string, status?: ResearchTaskStatus): Promise<Page<ResearchTask>>;
   createResearchTask(
     workspaceId: string,
@@ -407,6 +409,18 @@ export class ApiClient implements RicconApi {
       body: { runId },
       extraHeaders: { 'Idempotency-Key': randomId() },
     });
+  }
+
+  /**
+   * 读取运行详情与模型调用记录。
+   *
+   * 只读接口；跨租户或不可见对象由服务端统一返回 404，客户端不做对象存在性推断。
+   *
+   * @param runId 运行 ID
+   * @returns 运行详情
+   */
+  getRun(runId: string): Promise<RunDetail> {
+    return this.request<RunDetail>(`/api/v1/runs/${encodeURIComponent(runId)}`);
   }
 
   /**

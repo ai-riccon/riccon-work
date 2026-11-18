@@ -57,6 +57,20 @@ test.describe('API 错误语义', () => {
     await expect(page).toHaveURL(/\/chat$/);
   });
 
+  test('MCP 工具目录 403 时展示权限态并禁用创建', async ({ page, stub, consoleGuard }) => {
+    await login(page);
+    await stub.setScenario('mcp-tools-403');
+    consoleGuard.allowNetworkError(/\/mcp-tools(\?|$)/, 403);
+    await page.getByRole('button', { name: '市场调研报告' }).click();
+    await expect(page).toHaveURL(/\/research\/tasks$/);
+
+    await expect(page.getByText('无权使用数据工具', { exact: true })).toBeVisible();
+    await expect(
+      page.getByText('当前账号没有使用 MCP 数据工具的权限，请联系管理员授权后再创建任务。'),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: /创建报告任务/ })).toBeDisabled();
+  });
+
   test('审批冲突 409 时提示已刷新最新结果，任务保持待审批', async ({
     page,
     stub,

@@ -182,6 +182,48 @@ describe('报告任务列表页', () => {
     });
   });
 
+  it('工具接口 403 时展示权限态并禁用创建', async () => {
+    const api = createFakeApi({
+      listGrantedMcpTools: vi.fn(async () => {
+        throw new ApiError('没有权限', { status: 403, code: 'RICCON-AUTH-403' });
+      }),
+    });
+    renderPage(api);
+
+    expect(await screen.findByText('无权使用数据工具')).toBeVisible();
+    expect(
+      screen.getByText('当前账号没有使用 MCP 数据工具的权限，请联系管理员授权后再创建任务。'),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: /创建报告任务/ })).toBeDisabled();
+    expect(screen.queryByText('没有可用工具')).not.toBeInTheDocument();
+  });
+
+  it('已禁用工具不进入下拉，但明确提示数量', async () => {
+    const api = createFakeApi({
+      listGrantedMcpTools: vi.fn(async () =>
+        pageOf([
+          GRANTED_MCP_TOOL,
+          {
+            ...GRANTED_MCP_TOOL,
+            id: 'mcp-tool-disabled',
+            name: 'disabled_lookup',
+            status: 'DISABLED' as const,
+          },
+        ]),
+      ),
+    });
+    renderPage(api);
+
+    expect(await screen.findByText(/有 1 个已授权工具当前被禁用/)).toBeVisible();
+    expect(screen.getByRole('button', { name: /创建报告任务/ })).toBeEnabled();
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: '数据工具' }));
+    await waitFor(() => {
+      // 禁用工具被过滤，下拉只剩一个可选项；不依赖 antd 内部文本节点结构。
+      expect(screen.getAllByRole('option')).toHaveLength(1);
+    });
+    expect(screen.queryByText(/disabled_lookup/)).not.toBeInTheDocument();
+  });
+
   it('没有已授权工具时禁止创建', async () => {
     const api = createFakeApi({
       listGrantedMcpTools: vi.fn(async () => pageOf([])),

@@ -101,6 +101,7 @@ function createInitialState() {
     messages: {},
     files: [],
     parseOutcomes: {},
+    runs: {},
     researchTasks: [],
     mcpTools: [
       {
@@ -647,6 +648,34 @@ function finalizeRun(run, status) {
     conversation.lastMessageAt = new Date().toISOString();
     conversation.updatedAt = conversation.lastMessageAt;
   }
+
+  // 运行详情与消息终态保持一致：完成/失败/停止分别映射 SUCCEEDED/FAILED/CANCELLED。
+  const detail = state.runs[run.runId];
+  if (detail) {
+    const finishedAt = new Date().toISOString();
+    const invocation = detail.modelInvocations[0];
+    detail.finishedAt = finishedAt;
+    detail.status =
+      status === 'COMPLETED' ? 'SUCCEEDED' : status === 'FAILED' ? 'FAILED' : 'CANCELLED';
+    if (status === 'FAILED') {
+      detail.errorCode = 'RICCON-MODEL-500';
+      detail.errorMessage = '合成模型调用失败，请重试。';
+    }
+    if (invocation) {
+      invocation.status =
+        status === 'COMPLETED' ? 'SUCCEEDED' : status === 'FAILED' ? 'FAILED' : 'CANCELLED';
+      // 失败在首字前终止，不能伪造首字延迟；其他终态保留合成的流式指标。
+      invocation.firstTokenMs = status === 'FAILED' ? null : DELTA_INTERVAL_MS;
+      invocation.durationMs = Math.max(
+        1,
+        Date.parse(finishedAt) - Date.parse(invocation.startedAt),
+      );
+      invocation.promptTokens = 128;
+      invocation.completionTokens = Math.max(0, Math.ceil(run.content.length / 2));
+      invocation.errorCode = status === 'FAILED' ? 'RICCON-MODEL-500' : null;
+      invocation.finishedAt = finishedAt;
+    }
+  }
 }
 
 /**
@@ -778,6 +807,37 @@ function handleSendMessage(req, res, conversation, raw) {
     closed: false,
   };
   activeRuns.set(runId, run);
+
+  // 运行详情快照独立于活动 SSE 运行保存；完成后仍可通过 GET /api/v1/runs/{runId} 读取。
+  const startedAt = new Date().toISOString();
+  state.runs[runId] = {
+    id: runId,
+    kind: 'CHAT',
+    status: 'RUNNING',
+    currentStage: null,
+    attempt: 1,
+    errorCode: null,
+    errorMessage: null,
+    startedAt,
+    finishedAt: null,
+    modelInvocations: [
+      {
+        id: nextId('invocation'),
+        modelId: DEMO_MODEL_ID,
+        modelKey: 'stub-fake-model',
+        purpose: 'CHAT',
+        status: 'STARTED',
+        firstTokenMs: null,
+        durationMs: null,
+        promptTokens: null,
+        completionTokens: null,
+        errorCode: null,
+        startedAt,
+        finishedAt: null,
+      },
+    ],
+    stages: [],
+  };
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream; charset=utf-8',
@@ -1810,7 +1870,26 @@ function handleApi(req, res, url, raw) {
     return true;
   }
 
+  const runDetailMatch = /^\/api\/v1\/runs\/([^/]+)$/.exec(pathname);
+  if (runDetailMatch && method === 'GET') {
+    const detail = state.runs[decodeURIComponent(runDetailMatch[1])];
+    writeResult(
+      res,
+      detail
+        ? json(detail)
+        : problem(404, 'RICCON-RUN-404', '运行不存在', '运行不存在或已被删除。'),
+    );
+    return true;
+  }
+
   if (pathname === '/api/v1/mcp-tools' && method === 'GET') {
+    if (scenario === 'mcp-tools-403') {
+      writeResult(
+        res,
+        problem(403, 'RICCON-PERM-403', '没有权限', '当前账号无权使用 MCP 数据工具。'),
+      );
+      return true;
+    }
     writeResult(res, json(page(state.mcpTools.filter((tool) => tool.status === 'ACTIVE'))));
     return true;
   }

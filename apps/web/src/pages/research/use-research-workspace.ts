@@ -6,6 +6,9 @@ import type { McpTool, ResearchTask, SessionInfo, Workspace } from '@/services/a
 /** 报告任务列表页的加载阶段。 */
 export type ResearchWorkspacePhase = 'loading' | 'ready' | 'empty' | 'forbidden' | 'error';
 
+/** 授权工具加载失败类别；403 需要与普通服务错误区分展示。 */
+export type ToolsErrorKind = 'forbidden' | 'error';
+
 /** J2 报告任务列表控制器。 */
 export interface ResearchWorkspaceController {
   phase: ResearchWorkspacePhase;
@@ -14,8 +17,10 @@ export interface ResearchWorkspaceController {
   tasks: ResearchTask[];
   tasksLoading: boolean;
   tools: McpTool[];
+  disabledTools: McpTool[];
   toolsLoading: boolean;
   toolsError: string | null;
+  toolsErrorKind: ToolsErrorKind | null;
   creating: boolean;
   actionError: string | null;
   initialize: () => Promise<void>;
@@ -48,8 +53,10 @@ export function useResearchWorkspace(
   const [tasks, setTasks] = useState<ResearchTask[]>([]);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [tools, setTools] = useState<McpTool[]>([]);
+  const [disabledTools, setDisabledTools] = useState<McpTool[]>([]);
   const [toolsLoading, setToolsLoading] = useState(false);
   const [toolsError, setToolsError] = useState<string | null>(null);
+  const [toolsErrorKind, setToolsErrorKind] = useState<ToolsErrorKind | null>(null);
   const [creating, setCreating] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const workspaceRef = useRef<Workspace | null>(null);
@@ -65,7 +72,9 @@ export function useResearchWorkspace(
     setError(null);
     setTasks([]);
     setTools([]);
+    setDisabledTools([]);
     setToolsError(null);
+    setToolsErrorKind(null);
     workspaceRef.current = null;
     setWorkspace(null);
     try {
@@ -99,9 +108,18 @@ export function useResearchWorkspace(
       setTasks(taskResult.value.items);
 
       if (toolResult.status === 'rejected') {
-        setToolsError(describeApiError(toolResult.reason, '授权工具加载失败，请重试。'));
+        const reason = toolResult.reason;
+        if (reason instanceof ApiError && reason.status === 403) {
+          // 403 是权限问题，重试通常无效；文案引导联系管理员，而不是笼统的“加载失败”。
+          setToolsErrorKind('forbidden');
+          setToolsError('当前账号没有使用 MCP 数据工具的权限，请联系管理员授权后再创建任务。');
+        } else {
+          setToolsErrorKind('error');
+          setToolsError(describeApiError(reason, '授权工具加载失败，请重试。'));
+        }
       } else {
         setTools(toolResult.value.items.filter((tool) => tool.status === 'ACTIVE'));
+        setDisabledTools(toolResult.value.items.filter((tool) => tool.status === 'DISABLED'));
       }
       setPhase('ready');
     } catch (loadError) {
@@ -187,8 +205,10 @@ export function useResearchWorkspace(
     tasks,
     tasksLoading,
     tools,
+    disabledTools,
     toolsLoading,
     toolsError,
+    toolsErrorKind,
     creating,
     actionError,
     initialize,

@@ -245,7 +245,9 @@ export default function ResearchListPage({
           }
           description={controller.toolsError}
           style={{ marginBottom: 16 }}
-          title="授权工具加载失败"
+          title={
+            controller.toolsErrorKind === 'forbidden' ? '无权使用数据工具' : '授权工具加载失败'
+          }
           type="warning"
         />
       )}
@@ -303,6 +305,13 @@ export default function ResearchListPage({
                 placeholder="选择一个已授权的只读工具"
               />
             </Form.Item>
+
+            {!controller.toolsLoading && controller.disabledTools.length > 0 && (
+              <Typography.Paragraph style={{ marginTop: -8 }} type="secondary">
+                有 {controller.disabledTools.length}{' '}
+                个已授权工具当前被禁用，未列入选择；请联系管理员确认工具状态。
+              </Typography.Paragraph>
+            )}
 
             {!controller.toolsLoading &&
               controller.tools.length === 0 &&

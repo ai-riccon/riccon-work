@@ -11,9 +11,11 @@ import type {
   McpInvocation,
   McpTool,
   Message,
+  ModelInvocation,
   Page,
   ResearchTask,
   ResearchTaskDetail,
+  RunDetail,
   RunStageRecord,
   SessionInfo,
   Workspace,
@@ -346,6 +348,53 @@ export function makeResearchDetail(
   };
 }
 
+/**
+ * 构造模型调用记录。
+ *
+ * @param overrides 局部覆盖
+ * @returns ModelInvocation
+ */
+export function makeModelInvocation(overrides: Partial<ModelInvocation> = {}): ModelInvocation {
+  return {
+    id: 'model-invocation-1',
+    modelId: 'model-1',
+    modelKey: 'demo-chat-model',
+    purpose: 'CHAT',
+    status: 'SUCCEEDED',
+    firstTokenMs: 320,
+    durationMs: 1850,
+    promptTokens: 128,
+    completionTokens: 96,
+    errorCode: null,
+    startedAt: '2026-11-17T08:10:00.000Z',
+    finishedAt: '2026-11-17T08:10:02.000Z',
+    ...overrides,
+  };
+}
+
+/**
+ * 构造运行详情。
+ *
+ * @param overrides 局部覆盖
+ * @returns RunDetail
+ */
+export function makeRunDetail(overrides: Partial<RunDetail> = {}): RunDetail {
+  return {
+    id: 'run-1',
+    kind: 'CHAT',
+    status: 'SUCCEEDED',
+    currentStage: null,
+    attempt: 1,
+    errorCode: null,
+    errorMessage: null,
+    startedAt: '2026-11-17T08:10:00.000Z',
+    finishedAt: '2026-11-17T08:10:02.000Z',
+    modelInvocations: [makeModelInvocation()],
+    stages: [],
+    ...overrides,
+  };
+}
+
 /** 已授权只读 MCP 工具。 */
 export const GRANTED_MCP_TOOL: McpTool = {
   id: 'mcp-tool-1',
@@ -416,6 +465,7 @@ export function createFakeApi(overrides: Partial<RicconApi> = {}): RicconApi {
       yield completedEvent();
     }),
     stopGeneration: vi.fn(async () => undefined),
+    getRun: vi.fn(async (runId: string) => makeRunDetail({ id: runId })),
     listResearchTasks: vi.fn(async () => pageOf<ResearchTask>([])),
     createResearchTask: vi.fn(async (workspaceId: string, input) =>
       makeResearchTask({

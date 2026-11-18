@@ -302,6 +302,19 @@ export type ResearchTaskStatus =
 /** 报告任务阶段，对应 OpenAPI `RunStage`。 */
 export type RunStage = 'RETRIEVAL' | 'TOOL' | 'APPROVAL' | 'GENERATION';
 
+/** 运行类别，对应 OpenAPI `RunKind`。 */
+export type RunKind = 'CHAT' | 'FILE_PARSE' | 'KNOWLEDGE_INDEX' | 'RESEARCH_REPORT';
+
+/** 运行状态，对应 OpenAPI `RunStatus`。 */
+export type RunStatus =
+  'PENDING' | 'RUNNING' | 'WAITING_APPROVAL' | 'RETRY_WAIT' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+
+/** 模型调用用途，对应 OpenAPI `ModelPurpose`。 */
+export type ModelPurpose = 'CHAT' | 'REPORT';
+
+/** 模型调用状态，对应 OpenAPI `InvocationStatus`。 */
+export type InvocationStatus = 'STARTED' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+
 /** 阶段状态，对应 OpenAPI `StageStatus`。 */
 export type StageStatus = 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'SKIPPED';
 
@@ -364,6 +377,42 @@ export interface RunStageRecord {
   finishedAt?: string | null;
   /** 服务端白名单摘要；只包含脱敏后的查询、命中数、工具调用 ID 等。 */
   details?: RunStageDetails | null;
+}
+
+/**
+ * 模型调用记录，对应 OpenAPI `ModelInvocation`。
+ *
+ * 只包含展示所需的模型标识、首字/耗时、token 与结果状态；不包含提示词、
+ * 回答原文、上游凭据或错误堆栈。
+ */
+export interface ModelInvocation {
+  id: string;
+  modelId: string;
+  modelKey: string;
+  purpose: ModelPurpose;
+  status: InvocationStatus;
+  firstTokenMs?: number | null;
+  durationMs?: number | null;
+  promptTokens?: number | null;
+  completionTokens?: number | null;
+  errorCode?: string | null;
+  startedAt: string;
+  finishedAt?: string | null;
+}
+
+/** 运行详情，对应 OpenAPI `RunDetail`。 */
+export interface RunDetail {
+  id: string;
+  kind: RunKind;
+  status: RunStatus;
+  currentStage?: RunStage | null;
+  attempt: number;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  startedAt: string;
+  finishedAt?: string | null;
+  modelInvocations: ModelInvocation[];
+  stages: RunStageRecord[];
 }
 
 /** 审批记录，对应 OpenAPI `Approval`。 */
