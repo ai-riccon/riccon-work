@@ -28,7 +28,7 @@ dod_evidence:
   coverage:
     - EV-0293
   e2e:
-    - EV-0299
+    - EV-0301
   docs:
     - EV-0297
 reviewed_evidence:
@@ -241,6 +241,7 @@ reviewed_evidence:
   - EV-0298
   - EV-0299
   - EV-0300
+  - EV-0301
 findings:
   - id: F-001
     severity: P1
@@ -327,7 +328,7 @@ findings:
     title: "ADR-0009/ADR-0014 仍只描述预签名下载，未记录同源 content 读取路径"
     status: accepted
     evidence: "docs/adr/ADR-0009-tenant-isolation-enforcement.md、ADR-0014-m02-api-event-contract-and-sse.md；新增端点已在 contracts/openapi.yaml 记录，属增量路径，M03 文档收口时补充"
-created_at: "2026-11-18T13:07:04+08:00"
+created_at: "2026-11-18T13:09:58+08:00"
 ---
 # M02 独立评审（复验 2）：云工作空间与办公协同闭环
 
@@ -388,12 +389,13 @@ created_at: "2026-11-18T13:07:04+08:00"
 | coverage       | `./mvnw -q -T1C verify jacoco:report && pnpm -w test -- --coverage`                                                      | EV-0293         | 0      | api line 90.31%/branch 71.16%；worker 87.89%/70.77%；platform-common 98.55%/98.15%；web lines 87.38%/branches 80.39%；均过 80/70               |
 | security       | `trivy fs --scanners vuln,secret,misconfig --skip-dirs node_modules --skip-dirs target --skip-dirs .git --exit-code 1 .` | EV-0294         | 0      | 0 可见 critical/high；MCP 两条 CVE 按 ADR-0011/DEC-0005 抑制，到期 2026-12-31                                                                  |
 | a11y           | `pnpm -w a11y`                                                                                                           | EV-0295         | 0      | 7 个 @a11y 用例通过（含 J1 运行详情与 J2 完整闭环）                                                                                            |
-| test_e2e       | `docker compose -f deploy/compose/docker-compose.test.yml up -d --wait && pnpm -w e2e && REAL_EVIDENCE_TASK=TASK-0032 node scripts/real-stack/run.mjs` | EV-0296/EV-0299 | 0      | stub **19 passed**；真实栈 **10 passed**；J2 HTTP 闭环与安全检查通过；EV-0299 覆盖最终测试树                                                     |
+| test_e2e（合同） | `docker compose -f deploy/compose/docker-compose.test.yml up -d --wait && pnpm -w e2e`                                | EV-0301         | 0      | stub **19 passed**；与合同命令字符串完全一致                                                                                                   |
+| test_e2e（真栈） | `docker compose -f deploy/compose/docker-compose.test.yml up -d --wait && pnpm -w e2e && REAL_EVIDENCE_TASK=TASK-0032 node scripts/real-stack/run.mjs` | EV-0296/EV-0299 | 0      | stub 19 passed；真实栈 **10 passed**；J2 HTTP 闭环与安全检查通过；EV-0299 覆盖最终测试树                                                       |
 | docs           | docs/contracts 存在性与 diff                                                                                             | EV-0297         | 0      | `docs/PRODUCT.md`、`ARCHITECTURE.md`、`CODING-STANDARDS.md`、`docs/security/THREAT-MODEL.md`、`RUNBOOK.md`、`contracts/openapi.yaml` 存在；OpenAPI +67 行 |
 | evidence audit | `node scripts/real-stack/audit-evidence.mjs`                                                                             | EV-0298         | 0      | TASK-0008..0031 共 **196** 条活动 EV 全部存在、哈希/字节数匹配、dirty=false、commit 为祖先；无重复/孤立（显式例外见 §6）                         |
 | perf           | `k6 run e2e/perf/mvc-smoke.js`                                                                                           | —               | —      | **未执行**：文件仍不存在，见 F-007；作为 M03/M09 前置，不计入 M02 module DoD                                                                  |
 
-说明：EV-0296 与 EV-0299 使用同一合同 e2e 命令；EV-0299 在补强“终态停轮询非空守卫 + 下载字节证据”后重跑，两者均 exit 0，最终结论以 EV-0299 为准。
+说明：EV-0301 为与合同完全一致的 `test_e2e`；EV-0296/EV-0299 在同一合同命令后追加真实栈 runner，均 exit 0；EV-0299 在补强“终态停轮询非空守卫 + 下载字节证据”后重跑，最终真实栈结论以 EV-0299 为准，`dod_evidence.e2e` 绑定合同命令 EV-0301。
 
 ## 4. 真实栈复验结果（EV-0299）
 
@@ -438,7 +440,7 @@ P0：**无**。P1：**无 open**（F-012 fixed）。P2/P3 中 F-007/F-011/F-015/
 
 - **TASK-0008..0031**：196 条活动 EV 全部存在，SHA-256/字节数匹配，`manual=false`，`dirty=false`，commit 均为 HEAD 祖先；无重复 EV ID；无 M02 范围内未被任务引用的孤立 EV（显式允许的 3 条 dirty 证据除外）。
 - **非零退出共 9 条**，均为显式预期：EV-0129/0130（证明 audit_event UPDATE/DELETE 被拒绝）、EV-0133/0134（证明触发器创建在缺参时失败）、EV-0232/0266/0267/0268（历史真实栈失败/定位器缺陷，保留追溯）、EV-0277（stub E2E 文案定位缺陷，已被 EV-0281 替代）。
-- **TASK-0032**：EV-0288..EV-0300 共 13 条，全部 `dirty=false`、exit 0、commit 为 HEAD 祖先；覆盖 install/build/lint/typecheck/test/coverage/security/a11y/test_e2e/docs/audit。
+- **TASK-0032**：EV-0288..EV-0301 共 14 条，全部 `dirty=false`、exit 0、commit 为 HEAD 祖先；覆盖 install/build/lint/typecheck/test/coverage/security/a11y/test_e2e/docs/audit。
 - **假绿检查**：测试命令非零测试（后端 533、前端 153），0 skipped；Playwright `retries: 0`；真实栈用例全部含强断言（下载文件内容、轮询请求计数、响应头、413、跨租户 404）；未发现吞错、空断言或只对坏状态快照。
 - 审计脚本：`scripts/real-stack/audit-evidence.mjs`（EV-0298），本轮扩展覆盖 TASK-0031，并对历史脏/失败证据显式 allowlist。
 
@@ -470,7 +472,7 @@ P0：**无**。P1：**无 open**（F-012 fixed）。P2/P3 中 F-007/F-011/F-015/
 
 ## 10. 证据链接
 
-- 合同命令：EV-0288 install、EV-0289 build、EV-0290/EV-0300 lint、EV-0291 typecheck、EV-0292 test、EV-0293 coverage、EV-0294 security、EV-0295 a11y、EV-0296/EV-0299 test_e2e、EV-0297 docs、EV-0298 evidence audit。
+- 合同命令：EV-0288 install、EV-0289 build、EV-0290/EV-0300 lint、EV-0291 typecheck、EV-0292 test、EV-0293 coverage、EV-0294 security、EV-0295 a11y、EV-0301 合同 test_e2e、EV-0296/EV-0299 真栈 test_e2e、EV-0297 docs、EV-0298 evidence audit。
 - 真实栈：`.riccon/evidence/TASK-0032/real-stack-summary.json`、`real-stack-j2.json`、`real-stack-checks.json`、`real-stack-playwright.log`、`real-stack-*.log`。
 - 关键日志行：`REAL_FIRST_TOKEN_MS=337`、`REAL_GROWTH_SAMPLES=[10,30,39,60,70,80,100,110,130]`、`REAL_J2_DOWNLOAD_BYTES=2156`、`REAL_J2_REJECT_STALE_RUNNING_STAGES=0`、`REAL_J2_REJECT_DETAIL_REQUESTS settled=4 total=4`。
 - 证据审计：EV-0298 输出与 `scripts/real-stack/audit-evidence.mjs`。
