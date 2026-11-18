@@ -80,7 +80,11 @@ function makeApi(overrides: Partial<WorkspaceManagementApi> = {}): WorkspaceMana
 }
 
 /** 渲染共享抽屉。 */
-function renderDrawer(api: WorkspaceManagementApi, activeWorkspace: Workspace = PERSONAL) {
+function renderDrawer(
+  api: WorkspaceManagementApi,
+  activeWorkspace: Workspace = PERSONAL,
+  onWorkspaceRenamed?: (workspace: ManagedWorkspace) => void,
+) {
   return render(
     withProviders(
       <WorkspaceSharingDrawer
@@ -89,6 +93,7 @@ function renderDrawer(api: WorkspaceManagementApi, activeWorkspace: Workspace = 
         departmentError={null}
         manageableDepartments={[makeDepartment()]}
         onClose={vi.fn()}
+        onWorkspaceRenamed={onWorkspaceRenamed}
       />,
     ),
   );
@@ -145,6 +150,7 @@ describe('工作空间共享抽屉', () => {
     expect(screen.getByText(/M02 历史全租户空间/)).toBeVisible();
     expect(screen.queryByRole('button', { name: '改可见性' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '管理成员' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '重命名' })).not.toBeInTheDocument();
     expect(screen.getAllByText('只读').length).toBeGreaterThan(0);
   });
 
@@ -349,5 +355,83 @@ describe('负责人部门空间管理列表', () => {
     expect(screen.getByRole('button', { name: '管理成员' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '改可见性' })).toBeInTheDocument();
     expect(screen.getByText('指定成员')).toBeInTheDocument();
+  });
+});
+
+describe('空间重命名', () => {
+  it('可管理空间重命名后更新列表并通知切换器', async () => {
+    const renamed = makeSpace({ name: '销售部新空间' });
+    const onRenamed = vi.fn();
+    const api = makeApi({
+      updateWorkspace: vi.fn(async () => renamed),
+    });
+    renderDrawer(api, PERSONAL, onRenamed);
+
+    await screen.findByText('销售部项目空间');
+    fireEvent.click(screen.getByRole('button', { name: '重命名' }));
+    const dialog = await findDialog(/重命名空间/);
+    fireEvent.change(within(dialog).getByPlaceholderText('例如：销售部项目空间'), {
+      target: { value: '销售部新空间' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: /保存名称/ }));
+
+    await waitFor(() => {
+      expect(api.updateWorkspace).toHaveBeenCalledWith('workspace-1', {
+        name: '销售部新空间',
+      });
+    });
+    expect(onRenamed).toHaveBeenCalledWith(renamed);
+    expect(await screen.findByText('空间已重命名为“销售部新空间”。')).toBeVisible();
+    expect(screen.getAllByText('销售部新空间').length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    {
+      status: 409,
+      detail: 'workspace name already exists',
+      expected: '空间名称已存在',
+    },
+    {
+      status: 403,
+      detail: undefined,
+      expected: '你不是该空间的管理者',
+    },
+    {
+      status: 404,
+      detail: undefined,
+      expected: '空间或部门不存在',
+    },
+  ])('重命名失败（$status）显示可读文案', async ({ status, detail, expected }) => {
+    const api = makeApi({
+      updateWorkspace: vi.fn(async () => {
+        throw new ApiError('rename failed', {
+          status,
+          code: status === 409 ? 'RICCON-DEPT-409' : `RICCON-HTTP-${status}`,
+          ...(detail
+            ? {
+                problem: {
+                  type: 'about:blank',
+                  title: '错误',
+                  status,
+                  detail,
+                  code: 'RICCON-DEPT-409',
+                  traceId: 'trace-1',
+                },
+              }
+            : {}),
+        });
+      }),
+    });
+    renderDrawer(api);
+
+    await screen.findByText('销售部项目空间');
+    fireEvent.click(screen.getByRole('button', { name: '重命名' }));
+    const dialog = await findDialog(/重命名空间/);
+    fireEvent.change(within(dialog).getByPlaceholderText('例如：销售部项目空间'), {
+      target: { value: '冲突空间' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: /保存名称/ }));
+
+    expect(await within(dialog).findByText(new RegExp(expected))).toBeInTheDocument();
   });
 });

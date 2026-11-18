@@ -31,6 +31,10 @@ export interface UserSummary {
   email: string | null;
   status: UserStatus;
   roles: string[];
+  /** 主部门 ID；未分配时为 null。服务端可能暂未下发，界面以 /departments 为准。 */
+  departmentId?: string | null;
+  /** 主部门名；停用部门仍显示名称。 */
+  departmentName?: string | null;
   lastLoginAt: string | null;
   createdAt: string;
 }

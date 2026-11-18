@@ -10,6 +10,7 @@ import {
   workspaceVisibilityLabel,
 } from '@/services/workspaces/visibility';
 import { CreateSpaceModal } from './create-space-modal';
+import { RenameSpaceModal } from './rename-space-modal';
 import { SpaceMembersModal } from './space-members-modal';
 import { SpaceVisibilityModal } from './space-visibility-modal';
 import './workspace-sharing.css';
@@ -22,6 +23,8 @@ export interface WorkspaceSharingDrawerProps {
   departmentError: string | null;
   onClose: () => void;
   onChanged?: () => void;
+  /** 重命名成功后同步聊天页空间切换器。 */
+  onWorkspaceRenamed?: (workspace: ManagedWorkspace) => void;
 }
 
 /**
@@ -43,12 +46,14 @@ export function WorkspaceSharingDrawer({
   departmentError,
   onClose,
   onChanged,
+  onWorkspaceRenamed,
 }: WorkspaceSharingDrawerProps) {
   const [spaces, setSpaces] = useState<ManagedWorkspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [renameTarget, setRenameTarget] = useState<ManagedWorkspace | null>(null);
   const [visibilityTarget, setVisibilityTarget] = useState<ManagedWorkspace | null>(null);
   const [membersTarget, setMembersTarget] = useState<ManagedWorkspace | null>(null);
 
@@ -134,6 +139,23 @@ export function WorkspaceSharingDrawer({
       onChanged?.();
     },
     [onChanged],
+  );
+
+  /**
+   * 处理重命名成功。
+   *
+   * @param workspace 更新后的空间
+   */
+  const handleRenamed = useCallback(
+    (workspace: ManagedWorkspace): void => {
+      setSpaces((previous) =>
+        previous.map((item) => (item.id === workspace.id ? workspace : item)),
+      );
+      setRenameTarget(null);
+      setNotice(`空间已重命名为“${workspace.name}”。`);
+      onWorkspaceRenamed?.(workspace);
+    },
+    [onWorkspaceRenamed],
   );
 
   const sortedSpaces = useMemo(
@@ -279,6 +301,9 @@ export function WorkspaceSharingDrawer({
                             管理成员
                           </Button>
                         )}
+                        <Button onClick={() => setRenameTarget(space)} size="small">
+                          重命名
+                        </Button>
                         <Button onClick={() => setVisibilityTarget(space)} size="small">
                           改可见性
                         </Button>
@@ -302,6 +327,14 @@ export function WorkspaceSharingDrawer({
           departments={manageableDepartments}
           onClose={() => setCreateOpen(false)}
           onCreated={handleCreated}
+        />
+      )}
+      {renameTarget && (
+        <RenameSpaceModal
+          api={api}
+          onClose={() => setRenameTarget(null)}
+          onRenamed={handleRenamed}
+          workspace={renameTarget}
         />
       )}
       {visibilityTarget && (

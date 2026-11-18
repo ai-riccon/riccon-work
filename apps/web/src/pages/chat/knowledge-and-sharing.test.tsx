@@ -215,3 +215,41 @@ describe('工作空间共享入口与知识库明示', () => {
     openSpy.mockRestore();
   });
 });
+
+describe('员工端所属部门', () => {
+  it('普通成员显示主部门，未分配时显示明确文案', async () => {
+    const first = renderChat(DEMO_SESSION, makeManagementApi([makeDepartment()]));
+    expect(await screen.findByText('所属部门：')).toBeVisible();
+    expect(screen.getByText('销售部')).toBeVisible();
+    first.unmount();
+
+    authStore.reset();
+    authStore.setAuthenticated(DEMO_SESSION);
+    render(
+      withProviders(
+        <ChatPage
+          api={createFakeApi()}
+          managementApi={makeManagementApi([])}
+          navigate={vi.fn()}
+          pollIntervalMs={10}
+        />,
+      ),
+    );
+    expect(await screen.findByText('未分配部门')).toBeVisible();
+  });
+
+  it('停用部门仍显示名称并标注已停用', async () => {
+    renderChat(DEMO_SESSION, makeManagementApi([makeDepartment({ status: 'DISABLED' })]));
+
+    expect(await screen.findByText('销售部')).toBeVisible();
+    expect(screen.getByText('已停用')).toBeVisible();
+  });
+
+  it('租户管理员显示角色标签，不把第一个部门误报为所属部门', async () => {
+    renderChat(TENANT_ADMIN, makeManagementApi([makeDepartment()]));
+
+    expect(await screen.findByText('租户管理员')).toBeVisible();
+    expect(screen.queryByText('所属部门：')).not.toBeInTheDocument();
+    expect(screen.queryByText(/所属部门：销售部/)).not.toBeInTheDocument();
+  });
+});

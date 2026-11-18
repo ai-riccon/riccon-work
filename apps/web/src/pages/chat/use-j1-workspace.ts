@@ -36,6 +36,8 @@ export interface J1WorkspaceController {
   workspaces: Workspace[];
   /** 切换到指定工作空间，并按空间重新加载会话。 */
   selectWorkspace: (workspaceId: string) => Promise<void>;
+  /** 用服务端返回的空间元数据更新切换器；用于重命名后同步标题。 */
+  updateWorkspaceMeta: (workspace: Workspace) => void;
   conversations: Conversation[];
   conversationsLoading: boolean;
   creatingConversation: boolean;
@@ -256,6 +258,23 @@ export function useJ1Workspace(
   const stop = useCallback(async (): Promise<void> => {
     await stopStreaming(false);
   }, [stopStreaming]);
+
+  /**
+   * 更新切换器中的空间元数据。
+   *
+   * 重命名成功后只更新本地列表与当前空间；不重新加载会话，避免打断正在进行的问答。
+   *
+   * @param updated 服务端返回的空间
+   */
+  const updateWorkspaceMeta = useCallback((updated: Workspace): void => {
+    setWorkspaces((previous) =>
+      previous.map((workspace) => (workspace.id === updated.id ? updated : workspace)),
+    );
+    if (workspaceRef.current?.id === updated.id) {
+      workspaceRef.current = updated;
+      setWorkspace(updated);
+    }
+  }, []);
 
   /**
    * 切换工作空间并重新加载会话。
@@ -683,6 +702,7 @@ export function useJ1Workspace(
     workspace,
     workspaces,
     selectWorkspace,
+    updateWorkspaceMeta,
     conversations,
     conversationsLoading,
     creatingConversation,

@@ -50,7 +50,9 @@ import {
 import { RunDetailDrawer } from './components/run-detail-drawer';
 import { WorkspaceSharingDrawer } from './components/workspace-sharing-drawer';
 import { useJ1Workspace } from './use-j1-workspace';
-import { useWorkspaceManagement } from './use-workspace-management';
+import { useWorkspaceManagement } from '@/services/workspaces/use-workspace-management';
+import { supportsWorkspaceManagement } from '@/services/workspaces/management-api';
+import { CurrentDepartmentBadge } from '@/services/workspaces/current-department-badge';
 import {
   KNOWLEDGE_SHARING_NOTICE,
   SOURCE_FILE_UNAVAILABLE,
@@ -65,23 +67,6 @@ export interface ChatPageProps {
   navigate?: (to: string, options?: { replace?: boolean }) => void;
   /** 解析状态轮询间隔；测试可缩短。 */
   pollIntervalMs?: number;
-}
-
-/**
- * 检测 API 客户端是否同时实现空间管理能力。
- *
- * J1 的最小接口 `RicconApi` 不包含管理方法；真实 ApiClient 同时实现两者，
- * 测试替身只实现最小接口，因此不会触发管理请求或暴露管理入口。
- *
- * @param api API 客户端
- * @returns 是否支持空间管理
- */
-function supportsWorkspaceManagement(api: RicconApi): api is RicconApi & WorkspaceManagementApi {
-  const candidate = api as Partial<WorkspaceManagementApi>;
-  return (
-    typeof candidate.listDepartments === 'function' &&
-    typeof candidate.listTeamWorkspaces === 'function'
-  );
 }
 
 /** Bubble 状态基础色。 */
@@ -386,6 +371,12 @@ export default function ChatPage({
             </Typography.Title>
             <div className="chat-header-meta">
               <Typography.Text type="secondary">{auth.session.tenant.name}</Typography.Text>
+              <CurrentDepartmentBadge
+                department={management.currentDepartment}
+                error={management.error}
+                isTenantAdmin={management.isTenantAdmin}
+                loading={management.loading}
+              />
               <Select
                 aria-label="切换工作空间"
                 className="chat-workspace-select"
@@ -414,7 +405,17 @@ export default function ChatPage({
                 工作空间共享
               </Button>
             )}
-            <Button onClick={() => navigate('/research')}>市场调研报告</Button>
+            <Button
+              onClick={() =>
+                navigate(
+                  controller.workspace?.kind === 'TEAM'
+                    ? `/research/tasks?workspaceId=${encodeURIComponent(controller.workspace.id)}`
+                    : '/research',
+                )
+              }
+            >
+              市场调研报告
+            </Button>
             <Typography.Text>{auth.session.user.displayName}</Typography.Text>
             <Button
               icon={<LogoutOutlined />}
@@ -819,6 +820,7 @@ export default function ChatPage({
           departmentError={management.error}
           manageableDepartments={management.manageableDepartments}
           onClose={() => setSharingOpen(false)}
+          onWorkspaceRenamed={controller.updateWorkspaceMeta}
         />
       )}
 

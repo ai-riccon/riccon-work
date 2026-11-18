@@ -586,4 +586,27 @@ describe('工作空间切换器', () => {
     });
     expect(await screen.findByRole('button', { name: '部门会话' })).toBeVisible();
   });
+
+  it('从当前部门空间进入研究页时携带 workspaceId', async () => {
+    const navigate = vi.fn();
+    const api = createFakeApi({
+      listWorkspaces: vi.fn(async () => pageOf([DEMO_WORKSPACE, TEAM_WORKSPACE])),
+      listConversations: vi.fn(async () => pageOf([])),
+    });
+    authStore.reset();
+    authStore.setAuthenticated(DEMO_SESSION);
+    render(withProviders(<ChatPage api={api} navigate={navigate} pollIntervalMs={10} />));
+
+    const selector = await screen.findByRole('combobox', { name: '切换工作空间' });
+    fireEvent.mouseDown(selector);
+    fireEvent.click(await screen.findByTitle('销售部项目空间'));
+    await waitFor(() => {
+      expect(api.listConversations).toHaveBeenLastCalledWith(TEAM_WORKSPACE.id);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '市场调研报告' }));
+    expect(navigate).toHaveBeenCalledWith(
+      `/research/tasks?workspaceId=${encodeURIComponent(TEAM_WORKSPACE.id)}`,
+    );
+  });
 });

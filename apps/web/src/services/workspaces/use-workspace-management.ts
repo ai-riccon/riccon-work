@@ -16,6 +16,12 @@ export interface WorkspaceManagementContext {
   manageableDepartments: Department[];
   /** 是否展示空间共享入口；普通成员为 false。 */
   canManage: boolean;
+  /**
+   * 普通成员的主部门；未分配时为 null。
+   *
+   * 租户管理员返回 null，界面显示“租户管理员”，避免把全部部门中的第一个误报为主部门。
+   */
+  currentDepartment: Department | null;
   /** 部门列表是否仍在加载。 */
   loading: boolean;
   /** 部门列表加载错误；用于管理抽屉内的可读提示。 */
@@ -87,11 +93,30 @@ export function useWorkspaceManagement(
     [departments, isTenantAdmin, session],
   );
 
+  /**
+   * 计算普通成员的主部门。
+   *
+   * `/departments` 对普通成员只返回本人部门（0 或 1 条）；若会话已带 departmentId，
+   * 优先按 ID 匹配，避免未来接口返回多条时误取第一条。租户管理员返回全部部门，
+   * 因此这里不推断“主部门”。
+   */
+  const currentDepartment = useMemo(() => {
+    if (!session || isTenantAdmin) {
+      return null;
+    }
+    const expectedId = session.user.departmentId;
+    if (expectedId) {
+      return departments.find((department) => department.id === expectedId) ?? null;
+    }
+    return departments[0] ?? null;
+  }, [departments, isTenantAdmin, session]);
+
   return {
     isTenantAdmin,
     departments,
     manageableDepartments: manageable,
     canManage: Boolean(session) && (isTenantAdmin || manageable.length > 0),
+    currentDepartment,
     loading,
     error,
   };

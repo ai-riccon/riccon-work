@@ -24,6 +24,8 @@ const DEPARTMENT_DETAIL_MESSAGES: Record<string, string> = {
 /** 空间管理 409 原因码到中文文案。 */
 const WORKSPACE_DETAIL_MESSAGES: Record<string, string> = {
   'workspace member already exists': '该成员已在空间内，无需重复添加。',
+  'workspace name already exists': '空间名称已存在，请换一个名称。',
+  'workspace already exists': '空间名称已存在，请换一个名称。',
   'personal workspace does not support explicit members': '个人空间仅本人可见，不支持成员管理。',
   'explicit members are only supported for CUSTOM workspaces':
     '只有“指定成员”空间支持显式成员管理。',
@@ -118,7 +120,7 @@ export function describeWorkspaceError(
     case 404:
       return '空间或部门不存在，或你没有管理权限。';
     case 409:
-      return '成员或空间状态冲突，请刷新后重试。';
+      return '空间名称或成员状态冲突，请刷新后重试。';
     default:
       return describeApiError(error, fallback);
   }

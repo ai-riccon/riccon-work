@@ -14,6 +14,10 @@ export interface ResearchWorkspaceController {
   phase: ResearchWorkspacePhase;
   error: string | null;
   workspace: Workspace | null;
+  /** 当前账号可访问的启用工作空间；用于研究页切换器。 */
+  workspaces: Workspace[];
+  /** 切换报告任务所属空间并重新加载任务列表。 */
+  selectWorkspace: (workspaceId: string) => Promise<void>;
   tasks: ResearchTask[];
   tasksLoading: boolean;
   tools: McpTool[];
@@ -41,15 +45,18 @@ export interface ResearchWorkspaceController {
  *
  * @param api API 客户端
  * @param session 当前会话；null 时不加载
+ * @param initialWorkspaceId 可选的初始空间 ID；来自聊天页 `workspaceId` query
  * @returns 状态与动作
  */
 export function useResearchWorkspace(
   api: RicconApi,
   session: SessionInfo | null,
+  initialWorkspaceId?: string,
 ): ResearchWorkspaceController {
   const [phase, setPhase] = useState<ResearchWorkspacePhase>('loading');
   const [error, setError] = useState<string | null>(null);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [tasks, setTasks] = useState<ResearchTask[]>([]);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [tools, setTools] = useState<McpTool[]>([]);
@@ -61,6 +68,7 @@ export function useResearchWorkspace(
   const [actionError, setActionError] = useState<string | null>(null);
   const workspaceRef = useRef<Workspace | null>(null);
   const initializedForRef = useRef<string | null>(null);
+  const taskLoadTokenRef = useRef(0);
 
   /**
    * 加载工作空间、任务列表与授权工具。
@@ -71,15 +79,22 @@ export function useResearchWorkspace(
     setPhase('loading');
     setError(null);
     setTasks([]);
+    setWorkspaces([]);
     setTools([]);
     setDisabledTools([]);
     setToolsError(null);
     setToolsErrorKind(null);
+    const previousWorkspaceId = workspaceRef.current?.id;
     workspaceRef.current = null;
     setWorkspace(null);
     try {
       const page = await api.listWorkspaces();
-      const nextWorkspace = page.items.find((item) => item.status === 'ACTIVE') ?? null;
+      const activeWorkspaces = page.items.filter((item) => item.status === 'ACTIVE');
+      setWorkspaces(activeWorkspaces);
+      // 重试时保留当前选择；首次加载优先使用查询参数指定的可访问空间，否则沿用第一个 ACTIVE 空间。
+      const preferredId = previousWorkspaceId ?? initialWorkspaceId;
+      const nextWorkspace =
+        activeWorkspaces.find((item) => item.id === preferredId) ?? activeWorkspaces[0] ?? null;
       if (!nextWorkspace) {
         setPhase('empty');
         return;
@@ -134,7 +149,7 @@ export function useResearchWorkspace(
       setTasksLoading(false);
       setToolsLoading(false);
     }
-  }, [api]);
+  }, [api, initialWorkspaceId]);
 
   // 登录态确定后只初始化一次，避免每次渲染重复请求。
   useEffect(() => {
@@ -148,6 +163,54 @@ export function useResearchWorkspace(
     initializedForRef.current = key;
     void initialize();
   }, [initialize, session]);
+
+  /**
+   * 切换报告任务所属工作空间。
+   *
+   * 只接受服务端返回的可访问空间；工具列表是租户级授权，不随空间切换重新加载。
+   * 切换时清空旧任务，避免不同空间的任务短暂混排。
+   *
+   * @param workspaceId 目标工作空间 ID
+   */
+  const selectWorkspace = useCallback(
+    async (workspaceId: string): Promise<void> => {
+      const target = workspaces.find((item) => item.id === workspaceId) ?? null;
+      if (!target || target.id === workspaceRef.current?.id) {
+        return;
+      }
+      workspaceRef.current = target;
+      setWorkspace(target);
+      setTasks([]);
+      setActionError(null);
+      setPhase('ready');
+      setTasksLoading(true);
+      const token = taskLoadTokenRef.current + 1;
+      taskLoadTokenRef.current = token;
+      try {
+        const page = await api.listResearchTasks(target.id);
+        if (token !== taskLoadTokenRef.current) {
+          return;
+        }
+        setTasks(page.items);
+      } catch (loadError) {
+        if (token !== taskLoadTokenRef.current) {
+          return;
+        }
+        if (loadError instanceof ApiError && loadError.status === 403) {
+          setPhase('forbidden');
+          setError(describeApiError(loadError, '没有查看该空间报告任务的权限。'));
+        } else {
+          setPhase('error');
+          setError(describeApiError(loadError, '报告任务加载失败，请重试。'));
+        }
+      } finally {
+        if (token === taskLoadTokenRef.current) {
+          setTasksLoading(false);
+        }
+      }
+    },
+    [api, workspaces],
+  );
 
   /** 刷新任务列表；用于重试或从详情返回后同步状态。 */
   const refreshTasks = useCallback(async (): Promise<void> => {
@@ -202,6 +265,8 @@ export function useResearchWorkspace(
     phase,
     error,
     workspace,
+    workspaces,
+    selectWorkspace,
     tasks,
     tasksLoading,
     tools,

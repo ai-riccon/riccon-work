@@ -3,14 +3,19 @@ import { Link, Outlet, useLocation, useNavigate } from '@umijs/max';
 import { Alert, Button, Flex, Result, Spin, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 import { api as defaultApi } from '@/services/api';
-import type { RicconApi } from '@/services/api/client';
+import type { RicconApi, WorkspaceManagementApi } from '@/services/api/client';
 import { describeApiError } from '@/services/api/errors';
 import { authStore, useAuth } from '@/services/auth/auth-store';
+import { CurrentDepartmentBadge } from '@/services/workspaces/current-department-badge';
+import { supportsWorkspaceManagement } from '@/services/workspaces/management-api';
+import { useWorkspaceManagement } from '@/services/workspaces/use-workspace-management';
 import './workspace.css';
 
 /** 报告任务工作空间外壳的可注入依赖，便于组件测试。 */
 export interface WorkspaceLayoutProps {
   api?: RicconApi;
+  /** 空间管理能力；未注入时从 api 能力检测。 */
+  managementApi?: WorkspaceManagementApi;
   navigate?: (to: string, options?: { replace?: boolean }) => void;
 }
 
@@ -26,9 +31,12 @@ export interface WorkspaceLayoutProps {
  */
 export default function WorkspaceLayout({
   api = defaultApi,
+  managementApi: injectedManagementApi,
   navigate: injectedNavigate,
 }: WorkspaceLayoutProps) {
   const auth = useAuth();
+  const managementApi = injectedManagementApi ?? (supportsWorkspaceManagement(api) ? api : null);
+  const management = useWorkspaceManagement(managementApi, auth.session);
   const location = useLocation();
   const umiNavigate = useNavigate();
   const navigate = injectedNavigate ?? umiNavigate;
@@ -115,6 +123,12 @@ export default function WorkspaceLayout({
             </Typography.Title>
             <div className="workspace-shell-meta">
               <Typography.Text type="secondary">{auth.session.tenant.name}</Typography.Text>
+              <CurrentDepartmentBadge
+                department={management.currentDepartment}
+                error={management.error}
+                isTenantAdmin={management.isTenantAdmin}
+                loading={management.loading}
+              />
             </div>
           </div>
 

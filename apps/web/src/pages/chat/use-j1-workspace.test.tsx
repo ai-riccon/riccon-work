@@ -193,3 +193,28 @@ describe('J1 工作空间切换', () => {
     ).toHaveLength(callCount);
   });
 });
+
+describe('J1 空间重命名同步', () => {
+  it('更新工作空间元数据后切换器与当前空间使用新名称', async () => {
+    const api = createFakeApi({
+      listWorkspaces: vi.fn(async () => pageOf([DEMO_WORKSPACE, TEAM_WORKSPACE])),
+      listConversations: vi.fn(async () => pageOf([])),
+    });
+    const { result } = renderHook(() => useJ1Workspace(api, DEMO_SESSION, 60_000));
+
+    await waitFor(() => {
+      expect(result.current.phase).toBe('ready');
+    });
+    await act(async () => {
+      await result.current.selectWorkspace(TEAM_WORKSPACE.id);
+    });
+    await act(async () => {
+      result.current.updateWorkspaceMeta({ ...TEAM_WORKSPACE, name: '新的部门空间' });
+    });
+
+    expect(result.current.workspace?.name).toBe('新的部门空间');
+    expect(result.current.workspaces.find((item) => item.id === TEAM_WORKSPACE.id)?.name).toBe(
+      '新的部门空间',
+    );
+  });
+});

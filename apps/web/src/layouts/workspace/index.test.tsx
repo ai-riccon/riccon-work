@@ -3,9 +3,50 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/services/api/errors';
 import { authStore } from '@/services/auth/auth-store';
-import { DEMO_SESSION, createFakeApi } from '@/test/fake-api';
+import { DEMO_SESSION, createFakeApi, pageOf } from '@/test/fake-api';
+import type { WorkspaceManagementApi } from '@/services/api/client';
+import type { Department } from '@/services/api/types';
 import { withProviders } from '@/test/render';
 import WorkspaceLayout from './index';
+
+/** 构造部门夹具。 */
+function makeDepartment(overrides: Partial<Department> = {}): Department {
+  return {
+    id: 'dept-sales',
+    name: '销售部',
+    status: 'ACTIVE',
+    managerUserId: 'user-1',
+    managerDisplayName: '演示员工',
+    memberCount: 2,
+    createdAt: '2026-11-19T08:00:00.000Z',
+    updatedAt: '2026-11-19T08:00:00.000Z',
+    ...overrides,
+  };
+}
+
+/**
+ * 构造只提供部门读取的 API 替身。
+ *
+ * @param departments 当前账号可见部门
+ * @returns WorkspaceManagementApi
+ */
+function makeManagementApi(departments: Department[]): WorkspaceManagementApi {
+  const notUsed = vi.fn(async () => {
+    throw new Error('当前用例不应调用该端点');
+  });
+  return {
+    listDepartments: vi.fn(async () => pageOf(departments)),
+    listTeamWorkspaces: vi.fn(async () => pageOf([])),
+    listDepartmentMembers: notUsed,
+    listDepartmentWorkspaces: notUsed,
+    createDepartmentWorkspace: notUsed,
+    createWorkspace: notUsed,
+    updateWorkspace: notUsed,
+    listWorkspaceMembers: notUsed,
+    addWorkspaceMember: notUsed,
+    removeWorkspaceMember: notUsed,
+  };
+}
 
 /**
  * J2 工作空间布局测试。
@@ -29,6 +70,37 @@ describe('报告任务工作空间布局', () => {
     expect(screen.getByRole('link', { name: '市场调研报告' })).toHaveAttribute('href', '/research');
     expect(screen.getByText('演示员工')).toBeVisible();
     expect(screen.getByTestId('umi-outlet')).toBeInTheDocument();
+  });
+
+  it('显示当前账号主部门；停用部门仍显示名称与停用标签', async () => {
+    authStore.setAuthenticated(DEMO_SESSION);
+    const api = createFakeApi();
+
+    const { unmount } = render(
+      withProviders(
+        <WorkspaceLayout
+          api={api}
+          managementApi={makeManagementApi([makeDepartment()])}
+          navigate={vi.fn()}
+        />,
+      ),
+    );
+    expect(await screen.findByText('所属部门：')).toBeVisible();
+    expect(screen.getByText('销售部')).toBeVisible();
+    unmount();
+
+    authStore.setAuthenticated(DEMO_SESSION);
+    render(
+      withProviders(
+        <WorkspaceLayout
+          api={createFakeApi()}
+          managementApi={makeManagementApi([makeDepartment({ status: 'DISABLED' })])}
+          navigate={vi.fn()}
+        />,
+      ),
+    );
+    expect(await screen.findByText('销售部')).toBeVisible();
+    expect(screen.getByText('已停用')).toBeVisible();
   });
 
   it('匿名访问时恢复会话失败并跳转登录', async () => {

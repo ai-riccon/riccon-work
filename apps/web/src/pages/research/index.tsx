@@ -32,6 +32,8 @@ import './research.css';
 /** 报告任务列表页可注入依赖，便于组件测试。 */
 export interface ResearchListPageProps {
   api?: RicconApi;
+  /** 指定初始工作空间；测试注入。正常运行时从 `workspaceId` query 读取。 */
+  initialWorkspaceId?: string;
   navigate?: (to: string, options?: { replace?: boolean }) => void;
 }
 
@@ -73,6 +75,22 @@ function topicError(value: unknown): string | null {
 }
 
 /**
+ * 从当前地址读取 `workspaceId` 查询参数。
+ *
+ * 使用浏览器原生 URLSearchParams 而不是 Umi hook，保证页面在测试替身与
+ * 非 Umi 渲染环境下也能复用同一逻辑；参数只作为初始选择提示，最终以
+ * 服务端返回的可访问空间列表为准。
+ *
+ * @returns 查询参数值；不存在时返回 undefined
+ */
+function readWorkspaceIdFromQuery(): string | undefined {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+  return new URLSearchParams(window.location.search).get('workspaceId') ?? undefined;
+}
+
+/**
  * J2 报告任务列表与创建页。
  *
  * 页面只调用 apps/api：工作空间、任务列表与授权工具均来自契约接口；
@@ -83,12 +101,14 @@ function topicError(value: unknown): string | null {
  */
 export default function ResearchListPage({
   api = defaultApi,
+  initialWorkspaceId: injectedInitialWorkspaceId,
   navigate: injectedNavigate,
 }: ResearchListPageProps) {
   const umiNavigate = useNavigate();
   const navigate = injectedNavigate ?? umiNavigate;
   const auth = useAuth();
-  const controller = useResearchWorkspace(api, auth.session);
+  const initialWorkspaceId = injectedInitialWorkspaceId ?? readWorkspaceIdFromQuery();
+  const controller = useResearchWorkspace(api, auth.session, initialWorkspaceId);
   const [form] = Form.useForm<CreateTaskValues>();
   const createKeyRef = useRef<string | null>(null);
   const lastSubmitSignatureRef = useRef<string | null>(null);
@@ -218,6 +238,26 @@ export default function ResearchListPage({
   return (
     <div className="research-page">
       {pageTitle}
+
+      <Flex align="center" className="research-workspace-toolbar" gap={8} wrap>
+        <Typography.Text strong>工作空间</Typography.Text>
+        <Select
+          aria-label="切换工作空间"
+          loading={controller.tasksLoading}
+          onChange={(workspaceId) => {
+            void controller.selectWorkspace(String(workspaceId));
+          }}
+          options={controller.workspaces.map((workspace) => ({
+            label: workspace.name,
+            value: workspace.id,
+          }))}
+          style={{ minWidth: 180, maxWidth: 260 }}
+          value={controller.workspace?.id}
+        />
+        <Typography.Text type="secondary">
+          报告任务按所选空间隔离；默认进入个人空间。
+        </Typography.Text>
+      </Flex>
 
       {controller.actionError && (
         <Alert

@@ -2,9 +2,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/services/api/errors';
+import type { Workspace } from '@/services/api/types';
 import { authStore } from '@/services/auth/auth-store';
 import {
   DEMO_SESSION,
+  DEMO_WORKSPACE,
   GRANTED_MCP_TOOL,
   createFakeApi,
   makeResearchTask,
@@ -26,10 +28,22 @@ describe('报告任务列表页', () => {
   });
 
   /** 渲染列表页，统一注入 fake API 与导航。 */
-  function renderPage(api: ReturnType<typeof createFakeApi>, navigate = vi.fn()) {
+  function renderPage(
+    api: ReturnType<typeof createFakeApi>,
+    navigate = vi.fn(),
+    initialWorkspaceId?: string,
+  ) {
     return {
       navigate,
-      ...render(withProviders(<ResearchListPage api={api} navigate={navigate} />)),
+      ...render(
+        withProviders(
+          <ResearchListPage
+            api={api}
+            initialWorkspaceId={initialWorkspaceId}
+            navigate={navigate}
+          />,
+        ),
+      ),
     };
   }
 
@@ -68,7 +82,7 @@ describe('报告任务列表页', () => {
 
   it('校验空主题与过短主题，不调用创建接口', async () => {
     const api = createFakeApi();
-    renderPage(api);
+    render(withProviders(<ResearchListPage api={api} navigate={vi.fn()} />));
 
     await screen.findByText('还没有报告任务；在左侧输入主题创建第一个任务。');
     fireEvent.click(screen.getByRole('button', { name: /创建报告任务/ }));
@@ -264,5 +278,71 @@ describe('报告任务列表页', () => {
     });
     renderPage(errorApi);
     expect(await screen.findByText('报告任务加载失败')).toBeVisible();
+  });
+});
+
+/** 部门共享空间夹具。 */
+const TEAM_WORKSPACE: Workspace = {
+  id: 'workspace-team',
+  kind: 'TEAM',
+  name: '销售部项目空间',
+  description: '销售部共享空间',
+  ownerUserId: 'user-1',
+  status: 'ACTIVE',
+  createdAt: '2026-11-19T08:00:00.000Z',
+  updatedAt: '2026-11-19T08:00:00.000Z',
+};
+
+describe('报告任务空间选择', () => {
+  it('通过 workspaceId 打开部门空间并加载该空间报告', async () => {
+    const api = createFakeApi({
+      listWorkspaces: vi.fn(async () => pageOf([DEMO_WORKSPACE, TEAM_WORKSPACE])),
+      listResearchTasks: vi.fn(async (workspaceId: string) =>
+        workspaceId === TEAM_WORKSPACE.id
+          ? pageOf([
+              makeResearchTask({
+                id: 'team-task',
+                workspaceId: TEAM_WORKSPACE.id,
+                topic: '销售部部门报告',
+              }),
+            ])
+          : pageOf([]),
+      ),
+    });
+    render(
+      withProviders(
+        <ResearchListPage api={api} initialWorkspaceId={TEAM_WORKSPACE.id} navigate={vi.fn()} />,
+      ),
+    );
+
+    expect(await screen.findByRole('button', { name: '销售部部门报告' })).toBeVisible();
+    expect(api.listResearchTasks).toHaveBeenCalledWith(TEAM_WORKSPACE.id);
+  });
+
+  it('可在研究页直接切换空间并加载目标空间任务', async () => {
+    const api = createFakeApi({
+      listWorkspaces: vi.fn(async () => pageOf([DEMO_WORKSPACE, TEAM_WORKSPACE])),
+      listResearchTasks: vi.fn(async (workspaceId: string) =>
+        workspaceId === TEAM_WORKSPACE.id
+          ? pageOf([
+              makeResearchTask({
+                id: 'team-task',
+                workspaceId: TEAM_WORKSPACE.id,
+                topic: '销售部部门报告',
+              }),
+            ])
+          : pageOf([]),
+      ),
+    });
+    render(withProviders(<ResearchListPage api={api} navigate={vi.fn()} />));
+
+    await screen.findByText('还没有报告任务；在左侧输入主题创建第一个任务。');
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: '切换工作空间' }));
+    fireEvent.click(await screen.findByText('销售部项目空间'));
+
+    await waitFor(() => {
+      expect(api.listResearchTasks).toHaveBeenLastCalledWith(TEAM_WORKSPACE.id);
+    });
+    expect(await screen.findByRole('button', { name: '销售部部门报告' })).toBeVisible();
   });
 });
