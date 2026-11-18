@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.riccon.platform.domain.audit.AuditActions;
+import com.riccon.platform.domain.organization.DepartmentStatus;
+import com.riccon.platform.domain.workspace.WorkspaceVisibility;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -110,6 +112,126 @@ class AuditDetailsPolicyTest {
                 .doesNotThrowAnyException();
         assertThatThrownBy(() ->
                         AuditDetailsPolicy.validate(AdditionalAuditActions.MESSAGE_SENT, Map.of("content", "secret")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("forbidden");
+    }
+
+    /** M03 部门动作只允许 ADR-0018 第 5 节列出的组织元数据键。 */
+    @Test
+    void departmentActionsAllowOnlyContractKeys() {
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AuditActions.DEPARTMENT_CREATED,
+                        Map.of(
+                                "targetTenantId", "tenant-a",
+                                "departmentId", "0193",
+                                "name", "研发部",
+                                "status", DepartmentStatus.ACTIVE.name())))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AuditActions.DEPARTMENT_RENAMED,
+                        Map.of("departmentId", "0193", "name", "平台研发部", "previousName", "研发部")))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AuditActions.DEPARTMENT_DISABLED,
+                        Map.of(
+                                "targetTenantId",
+                                "tenant-a",
+                                "departmentId",
+                                "0193",
+                                "status",
+                                DepartmentStatus.DISABLED.name(),
+                                "memberCount",
+                                12)))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AuditActions.DEPARTMENT_ENABLED,
+                        Map.of("departmentId", "0193", "status", DepartmentStatus.ACTIVE.name(), "memberCount", 12)))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AuditActions.DEPARTMENT_MEMBER_ADDED,
+                        Map.of(
+                                "targetTenantId", "tenant-a",
+                                "departmentId", "0193",
+                                "userId", "0194",
+                                "previousDepartmentId", "0192")))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AuditActions.DEPARTMENT_MEMBER_REMOVED,
+                        Map.of(
+                                "targetTenantId", "tenant-a",
+                                "departmentId", "0193",
+                                "userId", "0194",
+                                "removedWorkspaceMembers", 2)))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AuditActions.DEPARTMENT_MANAGER_CHANGED,
+                        Map.of(
+                                "targetTenantId", "tenant-a",
+                                "departmentId", "0193",
+                                "managerUserId", "0195",
+                                "previousManagerUserId", "0194")))
+                .doesNotThrowAnyException();
+    }
+
+    /** 部门成员名单与邮箱等 PII 不得进入审计 details。 */
+    @Test
+    void departmentActionsRejectMemberListAndPii() {
+        assertThatThrownBy(() -> AuditDetailsPolicy.validate(
+                        AuditActions.DEPARTMENT_MEMBER_REMOVED,
+                        Map.of("departmentId", "0193", "memberEmail", "alice@example.com")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("forbidden");
+        assertThatThrownBy(() -> AuditDetailsPolicy.validate(
+                        AuditActions.DEPARTMENT_CREATED, Map.of("departmentId", "0193", "memberList", "alice,bob")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not allowed");
+    }
+
+    /** M03 空间动作只允许 ID、名称与可见性枚举。 */
+    @Test
+    void workspaceActionsAllowOnlyContractKeys() {
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AuditActions.WORKSPACE_CREATED,
+                        Map.of(
+                                "workspaceId", "0193",
+                                "departmentId", "0194",
+                                "visibility", WorkspaceVisibility.DEPT.name())))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AuditActions.WORKSPACE_UPDATED,
+                        Map.of("workspaceId", "0193", "name", "研发空间", "previousName", "旧空间名")))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AuditActions.WORKSPACE_VISIBILITY_CHANGED,
+                        Map.of(
+                                "workspaceId",
+                                "0193",
+                                "visibility",
+                                WorkspaceVisibility.CUSTOM.name(),
+                                "previousVisibility",
+                                WorkspaceVisibility.DEPT.name(),
+                                "departmentId",
+                                "0194")))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AuditActions.WORKSPACE_MEMBER_ADDED, Map.of("workspaceId", "0193", "userId", "0194")))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AuditActions.WORKSPACE_MEMBER_REMOVED, Map.of("workspaceId", "0193", "userId", "0194")))
+                .doesNotThrowAnyException();
+    }
+
+    /** 空间成员名单与内容不得进入审计 details。 */
+    @Test
+    void workspaceActionsRejectMemberListAndContent() {
+        assertThatThrownBy(() -> AuditDetailsPolicy.validate(
+                        AuditActions.WORKSPACE_MEMBER_ADDED,
+                        Map.of("workspaceId", "0193", "userId", "0194", "memberList", "alice")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not allowed");
+        assertThatThrownBy(() -> AuditDetailsPolicy.validate(
+                        AuditActions.WORKSPACE_VISIBILITY_CHANGED,
+                        Map.of("workspaceId", "0193", "visibility", "CUSTOM", "content", "secret")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("forbidden");
     }

@@ -3,7 +3,8 @@ package com.riccon.platform.domain.audit;
 /**
  * 审计动作名。
  *
- * <p>与 ADR-0007 第 2 节一一对应；数据库存短名，查询与导出使用同一常量，禁止在业务代码里写字符串字面量。
+ * <p>与 ADR-0007 第 2 节及 ADR-0018 第 5 节一一对应；数据库存短名，查询与导出使用同一常量，
+ * 禁止在业务代码里写字符串字面量。
  */
 public interface AuditActions {
 
@@ -44,8 +45,34 @@ public interface AuditActions {
     /** 报告产物保存。 */
     String ARTIFACT_SAVED = "artifact.saved";
 
-    /** 数据导出（M03）。 */
+    /** 数据导出（M10）。 */
     String DATA_EXPORTED = "data.exported";
-    /** 查询审计（M03）。 */
+    /** 查询审计（M10）。 */
     String AUDIT_QUERIED = "audit.queried";
+
+    /** 平台管理员创建租户部门（M03，ADR-0018 第 5 节）。 */
+    String DEPARTMENT_CREATED = "department.created";
+    /** 重命名部门；停用部门不可改名（M03）。 */
+    String DEPARTMENT_RENAMED = "department.renamed";
+    /** 停用部门；只改状态，不清空成员归属（M03）。 */
+    String DEPARTMENT_DISABLED = "department.disabled";
+    /** 重新启用部门（M03）。 */
+    String DEPARTMENT_ENABLED = "department.enabled";
+    /** 账号加入部门；同一事务更新单主部门（M03）。 */
+    String DEPARTMENT_MEMBER_ADDED = "department.member.added";
+    /** 账号移出部门；同时清理本部门 CUSTOM 空间成员行（M03）。 */
+    String DEPARTMENT_MEMBER_REMOVED = "department.member.removed";
+    /** 任命/移交部门负责人；一次移交只写一条（M03）。 */
+    String DEPARTMENT_MANAGER_CHANGED = "department.manager.changed";
+
+    /** 在部门下创建团队空间（M03）。 */
+    String WORKSPACE_CREATED = "workspace.created";
+    /** 修改空间名称或描述（M03）。 */
+    String WORKSPACE_UPDATED = "workspace.updated";
+    /** 修改空间可见性（DEPT/CUSTOM），不可转为历史 TENANT（M03）。 */
+    String WORKSPACE_VISIBILITY_CHANGED = "workspace.visibility.changed";
+    /** 加入 CUSTOM 空间显式成员（M03）。 */
+    String WORKSPACE_MEMBER_ADDED = "workspace.member.added";
+    /** 移出 CUSTOM 空间显式成员（M03）。 */
+    String WORKSPACE_MEMBER_REMOVED = "workspace.member.removed";
 }

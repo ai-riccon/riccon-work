@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0037",
+  "module_id": "M03",
+  "title": "M03-B1a 领域词汇与共享接口",
+  "owner": "riccon/builder",
+  "status": "in_progress",
+  "write_scope": [
+    "platform/platform-domain/src/main/java/com/riccon/platform/domain/**",
+    "apps/api/src/main/java/com/riccon/api/identity/domain/RoleDefinitions.java",
+    "apps/api/src/main/java/com/riccon/api/audit/domain/AuditDetailsPolicy.java",
+    "apps/api/src/main/java/com/riccon/api/error/ErrorCodes.java",
+    "apps/api/src/main/java/com/riccon/api/organization/**",
+    "apps/api/src/test/java/com/riccon/api/audit/domain/AuditDetailsPolicyTest.java",
+    "apps/api/src/test/java/com/riccon/api/identity/domain/RoleDefinitionsTest.java"
+  ],
+  "acceptance": [
+    "WorkspaceVisibility、department.read/platform.department.manage、AuditActions/AuditTargetType 新增动作、ErrorCodes.RICCON_DEPT_409 存在",
+    "RoleDefinitions：PLATFORM_ADMIN 含 platform.department.manage，TENANT_ADMIN/MEMBER 含 department.read，租户角色不含部门管理",
+    "AuditDetailsPolicy 覆盖 department/workspace 动作与白名单，AuditDetailsPolicyTest 通过",
+    "定义 OrganizationDirectory 只读接口（部门、负责人、成员查询），供 B2 实现/B3 消费",
+    "PermissionCodes 注释同步 V2+V9，多项单测与 ArchUnit 通过",
+    "受影响测试与一次全量 verify 通过；不碰 V9、生产控制器或前端"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-18T16:04:52.185+08:00",
+  "updated_at": "2026-11-18T16:05:00.570+08:00",
+  "baseline_commit": "d2eb7bd6dc21f688bcd5a5ee2d878e5b3d4ce965"
+}

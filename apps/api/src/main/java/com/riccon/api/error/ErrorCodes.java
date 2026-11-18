@@ -32,6 +32,9 @@ public final class ErrorCodes {
     /** 状态冲突或唯一键冲突。 */
     public static final String CONFLICT = "RICCON-CONFLICT-409";
 
+    /** 部门名重复、账号已在其他/本部门、重复空间成员或移除当前负责人（ADR-0018 第 7.3 节）。 */
+    public static final String RICCON_DEPT_409 = "RICCON-DEPT-409";
+
     /** 文件上传内容不合法（空文件、缺少文件名等）。 */
     public static final String FILE_INVALID = "RICCON-FILE-400";
 

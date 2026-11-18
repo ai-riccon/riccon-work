@@ -7,8 +7,9 @@ import java.util.Set;
 /**
  * 审计 details 白名单。
  *
- * <p>ADR-0007 第 5 节要求 details 只写入白名单字段，禁止密码、token、Cookie、密钥、提示词、原文与完整 PII。
- * 本类在写入数据库前执行校验；未列出的动作只允许空 details，新增动作必须显式扩展白名单。
+ * <p>ADR-0007 第 5 节与 ADR-0018 第 5 节要求 details 只写入白名单字段，禁止密码、token、Cookie、密钥、
+ * 提示词、原文、部门成员名单与完整 PII。本类在写入数据库前执行校验；未列出的动作只允许空 details，
+ * 新增动作必须显式扩展白名单。
  */
 public final class AuditDetailsPolicy {
 
@@ -37,7 +38,33 @@ public final class AuditDetailsPolicy {
             // ADR-0007 第 2 节：审批审计只允许审批 ID、决定、审批人与工具名。
             Map.entry(AuditActions.APPROVAL_DECIDED, Set.of("approvalId", "decision", "approverUserId", "toolName")),
             Map.entry(AdditionalAuditActions.ARTIFACT_DOWNLOADED, Set.of("artifactId", "version")),
-            Map.entry(AdditionalAuditActions.TENANT_ACCESS_DENIED, Set.of("attemptedTenant", "reason")));
+            Map.entry(AdditionalAuditActions.TENANT_ACCESS_DENIED, Set.of("attemptedTenant", "reason")),
+            // M03 部门元数据：只记录 UUID、枚举与部门名；targetTenantId 只用于平台跨租户事件。
+            Map.entry(AuditActions.DEPARTMENT_CREATED, Set.of("targetTenantId", "departmentId", "name", "status")),
+            Map.entry(
+                    AuditActions.DEPARTMENT_RENAMED, Set.of("targetTenantId", "departmentId", "name", "previousName")),
+            Map.entry(
+                    AuditActions.DEPARTMENT_DISABLED,
+                    Set.of("targetTenantId", "departmentId", "status", "memberCount")),
+            Map.entry(
+                    AuditActions.DEPARTMENT_ENABLED, Set.of("targetTenantId", "departmentId", "status", "memberCount")),
+            Map.entry(
+                    AuditActions.DEPARTMENT_MEMBER_ADDED,
+                    Set.of("targetTenantId", "departmentId", "userId", "previousDepartmentId")),
+            Map.entry(
+                    AuditActions.DEPARTMENT_MEMBER_REMOVED,
+                    Set.of("targetTenantId", "departmentId", "userId", "removedWorkspaceMembers")),
+            Map.entry(
+                    AuditActions.DEPARTMENT_MANAGER_CHANGED,
+                    Set.of("targetTenantId", "departmentId", "managerUserId", "previousManagerUserId")),
+            // M03 租户内空间管理：不写成员名单、空间内容或文件名，只写 ID、名称与可见性枚举。
+            Map.entry(AuditActions.WORKSPACE_CREATED, Set.of("workspaceId", "departmentId", "visibility")),
+            Map.entry(AuditActions.WORKSPACE_UPDATED, Set.of("workspaceId", "name", "previousName")),
+            Map.entry(
+                    AuditActions.WORKSPACE_VISIBILITY_CHANGED,
+                    Set.of("workspaceId", "visibility", "previousVisibility", "departmentId")),
+            Map.entry(AuditActions.WORKSPACE_MEMBER_ADDED, Set.of("workspaceId", "userId")),
+            Map.entry(AuditActions.WORKSPACE_MEMBER_REMOVED, Set.of("workspaceId", "userId")));
 
     /** 任何情况下都不允许出现的敏感键（大小写不敏感）。 */
     private static final Set<String> FORBIDDEN_KEYS =

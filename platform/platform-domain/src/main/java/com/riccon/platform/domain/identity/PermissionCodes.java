@@ -3,9 +3,10 @@ package com.riccon.platform.domain.identity;
 /**
  * 权限码。
  *
- * <p>权限码是 RBAC 判定的唯一依据，格式 {@code <domain>.<action>}。新增权限码必须同时更新
- * {@code V2__identity_and_workspace.sql} 的权限字典、角色映射与 OpenAPI 的 {@code x-riccon-permission}。
- * M02 不提供自定义权限；M03 的部门数据范围通过额外的 scope 过滤实现，不改变这里的码值。
+ * <p>权限码是 RBAC 判定的唯一依据，格式 {@code <domain>.<action>}。新增权限码必须同时更新对应迁移的权限字典
+ * （V2 定义 M02 码，V9 定义 M03 部门码）、角色映射与 OpenAPI 的 {@code x-riccon-permission}。
+ * M02 不提供自定义权限；M03 新增 {@value #DEPARTMENT_READ} 与 {@value #PLATFORM_DEPARTMENT_MANAGE}，
+ * 部门数据范围由空间谓词执行，既有码值语义不变。
  */
 public interface PermissionCodes {
 
@@ -51,12 +52,17 @@ public interface PermissionCodes {
     /** 租户内角色授予/撤销。 */
     String TENANT_ROLE_MANAGE = "tenant.role.manage";
 
+    /** 读取本人所属部门；租户管理员可读本租户全部部门（M03 新增，V9 写入字典）。 */
+    String DEPARTMENT_READ = "department.read";
+
     /** 平台租户管理（仅保留租户 platform）。 */
     String PLATFORM_TENANT_MANAGE = "platform.tenant.manage";
+    /** 跨租户管理租户部门元数据，不含业务内容（M03 新增，V9 写入字典；仅 PLATFORM_ADMIN）。 */
+    String PLATFORM_DEPARTMENT_MANAGE = "platform.department.manage";
     /** 平台模型目录只读（M04 扩展写能力）。 */
     String PLATFORM_MODEL_READ = "platform.model.read";
     /** 平台 MCP 目录只读（M07 扩展注册与凭据托管）。 */
     String PLATFORM_MCP_READ = "platform.mcp.read";
-    /** 审计查询（M03 启用；M02 只写不读，权限码先保留）。 */
+    /** 审计查询（M10 启用；M02/M03 只写不读，权限码先保留）。 */
     String AUDIT_READ = "audit.read";
 }
