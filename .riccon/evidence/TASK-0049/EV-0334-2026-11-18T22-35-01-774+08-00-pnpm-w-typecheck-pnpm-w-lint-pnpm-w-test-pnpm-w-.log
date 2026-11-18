@@ -1,0 +1,134 @@
+# command: pnpm -w typecheck && pnpm -w lint && pnpm -w test && pnpm -w build && pnpm -w a11y
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-18T22:33:00.738+08:00
+# finished_at: 2026-11-18T22:35:01.510+08:00
+# duration_ms: 120771
+# exit_code: 0
+
+# --- stdout ---
+
+> riccon-work@0.1.0 typecheck /Users/ricky/Documents/projects/riccon-work
+> pnpm --filter @riccon/web run typecheck
+
+
+> @riccon/web@0.1.0 typecheck /Users/ricky/Documents/projects/riccon-work/apps/web
+> max setup && tsc --noEmit
+
+info  - [你知道吗？] 想快速修改 html 模板、DIY 项目？试试编写项目级插件，详见 https://umijs.org/docs/guides/directory-structure#plugints
+info  - generate files
+info  - Preparing...
+
+> riccon-work@0.1.0 lint /Users/ricky/Documents/projects/riccon-work
+> pnpm --filter @riccon/web run lint
+
+
+> @riccon/web@0.1.0 lint /Users/ricky/Documents/projects/riccon-work/apps/web
+> eslint --max-warnings=0 . && prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+
+> riccon-work@0.1.0 test /Users/ricky/Documents/projects/riccon-work
+> node apps/web/scripts/test.mjs
+
+
+ RUN  v5.1.0 /Users/ricky/Documents/projects/riccon-work/apps/web
+
+
+ Test Files  29 passed (29)
+      Tests  200 passed (200)
+   Start at  22:33:21
+   Duration  32.27s (import 55%, tests 25%, environment 12%, setup 6%, transform 2%)
+
+    Isolate  29 workers spawned · ~1.69s startup each (spawn + environment, per file)
+             at least ~2.76s faster with isolate: false — reuses workers across files instead of one per file
+
+
+> riccon-work@0.1.0 build /Users/ricky/Documents/projects/riccon-work
+> pnpm --filter @riccon/web run build
+
+
+> @riccon/web@0.1.0 build /Users/ricky/Documents/projects/riccon-work/apps/web
+> max build
+
+info  - [你知道吗？] ANALYZE=1 max build 可以分析产物的源码构成。
+info  - Umi v4.7.34
+info  - Preparing...
+[webpackbar] ℹ Compiling Webpack
+[webpackbar] ✔ Webpack: Compiled successfully in 10.39s
+info  - Memory Usage: 540.05 MB (RSS: 894.52 MB)
+
+info  - File sizes after gzip:
+
+  298.96 kB  dist/umi.js
+  105.24 kB  dist/587.async.js
+  38.05 kB   dist/218.async.js
+  33.45 kB   dist/407.async.js
+  28.9 kB    dist/94.async.js
+  20.22 kB   dist/511.async.js
+  19.58 kB   dist/p__chat__index.async.js
+  16.74 kB   dist/364.async.js
+  13.94 kB   dist/526.async.js
+  13.89 kB   dist/560.async.js
+  13.53 kB   dist/128.async.js
+  12.44 kB   dist/595.async.js
+  11.16 kB   dist/78.async.js
+  10.71 kB   dist/p__research__detail.async.js
+  10.53 kB   dist/787.async.js
+  8.25 kB    dist/674.async.js
+  8.15 kB    dist/165.async.js
+  8.07 kB    dist/p__research__index.async.js
+  7.84 kB    dist/p__admin__tenants__departments__index.async.js
+  7.18 kB    dist/120.async.js
+  7.07 kB    dist/528.async.js
+  6.55 kB    dist/569.async.js
+  6.12 kB    dist/p__admin__overview__index.async.js
+  6.06 kB    dist/106.async.js
+  5.84 kB    dist/186.async.js
+  5.83 kB    dist/434.async.js
+  5.05 kB    dist/693.async.js
+  3.92 kB    dist/2.async.js
+  3.71 kB    dist/653.async.js
+  3.61 kB    dist/p__login__index.async.js
+  3.57 kB    dist/layouts__workspace__index.async.js
+  3.42 kB    dist/301.async.js
+  3.13 kB    dist/728.async.js
+  3.01 kB    dist/p__admin__tenants__index.async.js
+  1.2 kB     dist/p__chat__index.chunk.css
+  1.07 kB    dist/p__research__detail.chunk.css
+  1.07 kB    dist/p__research__index.chunk.css
+  750 B      dist/p__admin__settings__index.async.js
+  652 B      dist/layouts__admin__index.async.js
+  464 B      dist/layouts__workspace__index.chunk.css
+  397 B      dist/p__404.async.js
+  390 B      dist/p__admin__tenants__departments__index.chunk.css
+  312 B      dist/p__admin__tenants__index.chunk.css
+  262 B      dist/umi.css
+  213 B      dist/632.async.js
+
+event - Build index.html
+
+> riccon-work@0.1.0 a11y /Users/ricky/Documents/projects/riccon-work
+> playwright test --config e2e/playwright.config.ts --grep @a11y
+
+
+Running 8 tests using 1 worker
+
+  ✓  1 [chromium] › e2e/tests/admin.spec.ts:10:3 › 管理端布局 › 渲染 ProLayout 与占位菜单且无严重可访问性问题 @a11y (4.5s)
+  ✓  2 [chromium] › e2e/tests/chat.spec.ts:10:3 › 员工端工作空间 › 登录后展示租户、会话列表与空态，无严重可访问性问题 @a11y (2.9s)
+  ✓  3 [chromium] › e2e/tests/j1.spec.ts:12:3 › J1 通用问答与文件处理 › 上传、流式引用、停止与重开完整闭环 @a11y (7.1s)
+  ✓  4 [chromium] › e2e/tests/j1.spec.ts:67:3 › J1 通用问答与文件处理 › 回答完成后按需查看运行详情与模型调用记录 @a11y (6.0s)
+  ✓  5 [chromium] › e2e/tests/j2.spec.ts:17:3 › J2 市场调研报告 › 创建、审批、工具取数与报告产物完整闭环 @a11y (12.7s)
+  ✓  6 [chromium] › e2e/tests/login.spec.ts:10:3 › 登录页 › 错误凭据显示统一失败提示，不泄露账号是否存在 @a11y (2.5s)
+  ✓  7 [chromium] › e2e/tests/login.spec.ts:25:3 › 登录页 › 正确凭据进入工作空间并显示租户名 @a11y (2.8s)
+  ✓  8 [chromium] › e2e/tests/m03.spec.ts:234:3 › M03 部门与空间共享 › E2E-M03-07 部门管理页 axe 无 serious/critical @a11y (4.0s)
+
+  8 passed (49.5s)
+
+# --- stderr ---
+(node:75666) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:75848) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:76144) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
