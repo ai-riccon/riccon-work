@@ -4,10 +4,11 @@
 // 退出码只在“必须成立”的断言失败时非零；契约声明的端点缺失记录为 gaps，由评审定级。
 
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { ApiClient } from "./lib/http.mjs";
-import { queryValue, runSql } from "./lib/mysql.mjs";
+import { binaryUuid, queryValue, runSql } from "./lib/mysql.mjs";
 
 const root = process.cwd();
 const seedPath =
@@ -55,6 +56,10 @@ const crossChecks = [
     `/api/v1/artifacts/${journey.approvedArtifactId}/versions/1/download-url`,
   ],
   [
+    "artifactContent",
+    `/api/v1/artifacts/${journey.approvedArtifactId}/versions/1/content`,
+  ],
+  [
     "knowledgeDocument",
     `/api/v1/knowledge/documents/${seed.knowledge.documentId}`,
   ],
@@ -72,6 +77,52 @@ for (const [name, url] of crossChecks) {
     `cross-tenant ${name} leaked content`,
   );
 }
+// ---------- 同源产物正文端点：响应头、正文与不暴露对象存储 ----------
+const artifactContent = await alpha.get(
+  `/api/v1/artifacts/${journey.approvedArtifactId}/versions/1/content`,
+);
+assert.equal(
+  artifactContent.status,
+  200,
+  `artifact content must be served same-origin: ${artifactContent.status} ${artifactContent.text}`,
+);
+const contentBytes = Buffer.byteLength(artifactContent.text, "utf8");
+assert.match(
+  artifactContent.headers.get("content-type") ?? "",
+  /^text\/markdown/,
+  "artifact content must be text/markdown",
+);
+assert.equal(
+  Number(artifactContent.headers.get("content-length")),
+  contentBytes,
+  "Content-Length must match body bytes",
+);
+assert.equal(
+  artifactContent.headers.get("cache-control"),
+  "no-store",
+  "artifact content must not be cached",
+);
+assert.equal(
+  artifactContent.headers.get("x-content-type-options"),
+  "nosniff",
+  "artifact content must disable MIME sniffing",
+);
+for (const marker of ["# ", "## 摘要", "## 引用清单", "MCP 工具"]) {
+  assert.ok(
+    artifactContent.text.includes(marker),
+    `artifact content must contain ${marker}`,
+  );
+}
+assert.ok(
+  !artifactContent.text.includes("tenants/"),
+  "artifact content must not expose storage keys",
+);
+observations.artifactContent = {
+  bytes: contentBytes,
+  contentType: artifactContent.headers.get("content-type"),
+  cacheControl: artifactContent.headers.get("cache-control"),
+};
+
 const betaApprovals = await beta.get("/api/v1/approvals?page=1&size=100");
 assert.equal(betaApprovals.status, 200);
 assert.equal(
@@ -307,6 +358,54 @@ observations.j1FirstTokenMs = j1ChatInvocation.firstTokenMs;
 observations.j1InvocationDurationMs = j1ChatInvocation.durationMs;
 observations.dbFirstTokenMs = dbFirstToken;
 observations.crossTenantRuns = `${betaJ1Run.status}/${betaJ2Run.status}`;
+
+// ---------- 同源正文 2 MiB 上限：数据库元数据已超限时直接 413，且不泄露对象 key ----------
+const oversizedArtifactId = randomUUID();
+const oversizedVersionId = randomUUID();
+const oversizedStorageKey = `tenants/${seed.tenants.alpha}/artifacts/${oversizedArtifactId}/v1.md`;
+const workspaceId = seed.workspaces.alpha.id;
+const ownerUserId = seed.workspaces.alpha.ownerUserId;
+runSql(`
+INSERT INTO artifact (
+  tenant_id, id, workspace_id, research_task_id, conversation_id, kind, title,
+  status, current_version, created_by, created_at, updated_at
+) VALUES (
+  '${seed.tenants.alpha}', ${binaryUuid(oversizedArtifactId)}, ${binaryUuid(workspaceId)},
+  NULL, NULL, 'REPORT', '超限正文验证产物', 'SAVED', 1, ${binaryUuid(ownerUserId)}, NOW(6), NOW(6)
+);
+INSERT INTO artifact_version (
+  tenant_id, id, artifact_id, version, storage_key, content_type, size_bytes,
+  sha256, summary, created_by, created_at
+) VALUES (
+  '${seed.tenants.alpha}', ${binaryUuid(oversizedVersionId)}, ${binaryUuid(oversizedArtifactId)},
+  1, '${oversizedStorageKey}', 'text/markdown', 2097153,
+  '0000000000000000000000000000000000000000000000000000000000000000',
+  '超限正文', ${binaryUuid(ownerUserId)}, NOW(6)
+);
+`);
+const oversizedContent = await alpha.get(
+  `/api/v1/artifacts/${oversizedArtifactId}/versions/1/content`,
+);
+assert.equal(
+  oversizedContent.status,
+  413,
+  `content over 2 MiB must be 413: ${oversizedContent.status} ${oversizedContent.text}`,
+);
+assert.equal(oversizedContent.data?.code, "RICCON-ARTIFACT-413");
+assert.ok(
+  !oversizedContent.text.includes(oversizedStorageKey),
+  "413 response must not expose storage key",
+);
+observations.oversizedContent = {
+  status: oversizedContent.status,
+  code: oversizedContent.data?.code,
+};
+runSql(`
+DELETE FROM artifact_version
+ WHERE tenant_id = '${seed.tenants.alpha}' AND id = ${binaryUuid(oversizedVersionId)};
+DELETE FROM artifact
+ WHERE tenant_id = '${seed.tenants.alpha}' AND id = ${binaryUuid(oversizedArtifactId)};
+`);
 
 // ---------- 契约声明的端点缺口 ----------
 const contractEndpoints = [
