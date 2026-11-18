@@ -2,11 +2,11 @@
 
 Status: proposed
 Date: 2026-11-19
-Reviewers: `riccon/lead`（完整性/合同一致性）、`riccon/verifier`（可测试性/安全边界）、`riccon/ops`（配置/轮换/回滚）；独立评审记录写入 `docs/ARCHITECTURE.md` 评审状态表
-Approved-by: pending（DEC-0014 已确认产品口径；ADR 本身未经评审，不自行标 `accepted`）
+Reviewers: `riccon/lead`（完整性/合同一致性）、`riccon/verifier`（可测试性/安全边界）、`riccon/ops`（配置/轮换/回滚）；REV-M10-ARCH-001（2026-11-19，fail；本轮修订 F-001/002/010/011 等）；独立评审记录写入 `docs/ARCHITECTURE.md` 评审状态表
+Approved-by: pending（DEC-0014 已确认产品口径；DEC-0017 已确认 AC-12 联合登出；ADR 本身未经复审，不自行标 `accepted`）
 Review-date: 2026-11-19T23:59:59+08:00
 Supersedes: none
-关联：ADR-0003（租户上下文）、ADR-0006（密钥与信封加密）、ADR-0007（审计）、ADR-0009（租户隔离）、ADR-0012（数据模型）、ADR-0013（会话/CSRF）、ADR-0018（M03 组织与数据范围）、DEC-0011、DEC-0013、DEC-0014、DEC-0015、PRODUCT §8 M10-AC-08..14/21
+关联：ADR-0003（租户上下文）、ADR-0006（密钥与信封加密）、ADR-0007（审计）、ADR-0009（租户隔离）、ADR-0012（数据模型）、ADR-0013（会话/CSRF）、ADR-0018（M03 组织与数据范围）、DEC-0011、DEC-0013、DEC-0014、DEC-0015、DEC-0017、PRODUCT §8 M10-AC-08..14/21
 
 ## Context
 
@@ -50,6 +50,7 @@ M03 已完成部门与数据范围，用户 accepted（DEC-0016）。M10 承接 
 | `enabled`            | 否   | 默认 `true`；`false` 等同未配置，但保留配置便于运维排查                |
 
 - 启动校验（fail-fast，仅针对已提供的配置）：JSON 可解析、字段非空、`tenantCode` 符合 `[A-Za-z0-9][A-Za-z0-9_-]{0,63}`、`issuer` 绝对 URL 且 HTTPS（`riccon.oidc.allow-http=true` 仅限 local/test）、issuer 规范化后唯一、`clientId`/`clientSecret` 非空、scopes 含 `openid` 且不含 `offline_access`。配置格式错误导致应用启动失败；**未配置任何 IdP 时正常启动**，仅关闭企业登录。
+- **解析失败不得泄密（F-010）**：JSON 解析/字段校验异常只记录配置项序号、字段路径、错误类型与位置，**不得**把原始 JSON、配置对象或 `clientSecret` 写入日志、异常消息、Actuator 或启动 banner；`OidcProperties` 的 `toString` 对 secret 做掩码。`SEC-OIDC-001` 增加 malformed `RICCON_OIDC_IDPS` 的日志扫描，断言不含 secret 值/原始片段。
 - 未在配置中的租户：企业登录不可用，登录页显示“该租户未开通企业账号登录”，内置账号不受影响。
 - **启用/停用**：配置存在且 `enabled=true` 即启用；移除或置 `false` 后重启生效。M10 不提供运行时热更新，避免“配置已改但实例行为不一致”。多实例必须使用同一份配置滚动重启。
 - **密钥轮换**：IdP 侧先允许新旧 secret 并存，再更新 Secret 并滚动重启；新登录使用新 secret，旧实例上的在途授权码可能失败并返回 `idp_unavailable`，用户重试即可。因为不存 token，轮换不需要失效会话。
@@ -61,11 +62,11 @@ M03 已完成部门与数据范围，用户 accepted（DEC-0016）。M10 承接 
 
 - **Authorization Code + PKCE（S256）+ OIDC nonce**；不使用 implicit/hybrid；不请求 `offline_access`，不保存 refresh token。
 - 每租户一个 `ClientRegistration`，registrationId 固定 `tenant-{tenantCode}`；授权入口 `GET /api/v1/auth/oidc/authorize/{registrationId}`，回调 `GET /api/v1/auth/oidc/callback/{registrationId}`；回调 URI 为 `{publicBaseUrl}/api/v1/auth/oidc/callback/{registrationId}`，必须在 IdP 精确注册。
-- 使用 Spring Security 7 的 `oauth2Login`（`spring-boot-starter-oauth2-client`，Apache-2.0，与既有 Spring Security 同栈）：
+- 使用 Spring Security 7 的 `oauth2Login`（`spring-boot-starter-security-oauth2-client`，Spring Boot 4.1 canonical starter；Apache-2.0，与既有 Spring Security 同栈）：
   - 动态 `ClientRegistrationRepository` 按 registrationId 从部署配置构建；`clientAuthenticationMethod=CLIENT_SECRET_BASIC`；`requireProofKey=true`，由默认 resolver 加 PKCE；
   - 默认 `DefaultOAuth2AuthorizationRequestResolver` 在 `openid` scope 下自动生成 nonce：原始 nonce 存服务端授权请求属性，哈希后的 nonce 发给 IdP，回调时由 `OidcAuthorizationCodeAuthenticationProvider` 校验；
   - `AuthorizationRequestRepository` 使用会话内实现（默认 `HttpSessionOAuth2AuthorizationRequestRepository`）：state、nonce、PKCE verifier 均只在服务端会话，回调一次后删除，重放/过期回调失败；
-  - 不调用 userinfo：`ClientRegistration` 不配置 userinfo URI，只用 ID Token 的 `sub`；默认 scope 只含 `openid`，不请求 `email`/`profile`；
+  - **不调用 userinfo（F-011）**：构建 `ClientRegistration` 时显式清空/忽略 discovery 返回的 `userinfo_endpoint`（`ProviderDetails.userInfoEndpoint` 不设置 URI）；使用自定义 `OidcUserService` 只从 ID Token 构建 `DefaultOidcUser`，禁止携带 access token 请求 userinfo；测试 IdP 断言整个登录流程没有 `/userinfo` 请求。默认 scope 只含 `openid`，不请求 `email`/`profile`；
   - ID Token 校验：签名（JWKS）、`iss` 与配置/发现文档一致、`aud` 含 clientId、`exp`、nonce；允许时钟偏差 ≤ 60 秒；`sub` 非空且 ≤ 255 字符。
 - **发现文档**：首次使用时懒加载 `{issuer}/.well-known/openid-configuration`，进程内缓存 10 分钟，失败退避 30 秒；发现失败返回 `idp_unavailable`，**不阻塞应用启动、不影响内置账号登录**。发现文档的 `issuer` 必须与配置规范化后完全一致，否则按 `issuer_mismatch` 失败。
 - **不存 token**：提供 `NoopOAuth2AuthorizedClientRepository`，登录成功后 access/refresh/ID token 不写入会话、不写数据库、不写日志、不回传浏览器。浏览器只收到会话 Cookie 与最终的重定向；回调 URL 只出现标准 `code`/`state`，随后被服务端消费。响应体、前端存储、日志、审计、错误页均不得出现 token。
@@ -77,6 +78,22 @@ M03 已完成部门与数据范围，用户 accepted（DEC-0016）。M10 承接 
 - **CSRF**：所有写接口保持 `X-CSRF-TOKEN`；授权入口是顶层 GET 链接，回调是 GET。登录 CSRF 由“state 绑定本会话 + nonce + 授权请求一次消费”缓解；不接受跨站 POST 发起登录。
 - **无 JWT**：不签发、不校验自有 JWT；ID Token 只在服务端回调内校验并立即丢弃，不作为 API 凭据。
 - **过滤器链约束**：`SecurityConfig` 只对 `GET /api/v1/auth/oidc/providers`、`GET /api/v1/auth/oidc/authorize/**`、`GET /api/v1/auth/oidc/callback/**` 增加 `permitAll`，其余 `anyRequest().denyAll()` 与 `/api/v1/**` authenticated 保持不变；不得启用默认登录页、表单登录、请求缓存自动跳转或 `oauth2Client` 的 token 持久化。授权入口是显式链接，未认证的普通 API 仍返回 JSON 401。
+
+#### 2.1 失败路径会话清理（F-001，强制）
+
+Spring Security 的 `AbstractAuthenticationProcessingFilter.successfulAuthentication` 会在调用 `successHandler` **之前**执行 `securityContextRepository.saveContext`。因此不能只依赖成功处理器替换主体，否则 `account_not_bound`、`account_disabled`、`tenant_unavailable` 等业务失败可能把 `OAuth2AuthenticationToken`/`OidcUser`（含 ID Token）留在 `HttpSessionSecurityContextRepository`。实现必须同时满足：
+
+1. **仓储层禁止持久化 OIDC 主体**：用 `OidcAwareSecurityContextRepository` 包装 `HttpSessionSecurityContextRepository`；`saveContext` 遇到 principal 为 `OidcUser`/`OAuth2AuthenticationToken` 时只更新当前线程的 `SecurityContextHolder`，**不写会话**（或写空上下文）；只有成功处理器构造的 `RicconPrincipal` 才允许落会话。
+2. **业务校验前移**：账号绑定、禁用、租户状态、issuer 匹配放在自定义 `OidcUserService`/`AuthenticationProvider` 中，在认证成功前抛 `OAuth2AuthenticationException`；失败处理器负责重定向，绝不调用成功处理器。
+3. **失败清理**：`failureHandler` 与成功处理器内的任何异常统一执行 `OidcLoginCleanup.reject`：
+   - `SecurityContextHolder.clearContext()`；
+   - `securityContextRepository.saveContext(空上下文, request, response)` 并删除 `SPRING_SECURITY_CONTEXT` 会话属性；
+   - `authorizationRequestRepository.removeAuthorizationRequest(request, response)`；
+   - `request.getSession(false)` 存在时 `invalidate()`；
+   - `NoopOAuth2AuthorizedClientRepository` 确保没有 token 可删；
+   - 审计 `auth.login.failed`（尽力而为，清理失败不得掩盖原错误）；
+   - 302 `/login?oidcError=<原因码>`，不记录/回显 code、state、token。
+4. **断言**：`IT-OIDC-001/004/006` 在失败回调后断言 `GET /auth/session` 返回 401；`SPRING_SESSION_ATTRIBUTES` 不含 `SPRING_SECURITY_CONTEXT`/`OidcUser`/`id_token`；响应与日志不含 token；`SEC-OIDC-001` 扫描会话表序列化字节与日志。成功路径最终会话只能含 `RicconPrincipal`，不得含 OIDC 主体或 ID Token。
 
 ### 3. 账号开通与绑定
 
@@ -113,6 +130,7 @@ M03 已完成部门与数据范围，用户 accepted（DEC-0016）。M10 承接 
 
 - 失败原因码（稳定、面向 UI；不出现 IdP 原始错误、code、state、token、内部地址或堆栈）：
   `idp_unavailable`、`state_invalid`、`access_denied`、`account_not_bound`、`account_disabled`、`tenant_unavailable`、`issuer_mismatch`、`rate_limited`、`login_failed`。
+- 所有失败（协议错误与业务拒绝）都先执行 §2.1 的会话清理，再 302；成功处理器内异常同样清理，不允许“半登录”会话残留。
 - 登录页文案与下一步（M10-AC-13）：
   - `idp_unavailable`：稍后重试 / 改用内置账号；
   - `state_invalid`：重新发起企业登录；
@@ -126,19 +144,23 @@ M03 已完成部门与数据范围，用户 accepted（DEC-0016）。M10 承接 
   - 成功：`auth.login.succeeded`，`details.method=oidc`、`sessionIdHash`（新会话 ID 的 SHA-256）；
   - 失败：`auth.login.failed`，`details.reasonCode` 取上述原因码（`method=oidc` 暂不入白名单，避免扩展；租户 + 账号绑定已能区分来源）；
   - 审计写失败使登录失败（fail-closed）；未知 tenantCode 的失败只写进程日志，不写 `platform` 审计（避免伪造租户写入垃圾事件）。
-- 租户枚举：`providers` 端点对未知租户与未配置租户返回同一响应（`enabled=false`），不返回租户名、IdP 地址或错误差异；该端点不写审计。
+- 租户枚举：`providers` 端点对未知租户与未配置租户返回同一响应（`enabled=false`），不返回租户名、IdP 地址或错误差异；该端点不写审计。按客户端 IP 做进程内 `60 次/分钟` 轻量限流，超限 429 `RICCON-RATE-429`；不按 tenantCode 计数，避免用响应差异枚举租户。多实例共享限流在 M09 接入。
 
-### 5. 登出与会话生命周期
+### 5. 登出与会话生命周期（DEC-0017 A）
 
-- **本地登出是权威路径**：`POST /api/v1/auth/logout`（CSRF）使会话失效、写 `auth.logout`、清空安全上下文；响应 204，可选响应头 `X-Riccon-Federated-Logout-Url`（绝对 HTTPS，指向配置的 `endSessionEndpoint`，带 `client_id` 与 `post_logout_redirect_uri={publicBaseUrl}/login?loggedOut=1`）。是否提供该头由当前账号 `auth_source=OIDC` 且租户配置了 `endSessionEndpoint` 决定；LOCAL 账号不提供。
-- **联合登出是可选动作**：RP-Initiated Logout 必须是浏览器顶层导航，且无法在 IdP 不可达时保持本页提示；因此 M10 的语义是：本地登出始终成功并显示“已退出本地会话”；若响应头存在，登录页提供“同时退出企业账号”按钮，用户点击后导航到 IdP。**不声称在 IdP 不可达时自动完成 IdP 登出**；这满足 AC-12 的“本地登出仍成功并提示已在本地退出”，并把 IdP 会话结束做成显式、可测试的动作。
-- 不保存 ID Token，因此不使用 `id_token_hint`；只发送 `client_id` 与 `post_logout_redirect_uri`。IdP 要求 `id_token_hint` 时视为不支持联合登出，配置不填 `endSessionEndpoint`。
+- **本地登出先执行且是权威结果**：`POST /api/v1/auth/logout`（CSRF）先使会话失效、清空安全上下文、写 `auth.logout`；**不依赖 IdP 可达性**。响应 204，可选响应头 `X-Riccon-Federated-Logout-Url`（绝对 HTTPS，指向配置的 `endSessionEndpoint`，带 `client_id` 与 URL 编码的 `post_logout_redirect_uri={publicBaseUrl}/login?loggedOut=1&federated=1`）。是否提供该头由当前账号 `auth_source=OIDC` 且租户配置了 `endSessionEndpoint` 决定；LOCAL 账号不提供。
+- **配置了 end-session 时自动导航（DEC-0017 A）**：SPA 收到 204 后读取响应头，把联合登出 URL 暂存到 `sessionStorage`（只存 URL，不含 token），立即导航到 `/login?loggedOut=1&federated=pending`；登录页先渲染“已退出本地会话”，随后在下一个渲染 tick（≤300ms）用 `window.location.assign` 做**顶层导航**到 IdP end-session。IdP 通过 `post_logout_redirect_uri` 返回 `/login?loggedOut=1&federated=1`，显示“已退出本地会话和企业账号”。这是点击一次登出的完整流程，不是第二次点击。
+- **IdP 不可达/未配置**：本地会话已在导航前失效；跨域顶层导航失败由浏览器处理，应用无法在同页捕获跨域失败。登录页在导航前已显示“已退出本地会话”，浏览器后退/历史仍可回到该提示；用户可直接用内置账号登录。不把本地登出回滚，也不声称 IdP 会话已结束。未配置 `endSessionEndpoint` 时停留在登录页并明确“仅退出本地会话”。
+- **登录页状态**：`/login?loggedOut=1` 表示仅本地退出；`&federated=pending` 表示正在导航结束企业会话；`&federated=1` 表示 IdP 已回跳、企业会话已结束。导航失败不会改写为 `federated=1`；返回历史时显示“已退出本地会话”和“重试退出企业账号”链接（若 URL 仍在 sessionStorage）。
+- **不保存 ID Token**，因此不使用 `id_token_hint`；只发送 `client_id` 与 `post_logout_redirect_uri`。IdP 要求 `id_token_hint` 时视为不支持联合登出，配置不填 `endSessionEndpoint`；不得为了 hint 持久化 ID token。
+- **测试 IdP 必须实现 end-session**：校验 `client_id`/`post_logout_redirect_uri`，清除 IdP 会话后 302 回登录页；`E2E-M03-03` 断言点击一次登出后 IdP 会话被清除、回到登录页、后退不能恢复。IdP 不可达场景用 Playwright 路由中止 end-session URL：断言本地会话已失效、登录页显示“已退出本地会话”、无残留认证 Cookie。
 - 并发登录：允许多个并发会话（与内置账号一致），M10 不做会话登记表、不做“踢出其他设备”；账号禁用、密码解绑、IdP 配置移除是撤销路径。多设备会话统一失效后置。
-- 浏览器后退不能恢复登录态：会话已失效、SPA 清空本地状态、API 响应 `Cache-Control: no-store`。
+- 浏览器后退不能恢复登录态：会话已失效、SPA 清空本地状态、API 响应 `Cache-Control: no-store`。共享工作站场景由“自动 end-session + 本地先失效”覆盖；若 IdP 不支持 end-session，界面必须提示仅本地退出，不能声称共享工作站安全。
 
 ### 6. 依赖、配置样例、测试 IdP、轮换与回滚
 
-- 依赖：`spring-boot-starter-oauth2-client`（Spring Security 7 自带 OAuth2 Client 与 Nimbus JOSE，Apache-2.0）。不引入新的外部服务、不引入 Redis、不引入自有 JWT 库。依赖进入 Trivy 扫描范围，B-06 例外不扩大。
+- 依赖：`spring-boot-starter-security-oauth2-client`（Spring Boot 4.1 canonical starter；Spring Security 7 自带 OAuth2 Client 与 Nimbus JOSE，Apache-2.0）。不引入新的外部服务、不引入 Redis、不引入自有 JWT 库。依赖进入 Trivy 扫描范围，B-06 例外不扩大。
+- **依赖/配置 Ops 前提（F-012）**：生产必须由 Helm Secret 注入 `RICCON_OIDC_IDPS` 与 `RICCON_PUBLIC_BASE_URL`；代理需正确转发 scheme/host（或使用显式 public base），否则 redirect_uri 不匹配。Secret 轮换、`publicBaseUrl` 变更、多实例滚动重启顺序由 Ops 在 M09 运行手册评审；启动配置解析失败不得打印 secret（§1）。
 - 配置样例（值全部来自环境/Secret，示例不是可用密钥）：
 
 ```yaml
@@ -168,7 +190,7 @@ riccon:
 ]
 ```
 
-- **测试 IdP**：M10 需要一个确定性、可离线运行的本地 OIDC Provider 供 E2E 使用（authorize/token/JWKS/discovery/end-session，支持 state/nonce/PKCE 校验与 `access_denied`/`idp_down` 故障注入）。它可以是被测代码之外的测试夹具（Node mock 或测试容器），不得进入生产镜像；集成测试可用本地 stub 元数据与 JWKS。Keycloak 等真实 IdP 只做人工兼容抽查，不作为 gate 必需项。
+- **测试 IdP**：M10 需要一个确定性、可离线运行的本地 OIDC Provider 供 E2E 使用（discovery/authorize/token/JWKS/end-session），校验 state/nonce/PKCE，支持 `access_denied`、`idp_down`、bad state 故障注入；end-session 校验 `client_id`/`post_logout_redirect_uri` 并清除 IdP 会话。它由 V1 独立验证任务在 `e2e/oidp/**` + `e2e/support/oidc/**` 落地，不得进入生产镜像；集成测试可用本地 stub 元数据/JWKS。测试 IdP 记录 `/userinfo` 请求计数，断言为 0。Keycloak 等真实 IdP 只做人工兼容抽查，不作为 gate 必需项。
 - **可观测性**：按 method 统计登录成功/失败；`idp_unavailable` 计数；发现文档刷新失败日志只含 issuer 与错误类型，不含 token/code/secret；不记录回调查询串。
 - **回滚**：
   - 配置回滚：移除/禁用租户配置并重启 → 企业登录关闭；内置账号不受影响；已绑定 OIDC 的账号无法登录，需恢复配置或由管理员用 `oidc-binding/remove` 设置本地密码。
@@ -195,25 +217,25 @@ riccon:
 
 ### 8. AC 映射
 
-| AC       | 设计落点                                                         | 验证线索（Verifier 独立）        |
-| -------- | ---------------------------------------------------------------- | -------------------------------- |
-| AC-08    | 授权码 + PKCE、会话 Cookie 复用、无 JWT/无 token                 | `E2E-M03-03`、`SEC-OIDC-001`     |
-| AC-09    | 显式绑定、不按邮箱、绑定后命中同一账号与角色                     | `E2E-M03-04`、`IT-OIDC-001..002` |
-| AC-10    | 身份键 `(tenant, issuer, subject)`，不读邮箱；两租户同邮箱不合并 | `IT-OIDC-003`                    |
-| AC-11    | 禁用拒绝建会话；既有会话下一请求失效                             | `IT-OIDC-004`、`SEC-OIDC-002`    |
-| AC-12    | 本地登出权威；联合登出可选并显式；后退不可恢复                   | `E2E-M03-03`、`IT-OIDC-005`      |
-| AC-13    | 四类失败独立原因码与下一步，无原始错误/令牌                      | `E2E-M03-04`、`IT-OIDC-006`      |
-| AC-14    | Cookie 属性/CSRF/超时与内置账号一致；无 JWT/refresh token        | `SEC-OIDC-003`、`IT-OIDC-007`    |
-| AC-21 段 | 登录页加载/空/错误/无权限/成功态、375 px、键盘、axe              | `E2E-M03-07`（OIDC 段）、`@a11y` |
+| AC       | 设计落点                                                                                                                     | 验证线索（Verifier 独立）        |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| AC-08    | 授权码 + PKCE、会话 Cookie 复用、无 JWT/无 token                                                                             | `E2E-M03-03`、`SEC-OIDC-001`     |
+| AC-09    | 显式绑定、不按邮箱、绑定后命中同一账号与角色                                                                                 | `E2E-M03-04`、`IT-OIDC-001..002` |
+| AC-10    | 身份键 `(tenant, issuer, subject)`，不读邮箱；两租户同邮箱不合并                                                             | `IT-OIDC-003`                    |
+| AC-11    | 禁用拒绝建会话；既有会话下一请求失效                                                                                         | `IT-OIDC-004`、`SEC-OIDC-002`    |
+| AC-12    | 点击一次登出：本地先失效；配置 end-session 时自动顶层导航到 IdP 结束会话并回登录页；IdP 不可达仍本地成功并提示；后退不可恢复 | `E2E-M03-03`、`IT-OIDC-005`      |
+| AC-13    | 四类失败独立原因码与下一步，无原始错误/令牌                                                                                  | `E2E-M03-04`、`IT-OIDC-006`      |
+| AC-14    | Cookie 属性/CSRF/超时与内置账号一致；无 JWT/refresh token                                                                    | `SEC-OIDC-003`、`IT-OIDC-007`    |
+| AC-21 段 | 登录页加载/空/错误/无权限/成功态、375 px、键盘、axe                                                                          | `E2E-M03-07`（OIDC 段）、`@a11y` |
 
 ### 9. Builder 任务边界
 
-完整任务图见 ADR-0020 §8。本 ADR 对应：
+完整任务图、文件级写范围与依赖见 ADR-0020 §8。本 ADR 对应：
 
-- **M10-B1 OIDC 后端**：配置模型/校验、动态 `ClientRegistrationRepository`、发现缓存、`oauth2Login` 过滤器链、成功/失败处理器、登出响应头、审计、限流、领域常量；写范围限 `apps/api/.../oidc/**`、`auth/**`、`config/**`、`platform-domain` 常量、`AuditDetailsPolicy`、`ErrorCodes`、`application.yml` 与对应测试。
-- **M10-B2 账号绑定后端**：`UserCreateRequest` OIDC 分支、绑定/解绑端点、`user_credential` 删除与重建、`UserSummary.authSource`、审计、冲突语义；写范围限用户管理/身份仓储/DTO。
-- **M10-B4 Web OIDC 段**：登录页企业账号入口与错误态、租户 provider 查询、用户管理绑定/解绑 UI、375 px/键盘/axe。
-- **M10-V 独立验证**：`SEC-OIDC-001..003`、`IT-OIDC-*` 对照、`E2E-M03-03/04`、a11y、无 token 检查、回滚演练。
+- **M10-B1 OIDC 登录/登出与共享词汇**：配置模型/校验（含 secret 脱敏）、动态 `ClientRegistrationRepository`、发现缓存、无 userinfo、`oauth2Login` 过滤器链、OIDC-aware `SecurityContextRepository`、成功/失败清理、自动联合登出、审计、限流；唯一 owner：`AuditActions`/`AdditionalAuditActions`/`AuditDetailsPolicy`/`RoleDefinitions`/`ErrorCodes`。写范围见 ADR-0020 §8。
+- **M10-B2 账号开通/绑定**：`UserCreateRequest` OIDC 分支、绑定/解绑、`user_credential` 删除与重建、`UserSummary.authSource`、审计、冲突语义；不写 `audit/domain/**`。
+- **M10-B4 Web OIDC 段**：登录页企业账号入口、provider 查询、自动联合登出落地页、绑定/解绑 UI、375 px/键盘/axe。
+- **M10-V1 独立验证**：`SEC-OIDC-001..003`、`IT-OIDC-*` 对照、`E2E-M03-03/04`、a11y、无 token/无 userinfo 检查、会话清理断言、联合登出/IdP 不可达场景；V1 同时拥有 `e2e/oidp/**` 测试 IdP 与 E2E 夹具，见 ADR-0020 §8。
 
 ### 10. 明确不做 / 后置
 

@@ -27,8 +27,9 @@ info:
     ## 审计查询与导出（M10）
     - 查询只读：`GET /api/v1/audit-events`，权限 `audit.read`；租户从主体派生，时间范围必须带偏移且不超过 180 天。
     - 导出需审批：申请人不得自批；同租户另一管理员审批，单管理员租户由平台管理员审批（仅元数据）。
-    - 只有申请人可下载；批准后 24 小时过期；CSV 流不落盘；不含 `source_ip`、token、凭据、原文或邮箱。
-    - 平台管理员不能查询目标租户审计明细；平台来源事件对目标租户不可见（DEC-0013、M03 F-009）。
+    - 只有申请人可下载；批准后按 TTL（默认 24 小时）过期；CSV 流不落盘；不含 `source_ip`、token、凭据、原文或邮箱；危险公式前缀转义。
+    - 平台管理员不能查询目标租户审计明细；平台来源事件对目标租户不可见（DEC-0013、M03 F-009，residual 不是 fixed）。
+    - 平台审批仅限单管理员租户；多管理员租户 409；平台租户自身导出 M10 返回 403（deferred）。
 
     ## 错误
     统一使用 RFC 9457 `application/problem+json`，至少包含 `type/title/status/code/traceId`。
@@ -79,14 +80,20 @@ security:
   - sessionCookie: []
 x-riccon-deferred:
   - id: platform-cross-tenant-audit
-    status: M10+
-    reason: 平台管理员跨租户审计明细需显式授权、二次确认与独立审计；M10 只允许平台查询 platform 租户自身事件（DEC-0013、M03 F-009）。
+    status: M10+ (unplanned)
+    reason: 平台管理员跨租户审计明细需显式授权、二次确认与独立审计；M10 只允许平台查询 platform 租户自身事件（DEC-0013、M03 F-009，residual 不是 fixed）。
   - id: mfa
-    status: M10+
+    status: M10+ (unplanned)
     reason: M10 不强制 MFA、不校验 acr/amr；IdP 可能自行启用，但平台不声称强认证（DEC-0013）。
   - id: audit-hash-chain
-    status: M10+
+    status: M10+ (unplanned)
     reason: M10 继续依赖 append-only 触发器与最小权限；不提供 prev_hash/event_hash 或外部锚定（DEC-0013）。
+  - id: platform-tenant-audit-export
+    status: M10+ (unplanned)
+    reason: 平台租户只有平台管理员，M10 无独立同租户审批人，导出端点显式 403；需第二个平台管理员或独立审批模型（F-023）。
+  - id: audit-export-archive
+    status: M10+ (unplanned)
+    reason: M10 导出为流式、不落盘、无归档/常驻链接/专用重复下载配额（F-020）。
   - id: model-routing-quota
     status: M04
     reason: M10 仍只有单一部署级 OpenAI 兼容端点。
@@ -186,8 +193,10 @@ paths:
       summary: 登出
       description: |
         使本地会话立即失效并写 `auth.logout` 审计；浏览器后退不能恢复登录态。
-        若当前会话来自 OIDC 且租户配置了 end-session 端点，响应头 `X-Riccon-Federated-Logout-Url` 提供可选的 IdP 联合登出地址（不含 token）。
-        本地登出始终成功；IdP 不可达不影响本地登出，也不声称自动结束 IdP 会话。
+        本地登出先执行且不依赖 IdP；若当前账号为 OIDC 且租户配置了 end-session 端点，响应头
+        `X-Riccon-Federated-Logout-Url` 提供 IdP 联合登出地址（不含 token），前端随后自动顶层导航结束 IdP 会话，
+        再由 `post_logout_redirect_uri` 回到登录页。IdP 不可达时本地登出已成功并提示仅本地退出。
+        DEC-0017 A：点击一次登出即尝试同时结束 IdP 会话，不使用第二次点击。
       parameters:
         - $ref: "#/components/parameters/CsrfToken"
       responses:
@@ -195,7 +204,7 @@ paths:
           description: 已登出
           headers:
             X-Riccon-Federated-Logout-Url:
-              description: 可选；IdP RP-Initiated Logout 地址（绝对 HTTPS，带 client_id 与 post_logout_redirect_uri，不含 token）。
+              description: 可选；IdP RP-Initiated Logout 地址（绝对 HTTPS，带 client_id 与 post_logout_redirect_uri，不含 token）。前端收到后自动顶层导航；IdP 不可达时本地登出仍已成功。
               schema:
                 type: string
                 format: uri
@@ -1639,7 +1648,7 @@ paths:
           required: false
           schema:
             $ref: "#/components/schemas/AuditOutcome"
-        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/AuditPage"
         - $ref: "#/components/parameters/PageSize"
       responses:
         "200":
@@ -1681,7 +1690,9 @@ paths:
       tags: [Audit]
       operationId: listAuditExports
       summary: 列出本租户审计导出请求
-      description: 只返回本租户导出请求元数据；按 `createdAt` 倒序。
+      description: |
+        只返回本租户导出请求元数据；按 `createdAt` 倒序。`status=EXPIRED` 是派生过滤
+        （`status=APPROVED` 且 `expiresAt < now`）。平台租户自身导出在 M10 不支持，返回 403 `RICCON-AUDIT-403`。
       x-riccon-permission: audit.read
       parameters:
         - name: status
@@ -1712,7 +1723,8 @@ paths:
       summary: 发起审计导出申请
       description: |
         服务端按 `filter` 计算预计行数；超过导出上限返回 400。申请进入 `PENDING_APPROVAL`，不立即生成文件。
-        申请人不得审批自己的请求；批准后 24 小时过期。
+        申请人不得审批自己的请求；批准后按 TTL（默认 24 小时）过期。平台租户自身导出在 M10 不支持，返回 403 `RICCON-AUDIT-403`。
+        重复申请不返回 409；每次申请生成新 ID。
       x-riccon-permission: audit.read
       parameters:
         - $ref: "#/components/parameters/CsrfToken"
@@ -1735,8 +1747,6 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "409":
-          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
   /api/v1/audit-exports/{exportId}:
@@ -1744,6 +1754,7 @@ paths:
       tags: [Audit]
       operationId: getAuditExportRequest
       summary: 读取审计导出请求
+      description: 平台租户自身导出在 M10 不支持，返回 403 `RICCON-AUDIT-403`。
       x-riccon-permission: audit.read
       parameters:
         - $ref: "#/components/parameters/AuditExportId"
@@ -1805,6 +1816,7 @@ paths:
       operationId: downloadAuditExport
       summary: 下载审计导出 CSV
       description: |
+        平台租户自身导出在 M10 不支持（403）；平台管理员调用租户路径按 404 处理，避免存在性泄露。
         只有申请人本人可下载；必须已批准且未过期。CSV 为 UTF-8 BOM，前 4 行为 `#` 前缀元数据
         （exportId、generatedAt、filters、rowCount），随后是表头与数据。不落盘、无预签名 URL。
         字段白名单不含 `source_ip`、token、凭据、原文或邮箱；每次成功下载写 `data.exported`。
@@ -2560,7 +2572,7 @@ paths:
       summary: 平台管理员列出目标租户审计导出请求
       description: |
         只返回导出请求元数据（申请人、过滤器、预计行数、状态、审批人、过期时间），不返回审计内容、不提供下载。
-        用于单管理员租户的导出审批。
+        仅用于单管理员租户（ACTIVE `TENANT_ADMIN` ≤1）；多管理员租户返回 409 `RICCON-AUDIT-409`，必须由同租户另一管理员审批。
       x-riccon-permission: platform.audit.export.approve
       parameters:
         - $ref: "#/components/parameters/TenantId"
@@ -2586,6 +2598,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
   /api/v1/admin/tenants/{tenantId}/audit-exports/{exportId}/decision:
@@ -2594,7 +2608,8 @@ paths:
       operationId: decideTenantAuditExportForPlatform
       summary: 平台管理员审批目标租户审计导出请求
       description: |
-        仅用于单管理员租户；平台管理员只能看/决定请求元数据，不能下载或查询审计内容。
+        仅用于单管理员租户（ACTIVE `TENANT_ADMIN` ≤1）；多管理员租户返回 409 `RICCON-AUDIT-409`。
+        平台管理员只能看/决定请求元数据，不能下载或查询审计内容。
         批准后写 `audit.export.approved` 到 `platform` 租户并带 `details.targetTenantId`；自批、跨租户、已决定或并发审批被拒。
       x-riccon-permission: platform.audit.export.approve
       parameters:
@@ -2748,6 +2763,16 @@ components:
         minimum: 1
         maximum: 100
         default: 20
+    AuditPage:
+      name: page
+      in: query
+      required: false
+      description: 审计查询页码；超过 200 返回 400 `RICCON-AUDIT-400`，请缩小时间范围或改用导出。
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 1
     WorkspaceId:
       name: workspaceId
       in: path
@@ -3307,7 +3332,7 @@ components:
         details:
           type: [object, "null"]
           additionalProperties: true
-          description: 写入时已通过白名单的 JSON；读取/导出时再执行禁止键检查
+          description: 写入时已通过白名单的 JSON；读取/导出时复用 action-aware 白名单（允许 promptTokens/completionTokens 等合法键），白名单外或敏感键 fail-closed
       additionalProperties: false
     AuditEventPage:
       allOf:
@@ -3399,8 +3424,9 @@ components:
       type: string
       enum: [PENDING_APPROVAL, APPROVED, REJECTED, EXPIRED]
       description: |
-        存储状态为 PENDING_APPROVAL/APPROVED/REJECTED；EXPIRED 由 `approved` 且 `expiresAt` 已过派生，
-        仅用于响应展示，不改变数据库状态。
+        存储状态为 PENDING_APPROVAL/APPROVED/REJECTED；EXPIRED 由 `approved` 且 `expiresAt < now` 派生，
+        仅用于响应展示，不改变数据库状态。列表过滤 `status=EXPIRED` 等价于
+        `status=APPROVED` 且 `expiresAt < now`；过滤 `status=APPROVED` 只返回未过期的已批准请求。
     AuditExportDecision:
       type: string
       enum: [APPROVE, REJECT]
@@ -4710,6 +4736,12 @@ components:
             type: "null"
       else:
         required: [password]
+        properties:
+          password:
+            type: string
+            minLength: 12
+            maxLength: 200
+            format: password
     UserStatusRequest:
       type: object
       required: [status]

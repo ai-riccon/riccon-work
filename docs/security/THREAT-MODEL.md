@@ -2,9 +2,9 @@
 
 - **所有者**：`riccon/architect`
 - **适用版本**：M01 基线核对 + M02 已落地 + M03 部门数据范围已落地 + M10 身份与审计设计目标（MFA/哈希链/跨租户审计明细标注为后置项）
-- **状态**：M10 设计更新（2026-11-19）；M02/M03 gate 已由 `riccon/verifier` 核对，M10 gate 前按第 10 节逐条复核
+- **状态**：M10 设计修订（2026-11-19，REV-M10-ARCH-001 fail 后收口 F-001/002/003）；M02/M03 gate 已由 `riccon/verifier` 核对，M10 gate 前按第 10 节逐条复核
 - **关联文档**：`AGENTS.md` 合同（T4、数据、许可、审计约束）、`docs/PRODUCT.md`（J1/J2、M03/M10 AC）、`docs/ARCHITECTURE.md`、`docs/CODING-STANDARDS.md`
-- **关联决策**：ADR-0001（双部署物）、ADR-0003（租户上下文）、ADR-0005（MySQL 许可）、ADR-0006（密钥生命周期）、ADR-0007（审计事件）、ADR-0008（异步承载）、ADR-0009（租户隔离强制点）、ADR-0010（Flyway 归属）、ADR-0011（B-06 依赖例外，2026-11-18 重开）、ADR-0012（数据模型）、ADR-0013（会话/CSRF）、ADR-0018（M03 组织与部门数据范围）、ADR-0019（M10 OIDC）、ADR-0020（M10 审计查询/导出）、DEC-0003、DEC-0011、DEC-0012、DEC-0013、DEC-0014、DEC-0015
+- **关联决策**：ADR-0001（双部署物）、ADR-0003（租户上下文）、ADR-0005（MySQL 许可）、ADR-0006（密钥生命周期）、ADR-0007（审计事件）、ADR-0008（异步承载）、ADR-0009（租户隔离强制点）、ADR-0010（Flyway 归属）、ADR-0011（B-06 依赖例外，2026-11-18 重开）、ADR-0012（数据模型）、ADR-0013（会话/CSRF）、ADR-0018（M03 组织与部门数据范围）、ADR-0019（M10 OIDC）、ADR-0020（M10 审计查询/导出）、DEC-0003、DEC-0011、DEC-0012、DEC-0013、DEC-0014、DEC-0015、DEC-0017
 
 复审触发条件（任一发生即重开本文件）：新增外部集成或出网目标、引入新数据类别（生物特征、健康、财务明细）、认证方式变化（MFA、多 IdP、身份模型变更）、部门模型从单级改为多级或一账号多部门、知识库从租户级改为文档/部门级 ACL、MCP 注册从静态白名单改为管理员自助、审计导出改为持久文件/归档、开放 Agent 代码执行、发布前。
 
@@ -237,9 +237,9 @@ OIDC 引入企业 IdP 作为新的信任方。平台不控制 IdP 的认证强�
 | ------ | ---- | ------------------------------------------------------------------ | -------------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------- | ----------------------------- |
 | S-11-1 | S    | 攻击者用同邮箱注册/伪造 IdP 身份，诱导系统自动合并到既有内置账号   | 账号接管       | 不按邮箱匹配、不自动开通；管理员显式绑定；唯一键 `(tenant_id, issuer, subject)`；同邮箱不同 issuer 不合并                          | api      | `IT-OIDC-003`、`E2E-M03-04`   |
 | S-11-2 | S    | IdP 客户端凭据泄漏，攻击者伪造授权码/令牌                          | 账号接管       | secret 仅从 Secret 注入；不进仓库/镜像/日志；Trivy secret；轮换与滚动重启；token 端点 TLS 与 issuer 校验                           | ops/api  | `SEC-OIDC-001`、`SEC-DEP-002` |
-| T-11-1 | T    | 回调重放、state 不匹配、PKCE 降级、nonce 缺失                      | 会话固定/接管  | state/nonce/PKCE verifier 只在服务端会话；授权请求一次消费；`requireProofKey`；ID Token 校验 nonce/iss/aud/exp/签名                | api      | `IT-OIDC-006`、`SEC-OIDC-003` |
-| T-11-2 | T    | 登录后不轮换会话 ID/CSRF，攻击者预先固定会话                       | 会话劫持       | 复用 Spring Security 会话策略轮换 ID；成功处理器轮换 CSRF；`HttpOnly`/`SameSite`/`Secure` 与 ADR-0013 一致                         | api      | `IT-OIDC-007`、`SEC-OIDC-003` |
-| I-11-1 | I    | access/refresh/ID token 被写入会话、日志、URL 或浏览器存储         | 令牌泄露       | 不保存 token；no-op `OAuth2AuthorizedClientRepository`；不请求 `offline_access`；回调只出现标准 code/state；错误页不含 token       | api      | `SEC-OIDC-001`、`IT-OIDC-007` |
+| T-11-1 | T    | 回调重放、state 不匹配、PKCE 降级、nonce 缺失；业务失败后残留 OIDC 认证上下文 | 会话固定/接管  | state/nonce/PKCE verifier 只在服务端会话；授权请求一次消费；`requireProofKey`；ID Token 校验 nonce/iss/aud/exp/签名；OIDC-aware `SecurityContextRepository` 不持久化 OidcUser；失败清理/失效会话（F-001） | api      | `IT-OIDC-006`、`SEC-OIDC-003` |
+| T-11-2 | T    | 登录后不轮换会话 ID/CSRF；登出不结束 IdP 会话（共享工作站） | 会话劫持/SSO 残留 | 复用 Spring Security 会话策略轮换 ID；成功处理器轮换 CSRF；DEC-0017 A：本地先失效 + 自动 end-session 顶层导航；IdP 不可达时明确仅本地退出 | api      | `IT-OIDC-007`、`SEC-OIDC-003`、`E2E-M03-03` |
+| I-11-1 | I    | access/refresh/ID token 被写入会话、日志、URL 或浏览器存储；失败回调残留 OidcUser | 令牌泄露 | 不保存 token；no-op authorized client + OIDC-aware SecurityContextRepository；不请求 `offline_access`/userinfo；失败清理并失效会话；回调只出现标准 code/state；错误页不含 token | api      | `SEC-OIDC-001`、`IT-OIDC-007` |
 | I-11-2 | I    | 错误响应/日志回显 IdP 原始错误、内部地址、堆栈                     | 侦察辅助       | 统一映射 9 类原因码；不记录回调查询串；日志只含 issuer 与错误类型                                                                  | api      | `IT-OIDC-006`、`IT-ERR-001`   |
 | D-11-1 | D    | IdP 不可达或发现文档失败导致应用无法启动/全部无法登录              | 可用性下降     | 发现懒加载 + 缓存/退避；应用启动不依赖 IdP；内置账号始终可用；`idp_unavailable` 可读提示                                           | api/ops  | `IT-OIDC-005`、运维演练       |
 | E-11-1 | E    | issuer 混淆：用 A 租户 IdP 的身份登录 B 租户，或改 issuer 重用绑定 | 跨租户身份冒用 | registrationId 与 tenantCode 绑定；issuer 配置全局唯一；ID Token `iss` 必须等于配置；绑定 issuer 必须等于租户配置；审计 issuerHash | api      | `IT-OIDC-003`、`TEN-028`      |
@@ -254,8 +254,8 @@ OIDC 引入企业 IdP 作为新的信任方。平台不控制 IdP 的认证强�
 | S-12-1 | S    | 租户管理员伪造更高权限/平台管理员身份查询他租户审计 | 跨租户泄露   | 权限从角色表判定；租户从会话主体派生；不接受 `tenantId` 查询参数；平台审批端点要求平台专属权限                   | api      | `TEN-028`、`IT-AUDIT-103`       |
 | T-12-1 | T    | 客户端篡改导出 filters 或复用他人审批结论           | 越权导出     | filters 服务端保存并计算 hash；审批绑定 exportId；下载用服务端 filters；条件更新状态机；不接受客户端行数/租户    | api      | `IT-AUDIT-104`、`TEN-030`       |
 | I-12-1 | I    | 绕过审批或自批后导出，批量带走审计                  | 批量泄露     | 申请人≠审批人（403）；只有申请人可下载；单管理员租户由平台审批；批准后 24h 过期；每次下载审计                    | api      | `IT-AUDIT-105`、`SEC-AUDIT-001` |
-| I-12-2 | I    | 导出文件包含密码哈希、token、凭据、原文、邮箱、IP   | 敏感数据泄露 | 写入时 details 白名单；读取时禁止键检查；CSV 固定字段白名单；不含 `source_ip`/`request_id`；`SEC-AUDIT-001` 扫描 | api      | `IT-AUDIT-106`、`SEC-AUDIT-001` |
-| I-12-3 | I    | 平台管理员以审批为名下载/查询目标租户审计内容       | 跨租户泄露   | 平台审批只返回元数据；不提供下载；平台审计查询只覆盖 `platform` 租户；目标租户不可见平台来源事件（M03 F-009）    | api      | `TEN-029`、`IT-AUDIT-103`       |
+| I-12-2 | I    | 导出文件包含密码哈希、token、凭据、原文、邮箱、IP；读取误杀模型 token 计数 | 敏感数据泄露/功能失败 | 写入时 details 白名单；读取复用 action-aware 白名单（允许 promptTokens/completionTokens，禁止 token/content 子串）；CSV 固定字段白名单；公式转义；`SEC-AUDIT-001` 扫描 | api      | `IT-AUDIT-101/106`、`SEC-AUDIT-001` |
+| I-12-3 | I    | 平台管理员以审批为名下载/查询目标租户审计内容，或审批多管理员租户导出 | 跨租户/审批绕过 | 平台审批仅单管理员租户（ACTIVE TENANT_ADMIN ≤1，多管理员 409）；只返回元数据；不提供下载；平台租户自身导出 403；平台来源事件对目标租户不可见（M03 F-009） | api      | `TEN-029`、`IT-AUDIT-103/104`       |
 | D-12-1 | D    | 大范围/深层分页/重复导出拖慢审计库                  | 可用性下降   | 最大 180 天、page ≤200、size ≤100、导出 10,000 行；V10 索引；下载前重新计数；不落盘                              | api      | `IT-AUDIT-101`、`PERF-001`      |
 | E-12-1 | E    | 非申请人/审批人/普通员工调用导出或审批端点          | 权限提升     | `audit.read` / `audit.export.approve` / `platform.audit.export.approve` 分离；申请人本人校验；跨租户 404         | api      | `TEN-030`、`IT-AUDIT-103`       |
 | R-12-1 | R    | 查询/导出/审批无审计，无法证明谁看过/带走什么       | 无法追责     | `audit.queried`、`audit.export.requested/approved/rejected`、`data.exported`；audit 失败使操作失败               | api      | `AUDIT-002`、`IT-AUDIT-105`     |
@@ -390,9 +390,9 @@ OIDC 引入企业 IdP 作为新的信任方。平台不控制 IdP 的认证强�
 | 2    | 租户管理员在查询/导出参数中指定他租户     | 租户只从主体派生；忽略/拒绝 `tenantId`；统一 404/空结果                          | 跨租户泄露   |
 | 3    | 申请人自批或伪造审批人                    | 审批人从会话主体派生；`approved_by != requested_by`；权限 `audit.export.approve` | 审批绕过     |
 | 4    | 两个管理员并发审批，重复生成/覆盖状态     | 条件更新 `WHERE status='PENDING_APPROVAL'`；一个 200、一个 409                   | 状态不一致   |
-| 5    | 批准后长期下载或把导出 URL 分享给他人     | 只有申请人可下载；`expires_at` 24h；无持久 URL；每次下载审计                     | 批量外带     |
+| 5    | 批准后长期下载或把导出 URL 分享给他人 | 只有申请人可下载；`expires_at` 默认 24h；无持久 URL；每次下载审计 | 批量外带 |
 | 6    | 导出包含敏感字段或 details 中的历史脏数据 | 固定字段白名单；禁止键检查 fail-closed；不含 `source_ip`/token/凭据/原文         | 敏感数据泄露 |
-| 7    | 平台管理员借审批读取目标租户审计或下载    | 平台只拿到请求元数据；不提供下载；平台查询只覆盖 `platform` 租户                 | 跨租户泄露   |
+| 7    | 平台管理员借审批读取目标租户审计或下载；审批多管理员租户 | 平台只拿到请求元数据；仅单管理员租户可审批（多管理员 409）；不提供下载；平台查询只覆盖 `platform` 租户；平台租户导出 403 | 跨租户/审批绕过 |
 | 8    | 用超大时间范围/深层分页拖垮审计库         | 180 天上限、page ≤200、size ≤100、导出 10,000 行、索引；下载前重新计数           | 拒绝服务     |
 
 **关键控制**：TM-34、TM-35、TM-36、TM-37、TM-38；ADR-0020。
@@ -435,15 +435,15 @@ OIDC 引入企业 IdP 作为新的信任方。平台不控制 IdP 的认证强�
 | TM-26 | 知识库 M03 租户级共享并在界面固定明示；引用可展示，源文件打开/下载仍走空间判定并 404                                                                     | api/web    | `E2E-M03-02`、`IT-DEPT-003`              | 4.10              |
 | TM-27 | 部门/成员/负责人/可见性变更同事务写审计；跨租户部门事件写 `platform` 租户 + `details.targetTenantId`，与 M02 管理员口径一致；details 只含 UUID/计数/枚举 | api        | `IT-DEPT-001/004`、`AUDIT-002`           | ADR-0018 第 5 节  |
 | TM-28 | 不引入跨请求共享缓存；成员移出、部门停用、负责人移交下一次请求生效；若引入缓存必须按 tenant/user/workspace 失效                                          | api        | `DEPT-007`、`TEN-016`                    | 4.10/ADR-0018 3.3 |
-| TM-29 | OIDC 配置仅从 Secret 注入；启动校验 issuer/clientId/secret/唯一性；secret 不进仓库/镜像/日志；轮换有运行手册                                             | api/ops    | `SEC-OIDC-001`、`SEC-DEP-002`            | 4.11/ADR-0019     |
-| TM-30 | 授权码 + PKCE（S256）+ nonce；state/verifier 只在服务端会话且一次消费；ID Token 校验 iss/aud/exp/nonce/签名                                              | api        | `IT-OIDC-006`、`SEC-OIDC-003`            | 4.11              |
-| TM-31 | 不保存 access/refresh/ID token；no-op authorized client；不回传/不记录 token；失败只映射稳定原因码                                                       | api        | `SEC-OIDC-001`、`IT-OIDC-007`            | 4.11              |
+| TM-29 | OIDC 配置仅从 Secret 注入；启动校验 issuer/clientId/secret/唯一性；解析失败只记录字段/错误类型，不打印原始 JSON/secret；轮换有运行手册 | api/ops    | `SEC-OIDC-001`、`SEC-DEP-002`            | 4.11/ADR-0019     |
+| TM-30 | 授权码 + PKCE（S256）+ nonce；state/verifier 只在服务端会话且一次消费；ID Token 校验 iss/aud/exp/nonce/签名；OIDC-aware SecurityContextRepository 不持久化 OidcUser，失败清理并失效会话 | api        | `IT-OIDC-006`、`SEC-OIDC-003`            | 4.11              |
+| TM-31 | 不保存 access/refresh/ID token；no-op authorized client；不请求 userinfo；不回传/不记录 token；失败只映射稳定原因码；成功只落 RicconPrincipal | api        | `SEC-OIDC-001`、`IT-OIDC-007`            | 4.11              |
 | TM-32 | 身份键 `(tenant_id, issuer, subject)`；不按邮箱自动关联/开通；管理员显式绑定；issuer 全局唯一；解绑需新密码                                              | api        | `IT-OIDC-001..003`、`E2E-M03-04`         | 4.11/ADR-0019     |
-| TM-33 | OIDC 复用既有会话层；登录后轮换会话 ID 与 CSRF；账号禁用/角色变更下一请求生效；联合登出显式且不阻塞本地登出                                              | api        | `IT-OIDC-004/005/007`、`SEC-OIDC-002`    | 4.11/ADR-0013     |
+| TM-33 | OIDC 复用既有会话层；登录后轮换会话 ID 与 CSRF；账号禁用/角色变更下一请求生效；DEC-0017 A：本地先失效 + 自动 end-session 导航，IdP 不可达明确仅本地退出 | api        | `IT-OIDC-004/005/007`、`SEC-OIDC-002`    | 4.11/ADR-0013     |
 | TM-34 | 审计查询只读、租户从主体派生、强制时间范围 ≤180 天、page ≤200、size ≤100、固定排序；查询写 `audit.queried`                                               | api        | `IT-AUDIT-101..103`、`TEN-028`           | 4.12/ADR-0020     |
 | TM-35 | 导出申请/审批状态机；申请人≠审批人；单管理员租户由平台审批；只有申请人可下载；24h 过期；每次下载审计                                                     | api        | `IT-AUDIT-104..105`、`TEN-030`           | 4.12              |
-| TM-36 | 导出 CSV 固定字段白名单；不含 `source_ip`/token/凭据/原文/邮箱；读取时禁止键检查 fail-closed；无持久文件                                                 | api        | `IT-AUDIT-106`、`SEC-AUDIT-001`          | 4.12              |
-| TM-37 | 平台管理员只能查询 `platform` 租户事件；导出审批只接触元数据、不能下载；平台来源事件对目标租户不可见（M03 F-009）                                        | api        | `TEN-029`、`IT-AUDIT-103`                | 4.12/ADR-0020 §3  |
+| TM-36 | 导出 CSV 固定字段白名单；读取复用 action-aware 白名单（允许 promptTokens/completionTokens），禁止 token/content 子串；不含 source_ip/token/凭据/原文/邮箱；公式前缀转义；无持久文件 | api        | `IT-AUDIT-106`、`SEC-AUDIT-001`          | 4.12              |
+| TM-37 | 平台管理员只能查询 platform 租户事件；导出审批仅单管理员租户（ACTIVE TENANT_ADMIN ≤1，多管理员 409）；平台租户自身导出 403；平台来源事件对目标租户不可见（M03 F-009） | api        | `TEN-029`、`IT-AUDIT-103`                | 4.12/ADR-0020 §3  |
 | TM-38 | 审计查询/导出范围与索引：V10 新增 `(tenant_id, action, occurred_at)`、`(tenant_id, actor_id, occurred_at)`；下载前重新计数；不落盘                       | api/ops    | `IT-AUDIT-101`、迁移测试                 | 4.12              |
 
 ## 7. 后置缓解
@@ -521,6 +521,8 @@ B-06 的处置记录见 `docs/adr/ADR-0011-b06-dependency-exceptions.md`：Trivy
 | R-16 | IdP 配置漂移、secret 轮换失败或 IdP 长期不可达导致企业账号无法登录                         | 登录中断              | 配置启动校验；内置账号兜底；滚动重启；`oidc-binding/remove` 恢复本地密码；M09 运行手册与告警               |
 | R-17 | 同租户两名管理员可能串通审批导出；审批是控制而非串谋证明                                   | 批量泄露              | 双人审批 + 导出审计 + 行数/时间范围限制 + 字段白名单；高风险租户可要求平台审批（M10+）                     |
 | R-18 | 流式导出在有效期内重复生成，`occurredTo` 之前新增的 append-only 事件会改变行数             | 结果解释差异          | CSV 元数据写实际 `rowCount` 与 `generatedAt`；审批记录与 `data.exported` 可核对；不声称文件字节稳定        |
+| R-19 | 平台租户自身审计导出在 M10 无合法审批人（只有平台管理员） | 功能缺口/自批风险 | M10 显式 403 并 deferred；不引入自批；M10+ 需第二个平台管理员或独立审批模型（F-023） |
+| R-20 | 审计导出 CSV 公式注入/重复下载滥用 | 客户端执行/资源消耗 | 危险前缀转义；导出审计；M10 沿用通用限流，专用配额 deferred（F-020） |
 
 ## 10. 验证矩阵（verifier 用）
 
@@ -617,19 +619,19 @@ M10 新增用例（Builder/Verifier 共用编号；Verifier 在独立测试类�
 | IT-OIDC-002   | 管理员绑定本地账号后登录                                          | 命中同一账号/角色；凭据删除；`user.oidc.bound`；同身份冲突 409 |
 | IT-OIDC-003   | 两租户同邮箱、不同 issuer；issuer 全局唯一校验                    | 两个账号不合并；重复 issuer 配置启动失败                       |
 | IT-OIDC-004   | 禁用账号 OIDC 登录；既有会话下一请求                              | 不建会话；既有会话 401；`account_disabled`                     |
-| IT-OIDC-005   | 本地登出；联合登出 URL 存在/缺失；IdP 不可达                      | 本地始终成功；无 token；`auth.logout`；可选 URL 不阻塞页面     |
-| IT-OIDC-006   | state 重放/不匹配、`access_denied`、IdP 不可达、unknown tenant    | 四种原因码；无原始错误/token/内部地址                          |
+| IT-OIDC-005   | 一次点击登出；end-session 自动导航；IdP 不可达 | 本地先失效；IdP 会话清除并回登录页；不可达时仅本地退出提示；无 token |
+| IT-OIDC-006     | state 重放/不匹配、`access_denied`、IdP 不可达、unknown tenant；失败会话清理 | 四种原因码；无原始错误/token/内部地址；失败后 401 且无 OidcUser/ID Token 残留 |
 | IT-OIDC-007   | Cookie 属性、CSRF、超时与内置账号对比；无 JWT/refresh token       | 同 `RICCON_SESSION` 基线；响应/会话/日志无 token               |
-| IT-AUDIT-101  | 200+ 条种子审计，时间/动作/操作者/对象/结果过滤、排序、分页、空态 | 结果正确；固定倒序；分页/上限；查询写 `audit.queried`          |
+| IT-AUDIT-101    | 200+ 条种子审计（含模型 promptTokens/completionTokens、worker user.access.denied）、过滤/排序/分页/空态、100 行 displayName | 模型事件可查；固定倒序；分页/上限；批量解析无 N+1；查询写 `audit.queried` |
 | IT-AUDIT-102  | 180 天边界、无偏移时间、超大范围、page>200                        | 400 `RICCON-AUDIT-400`；边界内可查；不跨租户                   |
 | IT-AUDIT-103  | 普通员工/平台管理员访问他人审计；写方法；无 `audit.read`          | 403/404；无内容；无写路由                                      |
-| IT-AUDIT-104  | 导出申请、预计行数、超限、自批、并发审批、拒绝                    | 400/403/409；状态机条件更新；`audit.export.*`                  |
-| IT-AUDIT-105  | 批准后下载、非申请人、平台管理员、重复下载、过期                  | 只有申请人；403/410；每次下载 `data.exported`                  |
+| IT-AUDIT-104    | 导出申请、预计行数、超限、自批、并发审批、拒绝、平台审批单/多管理员 | 400/403/409；多管理员 409；状态机条件更新；`audit.export.*` |
+| IT-AUDIT-105    | 批准后下载、非申请人、平台管理员、平台租户、重复下载、Clock+短 TTL 过期 | 只有申请人；403/404/410；平台租户 403；每次下载 `data.exported` |
 | IT-AUDIT-106  | CSV 元数据/表头/字段；details 含禁止键；`source_ip` 不出现        | 白名单正确；禁止键 fail-closed；无敏感字段                     |
-| SEC-OIDC-001  | 浏览器存储、响应体、日志、会话表、审计、URL 扫描 token/JWT        | 无 access/refresh/ID token；无 JWT                             |
+| SEC-OIDC-001  | 浏览器存储、响应体、日志、会话表、审计、URL、malformed config 扫描 token/JWT/secret | 无 access/refresh/ID token；无 JWT；无 secret 原文；无 userinfo 请求 |
 | SEC-OIDC-002  | 账号禁用后既有会话与回调                                          | 下一请求拒绝；不建立新会话                                     |
 | SEC-OIDC-003  | Cookie/CSRF/超时/会话轮换与内置账号一致性                         | 同基线；登录后会话 ID 变化                                     |
-| SEC-AUDIT-001 | 导出 CSV 扫描密码哈希、token、密钥、原文、邮箱、IP；审批绕过尝试  | 无敏感字段；自批/非申请人/跨租户均拒绝                         |
+| SEC-AUDIT-001   | 导出 CSV 扫描敏感字段/公式注入；审批绕过；平台租户导出 | 无敏感字段；危险前缀转义；自批/非申请人/跨租户/平台租户均拒绝 |
 
 ### 10.3 按控制核对
 
@@ -665,9 +667,9 @@ M03 的核对必须额外回答：
 M10 的核对必须额外回答：
 
 - `TM-29`–`TM-38` 是否都有可执行证据，而不是只读代码；
-- 浏览器、响应体、会话表、日志、审计与 URL 是否都不含 access/refresh/ID token 或 JWT（`SEC-OIDC-001`）；
-- state/nonce/PKCE 是否服务端存储、一次消费；同邮箱不同 issuer 是否不合并；issuer 是否全局唯一（`IT-OIDC-003/006`）；
-- 导出是否禁止自批、跨租户、非申请人下载；平台管理员是否只能看审批元数据、不能下载（`TEN-029/030`）；
-- CSV 是否不含密码哈希、token、凭据、原文、邮箱、`source_ip`；过期是否 410（`SEC-AUDIT-001`）；
+- 浏览器、响应体、会话表、日志、审计与 URL 是否都不含 access/refresh/ID token 或 JWT；失败回调后会话是否无 `OidcUser`/ID Token（`SEC-OIDC-001`、`IT-OIDC-006`）；
+- state/nonce/PKCE 是否服务端存储、一次消费；同邮箱不同 issuer 是否不合并；issuer 是否全局唯一；一次点击登出是否自动结束 IdP 会话（`IT-OIDC-003/005/006`、`E2E-M03-03`）；
+- 导出是否禁止自批、跨租户、非申请人下载；平台审批是否仅单管理员租户（多管理员 409）；平台租户自身导出是否 403；平台管理员是否只能看审批元数据、不能下载（`TEN-029/030`、`IT-AUDIT-104`）；
+- CSV 是否不含密码哈希、token、凭据、原文、邮箱、`source_ip`；模型 `promptTokens`/`completionTokens` 是否可查可导出；过期是否 410；公式前缀是否转义（`IT-AUDIT-101/106`、`SEC-AUDIT-001`）；
 - M03 F-009 的平台来源事件可见性结论是否与实现一致：目标租户不可见、平台只查 `platform`、没有静默 UNION/参数入口（`TEN-029`）；
 - DEC-0013 的 MFA、审计哈希链、跨租户审计明细缺口是否仍在第 9 节登记，未被 OIDC 或审计查询“顺带”声称已解决（R-12/R-13/R-14）。

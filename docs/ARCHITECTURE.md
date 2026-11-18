@@ -2,14 +2,14 @@
 
 ## 评审状态
 
-| 检查                        | 状态    | 记录                                                                                           |
-| --------------------------- | ------- | ---------------------------------------------------------------------------------------------- |
-| Architect 草案              | pass    | M10 ADR-0019/0020 `proposed`；M03 ADR-0018 `proposed`；M02 ADR-0001..0017                      |
-| Lead 完整性/合同一致性      | pending | M10 待评审；M03 已通过                                                                         |
-| 用户批准（不可逆/高成本项） | pending | DEC-0013/0014/0015 已确认产品口径；ADR-0019/0020 本身未批准；DEC-0003 许可仍是 release blocker |
-| Verifier 可测试性/安全边界  | pending | M10 待评审；REV-TASK-0033-002、REV-M02-003、REV-M03-001 为既有记录                             |
-| Ops 可运维/可回滚           | pending | M10 IdP Secret 注入/轮换、V10 索引与回滚演练待评审；M09 Helm/备份/升级                         |
-| 安全/合规评审（如适用）     | pending | 威胁模型已更新到 M10 设计；M03/M10 gate 安全评审待做                                           |
+| 检查                        | 状态    | 记录                                                                                                                     |
+| --------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Architect 草案              | pass    | M10 ADR-0019/0020 `proposed`（REV-M10-ARCH-001 fail 后已修订 F-001..F-023）；M03 ADR-0018 `proposed`；M02 ADR-0001..0017 |
+| Lead 完整性/合同一致性      | pending | M10 复审待做；M03 已通过                                                                                                   |
+| 用户批准（不可逆/高成本项） | pending | DEC-0013/0014/0015/0017 已确认产品口径；ADR-0019/0020 本身未复审批准；DEC-0003 许可仍是 release blocker                           |
+| Verifier 可测试性/安全边界  | changes-requested | REV-M10-ARCH-001（2026-11-19）3 P1；本轮修订 F-001/002/003，待复审                                                       |
+| Ops 可运维/可回滚           | pending | M10 IdP Secret 注入/轮换、V10 索引/回滚演练、worker schema 9→10 待 OPS-M10 评审；M09 Helm/备份/升级                                                   |
+| 安全/合规评审（如适用）     | pending | 威胁模型已更新到 M10 修订；M10 gate 安全评审待做                                                                     |
 
 状态值：`draft`、`pending`、`pass`、`changes-requested`；不可逆或高成本决策未经用户批准，不进入实现。历史无记录用 `legacy`/`not-recorded`。
 
@@ -204,20 +204,20 @@ M10 的完整决策见 `docs/adr/ADR-0019-m10-oidc-sso.md` 与 `docs/adr/ADR-002
 
 - **每租户 1 个 IdP，配置只来自部署 Secret**：`RICCON_OIDC_IDPS`（JSON 数组）提供 `tenantCode`、`issuer`、`clientId`、`clientSecret`、可选 `providerName`/`scopes`/`endSessionEndpoint`/`enabled`。M10 不建 `tenant_idp_config` 表、不提供运维 UI；未配置即关闭企业登录，内置账号不受影响。
 - **协议**：Authorization Code + PKCE（S256）+ OIDC nonce；registrationId `tenant-{tenantCode}`；授权入口 `/api/v1/auth/oidc/authorize/{registrationId}`，回调 `/api/v1/auth/oidc/callback/{registrationId}`；ID Token 只校验 `iss`/`aud`/`exp`/nonce/签名，之后丢弃。
-- **无 token**：access/refresh/ID token 不写会话、不写库、不写日志、不回传浏览器；使用 no-op `OAuth2AuthorizedClientRepository`。会话仍是 `RICCON_SESSION` + Spring Session JDBC（ADR-0013）；成功后轮换会话 ID 与 CSRF，`RicconPrincipal` 落既有安全上下文，权限每请求查库。
+- **无 token**：access/refresh/ID token 不写会话、不写库、不写日志、不回传浏览器；使用 no-op `OAuth2AuthorizedClientRepository`，并用 OIDC-aware `SecurityContextRepository` 阻止 `OidcUser`/`OAuth2AuthenticationToken` 落 `HttpSessionSecurityContextRepository`。业务失败（未绑定/禁用/租户暂停）在认证成功前抛错；失败处理器清空 `SecurityContext`、失效会话、删除授权请求，成功路径只落 `RicconPrincipal`（F-001）。会话仍是 `RICCON_SESSION` + Spring Session JDBC（ADR-0013）；成功后轮换会话 ID 与 CSRF，权限每请求查库。
 - **账号**：身份键 `(tenant_id, issuer, subject)`；不自动开通、不按邮箱关联；管理员显式绑定已有账号（转换 `auth_source=OIDC`、删除本地密码凭据）或直接创建 OIDC 账号；同邮箱不同 issuer 生成不同账号；提供“解绑并设置本地密码”的恢复路径。
 - **错误态**：`idp_unavailable`、`state_invalid`、`access_denied`、`account_not_bound`、`account_disabled`、`tenant_unavailable`、`issuer_mismatch`、`rate_limited`、`login_failed`；登录页按原因给下一步，不回显 IdP 原始错误、token、内部地址或堆栈。
-- **登出**：本地登出权威，始终成功；IdP `end_session_endpoint` 可用时通过响应头 `X-Riccon-Federated-Logout-Url` 提供显式联合登出动作，不声称 IdP 不可达时自动完成。并发会话允许，M10 不做全局踢出；账号禁用下一次请求生效。
+- **登出（DEC-0017 A）**：本地会话先失效并写审计；配置了 IdP `end_session_endpoint` 时，前端自动顶层导航到 IdP 结束会话，再经 `post_logout_redirect_uri` 回登录页；IdP 不可达时本地登出已成功并显示“已退出本地会话”，不声称 IdP 会话已结束。不持久化 ID token，因此不使用 `id_token_hint`。并发会话允许，M10 不做全局踢出；账号禁用下一次请求生效。
 - **后置**：MFA、多 IdP、IdP 组映射、SCIM/LDAP、自动开通、平台管理员 OIDC 登录。MFA 不检查 `acr`/`amr`，不声称强认证（DEC-0013）。
 
 ### 审计查询与导出
 
-- **只读查询**：`GET /api/v1/audit-events`（`audit.read`），租户只从主体派生；时间范围必带偏移、默认最近 24h、最大 180 天；动作/操作者/对象/结果过滤；固定 `occurred_at DESC, event_id DESC`；`page` 1..200、`size` ≤100；不返回 `source_ip`。查询写 `audit.queried`。
-- **导出**：`POST /api/v1/audit-exports` 申请（服务端计算预计行数，默认上限 10,000）；同租户另一管理员用 `audit.export.approve` 审批，禁止自批；单管理员租户由平台管理员通过 `/api/v1/admin/tenants/{tenantId}/audit-exports` 审批（仅元数据）。批准后 `expires_at = decided_at + 24h`（上限 7 天）；只有申请人可下载。
+- **只读查询**：`GET /api/v1/audit-events`（`audit.read`），租户只从主体派生；时间范围必带偏移、默认最近 24h、最大 180 天；动作/操作者/对象/结果过滤；固定 `occurred_at DESC, event_id DESC`；`page` 1..200、`size` ≤100（契约用 `AuditPage`）；不返回 `source_ip`。读取 `details` 执行与写入相同的 action-aware 白名单，禁止 `token`/`content` 子串匹配（`promptTokens`/`completionTokens` 合法）；`actorDisplayName` 批量解析。查询写 `audit.queried`。
+- **导出**：`POST /api/v1/audit-exports` 申请（服务端计算预计行数，默认上限 10,000）；同租户另一管理员用 `audit.export.approve` 审批，禁止自批；**仅单管理员租户**（ACTIVE TENANT_ADMIN ≤1）由平台管理员通过 `/api/v1/admin/tenants/{tenantId}/audit-exports` 审批（仅元数据），多管理员租户平台审批返回 409。批准后 `expires_at = decided_at + ttl`（默认 24h、上限 7 天，注入 Clock 便于测试）；只有申请人可下载；平台租户自身导出在 M10 返回 403（deferred）。
 - **不落盘**：下载是 `text/csv` 流，含 `#` 元数据（exportId、generatedAt、filters、rowCount）、固定字段白名单与 `details`；不含密码哈希、token、模型/MCP 凭据、文件原文、邮箱、`source_ip`。过期 410；无持久文件、无预签名 URL、无清理作业。每次成功下载写 `data.exported`。
-- **平台边界**：平台管理员只能查询 `platform` 租户自身事件；不能读取目标租户审计明细。M03 平台来源事件（`tenant_id=platform` + `details.targetTenantId`）在 M10 对目标租户仍不可见（M03 F-009）；跨租户可见模型需另立 ADR（DEC-0013/OQ-13）。
+- **平台边界**：平台管理员只能查询 `platform` 租户自身事件；不能读取目标租户审计明细。单管理员租户导出由平台审批（仅元数据，多管理员租户 409）；平台租户自身导出 M10 返回 403（deferred）。M03 平台来源事件（`tenant_id=platform` + `details.targetTenantId`）在 M10 对目标租户仍不可见（M03 F-009，residual 不是 fixed）；跨租户可见模型需另立 ADR（DEC-0013/OQ-13）。
 - **保留/索引**：审计保留 ≥180 天，不随租户保留期缩短；M09 按分区清理。V10 新增 `(tenant_id, action, occurred_at)`、`(tenant_id, actor_id, occurred_at)` 索引；不改变分区与 append-only 触发器。
-- **后置**：MFA、审计哈希链、跨租户审计明细、导出归档/常驻链接、在线删除、定时导出。
+- **后置**：MFA、审计哈希链、跨租户审计明细、平台租户自身导出、导出归档/常驻链接、导出专用重复下载配额、在线删除、定时导出。
 
 ### 契约与迁移摘要
 
@@ -305,6 +305,12 @@ M10 的完整决策见 `docs/adr/ADR-0019-m10-oidc-sso.md` 与 `docs/adr/ADR-002
 | 审计导出被审批绕过或跨租户读取                  | 低     | 高（批量泄露）   | 申请人≠审批人；只有申请人下载；平台审批仅元数据；`TEN-028..030`、`SEC-AUDIT-001`                   |
 | 深层分页/大范围查询拖慢审计库                   | 中     | 中（可用性）     | 最大 180 天、page ≤200、size ≤100、导出上限 10,000、V10 索引；M09 观测慢查询                       |
 | 流式导出在有效期内重复生成导致行数变化          | 中     | 低（结果解释）   | `occurredTo` 固定；CSV 元数据写实际 `rowCount`；审批记录与 `data.exported` 可核对                  |
+| OIDC 业务失败残留 OidcUser/ID Token 会话        | 低     | 高（账号接管）   | OIDC-aware SecurityContextRepository 不落 OIDC 主体；失败清理并失效会话；`IT-OIDC-001/004/006`、`SEC-OIDC-001` |
+| 登出未结束 IdP 会话导致共享工作站 SSO 残留      | 中     | 高（账号接管）   | DEC-0017 A：本地先失效 + 自动 end-session 导航；IdP 不可达提示仅本地退出；`E2E-M03-03`              |
+| 审计读取用 token 子串误杀模型事件                | 中     | 中（功能失败）   | action-aware 白名单；禁止子串匹配；`IT-AUDIT-101` 覆盖 promptTokens/completionTokens               |
+| 平台管理员审批多管理员租户导出                   | 低     | 高（审批绕过）   | ACTIVE TENANT_ADMIN ≥2 时平台端点 409；只允许单管理员租户；`IT-AUDIT-104`                          |
+| 平台租户导出无合法审批人                         | 低     | 中（功能缺口）   | M10 显式 403/deferred；不引入自批；M10+ 另立审批模型（F-023）                                       |
+| 审计 CSV 公式注入                                | 低     | 中（客户端执行） | 危险前缀单元格前置 `'`；`SEC-AUDIT-001` 扫描；CSV 元数据固定                                       |
 
 ## 相关决策
 
