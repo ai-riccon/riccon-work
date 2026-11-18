@@ -33,6 +33,20 @@ public interface FileStorage {
     URI presignGet(String tenantId, String key, Duration ttl);
 
     /**
+     * 读取对象正文，用于服务端同源代理。
+     *
+     * <p>正文整体读入内存，调用方必须传入较小的上限（当前产物正文为 2 MiB），避免把大对象读入堆。
+     * 实现必须校验 key 的租户前缀；对象大于 {@code maxBytes} 时抛出
+     * {@link StorageObjectTooLargeException}，读取失败抛出 {@link StorageReadException}。
+     *
+     * @param tenantId 租户代码
+     * @param key 对象 key，必须带 {@code tenants/{tenantId}/} 前缀
+     * @param maxBytes 允许读取的最大字节数
+     * @return 对象正文与存储侧 MIME 类型
+     */
+    StorageObject readObject(String tenantId, String key, long maxBytes);
+
+    /**
      * 尽力删除对象；用于事务回滚补偿，失败只记录日志，不覆盖原始业务异常。
      *
      * @param tenantId 租户代码

@@ -2,6 +2,7 @@ package com.riccon.api.file.storage;
 
 import com.riccon.api.config.StorageProperties;
 import com.riccon.api.file.domain.ObjectKeys;
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -10,11 +11,14 @@ import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
@@ -67,8 +71,37 @@ public class S3FileStorage implements FileStorage {
                             .contentLength(contentLength)
                             .build(),
                     RequestBody.fromFile(source));
-        } catch (java.io.IOException exception) {
+        } catch (IOException exception) {
             throw new IllegalStateException("failed to read upload buffer", exception);
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public StorageObject readObject(String tenantId, String key, long maxBytes) {
+        ObjectKeys.requireTenantPrefix(tenantId, key);
+        // 正文一次读入内存，上限必须是可容纳的 int 范围；产物正文当前为 2 MiB。
+        if (maxBytes <= 0 || maxBytes >= Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("read limit must be within (0, Integer.MAX_VALUE)");
+        }
+        GetObjectRequest request =
+                GetObjectRequest.builder().bucket(properties.bucket()).key(key).build();
+        try (ResponseInputStream<GetObjectResponse> object = s3Client.getObject(request)) {
+            GetObjectResponse metadata = object.response();
+            Long contentLength = metadata.contentLength();
+            if (contentLength != null && contentLength > maxBytes) {
+                throw new StorageObjectTooLargeException(contentLength, maxBytes);
+            }
+            // 多读 1 字节用于识别“元数据未声明但实际超限”的对象，避免截断后返回不完整正文。
+            byte[] content = object.readNBytes((int) maxBytes + 1);
+            if (content.length > maxBytes) {
+                throw new StorageObjectTooLargeException(content.length, maxBytes);
+            }
+            return new StorageObject(content, metadata.contentType());
+        } catch (IOException exception) {
+            throw new StorageReadException("failed to read stored object", exception);
+        } catch (S3Exception exception) {
+            throw new StorageReadException("failed to fetch stored object", exception);
         }
     }
 

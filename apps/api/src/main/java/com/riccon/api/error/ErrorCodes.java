@@ -41,6 +41,12 @@ public final class ErrorCodes {
     /** 单文件超过 200 MB。 */
     public static final String FILE_TOO_LARGE = "RICCON-FILE-413";
 
+    /** 产物正文超过 2 MiB 的同源代理上限。 */
+    public static final String ARTIFACT_CONTENT_TOO_LARGE = "RICCON-ARTIFACT-413";
+
+    /** 产物正文读取失败；不暴露对象存储地址、key 或凭据。 */
+    public static final String ARTIFACT_CONTENT_UNAVAILABLE = "RICCON-ARTIFACT-502";
+
     /** 文件扩展名、Content-Type 或 magic bytes 不受支持/不一致。 */
     public static final String FILE_UNSUPPORTED = "RICCON-FILE-415";
 

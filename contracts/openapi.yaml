@@ -1168,6 +1168,61 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/v1/artifacts/{artifactId}/versions/{version}/content:
+    get:
+      tags: [Artifacts]
+      operationId: getArtifactContent
+      summary: 同源读取产物正文
+      description: |
+        由 API 从对象存储读取并同源返回正文，避免浏览器跨域访问对象存储。
+        正文上限 2 MiB，超过返回 413；响应固定 `Cache-Control: no-store`，不返回对象存储地址或凭据。
+        跨租户、不可见产物与不存在版本统一 404，语义与下载地址一致。
+      x-riccon-permission: artifact.read
+      parameters:
+        - $ref: "#/components/parameters/ArtifactId"
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 产物正文
+          headers:
+            Cache-Control:
+              description: 固定 no-store，禁止浏览器与代理缓存
+              schema:
+                type: string
+                const: no-store
+            Content-Length:
+              description: 正文字节数
+              schema:
+                type: integer
+                minimum: 1
+                maximum: 2097152
+            X-Content-Type-Options:
+              description: 固定 nosniff
+              schema:
+                type: string
+                const: nosniff
+          content:
+            text/markdown:
+              schema:
+                type: string
+            text/plain:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "413":
+          $ref: "#/components/responses/ArtifactContentTooLarge"
+        "502":
+          $ref: "#/components/responses/BadGateway"
   /api/v1/artifacts/{artifactId}/versions/{version}/download-url:
     get:
       tags: [Artifacts]
@@ -1748,6 +1803,18 @@ components:
             $ref: "#/components/schemas/ProblemDetail"
     PayloadTooLarge:
       description: 文件超过 200 MB
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    ArtifactContentTooLarge:
+      description: 产物正文超过 2 MiB 的同源代理上限
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    BadGateway:
+      description: 对象存储读取失败或产物正文暂不可用；响应不包含存储地址、key 或凭据
       content:
         application/problem+json:
           schema:
