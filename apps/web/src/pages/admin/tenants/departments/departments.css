@@ -1,0 +1,88 @@
+/* 部门管理页：375px 下所有行可换行，操作按钮不固定宽度，避免横向滚动。 */
+.department-admin-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.department-back-link {
+  display: inline-block;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.department-list-item {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.department-list-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  min-width: 0;
+}
+
+.department-member-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.department-member-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  min-width: 0;
+}
+
+.department-member-name {
+  display: flex;
+  flex: 1 1 180px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 关键路径全部走原生按钮/链接，焦点必须清晰可见（AC-21 键盘段）。 */
+.department-admin-page button:focus-visible,
+.department-admin-page a:focus-visible,
+.department-member-row button:focus-visible,
+.department-back-link:focus-visible {
+  outline: 2px solid #0958d9;
+  outline-offset: 2px;
+}
+
+.department-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.department-list > .department-list-item {
+  padding: 12px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+}

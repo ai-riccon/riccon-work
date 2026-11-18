@@ -58,6 +58,16 @@ export const routes: RicconRoute[] = [
         component: '@/pages/admin/settings',
         title: '系统设置',
       },
+      {
+        path: '/admin/tenants',
+        component: '@/pages/admin/tenants',
+        title: '租户与部门',
+      },
+      {
+        path: '/admin/tenants/:tenantId/departments',
+        component: '@/pages/admin/tenants/departments',
+        title: '部门管理',
+      },
     ],
   },
   { path: '/login', component: '@/pages/login', title: '登录' },

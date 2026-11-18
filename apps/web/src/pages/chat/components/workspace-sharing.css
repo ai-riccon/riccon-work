@@ -1,0 +1,70 @@
+/* 空间共享抽屉：窄屏优先，所有块级元素允许换行，避免 375px 出现横向滚动。 */
+.workspace-sharing-item {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.workspace-sharing-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workspace-member-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.workspace-member-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  min-width: 0;
+}
+
+.workspace-member-name {
+  display: flex;
+  flex: 1 1 160px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 键盘用户需要清晰焦点；只在 :focus-visible 时增强，不改变鼠标操作观感。 */
+.workspace-sharing-item button:focus-visible,
+.workspace-member-row button:focus-visible,
+.workspace-sharing-title a:focus-visible {
+  outline: 2px solid #0958d9;
+  outline-offset: 2px;
+}
+
+.workspace-sharing-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.workspace-sharing-list > .workspace-sharing-item {
+  padding: 12px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+}

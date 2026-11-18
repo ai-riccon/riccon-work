@@ -87,6 +87,125 @@ export interface Workspace {
   updatedAt: string;
 }
 
+/**
+ * 工作空间可见性，对应 OpenAPI `WorkspaceVisibility`。
+ *
+ * `TENANT` 只用于 M02 遗留空间，M03 起不允许新建或转换；界面必须把它展示为只读。
+ */
+export type WorkspaceVisibility = 'PRIVATE' | 'TENANT' | 'DEPT' | 'CUSTOM';
+
+/**
+ * 部门状态，对应 OpenAPI `DepartmentStatus`。
+ */
+export type DepartmentStatus = 'ACTIVE' | 'DISABLED';
+
+/**
+ * M03 管理界面使用的空间响应。
+ *
+ * 严格对应 OpenAPI `Workspace`：`visibility` 从 M03 起必填，`departmentId` /
+ * `departmentName` 在个人空间与历史 `TENANT` 空间为 null。
+ * 这里单独声明而不改动 M02 的 `Workspace`，避免把仅供 J1 消费的最小类型
+ * 强行扩展到所有调用点。
+ */
+export interface ManagedWorkspace extends Workspace {
+  visibility: WorkspaceVisibility;
+  /** 所属部门；个人空间与历史 TENANT 空间可能省略或为 null。 */
+  departmentId?: string | null;
+  /** 所属部门名；仅用于展示，不参与授权判断。 */
+  departmentName?: string | null;
+}
+
+/**
+ * 部门摘要，对应 OpenAPI `Department`。
+ *
+ * 只含组织字段与负责人展示名，不含账号邮箱、角色或业务内容。
+ */
+export interface Department {
+  id: string;
+  name: string;
+  status: DepartmentStatus;
+  managerUserId?: string | null;
+  managerDisplayName?: string | null;
+  memberCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * 部门成员，对应 OpenAPI `DepartmentMember`。
+ */
+export interface DepartmentMember {
+  id: string;
+  username: string;
+  displayName: string;
+  status: UserStatus;
+}
+
+/**
+ * CUSTOM 空间显式成员，对应 OpenAPI `WorkspaceMember`。
+ */
+export interface WorkspaceMember {
+  userId: string;
+  username: string;
+  displayName: string;
+  grantedAt: string;
+}
+
+/** 创建部门请求，对应 OpenAPI `DepartmentCreateRequest`。 */
+export interface DepartmentCreateRequest {
+  name: string;
+}
+
+/** 重命名部门请求，对应 OpenAPI `DepartmentUpdateRequest`。 */
+export interface DepartmentUpdateRequest {
+  name: string;
+}
+
+/** 加入部门成员请求，对应 OpenAPI `DepartmentMemberRequest`。 */
+export interface DepartmentMemberRequest {
+  userId: string;
+}
+
+/** 任命/移交部门负责人请求，对应 OpenAPI `DepartmentManagerRequest`。 */
+export interface DepartmentManagerRequest {
+  userId: string;
+}
+
+/**
+ * 创建团队空间请求，对应 OpenAPI `WorkspaceCreateRequest`。
+ *
+ * M03 起团队空间必须归属一个启用部门，可见性只允许 `DEPT` / `CUSTOM`。
+ */
+export interface WorkspaceCreateRequest {
+  name: string;
+  description?: string | null;
+  departmentId: string;
+  visibility?: 'DEPT' | 'CUSTOM';
+}
+
+/** 在部门路径下创建空间请求，对应 OpenAPI `DepartmentWorkspaceCreateRequest`。 */
+export interface DepartmentWorkspaceCreateRequest {
+  name: string;
+  description?: string | null;
+  visibility?: 'DEPT' | 'CUSTOM';
+}
+
+/**
+ * 修改空间请求，对应 OpenAPI `WorkspaceUpdateRequest`。
+ *
+ * `TENANT` 历史空间在 M03 只读，可见性只能传 `DEPT` / `CUSTOM`。
+ */
+export interface WorkspaceUpdateRequest {
+  name?: string;
+  description?: string | null;
+  visibility?: 'DEPT' | 'CUSTOM';
+}
+
+/** 加入 CUSTOM 空间成员请求，对应 OpenAPI `WorkspaceMemberAddRequest`。 */
+export interface WorkspaceMemberAddRequest {
+  userId: string;
+}
+
 /** 支持的办公文件格式。 */
 export type FileFormat = 'PDF' | 'DOCX' | 'XLSX' | 'PNG' | 'JPEG';
 

@@ -8,6 +8,7 @@ import {
   MessageOutlined,
   PlusOutlined,
   RobotOutlined,
+  TeamOutlined,
   UploadOutlined,
   UserOutlined,
 } from '@ant-design/icons';
@@ -31,8 +32,8 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import { api as defaultApi } from '@/services/api';
-import type { RicconApi } from '@/services/api/client';
-import { describeApiError } from '@/services/api/errors';
+import type { RicconApi, WorkspaceManagementApi } from '@/services/api/client';
+import { ApiError, describeApiError } from '@/services/api/errors';
 import type { ChatMessage, Citation, WorkspaceFile } from '@/services/api/types';
 import { authStore, useAuth } from '@/services/auth/auth-store';
 import {
@@ -46,15 +47,40 @@ import {
   formatBytes,
 } from '@/services/files/file-validation';
 import { RunDetailDrawer } from './components/run-detail-drawer';
+import { WorkspaceSharingDrawer } from './components/workspace-sharing-drawer';
 import { useJ1Workspace } from './use-j1-workspace';
+import { useWorkspaceManagement } from './use-workspace-management';
+import {
+  KNOWLEDGE_SHARING_NOTICE,
+  SOURCE_FILE_UNAVAILABLE,
+} from '@/services/workspaces/visibility';
 import './chat.css';
 
 /** 工作空间页可注入依赖，便于组件测试不发起真实网络请求。 */
 export interface ChatPageProps {
   api?: RicconApi;
+  /** 空间共享管理能力；未注入时尝试从 api 能力检测，测试可显式提供。 */
+  managementApi?: WorkspaceManagementApi;
   navigate?: (to: string, options?: { replace?: boolean }) => void;
   /** 解析状态轮询间隔；测试可缩短。 */
   pollIntervalMs?: number;
+}
+
+/**
+ * 检测 API 客户端是否同时实现空间管理能力。
+ *
+ * J1 的最小接口 `RicconApi` 不包含管理方法；真实 ApiClient 同时实现两者，
+ * 测试替身只实现最小接口，因此不会触发管理请求或暴露管理入口。
+ *
+ * @param api API 客户端
+ * @returns 是否支持空间管理
+ */
+function supportsWorkspaceManagement(api: RicconApi): api is RicconApi & WorkspaceManagementApi {
+  const candidate = api as Partial<WorkspaceManagementApi>;
+  return (
+    typeof candidate.listDepartments === 'function' &&
+    typeof candidate.listTeamWorkspaces === 'function'
+  );
 }
 
 /** Bubble 状态基础色。 */
@@ -85,6 +111,7 @@ function bubbleStatus(
  */
 export default function ChatPage({
   api = defaultApi,
+  managementApi: injectedManagementApi,
   navigate: injectedNavigate,
   pollIntervalMs,
 }: ChatPageProps) {
@@ -92,9 +119,13 @@ export default function ChatPage({
   const navigate = injectedNavigate ?? umiNavigate;
   const auth = useAuth();
   const controller = useJ1Workspace(api, auth.session, pollIntervalMs);
+  const managementApi = injectedManagementApi ?? (supportsWorkspaceManagement(api) ? api : null);
+  const management = useWorkspaceManagement(managementApi, auth.session);
+  const [sharingOpen, setSharingOpen] = useState(false);
   const [input, setInput] = useState('');
   const [activeCitation, setActiveCitation] = useState<Citation | null>(null);
   const [citationError, setCitationError] = useState<string | null>(null);
+  const [citationFileUnavailable, setCitationFileUnavailable] = useState(false);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -153,6 +184,7 @@ export default function ChatPage({
    */
   const handleCitation = useCallback((citation: Citation): void => {
     setCitationError(null);
+    setCitationFileUnavailable(false);
     setActiveCitation(citation);
   }, []);
 
@@ -200,6 +232,13 @@ export default function ChatPage({
       popup.location.href = download.url;
     } catch (error) {
       popup.close();
+      if (error instanceof ApiError && error.status === 404) {
+        // 知识库引用可跨部门展示，但源文件仍受空间访问判定约束；
+        // 404 时不再保留可点击入口，只显示文件名与固定不可访问原因。
+        setCitationFileUnavailable(true);
+        setCitationError(SOURCE_FILE_UNAVAILABLE);
+        return;
+      }
       setCitationError(describeApiError(error, '无法打开原文件，请重试。'));
     }
   };
@@ -352,6 +391,15 @@ export default function ChatPage({
             </div>
           </div>
           <div className="chat-header-actions">
+            {management.canManage && (
+              <Button
+                aria-label="工作空间共享"
+                icon={<TeamOutlined />}
+                onClick={() => setSharingOpen(true)}
+              >
+                工作空间共享
+              </Button>
+            )}
             <Button onClick={() => navigate('/research')}>市场调研报告</Button>
             <Typography.Text>{auth.session.user.displayName}</Typography.Text>
             <Button
@@ -454,6 +502,14 @@ export default function ChatPage({
           </aside>
 
           <section aria-label="对话区域" className="chat-panel">
+            <Alert
+              className="chat-knowledge-notice"
+              showIcon
+              description={KNOWLEDGE_SHARING_NOTICE}
+              style={{ marginBottom: 8 }}
+              title="知识库共享范围"
+              type="info"
+            />
             {!controller.activeConversationId ? (
               <Flex align="center" justify="center" style={{ flex: 1, minHeight: 0 }}>
                 <Empty description="选择左侧会话，或新建一个会话开始提问">
@@ -714,10 +770,18 @@ export default function ChatPage({
                 {activeCitation.snippet}
               </Typography.Paragraph>
             </div>
+            {activeCitation.sourceType === 'KNOWLEDGE' && (
+              <Alert
+                showIcon
+                description={KNOWLEDGE_SHARING_NOTICE}
+                title="知识库来源"
+                type="info"
+              />
+            )}
             {citationError && (
               <Alert showIcon description={citationError} title="无法打开原文件" type="error" />
             )}
-            {activeCitation.fileId && (
+            {activeCitation.fileId && !citationFileUnavailable && (
               <Button
                 onClick={() => {
                   void handleOpenFile();
@@ -727,9 +791,22 @@ export default function ChatPage({
                 打开原文件
               </Button>
             )}
+            {citationFileUnavailable && (
+              <Typography.Text type="secondary">源文件不可访问</Typography.Text>
+            )}
           </Space>
         )}
       </Drawer>
+
+      {sharingOpen && managementApi && (
+        <WorkspaceSharingDrawer
+          activeWorkspace={controller.workspace}
+          api={managementApi}
+          departmentError={management.error}
+          manageableDepartments={management.manageableDepartments}
+          onClose={() => setSharingOpen(false)}
+        />
+      )}
 
       <RunDetailDrawer api={api} onClose={() => setActiveRunId(null)} runId={activeRunId} />
     </div>

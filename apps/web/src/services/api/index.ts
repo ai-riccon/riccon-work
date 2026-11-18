@@ -17,5 +17,5 @@ export const api = new ApiClient({
 });
 
 export { ApiError } from './errors';
-export type { RicconApi } from './client';
+export type { PlatformDepartmentApi, RicconApi, WorkspaceManagementApi } from './client';
 export type * from './types';
