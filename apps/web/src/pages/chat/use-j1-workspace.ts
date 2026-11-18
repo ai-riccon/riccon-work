@@ -407,6 +407,10 @@ export function useJ1Workspace(
     loadTokenRef.current += 1;
     try {
       const conversation = await api.createConversation(currentWorkspace.id);
+      // 切换空间会使旧空间的创建响应失去意义；丢弃过期结果，避免新空间列表出现旧会话。
+      if (workspaceRef.current?.id !== currentWorkspace.id) {
+        return;
+      }
       setConversations((previous) => [conversation, ...previous]);
       activeIdRef.current = conversation.id;
       setActiveConversationId(conversation.id);
