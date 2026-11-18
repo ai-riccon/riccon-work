@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0043",
+  "module_id": "M03",
+  "title": "M03-B4 内容贯通与旧谓词清理",
+  "owner": "riccon/builder",
+  "status": "in_progress",
+  "write_scope": [
+    "apps/api/src/main/java/com/riccon/api/chat/**",
+    "apps/api/src/main/java/com/riccon/api/file/**",
+    "apps/api/src/main/java/com/riccon/api/research/**",
+    "apps/api/src/main/java/com/riccon/api/run/**",
+    "apps/api/src/test/java/com/riccon/api/*ScopeApiTest.java",
+    "apps/api/src/test/java/com/riccon/api/ConversationApiTest.java",
+    "apps/api/src/test/java/com/riccon/api/RunDetailApiTest.java"
+  ],
+  "acceptance": [
+    "会话/文件/报告/产物/运行列表、详情、消息、下载统一先过 requireAccessible；共享空间成员可读写，个人空间仅 owner；404 与审计不回归",
+    "删除 FileJdbc.WORKSPACE_VISIBLE 及使用；ConversationJdbc.findOwned/listOwned/findOwnedForUpdate 不再是共享空间唯一判据；RunDetailService CHAT owner-only 分支移除",
+    "ChatSubmissionService 共享会话发送/停止路径按空间访问；RunDetailService/报告/产物/下载按空间；跨租户/跨部门 404",
+    "更新 ConversationApiTest.listIsPagedAndOwnerScoped、RunDetailApiTest 等旧 owner-only 断言为 M03 语义，不降低其他断言",
+    "扩展 *ScopeApiTest 覆盖 DEPT-002/003/004 消息/文件/报告/run detail；workspace 包外无第二份可见性 SQL",
+    "定向测试与一次全量 verify 通过；不碰 V9/workspace 谓词/B5 前端/config"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-18T19:05:27.602+08:00",
+  "updated_at": "2026-11-18T19:05:34.781+08:00",
+  "baseline_commit": "187077577939ce767ef4bf31c2b755b219bf42cd"
+}
