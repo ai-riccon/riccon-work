@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0056",
+  "module_id": "M12",
+  "title": "M12-A 独立评审：热栈/隔离/基准",
+  "owner": "riccon/verifier",
+  "status": "in_progress",
+  "write_scope": [
+    ".riccon/reviews/tasks/**"
+  ],
+  "acceptance": [
+    "默认/CI 完全不变；external 必须显式 opt-in + namespace，非法值失败",
+    "复用 compose MySQL/OpenSearch/RustFS；per-agent DB/S3/OpenSearch 隔离；同 namespace 锁失败",
+    "迁移/回滚始终一次性容器；schema 版本不匹配失败",
+    "测试数量/断言/覆盖率不变：默认 579 + 前端 212，external 579",
+    "基准口径有效：中位数、startup 定义、≥40%，external 全量不慢于默认",
+    "只改测试/脚本/package scripts；写 TASK-0054-review.md verdict；无生产/compose/CI 改动"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-19T03:06:58.957+08:00",
+  "updated_at": "2026-11-19T03:07:04.389+08:00",
+  "baseline_commit": "746cf130d00a27e6add2f9170e3410f0e137447c"
+}

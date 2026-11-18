@@ -1,0 +1,63 @@
+# command: node scripts/test-services.mjs benchmark --namespace builder-0054 --runs 3
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-19T02:45:27.045+08:00
+# finished_at: 2026-11-19T02:57:45.121+08:00
+# duration_ms: 738075
+# exit_code: 0
+
+# --- stdout ---
+已准备数据库 riccon_test_builder_0054_api
+已准备数据库 riccon_test_builder_0054_worker
+
+运行 external 测试:
+  export RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=builder-0054
+  ./mvnw -q -T1C verify
+[benchmark] worker-hitl default 预热
+[benchmark] worker-hitl default 第 1 次: startup=42.89s test=19.42s class=62.31s wall=69.69s
+[benchmark] worker-hitl default 第 2 次: startup=42.47s test=18.32s class=60.79s wall=72.06s
+[benchmark] worker-hitl default 第 3 次: startup=43.10s test=18.17s class=61.27s wall=68.65s
+[benchmark] worker-hitl external 预热
+[benchmark] worker-hitl external 第 1 次: startup=7.71s test=17.47s class=25.18s wall=32.23s
+[benchmark] worker-hitl external 第 2 次: startup=7.13s test=17.50s class=24.63s wall=31.79s
+[benchmark] worker-hitl external 第 3 次: startup=7.00s test=17.49s class=24.49s wall=31.44s
+[benchmark] api-auth default 预热
+[benchmark] api-auth default 第 1 次: startup=20.37s test=13.89s class=34.26s wall=50.89s
+[benchmark] api-auth default 第 2 次: startup=21.25s test=13.92s class=35.17s wall=46.65s
+[benchmark] api-auth default 第 3 次: startup=20.99s test=14.20s class=35.19s wall=45.77s
+[benchmark] api-auth external 预热
+[benchmark] api-auth external 第 1 次: startup=7.86s test=14.59s class=22.45s wall=33.18s
+[benchmark] api-auth external 第 2 次: startup=7.77s test=14.53s class=22.30s wall=32.90s
+[benchmark] api-auth external 第 3 次: startup=7.70s test=14.75s class=22.45s wall=33.53s
+
+## 固定启动时间基准（本机，串行）
+
+| 用例 | 模式 | 各次 startup (s) | startup 中位数 (s) | test 中位数 (s) | class 中位数 (s) | wall 中位数 (s) |
+| --- | --- | --- | --- | --- | --- | --- |
+| worker-hitl | default | 42.89 / 42.47 / 43.10 | 42.89 | 18.32 | 61.27 | 69.69 |
+| worker-hitl | external | 7.71 / 7.13 / 7.00 | 7.13 | 17.49 | 24.63 | 31.79 |
+| api-auth | default | 20.37 / 21.25 / 20.99 | 20.99 | 13.92 | 35.17 | 46.65 |
+| api-auth | external | 7.86 / 7.77 / 7.70 | 7.77 | 14.59 | 22.45 | 33.18 |
+
+| 用例 | 默认 startup 中位数 (s) | external startup 中位数 (s) | 降幅 | ≥40% |
+| --- | --- | --- | --- | --- |
+| worker-hitl | 42.89 | 7.13 | 83.4% | 是 |
+| api-auth | 20.99 | 7.77 | 63.0% | 是 |
+
+| 用例 | 默认 class 中位数 (s) | external class 中位数 (s) | 总耗时降幅 |
+| --- | --- | --- | --- |
+| worker-hitl | 61.27 | 24.63 | 59.8% |
+| api-auth | 35.17 | 22.45 | 36.2% |
+
+目标（固定启动时间降低 ≥40%）: 达标
+定义: startup = surefire 类耗时 - 各 testcase 时间之和（容器/迁移/上下文/类级 setup）；test 为测试方法自身耗时；wall 含 Maven 启动与编译。
+
+# --- stderr ---
+ Container riccon-test-mysql Running 
+ Container riccon-test-opensearch Running 
+ Container riccon-test-object-storage Running 
+ Container riccon-test-object-storage Waiting 
+ Container riccon-test-mysql Waiting 
+ Container riccon-test-opensearch Waiting 
+ Container riccon-test-opensearch Healthy 
+ Container riccon-test-object-storage Healthy 
+ Container riccon-test-mysql Healthy
