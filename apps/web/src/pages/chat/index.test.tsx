@@ -157,7 +157,7 @@ describe('J1 工作空间', () => {
 
     expect(await screen.findByRole('heading', { name: 'Riccon 工作空间' })).toBeVisible();
     expect(screen.getByText(/示例企业/)).toBeVisible();
-    expect(screen.getByText(/我的工作空间/)).toBeVisible();
+    expect(await screen.findByText(/我的工作空间/)).toBeVisible();
     expect(await screen.findByRole('button', { name: '示例会话' })).toBeVisible();
   });
 
