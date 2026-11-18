@@ -12,6 +12,7 @@ reviewed_commits: [e9057d1]
 head_commit: 5ac5abf
 evidence:
   - EV-0314
+  - EV-0315
 findings:
   - id: F-001
     title: "平台管理员部门成员列表端点未被 DepartmentAdminApiTest 覆盖；停用账号在 HTTP 成员列表与 memberCount 的语义也未被断言"
@@ -55,7 +56,7 @@ created_at: 2026-11-18T18:15:14+08:00
 | `git status --short`                                                                                         | 0      | 空；HEAD `5ac5abf`，工作区干净                                                                                                                                               |
 | `git show --stat e9057d1 efc8d97`                                                                            | 0      | `e9057d1` 22 个代码/测试文件，3098 insertions；`efc8d97` 仅 EV-0314 日志、EV JSON、state/task                                                                                |
 | `git diff --name-status e602c93..e9057d1`                                                                    | 0      | 22 个新增文件，全部在 `admin/department/**`、`department/**` 与两个测试文件内；无 V9、workspace/chat/file/research/run、`config/**`、前端、PRODUCT/AGENTS/contracts/威胁模型 |
-| `./mvnw -q -T1C -pl apps/api -am -Dtest=DepartmentAdminApiTest -Dsurefire.failIfNoSpecifiedTests=false test` | 0      | **11 tests / 0 failures / 0 errors / 0 skipped**，55.75 s（surefire 报告 18:09:20）                                                                                          |
+| `./mvnw -q -T1C -pl apps/api -am -Dtest=DepartmentAdminApiTest -Dsurefire.failIfNoSpecifiedTests=false test` | 0      | **11 tests / 0 failures / 0 errors / 0 skipped**，两次运行：评审前 55.75 s（surefire 18:09:20），正式证据 **EV-0315** 58.05 s                                                |
 | `./mvnw -q spotless:check`                                                                                   | 0      | 通过                                                                                                                                                                         |
 | `riccon contract validate --strict --project .`                                                              | 0      | 0 errors, 0 warnings                                                                                                                                                         |
 | `riccon state validate --project .`                                                                          | 0      | 0 errors, 0 warnings                                                                                                                                                         |
