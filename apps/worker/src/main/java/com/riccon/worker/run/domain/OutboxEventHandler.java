@@ -25,6 +25,19 @@ public interface OutboxEventHandler {
     RunKind runKind();
 
     /**
+     * 运行已是终态时是否仍需要执行本处理器。
+     *
+     * <p>默认 {@code false}：终态运行的重复投递只把 outbox 标记完成。取消事件例外——
+     * API 在拒绝审批时先把运行置为 CANCELLED，Worker 仍需运行取消处理器补齐待审批与
+     * 未完成阶段的终态，否则时间线会永久停在 RUNNING。
+     *
+     * @return 是否在终态运行上执行
+     */
+    default boolean handlesTerminalRun() {
+        return false;
+    }
+
+    /**
      * 处理事件。
      *
      * @param event 已领取事件

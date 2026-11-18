@@ -113,17 +113,29 @@ public class OutboxPoller {
                 markDead(event, "agent_run kind mismatch for event type: " + event.eventType());
                 return;
             }
-            if (run.get().isTerminal()) {
+            boolean terminalRun = run.get().isTerminal();
+            if (terminalRun && !handler.get().handlesTerminalRun()) {
                 // 重复投递：运行已到终态，不再次执行。
                 markDone(event);
                 return;
             }
-            if (!runRepository.markRunning(tenantId, event.runId(), event.attempts())) {
+            if (!terminalRun && !runRepository.markRunning(tenantId, event.runId(), event.attempts())) {
                 markDone(event);
                 return;
             }
             try {
                 handler.get().handle(event);
+                if (terminalRun) {
+                    // 终态运行的收尾事件只补齐缺失的阶段/审批终态，不得再推进运行状态。
+                    markDone(event);
+                    LOG.info(
+                            "outbox.event.terminal_run_reconciled eventId={} tenantId={} runId={} eventType={}",
+                            event.id(),
+                            event.tenantId(),
+                            event.runId(),
+                            event.eventType());
+                    return;
+                }
                 // 审批挂起不是失败：运行进入 WAITING_APPROVAL，outbox 事件完成但不标记运行成功。
                 Optional<RunRecord> current = runRepository.find(tenantId, event.runId());
                 if (current.isPresent()

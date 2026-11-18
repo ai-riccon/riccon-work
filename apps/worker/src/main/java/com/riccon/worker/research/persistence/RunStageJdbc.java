@@ -135,6 +135,28 @@ public class RunStageJdbc {
     }
 
     /**
+     * 把运行下所有 RUNNING 阶段标记为 SKIPPED。
+     *
+     * <p>用于审批拒绝与取消：API 可能先把运行置为终态，Worker 的取消处理器随后补齐时间线；
+     * 未完成的 TOOL/APPROVAL 阶段必须进入终态，不能永久停在 RUNNING。已终态的阶段不变，
+     * 因此重复投递幂等。
+     *
+     * @param tenantId 租户
+     * @param runId 运行 ID
+     * @return 更新的阶段数量
+     */
+    public int skipRunning(TenantId tenantId, UUID runId) {
+        return tenantJdbc.update(tenantId, """
+                UPDATE agent_run_stage
+                   SET status = 'SKIPPED',
+                       finished_at = COALESCE(finished_at, NOW(6))
+                 WHERE tenant_id = :tenantId
+                   AND run_id = :runId
+                   AND status = 'RUNNING'
+                """, Map.of("runId", UuidBinary.toBytes(runId)));
+    }
+
+    /**
      * 结束阶段。
      *
      * @param tenantId 租户

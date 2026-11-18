@@ -60,6 +60,15 @@ public final class TestModelStub implements AutoCloseable {
     /** 是否在首个 content 帧后暂停，用于证明下游逐事件 flush。 */
     private volatile boolean holdAfterFirstContent;
 
+    /** 时间分片：首个 content 帧之前的延迟，毫秒；0 表示未启用分片。 */
+    private volatile long firstDelayMs;
+
+    /** 时间分片：相邻帧之间的间隔，毫秒。 */
+    private volatile long frameIntervalMs;
+
+    /** 时间分片：content 帧数量。 */
+    private volatile int sliceCount;
+
     /** 释放暂停的闸门；reset 时立即放开，避免测试之间互相阻塞。 */
     private volatile CountDownLatch contentGate = new CountDownLatch(0);
 
@@ -98,8 +107,32 @@ public final class TestModelStub implements AutoCloseable {
         noDone = false;
         emptyStream = false;
         holdAfterFirstContent = false;
+        firstDelayMs = 0;
+        frameIntervalMs = 0;
+        sliceCount = 0;
         contentGate.countDown();
         contentGate = new CountDownLatch(0);
+    }
+
+    /**
+     * 启用时间分片输出：模拟真实模型的逐字增量。
+     *
+     * <p>桩在首个 content 帧之前等待 {@code firstDelayMs}，之后每帧等待 {@code intervalMs}。
+     * 调用方据此判断“首字是否被缓冲到流结束”：若链路把增量攒到结束，首字时间会接近
+     * {@code firstDelayMs + (sliceCount - 1) * intervalMs}。
+     *
+     * @param firstDelayMs 首个 content 帧之前的延迟，毫秒
+     * @param intervalMs 相邻 content 帧的间隔，毫秒
+     * @param sliceCount content 帧数量，必须为正
+     */
+    public void timeSliced(int firstDelayMs, int intervalMs, int sliceCount) {
+        if (firstDelayMs < 0 || intervalMs <= 0 || sliceCount < 1) {
+            throw new IllegalArgumentException(
+                    "time sliced pacing requires non-negative first delay, positive interval");
+        }
+        this.firstDelayMs = firstDelayMs;
+        this.frameIntervalMs = intervalMs;
+        this.sliceCount = sliceCount;
     }
 
     /**
@@ -222,7 +255,15 @@ public final class TestModelStub implements AutoCloseable {
             JsonNode root = MAPPER.readTree(body);
             Plan plan = plan(root);
             boolean held = false;
+            int index = 0;
             for (String frame : plan.frames()) {
+                // 帧索引 0 是 role 帧，1 是首个 content 帧；其余帧按间隔推进，模拟真实逐字流。
+                if (index == 1) {
+                    pause(plan.firstDelayMs());
+                } else if (index > 1) {
+                    pause(plan.frameIntervalMs());
+                }
+                index++;
                 output.write(frame.getBytes(StandardCharsets.UTF_8));
                 output.flush();
                 if (!held && holdAfterFirstContent && frame.contains("\"content\"")) {
@@ -240,6 +281,24 @@ public final class TestModelStub implements AutoCloseable {
             }
         }
         exchange.close();
+    }
+
+    /**
+     * 按毫秒暂停；0 表示不等待。
+     *
+     * <p>桩需要按真实节奏产出增量，这里的等待是被测协议的一部分，不是测试轮询。
+     *
+     * @param millis 毫秒
+     */
+    private static void pause(long millis) {
+        if (millis <= 0) {
+            return;
+        }
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /**
@@ -302,6 +361,18 @@ public final class TestModelStub implements AutoCloseable {
         if (emptyAnswer) {
             return new Plan(
                     List.of(frame("{\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}"), "data: [DONE]\n\n"));
+        }
+        if (sliceCount > 0) {
+            // 时间分片：每帧一个非空增量，桩按 firstDelay/frameInterval 控制到达节奏。
+            List<String> sliced = new java.util.ArrayList<>();
+            sliced.add(frame("{\"choices\":[{\"delta\":{\"role\":\"assistant\"}}]}"));
+            for (int index = 0; index < sliceCount; index++) {
+                sliced.add(frame("{\"choices\":[{\"delta\":{\"content\":\"分片" + index + "。\"}}]}"));
+            }
+            sliced.add(frame("{\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}"));
+            sliced.add(frame("{\"choices\":[],\"usage\":{\"prompt_tokens\":12,\"completion_tokens\":8}}"));
+            sliced.add("data: [DONE]\n\n");
+            return new Plan(sliced, firstDelayMs, frameIntervalMs);
         }
         List<String> frames = new java.util.ArrayList<>(List.of(
                 frame("{\"choices\":[{\"delta\":{\"role\":\"assistant\"}}]}"),
@@ -371,6 +442,18 @@ public final class TestModelStub implements AutoCloseable {
      * 响应计划。
      *
      * @param frames SSE 帧
+     * @param firstDelayMs 首个 content 帧之前的等待
+     * @param frameIntervalMs 相邻帧之间的等待
      */
-    private record Plan(List<String> frames) {}
+    private record Plan(List<String> frames, long firstDelayMs, long frameIntervalMs) {
+
+        /**
+         * 无节奏控制的响应计划。
+         *
+         * @param frames SSE 帧
+         */
+        private Plan(List<String> frames) {
+            this(frames, 0, 0);
+        }
+    }
 }

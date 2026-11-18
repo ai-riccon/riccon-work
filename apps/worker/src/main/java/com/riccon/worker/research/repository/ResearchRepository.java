@@ -206,6 +206,17 @@ public class ResearchRepository {
     }
 
     /**
+     * 把运行下所有 RUNNING 阶段标记为 SKIPPED。
+     *
+     * @param tenantId 租户
+     * @param runId 运行 ID
+     * @return 更新的阶段数量
+     */
+    public int skipRunningStages(TenantId tenantId, UUID runId) {
+        return stageJdbc.skipRunning(tenantId, runId);
+    }
+
+    /**
      * 更新运行中阶段的详情。
      *
      * @param tenantId 租户

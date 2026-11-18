@@ -23,13 +23,15 @@
 - 提示注入：系统指令为静态常量；检索/文件/工具结果用 `<<<UNTRUSTED_DATA>>>` 边界作为独立消息传入，不拼入系统指令。
 - HITL：MCP 工具必须 READ、在平台白名单、租户已授权、`requires_approval=TRUE` 且存在审批 ID；resume 阶段再校验审批为 APPROVED 并与 run/task 绑定。
 - SSE：帧格式 `id/event/data`；事件字段严格对应 `chat-event.v1`；首字前失败返回 ProblemDetail，首字后失败发送 `riccon.chat.failed.v1`；取消发送 `riccon.chat.stopped.v1` 并保留已生成内容。
+- 模型流式：`OpenAiCompatibleChatModel.stream` 的 HTTP 读循环是阻塞的，必须经 `subscribeOn(boundedElastic)` 在独立线程执行。阻塞式消费方（`Flux.toIterable().iterator()` 会在 `subscribe` 内同步执行生成器）否则要等整段模型流结束才拿到第一个元素，表现为“所有 delta 在模型流结束后一次性到达”。取消时通过 `sink.onCancel/onDispose` 关闭响应体，避免阻塞的 `readLine` 占住线程。
+- 首字指标：`model_invocation.first_token_ms` 记录第一个可见 delta 写入 SSE 的时间，不是流结束时间；返回值应显著小于 `duration_ms`。
 
 ## 状态机与恢复
 
 - 对话流不走 outbox；运行从 `PENDING/RETRY_WAIT` 条件推进到 `RUNNING`，防止并发双流。
 - 报告任务：`RETRIEVAL → TOOL` 后模型请求 MCP 工具时创建 `approval(PENDING)`、写入 `APPROVAL` 阶段并置 `WAITING_APPROVAL`；outbox 事件完成但运行不标记成功。
 - 审批通过：`resume` 事件执行已批准工具（写 `mcp_invocation` + 审计），完成 TOOL/APPROVAL 阶段，进入 GENERATION；当前任务只把生成摘要写入阶段 details，报告产物与任务状态由后续任务接管。
-- 审批拒绝/过期：`resume` 将 APPROVAL 置 SKIPPED 并取消运行；`cancel` 事件取消 PENDING 审批与运行。
+- 审批拒绝/过期：`resume` 将 APPROVAL 置 SKIPPED 并取消运行；`cancel` 事件取消 PENDING 审批与运行，并把运行下仍为 RUNNING 的阶段（常见为 TOOL/APPROVAL）补齐为 SKIPPED 并写 `finished_at`。API 拒绝路径会先把 run/task 置为 CANCELLED 再投递 `cancel`，因此取消处理器声明 `handlesTerminalRun()=true`：轮询器对终态运行仍会执行该处理器，但不再推进运行状态。
 
 ## 已知边界与后续动作
 

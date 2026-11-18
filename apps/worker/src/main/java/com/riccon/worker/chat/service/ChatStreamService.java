@@ -427,8 +427,13 @@ public class ChatStreamService {
         /** 首个增量。 */
         private final String firstDelta;
 
-        /** 首字延迟。 */
-        private final int firstTokenMs;
+        /**
+         * 首个可见增量的到达时间（毫秒）。
+         *
+         * <p>初始化于首字等待完成时；写入首个 delta 时刷新为实际写出 SSE 的时刻。
+         * 这样 {@code first_token_ms} 反映“客户端可见的首个增量”，而不是模型流结束或首字排队时间。
+         */
+        private int firstTokenMs;
 
         /** 调用句柄。 */
         private final InvocationHandle invocation;
@@ -535,6 +540,8 @@ public class ChatStreamService {
                     writer.write(citation);
                 }
                 writer.write(eventFactory.delta(tenantId.value(), request.runId(), messageId, traceId, firstDelta));
+                // 首个增量已写入 SSE：以此为 first_token_ms 的观测点，保证指标与用户可见时间一致。
+                firstTokenMs = (int) Math.max(0, clock.millis() - startedAt);
                 while (iterator.hasNext()) {
                     if (cancellation.cancelled()) {
                         throw new StreamCancelledException(cancellation.reason());

@@ -236,6 +236,36 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(mcpInvocationCount(fixture.runId())).isZero();
     }
 
+    /**
+     * API 先置终态再投递取消事件时，未完成阶段必须补齐为 SKIPPED。
+     *
+     * <p>真实拒绝路径（apps/api ApprovalService.reject）会先把 run/task 置 CANCELLED，
+     * 再写 {@code agent.run.cancel.v1}。轮询器若按“终态运行直接完成”处理，TOOL/APPROVAL
+     * 会永久停在 RUNNING（TASK-0024 F-005）。
+     */
+    @Test
+    void apiRejectedThenCancelEvent_skipsRunningStages() {
+        Fixture fixture = fixture("tenant-a");
+        assertThat(poller.pollOnce()).isEqualTo(1);
+        assertThat(stageStatus(fixture.runId(), "TOOL")).isEqualTo("RUNNING");
+        assertThat(stageStatus(fixture.runId(), "APPROVAL")).isEqualTo("RUNNING");
+
+        cancelInApiFirst(fixture);
+        UUID cancelEvent = data.publishResearchCancel("tenant-a", fixture.runId(), "USER_CANCELLED");
+
+        assertThat(poller.pollOnce()).isEqualTo(1);
+
+        assertThat(outboxStatus(cancelEvent)).isEqualTo("DONE");
+        assertThat(runStatus(fixture.runId())).isEqualTo("CANCELLED");
+        assertThat(stageStatus(fixture.runId(), "TOOL")).isEqualTo("SKIPPED");
+        assertThat(stageStatus(fixture.runId(), "APPROVAL")).isEqualTo("SKIPPED");
+        assertThat(stageFinishedAt(fixture.runId(), "TOOL")).isNotNull();
+        assertThat(stageFinishedAt(fixture.runId(), "APPROVAL")).isNotNull();
+        assertThat(approvalCount(fixture.runId(), "CANCELLED")).isEqualTo(1);
+        assertThat(mcpInvocationCount(fixture.runId())).isZero();
+        assertThat(artifactCount(fixture.taskId())).isZero();
+    }
+
     /** 未授权工具导致不可重试失败，运行 FAILED。 */
     @Test
     void requestedWithoutGrant_failsRun() {
@@ -357,6 +387,43 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
                 .param("stage", stage)
                 .query(String.class)
                 .single();
+    }
+
+    /** 阶段结束时间。 */
+    private java.sql.Timestamp stageFinishedAt(UUID runId, String stage) {
+        return jdbcClient
+                .sql("SELECT finished_at FROM agent_run_stage WHERE run_id = :runId AND stage = :stage")
+                .param("runId", UuidBinary.toBytes(runId))
+                .param("stage", stage)
+                .query(java.sql.Timestamp.class)
+                .single();
+    }
+
+    /** 产物数量。 */
+    private int artifactCount(UUID taskId) {
+        return jdbcClient
+                .sql("SELECT COUNT(*) FROM artifact WHERE research_task_id = :taskId")
+                .param("taskId", UuidBinary.toBytes(taskId))
+                .query(Integer.class)
+                .single();
+    }
+
+    /**
+     * 按 API 拒绝路径先把运行与任务推进到终态，再投递取消事件。
+     *
+     * @param fixture 夹具
+     */
+    private void cancelInApiFirst(Fixture fixture) {
+        jdbcClient.sql("""
+                        UPDATE agent_run
+                           SET status = 'CANCELLED', finished_at = NOW(6)
+                         WHERE tenant_id = 'tenant-a' AND id = :id
+                        """).param("id", UuidBinary.toBytes(fixture.runId())).update();
+        jdbcClient.sql("""
+                        UPDATE research_task
+                           SET status = 'CANCELLED', finished_at = NOW(6)
+                         WHERE tenant_id = 'tenant-a' AND id = :id
+                        """).param("id", UuidBinary.toBytes(fixture.taskId())).update();
     }
 
     /** outbox 状态。 */

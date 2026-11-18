@@ -91,8 +91,9 @@ class ChatStreamFlushIntegrationTest extends WorkerIntegrationTestBase {
                 BufferedReader reader = new BufferedReader(new InputStreamReader(body, StandardCharsets.UTF_8))) {
             assertThat(response.statusCode()).isEqualTo(200);
             Future<String> deltaFuture = readerExecutor.submit(() -> readEventData(reader, "riccon.chat.delta.v1"));
-            // 模型桩仍被 contentGate 阻塞；此处成功即证明 delta 已从 Worker flush 到客户端。
-            String delta = deltaFuture.get(20, TimeUnit.SECONDS);
+            // 模型桩仍被 contentGate 阻塞；必须在桩的 15s 兜底超时之前读到 delta，
+            // 否则“缓冲到流结束”的实现会在 gate 超时后同样通过（TASK-0024 F-002 的假绿）。
+            String delta = deltaFuture.get(5, TimeUnit.SECONDS);
             JsonNode deltaJson = objectMapper.readTree(delta);
             assertThat(deltaJson.path("data").path("delta").asText()).isNotBlank();
 

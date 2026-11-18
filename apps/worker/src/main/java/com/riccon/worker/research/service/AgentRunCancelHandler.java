@@ -71,6 +71,19 @@ public class AgentRunCancelHandler implements OutboxEventHandler {
     }
 
     /**
+     * 取消事件必须在终态运行上执行。
+     *
+     * <p>API 拒绝审批时先置运行 CANCELLED 再投递取消事件；若轮询器按普通重复投递跳过，
+     * TOOL/APPROVAL 阶段会永远停在 RUNNING（TASK-0024 F-005）。
+     *
+     * @return 固定 {@code true}
+     */
+    @Override
+    public boolean handlesTerminalRun() {
+        return true;
+    }
+
+    /**
      * 处理取消事件。
      *
      * @param event 已领取事件
@@ -91,10 +104,17 @@ public class AgentRunCancelHandler implements OutboxEventHandler {
                         WorkerErrorCodes.TENANT_NOT_FOUND, false, "research run not found"));
         repository.cancelPendingApprovals(tenantId, runId);
         runRepository.markCancelled(tenantId, runId);
+        // 未完成阶段进入 SKIPPED：审批拒绝/用户取消后时间线不得停留在 RUNNING。
+        int skipped = repository.skipRunningStages(tenantId, runId);
         if (run.researchTaskId() != null) {
             // 取消不是失败：任务进入 CANCELLED，不写失败码；已完成的阶段与引用保持原样。
             repository.markTaskCancelled(tenantId, run.researchTaskId(), runId, null, null);
         }
-        LOG.info("research.run.cancelled tenantId={} runId={} reason={}", tenantId.value(), runId, reason);
+        LOG.info(
+                "research.run.cancelled tenantId={} runId={} reason={} skippedStages={}",
+                tenantId.value(),
+                runId,
+                reason,
+                skipped);
     }
 }

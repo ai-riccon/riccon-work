@@ -108,6 +108,53 @@ class OutboxPollerTest extends WorkerIntegrationTestBase {
         assertThat(outboxStatus(eventId)).isEqualTo("DONE");
     }
 
+    /**
+     * 声明处理终态运行的处理器仍会执行，且不再推进运行状态。
+     *
+     * <p>取消事件依赖这一语义：API 先置 CANCELLED 再投递事件，Worker 仍需补齐阶段终态。
+     */
+    @Test
+    void pollOnce_terminalRun_withOptInHandler_dispatchesWithoutStateChange() {
+        Seed seed = seedFileRun("tenant-a");
+        jdbcClient
+                .sql("UPDATE agent_run SET status = 'CANCELLED', finished_at = NOW(6) "
+                        + "WHERE tenant_id = :tenantId AND id = :id")
+                .param("tenantId", "tenant-a")
+                .param("id", UuidBinary.toBytes(seed.runId()))
+                .update();
+        UUID eventId =
+                data.createOutbox("tenant-a", seed.runId(), EventTypes.FILE_PARSE_REQUESTED, "{}", "terminal-optin-1");
+        java.util.concurrent.atomic.AtomicInteger handled = new java.util.concurrent.atomic.AtomicInteger();
+        OutboxEventHandler reconciler = new OutboxEventHandler() {
+            @Override
+            public String eventType() {
+                return EventTypes.FILE_PARSE_REQUESTED;
+            }
+
+            @Override
+            public RunKind runKind() {
+                return RunKind.FILE_PARSE;
+            }
+
+            @Override
+            public boolean handlesTerminalRun() {
+                return true;
+            }
+
+            @Override
+            public void handle(ClaimedOutboxEvent event) {
+                handled.incrementAndGet();
+            }
+        };
+        OutboxPoller custom = customPoller(reconciler);
+
+        assertThat(custom.pollOnce()).isEqualTo(1);
+
+        assertThat(handled).as("终态运行的收尾事件必须执行处理器").hasValue(1);
+        assertThat(outboxStatus(eventId)).isEqualTo("DONE");
+        assertThat(runStatus(seed.runId())).as("终态不得被改回 RUNNING").isEqualTo("CANCELLED");
+    }
+
     /** 未到期租约不会被轮询器重复处理。 */
     @Test
     void pollOnce_futureLease_skips() {

@@ -29,10 +29,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
+import reactor.core.scheduler.Schedulers;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
@@ -98,6 +100,12 @@ public class OpenAiCompatibleChatModel implements Model {
     /**
      * 发起流式调用。
      *
+     * <p>HTTP 读取是阻塞的，必须在独立线程上执行：若在订阅线程上直接跑读循环，任何阻塞式消费方
+     * （例如 {@code Flux.toIterable().iterator()} 会在 {@code subscribe} 内同步执行生成器）都要等
+     * 整个模型流结束才能拿到第一个元素，表现为“首字被缓冲到流结束”。{@code subscribeOn}
+     * 把阻塞读放到 {@code boundedElastic}，增量即可逐条下发；取消时同时关闭响应体，避免
+     * 阻塞的 {@code readLine} 一直占住线程。
+     *
      * @param messages 对话消息
      * @param tools 可用工具 schema
      * @param options 生成参数
@@ -105,7 +113,9 @@ public class OpenAiCompatibleChatModel implements Model {
      */
     @Override
     public Flux<ChatResponse> stream(List<Msg> messages, List<ToolSchema> tools, GenerateOptions options) {
-        return Flux.create(sink -> streamInto(sink, messages, tools, options));
+        return Flux.<ChatResponse>create(
+                        sink -> streamInto(sink, messages, tools, options), FluxSink.OverflowStrategy.BUFFER)
+                .subscribeOn(Schedulers.boundedElastic());
     }
 
     /**
@@ -123,10 +133,19 @@ public class OpenAiCompatibleChatModel implements Model {
             FluxSink<ChatResponse> sink, List<Msg> messages, List<ToolSchema> tools, GenerateOptions options) {
         String body = serializeRequest(messages, tools, options);
         int attempts = Math.max(1, properties.maxAttempts());
+        // 取消或下游释放时关闭当前响应体：只靠 sink.isCancelled() 检查要等下一行数据，
+        // 上游长时间无增量时取消会被拖到空闲超时。
+        AtomicReference<InputStream> activeStream = new AtomicReference<>();
+        sink.onCancel(() -> closeQuietly(activeStream.get()));
+        sink.onDispose(() -> closeQuietly(activeStream.get()));
         for (int attempt = 1; attempt <= attempts; attempt++) {
+            if (sink.isCancelled()) {
+                return;
+            }
             try {
                 HttpResponse<InputStream> response = send(body);
                 if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                    activeStream.set(response.body());
                     parseEventStream(response.body(), sink);
                     return;
                 }
@@ -145,7 +164,9 @@ public class OpenAiCompatibleChatModel implements Model {
                 sleepBackoff(attempt);
             } catch (ModelException ex) {
                 if (!ex.retryable() || attempt == attempts) {
-                    sink.error(ex);
+                    if (!sink.isCancelled()) {
+                        sink.error(ex);
+                    }
                     return;
                 }
                 LOG.warn(
@@ -155,12 +176,16 @@ public class OpenAiCompatibleChatModel implements Model {
                         ex.errorCode());
                 sleepBackoff(attempt);
             } catch (RuntimeException ex) {
-                sink.error(new ModelException(
-                        ModelException.INVALID_RESPONSE, false, "unexpected model client failure", ex));
+                if (!sink.isCancelled()) {
+                    sink.error(new ModelException(
+                            ModelException.INVALID_RESPONSE, false, "unexpected model client failure", ex));
+                }
                 return;
             }
         }
-        sink.error(new ModelException(ModelException.UNAVAILABLE, true, "model request exhausted retries"));
+        if (!sink.isCancelled()) {
+            sink.error(new ModelException(ModelException.UNAVAILABLE, true, "model request exhausted retries"));
+        }
     }
 
     /**
