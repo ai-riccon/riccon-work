@@ -20,10 +20,12 @@ import com.riccon.api.research.domain.ResearchTaskSnapshot;
 import com.riccon.api.research.domain.RunStageSnapshot;
 import com.riccon.api.research.dto.ArtifactCitationResponse;
 import com.riccon.api.research.dto.ArtifactDetailResponse;
+import com.riccon.api.research.dto.CitationResponse;
 import com.riccon.api.research.dto.ResearchTaskCreateRequest;
 import com.riccon.api.research.dto.ResearchTaskDetailResponse;
 import com.riccon.api.research.dto.ResearchTaskPageResponse;
 import com.riccon.api.research.dto.ResearchTaskResponse;
+import com.riccon.api.research.dto.RunStageDetails;
 import com.riccon.api.research.repository.ApprovalRepository;
 import com.riccon.api.research.repository.ArtifactRepository;
 import com.riccon.api.research.repository.McpInvocationRepository;
@@ -292,9 +294,7 @@ public class ResearchTaskService {
         List<ApprovalSnapshot> approvals = approvalRepository.listByTask(tenantId, task.id());
         List<McpInvocationSnapshot> invocations = mcpInvocationRepository.listByTask(tenantId, task.id());
         ArtifactDetailResponse artifact = artifactDetail(tenantId, task.id());
-        List<ArtifactCitationResponse> sources = artifact == null || artifact.currentVersionDetail() == null
-                ? List.of()
-                : artifact.currentVersionDetail().citations();
+        List<CitationResponse> sources = resolveSources(stages, artifact);
         return ResearchTaskDetailResponse.of(task, stages, approvals, invocations, sources, artifact);
     }
 
@@ -319,6 +319,54 @@ public class ResearchTaskService {
                 .findById(tenantId, existing.id())
                 .orElseThrow(() -> new NotFoundException("research task"));
         return ResearchTaskResponse.from(refreshed);
+    }
+
+    /**
+     * 解析任务级来源清单。
+     *
+     * <p>产物生成后以 {@code artifact_citation} 为权威快照；产物尚未生成或没有引用时，使用检索阶段
+     * {@code details.sources}，保证 J2 在等待审批时就能展示命中标题、定位与片段（M02-AC-07）。
+     * 两条路径都映射到同一 {@link CitationResponse}，前端无需区分数据来源。
+     *
+     * @param stages 当前运行阶段时间线
+     * @param artifact 产物详情；不存在时为 {@code null}
+     * @return 来源清单；没有命中时为空列表
+     */
+    private static List<CitationResponse> resolveSources(
+            List<RunStageSnapshot> stages, ArtifactDetailResponse artifact) {
+        if (artifact != null && artifact.currentVersionDetail() != null) {
+            List<ArtifactCitationResponse> citations =
+                    artifact.currentVersionDetail().citations();
+            if (!citations.isEmpty()) {
+                return citations.stream().map(CitationResponse::from).toList();
+            }
+        }
+        return stageSources(stages);
+    }
+
+    /**
+     * 从检索阶段 details.sources 派生来源清单。
+     *
+     * <p>时间线按开始时间升序；重试会产生新的 RETRIEVAL 记录，因此保留最后一次非空结果，避免把失败尝试的
+     * 旧命中与最新结果混在一起。阶段详情由 {@link RunStageDetails} 统一清洗，这里不重复解析原始 JSON。
+     *
+     * @param stages 阶段时间线
+     * @return 来源清单；没有检索命中时为空列表
+     */
+    private static List<CitationResponse> stageSources(List<RunStageSnapshot> stages) {
+        List<CitationResponse> latest = List.of();
+        for (RunStageSnapshot stage : stages) {
+            if (stage.stage() != RunStage.RETRIEVAL) {
+                continue;
+            }
+            RunStageDetails details = RunStageDetails.from(stage.details());
+            if (details != null
+                    && details.sources() != null
+                    && !details.sources().isEmpty()) {
+                latest = details.sources();
+            }
+        }
+        return latest;
     }
 
     /**

@@ -1,14 +1,23 @@
 package com.riccon.api.research.dto;
 
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
  * 运行阶段白名单摘要，对应 OpenAPI {@code RunStageDetails}。
  *
- * <p>只映射契约列出的键；未知键被丢弃，避免把未来写入的字段意外暴露给前端。所有属性可空，
- * 序列化时省略空值以符合 schema 中各字段的非空类型。
+ * <p>显式映射契约列出的键，并额外提供 {@code sources}（检索来源）与未知键透传：契约对
+ * {@code RunStageDetails} 声明 {@code additionalProperties: true}，Worker 写入的 {@code details.sources}
+ * 正是通过该通道到达前端。未知键原样保留而不是丢弃，避免再次出现“Worker 已写来源、API 却看不到”的回归；
+ * 写入侧仍由 Worker 负责脱敏，API 只读不写。
  *
  * @param query 查询摘要
  * @param querySha256 查询 SHA-256
@@ -20,6 +29,8 @@ import java.util.UUID;
  * @param resultSummary 工具结果脱敏摘要
  * @param generatedSha256 生成内容 SHA-256
  * @param generatedChars 生成字符数
+ * @param sources 检索来源条目
+ * @param extra 未被显式映射的 details 键；通过 {@link JsonAnyGetter} 平铺到响应
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record RunStageDetails(
@@ -32,7 +43,33 @@ public record RunStageDetails(
         Map<String, Object> paramsPreview,
         String resultSummary,
         String generatedSha256,
-        Integer generatedChars) {
+        Integer generatedChars,
+        List<CitationResponse> sources,
+        @JsonIgnore Map<String, Object> extra) {
+
+    /** 已显式映射的键；构建 {@code extra} 时排除，避免同一键重复输出。 */
+    private static final Set<String> KNOWN_KEYS = Set.of(
+            "query",
+            "querySha256",
+            "hitCount",
+            "invocationId",
+            "toolId",
+            "approvalId",
+            "paramsPreview",
+            "resultSummary",
+            "generatedSha256",
+            "generatedChars",
+            "sources");
+
+    /**
+     * 将未知键平铺到响应对象。
+     *
+     * @return 未知键映射；没有时为空映射
+     */
+    @JsonAnyGetter
+    public Map<String, Object> unknownDetails() {
+        return extra == null ? Map.of() : extra;
+    }
 
     /**
      * 从数据库 JSON 白名单摘要构造响应对象。
@@ -47,7 +84,7 @@ public record RunStageDetails(
         Map<String, Object> preview = null;
         if (details.get("paramsPreview") instanceof Map<?, ?> rawPreview) {
             // 只保留字符串键，防止 JSON 结构异常导致响应序列化失败；值按 Worker 已脱敏内容原样透传。
-            Map<String, Object> copy = new java.util.LinkedHashMap<>();
+            Map<String, Object> copy = new LinkedHashMap<>();
             rawPreview.forEach((key, value) -> {
                 if (key instanceof String text) {
                     copy.put(text, value);
@@ -55,6 +92,13 @@ public record RunStageDetails(
             });
             preview = PreviewMaps.limit(copy);
         }
+        List<CitationResponse> sources = sources(details.get("sources"));
+        Map<String, Object> extra = new LinkedHashMap<>();
+        details.forEach((key, value) -> {
+            if (key != null && !KNOWN_KEYS.contains(key)) {
+                extra.put(key, value);
+            }
+        });
         return new RunStageDetails(
                 asString(details.get("query")),
                 asString(details.get("querySha256")),
@@ -65,7 +109,39 @@ public record RunStageDetails(
                 preview,
                 asString(details.get("resultSummary")),
                 asString(details.get("generatedSha256")),
-                asInteger(details.get("generatedChars")));
+                asInteger(details.get("generatedChars")),
+                sources.isEmpty() ? null : List.copyOf(sources),
+                extra.isEmpty() ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(extra)));
+    }
+
+    /**
+     * 解析检索来源数组。
+     *
+     * @param raw 原始 sources 值
+     * @return 可展示的来源列表；无效条目被跳过
+     */
+    private static List<CitationResponse> sources(Object raw) {
+        if (!(raw instanceof List<?> items)) {
+            return List.of();
+        }
+        List<CitationResponse> sources = new ArrayList<>();
+        int ordinal = 1;
+        for (Object item : items) {
+            if (item instanceof Map<?, ?> map) {
+                Map<String, Object> source = new LinkedHashMap<>();
+                map.forEach((key, value) -> {
+                    if (key instanceof String text) {
+                        source.put(text, value);
+                    }
+                });
+                CitationResponse citation = CitationResponse.fromStageSource(source, ordinal);
+                if (citation != null) {
+                    sources.add(citation);
+                }
+            }
+            ordinal++;
+        }
+        return sources;
     }
 
     /**

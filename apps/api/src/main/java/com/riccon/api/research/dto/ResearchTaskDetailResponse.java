@@ -13,7 +13,8 @@ import java.util.UUID;
 /**
  * 报告任务详情响应，对应 OpenAPI {@code ResearchTaskDetail}。
  *
- * <p>时间线、审批、MCP 调用与引用都来自权威表；{@code artifact} 只在产物存在且未删除时返回。
+ * <p>时间线、审批、MCP 调用与引用都来自权威表；{@code sources} 在产物生成前由检索阶段
+ * {@code details.sources} 派生，产物生成后改用 {@code artifact_citation}；{@code artifact} 只在产物存在且未删除时返回。
  *
  * @param id 任务 ID
  * @param workspaceId 工作空间 ID
@@ -49,7 +50,7 @@ public record ResearchTaskDetailResponse(
         List<RunStageResponse> stages,
         List<ApprovalResponse> approvals,
         List<McpInvocationResponse> mcpInvocations,
-        List<ArtifactCitationResponse> sources,
+        List<CitationResponse> sources,
         ArtifactDetailResponse artifact) {
 
     /**
@@ -68,7 +69,7 @@ public record ResearchTaskDetailResponse(
             List<RunStageSnapshot> stages,
             List<ApprovalSnapshot> approvals,
             List<McpInvocationSnapshot> invocations,
-            List<ArtifactCitationResponse> sources,
+            List<CitationResponse> sources,
             ArtifactDetailResponse artifact) {
         return new ResearchTaskDetailResponse(
                 task.id(),

@@ -3,11 +3,14 @@ package com.riccon.api.run.persistence;
 import com.riccon.api.persistence.BinaryUuids;
 import com.riccon.api.persistence.SqlTimestamps;
 import com.riccon.api.persistence.TenantJdbc;
+import com.riccon.api.run.domain.RunDetailSnapshot;
 import com.riccon.api.run.domain.RunSnapshot;
 import com.riccon.platform.common.tenant.TenantId;
 import com.riccon.platform.domain.research.RunKind;
+import com.riccon.platform.domain.research.RunStage;
 import com.riccon.platform.domain.research.RunStatus;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -60,6 +63,16 @@ public class RunJdbc {
     /** 按租户读取运行快照。 */
     private static final String FIND_CHAT = """
             SELECT id, kind, status, conversation_id, user_id, attempt
+              FROM agent_run
+             WHERE tenant_id = :tenantId
+               AND id = :runId
+            """;
+
+    /** 运行详情列：状态机、归属对象与时间线所需时间。 */
+    private static final String FIND_DETAIL = """
+            SELECT id, kind, status, current_stage, attempt, error_code, error_message,
+                   conversation_id, research_task_id, file_id, user_id,
+                   created_at, started_at, finished_at
               FROM agent_run
              WHERE tenant_id = :tenantId
                AND id = :runId
@@ -232,6 +245,21 @@ public class RunJdbc {
     }
 
     /**
+     * 按租户读取运行详情快照。
+     *
+     * <p>与 {@link #findRun} 的区别：详情额外返回当前阶段、失败原因、归属对象与起止时间，供
+     * {@code GET /api/v1/runs/{runId}} 做可见性判断和响应组装。
+     *
+     * @param tenantId 当前租户
+     * @param runId 运行 ID
+     * @return 运行详情快照；不存在或属于其他租户时为空
+     */
+    public Optional<RunDetailSnapshot> findDetail(TenantId tenantId, UUID runId) {
+        return tenantJdbc.queryOne(
+                tenantId, FIND_DETAIL, Map.of("runId", BinaryUuids.toBytes(runId)), RunJdbc::mapDetail);
+    }
+
+    /**
      * 按租户读取运行快照。
      *
      * @param tenantId 当前租户
@@ -274,6 +302,33 @@ public class RunJdbc {
                 rs.getBytes("conversation_id") == null ? null : BinaryUuids.fromBytes(rs.getBytes("conversation_id")),
                 BinaryUuids.fromBytes(rs.getBytes("user_id")),
                 rs.getInt("attempt"));
+    }
+
+    /**
+     * 映射运行详情行。
+     *
+     * @param rs 结果集
+     * @param rowNum 行号
+     * @return 运行详情快照
+     * @throws java.sql.SQLException 列读取失败
+     */
+    private static RunDetailSnapshot mapDetail(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+        String stage = rs.getString("current_stage");
+        return new RunDetailSnapshot(
+                BinaryUuids.fromBytes(rs.getBytes("id")),
+                RunKind.valueOf(rs.getString("kind")),
+                RunStatus.valueOf(rs.getString("status")),
+                stage == null ? null : RunStage.valueOf(stage),
+                rs.getInt("attempt"),
+                rs.getString("error_code"),
+                rs.getString("error_message"),
+                rs.getBytes("conversation_id") == null ? null : BinaryUuids.fromBytes(rs.getBytes("conversation_id")),
+                rs.getBytes("research_task_id") == null ? null : BinaryUuids.fromBytes(rs.getBytes("research_task_id")),
+                rs.getBytes("file_id") == null ? null : BinaryUuids.fromBytes(rs.getBytes("file_id")),
+                BinaryUuids.fromBytes(rs.getBytes("user_id")),
+                SqlTimestamps.toInstant(rs.getObject("created_at", LocalDateTime.class)),
+                SqlTimestamps.toInstant(rs.getObject("started_at", LocalDateTime.class)),
+                SqlTimestamps.toInstant(rs.getObject("finished_at", LocalDateTime.class)));
     }
 
     /**

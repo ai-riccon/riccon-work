@@ -269,6 +269,56 @@ class ResearchTaskApiTest extends ResearchApiTestSupport {
         assertThat(response.body()).doesNotContain("ciphertext").doesNotContain("paramsKeyId");
     }
 
+    /** 产物生成前，检索阶段 details.sources 直接映射为任务来源；未知键不丢。 */
+    @Test
+    @DisplayName("检索阶段来源在审批前可见")
+    void detail_exposesRetrievalSourcesBeforeArtifact() {
+        Fixture fixture = fixture();
+        UUID toolId = createMcpTool(fixture.tenant());
+        JsonNode task = createTask(fixture.admin(), fixture.adminWorkspace(), "前瞻来源展示主题", toolId, "sources-0001");
+        String taskId = task.path("id").asText();
+        String runId = runId(task);
+        markRunWaitingApproval(fixture.tenant(), runId);
+        String knowledgeId = UUID.randomUUID().toString();
+        String fileId = UUID.randomUUID().toString();
+        seedStage(fixture.tenant(), runId, "RETRIEVAL", "SUCCEEDED", """
+                {"query":"前瞻来源展示主题","hitCount":2,"retrievalMode":"hybrid","sources":[
+                  {"ordinal":1,"sourceType":"KNOWLEDGE","knowledgeDocumentId":"%s","title":"市场研究报告",
+                   "locatorType":"PAGE","pageNo":3},
+                  {"ordinal":2,"sourceType":"FILE","fileId":"%s","title":"市场数据表",
+                   "locatorType":"SHEET","sheetName":"Sheet1","cellRange":"A1:B2"}
+                ]}
+                """.formatted(knowledgeId, fileId));
+
+        ApiTestClient.ApiResponse response =
+                client.get("/api/v1/research-tasks/" + taskId, fixture.admin().sessionCookie(), Map.of());
+        assertThat(response.status()).as(response.body()).isEqualTo(200);
+        JsonNode detail = client.json(response);
+        assertThat(detail.path("status").asText()).isEqualTo("WAITING_APPROVAL");
+        assertThat(detail.path("sources")).hasSize(2);
+        JsonNode knowledge = detail.path("sources").get(0);
+        assertThat(knowledge.path("sourceType").asText()).isEqualTo("KNOWLEDGE");
+        assertThat(knowledge.path("knowledgeDocumentId").asText()).isEqualTo(knowledgeId);
+        assertThat(knowledge.path("title").asText()).isEqualTo("市场研究报告");
+        assertThat(knowledge.path("locatorType").asText()).isEqualTo("PAGE");
+        assertThat(knowledge.path("pageNo").asInt()).isEqualTo(3);
+        assertThat(knowledge.path("snippet").asText()).isEmpty();
+        JsonNode file = detail.path("sources").get(1);
+        assertThat(file.path("fileId").asText()).isEqualTo(fileId);
+        assertThat(file.path("sheetName").asText()).isEqualTo("Sheet1");
+        assertThat(file.path("cellRange").asText()).isEqualTo("A1:B2");
+
+        JsonNode stage = detail.path("stages").get(0);
+        assertThat(stage.path("details").path("retrievalMode").asText()).isEqualTo("hybrid");
+        assertThat(stage.path("details").path("sources")).hasSize(2);
+        assertThat(stage.path("details")
+                        .path("sources")
+                        .get(1)
+                        .path("cellRange")
+                        .asText())
+                .isEqualTo("A1:B2");
+    }
+
     /** 失败运行在任务详情中显示稳定错误码与脱敏原因。 */
     @Test
     @DisplayName("失败运行映射为任务失败状态")

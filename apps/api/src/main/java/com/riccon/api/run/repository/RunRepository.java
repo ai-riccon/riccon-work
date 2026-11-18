@@ -1,5 +1,6 @@
 package com.riccon.api.run.repository;
 
+import com.riccon.api.run.domain.RunDetailSnapshot;
 import com.riccon.api.run.domain.RunSnapshot;
 import com.riccon.api.run.persistence.RunJdbc;
 import com.riccon.platform.common.tenant.TenantId;
@@ -97,6 +98,17 @@ public class RunRepository {
      */
     public Optional<RunSnapshot> findRun(TenantId tenantId, UUID runId) {
         return runJdbc.findRun(tenantId, runId);
+    }
+
+    /**
+     * 按租户读取运行详情快照。
+     *
+     * @param tenantId 当前租户
+     * @param runId 运行 ID
+     * @return 运行详情快照
+     */
+    public Optional<RunDetailSnapshot> findDetail(TenantId tenantId, UUID runId) {
+        return runJdbc.findDetail(tenantId, runId);
     }
 
     /**
