@@ -236,7 +236,13 @@ class OidcLoginFlowTest extends ApiIntegrationTestSupport {
                 .doesNotContain(idToken)
                 .doesNotContain("id_token")
                 .doesNotContain("OidcUser")
+                // state/nonce/PKCE verifier 只能在回调期间存在，成功后授权请求必须已被删除（ADR-0019 第 2 节）。
+                .doesNotContain("code_verifier")
+                .doesNotContain("authorization_request")
                 .contains("com.riccon.api.identity.domain.RicconPrincipal");
+        assertThat(attributes)
+                .noneMatch(attribute ->
+                        attribute.name().toLowerCase(java.util.Locale.ROOT).contains("authorization_request"));
         assertThat(sessionCount(TENANT_A + ":" + successUserId)).isEqualTo(1);
 
         Map<String, Object> details = successAuditDetails(TENANT_A, successUserId);
