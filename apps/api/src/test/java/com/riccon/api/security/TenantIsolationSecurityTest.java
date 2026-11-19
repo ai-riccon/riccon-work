@@ -30,9 +30,9 @@ import org.springframework.test.context.DynamicPropertySource;
 import tools.jackson.databind.JsonNode;
 
 /**
- * M03 跨租户回归独立套件（TEN-001..027）。
+ * M03/M10 跨租户回归独立套件（TEN-001..030）。
  *
- * <p>保留 M02 的 TEN-001..020 编号并补齐 M03 新增对象；021..027 覆盖部门、空间成员与平台部门端点。
+ * <p>保留 M02 的 TEN-001..020 编号并补齐 M03 新增对象；021..027 覆盖部门、空间成员与平台部门端点；028..030 覆盖 M10 审计查询/导出对象。
  * 所有用例使用 {@code @Tag("tenant-isolation")}，零 skip/xfail；断言统一 404 的响应结构、无内容泄露、
  * 服务令牌绑定、审计租户与平台部门端点边界。
  */
@@ -41,9 +41,9 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
 
     /** TEN 套件完整性清单：ID 必须出现在 surefire 报告且方法存在。 */
     @Test
-    @DisplayName("TEN 套件完整性清单 TEN-001..027")
+    @DisplayName("TEN 套件完整性清单 TEN-001..030")
     void tenSuiteIntegrityManifest() {
-        assertSuiteManifest("TEN", 27, "ten");
+        assertSuiteManifest("TEN", 30, "ten");
     }
 
     /** mock Worker。 */
@@ -678,6 +678,130 @@ class TenantIsolationSecurityTest extends SecurityTestSupport {
             assertThat(client.json(content).path("code").asText()).isIn("RICCON-AUTH-403", "RICCON-TENANT-404");
             assertThat(content.body()).doesNotContain("B 团队空间");
         }
+    }
+
+    /** TEN-028：审计导出详情/下载/审批跨租户统一 404，不泄露筛选条件或内容。 */
+    @Test
+    @DisplayName("TEN-028 审计导出跨租户详情/下载/审批 404")
+    void ten028_exportCrossTenantDetailDownloadAndDecisionAre404() {
+        LoginSession platform = loginPlatformAdmin();
+        String tenantA = uniqueTenantCode("auda");
+        String tenantB = uniqueTenantCode("audb");
+        createTenant(platform, tenantA);
+        createTenant(platform, tenantB);
+        LoginSession adminA = createAndLoginTenantAdmin(platform, tenantA);
+        LoginSession adminB = createAndLoginTenantAdmin(platform, tenantB);
+
+        ApiTestClient.ApiResponse created = client.post(
+                "/api/v1/audit-exports",
+                "{\"filter\":{\"action\":\"auth.login.succeeded\"}}",
+                adminA.sessionCookie(),
+                adminA.csrfToken(),
+                Map.of());
+        assertThat(created.status()).as(created.body()).isEqualTo(201);
+        String exportId = client.json(created).path("id").asText();
+        assertThat(client.json(created).path("tenantId").isMissingNode()).isTrue();
+
+        assertNotFound(get(adminB, "/api/v1/audit-exports/" + exportId));
+        assertNotFound(get(adminB, "/api/v1/audit-exports/" + exportId + "/download"));
+        ApiTestClient.ApiResponse crossDecision = client.post(
+                "/api/v1/audit-exports/" + exportId + "/decision",
+                "{\"decision\":\"APPROVE\"}",
+                adminB.sessionCookie(),
+                adminB.csrfToken(),
+                Map.of());
+        assertNotFound(crossDecision);
+        assertThat(crossDecision.body()).doesNotContain("filter").doesNotContain("requestedBy");
+    }
+
+    /** TEN-029：审计查询只读本租户；平台管理员只读 platform；tenantId 参数被拒绝。 */
+    @Test
+    @DisplayName("TEN-029 审计查询租户边界与 tenantId 拒绝")
+    void ten029_auditQueryIsTenantScopedAndRejectsTenantId() {
+        LoginSession platform = loginPlatformAdmin();
+        String tenantA = uniqueTenantCode("qrya");
+        createTenant(platform, tenantA);
+        LoginSession adminA = createAndLoginTenantAdmin(platform, tenantA);
+        CreatedMember memberA = createMember(platform, tenantA);
+
+        JsonNode tenantPage = list(adminA, "/api/v1/audit-events");
+        assertThat(tenantPage.path("items")).isNotEmpty();
+        for (JsonNode item : tenantPage.path("items")) {
+            assertThat(item.path("tenantId").asText()).isEqualTo(tenantA);
+            assertThat(item.has("sourceIp")).isFalse();
+        }
+        JsonNode platformPage = list(platform, "/api/v1/audit-events");
+        for (JsonNode item : platformPage.path("items")) {
+            assertThat(item.path("tenantId").asText()).isEqualTo("platform");
+        }
+
+        ApiTestClient.ApiResponse forged = get(adminA, "/api/v1/audit-events?tenantId=platform");
+        assertThat(forged.status()).isEqualTo(403);
+        assertThat(client.json(forged).path("code").asText()).isEqualTo("RICCON-AUTH-403");
+        assertThat(forged.body()).doesNotContain("eventId");
+
+        ApiTestClient.ApiResponse memberQuery = get(memberA.session(), "/api/v1/audit-events?page=1&size=20");
+        assertThat(memberQuery.status()).isEqualTo(403);
+        assertThat(client.json(memberQuery).path("code").asText()).isEqualTo("RICCON-AUTH-403");
+        assertThat(memberQuery.body()).doesNotContain("eventId");
+
+        ApiTestClient.ApiResponse memberPolicy = get(memberA.session(), "/api/v1/audit-events/policy");
+        assertThat(memberPolicy.status()).isEqualTo(403);
+    }
+
+    /** TEN-030：导出申请只存在申请租户；平台审批只返回元数据，不能下载或读取明细。 */
+    @Test
+    @DisplayName("TEN-030 导出请求租户归属与平台审批元数据边界")
+    void ten030_exportRequestsStayInTenantAndPlatformSeesMetadataOnly() {
+        LoginSession platform = loginPlatformAdmin();
+        String tenantA = uniqueTenantCode("expa");
+        String tenantB = uniqueTenantCode("expb");
+        createTenant(platform, tenantA);
+        createTenant(platform, tenantB);
+        LoginSession adminA = createAndLoginTenantAdmin(platform, tenantA);
+        LoginSession adminB = createAndLoginTenantAdmin(platform, tenantB);
+
+        ApiTestClient.ApiResponse created = client.post(
+                "/api/v1/audit-exports", "{\"filter\":{}}", adminA.sessionCookie(), adminA.csrfToken(), Map.of());
+        assertThat(created.status()).as(created.body()).isEqualTo(201);
+        String exportId = client.json(created).path("id").asText();
+
+        assertThat(list(adminB, "/api/v1/audit-exports").path("items").toString())
+                .doesNotContain(exportId);
+        assertThat(list(adminA, "/api/v1/audit-exports").path("items").toString())
+                .contains(exportId);
+
+        String storedTenant = jdbcClient
+                .sql("SELECT tenant_id FROM audit_export_request WHERE id = :id")
+                .param("id", BinaryUuids.toBytes(UUID.fromString(exportId)))
+                .query(String.class)
+                .single();
+        assertThat(storedTenant).isEqualTo(tenantA);
+
+        // 单管理员租户：平台可列元数据并审批，但审批项不含审计明细字段。
+        JsonNode platformList = list(platform, "/api/v1/admin/tenants/" + tenantA + "/audit-exports");
+        assertThat(platformList.path("items").toString()).contains(exportId);
+        for (JsonNode item : platformList.path("items")) {
+            assertThat(item.has("eventId")).isFalse();
+            assertThat(item.has("details")).isFalse();
+            assertThat(item.has("sourceIp")).isFalse();
+        }
+        ApiTestClient.ApiResponse platformDownload = get(platform, "/api/v1/audit-exports/" + exportId + "/download");
+        assertThat(platformDownload.status()).isIn(403, 404);
+        assertThat(platformDownload.body()).doesNotContain("eventId");
+
+        ApiTestClient.ApiResponse approved = client.post(
+                "/api/v1/admin/tenants/" + tenantA + "/audit-exports/" + exportId + "/decision",
+                "{\"decision\":\"APPROVE\"}",
+                platform.sessionCookie(),
+                platform.csrfToken(),
+                Map.of());
+        assertThat(approved.status()).as(approved.body()).isEqualTo(200);
+        assertThat(client.json(approved).path("status").asText()).isEqualTo("APPROVED");
+
+        ApiTestClient.ApiResponse platformDetail = get(platform, "/api/v1/audit-exports/" + exportId);
+        assertThat(platformDetail.status()).isIn(403, 404);
+        assertThat(platformDetail.body()).doesNotContain("eventId");
     }
 
     /**

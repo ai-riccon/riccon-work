@@ -6,8 +6,25 @@ import path from 'node:path';
 export interface RealSeed {
   apiBase: string;
   tenants: { alpha: string; beta: string };
-  users: { alphaAdmin: string; alphaMember: string; betaMember: string };
-  passwords: { alphaAdmin: string; alphaMember: string; betaMember: string };
+  users: {
+    platformAdmin: string;
+    alphaAdmin: string;
+    alphaAdmin2: string;
+    alphaMember: string;
+    betaMember: string;
+  };
+  userIds: {
+    alphaAdmin: string;
+    alphaAdmin2: string;
+    alphaMember: string;
+    betaMember: string;
+  };
+  passwords: {
+    alphaAdmin: string;
+    alphaAdmin2: string;
+    alphaMember: string;
+    betaMember: string;
+  };
   workspaces: { alpha: { id: string; name: string }; beta: { id: string; name: string } };
   catalog: { mcpToolId: string };
 }

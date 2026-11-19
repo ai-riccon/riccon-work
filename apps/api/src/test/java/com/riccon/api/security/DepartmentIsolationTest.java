@@ -381,9 +381,9 @@ class DepartmentIsolationTest extends SecurityTestSupport {
                 .doesNotContain("部门共享空间");
     }
 
-    /** DEPT-010：知识库引用租户级可读但源文件 404；M03 无审计导出接口。 */
+    /** DEPT-010：知识库引用租户级可读但源文件 404；M10 导出请求不向部门成员开放。 */
     @Test
-    @DisplayName("DEPT-010 知识库租户级引用与源文件边界")
+    @DisplayName("DEPT-010 知识库租户级引用、源文件边界与导出请求段")
     void dept010_knowledgeIsTenantWideButSourceFileStaysScoped() {
         Fixture fixture = fixture("dept010");
         String fileId = upload(
@@ -412,13 +412,37 @@ class DepartmentIsolationTest extends SecurityTestSupport {
         assertNotFound(get(fixture.outsider().session(), "/api/v1/files/" + fileId));
         assertNotFound(get(fixture.outsider().session(), "/api/v1/files/" + fileId + "/download-url"));
 
-        // M03 不提供审计查询/导出；任何导出路径不得返回内容。
-        for (String path :
-                List.of("/api/v1/audit/exports", "/api/v1/audit/events/export", "/api/v1/audit/export-requests")) {
-            ApiTestClient.ApiResponse export = get(fixture.tenantAdmin(), path);
-            assertThat(export.status()).as(path).isIn(403, 404);
-            assertThat(export.body()).doesNotContain("eventId").doesNotContain("tenant_id");
+        // M10 导出请求段：部门维度账号不能通过导出旁路读取审计；导出请求只属于租户管理员。
+        ApiTestClient.ApiResponse createdExport = client.post(
+                "/api/v1/audit-exports",
+                "{\"filter\":{\"action\":\"auth.login.succeeded\"}}",
+                fixture.tenantAdmin().sessionCookie(),
+                fixture.tenantAdmin().csrfToken(),
+                Map.of());
+        assertThat(createdExport.status()).as(createdExport.body()).isEqualTo(201);
+        String exportId = client.json(createdExport).path("id").asText();
+
+        for (LoginSession outsider :
+                List.of(fixture.outsider().session(), fixture.sibling().session())) {
+            ApiTestClient.ApiResponse exportList = get(outsider, "/api/v1/audit-exports");
+            assertThat(exportList.status()).isEqualTo(403);
+            assertThat(client.json(exportList).path("code").asText()).isEqualTo("RICCON-AUTH-403");
+            assertThat(exportList.body()).doesNotContain("eventId").doesNotContain("filtersHash");
+
+            ApiTestClient.ApiResponse exportDetail = get(outsider, "/api/v1/audit-exports/" + exportId);
+            assertThat(exportDetail.status()).isEqualTo(403);
+            assertThat(exportDetail.body()).doesNotContain("eventId");
+
+            ApiTestClient.ApiResponse exportDownload = get(outsider, "/api/v1/audit-exports/" + exportId + "/download");
+            assertThat(exportDownload.status()).isEqualTo(403);
+            assertThat(exportDownload.body()).doesNotContain("eventId");
         }
+
+        // 部门成员同样不能查询审计事件；响应不含任何事件字段。
+        ApiTestClient.ApiResponse outsiderAudit =
+                get(fixture.outsider().session(), "/api/v1/audit-events?page=1&size=20");
+        assertThat(outsiderAudit.status()).isEqualTo(403);
+        assertThat(outsiderAudit.body()).doesNotContain("eventId").doesNotContain("tenantId");
     }
 
     /**
