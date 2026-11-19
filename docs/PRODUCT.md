@@ -2,26 +2,26 @@
 
 ## 评审状态
 
-| 检查                   | 状态 | 记录                                                                                                              |
-| ---------------------- | ---- | ----------------------------------------------------------------------------------------------------------------- |
-| Product 草案           | pass | M03 见 §8；M01/M02 无前置评审记录，记 legacy                                                                      |
-| Lead 完整性/合同一致性 | pass | 本次 M03 评审；M01/M02 legacy                                                                                     |
-| 用户范围批准           | pass | DEC-0010/0011/0014/0015；M01/M02 无单独范围决策，记 legacy                                                        |
-| Architect 可行性       | pass | ADR-0018（proposed，已评审）；M02 ADR-0001..0017                                                                  |
-| Verifier AC 可验证性   | pass | REV-M03-001（模块评审）；REV-M13-001（M03 补丁）；REV-TASK-0033-002（计划评审）；M02 REV-M02-003；M01 REV-M01-001 |
+| 检查                   | 状态 | 记录                                                                                                       |
+| ---------------------- | ---- | ---------------------------------------------------------------------------------------------------------- |
+| Product 草案           | pass | M03/M10 见 §8；M01/M02 无前置评审记录，记 legacy                                                           |
+| Lead 完整性/合同一致性 | pass | M03 本次评审；M10 沿用 §8 范围记录并完成 gate；M01/M02 legacy                                              |
+| 用户范围批准           | pass | DEC-0010/0011/0014/0015、DEC-0018（M10 上限 20h）；M01/M02 无单独范围决策，记 legacy                       |
+| Architect 可行性       | pass | ADR-0018（proposed，已评审）；REV-M10-ARCH-002（ADR-0019/0020 proposed）；M02 ADR-0001..0017               |
+| Verifier AC 可验证性   | pass | REV-M03-001；REV-M13-001；REV-M10-001（M10 模块评审）；REV-TASK-0033-002；M02 REV-M02-003；M01 REV-M01-001 |
 
 状态值：`draft`、`pending`、`pass`、`changes-requested`；历史无记录用 `legacy`/`not-recorded`，不伪造 pass。
 
 ### 按模块
 
-| 模块 | Product 草案 | Lead 完整性 | 用户范围批准                           | Architect 可行性                              | Verifier 可验证性                                        | Product 预验收                          | 用户最终验收         |
-| ---- | ------------ | ----------- | -------------------------------------- | --------------------------------------------- | -------------------------------------------------------- | --------------------------------------- | -------------------- |
-| M01  | legacy       | legacy      | legacy                                 | pass（ADR-0001..0004）                        | pass（REV-M01-001）                                      | not-recorded                            | not-recorded         |
-| M02  | legacy       | legacy      | legacy（合同初始批准，无单独范围决策） | pass（ADR-0005..0017）                        | pass（REV-M02-003）                                      | not-recorded                            | not-recorded         |
-| M03  | pass（§8）   | pass        | pass（DEC-0010/0011/0014/0015）        | pass（ADR-0018 proposed，TASK-0033 评审通过） | pass（REV-M03-001；REV-M13-001；计划 REV-TASK-0033-002） | pass（M13 补丁后；REV-M13-001/EV-0361） | accepted（DEC-0016） |
-| M10  | pending      | pending     | pending                                | pending                                       | pending                                                  | pending                                 | pending              |
+| 模块 | Product 草案 | Lead 完整性                | 用户范围批准                                  | Architect 可行性                                 | Verifier 可验证性                                        | Product 预验收                          | 用户最终验收         |
+| ---- | ------------ | -------------------------- | --------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------- | --------------------------------------- | -------------------- |
+| M01  | legacy       | legacy                     | legacy                                        | pass（ADR-0001..0004）                           | pass（REV-M01-001）                                      | not-recorded                            | not-recorded         |
+| M02  | legacy       | legacy                     | legacy（合同初始批准，无单独范围决策）        | pass（ADR-0005..0017）                           | pass（REV-M02-003）                                      | not-recorded                            | not-recorded         |
+| M03  | pass（§8）   | pass                       | pass（DEC-0010/0011/0014/0015）               | pass（ADR-0018 proposed，TASK-0033 评审通过）    | pass（REV-M03-001；REV-M13-001；计划 REV-TASK-0033-002） | pass（M13 补丁后；REV-M13-001/EV-0361） | accepted（DEC-0016） |
+| M10  | pass（§8）   | pass（沿用 §8；gate 记录） | pass（DEC-0011/0014/0015；DEC-0018 上限 20h） | pass（REV-M10-ARCH-002；ADR-0019/0020 proposed） | pass（REV-M10-001）                                      | changes-requested（R-M10-01）           | pending              |
 
-M03 原 gate `bc97d1c`；M13 验收补丁 gate pass（REV-M13-001，EV-0352..EV-0359、EV-0361）。M03 残余 F-006/F-007/F-008/F-009 仍 accepted/residual；M13 F-001..F-006 accepted，均不声称解决。M03 Product 预验收 pass（M13 补丁后），用户最终验收 accepted（DEC-0016，2026-11-19）；M10 随后启动。
+M03 原 gate `bc97d1c`；M13 验收补丁 gate pass（REV-M13-001，EV-0352..EV-0359、EV-0361）。M03 残余 F-006/F-007/F-008/F-009 仍 accepted/residual；M13 F-001..F-006 accepted，均不声称解决。M03 Product 预验收 pass（M13 补丁后），用户最终验收 accepted（DEC-0016，2026-11-19）；M10 随后启动。M10 V1 done、gate pass（REV-M10-001，29 条 reviewed_evidence；DEC-0018 上限 20h）；Product 预验收 `changes-requested`（R-M10-01：AC-08/10 来源 IdP 展示），用户最终验收 `pending`。M10 残余：B2 F-001 collation P2 accepted/residual；B4/B5 P3、OPS 生产演练与 T4 批准未完成、ADR-0019/0020 proposed；MFA/审计哈希链/平台跨租户审计 deferred，不声称支持。
 
 私有化优先的多租户企业 AI 协同办公系统。办公套件做入口，平台做内核；v1 只证明员工侧价值。
 
