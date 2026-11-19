@@ -233,6 +233,7 @@ tools:
     - context7
     - playwright
     - codegraph
+    - serena
   fallback: "MCP 不可用时改用官方文档或 CLI，并在任务证据记录降级；required 缺失即 blocker；Trivy/k6 缺失时 gate 失败。"
 environments:
   local: "macOS + Docker Desktop，JDK 21，Node 26"
@@ -319,12 +320,13 @@ budget:
 
 ### MCP
 
-| MCP          | 使用者                       | 用途                                                          | 约束                                |
-| ------------ | ---------------------------- | ------------------------------------------------------------- | ----------------------------------- |
-| `antd`       | builder（前端）、verifier    | antd 6 / Pro 6 / X 的组件 API、demo、changelog                | 组件 API 以 MCP 为准，不凭记忆写    |
-| `context7`   | 全员                         | Spring Boot 4.1、Spring AI 2.0、agentscope-java、Umi/Pro 文档 | 先查当前版本文档，再看代码          |
-| `playwright` | verifier                     | E2E、截图、可访问性快照                                       | 只在 sandbox/preview 环境操作       |
-| `codegraph`  | architect、builder、verifier | 符号、调用链、影响面                                          | 需在仓库根执行一次 `codegraph init` |
+| MCP          | 使用者                       | 用途                                                          | 约束                                                                       |
+| ------------ | ---------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `antd`       | builder（前端）、verifier    | antd 6 / Pro 6 / X 的组件 API、demo、changelog                | 组件 API 以 MCP 为准，不凭记忆写                                           |
+| `context7`   | 全员                         | Spring Boot 4.1、Spring AI 2.0、agentscope-java、Umi/Pro 文档 | 先查当前版本文档，再看代码                                                 |
+| `playwright` | verifier                     | E2E、截图、可访问性快照                                       | 只在 sandbox/preview 环境操作                                              |
+| `codegraph`  | architect、builder、verifier | 符号、调用链、影响面                                          | 需在仓库根执行一次 `codegraph init`                                        |
+| `serena`     | architect、builder、verifier | LSP 符号定位、引用查找、重命名与精确编辑                      | 会话开始 `activate_project` 并读 `initial_instructions`；与 codegraph 分工 |
 
 ### Skills
 
