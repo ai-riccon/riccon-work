@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0078",
+  "module_id": "M10",
+  "title": "M10-B2 独立评审：绑定/解绑/凭据",
+  "owner": "riccon/verifier",
+  "status": "in_progress",
+  "write_scope": [
+    ".riccon/reviews/tasks/**"
+  ],
+  "acceptance": [
+    "OIDC 创建/LOCAL 密码/platform 拒绝；issuer 必须启用；不按邮箱",
+    "绑定/解绑命中同账号、角色不变；冲突 409/跨租户 404；凭据删除/重建",
+    "审计 details 无 issuer/subject/密码/token；fail-closed；authSource 管理端",
+    "SessionInfo authSource 缺口/绑定不踢会话/平台 targetTenantId 记录为 finding",
+    "独立跑 OidcIdentityBindingApiTest/UserSummaryAuthSourceTest；核对 EV-0418 734 tests",
+    "写 TASK-0069-review.md verdict；B4 启动条件；P2/P3"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-19T13:08:38.773+08:00",
+  "updated_at": "2026-11-19T13:08:39.590+08:00",
+  "baseline_commit": "679b886bf3ac12fd7960e4fa2f70a165ccf3e0c6"
+}
