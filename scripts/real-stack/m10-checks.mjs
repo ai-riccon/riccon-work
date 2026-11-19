@@ -526,7 +526,7 @@ async function main() {
     'CSV must include metadata',
   );
   assert.ok(text.includes("'=SUM(A1:A2)"), 'CSV must escape formula-leading cells');
-  for (const forbidden of ['source_ip', 'requestId', 'password', 'eyJ', 'access_token']) {
+  for (const forbidden of ['source_ip', 'requestId', 'password_hash', 'passwordHash', '$2a$', '$2b$', 'eyJ', 'access_token', 'client_secret']) {
     assert.ok(!text.includes(forbidden), `CSV must not include ${forbidden}`);
   }
   ok('export approval/download', `id=${exportId} bytes=${text.length}`);
