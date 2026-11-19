@@ -285,7 +285,7 @@ test.describe('M10 身份与审计', () => {
       .click();
     await page.getByRole('textbox', { name: '操作者 ID' }).fill(seed.userIds.alphaAdmin);
     await page.getByRole('button', { name: '查询' }).click();
-    await expect(page.getByText(/共 \d{3,} 条/)).toBeVisible();
+    await expect(page.getByText(/共 \d{3,} 条/).first()).toBeVisible();
     await page.locator('.ant-pagination-item-2').click();
     await expect(page.locator('.ant-pagination-item-active')).toHaveText('2');
 
