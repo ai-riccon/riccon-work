@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adminNavigation, findRouteByPath, routes } from './routes';
+import { adminNavigation, filterAdminNavigation, findRouteByPath, routes } from './routes';
 
 describe('路由表', () => {
   it('根路径重定向到员工端工作空间', () => {
@@ -12,7 +12,7 @@ describe('路由表', () => {
     expect(findRouteByPath('/admin')?.component).toBe('@/layouts/admin');
   });
 
-  it('管理端默认进入总览页，并提供总览、租户与设置入口', () => {
+  it('管理端默认进入总览页，并提供总览、租户、用户、审计与设置入口', () => {
     const admin = findRouteByPath('/admin');
     expect(admin?.routes?.[0]).toEqual({
       path: '/admin',
@@ -21,6 +21,9 @@ describe('路由表', () => {
     expect(adminNavigation.map((item) => item.path)).toEqual([
       '/admin/overview',
       '/admin/tenants',
+      '/admin/users',
+      '/admin/audit',
+      '/admin/audit-exports',
       '/admin/settings',
     ]);
   });
@@ -78,5 +81,57 @@ describe('路由表', () => {
     };
     collect(routes);
     expect(new Set(pagePaths).size).toBe(pagePaths.length);
+  });
+});
+
+describe('管理端导航权限过滤', () => {
+  /** 读取指定权限下的可见菜单路径。 */
+  const visiblePaths = (permissions?: readonly string[]): string[] =>
+    filterAdminNavigation(permissions).map((item) => item.path);
+
+  it('新增入口声明与后端 PermissionCodes 一致的权限码，既有入口不改变语义', () => {
+    const byPath = new Map(adminNavigation.map((item) => [item.path, item]));
+
+    expect(byPath.get('/admin/users')?.permissions).toEqual(['tenant.user.manage']);
+    expect(byPath.get('/admin/audit')?.permissions).toEqual(['audit.read']);
+    expect(byPath.get('/admin/audit-exports')?.permissions).toEqual(['audit.export.approve']);
+    expect(byPath.get('/admin/overview')?.permissions).toBeUndefined();
+    expect(byPath.get('/admin/tenants')?.permissions).toBeUndefined();
+    expect(byPath.get('/admin/settings')?.permissions).toBeUndefined();
+  });
+
+  it('会话未加载时只保留既有总览、租户与设置入口', () => {
+    expect(visiblePaths()).toEqual(['/admin/overview', '/admin/tenants', '/admin/settings']);
+  });
+
+  it('普通员工没有审计或账号管理权限时看不到新增入口', () => {
+    expect(visiblePaths(['workspace.read', 'conversation.read'])).toEqual([
+      '/admin/overview',
+      '/admin/tenants',
+      '/admin/settings',
+    ]);
+  });
+
+  it('租户管理员看到用户管理、审计查询与租户审计导出', () => {
+    expect(visiblePaths(['tenant.user.manage', 'audit.read', 'audit.export.approve'])).toEqual([
+      '/admin/overview',
+      '/admin/tenants',
+      '/admin/users',
+      '/admin/audit',
+      '/admin/audit-exports',
+      '/admin/settings',
+    ]);
+  });
+
+  it('平台管理员只看到平台范围内可用的审计查询', () => {
+    expect(
+      visiblePaths(['platform.tenant.manage', 'audit.read', 'platform.audit.export.approve']),
+    ).toEqual(['/admin/overview', '/admin/tenants', '/admin/audit', '/admin/settings']);
+  });
+
+  it('每个菜单路径都对应已注册路由，避免入口落到 404', () => {
+    adminNavigation.forEach((item) => {
+      expect(findRouteByPath(item.path), `${item.path} 未注册路由`).toBeDefined();
+    });
   });
 });

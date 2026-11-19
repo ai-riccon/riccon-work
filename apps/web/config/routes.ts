@@ -132,20 +132,52 @@ export interface NavigationItem {
   path: string;
   /** 菜单文案 */
   label: string;
+  /**
+   * 显示该菜单所需的权限码；任一命中即可。
+   *
+   * 省略表示保持既有入口语义：菜单始终渲染，最终授权由服务端 403 决定。
+   * 权限码取值与 `PermissionCodes` 及 `services` 下的 access 常量保持一致。
+   */
+  permissions?: readonly string[];
 }
 
 /**
  * 管理端左侧菜单。
  *
  * 租户管理是平台管理员入口；菜单可见性不代替服务端鉴权，普通账号直接访问仍会得到 403。
- * 审计菜单由后续布局任务接线：`config/routes.ts` 的写范围不包含布局文件，
- * 本任务只保证审计路由、页面自身 403 守卫与服务端权限边界。
+ * M10 新增用户管理与审计入口：用户管理只属于租户管理员（平台管理员按租户上下文进入
+ * `/admin/tenants/:tenantId/users`）；审计查询对租户/平台管理员可见；审计导出是租户管理员
+ * 入口，平台审批页需要租户上下文，无法用静态菜单表达。
  */
 export const adminNavigation: NavigationItem[] = [
   { path: '/admin/overview', label: '管理总览' },
   { path: '/admin/tenants', label: '租户管理' },
+  { path: '/admin/users', label: '用户管理', permissions: ['tenant.user.manage'] },
+  { path: '/admin/audit', label: '审计查询', permissions: ['audit.read'] },
+  {
+    path: '/admin/audit-exports',
+    label: '审计导出',
+    permissions: ['audit.export.approve'],
+  },
   { path: '/admin/settings', label: '系统设置' },
 ];
+
+/**
+ * 按会话权限过滤管理端菜单。
+ *
+ * 未声明 `permissions` 的既有入口不参与前端过滤，避免改变总览/租户/设置的既有布局语义；
+ * 声明了权限的入口要求至少命中一个权限码，因此普通员工看不到审计与用户管理入口。
+ *
+ * @param permissions 当前会话权限码；会话未加载时传空数组
+ * @returns 当前会话可见的菜单项
+ */
+export function filterAdminNavigation(permissions: readonly string[] = []): NavigationItem[] {
+  return adminNavigation.filter(
+    (item) =>
+      item.permissions === undefined ||
+      item.permissions.some((permission) => permissions.includes(permission)),
+  );
+}
 
 /** 应用标题，集中定义避免多处硬编码。 */
 export const APP_TITLE = 'Riccon';
