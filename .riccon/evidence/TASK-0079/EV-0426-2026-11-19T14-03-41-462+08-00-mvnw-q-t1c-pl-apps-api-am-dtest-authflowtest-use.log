@@ -1,0 +1,199 @@
+# command: ./mvnw -q -T1C -pl apps/api -am -Dtest=AuthFlowTest,UserSummaryAuthSourceTest,OidcIdentityBindingApiTest -Dsurefire.failIfNoSpecifiedTests=false test
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-19T14:01:53.779+08:00
+# finished_at: 2026-11-19T14:03:40.908+08:00
+# duration_ms: 107127
+# exit_code: 0
+
+# --- stdout ---
+14:02:14.772 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.m10.identity.OidcIdentityBindingApiTest]: OidcIdentityBindingApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+14:02:15.098 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.m10.identity.OidcIdentityBindingApiTest
+14:02:15.339 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.m10.identity.OidcIdentityBindingApiTest]: OidcIdentityBindingApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+14:02:15.340 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+14:02:15.344 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.m10.identity.OidcIdentityBindingApiTest
+14:02:15.516 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+14:02:15.524 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+14:02:15.558 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+14:02:17.419 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+14:02:17.422 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+14:02:17.459 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+14:02:17.718 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+14:02:18.361 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: a2b13776499f7766589af204a76e57e4e04db1baff8a6eb09c5329f08dc329b0
+14:02:19.095 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT1.376865S
+14:02:19.109 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+14:02:19.109 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+14:02:19.110 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+14:02:19.111 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+14:02:19.251 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: 1b95e63e5893d5096da685e556819309f0aa90498780b00282fef706824040a4
+14:02:19.742 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:54659/riccon using query 'SELECT 1'
+14:02:34.162 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT15.051333S
+14:02:34.163 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:54659/riccon)
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-19T14:02:34.997+08:00  INFO 21811 --- [riccon-api] [           main] c.r.a.m.i.OidcIdentityBindingApiTest     : Starting OidcIdentityBindingApiTest using Java 21.0.13 with PID 21811 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-19T14:02:35.000+08:00  INFO 21811 --- [riccon-api] [           main] c.r.a.m.i.OidcIdentityBindingApiTest     : The following 1 profile is active: "test"
+2026-11-19T14:02:38.380+08:00  INFO 21811 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-19T14:02:38.420+08:00  INFO 21811 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-19T14:02:38.421+08:00  INFO 21811 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-19T14:02:38.556+08:00  INFO 21811 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 3503 ms
+2026-11-19T14:02:38.922+08:00  INFO 21811 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-19T14:02:38.961+08:00  INFO 21811 --- [riccon-api] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@99a5440
+2026-11-19T14:02:38.964+08:00  INFO 21811 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-19T14:02:39.010+08:00  INFO 21811 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:54659/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-19T14:02:39.276+08:00  INFO 21811 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon`.`flyway_schema_history` does not exist yet
+2026-11-19T14:02:39.284+08:00  INFO 21811 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 10 migrations (execution time 00:00.064s)
+2026-11-19T14:02:39.333+08:00  INFO 21811 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon`.`flyway_schema_history` ...
+2026-11-19T14:02:39.474+08:00  INFO 21811 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: << Empty Schema >>
+2026-11-19T14:02:39.492+08:00  INFO 21811 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "1 - baseline"
+2026-11-19T14:02:39.590+08:00  INFO 21811 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "2 - identity and workspace"
+2026-11-19T14:02:39.939+08:00  INFO 21811 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "3 - files knowledge and conversation"
+2026-11-19T14:02:40.367+08:00  INFO 21811 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "4 - research runs and artifacts"
+2026-11-19T14:02:40.794+08:00  INFO 21811 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "5 - model gateway and mcp"
+2026-11-19T14:02:41.190+08:00  INFO 21811 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "6 - audit event"
+2026-11-19T14:02:41.640+08:00  INFO 21811 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "7 - spring session"
+2026-11-19T14:02:41.774+08:00  INFO 21811 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "8 - approval params envelope"
+2026-11-19T14:02:41.924+08:00  INFO 21811 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "9 - organization and workspace scope"
+2026-11-19T14:02:42.758+08:00  INFO 21811 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "10 - audit query export"
+2026-11-19T14:02:43.136+08:00  INFO 21811 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 10 migrations to schema `riccon`, now at version v10 (execution time 00:03.178s)
+2026-11-19T14:02:43.586+08:00  INFO 21811 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=2 enabled=2
+2026-11-19T14:02:43.934+08:00  INFO 21811 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-19T14:02:43.934+08:00  INFO 21811 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-19T14:02:43.934+08:00  INFO 21811 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-19T14:02:43.934+08:00  INFO 21811 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-19T14:02:48.250+08:00  INFO 21811 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoints beneath base path '/actuator'
+2026-11-19T14:02:48.395+08:00  INFO 21811 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 54830 (http) with context path '/'
+2026-11-19T14:02:48.408+08:00  INFO 21811 --- [riccon-api] [           main] c.r.a.m.i.OidcIdentityBindingApiTest     : Started OidcIdentityBindingApiTest in 14.177 seconds (process running for 42.565)
+2026-11-19T14:02:48.974+08:00  INFO 21811 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin created
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-19T14:02:50.593+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-19T14:02:50.593+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-19T14:02:50.595+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-11-19T14:02:52.906+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-OIDC-409 traceId=2d43b213-3e1b-4a60-80e6-59863416aecd path=/api/v1/users/01a1f266-98d5-7f29-add8-9cfab1356a61/oidc-binding/remove
+2026-11-19T14:02:52.972+08:00  INFO 21811 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-OIDC-400 traceId=0d11481c-769e-4b4d-b8b4-4063144412d4 path=/api/v1/admin/tenants/platform/users/01a1f266-8986-718c-ba55-3a3c2d8108e2/oidc-binding/remove
+2026-11-19T14:02:53.423+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=9b828112-8031-43fd-bd63-4c2ce0e69212 path=/api/v1/admin/tenants
+2026-11-19T14:02:53.464+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=5adc22e0-4baa-4d48-8fe6-eb3f3e711359 path=/api/v1/admin/tenants
+2026-11-19T14:02:55.124+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-OIDC-409 traceId=ceee7d9a-0cb4-482c-aa3f-466eccb7053d path=/api/v1/users/01a1f266-a155-7e97-8a6c-b9f4a76a8b38/oidc-binding
+2026-11-19T14:02:55.168+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-OIDC-409 traceId=414c5d47-96b9-494f-9913-56a2bb195d1f path=/api/v1/users/01a1f266-9fd2-7a6f-8828-5feac4e890e6/oidc-binding
+2026-11-19T14:02:55.210+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-OIDC-400 traceId=f07f69cd-8181-4df1-b32e-448e4d5f7787 path=/api/v1/users/01a1f266-a155-7e97-8a6c-b9f4a76a8b38/oidc-binding
+2026-11-19T14:02:56.405+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=42674745-e32f-43d9-8baf-31c69132d90c path=/api/v1/users/01a1f266-a69c-72c7-b185-11aac6ce37fb/oidc-binding
+2026-11-19T14:02:56.445+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=f6225352-a38b-43a1-8907-dc3b0623684a path=/api/v1/users/025074b9-9b50-4b3e-b0cf-f07c45a1f580/oidc-binding
+2026-11-19T14:02:56.886+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=e41f04e4-78c4-4715-9c34-5b53519ee9e4 path=/api/v1/admin/tenants
+2026-11-19T14:02:56.923+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=896a2f67-b501-4228-897d-ba49931bbf1d path=/api/v1/admin/tenants
+2026-11-19T14:02:58.193+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-OIDC-400 traceId=df0856f3-04e1-41c8-97fc-7273d3371960 path=/api/v1/users/01a1f266-ad64-7928-bad3-b923b7d40854/oidc-binding/remove
+2026-11-19T14:02:59.634+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=169ed2cf-1181-40bc-bae8-1d581decfe42 path=/api/v1/admin/tenants
+2026-11-19T14:02:59.671+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=fb5e0b65-2f17-4de3-bf6f-1ea6758a5c19 path=/api/v1/admin/tenants
+2026-11-19T14:03:00.986+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=25328c3a-c7a5-4425-8b1e-8a8b529f167e path=/api/v1/admin/tenants
+2026-11-19T14:03:01.019+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=acf036b3-8d38-4b0b-90d5-20bd3b25422e path=/api/v1/admin/tenants
+2026-11-19T14:03:01.448+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=6bbc30fc-b485-482b-bf49-2f4218192fb1 path=/api/v1/auth/login
+2026-11-19T14:03:01.880+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=fd1fa398-feed-49d0-b59a-b347ab984b3d path=/api/v1/admin/tenants
+2026-11-19T14:03:01.914+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=bc50ce76-6cad-4014-8a10-42d2cff6605f path=/api/v1/admin/tenants
+2026-11-19T14:03:03.568+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=294ce2b3-3283-4830-8d8a-cfba8f077681 path=/api/v1/admin/tenants
+2026-11-19T14:03:03.604+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=fc2b260e-d543-4523-a1e4-7de66e1fff44 path=/api/v1/admin/tenants
+2026-11-19T14:03:05.656+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=ba46fc38-0140-4d8e-8b9d-1eee841ef8ce path=/api/v1/admin/tenants
+2026-11-19T14:03:05.692+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=ec049279-ea3c-4d2f-ad27-24354e72b782 path=/api/v1/admin/tenants
+2026-11-19T14:03:05.732+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-OIDC-400 traceId=0357cb0e-5c09-4845-a6e5-a5d2fdff72ae path=/api/v1/admin/tenants/b2ab628358d2a/users
+2026-11-19T14:03:05.775+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-OIDC-400 traceId=f46a6777-904a-4547-bb72-c19b5ecb08f1 path=/api/v1/admin/tenants/b2ab628358d2a/users
+2026-11-19T14:03:05.813+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-OIDC-400 traceId=98875052-80a9-4e3f-84c7-dec83a75dbdf path=/api/v1/admin/tenants/b2ab628358d2a/users
+2026-11-19T14:03:05.855+08:00  INFO 21811 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-OIDC-400 traceId=dc05a00d-3e3a-41e8-8086-45d2a25dc483 path=/api/v1/admin/tenants/b2ab628358d2a/users
+2026-11-19T14:03:05.895+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-OIDC-400 traceId=14ea723c-c135-4a12-830a-eb0185770f78 path=/api/v1/admin/tenants/platform/users
+2026-11-19T14:03:05.933+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-OIDC-400 traceId=1be9e730-aa0a-40b1-8e3d-799410621fd6 path=/api/v1/admin/tenants/platform/users/01a1f266-8986-718c-ba55-3a3c2d8108e2/oidc-binding
+2026-11-19T14:03:06.363+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=100fb9ba-e299-40a4-a511-b54a6bad3fec path=/api/v1/admin/tenants
+2026-11-19T14:03:06.400+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=fa132b4f-954e-4946-a36d-5e195981fafd path=/api/v1/admin/tenants
+2026-11-19T14:03:08.076+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=342e55fe-503a-4c6c-afa0-33ba60117451 path=/api/v1/auth/login
+2026-11-19T14:03:08.821+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=5c09b586-87a5-450e-9eee-139a13cf1996 path=/api/v1/auth/login
+2026-11-19T14:03:09.259+08:00  INFO 21811 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=3bb328bb-1a30-4af8-8539-501a3e1a0538 path=/api/v1/admin/tenants
+2026-11-19T14:03:09.303+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=66f7b21a-efbe-4e2e-aa3e-fa46623f0ca1 path=/api/v1/admin/tenants
+2026-11-19T14:03:10.106+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=def1fafb-91f4-4114-9e6c-39339c8aa9b3 path=/api/v1/users
+2026-11-19T14:03:11.304+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=94ed4fdb-5956-418d-85df-0a2a590825ff path=/api/v1/admin/tenants
+2026-11-19T14:03:11.339+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=96178c73-205a-4332-85de-45880219ae9b path=/api/v1/admin/tenants
+2026-11-19T14:03:12.937+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=d37bbb9f-60b6-4d95-add5-8e3dd765d744 path=/api/v1/auth/login
+2026-11-19T14:03:13.362+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=8e3e1c89-1206-44f1-bfd4-38f4214de55d path=/api/v1/admin/tenants
+2026-11-19T14:03:13.395+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=dbf2f78b-04bf-49cf-8eef-b3b87045660a path=/api/v1/admin/tenants
+2026-11-19T14:03:14.704+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=fcf6f316-66e2-4e79-90ab-b5fb787c1423 path=/api/v1/admin/tenants/b2bb628358d2ax/users/01a1f266-ed87-782b-8a15-df10c0207fdb/oidc-binding
+2026-11-19T14:03:15.248+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=f857ef4c-c6e0-4193-aa61-c724a06e1ec5 path=/api/v1/admin/tenants
+2026-11-19T14:03:15.288+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=143a613f-9433-4003-a5f1-9cd9a8d74fb3 path=/api/v1/admin/tenants
+2026-11-19T14:03:16.475+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=74b88099-e17b-40eb-9bc1-82bfb6550f3e path=/api/v1/users
+2026-11-19T14:03:16.504+08:00  INFO 21811 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=30cd0210-e93e-41ad-908a-2a861555693f path=/api/v1/users/01a1f266-f510-776d-a74d-6adfc9fdd842/oidc-binding
+2026-11-19T14:03:16.531+08:00  INFO 21811 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.AuthFlowTest]: AuthFlowTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-19T14:03:16.606+08:00  INFO 21811 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.AuthFlowTest
+2026-11-19T14:03:16.608+08:00  INFO 21811 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.AuthFlowTest]: AuthFlowTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-19T14:03:16.608+08:00  INFO 21811 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-19T14:03:16.610+08:00  INFO 21811 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.AuthFlowTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-19T14:03:16.660+08:00  INFO 21811 --- [riccon-api] [           main] com.riccon.api.AuthFlowTest              : Starting AuthFlowTest using Java 21.0.13 with PID 21811 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-19T14:03:16.660+08:00  INFO 21811 --- [riccon-api] [           main] com.riccon.api.AuthFlowTest              : The following 1 profile is active: "test"
+2026-11-19T14:03:17.429+08:00  INFO 21811 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-19T14:03:17.430+08:00  INFO 21811 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-19T14:03:17.431+08:00  INFO 21811 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-19T14:03:17.483+08:00  INFO 21811 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 821 ms
+2026-11-19T14:03:17.527+08:00  INFO 21811 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Starting...
+2026-11-19T14:03:17.541+08:00  INFO 21811 --- [riccon-api] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-2 - Added connection com.mysql.cj.jdbc.ConnectionImpl@1500ea8d
+2026-11-19T14:03:17.541+08:00  INFO 21811 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Start completed.
+2026-11-19T14:03:17.543+08:00  INFO 21811 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:54659/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-19T14:03:17.597+08:00  INFO 21811 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 10 migrations (execution time 00:00.029s)
+2026-11-19T14:03:17.615+08:00  INFO 21811 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: 10
+2026-11-19T14:03:17.617+08:00  INFO 21811 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Schema `riccon` is up to date. No migration necessary.
+2026-11-19T14:03:17.750+08:00  INFO 21811 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-19T14:03:17.877+08:00  INFO 21811 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-19T14:03:17.878+08:00  INFO 21811 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-19T14:03:17.878+08:00  INFO 21811 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-19T14:03:17.878+08:00  INFO 21811 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-19T14:03:18.566+08:00  INFO 21811 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoints beneath base path '/actuator'
+2026-11-19T14:03:18.591+08:00  INFO 21811 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 54874 (http) with context path '/'
+2026-11-19T14:03:18.595+08:00  INFO 21811 --- [riccon-api] [           main] com.riccon.api.AuthFlowTest              : Started AuthFlowTest in 1.979 seconds (process running for 72.75)
+2026-11-19T14:03:18.599+08:00  WARN 21811 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin skipped: platform admin already exists
+2026-11-19T14:03:18.611+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-1] o.a.c.c.C.[Tomcat-1].[localhost].[/]     : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-19T14:03:18.611+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-19T14:03:18.613+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-11-19T14:03:21.542+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-401 traceId=5dfbb0d4-811c-43eb-80f2-70e9655dd16e path=/api/v1/auth/session
+2026-11-19T14:03:24.009+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=21872a29-9686-4d46-8b68-d232551b45c8 path=/api/v1/auth/login
+2026-11-19T14:03:25.224+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=073dfc67-0a0c-46fe-a1be-6ca84a7d8fe5 path=/api/v1/auth/login
+2026-11-19T14:03:25.607+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=00cab586-ce13-49a3-b995-d27447f10b24 path=/api/v1/auth/login
+2026-11-19T14:03:27.445+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=a7f35eba-cdf3-424a-8d00-09d53d163295 path=/api/v1/users
+2026-11-19T14:03:28.666+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=7bfc9e53-e556-4dda-95d7-da9c5df69e2a path=/api/v1/auth/login
+2026-11-19T14:03:29.042+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=03caedaa-ec19-441d-b053-45efdd26cd29 path=/api/v1/auth/login
+2026-11-19T14:03:29.418+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=e8ae0cce-f999-416d-9384-85f939f4b854 path=/api/v1/auth/login
+2026-11-19T14:03:29.793+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=feab5e31-cc15-4839-8b32-5ef5e9bd3a5f path=/api/v1/auth/login
+2026-11-19T14:03:30.185+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=17963fab-6543-4a43-b393-57e1067e3120 path=/api/v1/auth/login
+2026-11-19T14:03:30.559+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=61dcf971-b054-4cdf-99c2-ec23b2d947ad path=/api/v1/auth/login
+2026-11-19T14:03:32.864+08:00  INFO 21811 --- [riccon-api] [-auto-2-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=54934664-5d04-4ffe-a286-555cf183bced path=/api/v1/auth/login
+2026-11-19T14:03:33.234+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=c522fdf5-b0f6-49a8-bdb5-4ece7cc20a7e path=/api/v1/auth/login
+2026-11-19T14:03:33.613+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=515e8831-4c08-4d6b-87e2-985d36097c5f path=/api/v1/auth/login
+2026-11-19T14:03:33.987+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=89bebff6-b7df-44e8-9448-cb8c4dfe3443 path=/api/v1/auth/login
+2026-11-19T14:03:34.362+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=fee9ecc4-83db-4a9e-9d37-355d6036f4a9 path=/api/v1/auth/login
+2026-11-19T14:03:34.728+08:00  INFO 21811 --- [riccon-api] [-auto-2-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=4ee1ffbe-48f3-4faf-a101-ee6acf78b4ed path=/api/v1/auth/login
+2026-11-19T14:03:35.106+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=56267d0e-b451-4548-9bab-c56170ef2dbd path=/api/v1/auth/login
+2026-11-19T14:03:35.484+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=9d70e03a-5fad-4893-ad2f-24f3d36cbc57 path=/api/v1/auth/login
+2026-11-19T14:03:35.850+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=f1cc44a8-2a50-4792-b6be-239bd0060c53 path=/api/v1/auth/login
+2026-11-19T14:03:36.216+08:00  INFO 21811 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=96df52e4-0d92-4688-8ffa-deb93b47a35e path=/api/v1/auth/login
+2026-11-19T14:03:36.255+08:00  INFO 21811 --- [riccon-api] [-auto-2-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-RATE-429 traceId=80a8a6c2-bb82-4b66-8d64-7a994356f0f8 path=/api/v1/auth/login
+
+# --- stderr ---
+
