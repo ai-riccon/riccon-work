@@ -23,6 +23,13 @@ export type UserStatus = 'ACTIVE' | 'DISABLED';
 /** 租户状态。 */
 export type TenantStatus = 'ACTIVE' | 'SUSPENDED';
 
+/**
+ * 账号认证来源，对应 OpenAPI `AuthSource`。
+ *
+ * `LOCAL` 使用本地密码；`OIDC` 使用 issuer + subject 绑定且没有本地密码凭据。
+ */
+export type AuthSource = 'LOCAL' | 'OIDC';
+
 /** 用户摘要，对应 OpenAPI `UserSummary`。 */
 export interface UserSummary {
   id: string;
@@ -35,8 +42,35 @@ export interface UserSummary {
   departmentId?: string | null;
   /** 主部门名；停用部门仍显示名称。 */
   departmentName?: string | null;
+  /**
+   * 认证来源；管理端与 `/auth/session` 会下发。
+   * 历史响应可能省略该字段，界面按“未标注”展示，不猜测为任何来源。
+   */
+  authSource?: AuthSource;
   lastLoginAt: string | null;
   createdAt: string;
+}
+
+/** 企业账号登录可用性，对应 OpenAPI `OidcProviderAvailability`。 */
+export interface OidcProviderAvailability {
+  /** 是否启用企业账号登录；未知租户、未配置与已停用统一为 false。 */
+  enabled: boolean;
+  /** 登录页展示名；仅 enabled=true 时返回。 */
+  providerName?: string | null;
+}
+
+/** OIDC 身份绑定请求，对应 OpenAPI `OidcBindingRequest`。 */
+export interface OidcBindingRequest {
+  /** 必须等于租户当前配置的 issuer（规范化后）。 */
+  issuer: string;
+  /** IdP 的 subject；不存邮箱、不按邮箱匹配。 */
+  subject: string;
+}
+
+/** OIDC 解绑并恢复本地密码请求，对应 OpenAPI `OidcUnbindRequest`。 */
+export interface OidcUnbindRequest {
+  /** 恢复本地账号时设置的新密码，12–200 字符。 */
+  newPassword: string;
 }
 
 /** 租户摘要，对应 OpenAPI `TenantSummary`。 */

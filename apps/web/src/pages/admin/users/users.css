@@ -1,0 +1,53 @@
+/* 用户管理列表：窄屏下账号信息与操作纵向排列，避免整页横向滚动。 */
+.user-admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.user-admin-item {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+}
+
+.user-admin-main {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.user-admin-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.user-admin-actions .ant-btn {
+  min-height: 36px;
+}
+
+@media (max-width: 480px) {
+  .user-admin-actions {
+    width: 100%;
+  }
+
+  .user-admin-actions .ant-btn {
+    width: 100%;
+  }
+}

@@ -64,6 +64,16 @@ export const routes: RicconRoute[] = [
         title: '租户与部门',
       },
       {
+        path: '/admin/users',
+        component: '@/pages/admin/users',
+        title: '用户管理',
+      },
+      {
+        path: '/admin/tenants/:tenantId/users',
+        component: '@/pages/admin/users',
+        title: '租户用户管理',
+      },
+      {
         path: '/admin/audit',
         component: '@/pages/admin/audit',
         title: '审计日志',

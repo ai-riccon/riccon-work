@@ -1,3 +1,7 @@
+import {
+  FEDERATED_LOGOUT_HEADER,
+  rememberFederatedLogoutUrl,
+} from '@/services/auth/federated-logout';
 import { ApiError, isAbortError, toApiError } from './errors';
 import { parseChatEvent, parseSseStream } from './sse';
 import type {
@@ -261,10 +265,15 @@ export class ApiClient implements RicconApi, WorkspaceManagementApi, PlatformDep
 
   /**
    * 登出并使服务端会话失效。
+   *
+   * 本地登出是权威结果。若服务端返回 `X-Riccon-Federated-Logout-Url`
+   * （仅 OIDC 账号且租户配置了 end-session），只把安全地址暂存到 sessionStorage；
+   * 顶层导航由登录页在渲染“已退出本地会话”后执行，IdP 不可达时不改写本地退出结果。
    */
   async logout(): Promise<void> {
     try {
-      await this.request<void>('/api/v1/auth/logout', { method: 'POST' });
+      const response = await this.performRequest('/api/v1/auth/logout', 'POST', {}, true);
+      rememberFederatedLogoutUrl(response.headers.get(FEDERATED_LOGOUT_HEADER));
     } finally {
       // 无论服务端是否成功，客户端都不再持有 CSRF 令牌；避免退出后继续使用旧值。
       this.csrfToken = null;
