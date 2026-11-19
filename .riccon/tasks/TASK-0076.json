@@ -4,7 +4,7 @@
   "module_id": "M10",
   "title": "M10-B4 Web OIDC/绑定",
   "owner": "riccon/builder",
-  "status": "in_progress",
+  "status": "blocked",
   "write_scope": [
     "apps/web/src/pages/login/**",
     "apps/web/src/pages/admin/users/**",
@@ -21,10 +21,12 @@
     "前端测试/构建通过；不碰后端/契约/迁移",
     "完整 E2E/a11y 由 V1 复验"
   ],
-  "evidence": [],
+  "evidence": [
+    "EV-0427"
+  ],
   "tools_used": [],
-  "blocker": null,
+  "blocker": "write_scope 未覆盖两项必要改动：apps/web/src/services/api/client.ts（捕获 X-Riccon-Federated-Logout-Url）与 apps/web/config/routes.ts（注册 /admin/users 与 /admin/tenants/:tenantId/users）。代码已提交 9fcdd95 并录 EV-0427；请 Lead 扩展 write_scope（6+2=8）后将状态改回 in_progress → review。",
   "created_at": "2026-11-19T11:51:57.764+08:00",
-  "updated_at": "2026-11-19T14:05:07.073+08:00",
+  "updated_at": "2026-11-19T14:42:54.499+08:00",
   "baseline_commit": "4783348244f4993c7f53852522373659df97cd0f"
 }
