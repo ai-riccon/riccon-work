@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0071",
+  "module_id": "M10",
+  "title": "M10-B3b 审计查询/导出 API",
+  "owner": "riccon/builder",
+  "status": "ready",
+  "write_scope": [
+    "apps/api/src/main/java/com/riccon/api/audit/controller/**",
+    "apps/api/src/main/java/com/riccon/api/audit/service/**",
+    "apps/api/src/main/java/com/riccon/api/audit/repository/**",
+    "apps/api/src/main/java/com/riccon/api/audit/persistence/**",
+    "apps/api/src/main/java/com/riccon/api/admin/audit/**",
+    "apps/api/src/test/java/com/riccon/api/m10/audit/**"
+  ],
+  "acceptance": [
+    "审计查询：过滤/排序/分页/180 天/无写入口/查询审计",
+    "导出申请/审批/下载：自批 403/并发 409/过期 410/平台仅单管理员/平台租户 403",
+    "CSV 流式/字段白名单/敏感剔除/Clock/TTL/重复下载",
+    "权限消费 B3a；不改 V10/RoleDefinitions/shared vocabulary",
+    "IT-AUDIT-101..106；定向测试 + 一次全量 verify",
+    "不碰 Web/B4/B5；错误码/契约一致"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-19T09:08:56.641+08:00",
+  "updated_at": "2026-11-19T09:08:56.916+08:00"
+}
