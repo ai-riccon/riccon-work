@@ -23,6 +23,14 @@ public final class ErrorCodes {
     /** 请求路径不存在。 */
     public static final String REQUEST_NOT_FOUND = "RICCON-REQUEST-404";
 
+    /**
+     * 请求方法不被该路径支持；响应在 {@code Allow} 头列出受支持方法。
+     *
+     * <p>路径不存在仍是 {@link #REQUEST_NOT_FOUND}，已认证但无权限仍是 {@link #AUTH_FORBIDDEN}；
+     * 该码不用于掩盖对象存在性。
+     */
+    public static final String RICCON_METHOD_405 = "RICCON-METHOD-405";
+
     /** 请求媒体类型不受支持。 */
     public static final String REQUEST_UNSUPPORTED_MEDIA_TYPE = "RICCON-REQUEST-415";
 

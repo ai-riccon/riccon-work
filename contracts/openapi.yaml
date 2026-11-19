@@ -35,6 +35,7 @@ info:
     统一使用 RFC 9457 `application/problem+json`，至少包含 `type/title/status/code/traceId`。
     错误码格式 `RICCON-<DOMAIN>-<NNN>`；禁止返回堆栈、SQL、内部主机、密钥或完整提示词。
     部门/空间成员关系冲突使用 `RICCON-DEPT-409`；跨租户/跨部门/不可见统一 `RICCON-TENANT-404`；OIDC 绑定冲突使用 `RICCON-OIDC-409`；审计查询/导出使用 `RICCON-AUDIT-*`。
+    路径存在但不支持该 HTTP 方法返回 405 `RICCON-METHOD-405`，并在 `Allow` 响应头列出受支持方法；路径不存在仍是 404 `RICCON-REQUEST-404`，已认证但无权限仍是 403。405 不产生审计写入，也不新增路由。
 
     ## 流式
     `POST /api/v1/conversations/{conversationId}/messages` 返回 `text/event-stream`，
