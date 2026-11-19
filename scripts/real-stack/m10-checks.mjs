@@ -36,8 +36,14 @@ const oidcSubject = process.env.REAL_OIDC_SUBJECT ?? 'subject-alpha';
 const webBase = process.env.REAL_WEB_BASE ?? 'http://127.0.0.1:8092';
 const apiBase = seed.apiBase;
 const issuer = `${oidcBase}/realms/${oidcRealm}`;
+/** 租户当前配置的 IdP 展示名；由部署配置下发，不由账号或邮箱推断。 */
+const providerName = process.env.REAL_OIDC_PROVIDER_NAME ?? 'Alpha 测试企业 IdP';
+/** 模拟 IdP 更换后的历史 issuer；绑定 API 只接受当前配置 issuer，因此用测试 SQL 造历史账号。 */
+const historicalIssuer = 'http://beta-idp.example.test/realms/beta';
+/** 历史 issuer 的脱敏 host 展示名；不含路径。 */
+const historicalLabel = 'beta-idp.example.test';
 const suffix = Date.now().toString(36);
-const summary = { oidc: {}, binding: {}, audit: {}, export: {}, counts: {} };
+const summary = { oidc: {}, binding: {}, identityProvider: {}, audit: {}, export: {}, counts: {} };
 
 /** 输出一步成功信息。 */
 function ok(label, detail = '') {
@@ -165,6 +171,44 @@ function greaterOrEqual(actual, expected, label) {
   assert.ok(actual >= expected, `${label}: expected >= ${expected}, got ${actual}`);
 }
 
+/**
+ * 在账号分页中按 ID 查找账号摘要。
+ *
+ * @param {object} page 分页响应
+ * @param {string} userId 账号 ID
+ * @param {string} label 断言标签
+ * @returns {object} 账号摘要
+ */
+function findUserItem(page, userId, label) {
+  const item = page?.items?.find((entry) => entry.id === userId);
+  assert.ok(item, `${label}: user ${userId} must be listed`);
+  return item;
+}
+
+/**
+ * 断言响应体不泄露完整 issuer、subject、邮箱或令牌。
+ *
+ * @param {object} value 响应体
+ * @param {string} label 断言标签
+ * @param {string[]} extraForbidden 额外禁止出现的测试值
+ */
+function assertNoIdentityLeak(value, label, extraForbidden = []) {
+  const text = JSON.stringify(value);
+  for (const forbidden of [
+    '/realms/',
+    'https://',
+    'http://',
+    '@example.test',
+    'access_token',
+    'refresh_token',
+    'id_token',
+    'eyJ',
+    ...extraForbidden,
+  ]) {
+    assert.ok(!text.includes(forbidden), `${label}: response leaks ${forbidden}`);
+  }
+}
+
 async function main() {
   assert.ok(oidcClientId && oidcClientSecret, 'OIDC client env is required');
   const platform = await login(
@@ -222,6 +266,15 @@ async function main() {
     body: { issuer, subject: boundSubject },
   });
   expectStatus(bind, 200, 'bind OIDC identity');
+  assert.equal(bind.data.identityProvider, providerName, 'bind response must expose provider name');
+  assert.equal(bind.data.authSource, 'OIDC');
+  assertNoIdentityLeak(bind.data, 'bind response', [boundSubject, issuer]);
+  // 本地管理员会话不伪造来源 IdP。
+  assert.equal(alphaAdmin.session.user.authSource, 'LOCAL');
+  assert.ok(
+    !('identityProvider' in alphaAdmin.session.user),
+    'LOCAL session must omit identityProvider',
+  );
 
   // ---------- OIDC：PKCE+nonce 成功登录 ----------
   await oidcReset();
@@ -236,9 +289,11 @@ async function main() {
     'oidc session',
   );
   assert.equal(oidcSession.data.user.authSource, 'OIDC');
+  assert.equal(oidcSession.data.user.identityProvider, providerName);
   assert.equal(oidcSession.data.tenant.id, seed.tenants.alpha);
   assert.equal(oidcSession.data.user.id, localUser.id, 'bound identity must hit the same account');
   assert.equal(oidcSession.data.user.username, bindUsername);
+  assertNoIdentityLeak(oidcSession.data, 'session response', [boundSubject, issuer]);
   // 登录成功会轮换 CSRF 令牌；同步到客户端后再发登出等写请求。
   oidcClient.csrfToken = oidcSession.data.csrfToken;
   const afterSuccess = await oidcStats();
@@ -344,6 +399,74 @@ async function main() {
   summary.binding.username = bindUsername;
   summary.binding.subject = boundSubject;
   summary.binding.displayName = 'OIDC 端到端员工';
+
+  // ---------- 来源 IdP：列表两 issuer 可区分、LOCAL 省略 ----------
+  const secondUsername = `oidc-history-${suffix}`;
+  const secondSubject = `sub-history-${suffix}`;
+  const secondUser = await createUser(platform, seed.tenants.alpha, {
+    username: secondUsername,
+    displayName: '历史 IdP 员工',
+    password: 'initial-password-12',
+    roles: ['MEMBER'],
+  });
+  const secondBind = await alphaAdmin.request('PUT', `/api/v1/users/${secondUser.id}/oidc-binding`, {
+    body: { issuer, subject: secondSubject },
+  });
+  expectStatus(secondBind, 200, 'bind historical OIDC identity');
+  // 绑定 API 只接受租户当前配置 issuer；用测试 SQL 模拟 IdP 更换后的历史 issuer，
+  // 验证列表按账号存储 issuer 回退 host，而不是把两个 IdP 混成一个名字。
+  runSql(
+    `UPDATE app_user
+        SET external_issuer = ${sqlString(historicalIssuer)},
+            external_subject = ${sqlString(`${secondSubject}-moved`)}
+      WHERE tenant_id = ${sqlString(seed.tenants.alpha)}
+        AND id = ${binaryUuid(secondUser.id)};`,
+    { repoRoot: root },
+  );
+  const tenantUsersPage = expectStatus(
+    await alphaAdmin.get('/api/v1/users?size=100'),
+    200,
+    'tenant user list identityProvider',
+  );
+  const firstItem = findUserItem(tenantUsersPage.data, localUser.id, 'tenant user list');
+  const secondItem = findUserItem(tenantUsersPage.data, secondUser.id, 'tenant user list');
+  const localItem = findUserItem(tenantUsersPage.data, seed.userIds.alphaAdmin, 'tenant user list');
+  assert.equal(firstItem.authSource, 'OIDC');
+  assert.equal(firstItem.identityProvider, providerName);
+  assert.equal(secondItem.authSource, 'OIDC');
+  assert.equal(secondItem.identityProvider, historicalLabel);
+  assert.notEqual(firstItem.identityProvider, secondItem.identityProvider);
+  assert.equal(localItem.authSource, 'LOCAL');
+  assert.ok(!('identityProvider' in localItem), 'LOCAL user list item must omit identityProvider');
+  assertNoIdentityLeak(
+    { items: [firstItem, secondItem, localItem] },
+    'tenant user list',
+    [boundSubject, secondSubject, historicalIssuer],
+  );
+  const platformUsersPage = expectStatus(
+    await platform.get(`/api/v1/admin/tenants/${seed.tenants.alpha}/users?size=100`),
+    200,
+    'platform user list identityProvider',
+  );
+  assert.equal(
+    findUserItem(platformUsersPage.data, localUser.id, 'platform user list').identityProvider,
+    providerName,
+  );
+  assert.equal(
+    findUserItem(platformUsersPage.data, secondUser.id, 'platform user list').identityProvider,
+    historicalLabel,
+  );
+  ok(
+    'identity provider lists',
+    `configured=${providerName} historical=${historicalLabel} local omitted`,
+  );
+  summary.identityProvider.providerName = providerName;
+  summary.identityProvider.historicalLabel = historicalLabel;
+  summary.identityProvider.oidcUsername = bindUsername;
+  summary.identityProvider.oidcDisplayName = 'OIDC 端到端员工';
+  summary.identityProvider.historicalUsername = secondUsername;
+  summary.identityProvider.historicalDisplayName = '历史 IdP 员工';
+  summary.identityProvider.localUsername = seed.users.alphaAdmin;
 
   // B2 F-001：case-variant subject 探针；只记录观测值，不冒充已修复。
   await oidcBehavior('login', boundSubject.toUpperCase());

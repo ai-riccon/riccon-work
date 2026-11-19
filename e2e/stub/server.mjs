@@ -90,6 +90,16 @@ const M03_TENANT_WORKSPACE_ID = 'ws-legacy-tenant';
 const M03_DEPT_RESEARCH_TASK_ID = 'research-dept-1';
 const M03_UNASSIGNED_USER_ID = 'f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1';
 const M03_DISABLED_USER_ID = 'f2f2f2f2-f2f2-4f2f-8f2f-f2f2f2f2f2f2';
+
+/** M15 来源 IdP 列表账号；与 M10 后端脱敏展示字段对齐，只用于 E2E 合成数据。 */
+const M15_OIDC_USER_A_ID = 'a1a1a1a1-a1a1-4a1a-8a1a-a1a1a1a1a1a1';
+const M15_OIDC_USER_B_ID = 'b1b1b1b1-b1b1-4b1b-8b1b-b1b1b1b1b1b1';
+const M15_OIDC_USER_A_NAME = 'oidc-alpha';
+const M15_OIDC_USER_B_NAME = 'oidc-beta';
+const M15_OIDC_USER_A_DISPLAY_NAME = '甲企业员工';
+const M15_OIDC_USER_B_DISPLAY_NAME = '乙企业员工';
+const M15_PROVIDER_A = 'Acme 企业 IdP';
+const M15_PROVIDER_B = 'idp-b.example.com:8443';
 const M03_DEPT_CONVERSATION_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const M03_DEPT_FILE_ID = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const M03_SOURCE_UNAVAILABLE_FILE_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -170,6 +180,7 @@ const M03_CREDENTIALS = {
       'department.read',
       'knowledge.read',
       'knowledge.manage',
+      'tenant.user.manage',
     ],
     tenantId: M03_TENANT_ACME,
     tenantName: '示例企业',
@@ -363,6 +374,35 @@ function createInitialState() {
         createdAt: BASE_TIME,
         departmentId: null,
       },
+      {
+        id: M15_OIDC_USER_A_ID,
+        tenantId: M03_TENANT_ACME,
+        username: M15_OIDC_USER_A_NAME,
+        displayName: M15_OIDC_USER_A_DISPLAY_NAME,
+        email: null,
+        status: 'ACTIVE',
+        roles: ['MEMBER'],
+        // 服务端下发脱敏展示名；前端只原样展示，不拼接完整 issuer。
+        authSource: 'OIDC',
+        identityProvider: M15_PROVIDER_A,
+        lastLoginAt: BASE_TIME,
+        createdAt: BASE_TIME,
+        departmentId: null,
+      },
+      {
+        id: M15_OIDC_USER_B_ID,
+        tenantId: M03_TENANT_ACME,
+        username: M15_OIDC_USER_B_NAME,
+        displayName: M15_OIDC_USER_B_DISPLAY_NAME,
+        email: null,
+        status: 'ACTIVE',
+        roles: ['MEMBER'],
+        authSource: 'OIDC',
+        identityProvider: M15_PROVIDER_B,
+        lastLoginAt: BASE_TIME,
+        createdAt: BASE_TIME,
+        departmentId: null,
+      },
     ],
     departments: [],
     teamWorkspaces: [],
@@ -464,6 +504,9 @@ function sessionInfo(session) {
       email: null,
       status: 'ACTIVE',
       roles: account.roles,
+      // stub 的内置账号等价于 LOCAL；OIDC 账号的脱敏展示名只由服务端字段驱动。
+      authSource: account.authSource ?? 'LOCAL',
+      ...(account.identityProvider ? { identityProvider: account.identityProvider } : {}),
       lastLoginAt: BASE_TIME,
       createdAt: BASE_TIME,
     },
@@ -2257,6 +2300,30 @@ function tenantUsers(tenantId) {
 }
 
 /**
+ * 账号摘要响应。
+ *
+ * 与 OpenAPI `UserSummary` 对齐：`authSource` 默认 LOCAL；`identityProvider` 只在有脱敏展示名时出现，
+ * 不输出完整 issuer、subject、邮箱或令牌。stub 数据全部为合成内容。
+ *
+ * @param user 账号
+ * @returns 账号摘要
+ */
+function userSummaryResponse(user) {
+  return {
+    id: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    email: user.email ?? null,
+    status: user.status,
+    roles: user.roles,
+    authSource: user.authSource ?? 'LOCAL',
+    ...(user.identityProvider ? { identityProvider: user.identityProvider } : {}),
+    lastLoginAt: user.lastLoginAt ?? null,
+    createdAt: user.createdAt,
+  };
+}
+
+/**
  * 播种 M03 演示数据：销售部/市场部、负责人、普通成员与一个部门空间。
  *
  * 只由 E2E 控制端点调用，不在 reset 默认状态中，避免影响 M02 用例。
@@ -2536,6 +2603,17 @@ function handleApi(req, res, url, raw) {
     return true;
   }
 
+  // M15：租户管理员账号列表；只返回当前租户账号元数据与脱敏来源 IdP。
+  if (pathname === '/api/v1/users' && method === 'GET') {
+    const account = currentAccount(session);
+    if (account?.persona !== 'tenant-admin') {
+      writeResult(res, problem(403, 'RICCON-AUTH-403', '没有权限', '只有租户管理员可以管理账号。'));
+      return true;
+    }
+    writeResult(res, json(page(tenantUsers(account.tenantId).map(userSummaryResponse))));
+    return true;
+  }
+
   const adminUserListMatch = /^\/api\/v1\/admin\/tenants\/([^/]+)\/users$/.exec(pathname);
   if (adminUserListMatch && method === 'GET') {
     const account = currentAccount(session);
@@ -2544,23 +2622,7 @@ function handleApi(req, res, url, raw) {
       return true;
     }
     const tenantId = decodeURIComponent(adminUserListMatch[1]);
-    writeResult(
-      res,
-      json(
-        page(
-          tenantUsers(tenantId).map((user) => ({
-            id: user.id,
-            username: user.username,
-            displayName: user.displayName,
-            email: user.email ?? null,
-            status: user.status,
-            roles: user.roles,
-            lastLoginAt: user.lastLoginAt ?? null,
-            createdAt: user.createdAt,
-          })),
-        ),
-      ),
-    );
+    writeResult(res, json(page(tenantUsers(tenantId).map(userSummaryResponse))));
     return true;
   }
 

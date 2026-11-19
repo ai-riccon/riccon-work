@@ -29,6 +29,8 @@ const OIDC_CLIENT_ID = 'riccon-alpha';
 const OIDC_CLIENT_SECRET = `oidc-secret-${randomBytes(18).toString('hex')}`;
 const OIDC_SUBJECT = 'subject-alpha';
 const OIDC_ISSUER = `http://127.0.0.1:${OIDC_PORT}/realms/${OIDC_REALM}`;
+/** 租户配置的 IdP 展示名；浏览器断言与 API 配置共用同一值。 */
+const OIDC_PROVIDER_NAME = 'Alpha 测试企业 IdP';
 
 const SEED_FILE = path.join(evidenceDir, 'real-stack-seed.json');
 const masterKey = process.env.RICCON_MASTER_KEY ?? randomBytes(32).toString('base64');
@@ -286,6 +288,7 @@ try {
       REAL_OIDC_CLIENT_ID: OIDC_CLIENT_ID,
       REAL_OIDC_CLIENT_SECRET: OIDC_CLIENT_SECRET,
       REAL_OIDC_SUBJECT: OIDC_SUBJECT,
+      REAL_OIDC_PROVIDER_NAME: OIDC_PROVIDER_NAME,
     },
     encoding: 'utf8',
     maxBuffer: 32 * 1024 * 1024,
@@ -306,6 +309,7 @@ try {
     REAL_OIDC_TENANT: OIDC_TENANT,
     REAL_OIDC_SUBJECT: OIDC_SUBJECT,
     REAL_OIDC_CLIENT_ID: OIDC_CLIENT_ID,
+    REAL_OIDC_PROVIDER_NAME: OIDC_PROVIDER_NAME,
   };
   const playwright = spawnSync(
     'pnpm',

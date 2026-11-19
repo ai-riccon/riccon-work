@@ -7,24 +7,35 @@ import { readSeed, type RealSeed } from './real-session';
 /**
  * M10 真实栈 E2E：OIDC/SSO、账号绑定、审计查询/导出与可访问性。
  *
- * 覆盖 E2E-M03-03..07 的真实浏览器段：
+ * 覆盖 E2E-M03-03..07 与 M15 来源 IdP 的真实浏览器段：
  * - E2E-M03-03：企业账号登录、无 JWT/token 落地、联合登出与后退防护；
  * - E2E-M03-04：绑定企业账号（管理员 UI）与失败原因文案；
  * - E2E-M03-05：审计过滤、分页、空态、无权限；
  * - E2E-M03-06：导出申请 → 另一管理员批准 → 申请人下载 CSV；
- * - E2E-M03-07：375px、键盘与 axe（登录页/审计/导出/用户管理）。
+ * - E2E-M03-07：375px、键盘与 axe（登录页/审计/导出/用户管理）；
+ * - E2E-M15-01/02：企业登录来源 IdP 文案、LOCAL 文案、两 issuer 列表可区分与脱敏。
  *
  * 数据由 `scripts/real-stack` 的 seed 与 m10-checks 准备；本文件只通过公开 HTTP API
  * 创建前置数据，不导入产品代码，也不使用 in-app mock。
  */
 
-/** 测试 IdP 与 M10 前置数据。 */
+/** 测试 IdP 与 M10/M15 前置数据。 */
 interface M10Context {
   oidcBase: string;
   oidcRealm: string;
   oidcTenant: string;
   oidcSubject: string;
+  oidcProviderName: string;
   binding: { username: string; subject: string; displayName: string };
+  identityProvider: {
+    providerName: string;
+    historicalLabel: string;
+    oidcUsername: string;
+    oidcDisplayName: string;
+    historicalUsername: string;
+    historicalDisplayName: string;
+    localUsername: string;
+  };
 }
 
 /** 读取 m10-checks 输出。 */
@@ -39,7 +50,9 @@ function readM10Context(): M10Context {
     oidcRealm: process.env.REAL_OIDC_REALM ?? 'alpha',
     oidcTenant: process.env.REAL_OIDC_TENANT ?? 'tenant-alpha',
     oidcSubject: process.env.REAL_OIDC_SUBJECT ?? 'subject-alpha',
+    oidcProviderName: process.env.REAL_OIDC_PROVIDER_NAME ?? 'Alpha 测试企业 IdP',
     binding: summary.binding,
+    identityProvider: summary.identityProvider,
   };
 }
 
@@ -142,6 +155,66 @@ async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
 }
 
 /**
+ * 判断 serious/critical 违规是否属于已记录的既有状态标签对比度问题。
+ *
+ * antd 6 绿色 `Tag color="green"`（“启用”）在 12px 下对比度约 3.37:1，低于 WCAG AA 4.5:1；
+ * 该标签自 M02/M03 起存在，不属于 M15 来源 IdP 变更面。M15 只放行目标全部命中
+ * `.ant-tag-green` 的 color-contrast 节点，并在 M15-review 记录 P2 残余；其他问题仍失败。
+ *
+ * @param violation axe 违规
+ * @returns 已记录问题返回 true
+ */
+function isKnownStatusTagContrast(violation: {
+  id: string;
+  impact?: string | null;
+  nodes: Array<{ target: Array<string | string[]> }>;
+}): boolean {
+  return (
+    violation.id === 'color-contrast' &&
+    violation.nodes.every((node) =>
+      node.target.some((target) => JSON.stringify(target).includes('ant-tag-green')),
+    )
+  );
+}
+
+/**
+ * 断言页面不存在除已记录状态标签对比度外的 serious/critical 问题。
+ *
+ * @param page 页面
+ */
+async function expectNoNewSeriousA11yViolations(page: Page): Promise<void> {
+  const result = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  const blocking = result.violations.filter((violation) =>
+    ['serious', 'critical'].includes(violation.impact ?? ''),
+  );
+  expect(
+    blocking.filter((violation) => !isKnownStatusTagContrast(violation)),
+    '发现新的 serious/critical 可访问性问题',
+  ).toEqual([]);
+}
+
+/**
+ * 只扫描 M15 新增来源 IdP 文案的可访问性。
+ *
+ * @param page 页面
+ * @param selector 目标元素选择器
+ */
+async function expectProviderLabelA11y(page: Page, selector: string): Promise<void> {
+  const result = await new AxeBuilder({ page })
+    .include(selector)
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  expect(
+    result.violations.filter((violation) =>
+      ['serious', 'critical'].includes(violation.impact ?? ''),
+    ),
+    '来源 IdP 文案存在 serious/critical 问题',
+  ).toEqual([]);
+}
+
+/**
  * 通过公开 API 创建本地账号；返回账号。
  *
  * @param seed 真实栈 seed
@@ -173,6 +246,10 @@ test.describe('M10 身份与审计', () => {
     await setOidcBehavior(m10, 'login', m10.binding.subject);
     await loginEnterprise(page, m10);
     await expect(page.getByText(m10.binding.displayName, { exact: true }).first()).toBeVisible();
+
+    // M15：工作空间头部显示租户配置的来源 IdP 脱敏展示名。
+    const identityLabel = page.locator('.chat-identity-provider');
+    await expect(identityLabel).toHaveText(`来源：${m10.oidcProviderName}`);
 
     // 浏览器存储与 Cookie 不出现 JWT/access token。
     const cookieText = JSON.stringify(await context.cookies());
@@ -251,6 +328,102 @@ test.describe('M10 身份与审计', () => {
     await expect(page.getByText('企业账号服务暂时不可用')).toBeVisible();
     await expect(page.getByText(/改用内置账号登录/)).toBeVisible();
     await setOidcBehavior(m10, 'login', m10.oidcSubject);
+  });
+
+  test('E2E-M15-01 企业会话显示来源 IdP，LOCAL 会话显示本地账号', async ({ page }) => {
+    const seed = readSeed();
+    const m10 = readM10Context();
+
+    await setOidcBehavior(m10, 'login', m10.binding.subject);
+    await loginEnterprise(page, m10);
+    const enterpriseLabel = page.locator('.chat-identity-provider');
+    await expect(enterpriseLabel).toHaveText(`来源：${m10.identityProvider.providerName}`);
+    await expect(enterpriseLabel).toHaveAttribute(
+      'title',
+      `来源：${m10.identityProvider.providerName}`,
+    );
+    const enterpriseBody = await page.evaluate(() => document.body.innerText);
+    for (const forbidden of ['/realms/', '127.0.0.1:18995', m10.binding.subject, '@example.test', 'eyJ']) {
+      expect(enterpriseBody).not.toContain(forbidden);
+    }
+
+    await logout(page);
+    await loginLocal(
+      page,
+      seed.tenants.alpha,
+      seed.users.alphaAdmin,
+      seed.passwords.alphaAdmin,
+      'Alpha 管理员',
+    );
+    const localLabel = page.locator('.chat-identity-provider');
+    await expect(localLabel).toHaveText('来源：本地账号');
+    const localBody = await page.evaluate(() => document.body.innerText);
+    expect(localBody).not.toContain('/realms/');
+    expect(localBody).not.toContain('@example.test');
+    expect(localBody).not.toContain('eyJ');
+    await setOidcBehavior(m10, 'login', m10.oidcSubject);
+  });
+
+  test('E2E-M15-02 用户管理两个 issuer 可区分且不泄露身份原文', async ({ page }) => {
+    const seed = readSeed();
+    const m10 = readM10Context();
+    await loginLocal(page, seed.tenants.alpha, seed.users.alphaAdmin, seed.passwords.alphaAdmin);
+    await page.goto('/admin/users');
+    await expect(page.getByText('用户管理', { exact: true }).first()).toBeVisible();
+    await expect(page.locator('.user-admin-list')).toBeVisible();
+
+    const configuredRow = page
+      .locator('.user-admin-item')
+      .filter({ hasText: m10.identityProvider.oidcUsername });
+    await expect(configuredRow.getByText(`来源：${m10.identityProvider.providerName}`)).toBeVisible();
+    await expect(configuredRow.getByText('企业账号')).toBeVisible();
+
+    const historicalRow = page
+      .locator('.user-admin-item')
+      .filter({ hasText: m10.identityProvider.historicalUsername });
+    await expect(
+      historicalRow.getByText(`来源：${m10.identityProvider.historicalLabel}`),
+    ).toBeVisible();
+    await expect(historicalRow.getByText('企业账号')).toBeVisible();
+
+    const localRow = page
+      .locator('.user-admin-item')
+      .filter({ hasText: m10.identityProvider.localUsername });
+    await expect(localRow.getByText('来源：本地账号')).toBeVisible();
+
+    // 两个 issuer 的展示名必须不同；完整 issuer 路径、subject、邮箱与令牌都不出现。
+    const labels = await page.locator('.user-admin-provider').allTextContents();
+    expect(new Set(labels).size).toBeGreaterThanOrEqual(3);
+    const body = await page.evaluate(() => document.body.innerText);
+    for (const forbidden of ['https://', 'http://', '/realms/', '@example.test', m10.binding.subject, 'eyJ']) {
+      expect(body).not.toContain(forbidden);
+    }
+  });
+
+  test('E2E-M15-03 来源 IdP 会话与用户管理 375px、键盘与 axe @a11y', async ({ page }) => {
+    const seed = readSeed();
+    await page.setViewportSize({ width: 375, height: 812 });
+    await loginLocal(page, seed.tenants.alpha, seed.users.alphaAdmin, seed.passwords.alphaAdmin);
+
+    // 会话头部：来源文案实际渲染后再扫描，避免空页假绿。
+    const identityLabel = page.locator('.chat-identity-provider');
+    await expect(identityLabel).toHaveText('来源：本地账号');
+    await expect(identityLabel).not.toHaveAttribute('tabindex');
+    await expectNoHorizontalScroll(page);
+    await expectNoNewSeriousA11yViolations(page);
+    await expectProviderLabelA11y(page, '.chat-identity-provider');
+
+    const logoutButton = page.getByRole('button', { name: '退出登录' });
+    await logoutButton.focus();
+    await expect(logoutButton).toBeFocused();
+
+    // 用户管理：等待账号列表真实渲染后检查 375px、来源标签与 axe。
+    await page.goto('/admin/users');
+    await expect(page.locator('.user-admin-list')).toBeVisible();
+    await expect(page.getByText('来源：本地账号').first()).toBeVisible();
+    await expectNoHorizontalScroll(page);
+    await expectNoNewSeriousA11yViolations(page);
+    await expectProviderLabelA11y(page, '.user-admin-provider');
   });
 
   test('E2E-M03-05 审计过滤、分页、空态与无权限', async ({ page }) => {
@@ -357,6 +530,16 @@ test.describe('M10 身份与审计', () => {
     await expectNoSeriousA11yViolations(page);
 
     await loginLocal(page, seed.tenants.alpha, seed.users.alphaAdmin, seed.passwords.alphaAdmin);
+    // M15：会话头部来源文案在 375px 不撑出横向滚动，且不形成新的焦点陷阱。
+    const identityLabel = page.locator('.chat-identity-provider');
+    await expect(identityLabel).toHaveText('来源：本地账号');
+    await expect(identityLabel).not.toHaveAttribute('tabindex');
+    await expectNoHorizontalScroll(page);
+    await expectNoSeriousA11yViolations(page);
+    const logoutButton = page.getByRole('button', { name: '退出登录' });
+    await logoutButton.focus();
+    await expect(logoutButton).toBeFocused();
+
     for (const path of ['/admin/audit', '/admin/audit-exports', '/admin/users']) {
       await page.goto(path);
       await expect(page.locator('.ant-skeleton')).toHaveCount(0, { timeout: 15_000 });
