@@ -4,14 +4,16 @@
   "module_id": "M10",
   "title": "M10-B4 Web OIDC/绑定",
   "owner": "riccon/builder",
-  "status": "blocked",
+  "status": "review",
   "write_scope": [
     "apps/web/src/pages/login/**",
     "apps/web/src/pages/admin/users/**",
     "apps/web/src/services/auth/**",
     "apps/web/src/services/users/**",
     "apps/web/tests/m10-oidc/**",
-    "apps/web/src/services/api/types.ts"
+    "apps/web/src/services/api/types.ts",
+    "apps/web/config/routes.ts",
+    "apps/web/src/services/api/client.ts"
   ],
   "acceptance": [
     "登录页企业账号入口/providers/七类错误态；未知租户不泄露",
@@ -25,8 +27,9 @@
     "EV-0427"
   ],
   "tools_used": [],
-  "blocker": "write_scope 未覆盖两项必要改动：apps/web/src/services/api/client.ts（捕获 X-Riccon-Federated-Logout-Url）与 apps/web/config/routes.ts（注册 /admin/users 与 /admin/tenants/:tenantId/users）。代码提交 9fcdd95、EV-0427（dirty=false）。请 Lead 将两路径加入 write_scope（6+2=8），再执行 task update TASK-0076 --status in_progress 与 --status review --end-commit 9fcdd95；end_commit 用于把 .riccon 记账提交排除在任务范围检查之外。",
+  "blocker": null,
   "created_at": "2026-11-19T11:51:57.764+08:00",
-  "updated_at": "2026-11-19T14:44:52.366+08:00",
-  "baseline_commit": "4783348244f4993c7f53852522373659df97cd0f"
+  "updated_at": "2026-11-19T14:47:20.618+08:00",
+  "baseline_commit": "4783348244f4993c7f53852522373659df97cd0f",
+  "end_commit": "9fcdd95"
 }
