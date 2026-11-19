@@ -537,16 +537,24 @@ test.describe('M10 身份与审计', () => {
     await expect(identityLabel).toHaveText('来源：本地账号');
     await expect(identityLabel).not.toHaveAttribute('tabindex');
     await expectNoHorizontalScroll(page);
+    // 聊天页先行渲染完整，严格扫描全部 serious/critical。
     await expectNoSeriousA11yViolations(page);
     const logoutButton = page.getByRole('button', { name: '退出登录' });
     await logoutButton.focus();
     await expect(logoutButton).toBeFocused();
 
-    for (const path of ['/admin/audit', '/admin/audit-exports', '/admin/users']) {
-      await page.goto(path);
-      await expect(page.locator('.ant-skeleton')).toHaveCount(0, { timeout: 15_000 });
+    // 管理端页面必须先等待真实内容渲染，否则 page.goto 返回时 React 尚未挂载，
+    // axe 会扫描空页并产生假绿（M15 F-002）。管理页只放行已记录的状态标签对比度节点（F-003）。
+    const adminPages = [
+      { path: '/admin/audit', ready: () => page.getByText('保留策略与只读边界') },
+      { path: '/admin/audit-exports', ready: () => page.getByText('导出流程') },
+      { path: '/admin/users', ready: () => page.locator('.user-admin-list') },
+    ];
+    for (const adminPage of adminPages) {
+      await page.goto(adminPage.path);
+      await expect(adminPage.ready()).toBeVisible({ timeout: 15_000 });
       await expectNoHorizontalScroll(page);
-      await expectNoSeriousA11yViolations(page);
+      await expectNoNewSeriousA11yViolations(page);
     }
 
     // 键盘路径：审计页仅用键盘完成一次查询。
