@@ -303,6 +303,8 @@ async function main() {
   );
   await expectNoOidcSession(downClient, 'idp_unavailable');
   await oidcBehavior('login', oidcSubject);
+  // 发现失败有 30s 负缓存；等待其过期，避免后续绑定登录与浏览器 E2E 被误报 idp_unavailable。
+  await new Promise((resolve) => setTimeout(resolve, 31_000));
 
   const oidcAttrCount = Number(
     queryValue(
