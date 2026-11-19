@@ -190,7 +190,7 @@ test.describe('M10 身份与审计', () => {
     // 联合登出：本地先失效，IdP end-session 回跳后明确提示。
     await logout(page);
     await expect(page.getByText('已退出本地会话和企业账号')).toBeVisible({ timeout: 30_000 });
-    await page.goBack();
+    await page.goto('/chat');
     await expect(page).toHaveURL(/\/login/);
     await expect(page.getByText(m10.binding.displayName)).toHaveCount(0);
 
