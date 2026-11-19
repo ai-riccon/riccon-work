@@ -375,7 +375,7 @@ async function main() {
   const modelEventId = randomUUID();
   const occurred = new Date(now - 3_000).toISOString().slice(0, 19).replace('T', ' ');
   rows.push(
-    `(${binaryUuid(modelEventId)}, '${occurred}', ${sqlString(seed.tenants.alpha)}, 'SERVICE', 'worker', 'model.invocation.completed', 'MODEL', '=SUM(A1:A2)', 'SUCCESS', 'trace-model-synthetic', NULL, NULL, NULL, '{"modelId":"fake-chat","durationMs":12,"promptTokens":10,"completionTokens":20}', 1)`,
+    `(${binaryUuid(modelEventId)}, '${occurred}', ${sqlString(seed.tenants.alpha)}, 'SERVICE', 'worker', 'model.invocation.completed', 'MODEL', '=SUM(A1:A2)', 'SUCCESS', 'trace-model-synthetic', NULL, NULL, '{"modelId":"fake-chat","durationMs":12,"promptTokens":10,"completionTokens":20}', 1)`,
   );
   runSql(
     `INSERT INTO audit_event (event_id, occurred_at, tenant_id, actor_type, actor_id, action, target_type, target_id, outcome, trace_id, request_id, source_ip, details, schema_version) VALUES\n${rows.join(',\n')};`,
