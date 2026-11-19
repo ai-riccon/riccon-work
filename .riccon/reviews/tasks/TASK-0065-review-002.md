@@ -11,8 +11,8 @@ verdict: pass
 reviewed_commits: [fb6661b, bac78d5]
 previous_review: REV-TASK-0065-001
 head_commit: f8c4f96
-reviewed_evidence: [EV-0403, EV-0404, EV-0405, EV-0406, EV-0407]
-evidence: [EV-0407]
+reviewed_evidence: [EV-0403, EV-0404, EV-0405, EV-0406, EV-0408]
+evidence: [EV-0408]
 findings:
   - id: F-001
     severity: P1
@@ -106,6 +106,7 @@ created_at: "2026-11-19T09:04:00+08:00"
 | `node … riccon.mjs state validate --project .`             | 0      | 0 errors；仅既有 M11 legacy warning（M11 planned 但有 done 任务）                                                  |
 | `git diff --check`                                         | 0      | 无空白错误                                                                                                         |
 | EV-0404/0405/0406 复核                                     | 0      | 均 `manual:false`、`dirty:false`、exit 0、commit `bac78d5`；输出 SHA-256 与 JSON 一致（diff-check/contract/state） |
+| EV-0408（本复审重跑）                                      | 0      | `contract validate --strict` + `state validate` + `git diff --check`；`dirty=false`，state 仅 M11 legacy warning   |
 
 未跑代码测试/全量 verify：B1 代码与测试未变化，上一轮 EV-0402/EV-0403 仍有效；本次只验证任务图/ADR 与状态。未改代码、文档、契约、迁移；仅写本评审。
 
