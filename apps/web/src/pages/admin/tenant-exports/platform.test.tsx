@@ -22,6 +22,21 @@ function renderPage(
   );
 }
 
+/**
+ * 断言按钮可访问名称包含全部可见文本。
+ *
+ * 对应 axe `label-content-name-mismatch`（WCAG 2.5.3）：可访问名称必须以连续子串
+ * 形式包含可见文本，否则语音控制用户无法按屏幕上看到的文字操作按钮。
+ *
+ * @param button 行内操作按钮
+ */
+function expectAccessibleNameContainsVisibleText(button: HTMLElement): void {
+  const visibleText = (button.textContent ?? '').replace(/\s+/g, ' ').trim();
+  const accessibleName = (button.getAttribute('aria-label') ?? '').replace(/\s+/g, ' ');
+  expect(visibleText.length).toBeGreaterThan(0);
+  expect(accessibleName).toContain(visibleText);
+}
+
 describe('平台审计导出审批页', () => {
   beforeEach(() => {
     authStore.reset();
@@ -156,10 +171,22 @@ describe('平台审计导出审批页', () => {
     expect(api.listPlatformExports).not.toHaveBeenCalled();
   });
 
+  it('详情与审批按钮的可访问名称包含可见文本并保留导出 ID（WCAG 2.5.3）', async () => {
+    renderPage();
+
+    const detail = await screen.findByRole('button', { name: '查看详情：导出 export-1' });
+    const approve = screen.getByRole('button', { name: '批准导出申请 export-1' });
+    const reject = screen.getByRole('button', { name: '拒绝导出申请 export-1' });
+    for (const button of [detail, approve, reject]) {
+      expectAccessibleNameContainsVisibleText(button);
+      expect(button).toHaveAccessibleName(/export-1$/);
+    }
+  });
+
   it('详情抽屉明确平台审批只处理元数据', async () => {
     renderPage();
 
-    fireEvent.click(await screen.findByRole('button', { name: '查看导出元数据 export-1' }));
+    fireEvent.click(await screen.findByRole('button', { name: '查看详情：导出 export-1' }));
     const drawer = await screen.findByRole('dialog');
     expect(within(drawer).getByText(/平台审批只处理元数据/)).toBeVisible();
     expect(within(drawer).getByText(/不含密码哈希/)).toBeVisible();

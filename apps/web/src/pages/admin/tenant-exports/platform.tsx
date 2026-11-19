@@ -298,7 +298,7 @@ export default function PlatformAuditExportsPage({
     return (
       <Space size={4} wrap>
         <Button
-          aria-label={`查看导出元数据 ${record.id}`}
+          aria-label={`查看详情：导出 ${record.id}`}
           onClick={() => setSelected(record)}
           size="small"
           type="link"
@@ -310,6 +310,7 @@ export default function PlatformAuditExportsPage({
             <>
               <Button
                 aria-label={`批准导出申请 ${record.id}`}
+                autoInsertSpace={false}
                 onClick={() => setDecisionState({ request: record, decision: 'APPROVE' })}
                 size="small"
                 type="primary"
@@ -318,6 +319,7 @@ export default function PlatformAuditExportsPage({
               </Button>
               <Button
                 aria-label={`拒绝导出申请 ${record.id}`}
+                autoInsertSpace={false}
                 danger
                 onClick={() => setDecisionState({ request: record, decision: 'REJECT' })}
                 size="small"

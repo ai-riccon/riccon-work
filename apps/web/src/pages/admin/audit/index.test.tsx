@@ -26,6 +26,21 @@ function renderPage(api = createAuditApi()) {
   return render(withProviders(<AuditPage api={api} />));
 }
 
+/**
+ * 断言按钮可访问名称包含全部可见文本。
+ *
+ * 对应 axe `label-content-name-mismatch`（WCAG 2.5.3）：可访问名称必须以连续子串
+ * 形式包含可见文本，否则语音控制用户无法按屏幕上看到的文字操作按钮。
+ *
+ * @param button 行内操作按钮
+ */
+function expectAccessibleNameContainsVisibleText(button: HTMLElement): void {
+  const visibleText = (button.textContent ?? '').replace(/\s+/g, ' ').trim();
+  const accessibleName = (button.getAttribute('aria-label') ?? '').replace(/\s+/g, ' ');
+  expect(visibleText.length).toBeGreaterThan(0);
+  expect(accessibleName).toContain(visibleText);
+}
+
 describe('审计查询页', () => {
   beforeEach(() => {
     authStore.reset();
@@ -150,11 +165,19 @@ describe('审计查询页', () => {
     expect(cappedPaginationTotal(100, 20, 200)).toBe(100);
   });
 
+  it('查看详情按钮的可访问名称包含可见文本并保留动作上下文（WCAG 2.5.3）', async () => {
+    renderPage();
+
+    const detail = await screen.findByRole('button', { name: '查看详情：事件 file.uploaded' });
+    expectAccessibleNameContainsVisibleText(detail);
+    expect(detail).toHaveAccessibleName(/file\.uploaded$/);
+  });
+
   it('打开事件详情抽屉展示 ID、追踪 ID 与白名单 details', async () => {
     renderPage();
 
     await screen.findByText('2026-11-19 13:00:00 +08:00');
-    fireEvent.click(screen.getByRole('button', { name: '查看事件详情 file.uploaded' }));
+    fireEvent.click(screen.getByRole('button', { name: '查看详情：事件 file.uploaded' }));
 
     const drawer = await screen.findByRole('dialog');
     expect(within(drawer).getByText('事件 ID')).toBeVisible();

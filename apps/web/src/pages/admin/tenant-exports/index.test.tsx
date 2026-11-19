@@ -25,6 +25,21 @@ function renderPage(api = createAuditApi()) {
   return render(withProviders(<TenantExportsPage api={api} />));
 }
 
+/**
+ * 断言按钮可访问名称包含全部可见文本。
+ *
+ * 对应 axe `label-content-name-mismatch`（WCAG 2.5.3）：可访问名称必须以连续子串
+ * 形式包含可见文本，否则语音控制用户无法按屏幕上看到的文字操作按钮。
+ *
+ * @param button 行内操作按钮
+ */
+function expectAccessibleNameContainsVisibleText(button: HTMLElement): void {
+  const visibleText = (button.textContent ?? '').replace(/\s+/g, ' ').trim();
+  const accessibleName = (button.getAttribute('aria-label') ?? '').replace(/\s+/g, ' ');
+  expect(visibleText.length).toBeGreaterThan(0);
+  expect(accessibleName).toContain(visibleText);
+}
+
 /** 构造 409。 */
 function conflict(code = 'RICCON-AUDIT-409'): ApiError {
   return new ApiError('internal', { status: 409, code });
@@ -135,7 +150,7 @@ describe('审计导出页', () => {
     });
     renderPage(api);
 
-    const download = await screen.findByRole('button', { name: '下载导出 export-1' });
+    const download = await screen.findByRole('button', { name: '下载 CSV：导出 export-1' });
     fireEvent.click(download);
 
     await waitFor(() => {
@@ -143,6 +158,28 @@ describe('审计导出页', () => {
     });
     expect(URL.createObjectURL).toHaveBeenCalled();
     expect(await screen.findByText(/已开始下载/)).toBeVisible();
+  });
+
+  it('行内操作按钮的可访问名称包含可见文本，并以导出 ID 结尾（WCAG 2.5.3）', async () => {
+    renderPage(
+      createAuditApi({
+        listExports: vi.fn(async () =>
+          pageOf([
+            makeExport({
+              status: 'APPROVED',
+              expiresAt: '2099-01-01T00:00:00+08:00',
+            }),
+          ]),
+        ),
+      }),
+    );
+
+    const detail = await screen.findByRole('button', { name: '查看详情：导出 export-1' });
+    const download = screen.getByRole('button', { name: '下载 CSV：导出 export-1' });
+    expectAccessibleNameContainsVisibleText(detail);
+    expectAccessibleNameContainsVisibleText(download);
+    expect(detail).toHaveAccessibleName(/export-1$/);
+    expect(download).toHaveAccessibleName(/export-1$/);
   });
 
   it('非申请人看不到下载入口', async () => {
@@ -162,7 +199,9 @@ describe('审计导出页', () => {
     );
 
     expect(await screen.findByText(/仅申请人本人可下载/)).toBeVisible();
-    expect(screen.queryByRole('button', { name: '下载导出 export-1' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '下载 CSV：导出 export-1' }),
+    ).not.toBeInTheDocument();
   });
 
   it('过期申请显示过期文案且没有下载按钮', async () => {
@@ -173,7 +212,9 @@ describe('审计导出页', () => {
     );
 
     expect(await screen.findByText(/已过期，请重新提交导出申请/)).toBeVisible();
-    expect(screen.queryByRole('button', { name: '下载导出 export-1' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '下载 CSV：导出 export-1' }),
+    ).not.toBeInTheDocument();
   });
 
   it('下载遇到 410 显示过期原因并刷新列表', async () => {
@@ -192,7 +233,7 @@ describe('审计导出页', () => {
     });
     renderPage(api);
 
-    fireEvent.click(await screen.findByRole('button', { name: '下载导出 export-1' }));
+    fireEvent.click(await screen.findByRole('button', { name: '下载 CSV：导出 export-1' }));
 
     expect(await screen.findByText(/导出已过期，请重新提交导出申请/)).toBeVisible();
     await waitFor(() => {
@@ -284,7 +325,7 @@ describe('审计导出页', () => {
       }),
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: '查看导出详情 export-1' }));
+    fireEvent.click(await screen.findByRole('button', { name: '查看详情：导出 export-1' }));
     const drawer = await screen.findByRole('dialog');
     expect(within(drawer).getByText('条件摘要')).toBeVisible();
     expect(within(drawer).getByText('请缩小范围')).toBeVisible();

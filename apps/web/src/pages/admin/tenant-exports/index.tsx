@@ -268,7 +268,7 @@ export default function TenantExportsPage({ api = defaultAuditApi }: TenantExpor
     return (
       <Space size={4} wrap>
         <Button
-          aria-label={`查看导出详情 ${record.id}`}
+          aria-label={`查看详情：导出 ${record.id}`}
           onClick={() => setSelected(record)}
           size="small"
           type="link"
@@ -277,7 +277,7 @@ export default function TenantExportsPage({ api = defaultAuditApi }: TenantExpor
         </Button>
         {download.canDownload ? (
           <Button
-            aria-label={`下载导出 ${record.id}`}
+            aria-label={`下载 CSV：导出 ${record.id}`}
             loading={downloadingId === record.id}
             onClick={() => {
               void handleDownload(record);
@@ -297,6 +297,7 @@ export default function TenantExportsPage({ api = defaultAuditApi }: TenantExpor
             <>
               <Button
                 aria-label={`批准导出申请 ${record.id}`}
+                autoInsertSpace={false}
                 onClick={() => openDecision(record, 'APPROVE')}
                 size="small"
                 type="primary"
@@ -305,6 +306,7 @@ export default function TenantExportsPage({ api = defaultAuditApi }: TenantExpor
               </Button>
               <Button
                 aria-label={`拒绝导出申请 ${record.id}`}
+                autoInsertSpace={false}
                 danger
                 onClick={() => openDecision(record, 'REJECT')}
                 size="small"

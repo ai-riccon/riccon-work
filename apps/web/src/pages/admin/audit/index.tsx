@@ -269,7 +269,7 @@ export default function AuditPage({ api = defaultAuditApi }: AuditPageProps) {
       fixed: 'right',
       render: (_value, record) => (
         <Button
-          aria-label={`查看事件详情 ${record.action}`}
+          aria-label={`查看详情：事件 ${record.action}`}
           onClick={() => setSelectedEvent(record)}
           size="small"
           type="link"
