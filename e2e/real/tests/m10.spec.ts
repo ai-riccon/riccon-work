@@ -275,6 +275,40 @@ test.describe('M10 身份与审计', () => {
     await setOidcBehavior(m10, 'login', m10.oidcSubject);
   });
 
+  test('E2E-M15-01 企业会话显示来源 IdP，LOCAL 会话显示本地账号', async ({ page }) => {
+    const seed = readSeed();
+    const m10 = readM10Context();
+
+    await setOidcBehavior(m10, 'login', m10.binding.subject);
+    await loginEnterprise(page, m10);
+    const enterpriseLabel = page.locator('.chat-identity-provider');
+    await expect(enterpriseLabel).toHaveText(`来源：${m10.identityProvider.providerName}`);
+    await expect(enterpriseLabel).toHaveAttribute(
+      'title',
+      `来源：${m10.identityProvider.providerName}`,
+    );
+    const enterpriseBody = await page.evaluate(() => document.body.innerText);
+    for (const forbidden of ['/realms/', '127.0.0.1:18995', m10.binding.subject, '@example.test', 'eyJ']) {
+      expect(enterpriseBody).not.toContain(forbidden);
+    }
+
+    await logout(page);
+    await loginLocal(
+      page,
+      seed.tenants.alpha,
+      seed.users.alphaAdmin,
+      seed.passwords.alphaAdmin,
+      'Alpha 管理员',
+    );
+    const localLabel = page.locator('.chat-identity-provider');
+    await expect(localLabel).toHaveText('来源：本地账号');
+    const localBody = await page.evaluate(() => document.body.innerText);
+    expect(localBody).not.toContain('/realms/');
+    expect(localBody).not.toContain('@example.test');
+    expect(localBody).not.toContain('eyJ');
+    await setOidcBehavior(m10, 'login', m10.oidcSubject);
+  });
+
   test('E2E-M03-04 管理员绑定企业账号与失败原因文案', async ({ page }) => {
     const seed = readSeed();
     const m10 = readM10Context();
@@ -328,40 +362,6 @@ test.describe('M10 身份与审计', () => {
     await expect(page).toHaveURL(/oidcError=idp_unavailable/);
     await expect(page.getByText('企业账号服务暂时不可用')).toBeVisible();
     await expect(page.getByText(/改用内置账号登录/)).toBeVisible();
-    await setOidcBehavior(m10, 'login', m10.oidcSubject);
-  });
-
-  test('E2E-M15-01 企业会话显示来源 IdP，LOCAL 会话显示本地账号', async ({ page }) => {
-    const seed = readSeed();
-    const m10 = readM10Context();
-
-    await setOidcBehavior(m10, 'login', m10.binding.subject);
-    await loginEnterprise(page, m10);
-    const enterpriseLabel = page.locator('.chat-identity-provider');
-    await expect(enterpriseLabel).toHaveText(`来源：${m10.identityProvider.providerName}`);
-    await expect(enterpriseLabel).toHaveAttribute(
-      'title',
-      `来源：${m10.identityProvider.providerName}`,
-    );
-    const enterpriseBody = await page.evaluate(() => document.body.innerText);
-    for (const forbidden of ['/realms/', '127.0.0.1:18995', m10.binding.subject, '@example.test', 'eyJ']) {
-      expect(enterpriseBody).not.toContain(forbidden);
-    }
-
-    await logout(page);
-    await loginLocal(
-      page,
-      seed.tenants.alpha,
-      seed.users.alphaAdmin,
-      seed.passwords.alphaAdmin,
-      'Alpha 管理员',
-    );
-    const localLabel = page.locator('.chat-identity-provider');
-    await expect(localLabel).toHaveText('来源：本地账号');
-    const localBody = await page.evaluate(() => document.body.innerText);
-    expect(localBody).not.toContain('/realms/');
-    expect(localBody).not.toContain('@example.test');
-    expect(localBody).not.toContain('eyJ');
     await setOidcBehavior(m10, 'login', m10.oidcSubject);
   });
 
