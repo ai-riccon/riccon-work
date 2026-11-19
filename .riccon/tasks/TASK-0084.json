@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0084",
+  "module_id": "M15",
+  "title": "M15-A 后端：脱敏来源 IdP 字段",
+  "owner": "riccon/builder",
+  "status": "in_progress",
+  "write_scope": [
+    "apps/api/src/main/java/com/riccon/api/identity/dto/**",
+    "apps/api/src/main/java/com/riccon/api/auth/**",
+    "apps/api/src/main/java/com/riccon/api/admin/**",
+    "apps/api/src/main/java/com/riccon/api/identity/domain/**",
+    "apps/api/src/test/java/com/riccon/api/m10/identity/**",
+    "contracts/openapi.yaml"
+  ],
+  "acceptance": [
+    "SessionInfo/UserSummary 增加 identityProvider（OIDC issuer 脱敏 host/配置名；LOCAL null）",
+    "不同 issuer 可区分；不暴露完整 issuer/subject/token/邮箱；OpenAPI 同步",
+    "管理员/租户/平台列表一致；既有 authSource 行为不回归",
+    "m10/identity 测试覆盖 LOCAL/OIDC/两 issuer/无泄露；定向测试通过",
+    "不改 V10/审计/Web；不碰其他生产代码"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-19T19:07:37.059+08:00",
+  "updated_at": "2026-11-19T19:07:38.167+08:00",
+  "baseline_commit": "33483e5cef94731120db29424d16be4cd74c3558"
+}
