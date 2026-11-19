@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 /**
  * API 启动、迁移与默认拒绝基线。
  *
- * <p>验证 Testcontainers MySQL 8.4 上 Flyway V1–V9 全部成功（V9 已在发布前于同一文件内收紧）、
+ * <p>验证 Testcontainers MySQL 8.4 上 Flyway V1–V10 全部成功（V9 已在发布前于同一文件内收紧）、
  * 审计触发器存在、健康检查公开，以及未认证业务路径返回统一 401 ProblemDetail。
  */
 class ApiApplicationTests extends ApiIntegrationTestSupport {
@@ -24,7 +24,7 @@ class ApiApplicationTests extends ApiIntegrationTestSupport {
         assertThat(client.json(response).path("status").asText()).isEqualTo("UP");
     }
 
-    /** Flyway 在干净 MySQL 上应用 V1–V9，结构与表数量可核对。 */
+    /** Flyway 在干净 MySQL 上应用 V1–V10，结构与表数量可核对。 */
     @Test
     void flywayAppliesAllMigrationsOnCleanDatabase() {
         Long migrations = jdbcClient
@@ -39,9 +39,9 @@ class ApiApplicationTests extends ApiIntegrationTestSupport {
                 .sql("SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema = DATABASE()")
                 .query(Long.class)
                 .single();
-        assertThat(migrations).isEqualTo(9L);
-        // 38 张业务/基础设施表 + flyway_schema_history；V9 新增 department/workspace_member。
-        assertThat(tables).isEqualTo(39L);
+        assertThat(migrations).isEqualTo(10L);
+        // 39 张业务/基础设施表 + flyway_schema_history；V10 新增 audit_export_request。
+        assertThat(tables).isEqualTo(40L);
         assertThat(triggers).isEqualTo(2L);
     }
 

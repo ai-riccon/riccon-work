@@ -14,9 +14,13 @@ import java.util.Set;
  * 角色码。新租户开通（{@code TenantAdminService}）与空库引导（{@code BootstrapAdminRunner}）都读取本类，
  * 不维护第二份角色定义。
  *
- * <p>M10 说明：{@code audit.read} 已在 V2 权限字典中，B1 直接授予租户管理员与平台管理员。
- * {@code audit.export.approve}/{@code platform.audit.export.approve} 的字典行由 V10（B3）写入并回填既有角色；
- * B1 不能提前把它们写进本类，否则在 V10 之前开通租户会触发 {@code role_permission} 外键失败。
+ * <p>M10 说明：{@code audit.read} 已在 V2 权限字典中，B1 直接授予租户管理员与平台管理员；两条导出审批权限
+ * （{@code audit.export.approve}/{@code platform.audit.export.approve}）的字典行由 V10 写入并回填既有角色，
+ * 本类在 V10 之后补齐新租户开通与空库引导路径。这是 ADR-0020 §8.1 记录的 B3a 窄例外：本类仍由 B1 维护，
+ * B3a 只新增这两条审批权限及其测试，不改变其他角色/权限语义；B3b 与后续任务不得再修改本文件。
+ *
+ * <p>为什么必须同时改迁移与本类：V10 的 {@code INSERT ... SELECT FROM role} 只覆盖迁移前已存在的角色，
+ * 覆盖不到 fresh install、空库引导和 V10 之后新建的租户；缺少这两条映射会直接断裂 AC-17 的审批链。
  */
 public final class RoleDefinitions {
 
@@ -58,7 +62,9 @@ public final class RoleDefinitions {
             PermissionCodes.TENANT_USER_MANAGE,
             PermissionCodes.TENANT_ROLE_MANAGE,
             // M10：租户管理员可查询本租户审计（audit.read 自 M02 已在权限字典）。
-            PermissionCodes.AUDIT_READ);
+            PermissionCodes.AUDIT_READ,
+            // M10：同租户审计导出审批；申请人不得自批，平台审批权限只属于 PLATFORM_ADMIN。
+            PermissionCodes.AUDIT_EXPORT_APPROVE);
 
     /** 平台管理员只管理平台目录与租户元数据（含部门元数据），不读取租户业务内容。 */
     private static final Set<String> PLATFORM_ADMIN_PERMISSIONS = Set.of(
@@ -67,7 +73,9 @@ public final class RoleDefinitions {
             PermissionCodes.PLATFORM_MODEL_READ,
             PermissionCodes.PLATFORM_MCP_READ,
             // M10：平台管理员只能查询平台租户自身审计（跨租户明细 defer）。
-            PermissionCodes.AUDIT_READ);
+            PermissionCodes.AUDIT_READ,
+            // M10：平台管理员只能审批单管理员租户的导出元数据，不能下载审计内容或审批多管理员租户。
+            PermissionCodes.PLATFORM_AUDIT_EXPORT_APPROVE);
 
     /** 租户管理员角色定义。 */
     private static final RoleDefinition TENANT_ADMIN =
