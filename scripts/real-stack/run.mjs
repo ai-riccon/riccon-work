@@ -353,24 +353,30 @@ try {
   );
   phases.j2Journey = j2.status === 0 ? 'passed' : 'failed';
 
-  const checks = spawnSync('node', ['scripts/real-stack/checks.mjs'], {
-    cwd: repoRoot,
-    env: {
-      ...process.env,
-      REAL_SEED_OUT: SEED_FILE,
-      RICCON_MASTER_KEY: masterKey,
-      REAL_API_LOG: path.join(evidenceDir, 'real-stack-api.log'),
-      REAL_WORKER_LOG: path.join(evidenceDir, 'real-stack-worker.log'),
-      REAL_MODEL_LOG: path.join(evidenceDir, 'real-stack-model.log'),
-    },
-    encoding: 'utf8',
-    maxBuffer: 16 * 1024 * 1024,
-  });
-  writeFileSync(
-    path.join(evidenceDir, 'real-stack-checks.log'),
-    `${checks.stdout ?? ''}\n${checks.stderr ?? ''}`,
-  );
-  phases.securityChecks = checks.status === 0 ? 'passed' : 'failed';
+  if (playwrightGrep) {
+    // 定向浏览器复验不会执行 J1/J2 全旅程，checks.mjs 的 message.sent/J2 审计断言必然缺事件；
+    // 该阶段在定向模式跳过，不能把“未覆盖”当成通过。全量 gate 不设置 grep，照常执行。
+    phases.securityChecks = 'skipped-targeted';
+  } else {
+    const checks = spawnSync('node', ['scripts/real-stack/checks.mjs'], {
+      cwd: repoRoot,
+      env: {
+        ...process.env,
+        REAL_SEED_OUT: SEED_FILE,
+        RICCON_MASTER_KEY: masterKey,
+        REAL_API_LOG: path.join(evidenceDir, 'real-stack-api.log'),
+        REAL_WORKER_LOG: path.join(evidenceDir, 'real-stack-worker.log'),
+        REAL_MODEL_LOG: path.join(evidenceDir, 'real-stack-model.log'),
+      },
+      encoding: 'utf8',
+      maxBuffer: 16 * 1024 * 1024,
+    });
+    writeFileSync(
+      path.join(evidenceDir, 'real-stack-checks.log'),
+      `${checks.stdout ?? ''}\n${checks.stderr ?? ''}`,
+    );
+    phases.securityChecks = checks.status === 0 ? 'passed' : 'failed';
+  }
 
   const m03 = spawnSync('node', ['scripts/real-stack/m03-checks.mjs'], {
     cwd: repoRoot,
@@ -384,15 +390,9 @@ try {
   );
   phases.m03Checks = m03.status === 0 ? 'passed' : 'failed';
 
+  const failedPhases = Object.entries(phases).filter(([, status]) => status === 'failed');
   const summary = {
-    status:
-      phases.browserE2e === 'passed' &&
-      phases.j2Journey === 'passed' &&
-      phases.securityChecks === 'passed' &&
-      phases.m03Checks === 'passed' &&
-      phases.m10Checks === 'passed'
-        ? 'passed'
-        : 'failed',
+    status: failedPhases.length === 0 ? 'passed' : 'failed',
     generatedAt: new Date().toISOString(),
     phases,
     firstTokenBudget: '3000ms (M02-AC-03)',
@@ -407,8 +407,7 @@ try {
   );
   console.log(JSON.stringify(summary, null, 2));
 
-  const failed = Object.entries(phases).filter(([, status]) => status === 'failed');
-  if (failed.length > 0) {
+  if (failedPhases.length > 0) {
     process.exitCode = 1;
   }
 } catch (error) {
