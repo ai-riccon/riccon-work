@@ -158,12 +158,12 @@ async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
 /**
  * 判断 serious/critical 违规是否属于已记录的既有残余。
  *
- * 仅保留 M15 之前存在、不属于来源 IdP 变更面的 antd 6 绿色 `Tag color="green"`（“启用”）
- * 对比度问题（12px 下约 3.37:1，低于 WCAG AA 4.5:1，M15 F-003 P2 accepted）。
+ * 仅保留 M15 之前存在、不属于来源 IdP 变更面的 antd 6 绿色 `Tag color="green"` 状态标签
+ * （“启用/已批准”等）对比度问题（12px 下约 3.37:1，低于 WCAG AA 4.5:1，M15 F-003 P2 accepted）。
  *
  * `label-content-name-mismatch` 已由 TASK-0087/c4ebd3e 修复，不再放行：审计/导出按钮的
- * aria-label 必须以可见文本开头并保留行上下文。只放行目标全部命中 `.ant-tag-green` 的节点，
- * 其他 serious/critical 仍失败。
+ * aria-label 必须以可见文本开头并保留行上下文。只放行 HTML 命中 `ant-tag-green` 的
+ * color-contrast 节点，其他 serious/critical 仍失败。
  *
  * @param violation axe 违规
  * @returns 已记录问题返回 true
@@ -171,13 +171,11 @@ async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
 function isKnownA11yResidual(violation: {
   id: string;
   impact?: string | null;
-  nodes: Array<{ target: Array<string | string[]> }>;
+  nodes: Array<{ html?: string; target: Array<string | string[]> }>;
 }): boolean {
   return (
     violation.id === 'color-contrast' &&
-    violation.nodes.every((node) =>
-      node.target.some((target) => JSON.stringify(target).includes('ant-tag-green')),
-    )
+    violation.nodes.every((node) => (node.html ?? '').includes('ant-tag-green'))
   );
 }
 
