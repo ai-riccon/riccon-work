@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "M04",
+  "title": "模型网关纵深：路由、降级、多 key、配额与成本",
+  "goal": "平台管理员配置模型路由、降级链、key 池与租户/用户配额并查看估算成本；租户管理员只看本租户；员工感知不到切换；凭据、端点与成本边界可审计；T4 威胁模型、负载与回滚证据完整。",
+  "kind": "feature",
+  "status": "planned",
+  "blocker": null,
+  "depends_on": [
+    "M02"
+  ],
+  "acceptance": [
+    "docs/PRODUCT.md §10 的 M04-AC-01..18 全部通过；P0 不得后移，P1 后移必须由用户批准并记录去向",
+    "J1/J2 与 M03/M10 回归零失败；F-011 三个模型端点收口；F-007 e2e/perf/mvc-smoke.js 可运行并可复现 PERF-M04",
+    "T4：威胁模型 TB-04/§7 更新、50 并发负载与故障注入报告、应用回滚/前向修复演练记录",
+    "独立 Verifier 模块 review pass；模块 gate 只跑一次 coverage 全量并将 test/coverage 绑同一 EV",
+    "Product 预验收 pass 后才标 done；用户最终验收 accepted 后才进入下一用户可见模块"
+  ],
+  "tasks": [],
+  "review": null,
+  "fixes_module": null,
+  "split_from": null,
+  "aliases": [],
+  "product_acceptance": {
+    "product_status": "pending",
+    "user_status": "pending",
+    "decision_id": null,
+    "ref": null,
+    "note": "",
+    "accepted_at": null,
+    "updated_at": null
+  },
+  "wall_clock_limit_hours": 24,
+  "started_at": null,
+  "finished_at": null,
+  "created_at": "2026-11-20T07:19:29.535+08:00",
+  "updated_at": "2026-11-20T07:19:29.535+08:00"
+}
