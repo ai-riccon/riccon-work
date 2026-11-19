@@ -60,7 +60,6 @@ dod_evidence:
     - EV-0443
   e2e:
     - EV-0440
-    - EV-0448
   docs:
     - EV-0437
 findings:
