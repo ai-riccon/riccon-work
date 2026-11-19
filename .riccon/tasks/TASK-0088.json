@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0088",
+  "module_id": "M16",
+  "title": "Web 审计测试在 coverage 并行下的计时 flake",
+  "owner": "riccon/builder-flake-audit",
+  "status": "planned",
+  "write_scope": [
+    "apps/web/src/pages/admin/audit/index.test.tsx",
+    "apps/web/tests/m10-audit/fake.ts",
+    "apps/web/src/test/**"
+  ],
+  "acceptance": [
+    "定位并修复 audit/index.test.tsx 在 coverage 并行下的计时/竞态 flake（M10 EV-0441/0442 15s timeout、listEvents actorId 竞态；EV-0443 需 --no-file-parallelism，M15 EV-0484 未加通过）",
+    "受影响测试在 coverage 并行下至少重复 3 次通过，记录命令、退出码与日志",
+    "不改生产行为；如必须改实现，停止并回报 Lead 新建功能任务"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-20T01:32:00.906+08:00",
+  "updated_at": "2026-11-20T01:32:00.906+08:00"
+}
