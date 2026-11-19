@@ -236,6 +236,8 @@ async function main() {
   assert.equal(oidcSession.data.tenant.id, seed.tenants.alpha);
   assert.equal(oidcSession.data.user.id, localUser.id, 'bound identity must hit the same account');
   assert.equal(oidcSession.data.user.username, bindUsername);
+  // 登录成功会轮换 CSRF 令牌；同步到客户端后再发登出等写请求。
+  oidcClient.csrfToken = oidcSession.data.csrfToken;
   const afterSuccess = await oidcStats();
   assert.equal(afterSuccess.userinfo, 0, 'product must not call userinfo');
   assert.ok(afterSuccess.token >= 1, 'token endpoint must be called');
