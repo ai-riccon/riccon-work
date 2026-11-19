@@ -76,7 +76,7 @@ node scripts/test-services.mjs reset --namespace builder-0054
 
 - 每个 agent 使用自己的 namespace；数据库、S3 桶和 OpenSearch 索引前缀都按 namespace 派生。同一 namespace 只允许一个测试 JVM，第二个会被 MySQL 命名锁拒绝（`already in use by another test JVM`）；禁止多个 agent 并行共用。
 - 启动 compose 与运行测试必须使用同一组凭据环境变量，否则会出现认证失败。
-- 迁移、回滚与 schema 版本测试始终使用一次性容器（`V9MigrationTest`；`SchemaVersionCheckerTest` 的 external 分支也会自建容器），不得连接热栈。
+- 迁移、回滚与 schema 版本测试始终使用一次性容器（`V9MigrationTest`/`V10MigrationTest`；`SchemaVersionCheckerTest` 的 external 分支也会自建容器），不得连接热栈。
 - 热栈只用于 L1 内层循环，不能作为任务完成或模块 gate 证据；L2/L3 仍按 `docs/CODING-STANDARDS.md` §10.1 运行合同命令并由 verifier 独立取证。
 - 细节与 baseline 见 M12-A：`RICCON_TEST_SERVICES_NAMESPACE` 必填、`scripts/test-services.mjs benchmark` 可用于本机对比，但基准结果同样不是 gate 证据。
 
@@ -109,7 +109,7 @@ pnpm test:affected -- --base HEAD~1 --dry-run
 # 1. 启动测试栈（MySQL 已在 compose 中固定审计触发器所需参数，无需手工 SET GLOBAL）
 docker compose -f deploy/compose/docker-compose.test.yml up -d --wait
 
-# 2. 启动 API（默认端口 8080，连接 13306 的 MySQL；启动时执行 Flyway V1–V7）
+# 2. 启动 API（默认端口 8080，连接 13306 的 MySQL；启动时执行 Flyway V1–V10）
 ./mvnw -q -pl apps/api spring-boot:run
 
 # 3. 启动 Worker（默认端口 8081；M01 无数据库依赖，M02 持久化实现任务加入 JDBC 后需要 MySQL）
@@ -138,12 +138,13 @@ export RICCON_BOOTSTRAP_ADMIN_PASSWORD='<至少 12 位，部署时注入，禁�
 
 ### 迁移与审计触发器
 
-- 迁移只由 `apps/api` 执行；Worker 不包含迁移文件。
+- 迁移只由 `apps/api` 执行；Worker 不包含迁移文件，只校验 `SchemaVersionChecker.EXPECTED_SCHEMA_VERSION`（M10 起为 10）。
 - V6 创建 `audit_event` 触发器；若 MySQL 返回 `ERROR 1419`，说明迁移账号缺少 `TRIGGER` 或 `log_bin_trust_function_creators` 未开启。不得删除触发器绕过。
 - 已应用的迁移文件禁止修改；新增迁移同步 `SchemaVersion.EXPECTED`（ADR-0010）。
 - Spring Session 表由 V7 创建，必须保持 `spring.session.jdbc.initialize-schema=never`，禁止应用自动建表。
+- V10（M10，审计查询与导出）新增 `audit_export_request` 表、`audit_event` 两条查询索引（`idx_audit_tenant_action_time`、`idx_audit_tenant_actor_time`）、`audit.export.approve` / `platform.audit.export.approve` 两条权限并回填既有 `TENANT_ADMIN` / `PLATFORM_ADMIN` 角色映射；纯 additive，append-only 触发器不变。生产执行见下文“V10 生产迁移”。
 
-#### 测试栈迁移演练（V1–V7，可复制）
+#### 测试栈迁移演练（V1–V10，可复制）
 
 > **仅测试栈。** 以下参数与凭据只属于 `deploy/compose/docker-compose.test.yml`。生产迁移账号是否具备 `TRIGGER`、是否开启 `log_bin_trust_function_creators`（或改用 DBA 预建触发器）由 M09 决定，禁止直接照搬本节配置。
 
@@ -164,7 +165,7 @@ docker compose -f deploy/compose/docker-compose.test.yml exec -T \
   -e MYSQL_PWD="${RICCON_DB_PASSWORD:-riccon_test_only}" \
   mysql mysql --user=riccon -e "SHOW VARIABLES LIKE 'log_bin_trust_function_creators';"
 
-# 4. 按文件顺序执行 V1..V7；任一步失败立即中断，不吞错误
+# 4. 按文件顺序执行 V1..V10；任一步失败立即中断，不吞错误
 set -euo pipefail
 for migration in apps/api/src/main/resources/db/migration/V*.sql; do
   echo "== ${migration}"
@@ -173,13 +174,20 @@ for migration in apps/api/src/main/resources/db/migration/V*.sql; do
     mysql mysql --user=riccon --database=riccon --batch --show-warnings < "${migration}"
 done
 
-# 5. 校验结构：36 张表、2 个触发器
+# 5. 校验结构：39 张表（Flyway 口径 40）、2 个触发器、V10 对象
 docker compose -f deploy/compose/docker-compose.test.yml exec -T \
   -e MYSQL_PWD="${RICCON_DB_PASSWORD:-riccon_test_only}" \
   mysql mysql --user=riccon --database=riccon --batch -e "
     SELECT COUNT(*) AS table_count FROM information_schema.tables WHERE table_schema='riccon';
     SELECT COUNT(*) AS trigger_count FROM information_schema.triggers WHERE trigger_schema='riccon';
-    SELECT trigger_name, event_manipulation FROM information_schema.triggers WHERE trigger_schema='riccon';"
+    SELECT trigger_name, event_manipulation FROM information_schema.triggers WHERE trigger_schema='riccon';
+    SELECT COUNT(*) AS v10_tables FROM information_schema.tables
+     WHERE table_schema='riccon' AND table_name='audit_export_request';
+    SELECT COUNT(DISTINCT index_name) AS v10_indexes FROM information_schema.statistics
+     WHERE table_schema='riccon' AND table_name='audit_event'
+       AND index_name IN ('idx_audit_tenant_action_time','idx_audit_tenant_actor_time');
+    SELECT COUNT(*) AS v10_permissions FROM permission
+     WHERE code IN ('audit.export.approve','platform.audit.export.approve');"
 
 # 6. 校验 append-only：先插入一行，再验证 UPDATE/DELETE 都被触发器拒绝（两条命令都必须 exit 1）
 docker compose -f deploy/compose/docker-compose.test.yml exec -T \
@@ -206,17 +214,19 @@ docker compose -f deploy/compose/docker-compose.test.yml down -v
 
 预期结果：
 
-| 检查项                            | 期望                                                                            |
-| --------------------------------- | ------------------------------------------------------------------------------- |
-| `log_bin_trust_function_creators` | `ON`                                                                            |
-| 迁移输出                          | V1–V7 逐条无错误；不得出现 `ERROR 1419`                                         |
-| `table_count`                     | 36（手工重放不含 `flyway_schema_history`；API 启动后由 Flyway 建表，因此为 37） |
-| `trigger_count`                   | 2（`trg_audit_event_no_update`、`trg_audit_event_no_delete`）                   |
-| UPDATE / DELETE                   | 均 exit 1，`ERROR 1644 (45000): audit_event is append-only`，行仍存在           |
+| 检查项                            | 期望                                                                                                     |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `log_bin_trust_function_creators` | `ON`                                                                                                     |
+| 迁移输出                          | V1–V10 逐条无错误；不得出现 `ERROR 1419`                                                                 |
+| `table_count`                     | 39（手工重放不含 `flyway_schema_history`；API 经 Flyway 启动后为 40，与 `ApiApplicationTests` 口径一致） |
+| `trigger_count`                   | 2（`trg_audit_event_no_update`、`trg_audit_event_no_delete`）                                            |
+| `v10_tables` / `v10_indexes`      | 1（`audit_export_request`）/ 2（两条 `audit_event` 复合索引）                                            |
+| `v10_permissions`                 | 2（`audit.export.approve`、`platform.audit.export.approve`）                                             |
+| UPDATE / DELETE                   | 均 exit 1，`ERROR 1644 (45000): audit_event is append-only`，行仍存在                                    |
 
 手工重放只用于演练与 CI 冒烟，不会写入 `flyway_schema_history`。**不要在同一数据卷上随即启动 API**：Flyway 会因“非空 schema 但无历史表”拒绝迁移；需要继续用 API 验证时先 `down -v` 再 `up -d --wait`。
 
-CI 的 `backend` job 使用同一个 compose 文件和同一文件顺序做冒烟（`.github/workflows/ci.yml` 的“迁移冒烟”步骤），并在跑 `./mvnw -q -T1C verify` 之前执行。
+CI 的 `backend` job 使用同一个 compose 文件和同一文件顺序做冒烟（`.github/workflows/ci.yml` 的“迁移冒烟”步骤），并在跑 `./mvnw -q -T1C verify` 之前执行。表数不写死：期望值从 `apps/api/src/main/resources/db/migration/V*.sql` 的 `CREATE TABLE` 数量推导，并额外断言 V10 表、索引、权限与 append-only 触发器。
 
 > 合同 `commands.run` 引用 `deploy/compose/docker-compose.dev.yml`，该文件由后续 ops 任务建立；M01 用测试栈替代。不要在 M01 中创建生产/预览编排。
 
@@ -238,6 +248,76 @@ docker compose -f deploy/compose/docker-compose.test.yml config
 
 M09 提供 Helm 与预览编排。M01 不部署预览环境；任何预览环境必须使用独立数据库与对象存储，禁止连接生产。
 
+## V10 生产迁移（OPS-004/005/006/007，尚未执行）
+
+> **状态：未执行。** 本节只是执行方案；V10 尚未在任何生产/共享环境运行。实际执行需用户按合同 `decision_owners.production` 完成 T4 批准，并具备 OPS-006/007 的非生产演练记录。
+
+V10 与代码强耦合（新 API 需要新表/索引，worker 严格校验 schema 版本），**不能纯滚动**：DB 升到 10 后任何旧 worker（expected=9）重启都会以 `RICCON-WORKER-001` 启动失败；旧 API 虽能忽略 future 迁移启动，但滚动期重启仍是可用性风险。
+
+**OPS-004 协调切换顺序（正向）**：
+
+```text
+0. 全量备份，并在副本上验证恢复；预检磁盘余量、分区体积、长事务/MDL
+1. 停 worker（drain；在途运行按租约 90s 重试或先等其结束）
+2. 停 API 写入（维护模式 503 或缩容到 0）
+3. 用新 API 镜像的一次性迁移 Job 执行 Flyway（不要经由常驻 API 启动触发）
+4. 按下方“结构校验”确认 V10 对象与 flyway_schema_history=10
+5. 起新 API → 健康检查 → smoke（登录、审计查询、导出闭环、J1/J2）
+6. 起新 worker（EXPECTED=10）→ 确认 outbox 恢复领取
+7. 解除维护模式
+```
+
+**OPS-005 维护窗口与索引 DDL**：V10 的两条索引写在**同一条** `ALTER TABLE audit_event ... ALGORITHM=INPLACE, LOCK=NONE` 中，MySQL 8 原子 DDL 保证同成败，失败不会留下半成品索引。生产仍在维护窗口停写执行；online DDL 只是演练确认后的加速手段，不作为免窗口依据。
+
+**结构校验**：
+
+```sql
+SHOW CREATE TABLE audit_export_request;
+SELECT DISTINCT index_name FROM information_schema.statistics
+ WHERE table_schema = DATABASE() AND table_name = 'audit_event'
+   AND index_name IN ('idx_audit_tenant_action_time','idx_audit_tenant_actor_time');  -- 2 行
+SELECT COUNT(*) FROM information_schema.triggers
+ WHERE trigger_schema = DATABASE() AND event_object_table = 'audit_event';            -- 必须仍为 2
+SELECT COUNT(*) FROM permission
+ WHERE code IN ('audit.export.approve','platform.audit.export.approve');              -- 2
+SELECT COUNT(*) FROM information_schema.tables
+ WHERE table_schema = DATABASE();                                                     -- 含 flyway_schema_history 为 40
+SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history WHERE success = 1;   -- 10
+```
+
+**OPS-006 失败恢复矩阵**（MySQL DDL 非事务，失败会保留已提交前缀；禁止反复重跑而不 repair，禁止修改已应用的 V10 文件）：
+
+| 失败点                            | 残留                             | 恢复                                                                                                     |
+| --------------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `CREATE TABLE` 失败（FK/重复表）  | 无                               | 修因 → `flyway repair` → 重跑；若表已存在先确认是否半成品                                                |
+| 权限字典 / 角色回填 INSERT 失败   | 表已建、索引未建                 | `DROP TABLE audit_export_request`（新建且为空）→ `flyway repair` → 重跑；INSERT 带 NOT EXISTS 守卫       |
+| 索引 ALTER 失败（online log/MDL） | 表与权限已就绪、无新索引（原子） | 消除冲突对象（如重名索引）→ 按上一条 DROP TABLE → `flyway repair` → 窗口内重跑；**不要**手建其中一条索引 |
+| 迁移 Job 中途被杀                 | 取决于最后提交的语句             | 按上表定位后 repair/重跑，并记录残留                                                                     |
+
+**OPS-007 回滚（严格反向）**：
+
+```text
+1. 停新 worker → 停新 API，排空写入并做全量备份（回滚会丢失 audit_export_request 数据）
+2. （若涉及 OIDC）先在新版本上解绑/写回本地密码
+3. 执行 ADR-0020 §5.4 回滚 SQL：
+   DROP TABLE audit_export_request;
+   ALTER TABLE audit_event DROP INDEX idx_audit_tenant_action_time,
+                              DROP INDEX idx_audit_tenant_actor_time;
+   DELETE FROM role_permission
+    WHERE permission_code IN ('audit.read','audit.export.approve','platform.audit.export.approve');
+   DELETE FROM permission
+    WHERE code IN ('audit.export.approve','platform.audit.export.approve');
+4. 由维护账号删除 V10 历史行（应用账号不得删除 history）：
+   DELETE FROM flyway_schema_history WHERE version = '10' AND success = 1;
+   SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history WHERE success = 1;  -- 必须为 9
+5. 起旧 API（v9）→ 健康检查 → 起旧 worker（v9）→ 确认版本校验通过
+6. 记录回滚证据：结构、行数、审计可读性、导出请求丢失数量
+```
+
+前提：`audit.read` 在 M10 前未授予任何角色；若发布后存在手工授予，回滚前必须先导出/记录这些映射。`audit_event` 与 M02/M03 数据不受回滚影响。
+
+**演练要求（M10 gate）**：在一次性 MySQL 8.4.13 容器上用 **Flyway**（不是 mysql CLI 直放）从 V1–V9 + 种子数据升到 V10，覆盖结构校验、`SchemaVersionChecker` 对 V9 失败/对 V10 通过、回滚、以及预建同名索引的失败注入；记录写入 M10 评审包，容器一次性销毁，不连接热栈。
+
 ## 生产
 
 M09 交付。发布前必须满足 T4 要求：
@@ -249,7 +329,7 @@ M09 交付。发布前必须满足 T4 要求：
 ## 回滚
 
 1. **应用回滚**：回滚到上一个 `-exec.jar` 或 Helm revision；API 与 Worker 可独立回滚。
-2. **数据库**：Flyway 只向前迁移，不提供 `undo`。破坏性变更必须预先准备反向 SQL 与备份；回滚前先停止写入。
+2. **数据库**：Flyway 只向前迁移，不提供 `undo`。破坏性变更必须预先准备反向 SQL 与备份；回滚前先停止写入。V10 回滚还必须由维护账号删除 `flyway_schema_history` 的 V10 行并校验 `MAX(version)=9`，详见“V10 生产迁移（OPS-007）”。
 3. **对象存储**：产物按版本保留；回滚不删除已写入对象，避免破坏引用。
 4. **验证**：回滚后执行健康检查、冒烟测试与关键旅程 E2E，并记录证据。
 
@@ -257,6 +337,7 @@ M09 交付。发布前必须满足 T4 要求：
 
 - **API 无法启动**：检查 `RICCON_DB_*`、Flyway 迁移状态、端口占用；先恢复依赖再重启。
 - **Worker 无法启动**：检查 `RICCON_WORKER_PORT`、模型/MCP 出网允许列表与凭据；Worker 不健康不应阻塞 API 登录。
+- **Worker 报 `RICCON-WORKER-001`（schema 版本不符）**：确认 V10 迁移 Job 已成功且 worker 镜像为期望 10 的版本；**DB 为 10 时禁止启动旧 worker**，必须按“V10 生产迁移”的协调顺序切换（或先回滚 API 与 DB 再回退 worker）。
 - **Worker 无法领取任务**：检查 MySQL 连接、`agent_run_outbox` 索引与租约时间、服务令牌密钥；不要让 API 直接执行 Agent。
 - **Spring Session 表缺失**：确认 Flyway V7 已应用且 `spring.session.jdbc.initialize-schema=never`；恢复数据库备份时不要遗漏 `SPRING_SESSION*`。
 - **OpenSearch 不可用**：M02 前不影响 API 启动；M05 起检索降级策略另行定义。

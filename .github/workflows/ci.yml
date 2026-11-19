@@ -36,7 +36,8 @@ jobs:
 
       # 迁移冒烟：使用与本地/演练相同的 compose 和文件顺序，全程用非 SUPER 的 riccon 用户，
       # 防止 root 绕过权限掩盖 ERROR 1419。失败即中断，不进入后续构建。
-      - name: 迁移冒烟（V1–V7）
+      # V10（M10）起不写死表数：期望值由迁移文件推导，另断言 V10 结构真实存在。
+      - name: 迁移冒烟（V1–V10）
         run: |
           set -euo pipefail
           COMPOSE="docker compose -f deploy/compose/docker-compose.test.yml"
@@ -56,13 +57,30 @@ jobs:
             mysql_exec --batch --show-warnings < "${migration}"
           done
 
+          # 手工重放只执行 V*.sql，不会创建 flyway_schema_history，因此表数比经 Flyway 启动的
+          # ApiApplicationTests 口径少 1（M10：手工 39 + history 1 = 40）。期望值从迁移文件推导，
+          # 新增迁移时无需改 CI；V10 结构由下方显式断言兜底。
+          expected_tables="$(grep -hE '^[[:space:]]*CREATE TABLE' \
+            apps/api/src/main/resources/db/migration/V*.sql | wc -l | tr -d ' ')"
           tables="$(mysql_exec --batch --skip-column-names \
             -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='riccon'")"
           triggers="$(mysql_exec --batch --skip-column-names \
             -e "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema='riccon'")"
-          echo "tables=${tables} triggers=${triggers}"
-          test "${tables}" -eq 36
+          echo "tables=${tables} expected_tables=${expected_tables} triggers=${triggers}"
+          test "${tables}" -eq "${expected_tables}"
           test "${triggers}" -eq 2
+
+          # V10（M10）结构断言：导出请求表、audit_event 两条查询索引、两条审批权限。
+          v10_table="$(mysql_exec --batch --skip-column-names \
+            -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='riccon' AND table_name='audit_export_request'")"
+          v10_indexes="$(mysql_exec --batch --skip-column-names \
+            -e "SELECT COUNT(DISTINCT index_name) FROM information_schema.statistics WHERE table_schema='riccon' AND table_name='audit_event' AND index_name IN ('idx_audit_tenant_action_time','idx_audit_tenant_actor_time')")"
+          v10_permissions="$(mysql_exec --batch --skip-column-names \
+            -e "SELECT COUNT(*) FROM permission WHERE code IN ('audit.export.approve','platform.audit.export.approve')")"
+          echo "v10_table=${v10_table} v10_indexes=${v10_indexes} v10_permissions=${v10_permissions}"
+          test "${v10_table}" -eq 1
+          test "${v10_indexes}" -eq 2
+          test "${v10_permissions}" -eq 2
 
           # append-only 必须由数据库拒绝，而不是只靠应用层
           mysql_exec -e "INSERT INTO audit_event (event_id, occurred_at, tenant_id, actor_type, actor_id, action, outcome, trace_id) VALUES (UNHEX('0192f0a1b2c37d4e8f9012345678abcd'), UTC_TIMESTAMP(6), 'platform', 'SYSTEM', 'system', 'migration.smoke', 'SUCCESS', 'trace-smoke-001');"
