@@ -211,6 +211,7 @@ public class AuthController {
                 user.email(),
                 user.status(),
                 currentUser.roles(),
+                user.authSource(),
                 user.lastLoginAt(),
                 user.createdAt());
         TenantSummaryResponse tenantSummary = new TenantSummaryResponse(

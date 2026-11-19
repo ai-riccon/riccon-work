@@ -4,6 +4,8 @@ import com.riccon.api.admin.service.TenantUserAdminService;
 import com.riccon.api.identity.domain.RequestMeta;
 import com.riccon.api.identity.domain.RequirePermission;
 import com.riccon.api.identity.domain.RicconPrincipal;
+import com.riccon.api.identity.dto.OidcBindingRequest;
+import com.riccon.api.identity.dto.OidcUnbindRequest;
 import com.riccon.api.identity.dto.PageQuery;
 import com.riccon.api.identity.dto.UserCreateRequest;
 import com.riccon.api.identity.dto.UserPageResponse;
@@ -126,6 +128,50 @@ public class TenantUserController {
         RicconPrincipal actor = AuthenticationSupport.requirePrincipal(authentication);
         return tenantUserAdminService.replaceRoles(
                 TenantContext.require(), userId, body.roles(), actor, false, meta(request));
+    }
+
+    /**
+     * 把本租户账号显式绑定到 OIDC 身份。
+     *
+     * <p>只接受 issuer + subject；不按邮箱匹配。成功后在事务内删除本地密码凭据并写审计。
+     *
+     * @param userId 账号 ID
+     * @param body 绑定请求
+     * @param authentication 当前认证
+     * @param request HTTP 请求
+     * @return 更新后的账号
+     */
+    @PutMapping("/{userId}/oidc-binding")
+    @RequirePermission(PermissionCodes.TENANT_USER_MANAGE)
+    public UserSummaryResponse bindOidcIdentity(
+            @PathVariable UUID userId,
+            @RequestBody OidcBindingRequest body,
+            Authentication authentication,
+            HttpServletRequest request) {
+        Validation.requireBody(body);
+        RicconPrincipal actor = AuthenticationSupport.requirePrincipal(authentication);
+        return tenantUserAdminService.bindOidcIdentity(TenantContext.require(), userId, body, actor, meta(request));
+    }
+
+    /**
+     * 解除本租户账号的 OIDC 绑定并恢复本地密码。
+     *
+     * @param userId 账号 ID
+     * @param body 解绑请求；必须包含新密码
+     * @param authentication 当前认证
+     * @param request HTTP 请求
+     * @return 更新后的账号
+     */
+    @PostMapping("/{userId}/oidc-binding/remove")
+    @RequirePermission(PermissionCodes.TENANT_USER_MANAGE)
+    public UserSummaryResponse unbindOidcIdentity(
+            @PathVariable UUID userId,
+            @RequestBody OidcUnbindRequest body,
+            Authentication authentication,
+            HttpServletRequest request) {
+        Validation.requireBody(body);
+        RicconPrincipal actor = AuthenticationSupport.requirePrincipal(authentication);
+        return tenantUserAdminService.unbindOidcIdentity(TenantContext.require(), userId, body, actor, meta(request));
     }
 
     /**

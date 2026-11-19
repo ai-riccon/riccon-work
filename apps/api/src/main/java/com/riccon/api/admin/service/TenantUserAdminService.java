@@ -1,5 +1,10 @@
 package com.riccon.api.admin.service;
 
+import com.riccon.api.admin.identity.OidcAccountIdentity;
+import com.riccon.api.admin.identity.OidcBindingConflictException;
+import com.riccon.api.admin.identity.OidcBindingInvalidException;
+import com.riccon.api.admin.identity.OidcIdentityHashes;
+import com.riccon.api.admin.identity.repository.OidcBindingRepository;
 import com.riccon.api.admin.repository.AdminRepository;
 import com.riccon.api.audit.domain.AuditEvent;
 import com.riccon.api.audit.service.AuditService;
@@ -10,16 +15,22 @@ import com.riccon.api.error.ConflictException;
 import com.riccon.api.error.ForbiddenException;
 import com.riccon.api.error.NotFoundException;
 import com.riccon.api.identity.domain.CurrentUser;
+import com.riccon.api.identity.domain.PlatformTenant;
 import com.riccon.api.identity.domain.RequestMeta;
 import com.riccon.api.identity.domain.RicconPrincipal;
 import com.riccon.api.identity.domain.RoleDefinition;
 import com.riccon.api.identity.domain.RoleDefinitions;
 import com.riccon.api.identity.domain.TenantRecord;
 import com.riccon.api.identity.domain.UserAccount;
+import com.riccon.api.identity.dto.OidcBindingRequest;
+import com.riccon.api.identity.dto.OidcUnbindRequest;
 import com.riccon.api.identity.dto.PageQuery;
 import com.riccon.api.identity.dto.UserCreateRequest;
 import com.riccon.api.identity.dto.UserPageResponse;
 import com.riccon.api.identity.dto.UserSummaryResponse;
+import com.riccon.api.oidc.domain.OidcConfigurationParser;
+import com.riccon.api.oidc.domain.OidcIdpConfig;
+import com.riccon.api.oidc.service.OidcIdpRegistry;
 import com.riccon.api.web.Validation;
 import com.riccon.platform.common.tenant.TenantContext;
 import com.riccon.platform.common.tenant.TenantId;
@@ -57,12 +68,18 @@ import org.springframework.transaction.annotation.Transactional;
  * </ul>
  *
  * <p>角色只能是 M02 内置系统角色；授予者不得授予超出自身的角色（平台管理员拥有平台级特权，不在此限）。
+ *
+ * <p>M10-B2：创建账号支持 {@code authSource=OIDC}；管理员可显式绑定/解绑已有账号。绑定后删除本地密码凭据，
+ * 解绑必须同时设置新密码；身份键固定 {@code (tenant, issuer, subject)}，不按邮箱关联（ADR-0019 第 3 节）。
  */
 @Service
 public class TenantUserAdminService {
 
     /** 登录名格式，与 OpenAPI {@code UserCreateRequest.username} 一致。 */
     private static final Pattern USERNAME = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9._-]{2,99}$");
+
+    /** OIDC subject 最大长度（ADR-0019 第 2/3 节）。 */
+    private static final int MAX_SUBJECT_LENGTH = 255;
 
     /** 平台管理仓储。 */
     private final AdminRepository adminRepository;
@@ -76,6 +93,12 @@ public class TenantUserAdminService {
     /** 密码编码器。 */
     private final PasswordEncoder passwordEncoder;
 
+    /** OIDC IdP 注册表，用于校验租户当前配置的 issuer。 */
+    private final OidcIdpRegistry oidcIdpRegistry;
+
+    /** OIDC 绑定持久化。 */
+    private final OidcBindingRepository oidcBindingRepository;
+
     /** 可注入时钟。 */
     private final Clock clock;
 
@@ -86,6 +109,8 @@ public class TenantUserAdminService {
      * @param authService 认证服务
      * @param auditService 审计写入
      * @param passwordEncoder 密码编码器
+     * @param oidcIdpRegistry OIDC IdP 注册表
+     * @param oidcBindingRepository OIDC 绑定持久化
      * @param clock 可注入时钟
      */
     public TenantUserAdminService(
@@ -93,11 +118,15 @@ public class TenantUserAdminService {
             AuthService authService,
             AuditService auditService,
             PasswordEncoder passwordEncoder,
+            OidcIdpRegistry oidcIdpRegistry,
+            OidcBindingRepository oidcBindingRepository,
             Clock clock) {
         this.adminRepository = Objects.requireNonNull(adminRepository, "adminRepository");
         this.authService = Objects.requireNonNull(authService, "authService");
         this.auditService = Objects.requireNonNull(auditService, "auditService");
         this.passwordEncoder = Objects.requireNonNull(passwordEncoder, "passwordEncoder");
+        this.oidcIdpRegistry = Objects.requireNonNull(oidcIdpRegistry, "oidcIdpRegistry");
+        this.oidcBindingRepository = Objects.requireNonNull(oidcBindingRepository, "oidcBindingRepository");
         this.clock = Objects.requireNonNull(clock, "clock");
     }
 
@@ -124,6 +153,9 @@ public class TenantUserAdminService {
     /**
      * 在目标租户创建账号。
      *
+     * <p>{@code authSource} 省略视为 LOCAL：必须提供密码并写入 {@code user_credential}。OIDC 分支必须提供
+     * issuer + subject、不得提供密码，直接写入外部身份且不写本地凭据；平台保留租户禁止创建 OIDC 账号。
+     *
      * @param tenantId 目标租户
      * @param request 创建请求
      * @param actor 操作者
@@ -141,7 +173,7 @@ public class TenantUserAdminService {
         requireTenant(tenantId);
         String username = Validation.requirePattern(request.username(), "username", USERNAME, 100);
         String displayName = Validation.requireText(request.displayName(), "displayName", 1, 200);
-        String password = requirePassword(request.password());
+        AuthSource authSource = request.authSource() == null ? AuthSource.LOCAL : request.authSource();
         List<String> roles = Validation.requireRoles(request.roles(), "roles");
         Map<String, RoleDefinition> definitions = resolveTenantRoles(roles);
         if (!platformActor) {
@@ -150,8 +182,36 @@ public class TenantUserAdminService {
         if (adminRepository.findUserByUsername(tenantId, username).isPresent()) {
             throw new ConflictException("username already exists in tenant");
         }
-
         Instant now = clock.instant();
+        if (authSource == AuthSource.OIDC) {
+            return createOidcUser(tenantId, request, username, displayName, roles, actor, meta, now);
+        }
+        return createLocalUser(tenantId, request, username, displayName, roles, actor, meta, now);
+    }
+
+    /**
+     * 创建 LOCAL 账号：保留 M02 行为，必须提供 12–200 字符密码。
+     *
+     * @param tenantId 目标租户
+     * @param request 创建请求
+     * @param username 已校验登录名
+     * @param displayName 已校验展示名
+     * @param roles 已校验角色码
+     * @param actor 操作者
+     * @param meta 请求元数据
+     * @param now 创建时间
+     * @return 新账号摘要
+     */
+    private UserSummaryResponse createLocalUser(
+            TenantId tenantId,
+            UserCreateRequest request,
+            String username,
+            String displayName,
+            List<String> roles,
+            RicconPrincipal actor,
+            RequestMeta meta,
+            Instant now) {
+        String password = requirePassword(request.password());
         UserAccount user = new UserAccount(
                 UuidV7.generate(now),
                 tenantId.value(),
@@ -166,7 +226,7 @@ public class TenantUserAdminService {
         try {
             adminRepository.insertUser(tenantId, user, passwordHash);
             adminRepository.replaceUserRoles(
-                    tenantId, user.id(), roleIds(tenantId, definitions.keySet()), actor.userId());
+                    tenantId, user.id(), roleIds(tenantId, new LinkedHashSet<>(roles)), actor.userId());
         } catch (DuplicateKeyException exception) {
             throw new ConflictException("username already exists in tenant");
         }
@@ -181,6 +241,182 @@ public class TenantUserAdminService {
                     Map.of("role", role, "targetTenantId", tenantId.value()));
         }
         return toSummary(user, sorted(roles));
+    }
+
+    /**
+     * 直接开通 OIDC 账号：issuer 必须命中租户当前启用配置，subject 非空且不可重复；不写本地凭据。
+     *
+     * @param tenantId 目标租户
+     * @param request 创建请求
+     * @param username 已校验登录名
+     * @param displayName 已校验展示名
+     * @param roles 已校验角色码
+     * @param actor 操作者
+     * @param meta 请求元数据
+     * @param now 创建时间
+     * @return 新账号摘要
+     */
+    private UserSummaryResponse createOidcUser(
+            TenantId tenantId,
+            UserCreateRequest request,
+            String username,
+            String displayName,
+            List<String> roles,
+            RicconPrincipal actor,
+            RequestMeta meta,
+            Instant now) {
+        rejectPlatformTenant(tenantId);
+        requireNoOidcPassword(request.password());
+        String issuer = requireConfiguredIssuer(tenantId, request.issuer());
+        String subject = requireSubject(request.subject());
+        if (oidcBindingRepository.findBoundUser(tenantId, issuer, subject).isPresent()) {
+            throw new OidcBindingConflictException("OIDC identity is already bound to another account");
+        }
+        UserAccount user = new UserAccount(
+                UuidV7.generate(now),
+                tenantId.value(),
+                username,
+                displayName,
+                null,
+                UserStatus.ACTIVE,
+                AuthSource.OIDC,
+                null,
+                now);
+        try {
+            oidcBindingRepository.insertOidcUser(tenantId, user, issuer, subject);
+            adminRepository.replaceUserRoles(
+                    tenantId, user.id(), roleIds(tenantId, new LinkedHashSet<>(roles)), actor.userId());
+        } catch (DuplicateKeyException exception) {
+            // 唯一键同时保护 username 与 (issuer, subject)；预检查已排除常见路径，这里兜住并发。
+            throw new OidcBindingConflictException("OIDC identity or username is already in use");
+        }
+        for (String role : sorted(roles)) {
+            appendAudit(
+                    actor,
+                    AuditActions.USER_CREATED,
+                    AuditTargetType.USER,
+                    user.id().toString(),
+                    AuditOutcome.SUCCESS,
+                    meta,
+                    Map.of("role", role, "targetTenantId", tenantId.value()));
+        }
+        // ADR-0019 第 3 节：直接开通 OIDC 账号不写 previousAuthSource，details 白名单保持 B1 定义。
+        appendAudit(
+                actor,
+                AuditActions.USER_OIDC_BOUND,
+                AuditTargetType.USER,
+                user.id().toString(),
+                AuditOutcome.SUCCESS,
+                meta,
+                Map.of(
+                        "userId", user.id().toString(),
+                        "issuerHash", OidcIdentityHashes.sha256Hex(issuer),
+                        "subjectHash", OidcIdentityHashes.sha256Hex(subject)));
+        return toSummary(user, sorted(roles));
+    }
+
+    /**
+     * 管理员显式把已有账号绑定到 OIDC 身份。
+     *
+     * <p>同一事务内：更新 {@code auth_source=OIDC} 与 issuer/subject、删除本地密码凭据、写审计。绑定命中同一
+     * 账号与原有角色；同身份已绑定其他账号或账号已绑定其他身份返回 409。平台保留租户不可绑定（B1 评审 F-002）。
+     *
+     * @param tenantId 目标租户
+     * @param userId 账号 ID
+     * @param request 绑定请求
+     * @param actor 操作者
+     * @param meta 请求元数据
+     * @return 更新后的账号摘要
+     */
+    @Transactional
+    public UserSummaryResponse bindOidcIdentity(
+            TenantId tenantId, UUID userId, OidcBindingRequest request, RicconPrincipal actor, RequestMeta meta) {
+        requireTenant(tenantId);
+        rejectPlatformTenant(tenantId);
+        String issuer = requireConfiguredIssuer(tenantId, request.issuer());
+        String subject = requireSubject(request.subject());
+        UserAccount user = adminRepository.findUser(tenantId, userId).orElseThrow(() -> new NotFoundException("user"));
+        OidcAccountIdentity current =
+                oidcBindingRepository.findIdentity(tenantId, userId).orElseThrow(() -> new NotFoundException("user"));
+        if (current.authSource() == AuthSource.OIDC) {
+            if (issuer.equals(current.issuer()) && subject.equals(current.subject())) {
+                // 幂等重试：已是同一身份时不重复写审计，但补齐“OIDC 账号不得有本地凭据”的不变量。
+                oidcBindingRepository.deleteCredential(tenantId, userId);
+                return toSummary(user, adminRepository.rolesForUser(tenantId, userId));
+            }
+            throw new OidcBindingConflictException("account is already bound to another OIDC identity");
+        }
+        if (oidcBindingRepository.findBoundUser(tenantId, issuer, subject).isPresent()) {
+            throw new OidcBindingConflictException("OIDC identity is already bound to another account");
+        }
+        Instant now = clock.instant();
+        try {
+            if (!oidcBindingRepository.bind(tenantId, userId, issuer, subject, now)) {
+                throw new OidcBindingConflictException("account authentication source changed concurrently");
+            }
+        } catch (DuplicateKeyException exception) {
+            throw new OidcBindingConflictException("OIDC identity is already bound to another account");
+        }
+        // 单认证来源：绑定后必须删除本地密码，避免绕过 IdP 策略。
+        oidcBindingRepository.deleteCredential(tenantId, userId);
+        appendAudit(
+                actor,
+                AuditActions.USER_OIDC_BOUND,
+                AuditTargetType.USER,
+                userId.toString(),
+                AuditOutcome.SUCCESS,
+                meta,
+                Map.of(
+                        "userId", userId.toString(),
+                        "issuerHash", OidcIdentityHashes.sha256Hex(issuer),
+                        "subjectHash", OidcIdentityHashes.sha256Hex(subject),
+                        "previousAuthSource", current.authSource().name()));
+        List<String> roles = adminRepository.rolesForUser(tenantId, userId);
+        return toSummary(withAuthSource(user, AuthSource.OIDC), roles);
+    }
+
+    /**
+     * 解除 OIDC 绑定并恢复本地密码。
+     *
+     * <p>没有“无凭据解绑”：必须提供 12–200 字符新密码，同一事务内清空 issuer/subject、重建
+     * {@code user_credential} 并写审计；未绑定账号返回 409，平台保留租户不可解绑。
+     *
+     * @param tenantId 目标租户
+     * @param userId 账号 ID
+     * @param request 解绑请求
+     * @param actor 操作者
+     * @param meta 请求元数据
+     * @return 更新后的账号摘要
+     */
+    @Transactional
+    public UserSummaryResponse unbindOidcIdentity(
+            TenantId tenantId, UUID userId, OidcUnbindRequest request, RicconPrincipal actor, RequestMeta meta) {
+        requireTenant(tenantId);
+        rejectPlatformTenant(tenantId);
+        String newPassword = requireOidcPassword(request.newPassword());
+        UserAccount user = adminRepository.findUser(tenantId, userId).orElseThrow(() -> new NotFoundException("user"));
+        OidcAccountIdentity current =
+                oidcBindingRepository.findIdentity(tenantId, userId).orElseThrow(() -> new NotFoundException("user"));
+        if (current.authSource() != AuthSource.OIDC) {
+            throw new OidcBindingConflictException("account is not bound to an OIDC identity");
+        }
+        Instant now = clock.instant();
+        if (!oidcBindingRepository.unbind(tenantId, userId, now)) {
+            throw new OidcBindingConflictException("account authentication source changed concurrently");
+        }
+        oidcBindingRepository.upsertCredential(tenantId, userId, passwordEncoder.encode(newPassword), now);
+        appendAudit(
+                actor,
+                AuditActions.USER_OIDC_UNBOUND,
+                AuditTargetType.USER,
+                userId.toString(),
+                AuditOutcome.SUCCESS,
+                meta,
+                Map.of(
+                        "userId", userId.toString(),
+                        "issuerHash", OidcIdentityHashes.sha256Hex(current.issuer())));
+        List<String> roles = adminRepository.rolesForUser(tenantId, userId);
+        return toSummary(withAuthSource(user, AuthSource.LOCAL), roles);
     }
 
     /**
@@ -308,6 +544,85 @@ public class TenantUserAdminService {
     }
 
     /**
+     * 拒绝平台保留租户的 OIDC 账号或绑定。
+     *
+     * <p>平台管理员 OIDC 登录在 ADR-0019 第 10 节后置，平台引导管理员必须保持内置账号（B1 评审 F-002）。
+     *
+     * @param tenantId 目标租户
+     */
+    private static void rejectPlatformTenant(TenantId tenantId) {
+        if (PlatformTenant.ID.equals(tenantId.value())) {
+            throw new OidcBindingInvalidException("OIDC accounts are not allowed in the platform tenant");
+        }
+    }
+
+    /**
+     * 校验创建/绑定提供的 issuer 命中租户当前启用的 IdP。
+     *
+     * @param tenantId 目标租户
+     * @param rawIssuer 请求 issuer
+     * @return 规范化 issuer
+     */
+    private String requireConfiguredIssuer(TenantId tenantId, String rawIssuer) {
+        String normalized;
+        try {
+            // 配置在启动时已按 allow-http 校验；这里用宽口径规范化后再与已校验配置做严格相等比较。
+            normalized = OidcConfigurationParser.normalizeIssuer(rawIssuer == null ? "" : rawIssuer, true);
+        } catch (IllegalArgumentException exception) {
+            throw new OidcBindingInvalidException("issuer must be a valid absolute URL");
+        }
+        OidcIdpConfig idp = oidcIdpRegistry
+                .findEnabledByTenantCode(tenantId.value())
+                .orElseThrow(() -> new OidcBindingInvalidException("OIDC is not configured for this tenant"));
+        if (!idp.issuer().equals(normalized)) {
+            throw new OidcBindingInvalidException("issuer does not match the tenant OIDC configuration");
+        }
+        return normalized;
+    }
+
+    /**
+     * 校验 OIDC subject：非空、最长 255 字符；去除首尾空白避免管理员误输入。
+     *
+     * @param subject 原始 subject
+     * @return 规范化 subject
+     */
+    private static String requireSubject(String subject) {
+        if (subject == null) {
+            throw new OidcBindingInvalidException("subject is required");
+        }
+        String normalized = subject.strip();
+        if (normalized.isEmpty() || normalized.length() > MAX_SUBJECT_LENGTH) {
+            throw new OidcBindingInvalidException(
+                    "subject length must be between 1 and " + MAX_SUBJECT_LENGTH + " characters");
+        }
+        return normalized;
+    }
+
+    /**
+     * OIDC 分支禁止携带密码。
+     *
+     * @param password 请求密码
+     */
+    private static void requireNoOidcPassword(String password) {
+        if (password != null && !password.isEmpty()) {
+            throw new OidcBindingInvalidException("password must be empty for OIDC accounts");
+        }
+    }
+
+    /**
+     * 校验解绑时的新密码：12–200 字符，不做 trim。
+     *
+     * @param password 新密码
+     * @return 原密码
+     */
+    private static String requireOidcPassword(String password) {
+        if (password == null || password.length() < 12 || password.length() > 200) {
+            throw new OidcBindingInvalidException("newPassword length must be between 12 and 200");
+        }
+        return password;
+    }
+
+    /**
      * 校验角色码属于 M02 内置租户角色。
      *
      * @param roles 角色码
@@ -380,7 +695,6 @@ public class TenantUserAdminService {
      * 写审计；事件租户为操作者租户，目标租户只进入 details。
      *
      * @param actor 操作者
-     * @param targetTenant 目标租户
      * @param action 动作
      * @param targetType 目标类型
      * @param targetId 目标 ID
@@ -415,6 +729,26 @@ public class TenantUserAdminService {
     }
 
     /**
+     * 复制账号并替换认证来源。
+     *
+     * @param user 原账号
+     * @param authSource 新认证来源
+     * @return 新账号快照
+     */
+    private static UserAccount withAuthSource(UserAccount user, AuthSource authSource) {
+        return new UserAccount(
+                user.id(),
+                user.tenantId(),
+                user.username(),
+                user.displayName(),
+                user.email(),
+                user.status(),
+                authSource,
+                user.lastLoginAt(),
+                user.createdAt());
+    }
+
+    /**
      * 映射账号摘要。
      *
      * @param user 账号
@@ -429,6 +763,7 @@ public class TenantUserAdminService {
                 user.email(),
                 user.status(),
                 sorted(roles),
+                user.authSource(),
                 user.lastLoginAt(),
                 user.createdAt());
     }
