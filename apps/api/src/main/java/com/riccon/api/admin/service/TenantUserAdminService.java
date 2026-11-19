@@ -581,21 +581,17 @@ public class TenantUserAdminService {
     }
 
     /**
-     * 校验 OIDC subject：非空、最长 255 字符；去除首尾空白避免管理员误输入。
+     * 校验 OIDC subject：非空、最长 255 字符；保留原值，不 trim（身份键必须与 ID Token 的 {@code sub} 完全一致）。
      *
      * @param subject 原始 subject
-     * @return 规范化 subject
+     * @return 原 subject
      */
     private static String requireSubject(String subject) {
-        if (subject == null) {
-            throw new OidcBindingInvalidException("subject is required");
-        }
-        String normalized = subject.strip();
-        if (normalized.isEmpty() || normalized.length() > MAX_SUBJECT_LENGTH) {
+        if (subject == null || subject.isBlank() || subject.length() > MAX_SUBJECT_LENGTH) {
             throw new OidcBindingInvalidException(
                     "subject length must be between 1 and " + MAX_SUBJECT_LENGTH + " characters");
         }
-        return normalized;
+        return subject;
     }
 
     /**

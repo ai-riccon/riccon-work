@@ -306,6 +306,15 @@ class OidcIdentityBindingApiTest extends ApiIntegrationTestSupport {
         assertThat(identity(TENANT_B, userId).subject()).isEqualTo(subject);
         assertThat(credentialCount(TENANT_B, userId)).isZero();
 
+        // 目标租户不存在统一 404，不泄露租户存在性以外的信息。
+        assertCode(
+                bind(
+                        platform,
+                        "/api/v1/admin/tenants/" + TENANT_B + "x/users/" + userId + "/oidc-binding",
+                        ISSUER_B,
+                        "sub-missing-tenant"),
+                "RICCON-TENANT-404");
+
         List<AuditRecord> rows = audits("user.oidc.bound", userId);
         assertThat(rows).hasSize(1);
         assertThat(rows.get(0).tenantId()).isEqualTo("platform");
