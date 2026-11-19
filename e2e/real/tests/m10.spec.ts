@@ -96,7 +96,8 @@ async function loginLocal(
   await expect(page).toHaveURL(/\/chat$/);
   await expect(page.getByRole('heading', { name: 'Riccon 工作空间' })).toBeVisible();
   if (expectedText) {
-    await expect(page.getByText(expectedText)).toBeVisible();
+    // exact 避免把“<姓名> 的个人空间”等工作空间标题也算作账号显示名；strict 模式下会命中多个元素。
+    await expect(page.getByText(expectedText, { exact: true })).toBeVisible();
   }
 }
 
@@ -372,23 +373,24 @@ test.describe('M10 身份与审计', () => {
     await expect(page.getByText('用户管理', { exact: true }).first()).toBeVisible();
     await expect(page.locator('.user-admin-list')).toBeVisible();
 
-    const configuredRow = page
-      .locator('.user-admin-item')
-      .filter({ hasText: m10.identityProvider.oidcUsername });
+    const configuredRow = page.locator('.user-admin-item').filter({
+      has: page.getByText(m10.identityProvider.oidcUsername, { exact: true }),
+    });
     await expect(configuredRow.getByText(`来源：${m10.identityProvider.providerName}`)).toBeVisible();
     await expect(configuredRow.getByText('企业账号')).toBeVisible();
 
-    const historicalRow = page
-      .locator('.user-admin-item')
-      .filter({ hasText: m10.identityProvider.historicalUsername });
+    const historicalRow = page.locator('.user-admin-item').filter({
+      has: page.getByText(m10.identityProvider.historicalUsername, { exact: true }),
+    });
     await expect(
       historicalRow.getByText(`来源：${m10.identityProvider.historicalLabel}`),
     ).toBeVisible();
     await expect(historicalRow.getByText('企业账号')).toBeVisible();
 
-    const localRow = page
-      .locator('.user-admin-item')
-      .filter({ hasText: m10.identityProvider.localUsername });
+    // exact 用户名避免 alpha-admin 同时命中 alpha-admin2。
+    const localRow = page.locator('.user-admin-item').filter({
+      has: page.getByText(m10.identityProvider.localUsername, { exact: true }),
+    });
     await expect(localRow.getByText('来源：本地账号')).toBeVisible();
 
     // 两个 issuer 的展示名必须不同；完整 issuer 路径、subject、邮箱与令牌都不出现。
