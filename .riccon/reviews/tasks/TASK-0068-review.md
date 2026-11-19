@@ -10,7 +10,7 @@ reviewer:
 verdict: pass
 reviewed_commits: [e07f35b]
 head_commit: c50e3fd
-reviewed_evidence: [EV-0409]
+reviewed_evidence: [EV-0409, EV-0410, EV-0411]
 findings:
   - id: F-001
     severity: P1
@@ -42,7 +42,7 @@ findings:
     title: "权限字典 audit.read 描述仍写“M03 启用”，M10 实际启用后文案漂移"
     summary: "V2 写入 ('audit.read','审计查询（M03 启用）')，但 M03 只保留未启用，M10 才开放查询。ADR-0020 §6.1 只要求语义从“保留”变为“启用”，V10 未刷新 description。不影响权限码/授权与验收，但管理端若展示描述会误导；建议后续迁移或 B3b/architect 收口，不要修改已应用的 V2。"
     evidence: "V2__identity_and_workspace.sql:121；ADR-0020 §6.1；V10__audit_query_export.sql:84-90"
-evidence: []
+evidence: [EV-0410, EV-0411]
 created_at: "2026-11-19T10:12:00+08:00"
 ---
 
@@ -79,11 +79,11 @@ created_at: "2026-11-19T10:12:00+08:00"
 | `./mvnw -q -T1C -pl apps/worker -am -Dtest=SchemaVersionCheckerTest -Dsurefire.failIfNoSpecifiedTests=false test`                              | 0      | 5/0 skip；日志 `schema.version.checked expected=10 actual=10`                                              |
 | `./mvnw -q spotless:check`                                                                                                                     | 0      | 通过                                                                                                       |
 | `riccon contract validate --strict --project .`                                                                                                | 0      | 0 errors / 0 warnings                                                                                      |
-| `riccon state validate --project .`                                                                                                            | 0      | 0 errors；3 warnings（M11 legacy + M14 两条 legacy，均非本任务引入）                                       |
+| `riccon state validate --project .`                                                                                                            | 0      | 0 errors；1 warning（M11 legacy，既有，非本任务引入）                                                      |
 | `git diff --check`                                                                                                                             | 0      | 通过                                                                                                       |
 | EV-0409 复核                                                                                                                                   | 0      | `manual=false`、`dirty=false`、`commit=e07f35b`、exit 0、992410ms；输出 646226 bytes，SHA-256 与 JSON 一致 |
 
-**未重复 16 分钟全量 verify**：EV-0409 已覆盖 `./mvnw -q -T1C verify`；本次只跑定向测试与治理检查。EV-0409 的覆盖率：`apps/api/target/site/jacoco/jacoco.csv` line **90.6%** / branch **71.8%**，worker line **87.9%** / branch **70.8%**，均高于合同 80/70；`apps/web/coverage` 是 M02/M03 的旧产物，本轮未重跑，B3a 未改 Web。
+**未重复 16 分钟全量 verify**：EV-0409 已覆盖 `./mvnw -q -T1C verify`；本次只跑定向测试与治理检查，证据为 **EV-0410**（定向测试，exit 0）与 **EV-0411**（spotless/contract/state/git diff，exit 0）。EV-0409 的覆盖率：`apps/api/target/site/jacoco/jacoco.csv` line **90.6%** / branch **71.8%**，worker line **87.9%** / branch **70.8%**，均高于合同 80/70；`apps/web/coverage` 是 M02/M03 的旧产物，本轮未重跑，B3a 未改 Web。
 
 ## 3. V10 迁移审计
 
@@ -149,7 +149,7 @@ V10:39-79 与 ADR-0020 §5.1 逐列一致：
 - `e07f35b` 无 `contracts/**`、`apps/web/**`、`AGENTS.md`、`docs/PRODUCT.md`、ADR 修改；ADR-0020 仍 `Status: proposed`，符合“B3a 只改 V10/RoleDefinitions/worker/测试”的边界。
 - TASK-0068 `write_scope` 与实际改动逐一匹配；`ApiApplicationTests.java` 在 scope 内且仅计数更新，未借机弱化。
 - 状态：TASK-0068 `review`、`end_commit=e07f35b`；EV-0409 `manual=false`/`dirty=false`/`commit=e07f35b`/exit 0；JSON 的 SHA-256/字节数与日志一致。HEAD `c50e3fd`，评审开始时工作区干净。
-- `state validate` 0 errors / 3 warnings：M11 legacy（既有）+ M14 的 product pass while building / user accepted before done（legacy，非本任务引入）。建议 Lead 在 M10 gate 前顺手归一，避免与新状态混淆。
+- `state validate` 0 errors / 1 warning：M11 planned 但有 done 任务（既有 legacy，非本任务引入）。建议 Lead 在 M10 gate 前顺手归一，避免与新状态混淆。
 
 ## 8. Findings
 
@@ -201,7 +201,7 @@ V2:121 的描述在 M10 启用后已过时；ADR §6.1 只要求语义变化，V
 - **未执行**：真实并发审批线程交错（测试用两次串行条件更新证明“第二次 0 行”；DB 的 `WHERE status='PENDING_APPROVAL'` 语义正确，API 409 由 B3b 覆盖）。
 - **未执行**：`pnpm -w test`、E2E、a11y、security、完整 `commands.coverage`；这些属于 M10-V1 的模块 gate。
 - **剩余风险**：V10 与 M10 代码同批上线，回滚窗口内导出功能不可用（新功能，可接受）；`audit_export_request` 无 `created_at` 清理索引（OPS-008）使 M09 跨租户清理需逐租户；`NOT EXISTS` 守卫依赖 §5.4 预检，若生产预检缺失，预占权限码会被静默接受；worker 版本常量缺测试锁定（F-003）。
-- **状态遗留**：M11/M14 legacy warnings 与本任务无关，但 M10 gate 前建议归一。
+- **状态遗留**：M11 legacy warning 与本任务无关，但 M10 gate 前建议归一。
 
 ## 12. 回执摘要
 
