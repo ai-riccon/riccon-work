@@ -206,9 +206,23 @@ async function main() {
   assert.equal(providersUnknown.data.enabled, false);
   ok('OIDC providers', 'alpha enabled, unknown disabled');
 
+  // 先通过 B2 绑定端点把本地账号切到 OIDC，再走 B1 登录流程（F-005 端到端）。
+  const bindUsername = `oidc-e2e-${suffix}`;
+  const boundSubject = `sub-bound-${suffix}`;
+  const localUser = await createUser(platform, seed.tenants.alpha, {
+    username: bindUsername,
+    displayName: 'OIDC 端到端员工',
+    password: 'initial-password-12',
+    roles: ['MEMBER'],
+  });
+  const bind = await alphaAdmin.request('PUT', `/api/v1/users/${localUser.id}/oidc-binding`, {
+    body: { issuer, subject: boundSubject },
+  });
+  expectStatus(bind, 200, 'bind OIDC identity');
+
   // ---------- OIDC：PKCE+nonce 成功登录 ----------
   await oidcReset();
-  await oidcBehavior('login', oidcSubject);
+  await oidcBehavior('login', boundSubject);
   const oidcClient = new ApiClient(apiBase);
   const flow = await startOidc(oidcClient, seed.tenants.alpha);
   assert.equal(flow.callbackStatus, 302, `callback must redirect: ${flow.callbackStatus}`);
@@ -220,7 +234,8 @@ async function main() {
   );
   assert.equal(oidcSession.data.user.authSource, 'OIDC');
   assert.equal(oidcSession.data.tenant.id, seed.tenants.alpha);
-  assert.ok(oidcSession.data.user.id, 'OIDC session must have user id');
+  assert.equal(oidcSession.data.user.id, localUser.id, 'bound identity must hit the same account');
+  assert.equal(oidcSession.data.user.username, bindUsername);
   const afterSuccess = await oidcStats();
   assert.equal(afterSuccess.userinfo, 0, 'product must not call userinfo');
   assert.ok(afterSuccess.token >= 1, 'token endpoint must be called');
@@ -294,18 +309,6 @@ async function main() {
   summary.oidc.failures = 'passed';
 
   // ---------- 绑定后 OIDC 登录（B2 F-005） ----------
-  const bindUsername = `oidc-e2e-${suffix}`;
-  const boundSubject = `sub-bound-${suffix}`;
-  const localUser = await createUser(platform, seed.tenants.alpha, {
-    username: bindUsername,
-    displayName: 'OIDC 端到端员工',
-    password: 'initial-password-12',
-    roles: ['MEMBER'],
-  });
-  const bind = await alphaAdmin.request('PUT', `/api/v1/users/${localUser.id}/oidc-binding`, {
-    body: { issuer, subject: boundSubject },
-  });
-  expectStatus(bind, 200, 'bind OIDC identity');
   const passwordAfterBind = new ApiClient(apiBase);
   const passwordLogin = await passwordAfterBind.request('POST', '/api/v1/auth/login', {
     body: {
