@@ -9,7 +9,7 @@ environment: "测试环境（Testcontainers MySQL 8.4 + Compose 测试栈）；�
 
 # M10 OPS-004..007 测试环境演练记录
 
-本记录只覆盖**非生产**演练。V10 生产执行仍需要 OPS 运行手册、备份、维护窗口与用户按合同
+本文件是 OPS 演练记录，不属于 `.riccon/reviews/` 模块评审。本记录只覆盖**非生产**演练。V10 生产执行仍需要 OPS 运行手册、备份、维护窗口与用户按合同
 `decision_owners.production` 的 T4 批准；本文件不构成生产发布批准。
 
 ## 1. 环境与边界

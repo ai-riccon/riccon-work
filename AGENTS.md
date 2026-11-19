@@ -349,33 +349,71 @@ budget:
 - `grill-me` / `grilling`：仅用于项目前期设计访谈，不进入交付循环。
 - `opencode`：仅当需要修改团队配置或排查 OpenCode 自身行为时加载。
 
-## 协作约定
+<!-- riccon:team:start -->
 
-- 开始工作前读 `.riccon/state.json`、最新 handoff 和本文件中的合同。
-- 不假设合同里没有的目录、命令或工具。
-- 每个任务都有写入范围和验收标准；不要静默扩大任何一项。
-- 证据必须在提交之后录制：先 commit，再 `riccon evidence run`；dirty 工作区录制的证据 strict gate 会失败。
-- task 的 `write_scope` 按文件路径 glob 匹配；目录必须写 `dir/**`，不要写 `dir`。
-- 证据是命令、退出码和输出路径，不是声明。strict 绑定下，review 的 `dod_evidence` 必须把 acceptance/build/tests/e2e/coverage/docs 指向真实、通过、已评审的证据；命令必须与合同 `commands` 对应项匹配，空命令和 `not-implemented`/占位命令直接失败；未加引号管道默认失败，`||` 只允许 `exit 非零`，`; true`、`exit 0`、后台 `&` 等掩盖失败也失败。
-- 不要把密钥写进仓库、状态、日志或提示词。
-- 不要编辑 `.riccon/` 中其他角色负责的决策或报告。
-- 代码变更同步更新文档，或记录 no-impact 理由。
-- 产品范围、不可逆技术选择、生产、花钱和破坏性操作由用户拥有；其余授权给团队。
-- 文档、注释、决策包、评审包和 handoff 默认中文；代码注释必须中文；代码标识符、命令和字段名保持英文。
-- 代码注释至少方法级；复杂业务流程必须有行级或段落注释；不写重复、无信息量的注释。
-- Architect 在 Builder 开始前创建 `docs/CODING-STANDARDS.md`，按技术栈和行业最佳实践定义编码规范；Builder 必须遵循，Verifier 检查。
-- “覆盖率”默认指代码行/分支覆盖率，不是 AC 覆盖；门槛见合同 `constraints.coverage`，报告必须可由 `commands.coverage` 复现。
-- 现有历史代码的注释迁移单独成任务，不和行为变更混合。
-- 任务过大（`write_scope` 超过 8 项或 acceptance 超过 6 项）时先拆分；不要用一个大任务让 Builder 长时间只读。
+## 内容索引
+
+本文件保留合同和硬规则；详细协作规则按下面索引读取。开始或恢复任何模块前，必须读 Project Contract 和 `docs/COLLABORATION.md`。
+
+| 内容                                              | 位置                                  |
+| ------------------------------------------------- | ------------------------------------- |
+| 技术栈、命令、工具、DoD、预算                     | `AGENTS.md#project-contract`          |
+| 角色边界、模块/任务生命周期、验收顺序、评审、证据 | `docs/COLLABORATION.md`               |
+| 产品目标、用户、MVC、non-goals、AC                | `docs/PRODUCT.md`                     |
+| 架构、数据模型、API/事件契约、ADR                 | `docs/ARCHITECTURE.md`、`docs/adr/`   |
+| 编码规范、注释、覆盖率门槛                        | `docs/CODING-STANDARDS.md`            |
+| 产品验收和用户验收                                | `docs/ACCEPTANCE.md`                  |
+| 运行、部署、回滚                                  | `docs/RUNBOOK.md`                     |
+| 沙箱和隔离边界                                    | `docs/SANDBOX.md`                     |
+| 执行状态、任务、证据、评审、handoff               | `.riccon/state.json` 和最新 handoff   |
+| 团队内核、命令和 skills                           | 已安装的 `~/.config/opencode/riccon/` |
+
+## 硬规则
+
+以下规则即使不读详细文档也必须遵守；详细说明见 `docs/COLLABORATION.md`。
+
+- 合同是技术栈、命令、工具和约束的唯一事实源；合同里没有的目录、命令或工具不要假设。
+- 每个任务都有 `write_scope` 和验收标准；不要静默扩大任何一项。
+- 先提交，再 `riccon evidence run`；strict 下 dirty 证据、空命令、占位命令和掩盖失败的写法不能让 gate 通过。
+- Product 的 brief/AC/non-goals 必须经过 Lead、用户、Architect、Verifier 的评审链；未批准不进入模块实现。
+- Architect 的架构/ADR 必须经过 Lead、用户（不可逆项）、Verifier、Ops 评审；未评审的 ADR 保持 `proposed`。
+- Builder 只把任务移到 `review`，不自己 `done`；高风险任务在 done 前必须有独立 Verifier 评审。
+- gate 通过后、模块 done 前，Product 预验收必须 `pass`；done 后再做用户最终验收，用户未 `accepted` 前不启动下一个用户可见模块。
+- 验收失败用 `kind: fix` + `fixes_module`，或在显式决策后重新打开；不要只靠标题或 `depends_on`。
+- 不把密钥写进仓库、`.riccon/`、日志、任务卡、证据、提示词或 handoff。
+- 产品范围、不可逆技术选择、生产发布、花钱和破坏性操作由用户拥有；其余授权给团队。
+- 文档、注释、commit message、决策包、评审包和 handoff 默认中文；代码注释必须中文，标识符、命令、字段名保持英文。
+- 所有时间默认北京时间（`Asia/Shanghai`，UTC+08:00）；数据库和 API/日志/UI 按合同约定使用带偏移时间。
+
+<!-- riccon:team:end -->
+
+## 项目补充
+
+项目特定规则；不得削弱团队硬规则和 Project Contract。
+
+### 时间与数据库
+
+- 所有时间默认北京时间（`Asia/Shanghai`，UTC+08:00）；API/日志/事件/UI 使用带偏移的 ISO 8601。
+- 数据库存储按合同/ADR（当前 MySQL `DATETIME(6)` UTC，见 ADR-0008/0012）。
+
+### 成本与预算
+
 - 模块结束用 `riccon module cost` 记录墙钟；本项目不计量 token 与美元成本，`confidence` 用 `estimated`，并在 source/note 注明 wall-clock-only；全部指标为 0 时只能用 `unmeasured`。
-- Product 的 brief/AC/non-goals 先经 Lead 完整性/合同一致性评审，再由用户批准范围；随后 Architect 评可行性、Verifier 评可验证性；结论写入 `docs/PRODUCT.md` 评审状态表。
-- Architect 的 ARCHITECTURE/ADR 需经 Lead、用户（不可逆/高成本项）、Verifier、Ops 评审；未批准的 ADR 保持 `proposed`；结论写入 `docs/ARCHITECTURE.md` 评审状态表。
-- Builder 只把任务移到 `review`，不自行 `done`；高风险任务（认证、权限、迁移、并发、安全、AI 工具调用）在 done 前必须有独立 Verifier 评审。
-- 任务级/架构级独立评审写到 `.riccon/reviews/tasks/<task>-review.md`，由 `task-review.schema.json` 校验；模块评审写到 `.riccon/reviews/<module>-review.md`。任务评审不参与模块 gate，高风险任务 closeout 必须引用。
-- 模块 gate 通过后、模块 done 前，先由 Product 在 `docs/ACCEPTANCE.md` 做预验收；Product `pass` 后才标记 done，再提交用户最终验收（accepted/rejected/conditional）。用户未 accepted 不进入下一个用户可见模块。验收失败用 `kind: fix` + `fixes_module`，或在显式决策后重开；不要只靠标题或 `depends_on`。
-- 模块过大时在构建前拆分，用 `split_from`/`aliases` 记录关系；模块 ID 仍为 `M` + 数字。任务进入 `in_progress` 前模块必须是 `building`，依赖全部 done；一个任务只承载一个可独立验收的用户可见结果。
-- 模块评审的 AC 对账必须引用 AC 原文的用户可见结果；AC 要求界面、文案或入口时，API 证据不能单独判 pass，必须绑定 UI/E2E 证据。
-- 模块 `product_acceptance` 记录 `product_status`/`user_status`/decision_id；`docs/ACCEPTANCE.md` 保留详细 AC 表与证据。
-- 所有时间默认北京时间（`Asia/Shanghai`，UTC+08:00）；API/日志/事件/UI 使用带偏移的 ISO 8601；数据库存储按合同/ADR（当前 MySQL `DATETIME(6)` UTC，见 ADR-0008/0012）。
+
+### 验证与证据
+
 - 验证分层：L1 迭代跑定向测试/编译；L2 任务收尾跑受影响模块一次全量并录 EV；L3 模块 gate 由 verifier 跑合同 test/coverage/E2E/a11y/security。`verify` 已含 worker，不得同一任务重复跑 worker 全量；共享层/契约/迁移变更必须全量一次；最终证据在干净提交上录制，探索性失败不录，负向安全证据保留；并行 agent 同一时间只跑一个全量套件。
+- task 的 `write_scope` 按文件路径 glob 匹配；目录必须写 `dir/**`，不要写 `dir`。
+- strict 绑定下，review 的 `dod_evidence` 必须把 acceptance/build/tests/e2e/coverage/docs 指向真实、通过、已评审的证据；证据命令必须与合同 `commands` 对应项匹配。
+
+### 评审与验收文件
+
+- 任务级/架构级独立评审写到 `.riccon/reviews/tasks/<task>-review.md`，由 `task-review.schema.json` 校验；模块评审写到 `.riccon/reviews/<module>-review.md`。任务评审不参与模块 gate，高风险任务 closeout 必须引用。
+- Product 的 brief/AC/non-goals 评审结论写入 `docs/PRODUCT.md` 评审状态表；Architect 的架构/ADR 评审结论写入 `docs/ARCHITECTURE.md` 评审状态表。
+- 高风险任务（认证、权限、迁移、并发、安全、AI 工具调用）在 done 前必须有独立 Verifier 评审。
+
+### 写入边界与历史债务
+
+- 不编辑 `.riccon/` 中其他角色负责的决策或报告。
+- 现有历史代码的注释迁移单独成任务，不和行为变更混合。
 - 合同变更：加载 `riccon-contract` → 修改受管区块 → `riccon contract sync` → `riccon contract validate --strict`；决策不可覆盖，只追加。

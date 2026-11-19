@@ -122,7 +122,7 @@ findings:
     severity: P3
     status: accepted
     title: "OPS-008/009/010/013/014/015 仍属 M09/生产"
-    evidence: "M10-OPS-review；M10-ops-drill.md"
+    evidence: "M10-OPS-review；docs/M10-OPS-DRILL.md"
   - id: F-013
     severity: P3
     status: accepted
@@ -241,7 +241,7 @@ created_at: "2026-11-19T18:36:17+08:00"
 - `V10MigrationTest`（11 tests，一次性 Testcontainers MySQL 8.4）：V1–V8 → seed M02 → V9 → seed M03/audit → V10；表/租户键/复合外键/CHECK/状态机/索引列序/权限回填/M02-M03 可读/空库 fresh install/回滚 V9/失败注入 repair 重跑全部通过。
 - 回滚包含 `flyway_schema_history` V10 行删除与 `MAX(version)=9` 校验；不接触生产。
 - `SchemaVersionCheckerTest` 5/5；真实栈 worker 在 schema 10 上健康。
-- OPS 演练记录见 `.riccon/reviews/M10-ops-drill.md`：OPS-005/006/007 测试环境通过；OPS-004 的 schema 前置通过，完整协调切换与 OPS-010 OIDC 回滚锁死仍是生产发布前置，未冒充已验证。
+- OPS 演练记录见 `docs/M10-OPS-DRILL.md`：OPS-005/006/007 测试环境通过；OPS-004 的 schema 前置通过，完整协调切换与 OPS-010 OIDC 回滚锁死仍是生产发布前置，未冒充已验证。
 
 ## 8. Findings
 

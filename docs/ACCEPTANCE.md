@@ -16,15 +16,17 @@
 - M15 补丁（fixes M10）：后端 `08e0fc6`（EV-0449）、前端 `4538d8c`（EV-0450）、a11y `c4ebd3e`（EV-0478）；TASK-0084/0085/0087/0086 done，gate pass（REV-M15-001）；代码证据 EV-0482..0486、EV-0488 在 `864b0a7`，docs EV-0489 在 `de33ed8`（EV-0487 为中间失败，不引用）
 - 验收日期：2026-11-19（M10 初次）、2026-11-20（M15 后复验）
 - 验收人：Product、用户
-- 参考：REV-M13-001、REV-M03-001、REV-M03-V1-002、REV-M10-001、REV-M15-001、REV-M10-ARCH-002、REV-M10-OPS-001、M10-ops-drill、REV-TASK-0033-002、REV-TASK-0037/0039/0041/0043/0045、REV-TASK-0065-002/0068/0069/0071/0076
+- 参考：REV-M13-001、REV-M03-001、REV-M03-V1-002、REV-M10-001、REV-M15-001、REV-M10-ARCH-002、REV-M10-OPS-001、M10-OPS-DRILL、REV-TASK-0033-002、REV-TASK-0037/0039/0041/0043/0045、REV-TASK-0065-002/0068/0069/0071/0076
 
 ## 模块关系与验收状态
 
 - **M03**：`feature`，done；原 gate `bc97d1c` + M13 补丁 gate pass；Product `pass`，用户 `accepted`（DEC-0016）。
 - **M13**：`fix`，`fixes_module=M03`；代码 `410cddd`，gate pass（REV-M13-001，EV-0352..EV-0359、EV-0361）；Product 复查 R-M03-01..03 `pass`；用户随 M03 `accepted`（DEC-0016）。
-- **M10**：`feature`，`split_from=M03`，alias `M03b`；V1 TASK-0083 done，gate pass（REV-M10-001，29 条 reviewed_evidence；DEC-0018 上限 20h）；M15 修复后 Product 预验收 `pass`，用户最终验收 `pending`；模块 review 记录与 done 由 Lead 更新。
+- **M10**：`feature`，`split_from=M03`，alias `M03b`；V1 TASK-0083 done，gate pass（REV-M10-001，29 条 reviewed_evidence；DEC-0018 上限 20h）；M15 修复后 Product 预验收 `pass`，用户最终验收 `accepted`（DEC-0021）。
 - **M15**：`fix`，`fixes_module=M10`；TASK-0084/0085/0087/0086 done，gate pass（REV-M15-001）；R-M10-01 `fixed`；无独立用户 AC，随 M10 复验；B2 F-001 collation 仍为 residual。
 - **M11**：legacy docs-only 模块，TASK-0035/0036 done；无模块 gate；状态保持 planned 并保留 `state validate` warning，后续单独 docs-only closeout 或 handoff 注记，不增加任务、不使用 `--force`。
+- **M12**：维护模块，done；热栈/test-affected/文档无用户可见 AC，Product/用户验收为 `not-recorded`（N/A legacy），不伪造 pass。
+- **M14**：docs-only legacy，building；TASK-0053/0057/0061 已 done，但尚无模块 review/gate；Product/user 结论重置为 `pending`，待独立 closeout 后再验收。
 
 ## 验收标准（M03，M13 补丁后）
 
@@ -155,10 +157,10 @@ Product 预验收不检查实现细节、安全边界、并发或测试充分性
 
 ## 用户最终验收（M10）
 
-- 结论：`pending`
-- 决策 ID：未产生
-- 条件/剩余项：R-M10-01 已 `fixed`；Product 预验收 `pass`（M15 后）；由 Lead 提交用户最终验收。用户 `accepted` 前不进入下一个用户可见模块。B2 F-001 collation P2、M15 F-003 P2、B4/B5 P3、OPS 生产未演练、ADR proposed 仍按残余/待办记录。
-- 下一步：Lead 提交用户最终验收（`accepted`/`rejected`/`conditional`）；无需新的修复任务。用户未 `accepted` 前不进入下一个用户可见模块。
+- 结论：`accepted`
+- 决策 ID：`DEC-0021`
+- 条件/剩余项：R-M10-01 已 `fixed`；Product 预验收 `pass`（M15 后）；M15（fixes M10）随本次验收一并接受。B2 F-001 collation P2、M15 F-003 P2、B4/B5 P3、OPS 生产未演练、ADR proposed 仍按残余/待办记录，不声称解决。
+- 下一步：M04「模型网关纵深」；生产迁移/OPS-004/OPS-010/T4 批准仍为后续发布前置。
 
 ## 历史模块
 
