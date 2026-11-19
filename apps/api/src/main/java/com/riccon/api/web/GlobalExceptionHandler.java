@@ -3,8 +3,10 @@ package com.riccon.api.web;
 import com.riccon.api.error.ErrorCodes;
 import com.riccon.api.error.RicconException;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -12,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -33,6 +36,9 @@ public class GlobalExceptionHandler {
 
     /** 错误日志。 */
     private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    /** 请求方法不被路由支持；新增 {@code METHOD} 域但保持 {@code RICCON-<DOMAIN>-<NNN>} 稳定码格式。 */
+    private static final String METHOD_NOT_ALLOWED = "RICCON-METHOD-405";
 
     /**
      * 映射业务异常。
@@ -198,6 +204,40 @@ public class GlobalExceptionHandler {
                 "Invalid file",
                 "multipart request is invalid",
                 request);
+    }
+
+    /**
+     * 映射请求方法不受支持。
+     *
+     * <p>只读端点没有写路由时，Spring MVC 在进入权限拦截器之前抛出本异常；这里返回 405 并保留
+     * {@code Allow} 头，避免落入兜底 500 污染错误率与日志。响应只含稳定错误码与通用说明，不带堆栈、
+     * 路由细节或请求内容。
+     *
+     * @param exception 方法不支持异常
+     * @param request HTTP 请求
+     * @return 405 响应
+     */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ProblemDetail> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException exception, HttpServletRequest request) {
+        LOG.info(
+                "request method not supported traceId={} path={} method={}",
+                RequestContext.traceId(request),
+                request.getRequestURI(),
+                exception.getMethod());
+        ResponseEntity.BodyBuilder builder =
+                ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).contentType(MediaType.APPLICATION_PROBLEM_JSON);
+        // 保留 Spring MVC 解析出的受支持方法；集合为空时不伪造 Allow 头。
+        Set<HttpMethod> supported = exception.getSupportedHttpMethods();
+        if (supported != null && !supported.isEmpty()) {
+            builder.allow(supported.toArray(HttpMethod[]::new));
+        }
+        return builder.body(ApiProblems.create(
+                HttpStatus.METHOD_NOT_ALLOWED,
+                METHOD_NOT_ALLOWED,
+                "Method not allowed",
+                "request method is not supported",
+                RequestContext.traceId(request)));
     }
 
     /**
