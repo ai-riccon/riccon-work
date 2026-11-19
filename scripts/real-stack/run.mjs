@@ -311,16 +311,22 @@ try {
     REAL_OIDC_CLIENT_ID: OIDC_CLIENT_ID,
     REAL_OIDC_PROVIDER_NAME: OIDC_PROVIDER_NAME,
   };
+  // 定向复验：REAL_PLAYWRIGHT_GREP 只过滤浏览器用例，不改变 fixture/seed；全量 gate 不设置该变量。
+  const playwrightGrep = process.env.REAL_PLAYWRIGHT_GREP;
+  const playwrightArgs = [
+    'exec',
+    'playwright',
+    'test',
+    '--config',
+    'e2e/real/playwright.real.config.ts',
+    '--reporter=line',
+  ];
+  if (playwrightGrep) {
+    playwrightArgs.push('--grep', playwrightGrep);
+  }
   const playwright = spawnSync(
     'pnpm',
-    [
-      'exec',
-      'playwright',
-      'test',
-      '--config',
-      'e2e/real/playwright.real.config.ts',
-      '--reporter=line',
-    ],
+    playwrightArgs,
     {
       cwd: repoRoot,
       env: { ...process.env, ...playwrightEnv },

@@ -158,13 +158,12 @@ async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
 /**
  * 判断 serious/critical 违规是否属于已记录的既有残余。
  *
- * 两类问题均在 M15 之前存在，且不在来源 IdP 变更面；M15 不声称修复，只在 M15-review 记录
- * P2 accepted：
- * - antd 6 绿色 `Tag color="green"`（“启用”）在 12px 下对比度约 3.37:1，低于 WCAG AA 4.5:1；
- * - 审计表“查看详情”按钮的 `aria-label` 为“查看事件详情 <动作>”，未包含可见文本“查看详情”，
- *   触发 WCAG 2.5.3 label-content-name-mismatch。
+ * 仅保留 M15 之前存在、不属于来源 IdP 变更面的 antd 6 绿色 `Tag color="green"`（“启用”）
+ * 对比度问题（12px 下约 3.37:1，低于 WCAG AA 4.5:1，M15 F-003 P2 accepted）。
  *
- * 只放行目标全部命中对应元素的节点；其他 serious/critical 仍失败。
+ * `label-content-name-mismatch` 已由 TASK-0087/c4ebd3e 修复，不再放行：审计/导出按钮的
+ * aria-label 必须以可见文本开头并保留行上下文。只放行目标全部命中 `.ant-tag-green` 的节点，
+ * 其他 serious/critical 仍失败。
  *
  * @param violation axe 违规
  * @returns 已记录问题返回 true
@@ -174,20 +173,12 @@ function isKnownA11yResidual(violation: {
   impact?: string | null;
   nodes: Array<{ target: Array<string | string[]> }>;
 }): boolean {
-  if (violation.id === 'color-contrast') {
-    return violation.nodes.every((node) =>
+  return (
+    violation.id === 'color-contrast' &&
+    violation.nodes.every((node) =>
       node.target.some((target) => JSON.stringify(target).includes('ant-tag-green')),
-    );
-  }
-  if (violation.id === 'label-content-name-mismatch') {
-    // 审计/导出表操作按钮：可见文本“查看详情”“下载 CSV”未包含在“查看事件详情/查看导出详情/下载导出”
-    // 的 aria-label 中；同属既有残余，记录为 M15 F-004。
-    const knownActions = ['查看事件详情', '查看导出详情', '下载导出'];
-    return violation.nodes.every((node) =>
-      knownActions.some((action) => node.target.some((target) => JSON.stringify(target).includes(action))),
-    );
-  }
-  return false;
+    )
+  );
 }
 
 /**
@@ -452,7 +443,7 @@ test.describe('M10 身份与审计', () => {
     await page.getByRole('button', { name: /查\s*询/ }).click();
     await expect(page.getByText('model.invocation.completed').first()).toBeVisible();
     await page
-      .getByRole('button', { name: /查看事件详情 model.invocation.completed/ })
+      .getByRole('button', { name: /查看详情：事件 model.invocation.completed/ })
       .first()
       .click();
     const drawer = page.getByRole('dialog').filter({ hasText: '审计事件详情' });
@@ -514,7 +505,7 @@ test.describe('M10 身份与审计', () => {
     const approvedRow = page.locator('.ant-table-row').filter({ hasText: '已批准' }).first();
     await expect(approvedRow).toBeVisible();
     const downloadPromise = page.waitForEvent('download');
-    await approvedRow.getByRole('button', { name: /下载导出/ }).click();
+    await approvedRow.getByRole('button', { name: /下载 CSV：导出/ }).click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/^audit-export-.*\.csv$/);
     const stream = await download.createReadStream();
