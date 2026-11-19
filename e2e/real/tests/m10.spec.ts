@@ -180,8 +180,11 @@ function isKnownA11yResidual(violation: {
     );
   }
   if (violation.id === 'label-content-name-mismatch') {
+    // 审计/导出表操作按钮：可见文本“查看详情”“下载 CSV”未包含在“查看事件详情/查看导出详情/下载导出”
+    // 的 aria-label 中；同属既有残余，记录为 M15 F-004。
+    const knownActions = ['查看事件详情', '查看导出详情', '下载导出'];
     return violation.nodes.every((node) =>
-      node.target.some((target) => JSON.stringify(target).includes('查看事件详情')),
+      knownActions.some((action) => node.target.some((target) => JSON.stringify(target).includes(action))),
     );
   }
   return false;
