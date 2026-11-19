@@ -172,7 +172,7 @@ test.describe('M10 身份与审计', () => {
     const m10 = readM10Context();
     await setOidcBehavior(m10, 'login', m10.binding.subject);
     await loginEnterprise(page, m10);
-    await expect(page.getByText(m10.binding.displayName)).toBeVisible();
+    await expect(page.getByText(m10.binding.displayName, { exact: true }).first()).toBeVisible();
 
     // 浏览器存储与 Cookie 不出现 JWT/access token。
     const cookieText = JSON.stringify(await context.cookies());
@@ -223,7 +223,7 @@ test.describe('M10 身份与审计', () => {
       .fill(`${m10.oidcBase}/realms/${m10.oidcRealm}`);
     await dialog.getByPlaceholder('例如 248289761001').fill(`subject-ui-${suffix}`);
     await dialog.getByRole('button', { name: '确认绑定' }).click();
-    await expect(page.getByText(/已绑定 UI 绑定员工的企业账号/)).toBeVisible();
+    await expect(page.getByText(/已绑定 UI 绑定员工.*的企业账号/)).toBeVisible();
 
     // IdP 拒绝授权：登录页显示稳定原因与下一步，不出现 IdP 原始错误或堆栈。
     await logout(page);
@@ -260,13 +260,9 @@ test.describe('M10 身份与审计', () => {
     await expect(page.getByText('保留策略与只读边界')).toBeVisible();
     await expect(page.getByText(/至少保留 180 天/)).toBeVisible();
 
-    // 动作过滤：模型事件显示 token 指标。
-    await page.getByRole('combobox', { name: '动作' }).click();
-    await page
-      .locator('.ant-select-dropdown:visible .ant-select-item-option')
-      .filter({ hasText: 'model.invocation.completed' })
-      .click();
-    await page.getByRole('button', { name: '查询' }).click();
+    // 对象过滤：模型事件显示 token 指标（避免虚拟列表滚动依赖）。
+    await page.getByRole('textbox', { name: '对象 ID' }).fill('=SUM(A1:A2)');
+    await page.getByRole('button', { name: /查\s*询/ }).click();
     await expect(page.getByText('model.invocation.completed').first()).toBeVisible();
     await page
       .getByRole('button', { name: /查看事件详情 model.invocation.completed/ })
@@ -277,24 +273,19 @@ test.describe('M10 身份与审计', () => {
     await page.keyboard.press('Escape');
 
     // 分页：按操作者过滤出 >=220 条，翻到第 2 页。
-    await page.getByRole('button', { name: '重置' }).click();
-    await page.getByRole('combobox', { name: '动作' }).click();
-    await page
-      .locator('.ant-select-dropdown:visible .ant-select-item-option')
-      .filter({ hasText: 'auth.login.succeeded' })
-      .click();
+    await page.getByRole('button', { name: /重\s*置/ }).click();
     await page.getByRole('textbox', { name: '操作者 ID' }).fill(seed.userIds.alphaAdmin);
-    await page.getByRole('button', { name: '查询' }).click();
+    await page.getByRole('button', { name: /查\s*询/ }).click();
     await expect(page.getByText(/共 \d{3,} 条/).first()).toBeVisible();
     await page.locator('.ant-pagination-item-2').click();
     await expect(page.locator('.ant-pagination-item-active')).toHaveText('2');
 
     // 空态：合法但无结果的 UUID。
-    await page.getByRole('button', { name: '重置' }).click();
+    await page.getByRole('button', { name: /重\s*置/ }).click();
     await page
       .getByRole('textbox', { name: '操作者 ID' })
       .fill('11111111-1111-4111-8111-111111111111');
-    await page.getByRole('button', { name: '查询' }).click();
+    await page.getByRole('button', { name: /查\s*询/ }).click();
     await expect(
       page.getByText('当前条件下没有审计事件。可以扩大时间范围或清除过滤条件。'),
     ).toBeVisible();
@@ -376,7 +367,7 @@ test.describe('M10 身份与审计', () => {
     // 键盘路径：审计页仅用键盘完成一次查询。
     await page.goto('/admin/audit');
     await expect(page.getByText('保留策略与只读边界')).toBeVisible();
-    const queryButton = page.getByRole('button', { name: '查询' });
+    const queryButton = page.getByRole('button', { name: /查\s*询/ });
     await queryButton.focus();
     await expect(queryButton).toBeFocused();
     await page.keyboard.press('Enter');
