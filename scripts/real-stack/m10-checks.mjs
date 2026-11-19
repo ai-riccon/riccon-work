@@ -108,7 +108,10 @@ async function startOidc(client, tenantCode) {
       callbackStatus: 0,
     };
   }
-  assert.ok(location.includes('/authorize?'), `authorize must redirect to IdP: ${location}`);
+  // IdP 不可达时预检会直接重定向回登录页；此时没有 IdP 授权地址可跟随。
+  if (!location.includes('/authorize?')) {
+    return { authorizeStatus: authorize.status, callbackLocation: location, callbackStatus: 0 };
+  }
   const idpAuthorize = new URL(location);
   assert.ok(idpAuthorize.searchParams.get('code_challenge'), 'authorize must carry PKCE challenge');
   assert.equal(idpAuthorize.searchParams.get('code_challenge_method'), 'S256');
