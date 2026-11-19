@@ -482,10 +482,8 @@ async function main() {
   ok('audit method 405');
 
   // ---------- 导出：申请/自批/他批/下载/CSV/平台边界 ----------
-  const exportFilter = {
-    action: 'auth.login.succeeded',
-    actorId: alphaAdminId,
-  };
+  // 空过滤器覆盖全部事件，确保 CSV 包含模型事件与公式前缀 targetId。
+  const exportFilter = {};
   const created = expectStatus(
     await alphaAdmin.post('/api/v1/audit-exports', { filter: exportFilter }),
     201,
