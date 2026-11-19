@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0072",
+  "module_id": "M10",
+  "title": "M10-B3a 独立评审：V10/权限/worker",
+  "owner": "riccon/verifier",
+  "status": "in_progress",
+  "write_scope": [
+    ".riccon/reviews/tasks/**"
+  ],
+  "acceptance": [
+    "V10 audit_export_request/索引/权限字典/角色回填；租户键/FK/CHECK/回滚；纯 additive",
+    "RoleDefinitions 仅两条导出审批权限；新租户/空库；MEMBER 无审计权限；B1 owner 边界",
+    "worker SchemaVersionChecker 10；OPS-002/004 滚动顺序；不执行生产迁移",
+    "V1–V9 seed→V10/回滚；索引原子/失败恢复 OPS-005/006/007；无删测",
+    "独立跑 V10MigrationTest/RoleDefinitionsTest/SchemaVersionCheckerTest；核对 EV-0409 685 tests",
+    "写 TASK-0068-review.md verdict；B2/B3b 是否可启动；F-001 是否 fixed"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-19T09:52:34.439+08:00",
+  "updated_at": "2026-11-19T09:52:35.897+08:00",
+  "baseline_commit": "66882797cfd1b016656daab5c6fcf01bcf3ad5a3"
+}
