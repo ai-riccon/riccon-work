@@ -368,14 +368,14 @@ async function main() {
       .slice(0, 19)
       .replace('T', ' ');
     rows.push(
-      `(${binaryUuid(randomUUID())}, '${occurred}', ${sqlString(seed.tenants.alpha)}, 'USER', ${sqlString(alphaAdminId)}, 'auth.login.succeeded', 'SESSION', ${sqlString(`synthetic-${index}`)}, 'SUCCESS', ${sqlString(`trace-synthetic-${index}`)}, NULL, NULL, NULL, NULL)`,
+      `(${binaryUuid(randomUUID())}, '${occurred}', ${sqlString(seed.tenants.alpha)}, 'USER', ${sqlString(alphaAdminId)}, 'auth.login.succeeded', 'SESSION', ${sqlString(`synthetic-${index}`)}, 'SUCCESS', ${sqlString(`trace-synthetic-${index}`)}, NULL, NULL, NULL, 1)`,
     );
   }
   // 公式注入与模型 token 指标：target_id 以 = 开头；details 只含白名单键。
   const modelEventId = randomUUID();
   const occurred = new Date(now - 3_000).toISOString().slice(0, 19).replace('T', ' ');
   rows.push(
-    `(${binaryUuid(modelEventId)}, '${occurred}', ${sqlString(seed.tenants.alpha)}, 'SERVICE', 'worker', 'model.invocation.completed', 'MODEL', '=SUM(A1:A2)', 'SUCCESS', 'trace-model-synthetic', NULL, NULL, NULL, '{"modelId":"fake-chat","durationMs":12,"promptTokens":10,"completionTokens":20}')`,
+    `(${binaryUuid(modelEventId)}, '${occurred}', ${sqlString(seed.tenants.alpha)}, 'SERVICE', 'worker', 'model.invocation.completed', 'MODEL', '=SUM(A1:A2)', 'SUCCESS', 'trace-model-synthetic', NULL, NULL, NULL, '{"modelId":"fake-chat","durationMs":12,"promptTokens":10,"completionTokens":20}', 1)`,
   );
   runSql(
     `INSERT INTO audit_event (event_id, occurred_at, tenant_id, actor_type, actor_id, action, target_type, target_id, outcome, trace_id, request_id, source_ip, details, schema_version) VALUES\n${rows.join(',\n')};`,
