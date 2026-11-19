@@ -1,0 +1,56 @@
+# command: docker compose -f deploy/compose/docker-compose.test.yml up -d --wait && pnpm -w e2e
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-19T16:06:22.915+08:00
+# finished_at: 2026-11-19T16:09:11.624+08:00
+# duration_ms: 168706
+# exit_code: 0
+
+# --- stdout ---
+
+> riccon-work@0.1.0 e2e /Users/ricky/Documents/projects/riccon-work
+> playwright test --config e2e/playwright.config.ts
+
+
+Running 26 tests using 1 worker
+
+  ✓   1 [chromium] › e2e/tests/admin.spec.ts:10:3 › 管理端布局 › 渲染 ProLayout 与占位菜单且无严重可访问性问题 @a11y (18.0s)
+  ✓   2 [chromium] › e2e/tests/chat.spec.ts:10:3 › 员工端工作空间 › 登录后展示租户、会话列表与空态，无严重可访问性问题 @a11y (3.0s)
+  ✓   3 [chromium] › e2e/tests/chat.spec.ts:18:3 › 员工端工作空间 › 新建会话后展示 J1 问答空态 (2.8s)
+  ✓   4 [chromium] › e2e/tests/errors.spec.ts:12:3 › API 错误语义 › 未登录访问受保护接口返回 ProblemDetail 401 (2.5s)
+  ✓   5 [chromium] › e2e/tests/errors.spec.ts:30:3 › API 错误语义 › 服务端会话失效后写请求返回 401，页面回到登录页并提示过期 (2.5s)
+  ✓   6 [chromium] › e2e/tests/errors.spec.ts:47:3 › API 错误语义 › 报告任务列表 403 显示无权限态且可返回工作空间 (3.5s)
+  ✓   7 [chromium] › e2e/tests/errors.spec.ts:60:3 › API 错误语义 › MCP 工具目录 403 时展示权限态并禁用创建 (3.0s)
+  ✓   8 [chromium] › e2e/tests/errors.spec.ts:74:3 › API 错误语义 › 审批冲突 409 时提示已刷新最新结果，任务保持待审批 (4.8s)
+  ✓   9 [chromium] › e2e/tests/j1.spec.ts:12:3 › J1 通用问答与文件处理 › 上传、流式引用、停止与重开完整闭环 @a11y (7.0s)
+  ✓  10 [chromium] › e2e/tests/j1.spec.ts:67:3 › J1 通用问答与文件处理 › 回答完成后按需查看运行详情与模型调用记录 @a11y (5.9s)
+  ✓  11 [chromium] › e2e/tests/j2.spec.ts:17:3 › J2 市场调研报告 › 创建、审批、工具取数与报告产物完整闭环 @a11y (16.2s)
+  ✓  12 [chromium] › e2e/tests/j2.spec.ts:103:3 › J2 市场调研报告 › 拒绝审批后任务终止且不产生报告 (4.9s)
+  ✓  13 [chromium] › e2e/tests/j2.spec.ts:123:3 › J2 市场调研报告 › MCP 超时后重试工具阶段即可产出报告 (10.1s)
+  ✓  14 [chromium] › e2e/tests/login.spec.ts:10:3 › 登录页 › 错误凭据显示统一失败提示，不泄露账号是否存在 @a11y (2.2s)
+  ✓  15 [chromium] › e2e/tests/login.spec.ts:25:3 › 登录页 › 正确凭据进入工作空间并显示租户名 @a11y (2.5s)
+  ✓  16 [chromium] › e2e/tests/login.spec.ts:33:3 › 登录页 › 375px 宽度无横向滚动 (1.2s)
+  ✓  17 [chromium] › e2e/tests/m03.spec.ts:26:3 › M03 部门与空间共享 › E2E-M03-01 平台管理员创建部门、加移成员并任命负责人 (5.4s)
+  ✓  18 [chromium] › e2e/tests/m03.spec.ts:89:3 › M03 部门与空间共享 › E2E-M03-02 负责人空间共享、普通成员入口隐藏与知识库边界 (11.6s)
+  ✓  19 [chromium] › e2e/tests/m03.spec.ts:227:3 › M03 部门与空间共享 › E2E-M03-07 部门管理页 375px 与键盘 (4.6s)
+  ✓  20 [chromium] › e2e/tests/m03.spec.ts:264:3 › M03 部门与空间共享 › E2E-M03-07 部门管理页 axe 无 serious/critical @a11y (4.9s)
+  ✓  21 [chromium] › e2e/tests/m13.spec.ts:27:3 › M13 M03 验收补丁 › R-M03-01 成员端显示所属部门、未分配与停用提示 (6.9s)
+  ✓  22 [chromium] › e2e/tests/m13.spec.ts:65:3 › M13 M03 验收补丁 › R-M03-02 可管理空间重命名、错误文案与 TENANT 只读 (10.2s)
+  ✓  23 [chromium] › e2e/tests/m13.spec.ts:140:3 › M13 M03 验收补丁 › R-M03-03 研究页按空间选择并打开部门报告 (6.2s)
+  ✓  24 [chromium] › e2e/tests/navigation.spec.ts:9:1 › 根路径跳转登录，登录后可访问管理端 (3.6s)
+  ✓  25 [chromium] › e2e/tests/responsive.spec.ts:21:3 › 窄屏布局 › 员工端工作空间在 375px 下无横向滚动 (2.1s)
+  ✓  26 [chromium] › e2e/tests/responsive.spec.ts:32:3 › 窄屏布局 › 报告任务列表、详情与产物在 375px 下无横向滚动 (6.8s)
+
+  26 passed (2.8m)
+
+# --- stderr ---
+ Container riccon-test-object-storage Running 
+ Container riccon-test-mysql Running 
+ Container riccon-test-opensearch Running 
+ Container riccon-test-mysql Waiting 
+ Container riccon-test-opensearch Waiting 
+ Container riccon-test-object-storage Waiting 
+ Container riccon-test-opensearch Healthy 
+ Container riccon-test-mysql Healthy 
+ Container riccon-test-object-storage Healthy 
+[WebServer] (node:57228) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)

@@ -1,0 +1,22 @@
+# command: REAL_EVIDENCE_TASK=TASK-0083 node scripts/real-stack/run.mjs
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-19T17:41:24.130+08:00
+# finished_at: 2026-11-19T17:43:55.001+08:00
+# duration_ms: 150870
+# exit_code: 1
+
+# --- stdout ---
+[real-stack] reset compose test stack
+[real-stack] started model pid=62960 log=.riccon/evidence/TASK-0083/real-stack-model.log
+[real-stack] started oidc pid=62964 log=.riccon/evidence/TASK-0083/real-stack-oidc.log
+[real-stack] started api pid=62969 log=.riccon/evidence/TASK-0083/real-stack-api.log
+[real-stack] api exited code=1 signal=null
+[real-stack] stopping oidc pid=62964
+[real-stack] stopping model pid=62960
+[real-stack] oidc exited code=null signal=SIGTERM
+[real-stack] model exited code=null signal=SIGTERM
+
+# --- stderr ---
+[real-stack] orchestration failed: Error: timeout waiting for http://127.0.0.1:18080/actuator/health
+    at waitForHttp (file:///Users/ricky/Documents/projects/riccon-work/scripts/real-stack/run.mjs:94:9)
+    at async file:///Users/ricky/Documents/projects/riccon-work/scripts/real-stack/run.mjs:237:3
