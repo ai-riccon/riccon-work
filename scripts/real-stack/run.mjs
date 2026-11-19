@@ -219,7 +219,7 @@ try {
       RICCON_PUBLIC_BASE_URL: `http://127.0.0.1:${WEB_PORT}`,
       RICCON_OIDC_ALLOW_HTTP: 'true',
       // 真实栈故障注入需要每次授权都重新发现，避免 10 分钟缓存掩盖 IdP 不可达。
-      RICCON_OIDC_DISCOVERY_CACHE_TTL: '0s',
+      RICCON_OIDC_DISCOVERY_CACHE_TTL: '1ms',
       RICCON_OIDC_IDPS: JSON.stringify([
         {
           tenantCode: OIDC_TENANT,
