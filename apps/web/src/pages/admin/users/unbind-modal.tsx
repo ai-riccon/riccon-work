@@ -1,6 +1,7 @@
 import { Alert, Form, Input, Modal, Typography } from 'antd';
 import { useEffect } from 'react';
 import type { OidcUnbindRequest, UserSummary } from '@/services/api/types';
+import { identityProviderSummary } from '@/services/auth/identity-provider';
 
 /** 解绑弹窗参数。 */
 export interface OidcUnbindModalProps {
@@ -82,6 +83,12 @@ export function OidcUnbindModal({
       open={open}
       title={user ? `解除企业账号绑定：${user.displayName}` : '解除企业账号绑定'}
     >
+      {user && (
+        <Typography.Paragraph type="secondary">
+          {/* 详情沿用服务端脱敏来源；OIDC 显示 providerName 或 issuer host，不显示 subject/token。 */}
+          {identityProviderSummary(user)}
+        </Typography.Paragraph>
+      )}
       <Alert
         description="解绑后账号恢复为内置账号，必须使用新设置的本地密码登录。请妥善转交密码；系统不会显示已设置的密码。"
         showIcon

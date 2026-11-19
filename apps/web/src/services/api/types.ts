@@ -47,6 +47,14 @@ export interface UserSummary {
    * 历史响应可能省略该字段，界面按“未标注”展示，不猜测为任何来源。
    */
   authSource?: AuthSource;
+  /**
+   * 来源 IdP 的脱敏展示名，对应 OpenAPI `UserSummary.identityProvider`。
+   *
+   * OIDC 为租户配置的 providerName（issuer 与配置一致时）或 issuer 的 host（非默认端口保留）；
+   * LOCAL、未知来源或无法解析时服务端省略或下发 null。界面只展示该值，
+   * 不在前端拼接完整 issuer、subject、token 或邮箱。
+   */
+  identityProvider?: string | null;
   lastLoginAt: string | null;
   createdAt: string;
 }

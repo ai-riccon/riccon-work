@@ -1,6 +1,7 @@
 import { Alert, Form, Input, Modal, Typography } from 'antd';
 import { useEffect } from 'react';
 import type { OidcBindingRequest, UserSummary } from '@/services/api/types';
+import { identityProviderSummary } from '@/services/auth/identity-provider';
 
 /** 绑定弹窗参数。 */
 export interface OidcBindingModalProps {
@@ -110,6 +111,12 @@ export function OidcBindingModal({
       open={open}
       title={user ? `绑定企业账号：${user.displayName}` : '绑定企业账号'}
     >
+      {user && (
+        <Typography.Paragraph type="secondary">
+          {/* 详情沿用服务端脱敏来源；LOCAL 显示“本地账号”，不显示邮箱或完整 issuer。 */}
+          {identityProviderSummary(user)}
+        </Typography.Paragraph>
+      )}
       <Alert
         description="绑定后将删除该账号的本地密码，账号只能通过企业身份提供方登录；角色与部门归属不变。请确认 subject 与 IdP 返回的 sub 完全一致。"
         showIcon

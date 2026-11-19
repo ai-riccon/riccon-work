@@ -6,6 +6,7 @@ import { api as defaultApi } from '@/services/api';
 import { ApiError } from '@/services/api/errors';
 import type { OidcBindingRequest, OidcUnbindRequest, UserSummary } from '@/services/api/types';
 import { authStore, useAuth } from '@/services/auth/auth-store';
+import { identityProviderSummary } from '@/services/auth/identity-provider';
 import type { UserAdminApi } from '@/services/users/api';
 import {
   PLATFORM_TENANT_ID,
@@ -281,6 +282,9 @@ export default function AdminUsersPage({
                   </Tag>
                   <Tag color={authSourceColor(user.authSource)}>
                     {authSourceLabel(user.authSource)}
+                  </Tag>
+                  <Tag className="user-admin-provider" title={identityProviderSummary(user)}>
+                    {identityProviderSummary(user)}
                   </Tag>
                   {user.roles.map((role) => (
                     <Tag key={role}>{role}</Tag>

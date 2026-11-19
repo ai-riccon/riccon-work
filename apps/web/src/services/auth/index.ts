@@ -15,6 +15,13 @@ export const oidcAuthApi: OidcAuthApi = new OidcAuthClient({
 
 export { OidcAuthClient, describeOidcProviderError } from './oidc-api';
 export type { OidcAuthApi, OidcAuthClientOptions, OidcFetchLike } from './oidc-api';
+export {
+  LOCAL_IDENTITY_PROVIDER_LABEL,
+  UNKNOWN_IDENTITY_PROVIDER_LABEL,
+  identityProviderLabel,
+  identityProviderSummary,
+} from './identity-provider';
+export type { IdentityProviderSubject } from './identity-provider';
 export * from './oidc-errors';
 export * from './federated-logout';
 export { AuthStore, authStore, useAuth } from './auth-store';

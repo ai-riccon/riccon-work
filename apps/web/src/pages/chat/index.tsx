@@ -37,6 +37,7 @@ import type { RicconApi, WorkspaceManagementApi } from '@/services/api/client';
 import { ApiError, describeApiError } from '@/services/api/errors';
 import type { ChatMessage, Citation, WorkspaceFile } from '@/services/api/types';
 import { authStore, useAuth } from '@/services/auth/auth-store';
+import { identityProviderSummary } from '@/services/auth/identity-provider';
 import {
   citationSourceLabel,
   conversationLabel,
@@ -365,7 +366,7 @@ export default function ChatPage({
     <div className="chat-page">
       <header className="chat-header">
         <div className="chat-header-inner">
-          <div>
+          <div className="chat-header-main">
             <Typography.Title className="chat-header-title" level={1}>
               Riccon 工作空间
             </Typography.Title>
@@ -377,6 +378,14 @@ export default function ChatPage({
                 isTenantAdmin={management.isTenantAdmin}
                 loading={management.loading}
               />
+              {/* 来源 IdP 只展示服务端脱敏值；LOCAL 固定显示“本地账号”，不展示完整 issuer 或 token。 */}
+              <Typography.Text
+                className="chat-identity-provider"
+                title={identityProviderSummary(auth.session.user)}
+                type="secondary"
+              >
+                {identityProviderSummary(auth.session.user)}
+              </Typography.Text>
               <Select
                 aria-label="切换工作空间"
                 className="chat-workspace-select"
