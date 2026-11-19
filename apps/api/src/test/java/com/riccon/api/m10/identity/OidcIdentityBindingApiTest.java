@@ -454,6 +454,44 @@ class OidcIdentityBindingApiTest extends ApiIntegrationTestSupport {
         assertThat(item.path("roles").toString()).isEqualTo("[\"MEMBER\"]");
     }
 
+    /** 13. 登录响应与 /auth/session 返回账号真实来源，且不泄露 issuer/subject/token。 */
+    @Test
+    @DisplayName("B2-13 会话摘要返回 LOCAL/OIDC 且不泄露身份原文")
+    void sessionInfo_exposesAuthSourceWithoutIdentitySecrets() {
+        LoginSession platform = ensureTenants();
+        LoginSession admin = createAndLoginTenantAdmin(platform, TENANT_A);
+        String username = unique("session");
+        JsonNode created = createLocalUserByTenantAdmin(admin, username);
+        UUID userId = UUID.fromString(created.path("id").asText());
+        String subject = "sub-session-" + UUID.randomUUID();
+
+        // LOCAL：登录响应与会话读取都返回 LOCAL。
+        LoginSession member = login(TENANT_A, username, PASSWORD);
+        assertThat(member.body().path("user").path("authSource").asText()).isEqualTo("LOCAL");
+        JsonNode localSession = client.json(client.get("/api/v1/auth/session", member.sessionCookie(), Map.of()));
+        assertThat(localSession.path("user").path("authSource").asText()).isEqualTo("LOCAL");
+
+        // OIDC：账号转为 OIDC 后，已认证会话在下一请求读取真实来源。
+        assertThat(bind(admin, "/api/v1/users/" + userId + "/oidc-binding", ISSUER_A, subject)
+                        .status())
+                .isEqualTo(200);
+        ApiResponse oidcResponse = client.get("/api/v1/auth/session", member.sessionCookie(), Map.of());
+        assertThat(oidcResponse.status()).as(oidcResponse.body()).isEqualTo(200);
+        JsonNode oidcSession = client.json(oidcResponse);
+        assertThat(oidcSession.path("user").path("authSource").asText()).isEqualTo("OIDC");
+
+        // 不泄露身份原文与任何 token；只输出来源枚举。
+        assertThat(oidcSession.path("user").has("issuer")).isFalse();
+        assertThat(oidcSession.path("user").has("subject")).isFalse();
+        assertThat(oidcResponse.body())
+                .doesNotContain(ISSUER_A)
+                .doesNotContain(subject)
+                .doesNotContain("accessToken", "refreshToken", "idToken");
+
+        // 未登录访问会话端点返回 401。
+        assertThat(client.get("/api/v1/auth/session").status()).isEqualTo(401);
+    }
+
     // ---------------------------------------------------------------------
     // 测试辅助
     // ---------------------------------------------------------------------

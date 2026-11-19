@@ -204,6 +204,7 @@ public class AuthController {
     private SessionInfoResponse sessionInfo(CurrentUser currentUser, String csrfToken, HttpServletRequest request) {
         UserAccount user = currentUser.user();
         TenantRecord tenant = currentUser.tenant();
+        // 只输出来源枚举（LOCAL/OIDC）；issuer/subject 与任何 token 都不进入会话响应。
         UserSummaryResponse userSummary = new UserSummaryResponse(
                 user.id(),
                 user.username(),
@@ -211,6 +212,7 @@ public class AuthController {
                 user.email(),
                 user.status(),
                 currentUser.roles(),
+                user.authSource(),
                 user.lastLoginAt(),
                 user.createdAt());
         TenantSummaryResponse tenantSummary = new TenantSummaryResponse(
