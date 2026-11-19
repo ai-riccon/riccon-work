@@ -315,6 +315,7 @@ async function main() {
 
   // ---------- 绑定后 OIDC 登录（B2 F-005） ----------
   const passwordAfterBind = new ApiClient(apiBase);
+  await passwordAfterBind.csrf();
   const passwordLogin = await passwordAfterBind.request('POST', '/api/v1/auth/login', {
     body: {
       tenantCode: seed.tenants.alpha,
