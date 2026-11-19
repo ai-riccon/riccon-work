@@ -10,7 +10,7 @@ reviewer:
 verdict: pass
 reviewed_commits: [f60435d]
 head_commit: 3b66d35
-reviewed_evidence: [EV-0413]
+reviewed_evidence: [EV-0413, EV-0414, EV-0415]
 findings:
   - id: F-001
     severity: P2
@@ -47,7 +47,7 @@ findings:
     title: "导出申请/下载只校验 audit.read，未显式校验 TENANT_ADMIN 角色"
     summary: "ADR-0020 §2 的权限写法是 `audit.read`（仅租户管理员）；实现中 `create`/`list`/`get`/`download` 只要求 `audit.read`，平台租户由业务层 403 排除。当前 V10 与 `RoleDefinitions` 只把 `audit.read` 授予 TENANT_ADMIN/PLATFORM_ADMIN，因此现状安全；但若未来给自定义角色或部门负责人授予 `audit.read`，会自动获得创建/下载导出的能力（审批仍受 `audit.export.approve` 保护）。建议架构确认是否需要显式角色断言，或把‘仅租户管理员’写成权限模型约束并在 V1 加负向用例。"
     evidence: "apps/api/src/main/java/com/riccon/api/audit/controller/AuditExportController.java:68-77、140-156；apps/api/src/main/java/com/riccon/api/audit/service/AuditExportService.java:415-419；apps/api/src/main/java/com/riccon/api/identity/domain/RoleDefinitions.java:62-78；V10__audit_query_export.sql 权限回填；ADR-0020 §2（52）"
-evidence: []
+evidence: [EV-0414, EV-0415]
 created_at: "2026-11-19T11:45:00+08:00"
 ---
 
@@ -65,18 +65,18 @@ created_at: "2026-11-19T11:45:00+08:00"
 
 ## 2. 评审范围与独立复验
 
-评审起点：`git status --short` 空；HEAD `3b66d35`；被评审提交 `f60435d`（B3b 代码），EV-0413 在同一提交上录制且 `dirty=false`。
+评审起点：`git status --short` 空；HEAD `3b66d35`；被评审提交 `f60435d`（B3b 代码），EV-0413 在同一提交上录制且 `dirty=false`。独立复验证据：**EV-0414**（`-Dtest='*Audit*'`，commit `c40e5e5`，dirty=false，exit 0）与 **EV-0415**（spotless/contract/state/diff 校验，exit 0）。
 
-| 检查/命令                                                                                       | 退出码 | 结果                                                                                                                                             |
-| ----------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `git status --short`；`git rev-parse HEAD`                                                      | 0      | 空；`3b66d35be591fdb7022cada809703da9d70e8ee8`                                                                                                   |
-| `git show --stat f60435d`                                                                       | 0      | 49 文件、5548 行新增、0 删除；全部落在 6 个授权目录（audit/{controller,service,repository,persistence}、admin/audit/**、test/m10/audit/**）      |
-| `./mvnw -q -T1C -pl apps/api -am -Dtest='*Audit*' -Dsurefire.failIfNoSpecifiedTests=false test` | 0      | m10/audit 9 个套件 **47 tests、0 fail/0 error/0 skip**；同 pattern 另匹配既有 `*Audit*` 15 个用例；总计 62 个，全部通过                          |
-| `./mvnw -q spotless:check`                                                                      | 0      | 通过                                                                                                                                             |
-| `riccon contract validate --strict`；`riccon state validate`                                    | 0      | contract 0 errors/0 warnings；state 0 errors/1 条与 B3b 无关的 M11 历史警告                                                                      |
-| `git diff --check`                                                                              | 0      | 无空白错误                                                                                                                                       |
-| EV-0413 审计                                                                                    | —      | `commit=f60435d`、`dirty=false`、`exit=0`、819,554 ms；日志 SHA-256 与 EV JSON 一致；API 67 套件 420 tests/0/0/0，worker 48 套件 263 tests/0/0/0 |
-| EV-0413 覆盖率（JaCoCo XML/CSV）                                                                | —      | API line 91.25%、branch 73.61%；worker line 87.87%、branch 70.77%；均高于合同 line 80 / branch 70                                                |
+| 检查/命令                                                                                                  | 退出码 | 结果                                                                                                                                             |
+| ---------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `git status --short`；`git rev-parse HEAD`                                                                 | 0      | 空；`3b66d35be591fdb7022cada809703da9d70e8ee8`                                                                                                   |
+| `git show --stat f60435d`                                                                                  | 0      | 49 文件、5548 行新增、0 删除；全部落在 6 个授权目录（audit/{controller,service,repository,persistence}、admin/audit/**、test/m10/audit/**）      |
+| `./mvnw -q -T1C -pl apps/api -am -Dtest='*Audit*' -Dsurefire.failIfNoSpecifiedTests=false test`（EV-0414） | 0      | m10/audit 9 个套件 **47 tests、0 fail/0 error/0 skip**；同 pattern 另匹配既有 `*Audit*` 15 个用例；总计 62 个，全部通过                          |
+| `./mvnw -q spotless:check`（EV-0415）                                                                      | 0      | 通过                                                                                                                                             |
+| `riccon contract validate --strict`；`riccon state validate`（EV-0415）                                    | 0      | contract 0 errors/0 warnings；state 0 errors/1 条与 B3b 无关的 M11 历史警告                                                                      |
+| `git diff --check`（EV-0415）                                                                              | 0      | 无空白错误                                                                                                                                       |
+| EV-0413 审计                                                                                               | —      | `commit=f60435d`、`dirty=false`、`exit=0`、819,554 ms；日志 SHA-256 与 EV JSON 一致；API 67 套件 420 tests/0/0/0，worker 48 套件 263 tests/0/0/0 |
+| EV-0413 覆盖率（JaCoCo XML/CSV）                                                                           | —      | API line 91.25%、branch 73.61%；worker line 87.87%、branch 70.77%；均高于合同 line 80 / branch 70                                                |
 
 未重复/未执行：全量 `verify`（按要求只核对 EV-0413）、`pnpm -w test`、E2E、a11y、security、k6、V10 生产回滚演练、真实浏览器 UI。这些属 M10-V1 与模块 gate。
 
