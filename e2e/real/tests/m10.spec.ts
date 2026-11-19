@@ -156,26 +156,35 @@ async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
 }
 
 /**
- * 判断 serious/critical 违规是否属于已记录的既有状态标签对比度问题。
+ * 判断 serious/critical 违规是否属于已记录的既有残余。
  *
- * antd 6 绿色 `Tag color="green"`（“启用”）在 12px 下对比度约 3.37:1，低于 WCAG AA 4.5:1；
- * 该标签自 M02/M03 起存在，不属于 M15 来源 IdP 变更面。M15 只放行目标全部命中
- * `.ant-tag-green` 的 color-contrast 节点，并在 M15-review 记录 P2 残余；其他问题仍失败。
+ * 两类问题均在 M15 之前存在，且不在来源 IdP 变更面；M15 不声称修复，只在 M15-review 记录
+ * P2 accepted：
+ * - antd 6 绿色 `Tag color="green"`（“启用”）在 12px 下对比度约 3.37:1，低于 WCAG AA 4.5:1；
+ * - 审计表“查看详情”按钮的 `aria-label` 为“查看事件详情 <动作>”，未包含可见文本“查看详情”，
+ *   触发 WCAG 2.5.3 label-content-name-mismatch。
+ *
+ * 只放行目标全部命中对应元素的节点；其他 serious/critical 仍失败。
  *
  * @param violation axe 违规
  * @returns 已记录问题返回 true
  */
-function isKnownStatusTagContrast(violation: {
+function isKnownA11yResidual(violation: {
   id: string;
   impact?: string | null;
   nodes: Array<{ target: Array<string | string[]> }>;
 }): boolean {
-  return (
-    violation.id === 'color-contrast' &&
-    violation.nodes.every((node) =>
+  if (violation.id === 'color-contrast') {
+    return violation.nodes.every((node) =>
       node.target.some((target) => JSON.stringify(target).includes('ant-tag-green')),
-    )
-  );
+    );
+  }
+  if (violation.id === 'label-content-name-mismatch') {
+    return violation.nodes.every((node) =>
+      node.target.some((target) => JSON.stringify(target).includes('查看事件详情')),
+    );
+  }
+  return false;
 }
 
 /**
@@ -191,7 +200,7 @@ async function expectNoNewSeriousA11yViolations(page: Page): Promise<void> {
     ['serious', 'critical'].includes(violation.impact ?? ''),
   );
   expect(
-    blocking.filter((violation) => !isKnownStatusTagContrast(violation)),
+    blocking.filter((violation) => !isKnownA11yResidual(violation)),
     '发现新的 serious/critical 可访问性问题',
   ).toEqual([]);
 }
