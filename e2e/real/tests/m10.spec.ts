@@ -233,7 +233,7 @@ test.describe('M10 身份与审计', () => {
     await page.getByRole('button', { name: '企业账号' }).click();
     await expect(page).toHaveURL(/oidcError=access_denied/);
     await expect(page.getByText('企业账号授权已取消')).toBeVisible();
-    await expect(page.getByText(/取消授权/)).toBeVisible();
+    await expect(page.getByText(/授权已取消/)).toBeVisible();
     await expect(page.getByText(/invalid_grant|client_secret|stack/i)).toHaveCount(0);
 
     // state 不匹配：不同文案，仍不建立会话。
