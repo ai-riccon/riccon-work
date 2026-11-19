@@ -1,0 +1,86 @@
+/* 审计查询页：筛选区在小屏单列，表格在容器内横向滚动，避免整页横向溢出。 */
+.audit-policy-notice {
+  margin-bottom: 16px;
+}
+
+.audit-filter-card {
+  margin-bottom: 16px;
+}
+
+.audit-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 16px;
+}
+
+.audit-filter-grid .ant-form-item {
+  margin-bottom: 16px;
+  min-width: 0;
+}
+
+.audit-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  grid-column: 1 / -1;
+  gap: 8px 16px;
+}
+
+.audit-table-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+
+.audit-time-cell {
+  white-space: nowrap;
+}
+
+.audit-export-link {
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.audit-export-link:focus-visible {
+  outline: 2px solid #0958d9;
+  outline-offset: 2px;
+}
+
+.audit-event-detail .ant-descriptions-item-content {
+  overflow-wrap: anywhere;
+}
+
+.audit-details-json {
+  max-height: 50vh;
+  padding: 12px;
+  margin: 8px 0 0;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+}
+
+@media (max-width: 1100px) {
+  .audit-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .audit-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .audit-filter-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

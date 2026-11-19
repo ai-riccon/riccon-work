@@ -64,6 +64,21 @@ export const routes: RicconRoute[] = [
         title: '租户与部门',
       },
       {
+        path: '/admin/audit',
+        component: '@/pages/admin/audit',
+        title: '审计日志',
+      },
+      {
+        path: '/admin/audit-exports',
+        component: '@/pages/admin/tenant-exports',
+        title: '审计导出',
+      },
+      {
+        path: '/admin/tenants/:tenantId/audit-exports',
+        component: '@/pages/admin/tenant-exports/platform',
+        title: '平台审计导出审批',
+      },
+      {
         path: '/admin/tenants/:tenantId/departments',
         component: '@/pages/admin/tenants/departments',
         title: '部门管理',
@@ -112,8 +127,9 @@ export interface NavigationItem {
 /**
  * 管理端左侧菜单。
  *
- * 租户管理是平台管理员入口；菜单可见性不代替服务端 `platform.department.manage`
- * 鉴权，普通租户账号直接访问仍会得到 403。
+ * 租户管理是平台管理员入口；菜单可见性不代替服务端鉴权，普通账号直接访问仍会得到 403。
+ * 审计菜单由后续布局任务接线：`config/routes.ts` 的写范围不包含布局文件，
+ * 本任务只保证审计路由、页面自身 403 守卫与服务端权限边界。
  */
 export const adminNavigation: NavigationItem[] = [
   { path: '/admin/overview', label: '管理总览' },
