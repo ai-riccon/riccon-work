@@ -36,7 +36,8 @@ public class AdminJdbc {
 
     /** 账号字段。 */
     private static final String USER_COLUMNS =
-            "tenant_id, id, username, display_name, email, status, auth_source, last_login_at, created_at";
+            "tenant_id, id, username, display_name, email, status, auth_source, external_issuer,"
+                    + " last_login_at, created_at";
 
     /** 查询租户。 */
     private static final String FIND_TENANT = "SELECT " + TENANT_COLUMNS + " FROM tenant WHERE id = :id";
@@ -480,6 +481,7 @@ public class AdminJdbc {
                 rs.getString("email"),
                 UserStatus.valueOf(rs.getString("status")),
                 AuthSource.valueOf(rs.getString("auth_source")),
+                rs.getString("external_issuer"),
                 SqlTimestamps.toInstant(lastLoginAt),
                 SqlTimestamps.toInstant(rs.getObject("created_at", LocalDateTime.class)));
     }

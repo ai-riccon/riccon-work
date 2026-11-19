@@ -492,9 +492,119 @@ class OidcIdentityBindingApiTest extends ApiIntegrationTestSupport {
         assertThat(client.get("/api/v1/auth/session").status()).isEqualTo(401);
     }
 
+    /** 14. 来源 IdP 脱敏展示：LOCAL 省略；OIDC 配置名与 host 回退；同租户两个 issuer 可区分。 */
+    @Test
+    @DisplayName("B2-14 identityProvider 展示来源 IdP 且不泄露 issuer/subject")
+    void identityProvider_isSanitizedAndDistinguishable() {
+        LoginSession platform = ensureTenants();
+        LoginSession admin = createAndLoginTenantAdmin(platform, TENANT_A);
+
+        // LOCAL：创建响应、登录响应都不带 identityProvider。
+        String localUsername = unique("idp-local");
+        JsonNode localCreated = createLocalUserByTenantAdmin(admin, localUsername);
+        assertThat(localCreated.has("identityProvider")).isFalse();
+        LoginSession localSession = login(TENANT_A, localUsername, PASSWORD);
+        assertThat(localSession.body().path("user").has("identityProvider")).isFalse();
+
+        // OIDC：创建响应显示配置 providerName，不出现完整 issuer 或 subject。
+        String oidcUsername = unique("idp-oidc");
+        String oidcSubject = "sub-idp-" + UUID.randomUUID();
+        JsonNode oidcCreated =
+                createOidcUserResponse(admin, TENANT_A, oidcUsername, ISSUER_A, oidcSubject, List.of("MEMBER"), false);
+        assertThat(oidcCreated.path("authSource").asText()).isEqualTo("OIDC");
+        assertThat(oidcCreated.path("identityProvider").asText()).isEqualTo("B2 IdP A");
+        assertThat(oidcCreated.toString()).doesNotContain(ISSUER_A).doesNotContain(oidcSubject);
+        UUID oidcUserId = UUID.fromString(oidcCreated.path("id").asText());
+
+        // 租户管理员列表与平台管理员列表一致。
+        JsonNode tenantItem = findUserItem(
+                client.json(client.get("/api/v1/users?size=100", admin.sessionCookie(), Map.of())), oidcUserId);
+        assertThat(tenantItem.path("identityProvider").asText()).isEqualTo("B2 IdP A");
+        assertThat(tenantItem.path("authSource").asText()).isEqualTo("OIDC");
+        assertThat(tenantItem.has("issuer")).isFalse();
+        assertThat(tenantItem.has("subject")).isFalse();
+        assertThat(tenantItem.toString()).doesNotContain(ISSUER_A).doesNotContain(oidcSubject);
+
+        ApiResponse platformList =
+                client.get("/api/v1/admin/tenants/" + TENANT_A + "/users?size=100", platform.sessionCookie(), Map.of());
+        assertThat(platformList.status()).as(platformList.body()).isEqualTo(200);
+        JsonNode platformItem = findUserItem(client.json(platformList), oidcUserId);
+        assertThat(platformItem.path("identityProvider").asText()).isEqualTo("B2 IdP A");
+
+        // 同租户第二个 issuer（模拟 IdP 更换后的历史账号）：回退 host，与配置名可区分。
+        UUID secondUserId = createOidcUser(
+                admin,
+                TENANT_A,
+                unique("idp-second"),
+                ISSUER_A,
+                "sub-second-" + UUID.randomUUID(),
+                List.of("MEMBER"),
+                false);
+        String secondIssuer = "https://idp.second.example/realms/two";
+        jdbcClient
+                .sql("""
+                        UPDATE app_user
+                           SET external_issuer = :issuer, external_subject = :subject
+                         WHERE tenant_id = :tenantId AND id = :userId
+                        """)
+                .param("issuer", secondIssuer)
+                .param("subject", "sub-second-" + UUID.randomUUID())
+                .param("tenantId", TENANT_A)
+                .param("userId", BinaryUuids.toBytes(secondUserId))
+                .update();
+        JsonNode secondItem = findUserItem(
+                client.json(client.get("/api/v1/users?size=100", admin.sessionCookie(), Map.of())), secondUserId);
+        assertThat(secondItem.path("identityProvider").asText()).isEqualTo("idp.second.example");
+        assertThat(secondItem.path("identityProvider").asText())
+                .isNotEqualTo(tenantItem.path("identityProvider").asText());
+        assertThat(secondItem.path("identityProvider").asText()).doesNotContain("@");
+        assertThat(secondItem.toString()).doesNotContain("https://").doesNotContain("/realms/");
+
+        // 会话摘要与绑定/解绑响应保持一致，且不泄露身份原文。
+        String sessionUsername = unique("idp-session");
+        UUID sessionUserId = UUID.fromString(
+                createLocalUserByTenantAdmin(admin, sessionUsername).path("id").asText());
+        LoginSession member = login(TENANT_A, sessionUsername, PASSWORD);
+        String bindPath = "/api/v1/users/" + sessionUserId + "/oidc-binding";
+        String sessionSubject = "sub-session-" + UUID.randomUUID();
+        ApiResponse bindResponse = bind(admin, bindPath, ISSUER_A, sessionSubject);
+        assertThat(bindResponse.status()).as(bindResponse.body()).isEqualTo(200);
+        assertThat(client.json(bindResponse).path("identityProvider").asText()).isEqualTo("B2 IdP A");
+
+        ApiResponse sessionResponse = client.get("/api/v1/auth/session", member.sessionCookie(), Map.of());
+        assertThat(sessionResponse.status()).as(sessionResponse.body()).isEqualTo(200);
+        JsonNode session = client.json(sessionResponse);
+        assertThat(session.path("user").path("authSource").asText()).isEqualTo("OIDC");
+        assertThat(session.path("user").path("identityProvider").asText()).isEqualTo("B2 IdP A");
+        assertThat(sessionResponse.body())
+                .doesNotContain(ISSUER_A)
+                .doesNotContain(sessionSubject)
+                .doesNotContain("accessToken", "refreshToken", "idToken");
+
+        ApiResponse unbindResponse = unbind(admin, bindPath + "/remove", NEW_PASSWORD);
+        assertThat(unbindResponse.status()).as(unbindResponse.body()).isEqualTo(200);
+        assertThat(client.json(unbindResponse).has("identityProvider")).isFalse();
+    }
+
     // ---------------------------------------------------------------------
     // 测试辅助
     // ---------------------------------------------------------------------
+
+    /**
+     * 在用户分页中按 ID 查找账号摘要。
+     *
+     * @param page 分页响应
+     * @param userId 账号 ID
+     * @return 账号摘要节点
+     */
+    private static JsonNode findUserItem(JsonNode page, UUID userId) {
+        for (JsonNode node : page.path("items")) {
+            if (userId.toString().equals(node.path("id").asText())) {
+                return node;
+            }
+        }
+        throw new AssertionError("user not found in page: " + userId);
+    }
 
     /**
      * 执行一次登录并返回状态码；用于断言密码凭据存在/删除后的行为。
@@ -601,6 +711,31 @@ class OidcIdentityBindingApiTest extends ApiIntegrationTestSupport {
             String subject,
             List<String> roles,
             boolean platformRoute) {
+        JsonNode body = createOidcUserResponse(actor, tenantCode, username, issuer, subject, roles, platformRoute);
+        assertThat(body.path("authSource").asText()).isEqualTo("OIDC");
+        return UUID.fromString(body.path("id").asText());
+    }
+
+    /**
+     * 创建 OIDC 账号并返回响应体，便于断言展示字段。
+     *
+     * @param actor 操作者会话
+     * @param tenantCode 目标租户
+     * @param username 登录名
+     * @param issuer issuer
+     * @param subject subject
+     * @param roles 角色
+     * @param platformRoute 是否走平台管理员路径
+     * @return 账号响应体
+     */
+    private JsonNode createOidcUserResponse(
+            LoginSession actor,
+            String tenantCode,
+            String username,
+            String issuer,
+            String subject,
+            List<String> roles,
+            boolean platformRoute) {
         String path = platformRoute ? "/api/v1/admin/tenants/" + tenantCode + "/users" : "/api/v1/users";
         ApiResponse response = client.post(
                 path,
@@ -609,9 +744,7 @@ class OidcIdentityBindingApiTest extends ApiIntegrationTestSupport {
                 actor.csrfToken(),
                 Map.of());
         assertThat(response.status()).as(response.body()).isEqualTo(201);
-        JsonNode body = client.json(response);
-        assertThat(body.path("authSource").asText()).isEqualTo("OIDC");
-        return UUID.fromString(body.path("id").asText());
+        return client.json(response);
     }
 
     /**

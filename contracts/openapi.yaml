@@ -3121,6 +3121,13 @@ components:
           description: 主部门名；停用部门仍显示名称
         authSource:
           $ref: "#/components/schemas/AuthSource"
+        identityProvider:
+          type: [string, "null"]
+          maxLength: 255
+          description: |
+            来源 IdP 的脱敏展示名。OIDC 优先使用租户配置的 `providerName`（仅当账号 issuer 与配置 issuer 一致），
+            否则回退为 issuer 的 host（非默认端口保留，如 `idp.example.com`）；LOCAL、未知来源或无法解析时为 null 并省略字段。
+            不返回完整 issuer 路径、subject、token 或邮箱。
         lastLoginAt:
           type: [string, "null"]
           format: date-time

@@ -9,6 +9,7 @@ import com.riccon.api.admin.repository.AdminRepository;
 import com.riccon.api.audit.domain.AuditEvent;
 import com.riccon.api.audit.service.AuditService;
 import com.riccon.api.auth.service.AuthService;
+import com.riccon.api.auth.service.IdentityProviderResolver;
 import com.riccon.api.common.UuidV7;
 import com.riccon.api.error.BadRequestException;
 import com.riccon.api.error.ConflictException;
@@ -87,6 +88,9 @@ public class TenantUserAdminService {
     /** 认证服务，用于计算授予者权限。 */
     private final AuthService authService;
 
+    /** 来源 IdP 脱敏展示名解析。 */
+    private final IdentityProviderResolver identityProviderResolver;
+
     /** 审计写入。 */
     private final AuditService auditService;
 
@@ -107,6 +111,7 @@ public class TenantUserAdminService {
      *
      * @param adminRepository 平台管理仓储
      * @param authService 认证服务
+     * @param identityProviderResolver 来源 IdP 脱敏展示名解析
      * @param auditService 审计写入
      * @param passwordEncoder 密码编码器
      * @param oidcIdpRegistry OIDC IdP 注册表
@@ -116,6 +121,7 @@ public class TenantUserAdminService {
     public TenantUserAdminService(
             AdminRepository adminRepository,
             AuthService authService,
+            IdentityProviderResolver identityProviderResolver,
             AuditService auditService,
             PasswordEncoder passwordEncoder,
             OidcIdpRegistry oidcIdpRegistry,
@@ -123,6 +129,7 @@ public class TenantUserAdminService {
             Clock clock) {
         this.adminRepository = Objects.requireNonNull(adminRepository, "adminRepository");
         this.authService = Objects.requireNonNull(authService, "authService");
+        this.identityProviderResolver = Objects.requireNonNull(identityProviderResolver, "identityProviderResolver");
         this.auditService = Objects.requireNonNull(auditService, "auditService");
         this.passwordEncoder = Objects.requireNonNull(passwordEncoder, "passwordEncoder");
         this.oidcIdpRegistry = Objects.requireNonNull(oidcIdpRegistry, "oidcIdpRegistry");
@@ -280,6 +287,7 @@ public class TenantUserAdminService {
                 null,
                 UserStatus.ACTIVE,
                 AuthSource.OIDC,
+                issuer,
                 null,
                 now);
         try {
@@ -372,7 +380,7 @@ public class TenantUserAdminService {
                         "subjectHash", OidcIdentityHashes.sha256Hex(subject),
                         "previousAuthSource", current.authSource().name()));
         List<String> roles = adminRepository.rolesForUser(tenantId, userId);
-        return toSummary(withAuthSource(user, AuthSource.OIDC), roles);
+        return toSummary(withIdentity(user, AuthSource.OIDC, issuer), roles);
     }
 
     /**
@@ -416,7 +424,7 @@ public class TenantUserAdminService {
                         "userId", userId.toString(),
                         "issuerHash", OidcIdentityHashes.sha256Hex(current.issuer())));
         List<String> roles = adminRepository.rolesForUser(tenantId, userId);
-        return toSummary(withAuthSource(user, AuthSource.LOCAL), roles);
+        return toSummary(withIdentity(user, AuthSource.LOCAL, null), roles);
     }
 
     /**
@@ -453,6 +461,7 @@ public class TenantUserAdminService {
                 user.email(),
                 status,
                 user.authSource(),
+                user.externalIssuer(),
                 user.lastLoginAt(),
                 user.createdAt());
         return toSummary(updated, roles);
@@ -725,13 +734,16 @@ public class TenantUserAdminService {
     }
 
     /**
-     * 复制账号并替换认证来源。
+     * 复制账号并替换认证来源与外部 issuer。
+     *
+     * <p>绑定/解绑后的响应必须携带新身份的 issuer，否则来源 IdP 展示会滞后到下一次列表查询。
      *
      * @param user 原账号
      * @param authSource 新认证来源
+     * @param externalIssuer 新 issuer；LOCAL 必须为 {@code null}
      * @return 新账号快照
      */
-    private static UserAccount withAuthSource(UserAccount user, AuthSource authSource) {
+    private static UserAccount withIdentity(UserAccount user, AuthSource authSource, String externalIssuer) {
         return new UserAccount(
                 user.id(),
                 user.tenantId(),
@@ -740,6 +752,7 @@ public class TenantUserAdminService {
                 user.email(),
                 user.status(),
                 authSource,
+                externalIssuer,
                 user.lastLoginAt(),
                 user.createdAt());
     }
@@ -747,11 +760,13 @@ public class TenantUserAdminService {
     /**
      * 映射账号摘要。
      *
+     * <p>来源 IdP 只输出脱敏展示名（配置 provider 名或 issuer host）；完整 issuer/subject 不进入响应。
+     *
      * @param user 账号
      * @param roles 角色码
      * @return 摘要
      */
-    private static UserSummaryResponse toSummary(UserAccount user, List<String> roles) {
+    private UserSummaryResponse toSummary(UserAccount user, List<String> roles) {
         return new UserSummaryResponse(
                 user.id(),
                 user.username(),
@@ -760,6 +775,7 @@ public class TenantUserAdminService {
                 user.status(),
                 sorted(roles),
                 user.authSource(),
+                identityProviderResolver.resolve(user),
                 user.lastLoginAt(),
                 user.createdAt());
     }

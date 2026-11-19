@@ -18,6 +18,7 @@ import java.util.UUID;
  * @param email 可选联系方式；M02 不用于登录
  * @param status 账号状态
  * @param authSource 认证来源
+ * @param externalIssuer OIDC issuer；只用于生成脱敏展示名，绝不进入响应原文。LOCAL 为 {@code null}
  * @param lastLoginAt 最近登录成功时间
  * @param createdAt 创建时间
  */
@@ -29,6 +30,7 @@ public record UserAccount(
         String email,
         UserStatus status,
         AuthSource authSource,
+        String externalIssuer,
         Instant lastLoginAt,
         Instant createdAt) {
 
@@ -40,6 +42,35 @@ public record UserAccount(
         Objects.requireNonNull(displayName, "displayName must not be null");
         Objects.requireNonNull(status, "status must not be null");
         Objects.requireNonNull(authSource, "authSource must not be null");
+    }
+
+    /**
+     * 兼容旧调用方的构造器：未携带 issuer 时按“未知外部身份”处理。
+     *
+     * <p>仅用于不关心来源 IdP 的路径（如 OIDC 登录身份命中校验）；响应 DTO 必须使用规范构造器并显式传入
+     * issuer，否则来源 IdP 会缺失。
+     *
+     * @param id 账号 ID
+     * @param tenantId 所属租户
+     * @param username 登录名
+     * @param displayName 展示名
+     * @param email 联系方式，可为空
+     * @param status 账号状态
+     * @param authSource 认证来源
+     * @param lastLoginAt 最近登录成功时间
+     * @param createdAt 创建时间
+     */
+    public UserAccount(
+            UUID id,
+            String tenantId,
+            String username,
+            String displayName,
+            String email,
+            UserStatus status,
+            AuthSource authSource,
+            Instant lastLoginAt,
+            Instant createdAt) {
+        this(id, tenantId, username, displayName, email, status, authSource, null, lastLoginAt, createdAt);
     }
 
     /**

@@ -2,6 +2,7 @@ package com.riccon.api.auth.controller;
 
 import com.riccon.api.auth.domain.LoginContext;
 import com.riccon.api.auth.service.AuthService;
+import com.riccon.api.auth.service.IdentityProviderResolver;
 import com.riccon.api.error.UnauthenticatedException;
 import com.riccon.api.identity.domain.CurrentUser;
 import com.riccon.api.identity.domain.RicconPrincipal;
@@ -57,6 +58,9 @@ public class AuthController {
     /** OIDC 联合登出地址（不调用 IdP）。 */
     private final OidcLogoutService oidcLogoutService;
 
+    /** 来源 IdP 脱敏展示名解析。 */
+    private final IdentityProviderResolver identityProviderResolver;
+
     /**
      * 创建认证控制器。
      *
@@ -64,16 +68,19 @@ public class AuthController {
      * @param securityContextRepository 安全上下文仓储
      * @param csrfTokenRepository CSRF 令牌仓储
      * @param oidcLogoutService OIDC 联合登出地址
+     * @param identityProviderResolver 来源 IdP 脱敏展示名解析
      */
     public AuthController(
             AuthService authService,
             SecurityContextRepository securityContextRepository,
             CsrfTokenRepository csrfTokenRepository,
-            OidcLogoutService oidcLogoutService) {
+            OidcLogoutService oidcLogoutService,
+            IdentityProviderResolver identityProviderResolver) {
         this.authService = authService;
         this.securityContextRepository = securityContextRepository;
         this.csrfTokenRepository = csrfTokenRepository;
         this.oidcLogoutService = oidcLogoutService;
+        this.identityProviderResolver = identityProviderResolver;
     }
 
     /**
@@ -204,7 +211,7 @@ public class AuthController {
     private SessionInfoResponse sessionInfo(CurrentUser currentUser, String csrfToken, HttpServletRequest request) {
         UserAccount user = currentUser.user();
         TenantRecord tenant = currentUser.tenant();
-        // 只输出来源枚举（LOCAL/OIDC）；issuer/subject 与任何 token 都不进入会话响应。
+        // 只输出认证来源枚举（LOCAL/OIDC）与脱敏来源 IdP 展示名；issuer/subject 与任何 token 都不进入会话响应。
         UserSummaryResponse userSummary = new UserSummaryResponse(
                 user.id(),
                 user.username(),
@@ -213,6 +220,7 @@ public class AuthController {
                 user.status(),
                 currentUser.roles(),
                 user.authSource(),
+                identityProviderResolver.resolve(user),
                 user.lastLoginAt(),
                 user.createdAt());
         TenantSummaryResponse tenantSummary = new TenantSummaryResponse(

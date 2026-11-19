@@ -28,7 +28,8 @@ public class UserAccountJdbc {
 
     /** 账号字段查询。 */
     private static final String USER_COLUMNS =
-            "tenant_id, id, username, display_name, email, status, auth_source, last_login_at, created_at";
+            "tenant_id, id, username, display_name, email, status, auth_source, external_issuer,"
+                    + " last_login_at, created_at";
 
     /** 按租户与登录名查询账号。 */
     private static final String FIND_BY_USERNAME =
@@ -213,6 +214,7 @@ public class UserAccountJdbc {
                 rs.getString("email"),
                 UserStatus.valueOf(rs.getString("status")),
                 AuthSource.valueOf(rs.getString("auth_source")),
+                rs.getString("external_issuer"),
                 SqlTimestamps.toInstant(lastLoginAt),
                 SqlTimestamps.toInstant(rs.getObject("created_at", LocalDateTime.class)));
     }

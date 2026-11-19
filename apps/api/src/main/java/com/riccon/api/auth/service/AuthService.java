@@ -293,6 +293,7 @@ public class AuthService {
                 user.email(),
                 user.status(),
                 user.authSource(),
+                user.externalIssuer(),
                 now,
                 user.createdAt());
         return new CurrentUser(refreshed, tenant, roles, permissions);
