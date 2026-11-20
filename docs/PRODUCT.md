@@ -6,7 +6,7 @@
 | ---------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------- |
 | Product 草案           | pass    | M04 草案已完成（§10），Lead 检查通过，用户范围批准（DEC-0023）；M03/M10 见 §8；M01/M02 legacy                          |
 | Lead 完整性/合同一致性 | pass    | M03/M10 pass；M04 Lead 检查通过（2026-11-20；合同一致/AC 可观察/优先级完整），用户范围批准（DEC-0023）；M01/M02 legacy |
-| 用户范围批准           | pass    | M03/M10 pass（DEC-0010/0011/0014/0015、DEC-0018）；M04 pass（DEC-0023，A：24h 单模块）；M01/M02 legacy                 |
+| 用户范围批准           | pass    | M03/M10 pass（DEC-0010/0011/0014/0015、DEC-0018）；M04 pass（DEC-0023 范围；DEC-0024=B 预算 48h 单模块）；M01/M02 legacy                 |
 | Architect 可行性       | pending | M03/M10 pass（ADR-0018、REV-M10-ARCH-002）；M04 pending；M02 ADR-0001..0017                                            |
 | Verifier AC 可验证性   | pending | M03/M10 pass（REV-M03-001、REV-M13-001、REV-M10-001、REV-M15-001）；M04 pending；M02/M01 见记录                        |
 
@@ -20,7 +20,7 @@
 | M02  | legacy       | legacy                     | legacy（合同初始批准，无单独范围决策）        | pass（ADR-0005..0017）                           | pass（REV-M02-003）                                 | not-recorded                            | not-recorded         |
 | M03  | pass（§8）   | pass                       | pass（DEC-0010/0011/0014/0015）               | pass（ADR-0018 proposed，TASK-0033 评审通过）    | pass（REV-M03-001；REV-M13-001；REV-TASK-0033-002） | pass（M13 补丁后；REV-M13-001/EV-0361） | accepted（DEC-0016） |
 | M10  | pass（§8）   | pass（沿用 §8；gate 记录） | pass（DEC-0011/0014/0015；DEC-0018 上限 20h） | pass（REV-M10-ARCH-002；ADR-0019/0020 proposed） | pass（REV-M10-001；REV-M15-001）                    | pass（M15 后；R-M10-01 fixed）          | accepted（DEC-0021） |
-| M04  | pass（§10）  | pass                       | pass（DEC-0023）                              | pending                                          | pending                                             | pending                                 | pending              |
+| M04  | pass（§10）  | pass                       | pass（DEC-0023 范围；DEC-0024=B 预算 48h 单模块）    | pending                                          | pending                                             | pending                                 | pending              |
 
 M03 原 gate `bc97d1c`；M13 验收补丁 gate pass（REV-M13-001，EV-0352..EV-0359、EV-0361）。M03 残余 F-006/F-007/F-008/F-009 仍 accepted/residual；M13 F-001..F-006 accepted，均不声称解决。M03 Product 预验收 pass（M13 补丁后），用户最终验收 accepted（DEC-0016，2026-11-19）；M10 随后启动。M10 V1 done、gate pass（REV-M10-001，29 条 reviewed_evidence；DEC-0018 上限 20h）；M15 补丁（fixes M10）gate pass（REV-M15-001，TASK-0084/0085/0087/0086 done；EV-0449/0450/0478/0480/0481/0482..0486/0488/0489），R-M10-01 `fixed`（来源 IdP）；Product 预验收 `pass`（M15 后），用户最终验收 `accepted`（DEC-0021，2026-11-20）。M10 残余：B2 F-001 collation P2 accepted/residual；M15 F-003 绿色 Tag 对比度 P2 accepted；B4/B5 P3、OPS 生产演练与 T4 批准未完成、ADR-0019/0020 proposed；MFA/审计哈希链/平台跨租户审计 deferred，不声称支持。
 
@@ -28,7 +28,7 @@ M10 用户最终验收状态按 DEC-0021 与 `docs/ACCEPTANCE.md` 同步为 `acc
 
 M04 Lead 检查（2026-11-20）：范围/AC/non-goals/优先级完整；18 条 AC 均有验证类型与测试线索；与合同 performance/security/data/coding 标准不冲突。
 
-M04 用户范围批准（2026-11-20，DEC-0023=A）：批准 §10 范围、18 条 AC、non-goals、P0/P1/P2 与 OQ-16..26 默认值（DEC-0023）；预算 24h 单模块，Architect 任务图 >14 任务或关键路径 >24h 时拆分 M04/M04b；P0 不得后移，P1 后移需用户批准并记录去向。
+M04 用户范围批准（2026-11-20，DEC-0023=A）：批准 §10 范围、18 条 AC、non-goals、P0/P1/P2 与 OQ-16..26 默认值（DEC-0023）。M04 预算与拆分（2026-11-20，DEC-0024=B）：不拆，M04 单模块 48h，18 条 AC 全保留，不创建 M17/M04b；契约保持 1.3.0-m04，不做 m04a/b 分段。P0 不得后移，P1 后移需用户批准并记录去向。
 
 私有化优先的多租户企业 AI 协同办公系统。办公套件做入口，平台做内核；v1 只证明员工侧价值。
 
@@ -291,7 +291,7 @@ OQ-16..26 已由 **DEC-0023=A** 批准；“结论 / 建议”列为已定口径
 
 ## 10. M04 模型网关纵深验收标准
 
-本节是 M04 的 Product 草案，已完成（待 Lead 检查与用户批准）。M04 的用户可见结果：平台管理员能配置模型路由、降级链、key 池与租户/用户配额，并查看估算成本与降级记录；租户管理员只看本租户用量；员工正常提问与报告不受影响，切换无感，全部失败时有稳定可重试提示；IT 运维有受管端点、关闭开关与回滚路径。
+本节是已批准的 M04 产品范围（2026-11-20）：Lead 检查通过，用户范围批准 DEC-0023=A；预算与拆分按 DEC-0024=B（单模块 48h，不拆，18 条 AC 全保留）。M04 的用户可见结果：平台管理员能配置模型路由、降级链、key 池与租户/用户配额，并查看估算成本与降级记录；租户管理员只看本租户用量；员工正常提问与报告不受影响，切换无感，全部失败时有稳定可重试提示；IT 运维有受管端点、关闭开关与回滚路径。
 
 AC 以 §9 OQ-16..26 的已批准默认值为前提（DEC-0023=A）。AC 不规定表名、类名、库或 SQL。
 
