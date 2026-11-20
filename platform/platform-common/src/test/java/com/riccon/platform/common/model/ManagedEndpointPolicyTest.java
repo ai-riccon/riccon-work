@@ -1,17 +1,10 @@
-package com.riccon.api.model.endpoint;
+package com.riccon.platform.common.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.riccon.platform.common.model.EndpointEnvironmentLabel;
-import com.riccon.platform.common.model.EndpointRejectionReason;
-import com.riccon.platform.common.model.HostResolver;
-import com.riccon.platform.common.model.ManagedEndpointPolicy;
-import com.riccon.platform.common.model.ManagedEndpointPolicyException;
-import com.riccon.platform.common.model.ManagedEndpointRegistry;
-import com.riccon.platform.common.model.ManagedModelEndpointConfig;
-import com.riccon.platform.common.model.ModelDeploymentMode;
 import java.net.InetAddress;
+import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +16,7 @@ import org.junit.jupiter.api.Test;
  *
  * <p>测试只使用固定 {@link HostResolver} 映射与字面量地址，不依赖外部 DNS、不发真实出网。
  * 覆盖：HTTPS/HTTP 开关、userinfo/query/fragment、回环、云元数据与链路本地、十进制/十六进制/八进制 IP、
- * IPv4-mapped IPv6、末尾点 FQDN、重复项与生产/演示标签。
+ * IPv4-mapped IPv6、末尾点 FQDN、重复项、生产/演示标签与遗留 DB 目录兼容。
  */
 class ManagedEndpointPolicyTest {
 
@@ -182,6 +175,9 @@ class ManagedEndpointPolicyTest {
         assertReason(
                 () -> policy.load(List.of(new ManagedModelEndpointConfig("corp-gw", "https://10.20.30.40/v1", null))),
                 EndpointRejectionReason.ENDPOINT_MALFORMED);
+        assertReason(
+                () -> policy.load(java.util.Arrays.asList((ManagedModelEndpointConfig) null)),
+                EndpointRejectionReason.ENDPOINT_MALFORMED);
     }
 
     /** 标签与允许状态：演示端点在生产不可路由，生产端点在 DEMO 可路由；URL 不一致不可路由。 */
@@ -201,10 +197,25 @@ class ManagedEndpointPolicyTest {
         assertThat(productionRegistry.isAllowed("unknown", "https://10.20.30.40/v1"))
                 .isFalse();
         assertThat(productionRegistry.labelFor("demo-gw")).contains(EndpointEnvironmentLabel.DEMO_ONLY);
+        assertThat(productionRegistry.labelFor("unknown")).isEmpty();
+        assertThat(productionRegistry.findByCode("corp-gw")).isPresent();
+        assertThat(productionRegistry.findByCode(null)).isEmpty();
+        assertThat(productionRegistry.endpoints()).hasSize(2);
+        assertThat(productionRegistry.isEmpty()).isFalse();
+        assertThat(productionRegistry.isLegacyCatalog()).isFalse();
+        assertThat(productionRegistry.deploymentMode()).isEqualTo(ModelDeploymentMode.PRODUCTION);
+        assertThat(productionRegistry.isEnvironmentRoutable(EndpointEnvironmentLabel.DEMO_ONLY))
+                .isFalse();
+        assertThat(productionRegistry.isEnvironmentRoutable(null)).isFalse();
+        assertThat(productionRegistry.isAllowed(null, "https://10.20.30.40/v1")).isFalse();
+        assertThat(productionRegistry.isAllowed("corp-gw", null)).isFalse();
+        assertThat(productionRegistry.isAllowed("corp-gw", "not a url")).isFalse();
 
         ManagedEndpointRegistry demoRegistry = new ManagedEndpointPolicy(ModelDeploymentMode.DEMO, true, RESOLVER)
                 .load(List.of(new ManagedModelEndpointConfig("demo-gw", "https://10.20.30.50/v1", "DEMO_ONLY")));
         assertThat(demoRegistry.isAllowed("demo-gw", "https://10.20.30.50/v1")).isTrue();
+        assertThat(demoRegistry.isEnvironmentRoutable(EndpointEnvironmentLabel.DEMO_ONLY))
+                .isTrue();
     }
 
     /** 空允许列表进入“仅 DB 目录”的遗留兼容模式；非空列表必须按 code/baseUrl 对齐。 */
@@ -214,14 +225,67 @@ class ManagedEndpointPolicyTest {
         ManagedEndpointRegistry legacy =
                 new ManagedEndpointPolicy(ModelDeploymentMode.DEMO, false, RESOLVER).load(List.of());
         assertThat(legacy.isLegacyCatalog()).isTrue();
+        assertThat(legacy.isEmpty()).isTrue();
+        assertThat(legacy.endpoints()).isEmpty();
         assertThat(legacy.isAllowed("legacy-provider", "https://10.20.30.40/v1"))
                 .isTrue();
+        assertThat(legacy.isAllowed("legacy-provider", null)).isFalse();
 
         ManagedEndpointRegistry configured = new ManagedEndpointPolicy(ModelDeploymentMode.DEMO, false, RESOLVER)
                 .load(List.of(new ManagedModelEndpointConfig("corp-gw", "https://10.20.30.40/v1", "PRODUCTION")));
         assertThat(configured.isLegacyCatalog()).isFalse();
         assertThat(configured.isAllowed("legacy-provider", "https://10.20.30.40/v1"))
                 .isFalse();
+    }
+
+    /** 部署模式与标签解析：默认安全、大小写宽容、非法值拒绝。 */
+    @Test
+    @DisplayName("部署模式与标签解析")
+    void deploymentModeAndLabelParsing() {
+        assertThat(ModelDeploymentMode.parse(null)).isEqualTo(ModelDeploymentMode.PRODUCTION);
+        assertThat(ModelDeploymentMode.parse("  ")).isEqualTo(ModelDeploymentMode.PRODUCTION);
+        assertThat(ModelDeploymentMode.parse("demo")).isEqualTo(ModelDeploymentMode.DEMO);
+        assertThat(ModelDeploymentMode.parse("PRODUCTION")).isEqualTo(ModelDeploymentMode.PRODUCTION);
+        assertThatThrownBy(() -> ModelDeploymentMode.parse("STAGING")).isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(EndpointEnvironmentLabel.parse("demo_only")).isEqualTo(EndpointEnvironmentLabel.DEMO_ONLY);
+        assertThat(EndpointEnvironmentLabel.parse("PRODUCTION")).isEqualTo(EndpointEnvironmentLabel.PRODUCTION);
+        assertThatThrownBy(() -> EndpointEnvironmentLabel.parse(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> EndpointEnvironmentLabel.parse("TEST")).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    /** 值对象构造守卫与 URL 规范化。 */
+    @Test
+    @DisplayName("值对象守卫与 baseUrl 规范化")
+    void valueObjectsAndNormalization() {
+        assertThatThrownBy(() -> new ManagedModelEndpoint(" ", URI.create("https://a.example/v1"), null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new ManagedModelEndpoint("corp", null, EndpointEnvironmentLabel.PRODUCTION))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new ManagedModelEndpoint("corp", URI.create("https://a.example/v1"), null))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(ManagedEndpointPolicy.normalizeBaseUrl(URI.create("HTTPS://LLM.Corp.Example.:443/v1/")))
+                .isEqualTo("https://llm.corp.example/v1/");
+        assertThat(ManagedEndpointPolicy.normalizeBaseUrl(URI.create("https://10.20.30.40:8443")))
+                .isEqualTo("https://10.20.30.40:8443/");
+        assertThat(ManagedEndpointPolicy.normalizeBaseUrl(URI.create("HTTPS://[::1]:443/v1")))
+                .isEqualTo("https://[::1]/v1");
+        assertThat(ManagedEndpointPolicy.normalizeBaseUrl(URI.create("http://10.20.30.40:80/v1")))
+                .isEqualTo("http://10.20.30.40/v1");
+    }
+
+    /** 策略直接判断标签；系统解析器可解析 loopback 字面量。 */
+    @Test
+    @DisplayName("isRoutable 与系统解析器")
+    void routabilityAndSystemResolver() throws UnknownHostException {
+        ManagedEndpointPolicy production = new ManagedEndpointPolicy(ModelDeploymentMode.PRODUCTION, false, RESOLVER);
+        assertThat(production.isRoutable(EndpointEnvironmentLabel.PRODUCTION)).isTrue();
+        assertThat(production.isRoutable(EndpointEnvironmentLabel.DEMO_ONLY)).isFalse();
+        assertThat(production.isRoutable(null)).isFalse();
+        assertThat(production.deploymentMode()).isEqualTo(ModelDeploymentMode.PRODUCTION);
+
+        assertThat(HostResolver.system().resolve("127.0.0.1")).isNotEmpty();
     }
 
     /** 断言抛出稳定原因码。 */
