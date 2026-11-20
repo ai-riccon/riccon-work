@@ -171,7 +171,10 @@ test.describe('J1 通用问答与文件处理', () => {
       });
 
       // 流式态：停止生成按钮、updating 气泡与引用默认色必须在扫描范围内。
+      // 上传按钮点击后指针仍停在其上，会引入与流式态无关的 default button hover（另见 F-002）；
+      // 先移到空白处，让本扫描只覆盖流式与引用状态，不隐藏该 hover 缺陷。
       await expect(page.getByRole('button', { name: '停止生成' })).toBeVisible();
+      await page.mouse.move(0, 0);
       await expectNoSeriousA11yViolations(page);
 
       await expect(
