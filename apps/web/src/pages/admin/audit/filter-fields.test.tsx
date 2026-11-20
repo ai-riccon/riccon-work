@@ -36,11 +36,26 @@ describe('审计过滤字段', () => {
 
   it('对象类型与结果选项覆盖契约枚举的中文文案', () => {
     expect(TARGET_TYPE_OPTIONS.map((item) => item.value)).toEqual(
-      expect.arrayContaining(['AUDIT', 'AUDIT_EXPORT', 'MCP_TOOL', 'FILE']),
+      expect.arrayContaining([
+        'AUDIT',
+        'AUDIT_EXPORT',
+        'MCP_TOOL',
+        'FILE',
+        'MODEL_ROUTING',
+        'MODEL_CREDENTIAL',
+        'QUOTA',
+      ]),
     );
     expect(TARGET_TYPE_OPTIONS.find((item) => item.value === 'AUDIT_EXPORT')?.label).toBe(
       '审计导出',
     );
+    expect(TARGET_TYPE_OPTIONS.find((item) => item.value === 'MODEL_ROUTING')?.label).toBe(
+      '模型路由',
+    );
+    expect(TARGET_TYPE_OPTIONS.find((item) => item.value === 'MODEL_CREDENTIAL')?.label).toBe(
+      '模型 key',
+    );
+    expect(TARGET_TYPE_OPTIONS.find((item) => item.value === 'QUOTA')?.label).toBe('配额');
     expect(OUTCOME_OPTIONS.map((item) => item.label)).toEqual(['成功', '失败', '拒绝']);
   });
 

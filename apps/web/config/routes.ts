@@ -69,6 +69,16 @@ export const routes: RicconRoute[] = [
         title: '用户管理',
       },
       {
+        path: '/admin/model-routing',
+        component: '@/pages/admin/model-routing',
+        title: '模型路由',
+      },
+      {
+        path: '/admin/model-keys',
+        component: '@/pages/admin/model-keys',
+        title: '模型 key',
+      },
+      {
         path: '/admin/tenants/:tenantId/users',
         component: '@/pages/admin/users',
         title: '租户用户管理',
@@ -148,11 +158,23 @@ export interface NavigationItem {
  * M10 新增用户管理与审计入口：用户管理只属于租户管理员（平台管理员按租户上下文进入
  * `/admin/tenants/:tenantId/users`）；审计查询对租户/平台管理员可见；审计导出是租户管理员
  * 入口，平台审批页需要租户上下文，无法用静态菜单表达。
+ * M04 新增模型路由与模型 key：两者都是平台全局资源，只按 `platform.model.read` 展示；
+ * 租户管理员的配额/成本入口由 M04 B9b 追加，不在本任务注册。
  */
 export const adminNavigation: NavigationItem[] = [
   { path: '/admin/overview', label: '管理总览' },
   { path: '/admin/tenants', label: '租户管理' },
   { path: '/admin/users', label: '用户管理', permissions: ['tenant.user.manage'] },
+  {
+    path: '/admin/model-routing',
+    label: '模型路由',
+    permissions: ['platform.model.read'],
+  },
+  {
+    path: '/admin/model-keys',
+    label: '模型 key',
+    permissions: ['platform.model.read'],
+  },
   { path: '/admin/audit', label: '审计查询', permissions: ['audit.read'] },
   {
     path: '/admin/audit-exports',

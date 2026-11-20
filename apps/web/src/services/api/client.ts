@@ -4,6 +4,21 @@ import {
 } from '@/services/auth/federated-logout';
 import { ApiError, isAbortError, toApiError } from './errors';
 import { parseChatEvent, parseSseStream } from './sse';
+import type { ModelAdminApi } from '@/services/model/api';
+import type {
+  AdminModel,
+  AdminModelPage,
+  ModelCredential,
+  ModelCredentialCreateRequest,
+  ModelCredentialPage,
+  ModelCredentialRotateRequest,
+  ModelPage,
+  ModelProviderPage,
+  ModelRouting,
+  ModelRoutingList,
+  ModelRoutingUpdateRequest,
+  ModelStatus,
+} from '@/services/model/types';
 import type {
   Approval,
   ApprovalDecisionRequest,
@@ -25,6 +40,7 @@ import type {
   ManagedWorkspace,
   McpTool,
   Message,
+  ModelPurpose,
   Page,
   ResearchTask,
   ResearchTaskCreateRequest,
@@ -212,7 +228,9 @@ function randomId(): string {
  * 认证模型：服务端 Session Cookie（HttpOnly），所有写请求带 `X-CSRF-TOKEN`；
  * 客户端只在内存保存 CSRF 令牌，不写 Cookie 或 localStorage，降低 XSS 读取面。
  */
-export class ApiClient implements RicconApi, WorkspaceManagementApi, PlatformDepartmentApi {
+export class ApiClient
+  implements RicconApi, WorkspaceManagementApi, PlatformDepartmentApi, ModelAdminApi
+{
   private readonly baseUrl: string;
 
   private readonly fetchImpl: FetchLike;
@@ -606,6 +624,178 @@ export class ApiClient implements RicconApi, WorkspaceManagementApi, PlatformDep
   listTenantUsers(tenantId: string): Promise<Page<UserSummary>> {
     return this.request<Page<UserSummary>>(
       `/api/v1/admin/tenants/${encodeURIComponent(tenantId)}/users?page=1&size=100`,
+    );
+  }
+
+  /**
+   * 读取员工可见模型目录。
+   *
+   * 只读接口；管理端主要用于核对模型标识。响应不包含 provider、价格或 key。
+   *
+   * @returns 员工模型分页，取前 100 个
+   */
+  listEmployeeModels(): Promise<ModelPage> {
+    return this.request<ModelPage>('/api/v1/models?page=1&size=100');
+  }
+
+  /**
+   * 读取平台模型目录。
+   *
+   * 只读接口；价格与定价状态由部署种子/运维维护，界面不提供写入口。
+   *
+   * @returns 平台模型分页，取前 100 个
+   */
+  listAdminModels(): Promise<AdminModelPage> {
+    return this.request<AdminModelPage>('/api/v1/admin/models?page=1&size=100');
+  }
+
+  /**
+   * 读取平台端点目录。
+   *
+   * `allowed` 与 `environmentLabel` 由部署允许列表派生，页面据此展示
+   * “生产可用/仅演示（非生产）”标签，并在保存前阻止不可路由端点。
+   *
+   * @returns 端点分页，取前 100 个
+   */
+  listModelProviders(): Promise<ModelProviderPage> {
+    return this.request<ModelProviderPage>('/api/v1/admin/model-providers?page=1&size=100');
+  }
+
+  /**
+   * 启用或停用模型。
+   *
+   * 停用后模型保留在路由链中，但运行时跳过；审计失败则保存失败。
+   *
+   * @param modelId 模型 ID
+   * @param status 目标状态
+   * @returns 更新后的模型
+   */
+  updateModelStatus(modelId: string, status: ModelStatus): Promise<AdminModel> {
+    return this.request<AdminModel>(`/api/v1/admin/models/${encodeURIComponent(modelId)}`, {
+      method: 'PATCH',
+      body: { status },
+    });
+  }
+
+  /**
+   * 读取 CHAT/REPORT 两条路由链。
+   *
+   * @returns 两条链的当前版本、有序条目与更新时间
+   */
+  getModelRouting(): Promise<ModelRoutingList> {
+    return this.request<ModelRoutingList>('/api/v1/admin/model-routing');
+  }
+
+  /**
+   * 整链保存指定用途的路由链。
+   *
+   * 使用读取到的 `version` 做乐观锁；版本不匹配返回 409 `RICCON-MODEL-409`，
+   * 调用方必须刷新后重试，不能自动覆盖其他管理员的修改。
+   *
+   * @param purpose 路由用途
+   * @param input 版本与有序模型 ID
+   * @returns 保存后的链
+   */
+  updateModelRouting(
+    purpose: ModelPurpose,
+    input: ModelRoutingUpdateRequest,
+  ): Promise<ModelRouting> {
+    return this.request<ModelRouting>(
+      `/api/v1/admin/model-routing/${encodeURIComponent(purpose)}`,
+      { method: 'PUT', body: input },
+    );
+  }
+
+  /**
+   * 列出端点下的平台 key（只含掩码）。
+   *
+   * @param providerId 端点 ID
+   * @returns key 分页，取前 100 个
+   */
+  listModelCredentials(providerId: string): Promise<ModelCredentialPage> {
+    return this.request<ModelCredentialPage>(
+      `/api/v1/admin/model-providers/${encodeURIComponent(providerId)}/credentials?page=1&size=100`,
+    );
+  }
+
+  /**
+   * 新增平台 key。
+   *
+   * 明文只出现在请求体，服务端立即信封加密；响应只返回掩码。
+   * 相同明文 fingerprint 返回 409，调用方不得把 `apiKey` 写入日志或提示。
+   *
+   * @param providerId 端点 ID
+   * @param input 名称、明文 key 与可选优先级
+   * @returns 新增的 key（掩码）
+   */
+  createModelCredential(
+    providerId: string,
+    input: ModelCredentialCreateRequest,
+  ): Promise<ModelCredential> {
+    return this.request<ModelCredential>(
+      `/api/v1/admin/model-providers/${encodeURIComponent(providerId)}/credentials`,
+      { method: 'POST', body: input },
+    );
+  }
+
+  /**
+   * 轮换平台 key。
+   *
+   * 服务端在同一事务中插入新 key 并停用旧 key；在途流式请求不被取消，
+   * 可能以可重试错误结束，且不会重复输出（AC-07）。
+   *
+   * @param providerId 端点 ID
+   * @param credentialId 旧 key ID
+   * @param input 新明文 key 与可选名称
+   * @returns 新 key（掩码）
+   */
+  rotateModelCredential(
+    providerId: string,
+    credentialId: string,
+    input: ModelCredentialRotateRequest,
+  ): Promise<ModelCredential> {
+    return this.request<ModelCredential>(
+      `/api/v1/admin/model-providers/${encodeURIComponent(
+        providerId,
+      )}/credentials/${encodeURIComponent(credentialId)}/rotate`,
+      { method: 'POST', body: input },
+    );
+  }
+
+  /**
+   * 停用平台 key。
+   *
+   * 新请求不再使用该 key；在途请求继续。`changed=false` 表示已是停用态、
+   * 服务端未重复写审计。最后一把 key 也允许停用（AC-07）。
+   *
+   * @param providerId 端点 ID
+   * @param credentialId key ID
+   * @returns 停用后的 key
+   */
+  disableModelCredential(providerId: string, credentialId: string): Promise<ModelCredential> {
+    return this.request<ModelCredential>(
+      `/api/v1/admin/model-providers/${encodeURIComponent(
+        providerId,
+      )}/credentials/${encodeURIComponent(credentialId)}/disable`,
+      { method: 'POST' },
+    );
+  }
+
+  /**
+   * 恢复平台 key。
+   *
+   * DISABLED/INVALID 统一恢复为 ACTIVE，并清空失效标记与冷却；用于 401 误判或密钥续期。
+   *
+   * @param providerId 端点 ID
+   * @param credentialId key ID
+   * @returns 恢复后的 key
+   */
+  enableModelCredential(providerId: string, credentialId: string): Promise<ModelCredential> {
+    return this.request<ModelCredential>(
+      `/api/v1/admin/model-providers/${encodeURIComponent(
+        providerId,
+      )}/credentials/${encodeURIComponent(credentialId)}/enable`,
+      { method: 'POST' },
     );
   }
 

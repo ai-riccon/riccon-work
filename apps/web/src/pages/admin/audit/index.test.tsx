@@ -235,4 +235,29 @@ describe('审计查询页', () => {
     expect(await screen.findByText('审计查询失败')).toBeVisible();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
+
+  it('“降级事件（最近 7 天）”只在前端生成动作与 7 天窗口', async () => {
+    const api = createAuditApi();
+    renderPage(api);
+
+    await screen.findByText('2026-11-19 13:00:00 +08:00');
+    fireEvent.click(screen.getByRole('button', { name: '降级事件（最近 7 天）' }));
+
+    await waitFor(() => {
+      const lastQuery = vi.mocked(api.listEvents).mock.calls.at(-1)?.[0];
+      expect(lastQuery).toEqual(
+        expect.objectContaining({
+          action: 'model.failover.triggered',
+          page: 1,
+          size: 20,
+        }),
+      );
+      const from = new Date(lastQuery?.occurredFrom ?? '').getTime();
+      const to = new Date(lastQuery?.occurredTo ?? '').getTime();
+      expect(to - from).toBe(7 * 24 * 60 * 60 * 1000);
+    });
+    expect(await screen.findByText('已应用降级事件预设')).toBeVisible();
+    expect(screen.getByText(/该预设仅在前端生成，不改变服务端默认窗口/)).toBeVisible();
+    expect(screen.getByText(/降级事件预设为最近 7 天/)).toBeVisible();
+  });
 });
