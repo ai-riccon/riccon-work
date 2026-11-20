@@ -4,7 +4,7 @@
   "module_id": "M04",
   "title": "M04 B2：端点允许列表 + 三模型端点 + 模型启停 + Actuator 暴露 + 契约唯一 writer（含配额/成本契约）",
   "owner": "riccon/builder-route",
-  "status": "planned",
+  "status": "review",
   "write_scope": [
     "apps/api/src/main/java/com/riccon/api/model/catalog/**",
     "apps/api/src/main/java/com/riccon/api/admin/model/catalog/**",
@@ -20,7 +20,12 @@
     "apps/api/src/test/java/com/riccon/api/config/**",
     "apps/worker/src/test/java/com/riccon/worker/config/**",
     "apps/api/src/test/java/com/riccon/api/contract/**",
-    ".riccon/**"
+    ".riccon/**",
+    "apps/api/src/test/java/com/riccon/api/actuator/PrometheusExposureDenyTest.java",
+    "apps/api/src/test/java/com/riccon/api/support/ApiIntegrationTestSupport.java",
+    "apps/worker/src/test/java/com/riccon/worker/actuator/PrometheusExposureDenyTest.java",
+    "apps/worker/src/test/java/com/riccon/worker/WorkerIntegrationTestBase.java",
+    "platform/platform-common/src/test/java/com/riccon/platform/common/model/**"
   ],
   "acceptance": [
     "`IT-MODEL-108a`（三个模型端点 + 路由/凭据/开关契约测试）",
@@ -30,9 +35,23 @@
     "Actuator prometheus 按 `RICCON_OPS_ALLOWED_CIDRS` 控制（空=loopback）且不放宽默认拒绝",
     "**M04 契约唯一 writer（含 `contracts/README.md`）**，M02/M03/M10 契约零回归"
   ],
-  "evidence": [],
-  "tools_used": [],
+  "evidence": [
+    "EV-0538",
+    "EV-0539",
+    "EV-0540",
+    "EV-0541"
+  ],
+  "tools_used": [
+    "maven:jdk21 — ./mvnw 定向测试（108a/108b、端点策略矩阵、三端点运行时、Actuator CIDR、内层 max-attempts、ArchUnit）",
+    "docker:Testcontainers — 定向集成测试使用 MySQL 8.4.13、OpenSearch 3.9、RustFS",
+    "git — 提交 4752c4f，diff/状态与 staged 范围核对",
+    "read/grep — 定位契约、SecurityConfig、B1c 测试基类与既有 DTO/审计模式（非符号级操作）",
+    "serena:未使用 — 改动以新增文件为主，无既有符号需重命名；且按项目规则 Maven 测试期间不引导 JDT LS（会触碰 target/）",
+    "codegraph:未使用 — 仓库有索引，但本次为新增模型目录/端点策略与安全规则，无跨模块调用链需要检索"
+  ],
   "blocker": null,
   "created_at": "2026-11-20T21:05:30.638+08:00",
-  "updated_at": "2026-11-20T21:05:30.638+08:00"
+  "updated_at": "2026-11-21T01:45:59.705+08:00",
+  "baseline_commit": "ef2b0f2",
+  "end_commit": "46a6cebcd1d0fbba59c93aca3e615d6e5aa786ad"
 }
