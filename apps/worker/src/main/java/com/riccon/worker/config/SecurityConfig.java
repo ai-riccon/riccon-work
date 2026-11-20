@@ -20,8 +20,9 @@ import org.springframework.security.web.access.intercept.RequestAuthorizationCon
  * Worker 安全基线。
  *
  * <p>Worker 只应被集群内部调用，不直接暴露给浏览器或公网。健康检查公开；两个内部端点由控制器/服务校验
- * HMAC 令牌；其余路径默认拒绝。M04 的 {@code /actuator/prometheus} 按 {@code RICCON_OPS_ALLOWED_CIDRS}
- * 限制来源（空=loopback），不为指标端点添加 permitAll，也不放宽默认拒绝（ADR-0021 §2.2/§10.6）。
+ * HMAC 令牌；其余路径默认拒绝。M04 的 {@code /actuator/info} 与 {@code /actuator/prometheus} 按
+ * {@code RICCON_OPS_ALLOWED_CIDRS} 限制来源（空=loopback），不为运维端点添加 permitAll，也不放宽默认拒绝
+ * （ADR-0021 §2.2/§10.6）。
  */
 @Configuration(proxyBeanMethods = false)
 @org.springframework.boot.context.properties.EnableConfigurationProperties(SecurityConfig.OpsProperties.class)
@@ -30,7 +31,7 @@ public class SecurityConfig {
     /**
      * 运维观测配置。
      *
-     * @param allowedCidrs 允许抓取 Prometheus 的来源 CIDR，逗号分隔；空值仅 loopback
+     * @param allowedCidrs 允许读取 info 与抓取 Prometheus 的来源 CIDR，逗号分隔；空值仅 loopback
      */
     @ConfigurationProperties(prefix = "riccon.ops")
     public record OpsProperties(@DefaultValue("") String allowedCidrs) {}
@@ -48,9 +49,9 @@ public class SecurityConfig {
         http.authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/actuator/health", "/actuator/health/**")
                         .permitAll()
-                        // M04：Prometheus 只允许 RICCON_OPS_ALLOWED_CIDRS（空=loopback）的来源。
-                        .requestMatchers("/actuator/prometheus")
-                        .access(prometheusAccess(opsProperties.allowedCidrs()))
+                        // M04：info 与 Prometheus 只允许 RICCON_OPS_ALLOWED_CIDRS（空=loopback）的来源。
+                        .requestMatchers("/actuator/info", "/actuator/prometheus")
+                        .access(opsEndpointAccess(opsProperties.allowedCidrs()))
                         // 内部端点只允许集群内访问；仅放行两个已实现路径，令牌在控制器/服务中强制校验。
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.POST,
@@ -68,14 +69,14 @@ public class SecurityConfig {
     }
 
     /**
-     * 返回 Prometheus 抓取的来源授权规则。
+     * 返回 Actuator 运维端点（info/prometheus）的来源授权规则。
      *
      * <p>空配置仅允许 loopback；非空只允许列出的 CIDR。非法 CIDR 在启动时失败。
      *
      * @param allowedCidrs 逗号分隔的 CIDR 配置
      * @return 访问决策
      */
-    static AuthorizationManager<RequestAuthorizationContext> prometheusAccess(String allowedCidrs) {
+    static AuthorizationManager<RequestAuthorizationContext> opsEndpointAccess(String allowedCidrs) {
         AllowedCidrs cidrs = AllowedCidrs.parse(allowedCidrs);
         return (authentication, context) ->
                 new AuthorizationDecision(cidrs.permits(context.getRequest().getRemoteAddr()));

@@ -44,10 +44,10 @@ import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
 /**
  * API 安全过滤器链。
  *
- * <p>默认拒绝一切，只显式放行健康检查、CSRF 令牌、内置账号登录与 OIDC 的 providers/authorize/callback；
- * 其余路径要求会话认证，具体权限由 {@code PermissionInterceptor} 做方法级校验。会话使用 Spring Session JDBC，
- * CSRF 令牌存 HttpSession（非 JS 可读 Cookie），登录后由 controller 或 OIDC 成功处理器轮换会话 ID 与令牌
- * （ADR-0013、ADR-0019）。
+ * <p>默认拒绝一切，只显式放行健康检查、受 {@code RICCON_OPS_ALLOWED_CIDRS} 来源限制的运维信息/指标端点、
+ * CSRF 令牌、内置账号登录与 OIDC 的 providers/authorize/callback；其余路径要求会话认证，具体权限由
+ * {@code PermissionInterceptor} 做方法级校验。会话使用 Spring Session JDBC，CSRF 令牌存 HttpSession
+ * （非 JS 可读 Cookie），登录后由 controller 或 OIDC 成功处理器轮换会话 ID 与令牌（ADR-0013、ADR-0019）。
  *
  * <p>OIDC 约束：只使用 {@code oauth2Login} 做授权码 + PKCE + nonce；关闭默认登录页与自动重定向；
  * 不持久化 OIDC 主体或任何 token；授权入口/回调是顶层 GET，不使用 CSRF 令牌。
@@ -59,22 +59,22 @@ public class SecurityConfig {
     /**
      * 运维观测配置。
      *
-     * @param allowedCidrs 允许抓取 Prometheus 的来源 CIDR，逗号分隔；空值仅 loopback
+     * @param allowedCidrs 允许读取 info 与抓取 Prometheus 的来源 CIDR，逗号分隔；空值仅 loopback
      */
     @ConfigurationProperties(prefix = "riccon.ops")
     public record OpsProperties(@DefaultValue("") String allowedCidrs) {}
 
     /**
-     * 返回 Prometheus 抓取的来源授权规则。
+     * 返回 Actuator 运维端点（info/prometheus）的来源授权规则。
      *
      * <p>{@code RICCON_OPS_ALLOWED_CIDRS} 为空时仅允许 loopback；配置存在时只允许列出的 CIDR，
      * 不额外放行 loopback，避免“空配置”与“显式配置”语义混淆。非法 CIDR 在启动时失败。
-     * 该规则不改变 {@code anyRequest().denyAll()} 默认拒绝，也不为指标端点添加 permitAll（ADR-0021 §2.2/§10.6）。
+     * 该规则不改变 {@code anyRequest().denyAll()} 默认拒绝，也不为运维端点添加 permitAll（ADR-0021 §2.2/§10.6）。
      *
      * @param allowedCidrs 逗号分隔的 CIDR 配置
      * @return 访问决策
      */
-    static AuthorizationManager<RequestAuthorizationContext> prometheusAccess(String allowedCidrs) {
+    static AuthorizationManager<RequestAuthorizationContext> opsEndpointAccess(String allowedCidrs) {
         AllowedCidrs cidrs = AllowedCidrs.parse(allowedCidrs);
         return (authentication, context) ->
                 new AuthorizationDecision(cidrs.permits(context.getRequest().getRemoteAddr()));
@@ -146,9 +146,9 @@ public class SecurityConfig {
         http.authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/actuator/health", "/actuator/health/**")
                         .permitAll()
-                        // M04：Prometheus 只允许 RICCON_OPS_ALLOWED_CIDRS（空=loopback）的来源；不是业务 RBAC。
-                        .requestMatchers("/actuator/prometheus")
-                        .access(prometheusAccess(opsProperties.allowedCidrs()))
+                        // M04：info 与 Prometheus 只允许 RICCON_OPS_ALLOWED_CIDRS（空=loopback）的来源；不是业务 RBAC。
+                        .requestMatchers("/actuator/info", "/actuator/prometheus")
+                        .access(opsEndpointAccess(opsProperties.allowedCidrs()))
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf")
                         .permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login")
