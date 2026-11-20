@@ -206,7 +206,9 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
     @Test
     void toolStageFailure_isRetriedAndCompletesOnce() {
         Fixture fixture = fixture("tenant-a", true);
-        stub.rateLimitNext(3);
+        // M04：内层 OpenAI 客户端固定 max-attempts=1（ADR-0021 §5.2），一次 429 即 TOOL FAILED；
+        // 重试由 outbox 在原租约释放后承担，而不是同一次模型调用内重试 3 次。
+        stub.rateLimitNext(1);
 
         assertThat(poller.pollOnce()).isEqualTo(1);
 
