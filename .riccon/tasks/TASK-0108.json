@@ -4,7 +4,7 @@
   "module_id": "M04",
   "title": "M04 B7：成本快照写入 + 平台/租户聚合/明细 API + 边界测试 + 成本查询指标",
   "owner": "riccon/builder-cost",
-  "status": "review",
+  "status": "done",
   "write_scope": [
     "apps/worker/src/main/java/com/riccon/worker/model/service/ModelInvocationService.java",
     "apps/worker/src/main/java/com/riccon/worker/model/persistence/ModelInvocationJdbc.java",
@@ -36,9 +36,9 @@
     "codegraph",
     "git"
   ],
-  "blocker": "需 Lead 处理写入范围：(1) 合同 /api/v1/admin/costs 的 tenantId 查询过滤被 TenantContextFilter 视为伪造租户，必须在该过滤器对平台保留租户的 GET /api/v1/admin/costs 放行（已实现并在 CostAdminApiTest 覆盖）；请把 apps/api/src/main/java/com/riccon/api/auth/controller/TenantContextFilter.java 加入 TASK-0108 write_scope，或拆独立安全任务。(2) baseline..HEAD 包含并行任务 98fbcc3 的 e2e/** 文件，非本任务产物；task update 校验因此拒绝转 review。",
+  "blocker": null,
   "created_at": "2026-11-20T21:05:31.891+08:00",
-  "updated_at": "2026-11-21T07:03:34.160+08:00",
+  "updated_at": "2026-11-21T07:17:48.191+08:00",
   "baseline_commit": "98fbcc3",
   "end_commit": "096f585"
 }
