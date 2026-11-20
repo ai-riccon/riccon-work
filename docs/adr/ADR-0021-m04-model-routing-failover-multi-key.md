@@ -1,13 +1,15 @@
 # ADR-0021：M04 模型路由、降级状态机与平台托管 key 池
 
-Status: proposed
+Status: accepted
 Date: 2026-11-20
 Reviewers: `riccon/lead`（范围/合同一致性）、`riccon/verifier`（可测试性、降级与越权）、`riccon/ops`（迁移/回滚/出网/可观测性）、安全评审（SSRF、凭据、denial-of-wallet）
-Approved-by: DEC-0024=B（2026-11-20）：不拆，M04 单模块 48h，18 条 AC 全保留；§12 高成本项按 B 答复批准。ADR 本身待 REV-M04-ARCH-005 复核后才转 `accepted`（REV-M04-OPS-005 pass；REV-M04-ARCH-004 fail 的 findings 已在本版修复）
-Review-date: M04 gate 前（预计 2026-12-05；待 REV-M04-ARCH-005 复核）
+Approved-by: DEC-0024=B（2026-11-20）：不拆，M04 单模块 48h，18 条 AC 全保留；§12 高成本项按 B 答复批准。评审：REV-M04-ARCH-005 pass、REV-M04-OPS-006 pass（2026-11-20）
+Review-date: 2026-11-20（REV-M04-ARCH-005 pass、REV-M04-OPS-006 pass；M04 gate 前复核完成）
 Supersedes: none
 Scope: M04「模型网关纵深」的路由、降级、多 key、受管端点与契约收口；配额与成本见 ADR-0022
 关联: DEC-0023（A：范围/AC/OQ 默认值）、DEC-0024（B：单模块 48h、18 条 AC、17 个实施任务）、`docs/PRODUCT.md` §10、ADR-0006（信封加密）、ADR-0007（审计）、ADR-0009（租户隔离）、ADR-0010（Flyway）、ADR-0012（数据模型）、ADR-0014（API/SSE 契约）、ADR-0015（模块边界）、ADR-0018（部门数据范围）、ADR-0019/0020（M10 身份/审计）、`docs/security/THREAT-MODEL.md` §4.4/§7/§9/§10
+
+> 状态口径：`accepted` 仅表示设计评审通过（DEC-0024=B + REV-M04-ARCH-005 + REV-M04-OPS-006）。M04 模块 gate、用户最终验收与生产发布仍需 17 个实施任务、全量合同证据和 release 批准；本 ADR 不对它们作任何声明。
 
 ## Context
 
@@ -776,7 +778,7 @@ Lane C（观测/配额/资产/ops）: B1c -> B2（暴露）
 - V11 是**加列/加表 + 唯一键替换**，旧应用（M02/M10）不读取新表；`model_invocation` 新列可空/有默认，旧查询按列名读取仍工作。
 - 回滚到 M04 前应用版本时：
   - API：Boot 4.1.2 的 Flyway 默认 `spring.flyway.ignore-migration-patterns=*:future`（`ignore-future-migrations` 在 Flyway 12 已移除，设置无效）；旧 API 镜像在 V11 库上启动必须演练 `/actuator/health` UP + 历史调用可读。若客户显式置空该配置，需在回滚窗口设为 `*:future`。
-  - Worker：旧版本 `SchemaVersionChecker` 固定期望 10；回滚窗口必须以 `RICCON_WORKER_SCHEMA_VALIDATION_ENABLED=false` 启动旧 Worker，并在 RUNBOOK 记录“仅回滚窗口、人工核对 `MAX(version)`、只允许启动 M04 前最后一个 worker 版本”的工单与风险接受。关闭校验时必须输出固定 WARN（建议 `RICCON-WORKER-002 schema validation disabled`）。
+  - Worker：旧版本 `SchemaVersionChecker` 固定期望 10；回滚窗口必须以 `RICCON_WORKER_SCHEMA_VALIDATION_ENABLED=false` 启动旧 Worker，并在 RUNBOOK 记录“仅回滚窗口、人工核对 `MAX(version)`、只允许启动 M04 前最后一个 worker 版本”的工单与风险接受。关闭校验时必须输出固定 WARN 码 `RICCON-WORKER-002`，文案固定为 `schema validation disabled`；演练与 V2 独立重放按该码逐字核对，不得输出其他码。
 - 回滚后行为回到 M02 单模型：旧 Worker 的 `findActiveCredential` 取其中一把 ACTIVE key（多 key 下按 version DESC LIMIT 1），仍可服务；但**回滚前必须收敛到一把 ACTIVE key**（见下），否则可用性取决于任意 key。路由/配额/成本表被忽略。**成本快照不删除/不改写**；历史调用记录仍可读（AC-18）。
 - **不提供 down migration**。以下“应急 SQL”只用于测试环境验证 V11 可逆性或经用户批准后的灾难恢复演练，不是生产回滚路径；生产回滚优先备份恢复。执行前必须停止 API/Worker、备份 `provider_credential`、确认不再需要 M04 数据：
 
@@ -995,9 +997,9 @@ DELETE FROM flyway_schema_history WHERE version = '11';
 
 若用户不批准上述任一项，M04 需回到范围决策；**不得**以“实现时再说”绕过。
 
-## 13. 评审响应矩阵（REV-M04-OPS-001..004、REV-M04-ARCH-001..003；DEC-0024=B 收口）
+## 13. 评审响应矩阵（REV-M04-OPS-001..006、REV-M04-ARCH-001..005；DEC-0024=B 收口）
 
-> 本矩阵只记录历次修订；ADR 仍 `proposed`，待 **REV-M04-ARCH-005** 按单模块口径复核（REV-M04-ARCH-004 fail，1 P1 已按本轮修复；REV-M04-OPS-005 pass，6 P2 已分配/修复）。`fixed` 表示设计/契约已改，验证仍由后续任务执行；`superseded` 表示该行描述的分模块/分段方案已被 DEC-0024=B 撤销，正文以单模块口径为准；`closed` 表示前置决策已完成；`deferred` 表示需要用户/Lead/Product 决策或后续模块；`rejected` 附证据与影响。
+> 本矩阵记录历次修订；ADR 已于 2026-11-20 转 `accepted`（REV-M04-ARCH-005 pass、REV-M04-OPS-006 pass）。**REV-M04-ARCH-003/004 与 REV-M04-OPS-004/005 是历史轮次记录（其中拆分/分段方案已被 DEC-0024=B 撤销），不再作为当前方案依据**；当前口径以 DEC-0024=B 单模块 48h 为准。`fixed` 表示设计/契约已改，验证仍由后续任务执行；`superseded` 表示该行描述的分模块/分段方案已被 DEC-0024=B 撤销，正文以单模块口径为准；`closed` 表示前置决策已完成；`deferred` 表示需要用户/Lead/Product 决策或后续模块；`rejected` 附证据与影响。
 
 | finding     | verdict    | 修改位置                                                                                                                                                                                                                                     | 验证方式                                                                                                                       |
 | ----------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
@@ -1102,29 +1104,40 @@ DELETE FROM flyway_schema_history WHERE version = '11';
 
 > ARCH-004 的 F-001..F-013 与本表前段的 F-* 编号不同轮次，故加 `A4-` 前缀避免歧义。`fixed` 只表示设计文本已改；是否通过由 REV-M04-ARCH-005 独立判定。
 
-| finding     | 状态     | 修改位置                                                                                                                     | 验证方式                         |
-| ----------- | -------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| A4-F-001    | fixed    | §8.1/§8.3/§8.4/§8.5：AC-02 整条归 V2；V1 只判 15 条并提供 `SEC-M04-003a`/`TEN-031`/`IT-MODEL-102`；§8.4 新增 AC→V1/V2 映射表 | REV-005 核对映射；V1/V2 任务验收 |
-| A4-F-002    | fixed    | §8.3 B11a/B11b、§8.5、§11.1 07a/07b：五态 + 三条键盘路径 + 375px + axe；V1 同时列 07a 与 07b                                 | REV-005 文本核对；B11b/E2E 验收  |
-| A4-F-003    | fixed    | §8.3 V2：最终提交全量独立 test/coverage/E2E/a11y/security + 抽样重跑 8 条 AC                                                 | V2 证据与 V1 分开取证            |
-| A4-F-004    | fixed    | THREAT §8 新增 B-21（`PERF-M04-001/002` + `OPS-M04-01`）；M04 gate 要求 B-18/B-19/B-20/B-21                                  | REV-005；V2 取证                 |
-| A4-F-005    | fixed    | THREAT §10.4：M04 gate acceptance = PRODUCT §10.3 AC-01..18；安全 gate = B-18..B-21；TM/指标/UI 为补充核对                   | REV-005                          |
-| A4-F-006    | deferred | PRODUCT.md:31 的已撤销拆分 ID 字面；PRODUCT 不在本任务写入范围，由 Product 任务（TASK-0098）改口径                           | Product/Lead 后续文档任务        |
-| A4-F-007    | fixed    | ARCH 评审表：ARCH-004 fail（1 P1，修复中）/ OPS-005 pass（6 P2 open）；Verifier 待 ARCH-005；§13 T-09 同步                   | REV-005 核对                     |
-| A4-F-008    | fixed    | §8.1 B10 依赖补 B3/B4/B5；§8.2 依赖图与隐藏依赖说明                                                                          | Lead 派单前核对                  |
-| A4-F-009    | deferred | EV-0522/0523 覆盖不足属历史证据；由后续证据任务重录                                                                          | Lead/任务 owner                  |
-| A4-F-010    | fixed    | §13 S-02/T-01 统一为“每组 1 行、优先 ACTIVE、否则 RETIRED、不写死总行数”                                                     | 回滚演练                         |
-| A4-F-011    | fixed    | §11.1 增加 `SEC-MODEL-002` → `SEC-M04-001/002/009` + `IT-MODEL-107` 映射；PRODUCT 文本归 Product/Lead                        | Product 同步                     |
-| A4-F-012    | fixed    | §8.3 B1a write_scope 补 `apps/worker/src/test/resources/**`                                                                  | write_scope 核对                 |
-| A4-F-013    | deferred | EV-0522/0523 recorder=lead 属历史证据；需 Lead 在 note 说明或由 owner 重录                                                   | Lead                             |
-| OPS-M04-042 | fixed    | §13 S-02/T-01 与 §10.3 统一分组断言                                                                                          | 回滚演练                         |
-| OPS-M04-047 | fixed    | §11.1 拆 `OPS-M04-02a`（Worker 7）/`OPS-M04-02b`（API 2+3）；§8.3 V2 与 THREAT B-20 引用更新                                 | V2 抓取报告；REV-005             |
-| OPS-M04-048 | fixed    | ADR-0022 §1.1/§1.3 命名 4 个默认配额键；ADR-0021 B1a/B10/§10.2 preflight 与 `/actuator/info` 漂移检查                        | B1a 配置键；B10 演练             |
-| OPS-M04-049 | fixed    | §8.3 B10 回滚绑定 `RICCON_WORKER_SCHEMA_VALIDATION_ENABLED=false`、固定 WARN、工单；V2 独立重放                              | B10 演练；V2 证据                |
-| OPS-M04-050 | fixed    | §6.5/§10.3/§8.3 B10：RPO ≤24h、RTO ≤4h；对账容差金额差 0.00 CNY、调用量差 ≤0.1%                                              | B10 restore-drill；对账演练      |
-| OPS-M04-051 | fixed    | §8.4 B10 ≈6h 与 8h 窗口说明；48h 仍有约 20h 余量                                                                             | Lead 派单前确认                  |
-| OPS-M04-052 | fixed    | §8.3 B10 quota 演练补真实超限（限额=已用量+1 → 429/审计/指标 → false 只计量 → 恢复 → true）                                  | B10 演练记录                     |
-| OPS-M04-053 | fixed    | §10.2 标题/正文统一“preflight + 六步（0–6）”；drain 上限 5 分钟与在途 run 判据                                               | RUNBOOK 演练                     |
-| OPS-M04-054 | fixed    | §8.3 B10：CI perf nightly + 发布前必跑；manual gate 仅本地预检                                                               | CI 配置与 perf 报告              |
-| OPS-M04-055 | fixed    | ARCH 评审表更新；ADR 已用 07a/07b、108a/108b（PRODUCT 文本归 Product/Lead）                                                  | REV-005                          |
-| OPS-M04-056 | deferred | ACCEPTANCE.md 不在本任务写入范围；归 Lead/Product 在 M04 gate 前修正                                                         | Lead/Product                     |
+| finding     | 状态     | 修改位置                                                                                                                           | 验证方式                             |
+| ----------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| A4-F-001    | fixed    | §8.1/§8.3/§8.4/§8.5：AC-02 整条归 V2；V1 只判 15 条并提供 `SEC-M04-003a`/`TEN-031`/`IT-MODEL-102`；§8.4 新增 AC→V1/V2 映射表       | REV-005 核对映射；V1/V2 任务验收     |
+| A4-F-002    | fixed    | §8.3 B11a/B11b、§8.5、§11.1 07a/07b：五态 + 三条键盘路径 + 375px + axe；V1 同时列 07a 与 07b                                       | REV-005 文本核对；B11b/E2E 验收      |
+| A4-F-003    | fixed    | §8.3 V2：最终提交全量独立 test/coverage/E2E/a11y/security + 抽样重跑 8 条 AC                                                       | V2 证据与 V1 分开取证                |
+| A4-F-004    | fixed    | THREAT §8 新增 B-21（`PERF-M04-001/002` + `OPS-M04-01`）；M04 gate 要求 B-18/B-19/B-20/B-21                                        | REV-005；V2 取证                     |
+| A4-F-005    | fixed    | THREAT §10.4：M04 gate acceptance = PRODUCT §10.3 AC-01..18；安全 gate = B-18..B-21；TM/指标/UI 为补充核对                         | REV-005                              |
+| A4-F-006    | deferred | PRODUCT.md:31 的已撤销拆分 ID 字面；PRODUCT 不在本任务写入范围，由 Product 任务（TASK-0098）改口径                                 | Product/Lead 后续文档任务            |
+| A4-F-007    | fixed    | ARCH 评审表：ARCH-004 fail（1 P1，修复中）/ OPS-005 pass（6 P2 open）；Verifier 待 ARCH-005；§13 T-09 同步                         | REV-005 核对                         |
+| A4-F-008    | fixed    | §8.1 B10 依赖补 B3/B4/B5；§8.2 依赖图与隐藏依赖说明                                                                                | Lead 派单前核对                      |
+| A4-F-009    | deferred | EV-0522/0523 覆盖不足属历史证据；由后续证据任务重录                                                                                | Lead/任务 owner                      |
+| A4-F-010    | fixed    | §13 S-02/T-01 统一为“每组 1 行、优先 ACTIVE、否则 RETIRED、不写死总行数”                                                           | 回滚演练                             |
+| A4-F-011    | fixed    | §11.1 增加 `SEC-MODEL-002` → `SEC-M04-001/002/009` + `IT-MODEL-107` 映射；PRODUCT 文本归 Product/Lead                              | Product 同步                         |
+| A4-F-012    | fixed    | §8.3 B1a write_scope 补 `apps/worker/src/test/resources/**`                                                                        | write_scope 核对                     |
+| A4-F-013    | deferred | EV-0522/0523 recorder=lead 属历史证据；需 Lead 在 note 说明或由 owner 重录                                                         | Lead                                 |
+| OPS-M04-042 | fixed    | §13 S-02/T-01 与 §10.3 统一分组断言                                                                                                | 回滚演练                             |
+| OPS-M04-047 | fixed    | §11.1 拆 `OPS-M04-02a`（Worker 7）/`OPS-M04-02b`（API 2+3）；§8.3 V2 与 THREAT B-20 引用更新                                       | V2 抓取报告；REV-005                 |
+| OPS-M04-048 | fixed    | ADR-0022 §1.1/§1.3 命名 4 个默认配额键；ADR-0021 B1a/B10/§10.2 preflight 与 `/actuator/info` 漂移检查                              | B1a 配置键；B10 演练                 |
+| OPS-M04-049 | fixed    | §8.3 B10 回滚绑定 `RICCON_WORKER_SCHEMA_VALIDATION_ENABLED=false`、固定 WARN、工单；V2 独立重放                                    | B10 演练；V2 证据                    |
+| OPS-M04-050 | fixed    | §6.5/§10.3/§8.3 B10：RPO ≤24h、RTO ≤4h；对账容差金额差 0.00 CNY、调用量差 ≤0.1%                                                    | B10 restore-drill；对账演练          |
+| OPS-M04-051 | fixed    | §8.4 B10 ≈6h 与 8h 窗口说明；48h 仍有约 20h 余量                                                                                   | Lead 派单前确认                      |
+| OPS-M04-052 | fixed    | §8.3 B10 quota 演练补真实超限（限额=已用量+1 → 429/审计/指标 → false 只计量 → 恢复 → true）                                        | B10 演练记录                         |
+| OPS-M04-053 | fixed    | §10.2 标题/正文统一“preflight + 六步（0–6）”；drain 上限 5 分钟与在途 run 判据                                                     | RUNBOOK 演练                         |
+| OPS-M04-054 | fixed    | §8.3 B10：CI perf nightly + 发布前必跑；manual gate 仅本地预检                                                                     | CI 配置与 perf 报告                  |
+| OPS-M04-055 | fixed    | ARCH 评审表更新；ADR 已用 07a/07b、108a/108b（PRODUCT 文本归 Product/Lead）                                                        | REV-005                              |
+| OPS-M04-056 | fixed    | `docs/ACCEPTANCE.md:59/61` 已由 TASK-0098（`18226e3`）改为“R-11、M13 F-001 不承接，归 M09/M10”；ADR §10.3 与 ARCHITECTURE:169 一致 | ACCEPTANCE 文本核对；REV-M04-OPS-006 |
+
+### 13.2 REV-M04-ARCH-005 / REV-M04-OPS-006 收口（2026-11-20）
+
+> 两轮评审 verdict 均为 `pass`，ADR-0021/0022 据此转 `accepted`。下表是评审后新增的 P3 文档同步项，由 TASK-0099 关闭；不改变 18 条 AC、DEC-0024 范围或契约 `1.3.0-m04`。
+
+| finding     | 状态  | 修改位置                                                                                                                                                       | 验证方式                        |
+| ----------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| OPS-M04-057 | fixed | §10.3 去掉“建议”，固定 WARN 码 `RICCON-WORKER-002`（文案固定 `schema validation disabled`），与 B10/§10.3 通过条件、ARCHITECTURE:317、THREAT B-21:627 逐字一致 | 文本 grep；V2 回滚重放核对 WARN |
+| OPS-M04-058 | fixed | §13 OPS-056 行改 `fixed`；ADR-0021/0022 的 Review-date 登记 REV-M04-ARCH-005 / REV-M04-OPS-006；`docs/adr/README.md` 与 `docs/ARCHITECTURE.md` 评审表同步      | 文档核对；REV-M04-OPS-006       |
+
+> 未在本轮处理（仍是 P3 观察项，归 Lead/Architect 在 V1/V2 派单前核对）：ARCH-005 §5 的 PRODUCT AC-05/07 旧线索、V1 write_scope 缺 `.riccon/evidence/**`、AC-06 的 `PERF-M04-001` 归属、§8.3 标题“≤6 条/任务”。

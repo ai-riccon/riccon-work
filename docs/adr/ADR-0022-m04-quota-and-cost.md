@@ -1,13 +1,15 @@
 # ADR-0022：M04 配额执行与成本估算
 
-Status: proposed
+Status: accepted
 Date: 2026-11-20
 Reviewers: `riccon/lead`（范围/合同一致性）、`riccon/verifier`（并发、窗口边界、跨租户与金额可测试性）、`riccon/ops`（迁移/重置/保留/可观测性）、安全评审（越权、成本推断、denial-of-wallet）
-Approved-by: DEC-0024=B（2026-11-20）：准入即计费、默认限额、单币种、回滚窗口与单模块 48h 已批准；ADR 本身待 REV-M04-ARCH-005 复核后才转 `accepted`（REV-M04-OPS-005 pass；REV-M04-ARCH-004 fail 的 findings 已在本版修复）
-Review-date: M04 gate 前（预计 2026-12-05；待 REV-M04-ARCH-005 复核）
+Approved-by: DEC-0024=B（2026-11-20）：准入即计费、默认限额、单币种、回滚窗口与单模块 48h 已批准。评审：REV-M04-ARCH-005 pass、REV-M04-OPS-006 pass（2026-11-20）
+Review-date: 2026-11-20（REV-M04-ARCH-005 pass、REV-M04-OPS-006 pass；M04 gate 前复核完成）
 Supersedes: none
 Scope: M04「模型网关纵深」的租户/用户配额与成本估算；路由/降级/多 key 见 ADR-0021
 关联: DEC-0023（A）、DEC-0024（B：单模块 48h）、`docs/PRODUCT.md` §10（AC-08..12、AC-17/18）、ADR-0007（审计）、ADR-0009（租户隔离）、ADR-0010（Flyway）、ADR-0012（数据模型）、ADR-0021（M04 路由）、`docs/security/THREAT-MODEL.md` §4.4/§7/§9/§10
+
+> 状态口径：`accepted` 仅表示设计评审通过（DEC-0024=B + REV-M04-ARCH-005 + REV-M04-OPS-006）；M04 模块 gate、用户最终验收与生产发布仍需实现任务与全量合同证据，本 ADR 不构成对它们的声明。
 
 ## Context
 
