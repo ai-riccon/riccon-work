@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * API 信封加密与凭据指纹配置。
  *
  * <p>主密钥与 pepper 只允许由部署环境注入（ADR-0006、ADR-0021 §6.5），仓库与镜像中不得保存真实值。
- * 配置项本身允许为空，由 {@link com.riccon.api.crypto.CryptoConfig} 在启动阶段执行 fail-closed 校验：
+ * 配置项本身允许为空，由 {@link com.riccon.api.crypto.config.CryptoConfig} 在启动阶段执行 fail-closed 校验：
  * 缺失、长度不足、无法解码或命中测试密钥都让 API 启动失败，禁止降级为明文。
  *
  * <p>同时保留与 Worker 一致的 {@code riccon.crypto.*} 键名，环境变量以 {@code RICCON_MASTER_KEY}、

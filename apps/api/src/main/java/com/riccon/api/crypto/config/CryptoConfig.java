@@ -1,6 +1,8 @@
-package com.riccon.api.crypto;
+package com.riccon.api.crypto.config;
 
 import com.riccon.api.config.CryptoProperties;
+import com.riccon.api.crypto.CredentialCipher;
+import com.riccon.api.crypto.MasterKeyProvider;
 import com.riccon.platform.common.crypto.CryptoErrorCodes;
 import com.riccon.platform.common.crypto.MasterKeyConfigException;
 import com.riccon.platform.common.crypto.MasterKeyRing;
@@ -56,7 +58,7 @@ public class CryptoConfig {
      * @throws MasterKeyConfigException 主密钥或 pepper 缺失/非法，或 canary 自检失败
      */
     @Bean
-    MasterKeyProvider masterKeyProvider(CryptoProperties properties, Environment environment) {
+    public MasterKeyProvider masterKeyProvider(CryptoProperties properties, Environment environment) {
         boolean testProfile = environment.matchesProfiles("test");
         String masterKey = resolve(environment, MASTER_KEY_ENV, properties.masterKey());
         String previousMasterKey = resolve(environment, PREVIOUS_MASTER_KEY_ENV, properties.previousMasterKey());

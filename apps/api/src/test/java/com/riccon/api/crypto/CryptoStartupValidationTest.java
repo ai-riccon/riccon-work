@@ -10,6 +10,7 @@ import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.read.ListAppender;
 import com.riccon.api.ApiApplication;
 import com.riccon.api.config.CryptoProperties;
+import com.riccon.api.crypto.config.CryptoConfig;
 import com.riccon.platform.common.crypto.CredentialEnvelope;
 import com.riccon.platform.common.crypto.MasterKeyConfigException;
 import com.riccon.platform.common.crypto.MasterKeyRing;
