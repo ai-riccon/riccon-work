@@ -178,6 +178,56 @@ function renderPage(api: ModelAdminApi) {
   return render(withProviders(<ModelRoutingPage api={api} />));
 }
 
+/**
+ * 解析 rgb()/hex 颜色为 WCAG 相对亮度。
+ *
+ * @param color 浏览器计算后的颜色
+ * @returns 相对亮度（0–1）
+ */
+function relativeLuminance(color: string): number {
+  const channels = color.startsWith('rgb')
+    ? (color.match(/\d+/g) ?? []).slice(0, 3).map(Number)
+    : [1, 3, 5].map((offset) => Number.parseInt(color.slice(offset, offset + 2), 16));
+  const [r, g, b] = channels.map((value) => {
+    const channel = value / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * 断言 Tag 的前景/背景对比度达到 WCAG 2.1 AA（12px 正文 4.5:1）。
+ *
+ * 对应 axe `color-contrast`：antd 6 filled 绿色/橙色/金色 Tag 是该问题的真实来源。
+ *
+ * @param tag 状态或端点 Tag
+ */
+function expectAATagContrast(tag: HTMLElement): void {
+  const { color, backgroundColor } = tag.style;
+  expect(color).not.toBe('');
+  expect(backgroundColor).not.toBe('');
+  const [lighter, darker] = [relativeLuminance(color), relativeLuminance(backgroundColor)].sort(
+    (a, b) => b - a,
+  );
+  expect((lighter + 0.05) / (darker + 0.05)).toBeGreaterThanOrEqual(4.5);
+}
+
+/**
+ * 断言按钮可访问名称以可见文字开头，且 antd 未向两字中文插入空格。
+ *
+ * 对应 axe `label-content-name-mismatch`（WCAG 2.5.3）：可见文字必须原样出现在
+ * 可访问名称中；antd 6 默认把“上移”渲染成“上 移”会破坏该约束。
+ *
+ * @param button 行操作按钮
+ */
+function expectLabelInName(button: HTMLElement): void {
+  const visibleText = (button.textContent ?? '').trim();
+  const accessibleName = (button.getAttribute('aria-label') ?? '').trim();
+  expect(visibleText.length).toBeGreaterThan(0);
+  expect(visibleText).not.toMatch(/\s/);
+  expect(accessibleName.startsWith(visibleText)).toBe(true);
+}
+
 describe('模型路由页', () => {
   beforeEach(() => {
     authStore.reset();
@@ -424,6 +474,43 @@ describe('模型路由页', () => {
     fireEvent.click(screen.getByRole('button', { name: /保存对话链/ }));
 
     expect(await screen.findByText(/生产模式仅允许客户内网网关/)).toBeVisible();
+  });
+
+  it('状态 Tag 满足 WCAG AA 对比度，行操作按钮可访问名称包含可见文字', async () => {
+    renderPage(
+      createModelApi({
+        getModelRouting: vi.fn(async () => ({
+          items: [
+            makeRouting('CHAT', ['model-a', 'model-b']),
+            makeRouting('REPORT', ['model-a'], 2),
+          ],
+        })),
+      }),
+    );
+
+    // 绿色“启用”与“生产可用”、橙色“仅演示（非生产）”：antd 默认 3.37/3.34:1，必须 ≥4.5:1。
+    for (const tag of await screen.findAllByText('启用')) {
+      expectAATagContrast(tag);
+    }
+    for (const tag of screen.getAllByText('生产可用')) {
+      expectAATagContrast(tag);
+    }
+    expectAATagContrast(screen.getByText('仅演示（非生产）'));
+
+    // 行操作按钮：不插入空格，可访问名称以可见文字开头（label-in-name）。
+    expectLabelInName(screen.getByRole('button', { name: '上移 模型 A（对话链）' }));
+    const moveDown = screen.getByRole('button', { name: '下移 模型 A（对话链）' });
+    expectLabelInName(moveDown);
+    expectLabelInName(screen.getByRole('button', { name: '移除 模型 A（对话链）' }));
+    expectLabelInName(screen.getByRole('button', { name: '停用模型 模型 A（对话链）' }));
+
+    // 行操作按钮可用键盘聚焦，焦点位置可辨认（重排前断言，避免节点移动导致焦点丢失）。
+    moveDown.focus();
+    expect(moveDown).toHaveFocus();
+
+    // 金色“未保存”：默认 2.76:1，同样要求 ≥4.5:1。
+    fireEvent.click(moveDown);
+    expectAATagContrast(await screen.findByText('未保存'));
   });
 
   it('只有查看权限时禁用排序、启停与保存', async () => {

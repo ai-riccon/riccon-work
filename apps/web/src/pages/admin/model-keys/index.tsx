@@ -14,6 +14,7 @@ import {
   Tag,
   Typography,
 } from 'antd';
+import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api as defaultApi } from '@/services/api';
 import { ApiError } from '@/services/api/errors';
@@ -48,6 +49,29 @@ export interface ModelKeysPageProps {
 
 /** 页面主阶段（端点目录）。 */
 type KeysPhase = 'loading' | 'ready' | 'empty' | 'forbidden' | 'error';
+
+/**
+ * 端点与 key 状态 Tag 的高对比配色。
+ *
+ * antd 6 filled Tag 默认用 preset 色阶 7 作文字、色阶 1 作背景：绿色 3.37:1、金色 2.76:1，
+ * 12px 字号下低于 WCAG 2.1 AA 的 4.5:1（axe color-contrast）。这里把文字加深到色阶 8/9，
+ * 背景保持色阶 1 并补齐同色系边框：绿色 5.44:1、金色 6.53:1。Tag 仍保留 preset 颜色
+ * （ant-tag-green 等），只在视觉上换成浅底深字。
+ */
+const HIGH_CONTRAST_TAG_STYLES: Record<'green' | 'gold', CSSProperties> = {
+  green: { color: '#237804', background: '#f6ffed', borderColor: '#b7eb8f' },
+  gold: { color: '#874d00', background: '#fffbe6', borderColor: '#ffe58f' },
+};
+
+/**
+ * 返回 Tag 的高对比内联样式。
+ *
+ * @param color Tag 的 preset 颜色
+ * @returns 已覆盖颜色的内联样式；红色与默认色本身满足 AA，返回 undefined
+ */
+function highContrastTagStyle(color: string): CSSProperties | undefined {
+  return HIGH_CONTRAST_TAG_STYLES[color as keyof typeof HIGH_CONTRAST_TAG_STYLES];
+}
 
 /** key 列表阶段。 */
 type CredentialsPhase = 'loading' | 'ready' | 'empty' | 'error';
@@ -503,7 +527,10 @@ export default function ModelKeysPage({ api = defaultModelApi }: ModelKeysPagePr
         <Card
           className="model-keys-card"
           extra={
-            <Tag color={endpointColor(selectedProvider.environmentLabel)}>
+            <Tag
+              color={endpointColor(selectedProvider.environmentLabel)}
+              style={highContrastTagStyle(endpointColor(selectedProvider.environmentLabel))}
+            >
               {endpointLabel(selectedProvider.environmentLabel)}
             </Tag>
           }
@@ -612,10 +639,17 @@ export default function ModelKeysPage({ api = defaultModelApi }: ModelKeysPagePr
                         <Typography.Text code>
                           {credentialMask(credential.maskedHint)}
                         </Typography.Text>
-                        <Tag color={credentialStatusColor(credential.status)}>
+                        <Tag
+                          color={credentialStatusColor(credential.status)}
+                          style={highContrastTagStyle(credentialStatusColor(credential.status))}
+                        >
                           {credentialStatusLabel(credential.status)}
                         </Tag>
-                        {lastActive && <Tag color="gold">最后一把可用 key</Tag>}
+                        {lastActive && (
+                          <Tag color="gold" style={highContrastTagStyle('gold')}>
+                            最后一把可用 key
+                          </Tag>
+                        )}
                       </Flex>
                       <Flex className="model-key-meta" gap={12} wrap>
                         <span>优先级 {credential.priority}</span>
@@ -633,6 +667,7 @@ export default function ModelKeysPage({ api = defaultModelApi }: ModelKeysPagePr
                     <Space className="model-key-actions" wrap>
                       <Button
                         aria-label={`轮换 key ${credential.label}`}
+                        autoInsertSpace={false}
                         disabled={!canManage || busyId !== null || submitting}
                         onClick={() => openForm('rotate', credential)}
                         size="small"
@@ -641,6 +676,7 @@ export default function ModelKeysPage({ api = defaultModelApi }: ModelKeysPagePr
                       </Button>
                       <Button
                         aria-label={`停用 key ${credential.label}`}
+                        autoInsertSpace={false}
                         disabled={
                           !canManage ||
                           busyId !== null ||
@@ -654,6 +690,7 @@ export default function ModelKeysPage({ api = defaultModelApi }: ModelKeysPagePr
                       </Button>
                       <Button
                         aria-label={`恢复 key ${credential.label}`}
+                        autoInsertSpace={false}
                         disabled={
                           !canManage ||
                           busyId !== null ||

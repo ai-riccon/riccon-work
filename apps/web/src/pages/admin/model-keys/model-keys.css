@@ -59,3 +59,14 @@
 .model-key-actions {
   flex: 0 1 auto;
 }
+
+/**
+ * 行操作按钮的键盘焦点环。
+ *
+ * antd 默认 :focus-visible 轮廓在浅色卡片上仍可见，这里固定为 2px 主色轮廓并留 2px 偏移，
+ * 保证 375px 换行后相邻小按钮的焦点位置可辨认（AC-14）。
+ */
+.model-key-actions .ant-btn:focus-visible {
+  outline: 2px solid #0958d9;
+  outline-offset: 2px;
+}

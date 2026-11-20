@@ -109,6 +109,56 @@ function renderPage(api: ModelAdminApi) {
   return render(withProviders(<ModelKeysPage api={api} />));
 }
 
+/**
+ * 解析 rgb()/hex 颜色为 WCAG 相对亮度。
+ *
+ * @param color 浏览器计算后的颜色
+ * @returns 相对亮度（0–1）
+ */
+function relativeLuminance(color: string): number {
+  const channels = color.startsWith('rgb')
+    ? (color.match(/\d+/g) ?? []).slice(0, 3).map(Number)
+    : [1, 3, 5].map((offset) => Number.parseInt(color.slice(offset, offset + 2), 16));
+  const [r, g, b] = channels.map((value) => {
+    const channel = value / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * 断言 Tag 的前景/背景对比度达到 WCAG 2.1 AA（12px 正文 4.5:1）。
+ *
+ * 对应 axe `color-contrast`：antd 6 filled 绿色/金色 Tag 是该问题的真实来源。
+ *
+ * @param tag 状态或端点 Tag
+ */
+function expectAATagContrast(tag: HTMLElement): void {
+  const { color, backgroundColor } = tag.style;
+  expect(color).not.toBe('');
+  expect(backgroundColor).not.toBe('');
+  const [lighter, darker] = [relativeLuminance(color), relativeLuminance(backgroundColor)].sort(
+    (a, b) => b - a,
+  );
+  expect((lighter + 0.05) / (darker + 0.05)).toBeGreaterThanOrEqual(4.5);
+}
+
+/**
+ * 断言按钮可访问名称以可见文字开头，且 antd 未向两字中文插入空格。
+ *
+ * 对应 axe `label-content-name-mismatch`（WCAG 2.5.3）：可见文字必须原样出现在
+ * 可访问名称中；antd 6 默认把“轮换”渲染成“轮 换”会破坏该约束。
+ *
+ * @param button 行操作按钮
+ */
+function expectLabelInName(button: HTMLElement): void {
+  const visibleText = (button.textContent ?? '').trim();
+  const accessibleName = (button.getAttribute('aria-label') ?? '').trim();
+  expect(visibleText.length).toBeGreaterThan(0);
+  expect(visibleText).not.toMatch(/\s/);
+  expect(accessibleName.startsWith(visibleText)).toBe(true);
+}
+
 describe('模型 key 页', () => {
   beforeEach(() => {
     authStore.reset();
@@ -308,6 +358,25 @@ describe('模型 key 页', () => {
     );
     expect(await screen.findByText(/已恢复失效 key「主 key」/)).toBeVisible();
     expect(await screen.findByText('可用')).toBeVisible();
+  });
+
+  it('状态 Tag 满足 WCAG AA 对比度，行操作按钮可访问名称包含可见文字', async () => {
+    renderPage(createModelApi());
+
+    expect(await screen.findByText('主 key')).toBeVisible();
+    // 绿色“可用”默认 3.37:1、金色“最后一把可用 key”默认 2.76:1，修复后必须 ≥4.5:1。
+    expectAATagContrast(screen.getByText('可用'));
+    expectAATagContrast(screen.getByText('最后一把可用 key'));
+
+    // 行操作按钮：不插入空格，可访问名称以可见文字开头（label-in-name）。
+    expectLabelInName(screen.getByRole('button', { name: '轮换 key 主 key' }));
+    expectLabelInName(screen.getByRole('button', { name: '停用 key 主 key' }));
+    expectLabelInName(screen.getByRole('button', { name: '恢复 key 主 key' }));
+
+    // 行操作按钮可用键盘聚焦，焦点位置可辨认。
+    const rotate = screen.getByRole('button', { name: '轮换 key 主 key' });
+    rotate.focus();
+    expect(rotate).toHaveFocus();
   });
 
   it('不可路由端点禁止新增 key，但保留已有 key 的停用入口', async () => {

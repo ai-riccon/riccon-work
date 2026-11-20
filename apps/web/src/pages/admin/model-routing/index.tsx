@@ -13,6 +13,7 @@ import {
   Tag,
   Typography,
 } from 'antd';
+import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api as defaultApi } from '@/services/api';
 import { ApiError } from '@/services/api/errors';
@@ -52,6 +53,30 @@ type RoutingPhase = 'loading' | 'ready' | 'empty' | 'forbidden' | 'error';
 
 /** 路由链固定顺序；服务端保证各返回一条，页面仍按业务顺序渲染。 */
 const PURPOSES: readonly ModelPurpose[] = ['CHAT', 'REPORT'];
+
+/**
+ * 状态与端点 Tag 的高对比配色。
+ *
+ * antd 6 filled Tag 默认用 preset 色阶 7 作文字、色阶 1 作背景：绿色 3.37:1、橙色 3.34:1、
+ * 金色 2.76:1，12px 字号下低于 WCAG 2.1 AA 的 4.5:1（axe color-contrast）。这里把文字加深到
+ * 色阶 8/9，背景保持色阶 1 并补齐同色系边框：绿色 5.44:1、橙色 5.09:1、金色 6.53:1。
+ * Tag 仍保留 preset 颜色（ant-tag-green 等），只在视觉上换成浅底深字。
+ */
+const HIGH_CONTRAST_TAG_STYLES: Record<'green' | 'orange' | 'gold', CSSProperties> = {
+  green: { color: '#237804', background: '#f6ffed', borderColor: '#b7eb8f' },
+  orange: { color: '#ad4e00', background: '#fff7e6', borderColor: '#ffd591' },
+  gold: { color: '#874d00', background: '#fffbe6', borderColor: '#ffe58f' },
+};
+
+/**
+ * 返回 Tag 的高对比内联样式。
+ *
+ * @param color Tag 的 preset 颜色
+ * @returns 已覆盖颜色的内联样式；其他颜色（红/蓝/默认）默认值已满足 AA，返回 undefined
+ */
+function highContrastTagStyle(color: string): CSSProperties | undefined {
+  return HIGH_CONTRAST_TAG_STYLES[color as keyof typeof HIGH_CONTRAST_TAG_STYLES];
+}
 
 /**
  * 按 CHAT/REPORT 固定顺序排序路由链。
@@ -192,7 +217,11 @@ function ChainCard({
         <Space wrap>
           <span>{purposeLabel(chain.purpose)}</span>
           <Tag color="blue">版本 v{chain.version}</Tag>
-          {dirty && <Tag color="gold">未保存</Tag>}
+          {dirty && (
+            <Tag color="gold" style={highContrastTagStyle('gold')}>
+              未保存
+            </Tag>
+          )}
         </Space>
       }
     >
@@ -242,14 +271,25 @@ function ChainCard({
                     {name}
                   </Typography.Text>
                   {model && <Typography.Text code>{model.modelKey}</Typography.Text>}
-                  <Tag color={modelStatusColor(status)}>{modelStatusLabel(status)}</Tag>
-                  <Tag color={endpointColor(environment)}>{endpointLabel(environment)}</Tag>
+                  <Tag
+                    color={modelStatusColor(status)}
+                    style={highContrastTagStyle(modelStatusColor(status))}
+                  >
+                    {modelStatusLabel(status)}
+                  </Tag>
+                  <Tag
+                    color={endpointColor(environment)}
+                    style={highContrastTagStyle(endpointColor(environment))}
+                  >
+                    {endpointLabel(environment)}
+                  </Tag>
                   {provider && !provider.allowed && <Tag color="red">不可路由</Tag>}
                   {!model && <Tag color="red">目录缺失</Tag>}
                 </Flex>
                 <Space className="model-routing-item-actions" wrap>
                   <Button
                     aria-label={`上移 ${name}（${purposeLabel(chain.purpose)}）`}
+                    autoInsertSpace={false}
                     disabled={!canManage || saving || row.index === 0}
                     onClick={() => onMove(row.index, -1)}
                     size="small"
@@ -258,6 +298,7 @@ function ChainCard({
                   </Button>
                   <Button
                     aria-label={`下移 ${name}（${purposeLabel(chain.purpose)}）`}
+                    autoInsertSpace={false}
                     disabled={!canManage || saving || row.index === draft.length - 1}
                     onClick={() => onMove(row.index, 1)}
                     size="small"
@@ -265,7 +306,8 @@ function ChainCard({
                     下移
                   </Button>
                   <Button
-                    aria-label={`从${purposeLabel(chain.purpose)}移除 ${name}`}
+                    aria-label={`移除 ${name}（${purposeLabel(chain.purpose)}）`}
+                    autoInsertSpace={false}
                     disabled={!canManage || saving}
                     onClick={() => onRemove(row.modelId)}
                     size="small"
