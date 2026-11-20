@@ -134,8 +134,8 @@ test.describe('J1 通用问答与文件处理', () => {
   });
 
   // M02-AC-02 逐格式 UI 证据：XLSX/PNG/JPEG 各上传一个，必须显示“解析成功”并可用于提问。
-  // 本组用例只承担 AC-02 功能证据；完成态引用链接存在既有 serious 对比度缺陷（F-001），
-  // 不在此处用 axe 断言掩盖或放宽，待单独修复任务后再纳入 @a11y。
+  // 本组用例只承担 AC-02 功能证据：完成态引用链接存在既有 serious 对比度缺陷（F-001，需单独修复任务），
+  // 因此暂不纳入 @a11y；修复后应补回 axe 断言，不能用“通过”掩盖该缺陷。
   for (const formatCase of FORMAT_UI_CASES) {
     test(`${formatCase.format} 上传后显示解析成功并可提问引用`, async ({ page }) => {
       await login(page);
