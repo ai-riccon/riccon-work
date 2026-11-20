@@ -119,6 +119,18 @@ class MasterKeyProviderTest {
                 .hasMessageContaining("invalid length");
     }
 
+    /** 包裹结果对 null 数组成员保持 null（防御性复制分支），不抛异常也不伪造空数组。 */
+    @Test
+    void wrappedDek_nullArrays_arePreserved() {
+        MasterKeyProvider.WrappedDek missingCiphertext = new MasterKeyProvider.WrappedDek(null, new byte[12]);
+        MasterKeyProvider.WrappedDek missingNonce = new MasterKeyProvider.WrappedDek(new byte[16], null);
+
+        assertThat(missingCiphertext.wrappedDek()).isNull();
+        assertThat(missingCiphertext.nonce()).hasSize(12);
+        assertThat(missingNonce.wrappedDek()).hasSize(16);
+        assertThat(missingNonce.nonce()).isNull();
+    }
+
     /** 构造 provider。 */
     private static MasterKeyProvider provider(String key, String previous) {
         return new MasterKeyProvider(new CryptoProperties(key, previous, "mk-test", true));
