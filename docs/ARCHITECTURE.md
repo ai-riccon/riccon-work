@@ -283,6 +283,7 @@ J1/J2 Worker
 - `model_invocation` **不加 CHECK**（MySQL 8.4 ADD CHECK 只能 COPY、阻塞 DML）；`cost_status`/`cost_amount`/`attempt_count` 由应用层校验。小表保留 CHECK。
 - `provider_credential.fingerprint` = HMAC-SHA-256 + 独立 pepper，不使用裸 SHA-256；`V11` 先 DROP 旧 CHECK 再 `RETIRED→DISABLED`。
 - `model_invocation_attempt` 与 `model_invocation` 保留 ≥180 天，清理先 attempt；`quota_usage` 历史窗口同批清理；成本报告对 `cost_day IS NULL` 用 `unbucketedCalls` 显式呈现。
+- **配额准入锁序（B6）**：准入事务先 `SELECT id FROM tenant WHERE id=:tenantId FOR UPDATE`（必须先于任何业务行锁），再按 `TENANT/DAILY → USER/DAILY → TENANT/MONTHLY → USER/MONTHLY` 条件累加；租户锁只负责串行化、不判定准入，条件 `UPDATE ... WHERE used_count < :limit` 仍是唯一判据，锁等待/死锁映射 503 fail-closed。`innodb_lock_wait_timeout` 与同租户混合负载（含 FK 父行等待）由 B10（OPS-M04-014）测量，B6 的 50 并发只覆盖单租户争用（ADR-0022 §1.3）。
 
 ### API 摘要
 

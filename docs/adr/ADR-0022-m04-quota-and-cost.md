@@ -10,6 +10,8 @@ Scope: M04「模型网关纵深」的租户/用户配额与成本估算；路由
 关联: DEC-0023（A）、DEC-0024（B：单模块 48h）、`docs/PRODUCT.md` §10（AC-08..12、AC-17/18）、ADR-0007（审计）、ADR-0009（租户隔离）、ADR-0010（Flyway）、ADR-0012（数据模型）、ADR-0021（M04 路由）、`docs/security/THREAT-MODEL.md` §4.4/§7/§9/§10
 
 > 状态口径：`accepted` 仅表示设计评审通过（DEC-0024=B + REV-M04-ARCH-005 + REV-M04-OPS-006）；M04 模块 gate、用户最终验收与生产发布仍需实现任务与全量合同证据，本 ADR 不构成对它们的声明。
+>
+> 修订（2026-11-21，REV-TASK-0107-001 F-001）：§1.3 补充租户行锁、实测锁序与 B10 验证归属。该修订只记录已实现并已定向验证的并发控制，不改变 DEC-0023/DEC-0024 已批准的配额语义、AC、错误码或契约；ADR 状态保持 `accepted`。
 
 ## Context
 
@@ -97,13 +99,17 @@ CREATE TABLE quota_usage (
 准入算法（单事务，固定顺序；**不使用 `INSERT IGNORE`**）：
 
 ```text
+# 0) 准入事务的第一把锁：租户行，必须先于任何业务行锁（会话、幂等记录、任务/文件）
+SELECT id FROM tenant WHERE id = :tenantId FOR UPDATE
+
 if quotaEnforcementEnabled == false:
     # 只计量：仍补行并 +1，但不做 limit 比较、不抛 QuotaExceeded
-    for scope/window: ensure row; UPDATE used_count = used_count + 1
+    for (window in [DAILY, MONTHLY]) for (scope in [TENANT, USER]):
+        ensure row; UPDATE used_count = used_count + 1
     record metric riccon_quota_over_limit_observed_total（如果 used > limit）
     continue to INSERT agent_run
 else:
-  for (scope in [TENANT, USER]) for (window in [DAILY, MONTHLY]):
+  for (window in [DAILY, MONTHLY]) for (scope in [TENANT, USER]):
     effectiveLimit = explicit limit row ?? deployment default (0 => unlimited)
     # 1) 确保行存在；ON DUPLICATE 做 no-op 更新，取排他行锁，避免 INSERT IGNORE 吞错/共享锁升级
     INSERT INTO quota_usage (tenant_id, scope_type, scope_id, window_kind, window_start, used_count)
@@ -120,7 +126,7 @@ else:
 ```
 
 - MySQL InnoDB 对同一 `quota_usage` 行的 `UPDATE ... WHERE used_count < limit` 是当前读 + 行锁；50 并发下当剩余 1 次时恰好 1 个事务成功，其余 `affectedRows=0`。不存在“先查后写”的竞态。
-- 顺序固定 `TENANT/DAILY → TENANT/MONTHLY → USER/DAILY → USER/MONTHLY`，所有事务同序，避免交叉死锁；同一窗口是单行热点，50 并发串行在行锁上，`innodb_lock_wait_timeout` 必须小于 API 请求超时（建议 3s），连接池/事务超时同 RUNBOOK。
+- 锁序固定为：租户行 X 锁 → `TENANT/DAILY` → `USER/DAILY` → `TENANT/MONTHLY` → `USER/MONTHLY`（窗口外层、维度内层）；所有事务同序，避免交叉死锁。同一窗口仍是单行热点，50 并发串行在行锁上；`innodb_lock_wait_timeout` 必须小于 API 请求超时（建议 3s），连接池/事务超时同 RUNBOOK，实际值与证据由 B10（OPS-M04-014）落地。早期文字中的 `TENANT/DAILY → TENANT/MONTHLY → USER/DAILY → USER/MONTHLY` 未采用；两种都是全局固定全序，准入语义与判据不变，但实现与文档必须一致。
 - **死锁/锁等待**：准入**不做自动重试**（自动重试可能重复扣或重复建 run）；捕获死锁/锁超时 → 返回 503 `RICCON-QUOTA-503` + `riccon_quota_store_failure_total{reason=deadlock|lock_wait}`，由调用方人工重试。50 并发用例要求 0 死锁；若出现即视为 B6 缺陷。
 - 任一步失败抛出异常 → Spring 事务回滚 → 前序计数回滚；不会出现“日窗口扣了、月窗口拒绝”的半扣。
 - 计数更新与 `agent_run` 插入在同一 `@Transactional` 内（`ChatSubmissionService`、`ResearchTaskService` 的既有事务）；不新增分布式事务。
@@ -129,6 +135,16 @@ else:
 - 超限响应 `RICCON-QUOTA-429`，`QuotaExceededProblem` 包含 `scopeType`、`window`、`limit`、`used`、`resetsAt`；文案“已达{日/月}限额，{重置时间}后恢复。”由前端按字段渲染，服务端 `detail` 给同一中文句子。
 - **`quotaEnforcementEnabled=false`**：仍记录用量（供成本/容量观察），但跳过拒绝；不写 `quota.exceeded`；写 `riccon_quota_over_limit_observed_total` 指标。开关变更由 B3/API 审计，B10 RUNBOOK 记录并做 false→true 演练。
 - **配置默认值与显式行**：`limit_count=0` 与 `NULL` 都表示不限（历史/部署配置常用 0）；响应 `source` 区分 `EXPLICIT_UNLIMITED`、`DEPLOYMENT_DEFAULT`、`EXPLICIT`。部署默认值只来自 `RICCON_QUOTA_DEFAULT_TENANT_DAILY`/`RICCON_QUOTA_DEFAULT_TENANT_MONTHLY`/`RICCON_QUOTA_DEFAULT_USER_DAILY`/`RICCON_QUOTA_DEFAULT_USER_MONTHLY`（0/NULL=不限；缺省取 §1.1 批准值），禁止在代码内硬编码第二套默认值；B1a 一次性加齐这些键，B10 preflight 与 `/actuator/info` 指纹比对。
+
+**租户行锁与锁序（2026-11-21 修订）**
+
+- **语句与时机**：准入事务的第一条锁语句是 `SELECT id FROM tenant WHERE id = :tenantId FOR UPDATE`（`QuotaJdbc.LOCK_TENANT`，X 锁）。调用方必须在取得任何业务行锁（会话行、幂等记录、任务/文件行）之前调用 `QuotaAdmissionService.lockTenant`；`admit` 内再次调用只是同一事务内的幂等确认，**不能**修复“先锁业务行、再等租户锁”的逆序调用。该语句只锁全局 `tenant` 行、不读取租户业务数据，因此直接使用 `JdbcClient`，是 `QuotaJdbc` 租户强制规则的记录在案例外。
+- **为什么纯 ODKU 不行**：MySQL 8.4 下 `INSERT ... ON DUPLICATE KEY UPDATE` 在目标行**不存在**时，并发插入先进入重复键检查（共享锁），随后执行 `used_count = used_count` 的 no-op 更新需要升级为排他锁；多个事务同时首次插入同一 `quota_usage` 主键时互相等待 S→X 升级，InnoDB 判定死锁并回滚牺牲者（1213）。B6 开发期实测：同一租户首次建行、50 并发，纯 ODKU 版本出现该升级死锁并把 49 个请求映射为 503；加入租户行 X 锁后同一用例 0 死锁，1×201、49×429、四个窗口 `used_count=1`（加锁后的定向并发证据为 TASK-0107/EV-0547）。
+- **为什么是租户行锁**：同一租户的准入本来就会在 `TENANT/DAILY` 热点行上串行到事务提交；租户行锁只是把串行点提前到配额行创建之前，消除 S→X 升级窗口，没有新增第二个热点；不同租户锁不同 `tenant` 行，跨租户不互相阻塞。它比“预置窗口行/专用锁表”改动更小，也不引入自动重试。
+- **准入判据不变**：租户行锁只负责串行化，**不是**准入判据；是否准入仍只由条件 `UPDATE ... WHERE used_count < :limit` 的 `affectedRows` 决定，`quotaEnforcementEnabled=false` 与“明确不限”仍走无条件累加。该锁不改变 §1.1/§1.4 的默认值、窗口、在途 run、幂等命中与拒绝语义。
+- **与幂等的关系**：租户锁在幂等查询之前取得（Chat 的 `clientMessageId`、Research 的 `Idempotency-Key`），并发同键请求因此严格串行：后到者要么在锁释放后看到先到者已提交的幂等记录并直接返回，要么在唯一键冲突后重新当前读，不会出现“两个请求都通过幂等查询、各扣一次配额”。幂等命中仍不扣配额（§1.4 不变）。
+- **锁等待与死锁**：`innodb_lock_wait_timeout`、连接池与事务超时、以及锁等待/死锁的请求映射沿用本节口径——**不自动重试**，返回 503 `RICCON-QUOTA-503` 并记 `riccon_quota_store_failure_total{reason=deadlock|lock_wait}`。3s 是上限建议值，必须以小于 API 请求超时为准，最终值与验证由 B10 在 RUNBOOK 中给出。
+- **残余风险（B10 测量，OPS-M04-014）**：事务持有 `tenant` 行 X 锁期间，同租户任何带 `tenant_id` 外键的插入（消息、run、文件、任务）都会因外键父行 S 锁而等待，串行范围从“配额行”扩大到“同租户写入”；B6 的 50 并发只覆盖单租户 run 创建争用，**未覆盖混合负载**。B10 必须在 RUNBOOK/PERF 中给出：`innodb_lock_wait_timeout` 实际配置与 Hikari/事务超时的对齐、同租户混合负载下锁等待与 API p95 的证据、以及 FK 父行阻塞的最坏等待记录；未测量前不得把本节视为已验证的生产并发结论。若测量结果不可接受，只能另立 ADR 评估更细粒度串行点，不得静默扩大或缩小锁范围。
 
 #### 1.4 执行点、在途与重试
 
@@ -347,6 +363,7 @@ cost = prompt_tokens * input_price_per_1m / 1_000_000
 - `docs/ARCHITECTURE.md` M04 实现地图、权限矩阵、迁移/回滚。
 - `docs/security/THREAT-MODEL.md` TM-45..TM-48、ABUSE-09/11、R-24。
 - 现有实现：`apps/api/.../chat/service/ChatSubmissionService.java`、`ResearchTaskService.java`、`apps/worker/.../model/service/ModelInvocationService.java`、`V5__model_gateway_and_mcp.sql`。
+- 配额并发实测（2026-11-21）：`.riccon/evidence/TASK-0107/EV-0547.json`（加租户行锁后 50 并发 0 死锁、1×201/49×429、四窗口 `used_count=1`）；任务级独立评审 `REV-TASK-0107-001`（F-001，ADR §1.3 锁序修订依据）。
 - 决策：DEC-0023（A：产品范围/默认值）、DEC-0024（B：单模块 48h、准入计费/默认限额/单币种/回滚窗口已批准）。
 
 ## 8. 不可逆/高成本项（DEC-0024=B 已答复）
