@@ -1,53 +1,29 @@
 package com.riccon.worker.crypto.service;
 
+import com.riccon.platform.common.crypto.EnvelopeException;
+import com.riccon.platform.common.crypto.MasterKeyRing;
 import com.riccon.worker.config.CryptoProperties;
 import com.riccon.worker.crypto.domain.CredentialException;
-import java.security.GeneralSecurityException;
-import java.security.SecureRandom;
-import java.util.Base64;
-import java.util.Set;
-import javax.crypto.Cipher;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import org.springframework.stereotype.Component;
 
 /**
- * 主密钥提供者。
+ * 主密钥提供者（Worker 部署物）。
  *
- * <p>只接受 Base64 编码的 32 字节 AES-256 密钥（ADR-0006）。缺失、长度错误、无法解码或命中
- * 已知测试密钥时构造失败，让 Worker 在接收流量前退出；禁止生成临时密钥或降级明文。
+ * <p>M04 起密钥语义集中到 {@code platform-common} 的 {@link MasterKeyRing}，API 与 Worker 共用同一实现；
+ * Worker 保留本类作为 Spring 装配与异常适配层，避免破坏既有的审批参数、模型凭据解密调用点。
  *
- * <p>解密时先尝试当前主密钥，再尝试轮换窗口中的上一把；两者都失败返回统一错误，
- * 不暴露具体是哪一把失败，避免成为密钥探测信号。
+ * <p>只接受 Base64 编码的 32 字节 AES-256 密钥（ADR-0006）。缺失、长度错误、无法解码或命中已知测试密钥时
+ * 构造失败，让 Worker 在接收流量前退出；禁止生成临时密钥或降级明文。解密时先尝试当前主密钥，再尝试
+ * 轮换窗口中的上一把；两者都失败返回统一错误，不暴露具体是哪一把失败。
  */
 @Component
 public class MasterKeyProvider {
 
-    /** AES-GCM nonce 长度。 */
-    static final int NONCE_LENGTH = 12;
+    /** AES-GCM nonce 长度，供信封解密器分配缓冲区。 */
+    static final int NONCE_LENGTH = MasterKeyRing.NONCE_BYTES;
 
-    /** GCM 认证标签长度（位）。 */
-    private static final int TAG_LENGTH_BITS = 128;
-
-    /** 包裹 DEK 的随机源；每次包裹都必须使用新的 nonce。 */
-    private static final SecureRandom RANDOM = new SecureRandom();
-
-    /** 已知测试密钥：生产误用必须失败。 */
-    private static final Set<String> KNOWN_TEST_KEYS =
-            Set.of("AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=", "cmljY29uLXRlc3QtbWFzdGVyLWtleS0zMi1ieXRlcyE=");
-
-    /** 当前主密钥。 */
-    private final SecretKey current;
-
-    /** 上一把主密钥；未配置时为空。 */
-    private final SecretKey previous;
-
-    /** 当前主密钥标识，仅用于日志与审计。 */
-    private final String masterKeyId;
-
-    /** 实际使用的主密钥标识，测试用（当前密钥成功时为当前标识）。 */
-    private final boolean rejectTestKeys;
+    /** 共享主密钥环。 */
+    private final MasterKeyRing ring;
 
     /**
      * 读取并校验主密钥。
@@ -56,12 +32,12 @@ public class MasterKeyProvider {
      * @throws IllegalStateException 主密钥缺失、长度错误、编码非法或命中测试密钥
      */
     public MasterKeyProvider(CryptoProperties properties) {
-        this.rejectTestKeys = properties.rejectTestKeys();
-        this.masterKeyId = properties.masterKeyId();
-        this.current = decode(properties.masterKey(), "RICCON_MASTER_KEY");
-        this.previous = properties.previousMasterKey().isBlank()
-                ? null
-                : decode(properties.previousMasterKey(), "RICCON_MASTER_KEY_PREVIOUS");
+        this.ring = MasterKeyRing.load(
+                properties.masterKey(),
+                properties.previousMasterKey(),
+                properties.masterKeyId(),
+                null,
+                properties.rejectTestKeys());
     }
 
     /**
@@ -70,15 +46,11 @@ public class MasterKeyProvider {
      * @return 例如 {@code mk-1}
      */
     public String masterKeyId() {
-        return masterKeyId;
+        return ring.masterKeyId();
     }
 
     /**
      * 用当前主密钥包裹新的 DEK。
-     *
-     * <p>只允许 Worker 为自身用途（如审批参数）按需生成 DEK 时调用；nonce 每次重新生成，
-     * AAD 必须与 {@link EnvelopeDecryptor#aad(String, String, String)} 的格式一致。
-     * 失败时只抛固定异常，不输出密钥或 nonce。
      *
      * @param dek 32 字节数据密钥
      * @param aad 附加认证数据
@@ -86,22 +58,11 @@ public class MasterKeyProvider {
      * @throws CredentialException DEK 长度错误或 JDK 加密能力不可用
      */
     public WrappedDek wrap(byte[] dek, byte[] aad) {
-        if (dek == null || dek.length != 32) {
-            throw new CredentialException("RICCON-CRYPTO-500", "data key must be exactly 32 bytes");
-        }
-        if (aad == null || aad.length == 0) {
-            throw new CredentialException("RICCON-CRYPTO-500", "data key AAD must not be empty");
-        }
-        byte[] nonce = new byte[NONCE_LENGTH];
-        RANDOM.nextBytes(nonce);
         try {
-            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.ENCRYPT_MODE, current, new GCMParameterSpec(TAG_LENGTH_BITS, nonce));
-            cipher.updateAAD(aad);
-            return new WrappedDek(cipher.doFinal(dek), nonce);
-        } catch (GeneralSecurityException ex) {
-            // 算法在 JDK 21 必然存在；走到这里说明运行环境被裁剪，必须失败而不是写入明文。
-            throw new CredentialException("RICCON-CRYPTO-500", "data key wrapping is unavailable");
+            MasterKeyRing.WrappedDek wrapped = ring.wrap(dek, aad);
+            return new WrappedDek(wrapped.wrappedDek(), wrapped.nonce());
+        } catch (EnvelopeException ex) {
+            throw new CredentialException(EnvelopeException.ERROR_CODE, ex.getMessage());
         }
     }
 
@@ -115,71 +76,11 @@ public class MasterKeyProvider {
      * @throws CredentialException 两把主密钥都无法解密
      */
     public byte[] unwrap(byte[] nonce, byte[] ciphertext, byte[] aad) {
-        byte[] plaintext = tryDecrypt(current, nonce, ciphertext, aad);
-        if (plaintext == null && previous != null) {
-            plaintext = tryDecrypt(previous, nonce, ciphertext, aad);
-        }
-        if (plaintext == null) {
-            throw new CredentialException("RICCON-CRYPTO-500", "data key cannot be unwrapped by any master key");
-        }
-        if (plaintext.length != 32) {
-            throw new CredentialException("RICCON-CRYPTO-500", "unwrapped data key has invalid length");
-        }
-        return plaintext;
-    }
-
-    /**
-     * 用指定主密钥执行一次 AES-GCM 解密。
-     *
-     * @param key 主密钥
-     * @param nonce nonce
-     * @param ciphertext 密文与标签
-     * @param aad 附加认证数据
-     * @return 明文；认证失败时返回 null
-     */
-    private static byte[] tryDecrypt(SecretKey key, byte[] nonce, byte[] ciphertext, byte[] aad) {
-        if (nonce == null
-                || nonce.length != NONCE_LENGTH
-                || ciphertext == null
-                || ciphertext.length <= TAG_LENGTH_BITS / 8) {
-            return null;
-        }
         try {
-            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(TAG_LENGTH_BITS, nonce));
-            cipher.updateAAD(aad);
-            return cipher.doFinal(ciphertext);
-        } catch (GeneralSecurityException ex) {
-            // GCM 认证失败与密钥错误不可区分；不记录底层异常，避免密文/密钥相关信息进入日志。
-            return null;
+            return ring.unwrap(nonce, ciphertext, aad);
+        } catch (EnvelopeException ex) {
+            throw new CredentialException(EnvelopeException.ERROR_CODE, ex.getMessage());
         }
-    }
-
-    /**
-     * 解码并校验主密钥。
-     *
-     * @param encoded Base64 值
-     * @param envName 环境变量名，用于错误信息
-     * @return AES-256 密钥
-     */
-    private SecretKey decode(String encoded, String envName) {
-        if (encoded == null || encoded.isBlank()) {
-            throw new IllegalStateException(
-                    envName + " is required; Worker refuses to start without envelope encryption");
-        }
-        if (rejectTestKeys && KNOWN_TEST_KEYS.contains(encoded)) {
-            throw new IllegalStateException(envName + " is a known test key; inject a real random 32-byte key");
-        }
-        byte[] keyBytes;
-        try {
-            keyBytes = Base64.getDecoder().decode(encoded);
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalStateException(envName + " must be valid Base64; value is not logged");
-        }
-        if (keyBytes.length != 32) {
-            throw new IllegalStateException(envName + " must decode to exactly 32 bytes");
-        }
-        return new SecretKeySpec(keyBytes, "AES");
     }
 
     /**

@@ -9,7 +9,7 @@ package com.riccon.platform.common.crypto;
 public final class EnvelopeException extends RuntimeException {
 
     /** 稳定错误码；与 Worker 内部错误映射保持一致。 */
-    public static final String ERROR_CODE = "RICCON-CRYPTO-500";
+    public static final String ERROR_CODE = CryptoErrorCodes.ENVELOPE_FAILURE;
 
     /**
      * 创建失败异常。
