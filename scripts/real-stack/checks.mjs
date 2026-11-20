@@ -8,7 +8,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { ApiClient } from "./lib/http.mjs";
-import { binaryUuid, queryValue, runSql } from "./lib/mysql.mjs";
+import { binaryUuid, queryValue, runSql, uuidHex } from "./lib/mysql.mjs";
 
 const root = process.cwd();
 const seedPath =
@@ -1141,6 +1141,70 @@ assert.match(m04Db, /routing_chat\t3/);
 assert.match(m04Db, /routing_report\t2/);
 assert.match(m04Db, /switches\t3/);
 m04.database = m04Db.trim();
+
+// ---------- 目录中文展示名：种子必须经 utf8mb4 写入，否则路由页/模型页读到双写乱码 ----------
+const catalogModels = seed.catalog?.models ?? [];
+assert.ok(catalogModels.length > 0, "seed catalog must include models");
+for (const model of catalogModels) {
+  assert.match(
+    model.displayName ?? "",
+    /[\u4e00-\u9fff]/,
+    `seed catalog model ${model.modelKey} must carry a Chinese displayName`,
+  );
+}
+const catalogTextRows = runSql(`
+SELECT 'model' AS kind, LOWER(HEX(id)) AS id_hex, display_name AS text_value FROM model
+UNION ALL SELECT 'provider', LOWER(HEX(id)), name FROM model_provider
+UNION ALL SELECT 'credential', LOWER(HEX(id)), label FROM provider_credential
+ WHERE tenant_id = 'platform';
+`).stdout;
+const storedText = new Map();
+for (const line of catalogTextRows.split("\n")) {
+  if (line.trim() === "") {
+    continue;
+  }
+  const [kind, idHex, ...text] = line.split("\t");
+  storedText.set(`${kind}:${idHex}`, text.join("\t"));
+}
+const textMismatches = [];
+/**
+ * 比对一条目录文本；预期值来自 seed 输出的常量，不是数据库回读。
+ *
+ * @param {string} kind model|provider|credential
+ * @param {string} id UUID
+ * @param {string} expected 预期中文
+ */
+const expectCatalogText = (kind, id, expected) => {
+  const stored = storedText.get(`${kind}:${uuidHex(id)}`);
+  if (stored !== expected) {
+    textMismatches.push({ kind, id, expected, actual: stored ?? null });
+  }
+};
+for (const model of catalogModels) {
+  expectCatalogText("model", model.id, model.displayName);
+}
+for (const provider of seed.catalog?.providers ?? []) {
+  if (provider.name) {
+    expectCatalogText("provider", provider.id, provider.name);
+  }
+}
+for (const entries of Object.values(seed.catalog?.credentials ?? {})) {
+  for (const entry of entries) {
+    if (entry.label) {
+      expectCatalogText("credential", entry.id, entry.label);
+    }
+  }
+}
+assert.deepEqual(
+  textMismatches,
+  [],
+  `catalog display text must read back as the seeded Chinese, not mojibake: ${JSON.stringify(textMismatches)}`,
+);
+m04.textIntegrity = {
+  status: "passed",
+  models: catalogModels.length,
+  providers: seed.catalog?.providers?.length ?? 0,
+};
 observations.m04 = m04;
 
 const summary = {

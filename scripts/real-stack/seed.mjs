@@ -4,6 +4,8 @@
 // 约束：
 // - 租户与账号走公开 Admin API，证明 API 契约可完成开通；
 // - 模型目录、路由、平台 key、配额与价格使用测试栈 SQL 幂等写入；
+// - MySQL 客户端显式 `--default-character-set=utf8mb4`（见 lib/mysql.mjs）；否则容器内
+//   客户端按 locale 回退 latin1，中文展示名落库即双写乱码，路由页读到 `å‡æ¨¡åž‹`；
 // - 密钥只来自环境变量 `REAL_MODEL_KEYS`，脚本、日志、输出文件都不含明文 key；
 // - 凭据使用与 API/Worker 相同的 AES-256-GCM 信封格式（ADR-0006/ADR-0021 §6.5），
 //   主密钥与 fingerprint pepper 只来自环境变量；
@@ -37,7 +39,7 @@ import path from "node:path";
 import process from "node:process";
 
 import { ApiClient } from "./lib/http.mjs";
-import { binaryUuid, runSql, sqlString } from "./lib/mysql.mjs";
+import { binaryUuid, runSql, sqlString, uuidHex } from "./lib/mysql.mjs";
 
 /** 平台管理员的本地测试凭据；与 run.mjs 启动参数一致。 */
 const ADMIN = {
@@ -111,6 +113,28 @@ const DEK_PURPOSE = "model-credential";
 
 /** 信封 schema 版本；AAD 以 tenant|purpose|keyId|version 绑定。 */
 const ENVELOPE_VERSION = 1;
+
+/** 中文可读性判定：至少一个 CJK 字符，且不含 U+FFFD 替换符。 */
+const CJK_PATTERN = /[\u4e00-\u9fff]/;
+
+/**
+ * 断言文本是可直接展示的中文；用于自检与落库回读，防止字符集错误静默通过。
+ *
+ * @param {string} label 字段说明
+ * @param {unknown} value 待校验值
+ * @returns {void}
+ */
+function assertChineseText(label, value) {
+  if (
+    typeof value !== "string" ||
+    !CJK_PATTERN.test(value) ||
+    value.includes("\uFFFD")
+  ) {
+    throw new Error(
+      `${label} must contain readable Chinese text: ${JSON.stringify(value)}`,
+    );
+  }
+}
 
 /**
  * 打印用法。
@@ -362,6 +386,9 @@ function selfTest() {
   if (modelIds.size !== catalog.models.length) {
     throw new Error("catalog model ids must be unique");
   }
+  for (const provider of catalog.providers) {
+    assertChineseText(`provider ${provider.code} name`, provider.name);
+  }
   for (const model of catalog.models) {
     if (!providerCodes.has(model.providerCode)) {
       throw new Error(
@@ -373,6 +400,10 @@ function selfTest() {
         `model ${model.modelKey} must be either fully priced or unpriced`,
       );
     }
+    assertChineseText(`model ${model.modelKey} displayName`, model.displayName);
+  }
+  if (sqlString("假模型") !== "'假模型'") {
+    throw new Error("sqlString must pass Chinese text through unchanged");
   }
   for (const [purpose, entries] of Object.entries(catalog.routing)) {
     if (!["CHAT", "REPORT"].includes(purpose)) {
@@ -796,6 +827,7 @@ function catalogOutput(catalog, modelKeys) {
     providers: catalog.providers.map((provider) => ({
       id: provider.id,
       code: provider.code,
+      name: provider.name,
       environmentLabel: provider.environmentLabel,
       modelIds: catalog.models
         .filter((model) => model.providerCode === provider.code)
@@ -804,6 +836,7 @@ function catalogOutput(catalog, modelKeys) {
     models: catalog.models.map((model) => ({
       id: model.id,
       modelKey: model.modelKey,
+      displayName: model.displayName,
       status: model.status,
       pricing: model.inputPrice === null ? "UNPRICED" : "PRICED",
     })),
@@ -820,6 +853,78 @@ function catalogOutput(catalog, modelKeys) {
       ]),
     ),
   };
+}
+
+/**
+ * 回读目录中文文本，确认 mysql 客户端字符集正确（utf8mb4）。
+ *
+ * 字符集错误会把 UTF-8 字节按 latin1 写入，落库为双写乱码；只比对行数发现不了，
+ * 因此逐字段比对预期展示名，任何缺失或乱码都中止播种。
+ *
+ * @param {object} catalog 目录定义
+ * @param {Record<string, Array<object>>} modelKeys key 表
+ * @param {string} repoRoot 仓库根
+ * @returns {void}
+ */
+function assertCatalogTextIntegrity(catalog, modelKeys, repoRoot) {
+  const expected = new Map();
+  for (const provider of catalog.providers) {
+    assertChineseText(`provider ${provider.code} name`, provider.name);
+    expected.set(`provider:${uuidHex(provider.id)}`, provider.name);
+  }
+  for (const model of catalog.models) {
+    assertChineseText(`model ${model.modelKey} displayName`, model.displayName);
+    expected.set(`model:${uuidHex(model.id)}`, model.displayName);
+  }
+  for (const entries of Object.values(modelKeys)) {
+    for (const entry of entries) {
+      assertChineseText(`credential ${entry.id} label`, entry.label);
+      expected.set(`credential:${uuidHex(entry.id)}`, entry.label);
+    }
+  }
+  const modelIds = catalog.models
+    .map((model) => binaryUuid(model.id))
+    .join(", ");
+  const providerIds = catalog.providers
+    .map((provider) => binaryUuid(provider.id))
+    .join(", ");
+  const credentialIds = Object.values(modelKeys)
+    .flat()
+    .map((entry) => binaryUuid(entry.id))
+    .join(", ");
+  const rows = runSql(
+    `
+SELECT 'model' AS kind, LOWER(HEX(id)) AS id_hex, display_name AS text_value
+  FROM model WHERE id IN (${modelIds})
+UNION ALL
+SELECT 'provider', LOWER(HEX(id)), name
+  FROM model_provider WHERE id IN (${providerIds})
+UNION ALL
+SELECT 'credential', LOWER(HEX(id)), label
+  FROM provider_credential WHERE tenant_id = 'platform' AND id IN (${credentialIds});
+`,
+    { repoRoot },
+  ).stdout;
+  const actual = new Map();
+  for (const line of rows.split("\n")) {
+    if (line.trim() === "") {
+      continue;
+    }
+    const [kind, idHex, ...text] = line.split("\t");
+    actual.set(`${kind}:${idHex}`, text.join("\t"));
+  }
+  const mismatches = [];
+  for (const [key, value] of expected) {
+    const stored = actual.get(key);
+    if (stored !== value) {
+      mismatches.push({ field: key, expected: value, actual: stored ?? null });
+    }
+  }
+  if (mismatches.length > 0) {
+    throw new Error(
+      `catalog Chinese text is corrupted (check mysql client charset): ${JSON.stringify(mismatches)}`,
+    );
+  }
 }
 
 /**
@@ -972,6 +1077,10 @@ SELECT ${sqlString(TENANTS.alpha)}, 'USER', ${sqlString(user.id)}, ${binaryUuid(
 
   runSql(statements.join("\n"), { repoRoot: context.repoRoot });
 
+  // 中文回读：客户端字符集错误会静默写入双写乱码，只有逐字段回读能发现。
+  assertCatalogTextIntegrity(catalog, modelKeys, context.repoRoot);
+  context.catalogTextIntegrity = "passed";
+
   // 二次校验：目录、路由、key 与配额确实可读。
   const counts = runSql(
     `
@@ -1073,6 +1182,7 @@ async function main(argv) {
       env("REAL_SEED_OUT") ??
       path.join(repoRoot, ".riccon/evidence/TASK-0024/real-stack-seed.json"),
     catalogCounts: "",
+    catalogTextIntegrity: "",
   };
 
   const summary = { mode, apiBase, catalog: {}, knowledge: null };
@@ -1109,6 +1219,7 @@ async function main(argv) {
         ]),
       ),
       counts: context.catalogCounts,
+      textIntegrity: context.catalogTextIntegrity,
     };
   }
 

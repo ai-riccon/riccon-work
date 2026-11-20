@@ -37,6 +37,8 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 
+import { mysqlClientArgs, runSql } from "./lib/mysql.mjs";
+
 /** 仓库根目录。 */
 const repoRoot = process.cwd();
 
@@ -698,25 +700,8 @@ UPDATE provider_credential
    SET status = 'ACTIVE', consecutive_failures = 0, cooldown_until = NULL, invalidated_at = NULL
  WHERE tenant_id = 'platform' AND credential_type = 'API_KEY';
 `;
-  const result = spawnSync(
-    "docker",
-    [
-      "compose",
-      "-f",
-      "deploy/compose/docker-compose.test.yml",
-      "exec",
-      "-T",
-      "-e",
-      "MYSQL_PWD=riccon_test_only",
-      "mysql",
-      "mysql",
-      "--user=riccon",
-      "--database=riccon",
-      "--batch",
-      "--raw",
-    ],
-    { cwd: repoRoot, input: sql, encoding: "utf8" },
-  );
+  // 复用共享客户端：字符集与 seed/checks 保持一致，避免连接参数漂移。
+  const result = runSql(sql, { repoRoot, allowFailure: true });
   if (result.status !== 0) {
     throw new Error(`reset key health failed (${mode}): ${result.stderr}`);
   }
@@ -790,6 +775,7 @@ function selfTest() {
     "scripts/real-stack/fake-model.mjs",
     "scripts/real-stack/seed.mjs",
     "scripts/real-stack/checks.mjs",
+    "scripts/real-stack/charset-check.mjs",
     "scripts/real-stack/run.mjs",
     "e2e/perf/mvc-smoke.js",
     "e2e/support/fake-model/scenarios.mjs",
@@ -827,6 +813,13 @@ function selfTest() {
     "seed --self-test",
     seedSelfTest.status === 0,
     seedSelfTest.stderr?.trim() ?? "",
+  );
+  // 中文展示名落库必须显式 utf8mb4；容器内客户端 auto 会回退 latin1 造成双写乱码。
+  const mysqlArgs = mysqlClientArgs();
+  record(
+    "mysql client charset utf8mb4",
+    mysqlArgs.includes("--default-character-set=utf8mb4"),
+    mysqlArgs.join(" "),
   );
   record("k6 available", Boolean(k6Version()), k6Version() ?? "k6 not found");
   const failed = checks.filter((entry) => entry.status === "failed");
