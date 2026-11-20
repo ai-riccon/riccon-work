@@ -10,7 +10,9 @@ import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.read.ListAppender;
 import com.riccon.api.ApiApplication;
 import com.riccon.api.config.CryptoProperties;
+import com.riccon.platform.common.crypto.CredentialEnvelope;
 import com.riccon.platform.common.crypto.MasterKeyConfigException;
+import com.riccon.platform.common.crypto.MasterKeyRing;
 import java.util.Arrays;
 import java.util.Base64;
 import org.junit.jupiter.api.Test;
@@ -33,6 +35,9 @@ class CryptoStartupValidationTest {
 
     /** 测试 pepper（32 字节 0x11，Base64；非生产）。 */
     private static final String PEPPER = base64Of(32, (byte) 0x11);
+
+    /** 测试上一把主密钥（32 字节 0x22，Base64；非生产）。 */
+    private static final String PREVIOUS_KEY = base64Of(32, (byte) 0x22);
 
     /** 已知测试密钥清单中的值；生产默认必须拒绝。 */
     private static final String KNOWN_TEST_KEY = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
@@ -90,6 +95,23 @@ class CryptoStartupValidationTest {
         assertThat(provider.masterKeyId()).isEqualTo("mk-test");
         assertThat(provider.fingerprint("provider-1", "sk-test-0123456789abcdef"))
                 .matches("[0-9a-f]{64}");
+    }
+
+    /** 轮换窗口：API 同时接受当前与上一把主密钥，旧 DEK 仍可解开。 */
+    @Test
+    void previousMasterKey_isWiredIntoProvider() {
+        byte[] dek = new byte[32];
+        Arrays.fill(dek, (byte) 3);
+        byte[] aad = CredentialEnvelope.aad("platform", "model-credential", "dek-1");
+        MasterKeyRing.WrappedDek wrapped =
+                MasterKeyRing.load(PREVIOUS_KEY, "", "mk-old", PEPPER, false).wrap(dek, aad);
+
+        MasterKeyProvider provider = new CryptoConfig()
+                .masterKeyProvider(
+                        new CryptoProperties(MASTER_KEY, PREVIOUS_KEY, "mk-test", true, PEPPER), new MockEnvironment());
+
+        assertThat(provider.hasPreviousKey()).isTrue();
+        assertThat(provider.unwrap(wrapped.nonce(), wrapped.wrappedDek(), aad)).isEqualTo(dek);
     }
 
     /** 环境变量优先于 yml 绑定值（部署合同以环境变量为准）。 */
