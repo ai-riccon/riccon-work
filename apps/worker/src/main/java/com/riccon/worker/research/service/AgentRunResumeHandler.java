@@ -48,6 +48,7 @@ import io.agentscope.core.event.AgentEvent;
 import io.agentscope.core.event.AgentResultEvent;
 import io.agentscope.core.event.RequireUserConfirmEvent;
 import io.agentscope.core.message.Msg;
+import io.agentscope.core.model.ChatUsage;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -411,6 +412,8 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                     runId,
                     null,
                     null,
+                    // 成本按用户聚合使用运行发起人快照；不读取其他租户数据。
+                    run.userId(),
                     target.model().id(),
                     target.model().modelKey(),
                     com.riccon.platform.domain.model.ModelPurpose.REPORT,
@@ -425,7 +428,9 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                     com.riccon.platform.domain.model.ModelPurpose.REPORT);
             session = researchAgentService.prepareGenerationStage(
                     tenantId, runId, run.userId(), task.topic(), toolResult.text(), modelClient, target);
-            String generated = awaitGeneration(session.events().toIterable().iterator());
+            GenerationResult generated =
+                    awaitGeneration(session.events().toIterable().iterator());
+            // 生成阶段从 AgentResultEvent 取 provider usage；缺失时传 null，成本记 USAGE_UNKNOWN。
             invocationService.succeeded(
                     invocation,
                     selectedModelId(modelClient, target),
@@ -433,11 +438,11 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                     run.traceId(),
                     null,
                     null,
-                    null,
-                    null,
+                    generated.usage() == null ? null : generated.usage().getInputTokens(),
+                    generated.usage() == null ? null : generated.usage().getOutputTokens(),
                     modelClient.attemptCount());
             invocation = null;
-            if (generated == null || generated.isBlank()) {
+            if (generated.text() == null || generated.text().isBlank()) {
                 throw new EventProcessingException(
                         WorkerErrorCodes.UNEXPECTED, false, "generation produced no content");
             }
@@ -450,7 +455,7 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
             int hitCount = session.citations().size();
             ReportDocument document = reportComposer.compose(
                     task.topic(),
-                    generated,
+                    generated.text(),
                     session.citations(),
                     toolSource,
                     selectedModelKey(modelClient, target),
@@ -472,8 +477,8 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                             null,
                             null,
                             null,
-                            com.riccon.worker.mcp.domain.Digests.sha256Hex(generated),
-                            generated.length(),
+                            com.riccon.worker.mcp.domain.Digests.sha256Hex(generated.text()),
+                            generated.text().length(),
                             null,
                             null,
                             null)),
@@ -484,7 +489,7 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                     "research.run.generation_completed tenantId={} runId={} chars={} artifactId={} version={}",
                     tenantId.value(),
                     runId,
-                    generated.length(),
+                    generated.text().length(),
                     saved.artifactId(),
                     saved.version().version());
         } catch (EventProcessingException ex) {
@@ -644,18 +649,23 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
     }
 
     /**
-     * 读取生成阶段最终文本。
+     * 读取生成阶段最终文本与 usage。
+     *
+     * <p>{@link AgentResultEvent} 同时携带文本与 provider usage；usage 用于成本快照，
+     * 缺失时保持 {@code null}，不得本地估算 token（ADR-0022 §2.3）。
      *
      * @param iterator 事件迭代器
-     * @return 文本；没有结果时为空
+     * @return 文本与 usage；没有结果时文本为空
      */
-    private static String awaitGeneration(Iterator<AgentEvent> iterator) {
+    private static GenerationResult awaitGeneration(Iterator<AgentEvent> iterator) {
         String text = null;
+        ChatUsage usage = null;
         while (iterator.hasNext()) {
             AgentEvent event = iterator.next();
             if (event instanceof AgentResultEvent result) {
                 Msg message = result.getResult();
                 text = message == null ? null : message.getTextContent();
+                usage = message == null ? null : message.getChatUsage();
             } else if (event instanceof RequireUserConfirmEvent) {
                 throw new EventProcessingException(
                         WorkerErrorCodes.EVENT_INVALID, false, "generation must not request tool approval");
@@ -663,8 +673,16 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                 break;
             }
         }
-        return text;
+        return new GenerationResult(text, usage);
     }
+
+    /**
+     * 生成阶段结果。
+     *
+     * @param text 生成文本，可为空
+     * @param usage provider token 用量，可为空
+     */
+    private record GenerationResult(String text, ChatUsage usage) {}
 
     /**
      * 写入生成阶段失败并同步任务失败状态。

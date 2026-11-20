@@ -325,6 +325,8 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
                     runId,
                     null,
                     null,
+                    // 成本按用户聚合使用运行发起人快照；不读取其他租户数据。
+                    run.userId(),
                     target.model().id(),
                     target.model().modelKey(),
                     com.riccon.platform.domain.model.ModelPurpose.REPORT,
@@ -341,6 +343,8 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
                     tenantId, runId, run.userId(), task.topic(), handle.get(), modelClient, target);
             ToolUseBlock pending =
                     awaitApprovalRequest(session.events().toIterable().iterator());
+            // 工具阶段以 HITL 审批事件结束，AgentScope 不回传 usage；成本记为 USAGE_UNKNOWN，
+            // 只计入调用量，不猜测 token 或金额（ADR-0022 §2.3）。
             invocationService.succeeded(
                     invocation,
                     selectedModelId(modelClient, target),

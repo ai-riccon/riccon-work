@@ -233,6 +233,8 @@ public class ChatStreamService {
                         request.conversationId(),
                         // API 尚未持久化 assistant 占位消息；message_id 有外键，先留空，SSE 事件仍携带生成的 messageId。
                         null,
+                        // 发起人快照用于成本按用户聚合；来自已校验的运行绑定。
+                        run.userId(),
                         firstTarget.model().id(),
                         firstTarget.model().modelKey(),
                         ModelPurpose.CHAT,

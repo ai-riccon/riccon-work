@@ -106,6 +106,7 @@ class ModelAttemptBudgetIntegrationTest extends WorkerIntegrationTestBase {
                         null,
                         null,
                         null,
+                        null,
                         firstRoute.target().model().id(),
                         firstRoute.target().model().modelKey(),
                         ModelPurpose.CHAT,

@@ -571,6 +571,7 @@ class ModelFailoverIntegrationTest extends WorkerIntegrationTestBase {
                         null,
                         null,
                         null,
+                        null,
                         first.target().model().id(),
                         first.target().model().modelKey(),
                         purpose,

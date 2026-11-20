@@ -4,6 +4,7 @@ import com.riccon.api.audit.domain.AdditionalAuditActions;
 import com.riccon.api.audit.domain.AuditEvent;
 import com.riccon.api.audit.service.AuditService;
 import com.riccon.api.error.ErrorCodes;
+import com.riccon.api.identity.domain.PlatformTenant;
 import com.riccon.api.identity.domain.RicconPrincipal;
 import com.riccon.api.web.ProblemWriter;
 import com.riccon.api.web.RequestContext;
@@ -110,7 +111,9 @@ public class TenantContextFilter extends OncePerRequestFilter {
 
         String forgedTenant =
                 firstPresent(request.getHeader(FORGED_TENANT_HEADER), queryParameter(request, FORGED_TENANT_PARAMETER));
-        if (forgedTenant != null && !forgedTenant.equals(tenantId.value())) {
+        if (forgedTenant != null
+                && !forgedTenant.equals(tenantId.value())
+                && !isPlatformCostFilter(request, principal)) {
             denyMismatchedTenant(request, response, principal, tenantId, forgedTenant);
             return;
         }
@@ -120,6 +123,23 @@ public class TenantContextFilter extends OncePerRequestFilter {
         } finally {
             TenantContext.clear();
         }
+    }
+
+    /**
+     * 平台成本端点的租户过滤参数例外。
+     *
+     * <p>ADR-0009 §1 把查询参数 {@code tenantId} 视为伪造入口；但 ADR-0022 §2.4 的
+     * {@code GET /api/v1/admin/costs} 明确使用 {@code tenantId} 作为跨租户聚合过滤。这里只对
+     * 平台保留租户的该只读端点放行，权限仍由 {@code platform.cost.read} 强制；租户端点不享受例外。
+     *
+     * @param request HTTP 请求
+     * @param principal 已认证主体
+     * @return 是否允许平台成本过滤
+     */
+    private static boolean isPlatformCostFilter(HttpServletRequest request, RicconPrincipal principal) {
+        return "GET".equals(request.getMethod())
+                && "/api/v1/admin/costs".equals(request.getRequestURI())
+                && PlatformTenant.ID.equals(principal.tenantId());
     }
 
     /**
