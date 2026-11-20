@@ -592,6 +592,9 @@ node scripts/ops/seed-model-catalog.mjs --check \
   [--catalog <目录文件>] [--endpoints "$RICCON_MODEL_ENDPOINTS"]
 ```
 
+生产/预览用 `--via=client`（`RICCON_DB_*` 读 `model_provider`）；本地测试栈用 `--via=compose`；
+DEMO 的 `http://` 端点需要显式 `--allow-http`，PRODUCTION 只接受 https。
+
 比对键：`deploymentMode`、`endpointSetHash`、`routingMode`、`failoverEnabled`、
 `quotaEnforcementEnabled`、`masterKeyId`、`currency`、`tenantDaily/tenantMonthly/userDaily/userMonthly`。
 判据：API 与 Worker 逐键相等；与目录文件 `deployment` 段期望值一致；`RICCON_MODEL_ENDPOINTS` 的
