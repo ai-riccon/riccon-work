@@ -2,7 +2,7 @@
 
 - **所有者**：`riccon/architect`
 - **适用版本**：M01 基线核对 + M02 已落地 + M03 部门数据范围已落地 + M10 身份与审计设计目标 + M04 模型网关设计目标（MFA/哈希链/跨租户审计明细标注为后置项）
-- **状态**：M04 设计修订（2026-11-20，`REV-M04-OPS-001`/`REV-M04-ARCH-001` fail 后收口；ADR-0021/0022 `proposed`）；M10 设计修订（REV-M10-ARCH-001 fail 后收口 F-001/002/003）；M02/M03 gate 已由 `riccon/verifier` 核对，M10/M04 gate 前按第 10 节逐条复核
+- **状态**：M04 设计修订（2026-11-20，`REV-M04-OPS-001`/`REV-M04-ARCH-001` fail 后收口；DEC-0024=B 已批准单模块 48h、18 条 AC 全归 M04；ADR-0021/0022 `proposed`）；M10 设计修订（REV-M10-ARCH-001 fail 后收口 F-001/002/003）；M02/M03 gate 已由 `riccon/verifier` 核对，M10/M04 gate 前按第 10 节逐条复核
 - **关联文档**：`AGENTS.md` 合同（T4、数据、许可、审计约束）、`docs/PRODUCT.md`（J1/J2、M03/M10/M04 AC）、`docs/ARCHITECTURE.md`、`docs/CODING-STANDARDS.md`
 - **关联决策**：ADR-0001（双部署物）、ADR-0003（租户上下文）、ADR-0005（MySQL 许可）、ADR-0006（密钥生命周期）、ADR-0007（审计事件）、ADR-0008（异步承载）、ADR-0009（租户隔离强制点）、ADR-0010（Flyway 归属）、ADR-0011（B-06 依赖例外，2026-11-18 重开）、ADR-0012（数据模型）、ADR-0013（会话/CSRF）、ADR-0018（M03 组织与部门数据范围）、ADR-0019（M10 OIDC）、ADR-0020（M10 审计查询/导出）、ADR-0021（M04 路由/降级/多 key）、ADR-0022（M04 配额/成本）、DEC-0003、DEC-0011、DEC-0012、DEC-0013、DEC-0014、DEC-0015、DEC-0017、DEC-0023
 
@@ -560,7 +560,7 @@ OIDC 引入企业 IdP 作为新的信任方。平台不控制 IdP 的认证强�
 | TM-51 | denial-of-wallet：租户/用户准入配额 + 尝试上限/预算 + 每租户并发上限 + key 冷却；平台托管池共享健康的滥用路径记录                                                                                                                             | api/worker     | `PERF-M04-002`、`IT-QUOTA-102`               | 4.4/ADR-0021 §5.6       |
 | TM-52 | 降级风暴：链外不回退、尝试上限、预算、抖动、冷却、`failoverEnabled` 止血开关；`riccon_model_failover_total` 告警                                                                                                                                     | worker/ops     | `PERF-M04-001`、运维演练                     | 4.4/ADR-0021 §5.6       |
 | TM-53 | 模型调用日志/错误/指标脱敏：只含 providerCode/modelId/credentialId/errorCode/attempt/traceId；禁止 prompt、key、Authorization、baseUrl、上游正文；`/actuator/prometheus` 仅内网/受控                                                          | api/worker     | `SEC-M04-005`、`IT-LOG-001`                  | 4.4/ADR-0021 §10.6      |
-| TM-54 | 观测与保留：Micrometer/Prometheus registry + M04 7 指标 + M17 2 指标 + `metrics-check`；`model_invocation_attempt`/`quota_usage` 与 `model_invocation` 同批清理（先 attempt），容量估算与告警阈值进 RUNBOOK                                                    | ops            | `scripts/ops/metrics-check`、V2 报告         | 4.4/ADR-0021 §10.6      |
+| TM-54 | 观测与保留：Micrometer/Prometheus registry + M04 7+2 指标（Worker 7 个路由/降级/key + API 2 个配额主指标）+ 3 个辅助指标 + `metrics-check`；`model_invocation_attempt`/`quota_usage` 与 `model_invocation` 同批清理（先 attempt），容量估算与告警阈值进 RUNBOOK | ops            | `scripts/ops/metrics-check`、V2 报告         | 4.4/ADR-0021 §10.6      |
 
 ## 7. 后置缓解
 
@@ -569,7 +569,7 @@ OIDC 引入企业 IdP 作为新的信任方。平台不控制 IdP 的认证强�
 | M03  | 平台管理员跨租户部门元数据、部门/成员/负责人、空间可见性、部门数据范围、部门维度越权（TM-23–TM-28）                                                          | M02 只有租户级 RBAC 与全租户可见团队空间；DEC-0015 确定平台管理员管理元数据              |
 | M10  | OIDC/SSO、审计查询与导出审批、身份/导出越权（TM-29–TM-38）已纳入 M10 设计；MFA、审计哈希链、平台跨租户审计明细仍后置                                         | M03 只依赖 append-only + 无删除入口 + 最小权限；DEC-0013 明确三项后移；M10 ADR-0019/0020 |
 | M10+ | MFA、多 IdP、平台跨租户审计明细与平台来源事件对目标租户的可见模型、审计哈希链、导出归档/常驻链接                                                             | 需独立 ADR/决策：显式授权、二次确认、外部锚定或对象存储生命周期；不得在 M10 静默声称     |
-| M04  | 模型路由/降级/多 key、租户/用户配额与成本看板、开关与回滚（TM-39–TM-54）已纳入 M04 设计；BYO、价格编辑、多币种、预聚合、主密钥自动轮换、跨租户成本明细仍后置 | M02 单一模型端点；M04 ADR-0021/0022 `proposed`；BYO 与多币种需独立 ADR                   |
+| M04  | 模型路由/降级/多 key、租户/用户配额与成本看板、开关与回滚（TM-39–TM-54）已纳入 M04 单模块（48h、18 条 AC）；BYO、价格编辑、多币种、预聚合、主密钥自动轮换、跨租户成本明细仍后置 | M02 单一模型端点；DEC-0024=B 单模块；M04 ADR-0021/0022 `proposed`；BYO 与多币种需独立 ADR |
 | M05  | 文档级 ACL、OCR 与图片解析隔离、外部连接器凭据                                                                                                               | M02 知识库无文档 ACL，仅演示语料；M03 仍租户级                                           |
 | M06  | DAG Studio 策略、代码执行沙箱开放、审批节点可视化                                                                                                            | 开放代码执行前必须重开本威胁模型                                                         |
 | M07  | MCP 注册审批、凭据托管、工具搜索、出网代理、工具风险分级                                                                                                     | M02 仅静态白名单 1 个只读工具；B-06 新到期 M07 gate                                      |
@@ -600,7 +600,7 @@ M04 明确**不**做的安全相关能力（缺口登记见第 9 节）：
 
 ## 8. 发布阻断项
 
-发布（含一体机与私有化交付）前必须全部关闭；M02 gate 至少关闭 B-02 至 B-06、B-09、B-10、B-12、B-14；M03 gate 额外要求 B-15 与 B-06 的续期记录；M10 gate 额外要求 B-15（全量）、B-16、B-17 与 B-06 的续期记录；M04 gate 额外要求 B-18a、B-20a 与 B-06 的续期记录；M17 gate 额外要求 B-18b、B-19、B-20b 与 B-06 的续期记录。
+发布（含一体机与私有化交付）前必须全部关闭；M02 gate 至少关闭 B-02 至 B-06、B-09、B-10、B-12、B-14；M03 gate 额外要求 B-15 与 B-06 的续期记录；M10 gate 额外要求 B-15（全量）、B-16、B-17 与 B-06 的续期记录；M04 gate 额外要求 B-18、B-19、B-20 与 B-06 的续期记录。
 
 | ID   | 阻断项                                                            | 关闭条件/证据                                                                                                                                                                                                                                | Owner         |
 | ---- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
@@ -621,11 +621,9 @@ M04 明确**不**做的安全相关能力（缺口登记见第 9 节）：
 | B-15 | 部门维度越权套件存在 skip/xfail 或未覆盖空间/成员/负责人路径      | `DEPT-001..010` 零 skip、零失败；M03 gate 要求部门/空间段全过；M10 gate 要求全量                                                                                                                                                             | verifier      |
 | B-16 | OIDC 登录存在账号接管、回调重放、token 泄漏或会话固定路径         | `SEC-OIDC-001..003`、`IT-OIDC-001..007`、`E2E-M03-03/04` 全过；state/PKCE/nonce 负向用例、issuer 混淆、同邮箱不合并、禁用即时生效均有证据                                                                                                    | verifier      |
 | B-17 | 审计导出可绕过审批、跨租户读取或包含敏感字段                      | `IT-AUDIT-104..106`、`SEC-AUDIT-001`、`TEN-028..030`、`E2E-M03-06` 全过；自批 403、并发 409、过期 410、非申请人 403、平台不可下载、CSV 白名单扫描                                                                                            | verifier      |
-| B-18a | M04：模型端点可由用户输入、key 明文外泄或降级到未授权端点          | `SEC-M04-001/002/003a/004/005/006/007/008/009`、`IT-MODEL-105/106/107`、`TEN-031` 全过；端点启动/保存拒绝、无链外回退、响应/日志/审计无明文                                                                                                  | verifier      |
-| B-18b | M17：配额写越权、跨租户配额/成本访问                                | `SEC-M04-003b`、`TEN-032/033` 全过；配额端点 403/404、无跨租户内容                                                                                                            | verifier      |
-| B-19 | M17：配额超卖、成本快照被改写或跨租户成本/配额泄漏                     | `IT-QUOTA-102`、`PERF-M04-002`、`IT-COST-101..104`、`TEN-032/033` 全过；50 并发零超卖、历史金额不变、平台无用户明细                                                                                                                          | verifier      |
-| B-20a | M04 可观测性未落地：无 Prometheus registry/7 个 M04 指标/metrics-check   | B1c 的 `scripts/ops/metrics-check` 通过；M04 7 个 `riccon_*` 指标存在且标签正确；否则 AC-17 的 M04 段不可 pass                                                                                                                                    | verifier      |
-| B-20b | M17：Prometheus 抓取/2 个配额指标与成本指标证据缺失                        | V2 记录抓取样本；`riccon_quota_rejections_total`、`riccon_quota_usage_ratio` + `riccon_cost_report_queries_total`/`riccon_quota_store_failure_total`/`riccon_quota_over_limit_observed_total` 存在；否则 AC-17 的 M17 段不可 pass                                                       | verifier      |
+| B-18 | M04 模型网关越权与凭据边界：端点可由用户输入、密钥明文外泄、降级到未授权端点、配额写越权、跨租户配额/成本访问 | `SEC-M04-001/002/003a/003b/004/005/006/007/008/009`、`IT-MODEL-105/106/107`、`TEN-031/032/033` 全过；端点启动/保存拒绝、无链外回退、响应/日志/审计无明文；配额端点 403/404、无跨租户内容 | verifier      |
+| B-19 | M04 配额与成本正确性：配额超卖、成本快照被改写或跨租户成本/配额泄漏 | `IT-QUOTA-102`、`PERF-M04-002`、`IT-COST-101..104`、`TEN-032/033` 全过；50 并发零超卖、历史金额不变、平台无用户明细 | verifier      |
+| B-20 | M04 可观测性未落地：无 Prometheus registry、7+2 指标（Worker 7 个路由/降级/key + API 2 个配额主指标）、3 个辅助指标或 `metrics-check` 证据 | B1c 的 `scripts/ops/metrics-check` 通过；Worker 7 个 `riccon_*` 指标存在且标签正确；V2 记录 API 抓取样本并覆盖配额/成本 2 个主指标 + `riccon_cost_report_queries_total`/`riccon_quota_store_failure_total`/`riccon_quota_over_limit_observed_total`；否则 AC-17 不可 pass | verifier      |
 
 B-06 的处置记录见 `docs/adr/ADR-0011-b06-dependency-exceptions.md`：Trivy 生产依赖扫描为 0 项，`.trivyignore` 仅包含 `CVE-2026-35568` 与 `CVE-2026-34237`（均带 `exp:2027-03-31`）；构建链残余不在 gate 范围，发布前用 `--include-dev-deps` 复核。例外条目到期或被修复后，必须删除 ignore 行并重跑 `commands.security`。2026-11-18 重开核查证据见 ADR-0011 第 6 节；M07 gate 或 2027-03-31 到期未复核视为 B-06 失败。
 
@@ -783,8 +781,8 @@ M04 新增用例（Builder/Verifier 共用编号；Verifier 在独立测试类�
 | IT-MODEL-105 | 多 key：停用一把、401 失效、恢复；全失效                                   | provider 不被整体拖垮；失效/恢复审计；全失效走下一模型或 503                                             |
 | IT-MODEL-106 | 轮换：在途流 + 新请求                                                      | 新请求用新 key；在途完成或可重试结束；旧 key 只显示掩码                                                  |
 | IT-MODEL-107 | 端点允许列表：非 HTTPS、userinfo、query、演示端点用于生产、未允许 provider | 启动失败或 400 + 字段原因；不发起出网；无端点写 API                                                      |
-| IT-MODEL-108a| M04 模型/路由/凭据/开关契约测试                                           | `GET /models`、`GET /admin/model-providers`、`GET /admin/models` + 路由/凭据/开关 schema 匹配；quota/cost deferred |
-| IT-MODEL-108b| M17 配额/成本契约测试                                                      | quota/cost 端点 schema 匹配；`1.4.0-m04b` 移除 deferred；M02/M03/M10 零回归 |
+| IT-MODEL-108a| M04 模型/路由/凭据/开关契约测试                                           | `GET /models`、`GET /admin/model-providers`、`GET /admin/models` + 路由/凭据/开关 schema 匹配（配额/成本见 108b） |
+| IT-MODEL-108b| M04 配额/成本契约测试                                                      | 配额/成本端点 schema 匹配；同一 `1.3.0-m04` 全量、无 deferred 分段；M02/M03/M10 零回归 |
 | IT-MODEL-109 | 关闭路由/降级/配额开关；应用回滚演练                                       | 下一次请求按开关执行；J1/J2 可用；审计可查；历史调用/成本可读                                            |
 | IT-QUOTA-101 | 租户日限额、用户月限额、超限新 run                                         | 429 `RICCON-QUOTA-429`；不产生模型调用；在途继续；审计                                                   |
 | IT-QUOTA-102 | 剩余 1 次、50 并发                                                         | 恰好 1 成功；`used_count` 不超限；无负数/重复                                                            |
@@ -835,7 +833,7 @@ M04 新增用例（Builder/Verifier 共用编号；Verifier 在独立测试类�
 | 多 key/端点    | `IT-MODEL-105/106/107`、`SEC-M04-001..006`               | `./mvnw -q -T1C verify`、真实栈 fake provider                                 |
 | 配额           | `IT-QUOTA-101..103`、`TEN-032`、`PERF-M04-002`           | `./mvnw -q -T1C verify`、`k6`                                                 |
 | 成本           | `IT-COST-101..104`、`TEN-033`、`IT-MODEL-109`            | `./mvnw -q -T1C verify`、迁移/回滚演练                                        |
-| 可观测性       | B1c M04 7 指标、`scripts/ops/metrics-check`、V2 抓取 M17 2 指标         | `curl /actuator/prometheus`、`metrics-check`、k6 报告                         |
+| 可观测性       | B1c Worker 7 指标、`scripts/ops/metrics-check`、V2 抓取 API 2 个主指标 + 3 个辅助 | `curl /actuator/prometheus`、`metrics-check`、k6 报告                         |
 | 性能           | k6 报告（首字 p95、API p95、并发）                       | `k6 run e2e/perf/mvc-smoke.js`（`RICCON_FAKE_MODEL=1`）                       |
 | 沙箱基线       | 现有五个冒烟 + `SEC-SBX-001..002`                        | `./mvnw -q -T1C verify`                                                       |
 
@@ -863,17 +861,12 @@ M10 的核对必须额外回答：
 
 M04 的核对必须额外回答：
 
-- M04 段：`TM-39..TM-44`、`TM-49`、`TM-50`、`TM-53`、`TM-54`（M04 观测部分）是否都有可执行证据；M17 段：`TM-45..TM-48`、`TM-51`、`TM-52` 由 M17 gate 核对；
+- `TM-39`–`TM-54` 是否都有可执行证据，而不是只读代码（单模块一次核对，不分子模块）；
 - 受管端点是否只能来自部署允许列表，URL 结构/重定向/元数据/回环/编码 IP 负向用例是否通过；生产模式是否拒绝演示端点；是否存在端点写 API 或链外回退（`SEC-M04-001..004`、`IT-MODEL-107`）；
-- 路由/key/开关写接口是否仅平台管理员；租户管理员是否只读；跨租户是否统一 404；审计 details 是否不含 key、`baseUrl`、prompt；`modelIds` 数组/`previousLimit=null`/`emitted` 是否通过（`IT-MODEL-102`、`SEC-M04-003a`、`TEN-031`）；
+- 路由/key/开关/配额写接口是否仅平台管理员；租户管理员是否只读；跨租户是否统一 404；审计 details 是否不含 key、`baseUrl`、prompt、金额；`modelIds` 数组/`previousLimit=null`/`emitted` 是否通过（`IT-MODEL-102`、`SEC-M04-003a/003b`、`TEN-031`）；
 - 首字后失败是否绝不重试/重放；已生成内容是否保留；SSE 错误码与文案是否稳定；降级成功是否零提示（`IT-MODEL-103/104`、`E2E-M04-02/03`）；
 - 多 key 是否至少 2 把、401/403 是否立即失效并跳过、轮换是否先插新后停旧、在途是否不被取消、fingerprint 是否 HMAC+pepper、明文是否不出现在任何响应/日志/审计/DB 证据（`IT-MODEL-105/106`、`SEC-M04-005`、`SEC-M04-006`）；
-- `/actuator/prometheus` 是否按 `RICCON_OPS_ALLOWED_CIDRS` 控制且包含 M04 7 个 `riccon_*` 指标；`metrics-check` 是否通过（M04 只核对 B-20a，不做 V2 抓取）；
-- 关闭路由/降级开关是否下一次请求生效并写审计；BASELINE 是否仍走 allowlist；应用回滚后历史调用是否可读；威胁模型 TB-04/§7 是否已更新（`IT-MODEL-109`、`OPS-M04-01`）。
-
-M17 的核对（不得由 M04 gate 声称）：
-
-- 50 并发配额争用零超卖；配额存储 fail-closed；在途 run 继续；拒绝审计独立事务（`IT-QUOTA-102`、`PERF-M04-002`）；
-- 成本最终成功快照、6 位小数、未定价/缺 usage/unbucketed 单列、历史不改写；平台无用户字段、租户只看本租户、员工无入口（`IT-COST-101..104`、`TEN-032/033`）；
-- V2 的 `/actuator/prometheus` 抓取样本、配额拒绝/成本查询指标（B-20b）；
-- 关闭配额执行开关是否只计量不阻断；M17 首发 false→true 与成本对账窗口（`IT-MODEL-109`、B13 RUNBOOK）。
+- 50 并发配额争用是否零超卖；配额存储是否 fail-closed；在途 run 是否继续；拒绝审计是否独立事务（`IT-QUOTA-102`、`PERF-M04-002`）；
+- 成本是否用最终成功快照、6 位小数、未定价/缺 usage/unbucketed 单列、历史不改写；平台无用户字段、租户只看本租户、员工无入口（`IT-COST-101..104`、`TEN-032/033`）；
+- `/actuator/prometheus` 是否按 `RICCON_OPS_ALLOWED_CIDRS` 控制；Worker 7 个 `riccon_*` 指标是否由 `metrics-check` 验证；V2 是否抓取 API 的配额/成本 2 个主指标 + 3 个辅助指标（B-20）；
+- 关闭路由/降级/配额开关是否下一次请求生效并写审计；BASELINE 是否仍走 allowlist；配额开关 false→true 演练与成本对账窗口是否记录；应用回滚后历史调用是否可读；威胁模型 TB-04/§7 是否已更新（`IT-MODEL-109`、`OPS-M04-01`、B10 RUNBOOK）。

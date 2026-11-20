@@ -3,11 +3,11 @@
 Status: proposed
 Date: 2026-11-20
 Reviewers: `riccon/lead`（范围/合同一致性）、`riccon/verifier`（并发、窗口边界、跨租户与金额可测试性）、`riccon/ops`（迁移/重置/保留/可观测性）、安全评审（越权、成本推断、denial-of-wallet）
-Approved-by: pending（准入计费语义、默认限额与成本口径需 DEC-0024；ADR 本身未评审前不标 `accepted`）
-Review-date: M04 gate 前（预计 2026-12-05）
+Approved-by: DEC-0024=B（2026-11-20）：准入即计费、默认限额、单币种、回滚窗口与单模块 48h 已批准；ADR 本身待 REV-M04-ARCH-004 / REV-M04-OPS-005 复核后才转 `accepted`
+Review-date: M04 gate 前（预计 2026-12-05；待 REV-M04-ARCH-004 / REV-M04-OPS-005 复核）
 Supersedes: none
 Scope: M04「模型网关纵深」的租户/用户配额与成本估算；路由/降级/多 key 见 ADR-0021
-关联: DEC-0023（A）、`docs/PRODUCT.md` §10（AC-08..12、AC-17/18）、ADR-0007（审计）、ADR-0009（租户隔离）、ADR-0010（Flyway）、ADR-0012（数据模型）、ADR-0021（M04 路由）、`docs/security/THREAT-MODEL.md` §4.4/§7/§9/§10
+关联: DEC-0023（A）、DEC-0024（B：单模块 48h）、`docs/PRODUCT.md` §10（AC-08..12、AC-17/18）、ADR-0007（审计）、ADR-0009（租户隔离）、ADR-0010（Flyway）、ADR-0012（数据模型）、ADR-0021（M04 路由）、`docs/security/THREAT-MODEL.md` §4.4/§7/§9/§10
 
 ## Context
 
@@ -125,7 +125,7 @@ else:
 - **拒绝审计独立事务**：准入失败回滚后，外层用 `QuotaAuditService`（`REQUIRES_NEW`，位于 `quota` 包）写 `quota.exceeded`；审计失败返回 500（不是 429），且不创建 run。成功准入不写拒绝审计。不能用同一事务写拒绝审计（会被回滚）。
 - 失败/取消/部分流**不退还**：准入即计费；这防止失败重试风暴。同一 run 的 Worker 重试（`attempt+1`）不再次准入。
 - 超限响应 `RICCON-QUOTA-429`，`QuotaExceededProblem` 包含 `scopeType`、`window`、`limit`、`used`、`resetsAt`；文案“已达{日/月}限额，{重置时间}后恢复。”由前端按字段渲染，服务端 `detail` 给同一中文句子。
-- **`quotaEnforcementEnabled=false`**：仍记录用量（供成本/容量观察），但跳过拒绝；不写 `quota.exceeded`；写 `riccon_quota_over_limit_observed_total` 指标。开关变更由 B3/API 审计，M17-B13 RUNBOOK 记录（B10 只引用 M17 章节）。
+- **`quotaEnforcementEnabled=false`**：仍记录用量（供成本/容量观察），但跳过拒绝；不写 `quota.exceeded`；写 `riccon_quota_over_limit_observed_total` 指标。开关变更由 B3/API 审计，B10 RUNBOOK 记录并做 false→true 演练。
 - **配置默认值与显式行**：`limit_count=0` 与 `NULL` 都表示不限（历史/部署配置常用 0）；响应 `source` 区分 `EXPLICIT_UNLIMITED`、`DEPLOYMENT_DEFAULT`、`EXPLICIT`。
 
 #### 1.4 执行点、在途与重试
@@ -321,7 +321,7 @@ cost = prompt_tokens * input_price_per_1m / 1_000_000
 
 ### 7. 任务图
 
-任务、owner、写范围与依赖见 ADR-0021 §8：配额为 **M17-B6**（`riccon/builder-quota`），成本为 **M17-B7**（`riccon/builder-cost`）；Web 为 M17-B9b，契约为 M17-B12（`1.4.0-m04b`），E2E 为 M17-B11b，发布运维为 M17-B13，验证为 M17-V2。M04 任务只提供 schema/路由/failover 依赖；M17 为本 ADR 的模块归属（实际 ID `M17`，`split_from: M04`，别名 `M04b`）。
+任务、owner、写范围与依赖见 ADR-0021 §8：配额为 **M04-B6**（`riccon/builder-quota`），成本为 **M04-B7**（`riccon/builder-cost`）；Web 为 M04-B9b，契约（含配额/成本端点与 `IT-MODEL-108b`）为 M04-B2，E2E 为 M04-B11b，发布/回滚/quota 开关演练/cost 对账为 M04-B10，验证为 M04-V1/V2。配额与成本同属 M04 单模块（DEC-0024=B），不拆分子模块，也不再有独立契约分段任务。
 
 ## Consequences
 
@@ -345,9 +345,11 @@ cost = prompt_tokens * input_price_per_1m / 1_000_000
 - `docs/ARCHITECTURE.md` M04 实现地图、权限矩阵、迁移/回滚。
 - `docs/security/THREAT-MODEL.md` TM-45..TM-48、ABUSE-09/11、R-24。
 - 现有实现：`apps/api/.../chat/service/ChatSubmissionService.java`、`ResearchTaskService.java`、`apps/worker/.../model/service/ModelInvocationService.java`、`V5__model_gateway_and_mcp.sql`。
-- 决策：DEC-0023；待 DEC-0024（准入计费、默认限额、单币种、回滚窗口）。
+- 决策：DEC-0023（A：产品范围/默认值）、DEC-0024（B：单模块 48h、准入计费/默认限额/单币种/回滚窗口已批准）。
 
-## 8. 不可逆/高成本项（需 DEC-0024）
+## 8. 不可逆/高成本项（DEC-0024=B 已答复）
+
+> DEC-0024=B 已于 2026-11-20 答复：不拆，M04 单模块 48h；准入即计费、默认限额、单币种、回滚窗口与单模块口径按下表批准。
 
 | 项                                                           | 为什么需要用户批准                    | 建议                                                        |
 | ------------------------------------------------------------ | ------------------------------------- | ----------------------------------------------------------- |
@@ -358,5 +360,5 @@ cost = prompt_tokens * input_price_per_1m / 1_000_000
 | M04 前历史调用显示“用量未知”                                 | 不伪造历史账单                        | 批准                                                        |
 | 6 位小数口径（单笔 6 位、合计按 6 位值、展示一次舍入）       | 影响“成本重算误差 0”的判定            | 批准；若要求更高精度，改 `DECIMAL(20,12)` 并另立契约        |
 | 回滚窗口 `unbucketedCalls` 不计金额                          | 混合版本成本页不可用于对账            | 批准；RUNBOOK 记录窗口                                      |
-| M17 首发配额开关先 false 后打开                              | 避免 M17 上线即拒绝                   | 批准；**M17-B13** RUNBOOK + M17 评审包（B10 只引用 M17 章节） |
-| M04/M17 拆分与 AC 归属                                       | 改变模块范围/验收顺序                 | 批准；M17 实际 ID + `split_from`/aliases                    |
+| M04 首发配额开关先 false 后打开                              | 避免上线即拒绝、改变默认执行时点      | 批准；V11 种子 false，B10 演练后 `PUT true`，gate 以 true 取证 |
+| 单模块 48h 与 18 条 AC 全归 M04（DEC-0024=B）                 | 改变模块范围/验收顺序                 | 已批准：不拆，17 个实施任务，契约保持 `1.3.0-m04`             |

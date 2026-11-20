@@ -5,10 +5,10 @@
 | 检查                        | 状态              | 记录                                                                                                                                                                                                                                 |
 | --------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Architect 草案              | pass              | M04 ADR-0021/0022 `proposed`（2026-11-20 第一版；REV-M04-OPS-001 / REV-M04-ARCH-001 fail 后已修订）；M10 ADR-0019/0020 `proposed`（REV-M10-ARCH-002 已通过评审，ADR 状态仍为 proposed）；M03 ADR-0018 `proposed`；M02 ADR-0001..0017 |
-| Lead 完整性/合同一致性      | pass              | M04 设计检查通过（2026-11-20；ADR-0021 §13 矩阵 91 fixed/4 deferred，AC 8/10 归属、19 任务、3 builder 关键路径、契约分段可执行；REV-M04-ARCH-003 / REV-M04-OPS-004 pass）；M10 pass（REV-M10-ARCH-002）；M03 已通过                  |
-| 用户批准（不可逆/高成本项） | pass              | M04 DEC-0024=B（2026-11-20）：不拆，M04 单模块 48h，18 条 AC 全保留；V11/API 主密钥+pepper/生产端点允许列表/准入即计费/默认限额/回滚窗口/单币种/Prometheus 内网/AC-17 perf profile 批准；M17 不创建；契约保持 1.3.0-m04。ADR §8.4 拆分方案降为 fallback，待 Architect 文档更新。DEC-0013/0014/0015/0017 已确认产品口径；ADR-0019/0020 仍 proposed；DEC-0003 许可仍是 release blocker |
+| Lead 完整性/合同一致性      | pass              | M04 设计检查通过（2026-11-20；ADR-0021 §13 矩阵记录历次响应，单模块 48h、18 条 AC 全归 M04、17 个实施任务、3 builder 关键路径 ≈28h、契约保持 `1.3.0-m04`；REV-M04-ARCH-003 / REV-M04-OPS-004 pass）；M10 pass（REV-M10-ARCH-002）；M03 已通过                  |
+| 用户批准（不可逆/高成本项） | pass              | M04 DEC-0024=B（2026-11-20）：不拆，M04 单模块 48h，18 条 AC 全保留；V11/API 主密钥+pepper/生产端点允许列表/准入即计费/默认限额/回滚窗口/单币种/Prometheus 内网/AC-17 perf profile 批准；契约保持 `1.3.0-m04`。ADR-0021/0022 已按单模块更新（§8 17 个实施任务），待 REV-M04-ARCH-004 / REV-M04-OPS-005 复核后转 `accepted`。DEC-0013/0014/0015/0017 已确认产品口径；ADR-0019/0020 仍 proposed；DEC-0003 许可仍是 release blocker |
 | Verifier 可测试性/安全边界  | pass              | M04 pass（REV-M04-ARCH-003，无新 P0/P1）；M10 pass（REV-M10-ARCH-002）；M03 pass                                                                                                                                                     |
-| Ops 可运维/可回滚           | pass              | M04 pass（REV-M04-OPS-004，2026-11-20；回滚分组断言、ROUTED/true/false、M04 7/M17 2 指标确认）；M10 OPS 生产演练仍未完成；M09 Helm/备份/升级 |
+| Ops 可运维/可回滚           | pass              | M04 pass（REV-M04-OPS-004，2026-11-20；回滚分组断言、ROUTED/true/false、Worker 7 个路由/降级/key 指标 + API 2 个配额主指标确认）；M10 OPS 生产演练仍未完成；M09 Helm/备份/升级 |
 | 安全/合规评审（如适用）     | pass              | M04 设计安全边界经 REV-M04-ARCH-003 / REV-M04-OPS-004 覆盖（TB-04、TM-39..TM-54、ABUSE-07..11、R-21..R-25、pepper 与 metrics 暴露）；T4 生产安全评审与发布批准仍待 release |
 
 状态值：`draft`、`pending`、`pass`、`changes-requested`；不可逆或高成本决策未经用户批准，不进入实现。历史无记录用 `legacy`/`not-recorded`。
@@ -17,10 +17,10 @@
 
 | 检查                        | 状态              | 记录                                                                                                             |
 | --------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Lead 完整性/合同一致性      | pass              | Lead 检查通过（2026-11-20）：AC 8/10 归属、19 任务、3 builder 关键路径、契约分段与 M04/M17 acceptance 可执行；REV-M04-ARCH-003 / REV-M04-OPS-004 pass |
-| 用户批准（不可逆/高成本项） | pass              | M04 DEC-0024=B（2026-11-20）：不拆，M04 单模块 48h，18 条 AC 全保留；V11/API 主密钥+pepper/生产端点允许列表/准入即计费/默认限额/回滚窗口/单币种/Prometheus 内网/AC-17 perf profile 批准；M17 不创建；契约保持 1.3.0-m04。ADR §8.4 拆分方案降为 fallback，待 Architect 文档更新。DEC-0013/0014/0015/0017 已确认产品口径；ADR-0019/0020 仍 proposed；DEC-0003 许可仍是 release blocker |
+| Lead 完整性/合同一致性      | pass              | Lead 检查通过（2026-11-20）：DEC-0024=B 单模块 48h、18 条 AC 全归 M04、17 个实施任务、3 builder 关键路径 ≈28h、契约保持 `1.3.0-m04` 全量；REV-M04-ARCH-003 / REV-M04-OPS-004 pass |
+| 用户批准（不可逆/高成本项） | pass              | M04 DEC-0024=B（2026-11-20）：不拆，M04 单模块 48h，18 条 AC 全保留；V11/API 主密钥+pepper/生产端点允许列表/准入即计费/默认限额/回滚窗口/单币种/Prometheus 内网/AC-17 perf profile 批准；契约保持 `1.3.0-m04`。ADR-0021/0022 已按单模块更新（§8 17 个实施任务），待 REV-M04-ARCH-004 / REV-M04-OPS-005 复核后转 `accepted`。DEC-0013/0014/0015/0017 已确认产品口径；ADR-0019/0020 仍 proposed；DEC-0003 许可仍是 release blocker |
 | Verifier 可测试性/安全边界  | pass              | pass（REV-M04-ARCH-003，2026-11-20，无新 P0/P1）；ADR-0021 §13 保留历次评审响应                                  |
-| Ops 可运维/可回滚           | pass              | M04 pass（REV-M04-OPS-004，2026-11-20；回滚分组断言、ROUTED/true/false、M04 7/M17 2 指标确认）；M10 OPS 生产演练仍未完成；M09 Helm/备份/升级 |
+| Ops 可运维/可回滚           | pass              | M04 pass（REV-M04-OPS-004，2026-11-20；回滚分组断言、ROUTED/true/false、Worker 7 个路由/降级/key 指标 + API 2 个配额主指标确认）；M10 OPS 生产演练仍未完成；M09 Helm/备份/升级 |
 | 安全/合规评审（如适用）     | pass              | M04 设计安全边界经 REV-M04-ARCH-003 / REV-M04-OPS-004 覆盖（TB-04、TM-39..TM-54、ABUSE-07..11、R-21..R-25、pepper 与 metrics 暴露）；T4 生产安全评审与发布批准仍待 release |
 
 ## 背景
@@ -264,8 +264,8 @@ J1/J2 Worker
 - 路由是全局配置（不分租户），按用途 `CHAT|REPORT`；停用模型保留在链中但运行时跳过；保存后下一次请求生效（无缓存）。
 - 降级成功对员工不可见；`chat.started` 使用最终成功模型；不新增“已切换”SSE 事件。
 - 无进程内熔断；key 健康状态在 `provider_credential.cooldown_until/consecutive_failures`，跨实例共享；401/403 立即 `INVALID` 并审计。
-- 关闭 `routingMode`（`BASELINE`）回到 M02 单模型；关闭 `failoverEnabled` 只尝试一次；关闭 `quotaEnforcementEnabled` 只计量不阻断。M04 首发 `quotaEnforcementEnabled=false`，M17-B13 验证后显式 `PUT true`。环境变量优先级高于 DB 开关。BASELINE 仍执行端点允许列表与平台 key 池校验。
-- 观测：B1c 引入 `micrometer-registry-prometheus`，`/actuator/prometheus` 仅内网/受控，M04 7 个指标覆盖降级/错误率/并发，M17 2 个配额指标 + 成本查询；`scripts/ops/metrics-check` 断言指标存在；告警阈值在 RUNBOOK（M09 接入）。
+- 关闭 `routingMode`（`BASELINE`）回到 M02 单模型；关闭 `failoverEnabled` 只尝试一次；关闭 `quotaEnforcementEnabled` 只计量不阻断。发版种子 `quotaEnforcementEnabled=false`；B10 验证默认限额/漂移后显式 `PUT true`，M04 gate 以 true 状态取证 AC-08/09。环境变量优先级高于 DB 开关。BASELINE 仍执行端点允许列表与平台 key 池校验。
+- 观测：B1c 引入 `micrometer-registry-prometheus`，`/actuator/prometheus` 仅内网/受控；Worker 7 个路由/降级/key 指标覆盖错误率/并发，API 2 个配额主指标 + 成本查询/存储辅助指标；`scripts/ops/metrics-check` 断言 Worker 7 个指标，V2 核对 2+3；告警阈值在 RUNBOOK（M09 接入）。
 
 ### 数据模型增量（V11）
 
@@ -319,7 +319,7 @@ MCP 目录端点保留并标 `x-riccon-deferred: M07`；F-011 三个模型端点
 
 ### 交付计划
 
-Builder/Ops 任务、写范围、依赖与关键路径见 ADR-0021 §8。19 个任务；建议拆 **M04（别名 M04a）+ M17（别名 M04b，`split_from: M04`）**：M04 12 个任务，承接 AC-01、03、04、05、06、07、15、16（8 条，关键路径约 17–19h，3 builder）；M17 7 个任务，承接 AC-02、08..14、17、18（10 条，约 14–16h，含 M17-B12 契约分段、B13 发布运维）。AC-13/14/17/18 整条归 M17，M04 只做任务级页面/子集，不得声称完整 pass；契约在 DEC-0024 后分 `1.3.0-m04a`/`1.4.0-m04b`。
+Builder/Ops 任务、写范围、依赖与关键路径见 ADR-0021 §8。单模块 **M04 = 17 个实施任务**（B1a/B1b/B1c/B2/B3/B4/B5/B6/B7/B8/B9a/B9b/B10/B11a/B11b/V1/V2），承接 PRODUCT §10.3 全部 18 条 AC；3 builder 关键路径 ≈28h，48h 上限约 1.7× 余量（依据与停止条件见 ADR-0021 §8.4）。B2 是唯一契约 writer（`1.3.0-m04` 全量，含 `IT-MODEL-108a/108b`），B10 是唯一发布/回滚/quota 开关演练/成本对账任务；不拆分子模块、不做契约分段。
 
 ### 风险
 
@@ -339,7 +339,7 @@ Builder/Ops 任务、写范围、依赖与关键路径见 ADR-0021 §8。19 个�
   - `contracts/events/`：outbox 信封与事件 JSON Schema、SSE 事件 schema；
   - `contracts/README.md`：版本、兼容、幂等与安全规则。
 - 事件命名：`riccon.<domain>.<event>.v1`；事件必须带 `eventId`、`occurredAt`、`tenantId`、`traceId`、`idempotencyKey`。
-- M04 契约版本 `1.3.0-m04`（当前全量设计）：模型路由、降级、多 key、受管端点、开关、配额与成本已定义；`x-riccon-deferred` 移除 `model-routing-quota`，`workspace-archive` 改为 M09，MCP 目录标 M07，BYO/多币种/价格编辑/账单对账后置。DEC-0024 批准 M04/M17 后，M04 gate 前必须分 `1.3.0-m04a`（quota/cost deferred/移除）与 M17 `1.4.0-m04b`。
+- M04 契约版本 `1.3.0-m04`（全量设计、单模块一次交付）：模型路由、降级、多 key、受管端点、开关、配额与成本已在同一版本定义；`x-riccon-deferred` 移除 `model-routing-quota`，`workspace-archive` 改为 M09，MCP 目录标 M07，BYO/多币种/价格编辑/账单对账后置。DEC-0024=B 已撤销拆分，契约不做分段，配额/成本端点由 B2 同任务实现并通过契约测试。
 - OpenAPI 契约手工维护为 `contracts/openapi.yaml`；实现可用 springdoc 生成运行时描述并在契约测试中与契约对比。M01 默认关闭文档端点，M02 按环境开启。
 
 ## 安全与隐私

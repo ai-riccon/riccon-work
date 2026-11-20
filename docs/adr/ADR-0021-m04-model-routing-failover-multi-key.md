@@ -3,11 +3,11 @@
 Status: proposed
 Date: 2026-11-20
 Reviewers: `riccon/lead`（范围/合同一致性）、`riccon/verifier`（可测试性、降级与越权）、`riccon/ops`（迁移/回滚/出网/可观测性）、安全评审（SSRF、凭据、denial-of-wallet）
-Approved-by: pending（不可逆/高成本项见 §12，需 DEC-0024；ADR 本身未评审前不标 `accepted`）
-Review-date: M04 gate 前（预计 2026-12-05）
+Approved-by: DEC-0024=B（2026-11-20）：不拆，M04 单模块 48h，18 条 AC 全保留；§12 高成本项按 B 答复批准。ADR 本身待 REV-M04-ARCH-004 / REV-M04-OPS-005 复核后才转 `accepted`
+Review-date: M04 gate 前（预计 2026-12-05；待 REV-M04-ARCH-004 / REV-M04-OPS-005 复核）
 Supersedes: none
 Scope: M04「模型网关纵深」的路由、降级、多 key、受管端点与契约收口；配额与成本见 ADR-0022
-关联: DEC-0023（A：范围/AC/OQ 默认值/24h 预算）、`docs/PRODUCT.md` §10、ADR-0006（信封加密）、ADR-0007（审计）、ADR-0009（租户隔离）、ADR-0010（Flyway）、ADR-0012（数据模型）、ADR-0014（API/SSE 契约）、ADR-0015（模块边界）、ADR-0018（部门数据范围）、ADR-0019/0020（M10 身份/审计）、`docs/security/THREAT-MODEL.md` §4.4/§7/§9/§10
+关联: DEC-0023（A：范围/AC/OQ 默认值）、DEC-0024（B：单模块 48h、18 条 AC、17 个实施任务）、`docs/PRODUCT.md` §10、ADR-0006（信封加密）、ADR-0007（审计）、ADR-0009（租户隔离）、ADR-0010（Flyway）、ADR-0012（数据模型）、ADR-0014（API/SSE 契约）、ADR-0015（模块边界）、ADR-0018（部门数据范围）、ADR-0019/0020（M10 身份/审计）、`docs/security/THREAT-MODEL.md` §4.4/§7/§9/§10
 
 ## Context
 
@@ -303,7 +303,7 @@ CREATE TABLE model_gateway_switch (
 INSERT INTO model_gateway_switch (switch_key, switch_value) VALUES
   ('routingMode', 'ROUTED'),
   ('failoverEnabled', 'true'),
-  ('quotaEnforcementEnabled', 'false'); -- M17 首发保持 false，验证后再 PUT true
+  ('quotaEnforcementEnabled', 'false'); -- 发版种子保持 false；B10 演练后显式 PUT true，M04 gate 以 true 取证
 ```
 
 - 取值：`routingMode=ROUTED|BASELINE`；`failoverEnabled=true|false`；`quotaEnforcementEnabled=true|false`。
@@ -581,11 +581,11 @@ if no success: RICCON-MODEL-503
 
 #### 7.7 版本与兼容
 
-- 当前修订保持 `contracts/openapi.yaml` 版本 `1.3.0-m04` 的**全量设计**（包含配额/成本端点），避免在拆分未批准前双写。`DEC-0024` 批准拆分后、M04 gate 前必须完成契约分段：M04 发布 `1.3.0-m04a`（路由/key/端点/开关；quota/cost 端点移除或标 `x-riccon-deferred: M04b`），M17 发布 `1.4.0-m04b`（配额/成本）。未完成分段不得声称 M04a 已实现全部端点。
+- `contracts/openapi.yaml` 保持 `1.3.0-m04` 的**全量设计**（含配额/成本端点）。DEC-0024=B 已撤销拆分，M04 单模块一次交付，不存在补丁级契约版本或 deferred 分段。
 - 同一 `/api/v1` 内只做向后兼容增量：新增端点、可选字段、枚举值；员工 `/models` 使用 `EmployeeModel`（不含价格），平台使用 `AdminModel`。
 - `ModelProvider` 新增字段全部可选；`Model` 保留既有字段（价格字段按 §7.5 处理）。
 - 错误码只新增，不复用旧码语义；`RICCON-MODEL-401/403/429` 是 Worker 内部上游错误，不直接暴露给员工。
-- 契约 writer：`M04-B2` 独占 M04 的 `contracts/openapi.yaml`；`M17-B12` 独占 M17 分段；其他任务只读或提变更请求。
+- 契约 writer：`M04-B2` 独占 M04 的 `contracts/openapi.yaml` 与 `contracts/README.md`，并在同一任务交付 `IT-MODEL-108a`（模型/路由/凭据/开关）与 `IT-MODEL-108b`（配额/成本）两组契约测试；其他任务只读或提变更请求。
 
 #### 7.8 口径澄清（需 Verifier/Product 在评审中确认）
 
@@ -593,117 +593,111 @@ if no success: RICCON-MODEL-503
 2. **“成功降级零提示”**：SSE `chat.started` 使用最终成功模型；不为切换新增事件。若在首字前切换，客户端只看到一次 `started`。
 3. **AC-15 的“保存端点”**：M04 没有端点创建 API，使用 §2.4 的只读字段 400 + 路由保存校验 + 启动校验三条可测试路径。
 
-### 8. 交付计划（任务图，供 Lead 创建）
+### 8. 交付计划（单模块任务图，供 Lead 创建）
 
-#### 8.1 总览（M04 = 路由/降级/key；M17 = 配额/成本）
+#### 8.1 总览（17 个实施任务，全部属于 M04）
 
-| 任务     | 模块 | 建议 owner                   | 交付物（单一可验收结果）                                                                 | 依赖                                     | 风险               |
-| -------- | ---- | ---------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------ |
-| M04-B1a  | M04  | `riccon/builder-core`        | V11 迁移、权限/审计词汇、错误码、RoleDefinitions、schema 11、迁移测试                    | —                                        | 高（迁移）         |
-| M04-B1b  | M04  | `riccon/builder-crypto`      | 共享 `MasterKeyRing`、API 加密能力、Worker 委托、启动校验、往返测试                      | —                                        | 高（加密）         |
-| M04-B1c  | M04  | `riccon/ops`                 | Micrometer/Prometheus 依赖、7 个 M04 指标约定、`scripts/ops/metrics-check`、默认拒绝回归测试  | —                                        | 中（观测）         |
-| M04-B2   | M04  | `riccon/builder-route`       | 端点允许列表 + 三模型端点 + 模型启停 + Actuator prometheus 暴露 + 契约唯一 writer        | B1a、B1c                                 | 高（SSRF/契约）    |
-| M04-B3   | M04  | `riccon/builder-route`       | 路由配置 API + 乐观锁 + 审计 + 生效读模型                                                | B1a、B2                                  | 高（权限/AI 路由） |
-| M04-B4   | M04  | `riccon/builder-failover`    | Worker 路由/降级/尝试记录/首字后语义/开关/移除 BYO 回退                                  | B1a、B3                                  | 高（AI 调用/并发） |
-| M04-B5   | M04  | `riccon/builder-key`         | key 池管理 API + 掩码 + 轮换/停用/恢复 + 审计                                            | B1a、B1b、B2                             | 高（凭据）         |
-| M04-B8   | M04  | `riccon/builder-gateway-e2e` | fake provider 场景 + real-stack 种子/run.mjs + `e2e/perf/mvc-smoke.js` + stub            | B1a                                      | 中                 |
-| M04-B9a  | M04  | `riccon/builder-web`         | 路由/key 两页 + 路由/菜单 + Web API client + audit target/7d 预设                        | B2、B3、B5                               | 中                 |
-| M04-B10  | M04  | `riccon/ops`                 | RUNBOOK + CI perf job：preflight/迁移/回滚/主密钥 rewrap/幂等种子/价格/备份恢复/指标告警 | B1a、B1b                                 | 中                 |
-| M04-B11a | M04  | `riccon/builder-gateway-e2e` | 路由/key E2E + J1/J2/M03/M10 回归 + 审计 7 天 + `@a11y`                                  | B4、B8、B9a                              | 中                 |
-| M04-V1   | M04  | `riccon/verifier`            | 独立 E2E/安全/a11y/威胁模型核对；M04 的 8 条 AC 证据                                     | B4、B5、B9a、B11a                        | 高                 |
-| M17-B6   | M17  | `riccon/builder-quota`       | 配额表/原子准入/读写端点/审计/并发测试                                                   | M04-B1a                                  | 高（并发/配额）    |
-| M17-B7   | M17  | `riccon/builder-cost`        | 成本快照写入 + 平台/租户聚合/明细 API + 边界测试                                         | M04-B1a、M04-B4                          | 高（跨租户/金额）  |
-| M17-B12  | M17  | `riccon/builder-route`       | `1.4.0-m04b` 契约分段：移除 quota/cost deferred、README、契约测试                        | M17-B6、M17-B7、M04-B2                  | 中（契约）         |
-| M17-B9b  | M17  | `riccon/builder-web`         | 配额/成本两页 + 菜单增量 + 四页联动                                                      | M17-B6、M17-B7、M17-B12、M04-B9a         | 中                 |
-| M17-B11b | M17  | `riccon/builder-gateway-e2e` | 配额/成本 E2E + 四页 `@a11y` + 配额争用/成本边界断言                                     | M17-B6、M17-B7、M17-B9b                  | 中                 |
-| M17-B13  | M17  | `riccon/ops`                 | M17 RUNBOOK/回滚、quota 开关 false→true 演练、配置漂移检查、成本对账窗口（≈2h）             | M17-B12、M17-B6、M17-B7                  | 中                 |
-| M17-V2   | M17  | `riccon/verifier`            | PERF-M04-001/002、契约分段/迁移/回滚/备份恢复演练、可观测性核对                          | M17-B6、M17-B7、M17-B12、M17-B11b、M17-B13、M04-B8、M04-B10 | 高                 |
+| 任务     | 建议 owner                   | 交付物（单一可验收结果）                                                                   | 依赖                      | 风险               |
+| -------- | ---------------------------- | ------------------------------------------------------------------------------------------ | ------------------------- | ------------------ |
+| M04-B1a  | `riccon/builder-core`        | V11 迁移、权限/审计词汇、错误码、RoleDefinitions、schema 11、迁移测试                      | —                         | 高（迁移）         |
+| M04-B1b  | `riccon/builder-crypto`      | 共享 `MasterKeyRing`、API 加密能力、Worker 委托、启动校验、往返测试                        | —                         | 高（加密）         |
+| M04-B1c  | `riccon/ops`                 | Micrometer/Prometheus 依赖、7 个路由/降级/key 指标约定、`metrics-check`、默认拒绝回归测试   | —                         | 中（观测）         |
+| M04-B2   | `riccon/builder-route`       | 端点允许列表 + 三模型端点 + 模型启停 + Actuator 暴露 + 契约唯一 writer（含配额/成本契约）   | B1a、B1c                  | 高（SSRF/契约）    |
+| M04-B3   | `riccon/builder-route`       | 路由配置 API + 乐观锁 + 审计 + 生效读模型                                                  | B1a、B2                   | 高（权限/AI 路由） |
+| M04-B4   | `riccon/builder-failover`    | Worker 路由/降级/尝试记录/首字后语义/开关/移除 BYO 回退 + 注册 7 个指标                     | B1a、B3                   | 高（AI 调用/并发） |
+| M04-B5   | `riccon/builder-key`         | key 池管理 API + 掩码 + 轮换/停用/恢复 + 审计                                              | B1a、B1b、B2              | 高（凭据）         |
+| M04-B6   | `riccon/builder-quota`       | 配额表/原子准入/读写端点/审计/并发测试 + 注册 2 个配额指标                                  | B1a                       | 高（并发/配额）    |
+| M04-B7   | `riccon/builder-cost`        | 成本快照写入 + 平台/租户聚合/明细 API + 边界测试 + 成本查询指标                             | B1a、B4                   | 高（跨租户/金额）  |
+| M04-B8   | `riccon/builder-gateway-e2e` | fake provider 场景 + real-stack 种子/run.mjs + `e2e/perf/mvc-smoke.js` + stub               | B1a                       | 中                 |
+| M04-B9a  | `riccon/builder-web`         | 路由/key 两页 + 路由/菜单 + Web API client + audit target/7d 预设                           | B2、B3、B5                | 中                 |
+| M04-B9b  | `riccon/builder-web`         | 配额/成本两页 + 菜单增量 + 四页联动                                                        | B6、B7、B2、B9a           | 中                 |
+| M04-B10  | `riccon/ops`                 | 单模块 RUNBOOK（发布/回滚/quota 开关演练/漂移检查/成本对账）、脚本、CI perf job             | B1a、B1b、B2、B6、B7      | 中                 |
+| M04-B11a | `riccon/builder-gateway-e2e` | 路由/key E2E + J1/J2/M03/M10 回归 + 审计 7 天 + `@a11y`                                     | B4、B8、B9a               | 中                 |
+| M04-B11b | `riccon/builder-gateway-e2e` | 配额/成本 E2E + 四页 `@a11y` + 配额争用/成本边界断言                                        | B6、B7、B9b               | 中                 |
+| M04-V1   | `riccon/verifier`            | AC-01..16、路由/key 安全、`IT-MODEL-101..109`、两页/四页 a11y 证据                         | B4、B5、B6、B7、B9a、B11a、B11b | 高          |
+| M04-V2   | `riccon/verifier`            | AC-17/18、配额/成本安全与并发、perf、迁移/回滚/备份、7+2 指标、模块级独立复验               | B6、B7、B10、B11b、B8、V1 | 高                 |
 
-共 **19 个任务**：M04 12 个（B1a/B1b/B1c/B2–B5/B8/B9a/B10/B11a/V1），M17 7 个（B6/B7/B12/B9b/B11b/B13/V2）。
+共 **17 个实施任务**，全部属于 M04：B1a/B1b/B1c/B2/B3/B4/B5/B6/B7/B8/B9a/B9b/B10/B11a/B11b/V1/V2。B1a 的 V11 同时建路由/key/配额/成本/尝试明细表；B2 是唯一契约 writer（`IT-MODEL-108a` 与 `IT-MODEL-108b` 同任务交付）；B10 是唯一发布/回滚/演练任务（吸收 quota 开关 false→true 与成本对账窗口）。不再有独立契约分段任务，也不再有独立配额发布任务。
 
 #### 8.2 依赖图
 
 ```text
-M04:  B1a ──> B2 ──> B3 ──> B4 ──> B11a ──> V1
-        │      │      │      │
-        │      │      └──> B5 ┘
-        │      └──> B9a ──> B11a
-        ├──> B8 ──> B11a
-        ├──> B10（并行）
-        └──> B1b ──> B5
-      B1c（并行，指标基线）
-M17:  M04 用户验收 accepted ──> B6 ──> B12 ──> B9b ──> B11b ──> V2
-                                └──> B7 ──> B12
-                 M17-B12/B6/B7 ──> B13 ──> V2
-                 M04-B8/M04-B10 ──> V2
+Lane A（契约/路由/Worker）:   B1a -> B2 -> B3 -> B4 -> B7 -> B9b -> B11b -> V1 -> V2
+Lane B（加密/key/Web）:       B1b -> B5 -> B9a -> B11a -> V1
+Lane C（观测/配额/资产/ops）: B1c -> B2（暴露）
+                              B6  -> B9b
+                              B8  -> B11a / V2
+                              B10 -> V2
 ```
 
+- 关键路径（3 builder）：B1a 2h → B2 4h → B3 2h → B4 5h → B7 3h → B9b 3h → B11b 2h → V1 3h → V2 4h ≈ **28h**；B10、B11a 与关键路径并行。
 - B1b 与 B1a 可并行（文件不重叠）；B5 依赖两者；B2 依赖 B1a（契约/端点配置）与 B1c（指标 registry 约定先于 Actuator 暴露验收），不需要 crypto。
-- B1c 可并行，但必须在 B4/B6 写指标前完成 registry 依赖与指标约定；Actuator 暴露由 B2 实现，B10 消费指标清单。
+- B1c 可并行，但必须在 B4/B6/B7 写指标前完成 registry 依赖与指标约定；Actuator 暴露由 B2 实现，B10 消费指标清单。
 - B5 与 B3 可并行（不同 API 子包），但都依赖 B2；B5 不修改 Worker（自动失效逻辑归 B4）。
-- B6 只依赖 B1a；B7 依赖 B4（同一 Worker 模型包，避免并行写冲突）。
-- **配置唯一 writer**：`application.yml` 由 B1a 一次性加齐 M04 配置键；B1b/B1c/B2 不再修改 yml；B4/B7 都改 `worker/model/**`（B7 依赖 B4）；B9a/B9b 都改 `routes.ts`/access（B9b 依赖 B9a）。这三组不得并行派单。
-- **契约 writer**：B2 独占 M04 的 `contracts/openapi.yaml`；M17-B12 独占 M17 的 `1.4.0-m04b` 分段；两者不得并行/跨模块同时写，B12 依赖 B2 完成。其他任务只读或提变更请求。
-- **测试资产**：B8 独占 `scripts/real-stack/**`、`e2e/perf/**`、`e2e/stub/server.mjs`；B11a/B11b 只写 `e2e/tests|real/tests` 规格，不修改 stub。`.github/workflows/ci.yml` 由 B10 独占；B8 只保证脚本本地/CI 可运行。`scripts/ops` 按文件前缀分工：B1c 只写 `metrics-check*`，B10 写 `seed-*/update-*/rewrap-*/restore-*/backfill-*`，B13 写 `quota-*/cost-*`；同一 owner 串行执行。
-- **Ops 串行**：B1c、B10、B13 的 owner 都是 `riccon/ops`，同一 owner 同时只能有一个 in_progress；`docs/RUNBOOK.md` 由 B10 先写 M04 章节、B13 后续追加 M17 章节，不得并行。`docker-compose.test.yml` 由 B10 独占，B13 只追加 M17 漂移检查变量。
+- B6 只依赖 B1a，与 B2/B3 并行（不同 API 子包），不改变路由关键路径。
+- B7 依赖 B4（同一 Worker 模型包，避免并行写冲突）；这是 M04 内部唯一的 Worker 串行点。
+- **配置唯一 writer**：`application.yml` 由 B1a 一次性加齐 M04 配置键；B1b/B1c/B2 不再修改 yml；B4/B7 都改 `worker/model/**`（B7 依赖 B4）；B9a/B9b 都改 `routes.ts`/`access.ts`（B9b 依赖 B9a）。这三组不得并行派单。
+- **契约唯一 writer**：B2 独占 `contracts/openapi.yaml` 与 `contracts/README.md`（含配额/成本端点），并同时交付 `IT-MODEL-108a/108b`；其他任务只读或提变更请求。B9b 依赖 B2 的 schema 定稿。
+- **测试资产**：B8 独占 `scripts/real-stack/**`、`e2e/perf/**`、`e2e/stub/server.mjs`；B11a/B11b 只写 `e2e/tests|real/tests` 规格，不修改 stub。`.github/workflows/ci.yml` 由 B10 独占；B8 只保证脚本本地/CI 可运行。`scripts/ops` 按文件前缀分工：B1c 只写 `metrics-check*`，B10 写 `seed-*/update-*/rewrap-*/restore-*/backfill-*/quota-*/cost-*`。
+- **Ops 串行**：B1c 与 B10 的 owner 都是 `riccon/ops`，同一 owner 同时只能有一个 in_progress；B10 是唯一 RUNBOOK 与 `docker-compose.test.yml` writer，不存在第二个 Ops 任务并行写。
+- **同 owner 串行**：B2/B3 同 `builder-route`、B9a/B9b 同 `builder-web`、B11a/B11b 同 `builder-gateway-e2e`、V1/V2 同 `verifier`；依赖关系已按串行排布，不需要额外派单约束。
 
 #### 8.3 写范围与验收（≤6 条/任务）
 
-| 任务 | `write_scope`（目录写 `dir/**`）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | 验收（≤6）                                                                                                                                                                                                                                                                                                                            |
-| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| B1a  | `apps/api/src/main/resources/db/migration/V11__model_gateway_depth.sql`、`apps/api/src/test/java/com/riccon/api/migration/**`、`platform/platform-domain/src/main/java/com/riccon/platform/domain/audit/**`、`platform/platform-domain/src/main/java/com/riccon/platform/domain/identity/PermissionCodes.java`、`apps/api/src/main/java/com/riccon/api/error/ErrorCodes.java`、`apps/api/src/main/java/com/riccon/api/audit/domain/AuditDetailsPolicy.java`、`apps/worker/src/main/java/com/riccon/worker/audit/domain/AuditDetailsPolicy.java`、`apps/worker/src/main/java/com/riccon/worker/audit/domain/WorkerAuditActions.java`、`apps/api/src/main/java/com/riccon/api/identity/domain/RoleDefinitions.java`、`apps/worker/src/main/java/com/riccon/worker/persistence/SchemaVersionChecker.java`、`apps/api/src/main/resources/application.yml`、`apps/worker/src/main/resources/application.yml`、`apps/api/src/test/resources/application-test.yml`、`apps/worker/src/test/java/com/riccon/worker/WorkerIntegrationTestBase.java`（M04 全部配置键/测试 profile 占位） | V10 种子（1 ACTIVE + 1 RETIRED 跨 provider + 1 万历史调用）后 V11 通过；V11 后 helper 造 2 ACTIVE + 1 INVALID 并完成多 key 回滚（按分组断言 ACTIVE，不写死总行数）；`information_schema` 无 `fk_model_invocation_provider`、`model_invocation` 无新增 CHECK、加列 INSTANT/索引 INPLACE；权限回填；**M04 全部权限码/审计动作/目标类型/details 数组+nullable 白名单预置**；两应用 M04 配置键占位（crypto/endpoint/management/routing/currency）；Worker 集成测试上下文 DEMO+端点+主密钥可启动；schema=11；quota/cost/attempt 表结构+空表 INSERT/ROLLBACK+PK 顺序/默认值断言（按 B6 upsert 形状）                                                                     |
-| B1b  | `platform/platform-common/src/main/java/com/riccon/platform/common/crypto/**`、`platform/platform-common/src/test/java/**`、`apps/worker/src/main/java/com/riccon/worker/crypto/service/MasterKeyProvider.java`、`apps/api/src/main/java/com/riccon/api/crypto/**`、`apps/api/src/main/java/com/riccon/api/config/CryptoProperties.java`、`platform/platform-common/src/test/java/com/riccon/platform/common/crypto/**`、`apps/api/src/test/java/com/riccon/api/crypto/**`、`apps/worker/src/test/java/com/riccon/worker/crypto/**`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | API 加密→Worker 解密往返；AAD/篡改/跨租户失败；日志 canary 不含 key；API current+previous+master-key-id+canary；测试主密钥占位；无明文缓存                                                                                                                                                                                            |
-| B1c  | `apps/api/pom.xml`、`apps/worker/pom.xml`、`scripts/ops/metrics-check*`、`apps/api/src/test/java/com/riccon/api/actuator/**`、`apps/worker/src/test/java/com/riccon/worker/actuator/**`（Actuator 暴露的 SecurityConfig 归 B2）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Prometheus registry 依赖；`/actuator/prometheus` 仅内网/受控；7 个 M04 指标名与标签约定；`metrics-check` 只断言 M04 7 个指标；不改变默认拒绝基线                                                                                                                                                                                                  |
-| B2   | `apps/api/src/main/java/com/riccon/api/model/catalog/**`、`apps/api/src/main/java/com/riccon/api/admin/model/catalog/**`、`apps/api/src/main/java/com/riccon/api/admin/model/provider/**`、`platform/platform-common/src/main/java/com/riccon/platform/common/model/**`、`apps/worker/src/main/java/com/riccon/worker/config/ModelEndpointProperties.java`、`apps/api/src/main/java/com/riccon/api/config/SecurityConfig.java`、`apps/worker/src/main/java/com/riccon/worker/config/SecurityConfig.java`、`contracts/openapi.yaml`、`contracts/README.md`、`apps/api/src/test/java/com/riccon/api/model/**`、`apps/api/src/test/java/com/riccon/api/admin/model/**`、`apps/api/src/test/java/com/riccon/api/config/**`、`apps/worker/src/test/java/com/riccon/worker/config/**`                                                                                                                                                                                                                                                                                                                                                                                                                   | `IT-MODEL-108a` 三个模型端点+路由/凭据/开关契约测试；端点标签/允许状态；只读字段 400；生产模式拒绝演示端点；URL 负向矩阵（含元数据/IP 归一化）；405 无写路由；内层 `model.max-attempts=1`；Actuator prometheus 按 `RICCON_OPS_ALLOWED_CIDRS` 控制（空=loopback）且不放宽默认拒绝；DEC-0024 后、M04 gate 前完成 `1.3.0-m04a` 分段（quota/cost 端点 deferred/移除，M04 不声称实现）；**M04 契约唯一 writer** |
-| B3   | `apps/api/src/main/java/com/riccon/api/model/routing/**`（含 repository/service）、`apps/api/src/main/java/com/riccon/api/admin/model/routing/**`、`apps/api/src/test/java/com/riccon/api/model/routing/**`、`apps/api/src/test/java/com/riccon/api/admin/model/routing/**`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | GET/PUT 两链；版本冲突 409；空链/未知模型 400；停用模型保留；审计数组 details 通过；下一次请求读新链                                                                                                                                                                                                                                  |
-| B4   | `apps/worker/src/main/java/com/riccon/worker/model/**`（含 `ModelRepository.java` 删除租户回退）、`apps/worker/src/main/java/com/riccon/worker/chat/**`、`apps/worker/src/main/java/com/riccon/worker/research/service/AgentRunRequestedHandler.java`、`apps/worker/src/main/java/com/riccon/worker/research/service/AgentRunResumeHandler.java`、`apps/worker/src/main/java/com/riccon/worker/agent/**`、`apps/worker/src/main/java/com/riccon/worker/audit/service/AuditService.java`、`apps/worker/src/test/java/com/riccon/worker/model/**`、`apps/worker/src/test/java/com/riccon/worker/chat/**`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 链路解析；内层 maxAttempts=1；尝试顺序/上限/预算；8 类失败矩阵；首字后不重试；尝试表/审计（emitted、SYSTEM/platform）；开关回退基线且仍走 allowlist；BYO 回退移除；J1/J2 回归                                                                                                                                                         |
-| B5   | `apps/api/src/main/java/com/riccon/api/admin/model/credential/**`、`apps/api/src/test/java/com/riccon/api/admin/model/credential/**`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | 掩码列表；新增/轮换/停用/恢复；HMAC fingerprint 409；审计无明文；DTO toString/错误不回显 key；在途说明；最后 key；权限                                                                                                                                                                                                                |
-| B6   | `apps/api/src/main/java/com/riccon/api/quota/**`、`apps/api/src/main/java/com/riccon/api/admin/quota/**`、`apps/api/src/main/java/com/riccon/api/chat/service/ChatSubmissionService.java`、`apps/api/src/main/java/com/riccon/api/research/service/ResearchTaskService.java`、`apps/api/src/test/java/com/riccon/api/quota/**`、`apps/api/src/test/java/com/riccon/api/admin/quota/**`、`apps/api/src/test/java/com/riccon/api/chat/**`、`apps/api/src/test/java/com/riccon/api/research/**`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | V11 的 `quota_usage` PK 顺序/默认值匹配 B6 upsert；安全 upsert（ON DUPLICATE，无 IGNORE）；条件 UPDATE；50 并发 1 成功/49 个 429/无 500；拒绝审计 REQUIRES_NEW（失败 500）；quotaEnforcement=false 只计量；日/月边界；权限/跨租户                                                                                                                                                        |
-| B7   | `apps/worker/src/main/java/com/riccon/worker/model/service/ModelInvocationService.java`、`apps/worker/src/main/java/com/riccon/worker/model/persistence/ModelInvocationJdbc.java`、`apps/worker/src/main/java/com/riccon/worker/model/repository/ModelInvocationRepository.java`、`apps/worker/src/main/java/com/riccon/worker/chat/service/ChatStreamService.java`、`apps/worker/src/main/java/com/riccon/worker/research/service/AgentRunRequestedHandler.java`、`apps/worker/src/main/java/com/riccon/worker/research/service/AgentRunResumeHandler.java`、`apps/api/src/main/java/com/riccon/api/cost/**`、`apps/api/src/main/java/com/riccon/api/admin/cost/**`、`apps/api/src/test/java/com/riccon/api/cost/**`、`apps/api/src/test/java/com/riccon/api/admin/cost/**`、`apps/worker/src/test/java/com/riccon/worker/model/**`                                                                                                                                                                                                                                                                                                        | 价格快照；6 位小数；未定价/用量未知/unbucketed 分桶；历史不改写；日桶时区边界；平台无用户字段；租户明细；跨租户 404                                                                                                                                                                                                                   |
-| B8   | `scripts/real-stack/fake-model.mjs`、`scripts/real-stack/seed.mjs`、`scripts/real-stack/checks.mjs`、`scripts/real-stack/run.mjs`、`e2e/perf/**`、`e2e/support/fake-model/**`、`e2e/stub/server.mjs`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | 302/401/429/5xx/超时/断流/缺 usage/key 维度；确定性；API/Worker 同一份 DEMO/端点/主密钥 env；k6 三场景+成本查询+退出码+env 记录（`RICCON_CHAT_MAX_STREAMS=50`、`RICCON_DB_POOL_SIZE>=25`、`RICCON_FAKE_MODEL=1`）；脚本可本地/CI 运行；报告记录 host CPU/内存、镜像 tag、k6 版本、脚本 sha、启动命令；perf 场景不启 OpenSearch 或另计主机规格（2C4Gi sandbox 不足）                                                                                                 |
-| B9a  | `apps/web/src/pages/admin/model-routing/**`、`apps/web/src/pages/admin/model-keys/**`、`apps/web/src/pages/admin/audit/**`（仅 7 天预设与 target 类型）、`apps/web/src/services/model/**`、`apps/web/src/services/api/client.ts`、`apps/web/src/services/api/types.ts`、`apps/web/src/services/audit/types.ts`、`apps/web/config/routes.ts`、`apps/web/src/access.ts`、对应 `*.test.tsx`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | 路由/key 两页；端点标签；AC-07 影响说明；AC-15 UI 拒绝文案；audit target 新值 + 7 天预设；375px/键盘；key 掩码                                                                                                                                                                                                                        |
-| B12  | `contracts/openapi.yaml`、`contracts/README.md`、`apps/api/src/test/java/com/riccon/api/contract/**`（M17 契约测试）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | `IT-MODEL-108b`；`1.4.0-m04b` 移除 quota/cost deferred；quota/cost 端点契约测试通过；M02/M03/M10 契约零回归；**M17 契约唯一 writer**；不写业务代码                                                                                                                                                                                                     |
-| B9b  | `apps/web/src/pages/admin/quotas/**`、`apps/web/src/pages/admin/costs/**`、`apps/web/src/services/quota/**`、`apps/web/src/services/cost/**`、`apps/web/config/routes.ts`（仅追加配额/成本入口）、对应 `*.test.tsx`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | 配额/成本两页；平台/租户可见性；AC-11 租户明细展开；AC-13 四页空态/403；与 B9a 菜单联动                                                                                                                                                                                                                                               |
-| B10  | `docs/RUNBOOK.md`、`deploy/compose/docker-compose.test.yml`、`scripts/ops/seed-*`、`scripts/ops/update-*`、`scripts/ops/rewrap-*`、`scripts/ops/restore-*`、`scripts/ops/backfill-*`、`.github/workflows/ci.yml`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | preflight（Secret/端点/模式/币种/表体积）；五段发布；回滚（先 DROP CHECK、收敛 key、分组断言 ACTIVE、Flyway 属性）；rewrap/幂等种子/价格/备份恢复演练/RPO-RTO；指标/告警表；`backfill-cost-day` 干跑/进度/幂等验收；M17 首发配额开关保持 false（B13 后续 false→true 演练）；CI perf job 或明确 manual gate + 预算/主机规格记录                                                                                                                                  |
-| B11a | `e2e/tests/m04-routing*.spec.ts`、`e2e/real/tests/m04-routing*.spec.ts`、`e2e/support/m04-routing*`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | E2E-M04-01/02/03/04/08 的路由/key 段 + `E2E-M04-07a` 两页；J1/J2/M03/M10 回归；audit 7 天；`@a11y` 两页；零 skip                                                                                                                                                                                                                      |
-| B11b | `e2e/tests/m04-quota-cost*.spec.ts`、`e2e/real/tests/m04-quota-cost*.spec.ts`、`e2e/support/m04-quota-cost*`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | E2E-M04-05/06 + `E2E-M04-07b` 四页；四页 `@a11y`；AC-11 明细展开；AC-13 四入口；零 skip                                                                                                                                                                                                                                               |
-| V1   | `apps/api/src/test/java/com/riccon/api/security/m04/**`（Verifier M04 独立类）、`e2e/**` 只读运行                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | M04 的 8 条 AC（AC-01/03/04/05/06/07/15/16）；`TEN-031`；`SEC-M04-001/002/003a/004/005/006/007/008/009`（模型/key/开关写越权在 003a）；`IT-MODEL-101..109` 的 M04 段；`E2E-M04-01..04/08` 路由/key 段；`E2E-M04-07a` 两页；V11 quota/cost/attempt 结构+空表 INSERT/ROLLBACK 独立断言；`information_schema` 无 `fk_model_invocation_provider`；TM-39..TM-54 的 M04 段；零 skip。**不得**声称 TEN-032/033 或完整 SEC-M04-003a/003b                                                                     |
-| B13  | `docs/RUNBOOK.md`（M17 章节）、`scripts/ops/quota-*`、`scripts/ops/cost-*`、`deploy/compose/docker-compose.test.yml`（仅追加 M17 漂移检查变量，不改 B10 段） | M17 发布/回滚章节；quota 开关 false→true 演练；API/Worker 端点/模式/币种漂移检查；成本对账窗口；不写业务代码 |
-| V2   | `apps/api/src/test/java/com/riccon/api/security/m17/**`（Verifier M17 独立类）、`e2e/**` 只读、`e2e/perf/**` 只读、`.riccon/evidence/**`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | M17 的 10 条 AC（AC-02/08..14/17/18）；`TEN-032/033`；`SEC-M04-003a` 的 M04 证据 + `SEC-M04-003b`（配额写越权）；`IT-QUOTA-101..105`；`IT-COST-101..104`；`IT-MODEL-108b`；`E2E-M04-05/06`；`E2E-M04-07b` 四页；四页 `@a11y`；`PERF-M04-001/002`；迁移/回滚/备份恢复；抓取 M17 2 个配额/成本指标；M17 独立复验（M04 证据可引用但不替代）；零 skip                                                         |
+| 任务 | `write_scope`（目录写 `dir/**`） | 验收（≤6） |
+| ---- | --- | --- |
+| B1a | `apps/api/src/main/resources/db/migration/V11__model_gateway_depth.sql`、`apps/api/src/test/java/com/riccon/api/migration/**`、`platform/platform-domain/src/main/java/com/riccon/platform/domain/audit/**`、`platform/platform-domain/src/main/java/com/riccon/platform/domain/identity/PermissionCodes.java`、`apps/api/src/main/java/com/riccon/api/error/ErrorCodes.java`、`apps/api/src/main/java/com/riccon/api/audit/domain/AuditDetailsPolicy.java`、`apps/worker/src/main/java/com/riccon/worker/audit/domain/AuditDetailsPolicy.java`、`apps/worker/src/main/java/com/riccon/worker/audit/domain/WorkerAuditActions.java`、`apps/api/src/main/java/com/riccon/api/identity/domain/RoleDefinitions.java`、`apps/worker/src/main/java/com/riccon/worker/persistence/SchemaVersionChecker.java`、`apps/api/src/main/resources/application.yml`、`apps/worker/src/main/resources/application.yml`、`apps/api/src/test/resources/application-test.yml`、`apps/worker/src/test/java/com/riccon/worker/WorkerIntegrationTestBase.java`（M04 全部配置键/测试 profile 占位） | V10 种子（1 ACTIVE + 1 RETIRED 跨 provider + 1 万历史调用）后 V11 通过；V11 后 helper 造 2 ACTIVE + 1 INVALID 并完成多 key 回滚（按分组断言 ACTIVE，不写死总行数）；`information_schema` 无 `fk_model_invocation_provider`、`model_invocation` 无新增 CHECK、加列 INSTANT/索引 INPLACE；权限回填 + M04 权限码/审计动作/目标类型/details 数组+nullable 白名单预置；两应用 M04 配置键占位（crypto/endpoint/management/routing/currency）+ Worker 集成测试上下文 DEMO+端点+主密钥可启动 + schema=11；quota/cost/attempt 表结构+FK/CHECK+空表 INSERT/ROLLBACK+PK 顺序/默认值断言（按 B6 upsert 形状） |
+| B1b | `platform/platform-common/src/main/java/com/riccon/platform/common/crypto/**`、`platform/platform-common/src/test/java/**`、`apps/worker/src/main/java/com/riccon/worker/crypto/service/MasterKeyProvider.java`、`apps/api/src/main/java/com/riccon/api/crypto/**`、`apps/api/src/main/java/com/riccon/api/config/CryptoProperties.java`、`platform/platform-common/src/test/java/com/riccon/platform/common/crypto/**`、`apps/api/src/test/java/com/riccon/api/crypto/**`、`apps/worker/src/test/java/com/riccon/worker/crypto/**` | API 加密→Worker 解密往返；AAD/篡改/跨租户失败；日志 canary 不含 key；API current+previous+master-key-id+canary；测试主密钥占位；无明文缓存 |
+| B1c | `apps/api/pom.xml`、`apps/worker/pom.xml`、`scripts/ops/metrics-check*`、`apps/api/src/test/java/com/riccon/api/actuator/**`、`apps/worker/src/test/java/com/riccon/worker/actuator/**`（Actuator 暴露的 SecurityConfig 归 B2） | Prometheus registry 依赖（API/Worker）；7 个路由/降级/key 指标名与标签约定（Worker 注册，B4 落地）；`scripts/ops/metrics-check` 以 `--base-url` 指向 Worker，只断言这 7 个；暴露实现归 B2，B1c 只做 registry 依赖与负向测试；不改变默认拒绝基线 |
+| B2 | `apps/api/src/main/java/com/riccon/api/model/catalog/**`、`apps/api/src/main/java/com/riccon/api/admin/model/catalog/**`、`apps/api/src/main/java/com/riccon/api/admin/model/provider/**`、`platform/platform-common/src/main/java/com/riccon/platform/common/model/**`、`apps/worker/src/main/java/com/riccon/worker/config/ModelEndpointProperties.java`、`apps/api/src/main/java/com/riccon/api/config/SecurityConfig.java`、`apps/worker/src/main/java/com/riccon/worker/config/SecurityConfig.java`、`contracts/openapi.yaml`、`contracts/README.md`、`apps/api/src/test/java/com/riccon/api/model/**`、`apps/api/src/test/java/com/riccon/api/admin/model/**`、`apps/api/src/test/java/com/riccon/api/config/**`、`apps/worker/src/test/java/com/riccon/worker/config/**`、`apps/api/src/test/java/com/riccon/api/contract/**` | `IT-MODEL-108a`（三个模型端点 + 路由/凭据/开关契约测试）；`IT-MODEL-108b`（配额/成本端点契约测试，同一 `1.3.0-m04` 全量、无 deferred 分段）；端点标签/允许状态、只读字段 400、生产模式拒绝演示端点、URL 负向矩阵（含元数据/IP 归一化）、405 无写路由；内层 `model.max-attempts=1`；Actuator prometheus 按 `RICCON_OPS_ALLOWED_CIDRS` 控制（空=loopback）且不放宽默认拒绝；**M04 契约唯一 writer（含 `contracts/README.md`）**，M02/M03/M10 契约零回归 |
+| B3 | `apps/api/src/main/java/com/riccon/api/model/routing/**`（含 repository/service）、`apps/api/src/main/java/com/riccon/api/admin/model/routing/**`、`apps/api/src/test/java/com/riccon/api/model/routing/**`、`apps/api/src/test/java/com/riccon/api/admin/model/routing/**` | GET/PUT 两链；版本冲突 409；空链/未知模型 400；停用模型保留；审计数组 details 通过；下一次请求读新链 |
+| B4 | `apps/worker/src/main/java/com/riccon/worker/model/**`（含 `ModelRepository.java` 删除租户回退）、`apps/worker/src/main/java/com/riccon/worker/chat/**`、`apps/worker/src/main/java/com/riccon/worker/research/service/AgentRunRequestedHandler.java`、`apps/worker/src/main/java/com/riccon/worker/research/service/AgentRunResumeHandler.java`、`apps/worker/src/main/java/com/riccon/worker/agent/**`、`apps/worker/src/main/java/com/riccon/worker/audit/service/AuditService.java`、`apps/worker/src/test/java/com/riccon/worker/model/**`、`apps/worker/src/test/java/com/riccon/worker/chat/**` | 链路解析 + 内层 `maxAttempts=1` + 尝试顺序/上限/预算；8 类失败矩阵、首字后不重试不重放；尝试表/审计（`emitted`、SYSTEM/platform）；开关回退 BASELINE 且仍走 allowlist、无链外回退；BYO 回退移除（租户级凭据被忽略）+ 注册 7 个路由/降级/key 指标；J1/J2 回归 |
+| B5 | `apps/api/src/main/java/com/riccon/api/admin/model/credential/**`、`apps/api/src/test/java/com/riccon/api/admin/model/credential/**` | 掩码列表；新增/轮换/停用/恢复；HMAC fingerprint 409、最后一把 key 可停用；审计无明文、DTO toString/错误不回显 key；在途影响说明；权限 |
+| B6 | `apps/api/src/main/java/com/riccon/api/quota/**`、`apps/api/src/main/java/com/riccon/api/admin/quota/**`、`apps/api/src/main/java/com/riccon/api/chat/service/ChatSubmissionService.java`、`apps/api/src/main/java/com/riccon/api/research/service/ResearchTaskService.java`、`apps/api/src/test/java/com/riccon/api/quota/**`、`apps/api/src/test/java/com/riccon/api/admin/quota/**`、`apps/api/src/test/java/com/riccon/api/chat/**`、`apps/api/src/test/java/com/riccon/api/research/**` | V11 的 `quota_usage` PK 顺序/默认值匹配 upsert + 安全 upsert + 条件 UPDATE；50 并发 1 成功/49 个 429/无 500 + 拒绝审计 REQUIRES_NEW（失败 500）；`quotaEnforcement=false` 只计量并注册 `riccon_quota_rejections_total{scope,window}`、`riccon_quota_usage_ratio{scope,window}`（无 tenant 标签）；日/月边界；权限/跨租户；存储故障 → 503 不创建 run |
+| B7 | `apps/worker/src/main/java/com/riccon/worker/model/service/ModelInvocationService.java`、`apps/worker/src/main/java/com/riccon/worker/model/persistence/ModelInvocationJdbc.java`、`apps/worker/src/main/java/com/riccon/worker/model/repository/ModelInvocationRepository.java`、`apps/worker/src/main/java/com/riccon/worker/chat/service/ChatStreamService.java`、`apps/worker/src/main/java/com/riccon/worker/research/service/AgentRunRequestedHandler.java`、`apps/worker/src/main/java/com/riccon/worker/research/service/AgentRunResumeHandler.java`、`apps/api/src/main/java/com/riccon/api/cost/**`、`apps/api/src/main/java/com/riccon/api/admin/cost/**`、`apps/api/src/test/java/com/riccon/api/cost/**`、`apps/api/src/test/java/com/riccon/api/admin/cost/**`、`apps/worker/src/test/java/com/riccon/worker/model/**` | 价格快照 + 6 位小数 + 未定价/用量未知/unbucketed 分桶；历史不改写（价格更新后金额不变）；日桶 `Asia/Shanghai` 边界；平台无用户字段、租户明细、跨租户 404；注册 `riccon_cost_report_queries_total{group_by}` + 查询保护（180 天/page/size/3s 超时 → 503） |
+| B8 | `scripts/real-stack/fake-model.mjs`、`scripts/real-stack/seed.mjs`、`scripts/real-stack/checks.mjs`、`scripts/real-stack/run.mjs`、`e2e/perf/**`、`e2e/support/fake-model/**`、`e2e/stub/server.mjs` | 302/401/429/5xx/超时/断流/缺 usage/key 维度，场景确定性（固定内容/usage/错误码）；API/Worker 同一份 DEMO/端点/主密钥 env；k6 三场景+成本查询+退出码+env 记录（`RICCON_CHAT_MAX_STREAMS=50`、`RICCON_DB_POOL_SIZE>=25`、`RICCON_FAKE_MODEL=1`）；脚本可本地/CI 运行；报告记录 host CPU/内存、镜像 tag、k6 版本、脚本 sha、启动命令；perf 场景不启 OpenSearch 或另计主机规格（2C4Gi sandbox 不足） |
+| B9a | `apps/web/src/pages/admin/model-routing/**`、`apps/web/src/pages/admin/model-keys/**`、`apps/web/src/pages/admin/audit/**`（仅 7 天预设与 target 类型）、`apps/web/src/services/model/**`、`apps/web/src/services/api/client.ts`、`apps/web/src/services/api/types.ts`、`apps/web/src/services/audit/types.ts`、`apps/web/config/routes.ts`、`apps/web/src/access.ts`、对应 `*.test.tsx` | 路由/key 两页、key 掩码；端点标签；AC-07 影响说明；AC-15 UI 拒绝文案；audit target 新值 + 7 天预设；375px/键盘 |
+| B9b | `apps/web/src/pages/admin/quotas/**`、`apps/web/src/pages/admin/costs/**`、`apps/web/src/services/quota/**`、`apps/web/src/services/cost/**`、`apps/web/config/routes.ts`（仅追加配额/成本入口）、对应 `*.test.tsx` | 配额/成本两页；平台/租户可见性；AC-11 租户明细展开；AC-13 四页空态/403；与 B9a 菜单联动 |
+| B10 | `docs/RUNBOOK.md`、`deploy/compose/docker-compose.test.yml`、`scripts/ops/seed-*`、`scripts/ops/update-*`、`scripts/ops/rewrap-*`、`scripts/ops/restore-*`、`scripts/ops/backfill-*`、`.github/workflows/ci.yml`、`scripts/ops/quota-*`、`scripts/ops/cost-*` | preflight（Secret/端点/模式/币种/表体积）+ 五段发布 + 回滚（先 DROP CHECK、收敛 key、分组断言 ACTIVE、Flyway 属性）；rewrap/幂等种子/价格/备份恢复演练/RPO-RTO + `backfill-cost-day` 干跑/进度/幂等；quota 开关 false→true 演练（默认限额/租户用量/失败回滚）；API/Worker 端点/模式/币种/开关漂移检查（`/actuator/info` 指纹）；成本对账窗口与告警阈值表；CI perf job 或明确 manual gate + 预算/主机规格记录 |
+| B11a | `e2e/tests/m04-routing*.spec.ts`、`e2e/real/tests/m04-routing*.spec.ts`、`e2e/support/m04-routing*` | E2E-M04-01/02/03/04/08 的路由/key 段 + `E2E-M04-07a` 两页；J1/J2/M03/M10 回归；audit 7 天；`@a11y` 两页；零 skip |
+| B11b | `e2e/tests/m04-quota-cost*.spec.ts`、`e2e/real/tests/m04-quota-cost*.spec.ts`、`e2e/support/m04-quota-cost*` | E2E-M04-05/06 + `E2E-M04-07b` 四页；四页 `@a11y`；AC-11 明细展开；AC-13 四入口；零 skip |
+| V1 | `apps/api/src/test/java/com/riccon/api/security/m04/**`（Verifier M04 独立类）、`e2e/**` 只读运行 | AC-01..16 逐条判定（AC-08..12 复用 B6/B7 集成报告与 B11b 的 `E2E-M04-05/06`，AC-13/14 用四页 E2E + `@a11y`）；`TEN-031` + `SEC-M04-001/002/003a/004/005/006/007/008/009`；`IT-MODEL-101..109`（含 108a/108b 契约报告）；`E2E-M04-01..04/08` + `E2E-M04-07a` 两页；V11 结构断言（无 `fk_model_invocation_provider`、无新增 CHECK、空表 INSERT/ROLLBACK）+ TM-39..44/49/50/53、B-20 的 Worker 7 指标部分核对；零 skip |
+| V2 | `apps/api/src/test/java/com/riccon/api/security/m04verify/**`（Verifier 模块级复验独立类）、`e2e/**` 只读、`e2e/perf/**` 只读、`.riccon/evidence/**` | AC-17/18 + `PERF-M04-001/002`；`SEC-M04-003b`、`TEN-032/033`、`IT-QUOTA-101..105`、`IT-COST-101..104`；`E2E-M04-05/06` + `E2E-M04-07b` 四页 + 四页 `@a11y`；迁移/回滚/备份恢复（`OPS-M04-01`）；7+2 指标核对（Worker 7 + API 2 主 + 3 辅助，`OPS-M04-02`）；模块级独立复验（引用 V1 证据但不替代、零 skip） |
 
-#### 8.4 关键路径、模块归属与拆分
+#### 8.4 关键路径、单模块排期与停止条件
 
-| 项                    | M04（别名 M04a）                                        | M17（别名 M04b，`split_from: M04`）               |
-| --------------------- | ------------------------------------------------------- | ------------------------------------------------- |
-| 任务数                | 12                                                      | 7                                                 |
-| 人时                  | ≈ 33                                                    | ≈ 17                                              |
-| 关键路径（3 builder） | B1a 2 → B2 3 → B3 2 → B4 5 → B11a 2 → V1 3 ≈ **17–19h** | B6 4 → B12 1 → B9b 3 → B11b 2 → V2 4 ≈ **14–16h** |
-| 并行                  | B1b/B1c/B5/B8/B9a/B10                                   | B7 与 B6 并行；B13 ≈2h，与 B9b/B11b 并行，不在关键路径 |
+| 项                    | 单模块 M04                                        |
+| --------------------- | ------------------------------------------------- |
+| 任务数                | 17 个实施任务（含 V1/V2）                         |
+| 人时                  | ≈ 52–56                                           |
+| 关键路径（3 builder） | B1a 2 → B2 4 → B3 2 → B4 5 → B7 3 → B9b 3 → B11b 2 → V1 3 → V2 4 ≈ **28h** |
+| 并行                  | B1b/B1c/B5/B6/B8/B9a/B10/B11a                     |
+| 串行组                | B1a→B2→B3→B4→B7（契约与 Worker 模型包）；B9a→B9b（routes/access）；B11b→V1→V2（证据链与同一 verifier owner） |
 
-**结论：按 M04 + M17 拆分；两段均可在 24h 内完成（3 builder 上限）。** 单模块 18 条 AC + 19 任务 + V11 大表 DDL 在 24h 内不可行，不建议。
+**为什么 48h 可行（3 builder）**
 
-**模块 acceptance（供 Lead 创建/收窄，不在本任务实际创建）：**
+1. 关键路径 ≈28h，距 48h 上限约 1.7×；余额用于 7 个高风险任务的独立 Verifier 任务级评审（B1a/B1b/B2/B3/B4/B5/B6）、V1/V2 的模块级复核、失败重跑与干净提交后的证据录制。
+2. 配额/成本不再等前一个模块用户验收：B6 只依赖 B1a，与 B2/B3 并行；B7 只额外等 B4，串在路由关键路径末端。并入后关键路径比纯路由段只增加约 8h（B7 3 + B9b 3 + B11b 2），不需要第二条模块排期。
+3. 三条并行车道覆盖 17 个任务：A=契约/路由/Worker/四页收口，B=加密/key/路由页，C=观测/配额/测试资产/ops；V1 在 B11a 与 B11b 之后统一判定 AC-01..16，V2 收口 AC-17/18，Verifier 串行不抢实现车道。
+4. 必须串行的只有 5 组文件冲突（`contracts/**`、`application.yml`、`worker/model/**`、`routes.ts`/`access.ts`、`docs/RUNBOOK.md`+`docker-compose.test.yml`），其余均可并行；这是“48h 可行”的依据，不是靠压缩验证换时间。
+5. 停止条件：墙钟 48h 未达 gate 必须暂停，向 Lead/用户报告偏差并重估；超过 2 倍（96h）暂停询问用户，未获新预算前停止。不得自行扩预算、静默降级 DoD、后移 AC 或重启拆分（拆分需要新的用户决策）。
 
-- **M04**（`aliases: ["M04a"]`）：
-  `docs/PRODUCT.md §10.3 的 M04-AC-01、03、04、05、06、07、15、16（8 条）全部通过；M04-AC-02、08..14、17、18 不在本模块 gate 声称通过；路由/key 两页任务级验收通过；J1/J2 与 M02/M03/M10 回归零失败；F-011 三个模型端点收口；T4 威胁模型/迁移/回滚/可观测性证据完整；V11 的 quota/cost 表结构与最小读写冒烟通过；契约已分段为 `1.3.0-m04a`（quota/cost deferred/移除）；R-11、F-015、M13 F-001 不承接。`
-- **M17**（`split_from: M04`，`aliases: ["M04b"]`）：
-  `承接 M04 的 M04-AC-02、08..14、17、18（10 条）；配额/成本端点与四页管理面通过；AC-13/14 四页原子验收；AC-17/18 使用 M04+M17 合并证据（M04 的 failover/首字/开关子集 + M17 的配额/成本/负载）；F-007 perf 脚本可运行；`1.4.0-m04b` 契约移除 quota/cost deferred；B13 完成 quota 开关 false→true 演练与成本对账窗口；M04 的 8 条 AC 证据保持有效；不承接 R-11、F-015、M13 F-001。`
+**模块 acceptance（供 Lead 使用，不在本任务实际创建）：**
 
-拆分注意：
+`docs/PRODUCT.md §10.3 的 M04-AC-01..18（18 条）全部通过；路由/key/配额/成本四页任务级验收与四页 a11y 通过；J1/J2 与 M02/M03/M10 回归零失败；F-007 perf 脚本可运行、F-011 三个模型端点收口；V11 迁移/回滚/备份恢复与主密钥 rewrap 演练通过；T4 威胁模型 B-18/B-19/B-20 与 TM-39..TM-54 全部核对；契约保持 1.3.0-m04 全量且 108a/108b 通过；R-11、M13 F-001 不承接。`
 
-- **AC 整条归属**：AC-13/14（四页原子）、AC-17/18（failover+quota 合并）整条归 M17；M04 只做任务级页面/子集，不得声称完整 pass。
-- **模块启动顺序**：`M17` 的模块 `depends_on: [M04]`；B6/B7 必须等 M04 Product 预验收 pass + 用户最终验收 `accepted` 后启动（不是仅等 B1a/B4）。DEC-0024 若批准例外，必须写明并记录。
-- **DEC-0024 时序**：Lead 必须在派 B2 前拿到 DEC-0024；B2 的实现可以先做，但“`1.3.0-m04a` 分段”验收依赖决策，未答复时 M04 gate 等待，不得把 B2 标 done 绕过。
-- **Lead 落地前置**：创建 M04/M17 任务前，Lead 必须收窄 `.riccon/modules/M04.json`（8 条 AC、`aliases:["M04a"]`）、创建 M17（`split_from: M04`、`aliases:["M04b"]`、`depends_on:[M04]`）并创建 DEC-0024；本 ADR 不修改 `.riccon/`。
-- **契约分段**：当前 `1.3.0-m04` 保持全量设计；DEC-0024 批准拆分后、M04 gate 前必须改为 `1.3.0-m04a`（quota/cost 端点 deferred/移除），M17 发布 `1.4.0-m04b`。
-- **V11 一次建全表**：M17 不改 schema；若 M04 gate 发现表结构错误，用 V12 前向修复，不得在 M17 重开 V11。M04 gate 必须对 `quota_limit`/`quota_usage`/`model_invocation_attempt` 做**结构 + 最小读写冒烟**（空表 INSERT/ROLLBACK、FK/CHECK 断言），不要求业务完整，避免 M17 因建表错误再用 V12 返工。
-- **M17 发布当天配额开关（强制）**：V11 种 `quotaEnforcementEnabled=false`；M04 期间无读取方。M17 首发保持 false，由 **M17-B13** 验证默认限额/租户用量、配置漂移与成本对账窗口后，再显式 `PUT true`。该 false→true 步骤、失败回滚与对账窗口必须写入 B13 RUNBOOK 与 M17 评审包；不得以“建议”带过。
+实施注意：
 
-### 8.5 高风险任务的独立评审与测试资产边界
+- **V11 一次建全表**：路由/key/配额/成本/尝试明细同属 V11；若 gate 发现表结构错误，用 V12 前向修复，不得重开 V11。gate 必须对 `quota_limit`/`quota_usage`/`model_invocation_attempt` 做结构 + 最小读写冒烟（空表 INSERT/ROLLBACK、FK/CHECK 断言、`information_schema` 无 `fk_model_invocation_provider`）。
+- **契约一次交付**：`1.3.0-m04` 保持全量，B2 同时交付 `IT-MODEL-108a` 与 `IT-MODEL-108b`；不存在“先声明后实现”的分段，也不得把配额/成本端点标 `x-riccon-deferred`。
+- **配额开关（强制）**：V11 种 `quotaEnforcementEnabled=false`；B10 在发布窗口验证“只计量不阻断”、默认限额与配置漂移后显式 `PUT true`，M04 gate 以 true 状态取证 AC-08/09；该 false→true 步骤、失败回滚与对账窗口写入 B10 RUNBOOK 与模块评审包，不得以“建议”带过。
+- **DEC-0024 已答复**：B 选项已撤销拆分；Lead 只需按本表创建 17 个任务，不需要创建分段契约任务或第二个模块。ADR 不修改 `.riccon/`。
 
-- B1a（迁移）、B1b（加密/主密钥）、B2（SSRF/契约）、B3（权限/路由）、B4（AI 路由/并发）、B5（凭据）、B6（配额）在 done 前必须有独立 Verifier 的任务级评审（`REV-TASK-*`），不得由 Builder 自评；V1/V2 是模块级复核，不替代任务级评审。
+#### 8.5 高风险任务的独立评审与测试资产边界
+
+- B1a（迁移）、B1b（加密/主密钥）、B2（SSRF/契约）、B3（权限/路由）、B4（AI 路由/并发）、B5（凭据）、B6（配额）、B7（成本/跨租户金额）在 done 前必须有独立 Verifier 的任务级评审（`REV-TASK-*`），不得由 Builder 自评；V1/V2 是模块级复核，不替代任务级评审。
 - B8 独占测试资产写入；V2 只读 `e2e/perf/**` 并写 `.riccon/evidence/**`，不得修改 B8 文件。
-- B11a/B11b 必须在验收中显式包含 `@a11y`（两页/四页）；`E2E-M04-07a/07b` 必须断言真实页面状态、文案与入口，不得只用 API 证据代替 UI。
+- B11a/B11b 必须在验收中显式包含 `@a11y`（两页/四页）；`E2E-M04-07a/07b` 必须断言真实页面状态、文案与入口，不得只用 API 证据代替 UI；两者是同一模块内的测试分组名，不表示分模块交付。
 
 ### 9. 安全
 
@@ -712,7 +706,7 @@ M17:  M04 用户验收 accepted ──> B6 ──> B12 ──> B9b ──> B11b 
 | SSRF/DNS rebinding | 部署允许列表；URL 结构校验；禁止 userinfo/query/fragment/重定向；拒绝元数据/链路本地；TLS 主机名校验；出网策略（M09） | `SEC-M04-001..004`、`IT-MODEL-107`           |
 | 凭据泄漏           | 信封加密；API/Worker 主密钥注入与启动校验；无明文缓存；掩码；日志/审计/错误白名单                                     | `SEC-M04-005`、`IT-MODEL-105/106`、`KEY-006` |
 | 跨租户             | 管理端点仅平台角色；租户端点从主体派生；跨租户 404；key 池无租户键                                                    | `TEN-031..033`、`IT-MODEL-102`               |
-| 越权配置           | `platform.model.manage` 分离；租户管理员只读；审计 fail-closed                                                        | `SEC-M04-003a`、`IT-MODEL-102`              |
+| 越权配置           | `platform.model.manage` 分离；租户管理员只读；审计 fail-closed                                                        | `SEC-M04-003a/003b`、`IT-MODEL-102`、`IT-QUOTA-103` |
 | denial-of-wallet   | 租户/用户配额（ADR-0022）；尝试上限/预算；key 冷却；每租户并发上限（M02）                                             | `PERF-M04-002`、`IT-QUOTA-102`               |
 | 降级到未授权端点   | 运行时再次校验允许列表与标签；链只引用目录模型；无链外回退                                                            | `IT-MODEL-107`、`SEC-M04-004`                |
 | 降级风暴           | 尝试上限/预算/退避/冷却/开关                                                                                          | `PERF-M04-001`、运维演练                     |
@@ -742,7 +736,7 @@ M17:  M04 用户验收 accepted ──> B6 ──> B12 ──> B9b ──> B11b 
 3. **结构校验**：`MAX(version)=11`、6 张新表、索引、`RETIRED=0`、`model_invocation.provider_id` 无 FK、小表 CHECK 生效；历史 `cost_day` 允许 NULL（计入 `unbucketedCalls`），M04 后新调用抽样非空。
 4. **新 API**：`/actuator/health` UP；`/admin/model-providers` 返回 `allowed=true` 且标签正确。
 5. **drain 旧 Worker → 新 Worker**：新 Worker 期望 schema=11，`/actuator/health` + outbox 恢复领取；旧 Worker 不需要在迁移前停（旧代码显式列清单、V11 新列可空/有默认，读写兼容），但**V11 之后不得重启旧 Worker**（严格等值校验会失败）。停旧 Worker 是缩短混合窗口的可选步骤，不是迁移前置。
-6. **冒烟与开关**：J1 首字、J2 报告（含审批）、路由读、key 掩码、开关读；默认 `ROUTED/true/false`（`quotaEnforcementEnabled=false`），按发版策略可先 BASELINE 再打开；M04 观测 30 分钟只看路由/降级/key/链空/5xx，不观测配额拒绝（M17-B13 负责）。
+6. **冒烟与开关**：J1 首字、J2 报告（含审批）、路由读、key 掩码、开关读；默认 `ROUTED/true/false`（`quotaEnforcementEnabled=false`）；B10 先验证“只计量不阻断”、默认限额与漂移检查，再显式 `PUT true`，M04 gate 以 true 状态取证 AC-08/09；观测 30 分钟覆盖路由/降级/key/链空/5xx 与配额拒绝。按发版策略可先 BASELINE 再打开。
 
 - **不能纯滚动**：旧 Worker 期望 10，DB 到 11 后重启会失败；必须维护窗口。RUNBOOK 记录。
 - **生产目录/价格变更**：新增端点 = 更新 `RICCON_MODEL_ENDPOINTS` + 跑 `scripts/ops/seed-model-catalog.mjs`（按 `code`/`provider+model_key` 幂等 upsert，不 DELETE、不含密钥）+ 重启 API/Worker；新增模型/改价格同理。`scripts/ops/update-model-price.mjs` 只改 `model.input/output_price_per_1m`，打印 before/after，禁止改历史 `model_invocation` 快照。B10 RUNBOOK 写“加端点/加模型/改价格/换币种不可行”四条流程。
@@ -834,7 +828,7 @@ DELETE FROM flyway_schema_history WHERE version = '11';
   - `RICCON_MODEL_ROUTING_MODE=ROUTED|BASELINE`
   - `RICCON_MODEL_FAILOVER_ENABLED=true|false`
   - `RICCON_MODEL_QUOTA_ENFORCEMENT_ENABLED=true|false`
-- 默认值：DB 种子 `ROUTED/true/false`（M17 首发保持 false，B13 验证后 PUT true）；非法值启动失败。`quotaEnforcementEnabled=false` 时仍记录用量，但跳过拒绝（ADR-0022 §1.3）。
+- 默认值：DB 种子 `ROUTED/true/false`（发版保持 false；B10 演练后 PUT true，M04 gate 以 true 取证）；非法值启动失败。`quotaEnforcementEnabled=false` 时仍记录用量，但跳过拒绝（ADR-0022 §1.3）。
 - 开关变更写 `model.gateway.switch.changed`；环境变量覆盖只在值**实际变化**时写一条 `source=DEPLOYMENT` 审计（actor=SYSTEM，tenant=platform），并在 `/actuator/info` 暴露生效值，避免多副本滚动重启产生成倍审计噪音。
 - `RICCON_BILLING_CURRENCY` 部署后不可变；变更 = 新部署 + 历史报告按币种隔离，不提供在线改币种。
 
@@ -842,13 +836,13 @@ DELETE FROM flyway_schema_history WHERE version = '11';
 
 - 指标（B1c 落地 registry/指标约定；**暴露由 B2**；B4/B6/B7 注册）：
   - **M04（7 个，B4 注册）**：`riccon_model_requests_total{provider,model,outcome}`、`riccon_model_failover_total{from,to,reason}`、`riccon_model_attempt_duration_seconds`（histogram）、`riccon_model_credential_invalid_total{provider}`、`riccon_model_credential_cooldown_total{provider}`、`riccon_model_chain_empty_total{purpose}`、`riccon_agent_runs_inflight`（gauge）。
-  - **M17（2 个，B6/B7 注册）**：`riccon_quota_rejections_total{scope,window}`、`riccon_quota_usage_ratio{scope,window}`（gauge）；辅助 `riccon_cost_report_queries_total{group_by}`、`riccon_quota_store_failure_total`、`riccon_quota_over_limit_observed_total`（如适用）。
-  - 框架：`http.server.requests`；B1c `metrics-check` 只断言 M04 7 个，V2 断言 M17 2 个。
+  - **配额/成本（2 个主指标 + 3 个辅助，B6/B7 在 API 注册）**：`riccon_quota_rejections_total{scope,window}`、`riccon_quota_usage_ratio{scope,window}`（gauge）；辅助 `riccon_cost_report_queries_total{group_by}`、`riccon_quota_store_failure_total`、`riccon_quota_over_limit_observed_total`（如适用）。
+  - 框架：`http.server.requests`；B1c `metrics-check` 只断言 Worker 的 7 个路由/降级/key 指标，V2 断言 API 的 2 个主指标 + 3 个辅助指标。
 - 标签纪律：指标禁止 `tenant`/`userId`/`runId` 等高基数标签（ADR-0008）；按租户排查走日志/审计/DB 查询。`riccon_quota_usage_ratio` 只保留 `scope`/`window`。
 - **ADR-0008 同名指标**：`riccon_model_requests_total` 复用 ADR-0008 名称，M04 扩展标签集为 `{provider,model,outcome}` 并作为唯一注册点（B4）；ADR-0008 原 `{outcome}` 视为被 M04 扩展，不定义第二个同名不同义指标。
 - 暴露：`/actuator/prometheus` 按 `RICCON_OPS_ALLOWED_CIDRS` 控制（空=loopback），SecurityConfig（B2）不扩大公网默认拒绝；完整 ingress 归 M09。
 - 日志：只记录 `providerCode`、`modelId`、`credentialId`、`errorCode`、`attempt`、`traceId`；禁止 prompt、key、`Authorization`、`baseUrl`、上游响应正文。
-- 告警（B10 阈值表，M09 接入）：M04：降级率 >20%/5min、`riccon_model_credential_invalid_total` 增长、`riccon_model_chain_empty_total >0`、`riccon_agent_runs_inflight` 接近上限；M17：配额拒绝率、`riccon_quota_store_failure_total >0`、成本查询 p95 >2s。
+- 告警（B10 阈值表，M09 接入）：路由/降级：降级率 >20%/5min、`riccon_model_credential_invalid_total` 增长、`riccon_model_chain_empty_total >0`、`riccon_agent_runs_inflight` 接近上限；配额/成本：配额拒绝率、`riccon_quota_store_failure_total >0`、成本查询 p95 >2s。
 
 ### 11. 测试策略
 
@@ -879,8 +873,8 @@ DELETE FROM flyway_schema_history WHERE version = '11';
 | `IT-MODEL-105` | 集成 | 多 key 停用/401 失效/恢复/全失效；平台租户审计；租户级凭据被忽略                                          | B4/B5    | surefire            |
 | `IT-MODEL-106` | 集成 | 轮换在途；旧 key 掩码；fingerprint HMAC 去重                                                              | B5       | surefire            |
 | `IT-MODEL-107` | 集成 | URL/IP/元数据/演示端点/非允许 provider；无出网；启动失败                                                  | B2       | surefire + 配置日志 |
-| `IT-MODEL-108a`| 契约 | 三个模型端点 + 路由/凭据/开关 schema（M04，quota/cost deferred）                                           | B2       | 契约测试报告        |
-| `IT-MODEL-108b`| 契约 | 配额/成本 schema + `1.4.0-m04b` 移除 deferred（M17）                                                       | B12      | 契约测试报告        |
+| `IT-MODEL-108a`| 契约 | 三个模型端点 + 路由/凭据/开关 schema（配额/成本见 108b，不标 deferred）                                    | B2       | 契约测试报告        |
+| `IT-MODEL-108b`| 契约 | 配额/成本端点 schema；同一 `1.3.0-m04` 全量契约，无 deferred 分段                                         | B2       | 契约测试报告    |
 | `IT-MODEL-109` | 集成 | 三种开关关闭；BASELINE 仍走 allowlist；回滚后历史可读                                                     | B4/B10   | surefire + 演练日志 |
 | `IT-QUOTA-101` | 集成 | 租户日/用户月超限；429 形状；不产生模型调用；拒绝审计                                                     | B6       | surefire            |
 | `IT-QUOTA-102` | 集成 | 剩余 1 次 + 50 并发：1 成功/49 个 429/无 500；`used_count=1`                                              | B6       | surefire            |
@@ -918,8 +912,8 @@ DELETE FROM flyway_schema_history WHERE version = '11';
 | `OPS-M04-01`   | 运维 | V11 迁移/回滚/主密钥 rewrap/备份恢复演练                                                                  | B10/V2   | 演练日志 + 证据     |
 | `OPS-M04-02`   | 运维 | M04 7 个 `riccon_*` 指标存在/标签正确/无 tenant 高基数；`metrics-check` 通过；默认拒绝未回归 | B1c/V1   | metrics 抓取报告   |
 
-- `SEC-MODEL-003` 是 M02 既有 ID，只覆盖旧模型端点；M04 新端点由 `SEC-M04-003a`（M04）与 `SEC-M04-003b`（M17）覆盖。PRODUCT 中的历史线索 `SEC-MODEL-004/005/006` 分别由 `SEC-M04-007`（全链不可用无泄露）、`SEC-M04-008`（轮换在途）、`SEC-M04-009`（端点标签/生产拒绝/内部信息）承接；M04 文档不再把它们当证据。
-- `E2E-M04-07a` 只覆盖 M04 两页任务级验收；`E2E-M04-07b` 覆盖四页与 AC-14 完整断言。AC-13/14 整条归 M17，M04 不声称完整 pass。
+- `SEC-MODEL-003` 是 M02 既有 ID，只覆盖旧模型端点；M04 新端点由 `SEC-M04-003a`（模型/key/开关写越权）与 `SEC-M04-003b`（配额写越权）覆盖。PRODUCT 中的历史线索 `SEC-MODEL-004/005/006` 分别由 `SEC-M04-007`（全链不可用无泄露）、`SEC-M04-008`（轮换在途）、`SEC-M04-009`（端点标签/生产拒绝/内部信息）承接；M04 文档不再把它们当证据。
+- `E2E-M04-07a` 是路由/key 两页的测试分组，`E2E-M04-07b` 是四页与 AC-14 完整断言的分组；AC-13/14 由 B11b 的四页 E2E + `@a11y` 在同一模块内判定，两个分组合起来才构成 AC-13/14 的完整证据。
 - 每个 ID 只能在**一个**测试方法/用例中定义；评审包按“AC → ID → 报告路径”登记。
 
 ## Consequences
@@ -948,7 +942,9 @@ DELETE FROM flyway_schema_history WHERE version = '11';
 - 现有实现：`apps/worker/.../model/**`、`apps/worker/.../crypto/**`、`apps/api/.../admin/**`、`V5__model_gateway_and_mcp.sql`。
 - 决策：DEC-0023；待 DEC-0024（§12）。
 
-## 12. 不可逆/高成本项（需 DEC-0024）
+## 12. 不可逆/高成本项（DEC-0024=B 已答复）
+
+> DEC-0024=B 已于 2026-11-20 答复：不拆，M04 单模块 48h、18 条 AC 全保留；下表各项按 B 答复批准，未批准项不存在。
 
 | 项                                                                | 为什么需要用户批准                                                             | 建议                                                            |
 | ----------------------------------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------- |
@@ -959,22 +955,22 @@ DELETE FROM flyway_schema_history WHERE version = '11';
 | 平台托管 key 池、无租户 BYO                                       | 已由 OQ-17 批准，但“平台 key 用于所有租户”的安全/成本含义需确认                | 批准；BYO 保持 deferred                                         |
 | 回滚窗口关闭 Worker schema 校验                                   | 运维风险接受，需明确                                                           | 批准；仅回滚窗口，RUNBOOK 记录                                  |
 | 单币种、无价格编辑                                                | 已由 OQ-20 批准；币种变更不支持需确认                                          | 批准                                                            |
-| M04/M17 拆分与 AC 归属（AC-13/14/17/18 整条归 M17）               | 改变模块范围、验收顺序与交付节奏，属产品/交付决策                              | 批准拆分、M17 实际 ID（`split_from: M04`）、M04 acceptance 收窄 |
+| 单模块 48h 与 18 条 AC 全归 M04（DEC-0024=B）                     | 改变模块范围、验收顺序与交付节奏，属产品/交付决策                              | 已批准：不拆、17 个实施任务、契约保持 `1.3.0-m04` |
 | 独立 fingerprint pepper（`RICCON_CREDENTIAL_FINGERPRINT_PEPPER`） | 新增部署 Secret；缺失时 API 启动失败                                           | 批准；B1b/B10 注入与轮换说明                                    |
 | `/actuator/prometheus` 内网暴露与 Micrometer 依赖                 | 新增运行时依赖与观测端口，需确认安全边界                                       | 批准；仅内网/受控，B1c 依赖/指标、B2 暴露                       |
 | AC-17 perf profile（50 并发/短超时/池大小）                       | 与生产默认不同，需要在报告中记录环境；否则 AC-17 不可判定                      | 批准 perf profile；生产默认不承诺 3s 失败注入                   |
-| M17 首发配额开关先 false 再打开                                   | 避免上线即拒绝；改变默认执行时点                                               | 批准；RUNBOOK 与 M17 评审包记录                                 |
+| M04 首发配额开关先 false 再打开                                   | 避免上线即拒绝；改变默认执行时点                                               | 批准；B10 RUNBOOK 与 M04 评审包记录                             |
 
 若用户不批准上述任一项，M04 需回到范围决策；**不得**以“实现时再说”绕过。
 
-## 13. 评审响应矩阵（REV-M04-OPS-001/002/003、REV-M04-ARCH-001/002）
+## 13. 评审响应矩阵（REV-M04-OPS-001..004、REV-M04-ARCH-001..003；DEC-0024=B 收口）
 
-> 本矩阵只记录本轮修订；ADR 仍 `proposed`，待 Lead/用户/Verifier/Ops 复审。`fixed` 表示设计/契约已改，验证仍由后续任务执行；`deferred` 表示需要用户/Lead/Product 决策或后续模块；`rejected` 附证据与影响。
+> 本矩阵只记录历次修订；ADR 仍 `proposed`，待 REV-M04-ARCH-004 / REV-M04-OPS-005 按单模块口径复核。`fixed` 表示设计/契约已改，验证仍由后续任务执行；`superseded` 表示该行描述的分模块/分段方案已被 DEC-0024=B 撤销，正文以单模块口径为准；`closed` 表示前置决策已完成；`deferred` 表示需要用户/Lead/Product 决策或后续模块；`rejected` 附证据与影响。
 
 | finding     | verdict  | 修改位置                                                                                                                                                                     | 验证方式                                                                                        |
 | ----------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | OPS-M04-001 | fixed    | §3.2 五步顺序；§10.3 回滚先 DROP 新 CHECK；B1a 迁移测试种子                                                                                                                  | V10→V11 升级 + 多 key 回滚测试（含 RETIRED）                                                    |
-| OPS-M04-002 | fixed    | 新增 B1c（Micrometer/Prometheus、指标/`metrics-check`），Actuator 暴露归 B2；§10.6                                                                                           | `scripts/ops/metrics-check` 断言 M04 7 指标；V2 抓取 M17 2 指标                                            |
+| OPS-M04-002 | fixed    | 新增 B1c（Micrometer/Prometheus、指标/`metrics-check`），Actuator 暴露归 B2；§10.6 | `scripts/ops/metrics-check` 断言 Worker 7 个路由/降级/key 指标；V2 抓取配额/成本 2 个主指标 + 3 个辅助指标 |
 | OPS-M04-003 | fixed    | §3.3 移除 `model_invocation` CHECK；§10.1 DDL 算法/大表判据                                                                                                                  | 迁移测试 + 大表预检；应用层校验用例                                                             |
 | OPS-M04-004 | fixed    | §10.3 先收敛/归档多 key 再恢复旧唯一键；多 key 种子                                                                                                                          | 单 key/多 key 回滚演练（2 ACTIVE + 1 INVALID）                                                  |
 | OPS-M04-005 | fixed    | §10.3 改 `ignore-migration-patterns=*:future`（默认）；旧 API 镜像演练                                                                                                       | 旧 API 连 V11 库启动 + health UP + 历史可读                                                     |
@@ -999,7 +995,7 @@ DELETE FROM flyway_schema_history WHERE version = '11';
 | F-006       | fixed    | B1c + B8 perf env（50 streams/pool 25）；AC-17 报告                                                                                                                          | `/actuator/prometheus` 抓取；k6 无 QUEUE-429                                                    |
 | F-007       | fixed    | §8.3 补 run.mjs/RoleDefinitions/client.ts/types.ts/test profile/contracts 的 owner                                                                                           | write_scope 对照；真实栈无手工 env 启动                                                         |
 | F-008       | fixed    | ADR-0022 §1.3 安全 upsert/独立事务审计/死锁处理；B6 验收                                                                                                                     | 真实 MySQL 1 成功/49 个 429/无 500；审计故障 500                                                |
-| F-009       | fixed    | §8.4 M04 + M17（实际数字 ID、`split_from`/aliases）、AC 整条归属、模块 acceptance、契约分段                                                                                  | Lead 模块/任务 JSON 校验；模拟 gate proof                                                       |
+| F-009       | superseded | DEC-0024=B 撤销拆分：§8.4 改为单模块 48h、18 条 AC、17 个实施任务；契约保持 `1.3.0-m04` 全量 | Lead 模块/任务 JSON 校验；模拟 gate proof |
 | F-010       | fixed    | §3.2 HMAC pepper（`RICCON_CREDENTIAL_FINGERPRINT_PEPPER`）；B1b/B10                                                                                                          | pepper 缺失启动失败；DB dump 无法离线验证                                                       |
 | F-011       | fixed    | §10.5 env 名称/默认值；ADR-0022 §1.3 检查开关                                                                                                                                | env 启动 `GET switches` source；关闭配额 50 并发全准入                                          |
 | F-012       | fixed    | §8.3 B9a/B11a/B11b 逐条绑定 AC-07/11/13/14/15；§11.1 目录                                                                                                                    | Playwright 四页断言 + axe + 截图                                                                |
@@ -1011,25 +1007,25 @@ DELETE FROM flyway_schema_history WHERE version = '11';
 | F-018       | fixed    | §6.1/B4 删除 `ModelRepository` 租户回退                                                                                                                                      | 租户级凭据被忽略的负向测试                                                                      |
 | F-019       | deferred | R-21/R-22 与“定稿”措辞已在 ADR/ARCHITECTURE 修正；ADR-0012 旧 ADR 不改（写入边界），PRODUCT/ACCEPTANCE 归 Lead/Product                                                       | ADR-0021 §3 全局表例外 + ARCHITECTURE；Lead/Product 更新文档                                    |
 | F-020       | fixed    | 契约 `RateLimitedProblem` 判别 429、`/costs/invocations` 404、`EmployeeModel` 无价格；B9a audit UI                                                                           | 契约测试；`TEN-033`；员工目录无价格键                                                           |
-| F-021       | fixed    | §8.4 按 3 builder 重算 M04 17–19h / M17 13–15h                                                                                                                               | Lead 排期与 module wall clock 对齐                                                              |
+| F-021       | superseded | §8.4 按 3 builder 重算：关键路径 ≈28h、人时 ≈52–56 | Lead 排期与 module wall clock 对齐 |
 | F-022       | fixed    | B9a audit 7 天预设；B11a E2E；§11.1                                                                                                                                          | E2E 默认 7 天 + `action`/`targetType` 过滤                                                      |
 | F-023       | fixed    | §10.3 多 key 先收敛/归档；单/多 key 演练                                                                                                                                     | 多 key 回滚预期失败并记录；收敛后成功                                                           |
 | F-024       | fixed    | B5 DTO toString/错误不回显；SEC-M04-005 canary                                                                                                                               | 成功/失败/校验失败路径扫描                                                                      |
 | F-025       | fixed    | §3.3 保留/清理顺序；ADR-0022 §2.5；B10 容量估算                                                                                                                              | 故障注入行数/查询 p95；M09 清理计划                                                             |
 | F-026       | fixed    | §8.5 高风险任务独立 Verifier；V2 只读 perf；B11 `@a11y`                                                                                                                      | task review 引用；V2 不修改 B8；a11y 四页                                                       |
-| R-01        | fixed    | §8.3 V1/V2 拆分测试归属；§11.1 拆 `SEC-M04-003a/b`、`E2E-M04-07a/b`；V2 write_scope 增加 `security/m17/**`                                                                   | V1 只跑 M04 8 AC；V2 独立跑 TEN-032/033、003b、IT-QUOTA/COST、07b；ID 唯一性 grep               |
+| R-01        | fixed    | §8.3 V1/V2 测试归属；§11.1 拆 `SEC-M04-003a/b`、`E2E-M04-07a/b`；V2 write_scope 为 `security/m04verify/**` | V1 跑 AC-01..16，V2 独立跑 AC-17/18、003b、TEN-032/033、IT-QUOTA/COST、07b；ID 唯一性 grep |
 | R-02        | fixed    | B1c 移除 SecurityConfig（归 B2，理由：B2 已负责端点/SSRF 安全边界）；B8 移除 `ci.yml`（归 B10，理由：CI/CD 属 Ops）；B1c 保留 pom/metrics-check/负向测试；B10 加 CI perf job | B1c 不改生产安全代码；B2 验收默认拒绝不放宽；B8 脚本本地/CI 可运行；B10 负责 CI job/manual gate |
-| R-03        | fixed    | 新增 `M17-B12`（owner `builder-route`，仅契约/README/契约测试）；B2 验收加 `1.3.0-m04a` 分段；B12 验收 `1.4.0-m04b` 移除 deferred；任务数 M17 7、总 19                       | `IT-MODEL-108a` + `IT-MODEL-108b`；M02/M03/M10 零回归；分段前后 `x-riccon-deferred` 检查            |
-| R-04        | fixed    | B11a 只用 `E2E-M04-07a`（两页）；B11b 用 `E2E-M04-07b`（四页）；AC-13/14 整条归 M17                                                                                          | Playwright 07a/07b 分别执行；axe 两页/四页；M04 不声称 AC-14                                    |
+| R-03        | superseded | DEC-0024=B 后取消分段任务：B2 独占契约并同时交付 108a/108b；实施任务 17 个 | `IT-MODEL-108a` + `IT-MODEL-108b`；M02/M03/M10 零回归 |
+| R-04        | fixed    | B11a 用 `E2E-M04-07a`（路由/key 两页）；B11b 用 `E2E-M04-07b`（四页）；AC-13/14 由四页在同一模块内判定 | Playwright 07a/07b 分别执行；axe 两页/四页；AC-14 只在 07b 完整断言 |
 | S-01 | fixed | §3.3/§10.1 删除 `fk_model_invocation_provider`，`provider_id` 改为逻辑引用+索引；迁移测试改为“无 FK”断言 | V11 迁移测试：`information_schema` 无该 FK；M04 无 ERROR 1846 |
 | S-02 | fixed | §10.3 `UPDATE ... WHERE status IN ('DISABLED','INVALID')` 保留 ACTIVE；演练按分组断言 ACTIVE=1，总行数不写死 | 多 key 回滚探针：每组 ACTIVE=1；旧 Worker 取到 key |
 | S-03 | fixed | §3.2/B1a 种子两阶段：V10 合法（1 ACTIVE+1 RETIRED 跨 provider）→ V11 后 helper 造 2 ACTIVE+1 INVALID | V10→V11 升级测试无 1062/3819；多 key 回滚从 V11 后开始 |
 | S-04 | fixed | ADR-0021 §3.3/§10.1、ADR-0022 §5：V11 不回溯 `cost_day`；历史 NULL 计入 `unbucketedCalls`；B10 可选 backfill | 结构校验允许历史 NULL；M04 后新调用非空；B10 进度记录 |
-| S-05 | fixed | 新增 M17-B13（ops）；V11 种子 `quotaEnforcementEnabled=false`；B13/B10/M17 acceptance 写 false→true | B13 RUNBOOK；M17 首发 false；开关演练 |
-| S-06 | fixed | §10.6 指标统一 `riccon_*`；`riccon_quota_usage_ratio{scope,window}` 删除 tenant 标签；B1c/metrics-check/B-20a | metrics-check 断言 M04 7 个 `riccon_*`；无 tenant 标签 |
+| S-05 | superseded | 发布/演练并入 B10：V11 种子 `quotaEnforcementEnabled=false`，B10 演练后 `PUT true`，gate 以 true 取证 | B10 RUNBOOK；开关演练 |
+| S-06 | fixed | §10.6 指标统一 `riccon_*`；`riccon_quota_usage_ratio{scope,window}` 删除 tenant 标签；B1c/metrics-check/B-20（原 B-20a） | metrics-check 断言 M04 7 个 `riccon_*`；无 tenant 标签 |
 | S-07 | fixed | B1a write_scope/验收加入 `WorkerIntegrationTestBase`；DEMO+端点+主密钥；B1a 验收上下文启动 | Worker 集成测试上下文启动通过 |
-| S-08 | fixed | THREAT §8 拆 B-18a/B-18b、B-20a/B-20b；B-19 归 M17；§10 核对拆 M04/M17 | M04 gate 只引用 B-18a/B-20a；M17 gate 引用 B-18b/B-19/B-20b |
-| S-09 | fixed | M04 AC 收窄为 AC-01/03/04/05/06/07/15/16（8 条）；AC-02 整条归 M17；V1/V2、§11.1、B11a/B11b 同步 | M04 acceptance 不写 AC-02；M17 acceptance 含 AC-02 |
+| S-08 | superseded | THREAT §8 合并为 B-18/B-19/B-20；§10 单模块核对 | M04 gate 引用 B-18/B-19/B-20 |
+| S-09 | superseded | DEC-0024=B 后 18 条 AC 全归 M04；V1/V2、§11.1、B11a/B11b 按单模块同步 | M04 acceptance 含 AC-01..18 |
 | S-10 | fixed | B1a 验收+V1 scope 增加 quota/cost/attempt 结构+空表 INSERT/ROLLBACK+PK 顺序；B6 验收绑定 upsert 形状 | B1a/V1 结构冒烟；B6 upsert/条件 UPDATE 断言 |
 | S-11 | fixed | §2.2/§10.6 增加 `RICCON_OPS_ALLOWED_CIDRS`（空=loopback）；B2 实现、B1c 负向测试 | 非允许来源 403/404；loopback 可抓取 |
 | S-12 | fixed | §2.1/§10.5 定义 `/actuator/info` 键：deploymentMode/endpointSetHash/masterKeyId/currency/routingMode/failoverEnabled/quotaEnforcementEnabled；B1a+B10 | preflight 比对两侧 info 键 |
@@ -1038,33 +1034,34 @@ DELETE FROM flyway_schema_history WHERE version = '11';
 | S-15 | fixed | B1a/V1 结构冒烟绑定 B6 的 `quota_usage` PK/upsert 形状；B6 验收显式断言 | B6 50 并发 + V11 结构断言 |
 | S-16 | fixed | B1c 测试收窄 `actuator/**`；B2 收窄 model/config；B4/B7 收窄 model/chat/cost；B2 依赖 B1c | write_scope 无 `src/test/**` 泛化；B2 等 B1c |
 | S-17 | fixed | B8/B10 验收记录 host CPU/内存、镜像 tag、k6 版本、脚本 sha、启动命令；perf 不启 OpenSearch 或另计主机 | PERF 报告含环境快照 |
-| S-18 | deferred | §8.4 写明 DEC-0024 必须在派 B2 前准备；B2 分段验收依赖决策 | Lead 调度；M04 gate 等待 DEC-0024 |
+| S-18 | closed | DEC-0024=B 已答复（2026-11-20）；§8.4 不再有分段/拆分验收前置 | Lead 调度；M04 gate 使用 B 答复 |
 | S-19 | fixed | B10 写范围收窄为 `deploy/compose/docker-compose.test.yml` + 明确 scripts/ops 前缀；deploy_preview/prod 归 M09 | write_scope 无 `deploy/**` |
 | S-20 | fixed | §6.5 pepper 统一：生产 API/Worker 缺失即启动失败；丢失不能新建/去重，恢复后解密不受影响 | 启动失败用例；pepper 恢复用例 |
 | S-21 | fixed | §10.4 增加 V11 失败恢复矩阵（失败点/残留/恢复） | 迁移失败注入演练 |
-| S-22 | fixed | §11.1 拆 `IT-MODEL-108a`（B2/M04）与 `IT-MODEL-108b`（B12/M17）；B2/B12 验收同步 | 契约测试 108a/108b；M02/M03/M10 零回归 |
+| S-22 | superseded | §11.1 的 `IT-MODEL-108a`/`108b` 同为 B2 交付的契约测试分组 | 契约测试 108a/108b；M02/M03/M10 零回归 |
 | S-23 | fixed | ARCH/THREAT 统一超时口径：生产 60s、perf 2.5s、默认 3/硬上限 5 | 文档 grep 无 20s |
 | S-24 | fixed | §8.5 高风险评审清单加入 B3 | B3 done 前独立 REV-TASK |
-| S-25 | fixed | V2 依赖加 B11b/B13；B12 依赖加 M04-B2 | 任务表与依赖图一致 |
-| S-26 | fixed | B1c/B10/B13 scripts/ops 按前缀分工；同 owner 串行 | write_scope 无重叠 |
+| S-25 | superseded | V2 依赖改为 B6/B7/B10/B11b/B8/V1；契约无独立任务 | 任务表与依赖图一致 |
+| S-26 | fixed | B1c/B10 的 `scripts/ops` 按前缀分工；同 owner 串行 | write_scope 无重叠 |
 | S-27 | fixed | M04 文档旧 `SEC-MODEL-003/004/005/006` 改为 `SEC-M04-003a/007/008/009`；新增 007/008/009 定义 | §11.1/THREAT ID 唯一且 AC 可映射 |
 | S-28 | fixed | §7.4 `model.routing.updated` details 增加 `result` | 白名单测试；审计保存 200 |
-| S-29 | fixed | V11 种子 false；B13/B10/M17 验收强制 false→true | M17 首发 false；开关演练 |
+| S-29 | superseded | V11 种子 false；B10 验收强制 false→true 演练，gate 以 true 取证 | false→true 演练 |
 | S-30 | fixed | ADR-0021 对 ADR-0012 §4 的 M04 预期作限制/覆盖说明；ARCHITECTURE 同步；旧 ADR 正文不改 | 文档 review；Builder 按 ADR-0021 |
-| S-31 | fixed | §8.4 写 M17 `depends_on: [M04]`，B6/B7 等 M04 用户验收 accepted 后启动 | 模块/任务依赖检查 |
-| S-32 | deferred | Lead 创建 DEC-0024、M17，收窄 `.riccon/modules/M04.json`；ADR 不改 `.riccon/` | Lead 动作；本 ADR 提供 acceptance 文本 |
-| S-33 | fixed | M17 任务图/B13/V2 引用 B13；B10/B13 RUNBOOK 分工；M17 验收含 B13 | M17 评审包引用 B13 RUNBOOK |
+| S-31 | superseded | 单模块：B6 只依赖 B1a、B7 依赖 B4，无需跨模块等待 | 模块/任务依赖检查 |
+| S-32 | closed | DEC-0024=B 已答复；Lead 创建 17 个任务即可，`.riccon/modules/M04.json` 保持 18 AC/48h | Lead 动作；本 ADR 提供 acceptance 文本 |
+| S-33 | superseded | B10 独占 RUNBOOK 与演练；V2 依赖 B10 | V2 评审包引用 B10 RUNBOOK |
 | T-01 | fixed | §10.3 回滚断言改为按 `(tenant_id, provider_id, credential_type)` 分组各自断言 ACTIVE=1；允许 fixture 为 1 ACTIVE + 1 RETIRED，不写死全表 COUNT；B1a/B10 验收同步 | 回滚演练按分组统计；旧 Worker 取到 ACTIVE key 并完成 J1 |
-| T-02 | fixed | §10.2 第 6 步默认 `ROUTED/true/false`；§10.5 种子/默认值；M04 观测只留路由/降级/key/链空/5xx；配额拒绝观测归 M17-B13；ADR-0022 §8、B10/B13 验收同步 | 文档 grep 无 `true/true`；M04 RUNBOOK 无“观测配额拒绝”；B13 验证后显式 `PUT true` |
-| T-03 | fixed | §10.6 指标按模块拆分：M04 7 个（B4 注册）+ `http.server.requests`；M17 2 个配额指标（B6/B7 注册）+ 成本/存储辅助；B1c `metrics-check` 只断言 M04 7 个，V2 断言 M17 2 个；新增 `OPS-M04-02`；THREAT B-20a/B-20b 同步 | `metrics-check` M04 7 个通过；V2 抓取 M17 2 个；无 M04 gate 9 指标要求 |
-| T-04 | fixed | §8.1 补 `M17-B13` 行，19 行与“19 个任务”一致；B13 ≈2h，与 B9b/B11b 并行、不在 M17 关键路径 | 表格行数=19；§8.4 并行列含 B13 |
+| T-02 | fixed | §10.2 第 6 步默认 `ROUTED/true/false`；§10.5 种子/默认值；观测覆盖路由/降级/key/链空/5xx 与配额拒绝；B10 演练后 `PUT true`；ADR-0022 §8、B10 验收同步 | 文档中无配置性 `true/true`；RUNBOOK 有配额拒绝观测；B10 验证后显式 `PUT true` |
+| T-03 | fixed | §10.6 指标拆分：路由/降级/key 7 个（B4 注册）+ `http.server.requests`；配额/成本 2 个主指标（B6/B7 注册）+ 3 个辅助；B1c `metrics-check` 只断言 7 个，V2 断言 2+3；新增 `OPS-M04-02`；THREAT B-20 同步 | `metrics-check` 7 个通过；V2 抓取 2+3；无“gate 9 指标”要求 |
+| T-04 | superseded | §8.1 17 行与“17 个实施任务”一致；发布/演练并入 B10 | 表格行数=17 |
 | T-05 | fixed | ARCHITECTURE “迁移与回滚”删除 V11 分批回填，改为“V11 不回溯 `cost_day`；历史 NULL 计 `unbucketedCalls`；B10 在 CHECK 后独立分批回填” | ARCH 与 ADR-0021/0022 文字一致；B10 Job 验收 |
 | T-06 | fixed | 第三轮 F-019（与首轮同号不同事）：§11.1 补 `SEC-M04-007/008/009` 定义、owner（V1/B2，009 含 B9a）与证据列；确认目录无重复 | §11.1 ID 唯一性检查；V1 验收可映射 |
-| T-07 | fixed | THREAT §10 M04 核对拆为 M04 段（TM-39..44/49/50/53/54 的 M04 部分）与 M17 段（TM-45..48/51/52），M04 不引用 M17 项 | 核对清单逐条归属；M04 gate 不含 M17 项 |
-| T-08 | fixed | ADR-0022 §8 把 M17 首发配额开关 owner 从 B10 改为 B13；B10 只保留 M04 发布与 M17 章节引用 | ADR-0022 §8 与 B13 验收一致 |
+| T-07 | superseded | THREAT §10 单模块核对 TM-39..TM-54 | 核对清单逐条归属 M04 |
+| T-08 | superseded | 配额开关演练 owner 统一为 B10 | ADR-0022 §8 与 B10 验收一致 |
 | T-09 | fixed | ARCHITECTURE 评审状态表：Lead `pending`；Verifier `pass（REV-M04-ARCH-003）`；Ops `changes-requested（REV-M04-OPS-003；待 OPS-004 确认）`；用户/安全 `pending`；不写 Ops pass | 状态表逐项核对 |
 | T-10 | fixed | B1a 验收逐字加“`information_schema` 无 `fk_model_invocation_provider`；`model_invocation` 无新增 CHECK；加列 INSTANT/索引 INPLACE”；V1 增加无 FK 断言 | 迁移测试断言；V1 scope 含无 FK |
-| T-11 | fixed | B10 验收加 `backfill-cost-day` 干跑/进度/幂等；§10.6/B-20b 补 `riccon_quota_over_limit_observed_total`（如适用） | B10 工具验收；M17 指标抓取 |
-| T-12 | fixed | §8.1/§8.4 给出 B13 ≈2h、并行且不在关键路径；M17 预算 17h 可覆盖 | 任务表/关键路径一致 |
-| T-13 | fixed | §8.3 B13 仅追加 compose 的 M17 漂移变量、不改 B10 段；§10.6 统一“registry 归 B1c、暴露归 B2” | write_scope 无同文件冲突；措辞一致 |
+| T-11 | fixed | B10 验收加 `backfill-cost-day` 干跑/进度/幂等；§10.6/B-20 补 `riccon_quota_over_limit_observed_total`（如适用） | B10 工具验收；配额/成本指标抓取 |
+| T-12 | superseded | §8.4 给出 B10 吸收演练后不在关键路径；单模块 ≈52–56 人时/48h 可覆盖 | 任务表/关键路径一致 |
+| T-13 | superseded | B10 独占 compose 与 RUNBOOK；不再有第二个 Ops writer；§10.6 统一“registry 归 B1c、暴露归 B2” | write_scope 无同文件冲突；措辞一致 |
 | T-14 | fixed | §10.6 明确 `riccon_model_requests_total` 复用 ADR-0008 名称并扩展为 `{provider,model,outcome}`，B4 唯一注册；ADR README 记录，不定义第二个同名指标 | 单注册点；metrics-check 标签断言 |
+| DEC-0024 | fixed | DEC-0024=B（2026-11-20）撤销拆分：单模块 48h、18 条 AC 全归 M04、17 个实施任务；§8/§10.2/§10.5/§10.6/§11.1/§12 与 ADR-0022/ARCHITECTURE/THREAT-MODEL/README 同步；契约保持 `1.3.0-m04` 无分段 | 目标文档 grep 无分模块/分段残留；Lead 创建 17 个任务 |

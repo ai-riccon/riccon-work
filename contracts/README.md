@@ -4,7 +4,7 @@
 
 当前版本：`1.3.0-m04`（M04 模型网关纵深）。上一版本 `1.2.0-m10`；同一 `/api/v1` 内只做向后兼容增量。
 
-**拆分计划（待 DEC-0024）**：当前保持 `1.3.0-m04` 全量设计，避免拆分未批准时双写。DEC-0024 批准 M04/M17 后，M04 gate 前必须发布 `1.3.0-m04a`（路由/key/端点/开关；quota/cost 端点移除或标 `x-riccon-deferred: M04b`），M17 发布 `1.4.0-m04b`（配额/成本）。未完成分段不得声称 M04a 已实现全部端点。
+**单模块交付（DEC-0024=B）**：M04 单模块 48h、18 条 AC 全归本模块；`1.3.0-m04` 保持全量设计，路由/key/端点/开关与配额/成本端点在同一版本、同一模块一次交付；不做分段，也不把配额/成本标 `x-riccon-deferred`。`IT-MODEL-108a`（模型/路由/凭据/开关）与 `IT-MODEL-108b`（配额/成本）必须在 M04 gate 前同时通过。
 
 ## 1. 目录
 
@@ -123,7 +123,7 @@ ruby -e "require 'yaml'; YAML.load_file('contracts/openapi.yaml'); YAML.load_fil
 
 ## 7. 所有者与变更流程
 
-- 公开 REST 与事件：`riccon/architect` 起草，`riccon/product` 确认语义，`riccon/verifier` 核对实现。M04 实现期 `contracts/openapi.yaml` 由 **M04-B2 独占写入**；M17 分段由 **M17-B12 独占写入**。两者不得并行/跨模块同时写，其他任务只读或向对应 writer 提变更请求。
+- 公开 REST 与事件：`riccon/architect` 起草，`riccon/product` 确认语义，`riccon/verifier` 核对实现。M04 实现期 `contracts/openapi.yaml` 与 `contracts/README.md` 由 **M04-B2 独占写入**（含配额/成本端点与 `IT-MODEL-108a/108b`）；其他任务只读或向 B2 提变更请求。
 - 内部 API：`riccon/architect` 与 `riccon/builder`（worker）共同维护；安全声明变更必须同步威胁模型。
 - 破坏性变更：ADR + 版本升级 + 迁移说明 + 回滚方案；生产发布由用户批准。
 - 任何契约变更必须同步 `platform-domain` 的常量（`EventTypes`、`AuditActions`、`PermissionCodes`）与迁移 CHECK 值。
