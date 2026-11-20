@@ -61,6 +61,14 @@ public class ChatService {
     /** 看门狗检查周期。 */
     private static final long WATCHDOG_PERIOD_SECONDS = 1L;
 
+    /**
+     * AC-05 全链不可用员工文案（ADR-0021 §5.3）。
+     *
+     * <p>与 Worker {@code ModelException.CHAIN_UNAVAILABLE_MESSAGE} 保持同一文案；API 与 Worker 独立部署，
+     * 不共享实现，只通过稳定错误码 {@link ErrorCodes#MODEL_UNAVAILABLE} 识别。
+     */
+    private static final String MODEL_UNAVAILABLE_MESSAGE = "模型服务暂不可用，请稍后重试。";
+
     /** 提交持久化。 */
     private final ChatSubmissionService submissionService;
 
@@ -158,7 +166,8 @@ public class ChatService {
         try {
             stream = workerChatClient.open(submission);
         } catch (WorkerChatClient.WorkerCallException exception) {
-            recordPreFirstFailure(submission, exception.code(), exception.getMessage());
+            recordPreFirstFailure(
+                    submission, exception.code(), failureMessageForStorage(exception.code(), exception.getMessage()));
             throw mapWorkerCall(exception);
         } catch (WorkerChatClient.WorkerTimeoutException exception) {
             recordPreFirstFailure(
@@ -172,7 +181,12 @@ public class ChatService {
             return openFirstFrame(stream, submission);
         } catch (PreFirstWorkerFailure failure) {
             closeQuietly(stream);
-            recordPreFirstFailure(submission, failure.code(), failure.getMessage());
+            recordPreFirstFailure(
+                    submission, failure.code(), failureMessageForStorage(failure.code(), failure.getMessage()));
+            if (ErrorCodes.MODEL_UNAVAILABLE.equals(failure.code())) {
+                // Worker 以 SSE failed 帧而非 ProblemDetail 报告全链不可用时，同样返回 AC-05 稳定结果。
+                throw modelUnavailable();
+            }
             throw new RicconException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
                     ErrorCodes.CHAT_UPSTREAM_FAILED,
@@ -634,6 +648,9 @@ public class ChatService {
     /**
      * 映射 Worker 非 200 响应；对外不返回 Worker 内部 detail。
      *
+     * <p>全链不可用（{@link ErrorCodes#MODEL_UNAVAILABLE}）按 AC-05 统一映射为 HTTP 503 与固定中文文案；
+     * 其他状态保持既有语义，避免把 400/409/429/500 等业务差异抹平。
+     *
      * @param exception Worker 错误
      * @return 对外业务异常
      */
@@ -643,6 +660,10 @@ public class ChatService {
                 exception.status(),
                 exception.code(),
                 exception.getMessage());
+        // Worker 当前以 HTTP 500 承载 RICCON-MODEL-503；按错误码识别，后续 Worker 改为 503 仍可命中。
+        if (ErrorCodes.MODEL_UNAVAILABLE.equals(exception.code())) {
+            return modelUnavailable();
+        }
         return switch (exception.status()) {
             case 400 -> new BadRequestException("chat request is invalid");
             case 403 ->
@@ -663,6 +684,30 @@ public class ChatService {
                         "Internal server error",
                         "chat upstream failed");
         };
+    }
+
+    /**
+     * 构造 AC-05 全链不可用异常：HTTP 503 + 稳定错误码 + 固定中文文案。
+     *
+     * @return 对外业务异常
+     */
+    private static RicconException modelUnavailable() {
+        return new RicconException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                ErrorCodes.MODEL_UNAVAILABLE,
+                "Service Unavailable",
+                MODEL_UNAVAILABLE_MESSAGE);
+    }
+
+    /**
+     * 选择落库的失败说明：全链不可用统一固定文案，避免把 Worker 内部摘要（例如空路由）写进员工可见的运行详情。
+     *
+     * @param code 稳定错误码
+     * @param message Worker 返回的脱敏说明
+     * @return 落库说明
+     */
+    private static String failureMessageForStorage(String code, String message) {
+        return ErrorCodes.MODEL_UNAVAILABLE.equals(code) ? MODEL_UNAVAILABLE_MESSAGE : message;
     }
 
     /**
