@@ -292,6 +292,20 @@ function queryValue(sql, options, admin = false) {
  */
 function structure(database, options, admin = false) {
   const db = `'${database.replaceAll("'", "''")}'`;
+  /**
+   * 容忍“未初始化库”（表不存在）的只读查询：返回 0 而不是抛错，
+   * 由调用方给出“源库未初始化”的可操作提示。
+   *
+   * @param {string} sql 查询
+   * @returns {number} 数值
+   */
+  const safeNumber = (sql) => {
+    try {
+      return Number(queryValue(sql, options, admin));
+    } catch {
+      return 0;
+    }
+  };
   return {
     tables: Number(
       queryValue(
@@ -307,26 +321,12 @@ function structure(database, options, admin = false) {
         admin,
       ),
     ),
-    schemaVersion: Number(
-      queryValue(
-        `SELECT COALESCE(MAX(CAST(version AS UNSIGNED)), 0) FROM \`${database}\`.flyway_schema_history WHERE success = 1;`,
-        options,
-        admin,
-      ),
+    schemaVersion: safeNumber(
+      `SELECT COALESCE(MAX(CAST(version AS UNSIGNED)), 0) FROM \`${database}\`.flyway_schema_history WHERE success = 1;`,
     ),
-    dataKeys: Number(
-      queryValue(
-        `SELECT COUNT(*) FROM \`${database}\`.tenant_data_key;`,
-        options,
-        admin,
-      ),
-    ),
-    credentials: Number(
-      queryValue(
-        `SELECT COUNT(*) FROM ${database}.provider_credential;`,
-        options,
-        admin,
-      ),
+    dataKeys: safeNumber(`SELECT COUNT(*) FROM \`${database}\`.tenant_data_key;`),
+    credentials: safeNumber(
+      `SELECT COUNT(*) FROM \`${database}\`.provider_credential;`,
     ),
   };
 }
@@ -713,6 +713,12 @@ async function main() {
     return;
   }
   const sourceStructure = structure(options.source, options, false);
+  if (sourceStructure.tables === 0 || sourceStructure.schemaVersion !== EXPECTED_SCHEMA_VERSION) {
+    throw new Error(
+      `源库 ${options.source} 未初始化：tables=${sourceStructure.tables} MAX(version)=${sourceStructure.schemaVersion}；` +
+        "先由 apps/api 跑 Flyway V1–V11 并完成 M04 种子，再执行恢复演练（空库演练不算通过）",
+    );
+  }
   const dumped = dump(options);
   const restored = restore(dumped.file, options);
   if (!options.keep && !options.dump) {
