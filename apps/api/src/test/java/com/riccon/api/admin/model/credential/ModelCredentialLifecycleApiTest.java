@@ -88,6 +88,8 @@ class ModelCredentialLifecycleApiTest extends ApiIntegrationTestSupport {
         JsonNode createdB = createCredential(admin, "backup", keyB, 20);
         String idA = createdA.path("id").asText();
         String idB = createdB.path("id").asText();
+        // 新增响应不带 changed（契约中 changed 只属于停用/恢复）。
+        assertThat(createdA.has("changed")).isFalse();
 
         // 列表只返回掩码：不得出现明文、密文或 DEK 标识。
         JsonNode list = listCredentials(admin);
@@ -240,7 +242,13 @@ class ModelCredentialLifecycleApiTest extends ApiIntegrationTestSupport {
         Snapshot snapshot = snapshot(oldId);
         assertThat(decryptSnapshot(snapshot)).isEqualTo(oldKey);
 
-        ApiTestClient.ApiResponse rotated = postCredential(admin, oldId, "rotate", newKey);
+        // 轮换请求不传 label，必须继承旧 key 的标签。
+        ApiTestClient.ApiResponse rotated = client.post(
+                credentialsPath() + "/" + oldId + "/rotate",
+                client.jsonBody("apiKey", newKey),
+                admin.sessionCookie(),
+                admin.csrfToken(),
+                Map.of());
         assertThat(rotated.status()).as(rotated.body()).isEqualTo(200);
         JsonNode rotatedBody = client.json(rotated);
         String newId = rotatedBody.path("id").asText();
@@ -248,6 +256,7 @@ class ModelCredentialLifecycleApiTest extends ApiIntegrationTestSupport {
         assertThat(rotatedBody.path("status").asText()).isEqualTo("ACTIVE");
         assertThat(rotatedBody.path("maskedHint").asText()).isEqualTo(lastFourMask(newKey));
         assertThat(rotatedBody.path("priority").asInt()).isEqualTo(5);
+        assertThat(rotatedBody.path("label").asText()).isEqualTo("rotating");
         assertThat(rotatedBody.path("rotatedAt").isNull()).isFalse();
         assertThat(rotated.body()).doesNotContain(oldKey).doesNotContain(newKey);
 
@@ -373,6 +382,11 @@ class ModelCredentialLifecycleApiTest extends ApiIntegrationTestSupport {
                         .asText())
                 .isEqualTo("INVALID_PRIORITY");
 
+        ApiTestClient.ApiResponse missingBody =
+                client.post(credentialsPath(), null, admin.sessionCookie(), admin.csrfToken(), Map.of());
+        assertThat(missingBody.status()).as(missingBody.body()).isEqualTo(400);
+        assertThat(client.json(missingBody).path("field").asText()).isEqualTo("apiKey");
+
         ApiTestClient.ApiResponse missingProvider = client.post(
                 "/api/v1/admin/model-providers/" + UUID.randomUUID() + "/credentials",
                 client.jsonBody("label", "missing", "apiKey", randomApiKey("missing")),
@@ -381,6 +395,27 @@ class ModelCredentialLifecycleApiTest extends ApiIntegrationTestSupport {
                 Map.of());
         assertThat(missingProvider.status()).as(missingProvider.body()).isEqualTo(404);
         assertThat(client.json(missingProvider).path("code").asText()).isEqualTo("RICCON-TENANT-404");
+
+        // 已是 ACTIVE 时恢复是幂等空操作。
+        JsonNode active = createCredential(admin, "active", randomApiKey("active"), 100);
+        ApiTestClient.ApiResponse enableActive =
+                postCredential(admin, active.path("id").asText(), "enable", null);
+        assertThat(enableActive.status()).as(enableActive.body()).isEqualTo(200);
+        assertThat(client.json(enableActive).path("changed").asBoolean()).isFalse();
+
+        // provider 被部署停用后：仍可列出并停用止血，但不能新增 key。
+        jdbcClient
+                .sql("UPDATE model_provider SET status = 'DISABLED' WHERE id = :providerId")
+                .param("providerId", BinaryUuids.toBytes(providerId))
+                .update();
+        assertThat(listCredentials(admin).path("total").asInt()).isEqualTo(1);
+        ApiTestClient.ApiResponse rejectedByProvider =
+                postCreate(admin, "disabled-provider", randomApiKey("disabled"), 100);
+        assertThat(rejectedByProvider.status()).as(rejectedByProvider.body()).isEqualTo(400);
+        assertThat(client.json(rejectedByProvider).path("reason").asText()).isEqualTo("PROVIDER_NOT_ALLOWED");
+        assertThat(postCredential(admin, active.path("id").asText(), "disable", null)
+                        .status())
+                .isEqualTo(200);
     }
 
     /** 新增并断言 201。 */
