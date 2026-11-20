@@ -207,6 +207,23 @@ class ManagedEndpointPolicyTest {
         assertThat(demoRegistry.isAllowed("demo-gw", "https://10.20.30.50/v1")).isTrue();
     }
 
+    /** 空允许列表进入“仅 DB 目录”的遗留兼容模式；非空列表必须按 code/baseUrl 对齐。 */
+    @Test
+    @DisplayName("空允许列表为遗留 DB 目录兼容模式")
+    void registry_emptyAllowlistUsesLegacyCatalog() {
+        ManagedEndpointRegistry legacy =
+                new ManagedEndpointPolicy(ModelDeploymentMode.DEMO, false, RESOLVER).load(List.of());
+        assertThat(legacy.isLegacyCatalog()).isTrue();
+        assertThat(legacy.isAllowed("legacy-provider", "https://10.20.30.40/v1"))
+                .isTrue();
+
+        ManagedEndpointRegistry configured = new ManagedEndpointPolicy(ModelDeploymentMode.DEMO, false, RESOLVER)
+                .load(List.of(new ManagedModelEndpointConfig("corp-gw", "https://10.20.30.40/v1", "PRODUCTION")));
+        assertThat(configured.isLegacyCatalog()).isFalse();
+        assertThat(configured.isAllowed("legacy-provider", "https://10.20.30.40/v1"))
+                .isFalse();
+    }
+
     /** 断言抛出稳定原因码。 */
     private static void assertReason(Runnable action, EndpointRejectionReason reason) {
         assertThatThrownBy(action::run)

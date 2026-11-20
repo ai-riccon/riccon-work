@@ -86,6 +86,17 @@ class ModelEndpointPropertiesTest {
                 .isTrue();
     }
 
+    /** DEMO + allow-legacy-endpoints 且未配置端点时进入遗留 DB 目录兼容。 */
+    @Test
+    @DisplayName("DEMO 空端点为遗留目录兼容")
+    void registry_demoEmptyAllowlistUsesLegacyCatalog() {
+        ModelEndpointProperties properties = properties("DEMO", "", true, false);
+        properties.afterPropertiesSet();
+        assertThat(properties.registry().isLegacyCatalog()).isTrue();
+        assertThat(properties.registry().isAllowed("legacy-provider", "https://10.20.30.40/v1"))
+                .isTrue();
+    }
+
     /** 非法 JSON、重复 code 与非法模式都启动失败。 */
     @Test
     @DisplayName("非法配置启动失败")

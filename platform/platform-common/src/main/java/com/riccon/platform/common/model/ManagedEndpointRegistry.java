@@ -22,6 +22,9 @@ public final class ManagedEndpointRegistry {
     /** 按 code 索引的端点，保持配置顺序。 */
     private final Map<String, ManagedModelEndpoint> endpointsByCode;
 
+    /** 是否处于“仅 DB 目录”的遗留兼容模式（部署未配置允许列表且已显式/演示接受）。 */
+    private final boolean legacyCatalog;
+
     /**
      * 创建允许列表；只允许 {@link ManagedEndpointPolicy} 调用。
      *
@@ -35,6 +38,9 @@ public final class ManagedEndpointRegistry {
             byCode.put(endpoint.code(), endpoint);
         }
         this.endpointsByCode = Collections.unmodifiableMap(byCode);
+        // ADR-0021 §2.1：允许列表为空表示 DEMO 遗留兼容或 PRODUCTION 显式风险接受；
+        // 由 ModelEndpointProperties 决定是否允许启动，这里只记录“仅 DB 目录”语义。
+        this.legacyCatalog = endpoints.isEmpty();
     }
 
     /**
@@ -93,6 +99,11 @@ public final class ManagedEndpointRegistry {
         if (code == null || rawBaseUrl == null) {
             return false;
         }
+        if (legacyCatalog) {
+            // DEMO 遗留兼容 / PRODUCTION 显式风险接受：DB 目录行全部可被目录展示与路由选择；
+            // URL/元数据/标签仍由 B4 在每次调用前用 ManagedEndpointPolicy 再次校验。
+            return true;
+        }
         ManagedModelEndpoint endpoint = endpointsByCode.get(code);
         if (endpoint == null || !isEnvironmentRoutable(endpoint.environmentLabel())) {
             return false;
@@ -123,6 +134,15 @@ public final class ManagedEndpointRegistry {
      */
     public boolean isEmpty() {
         return endpointsByCode.isEmpty();
+    }
+
+    /**
+     * 是否处于“仅 DB 目录”的遗留兼容模式。
+     *
+     * @return 允许列表为空时返回 true
+     */
+    public boolean isLegacyCatalog() {
+        return legacyCatalog;
     }
 
     /**
