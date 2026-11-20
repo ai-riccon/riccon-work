@@ -5,6 +5,8 @@ import com.riccon.platform.domain.audit.AuditActorType;
 import com.riccon.platform.domain.audit.AuditOutcome;
 import com.riccon.platform.domain.audit.AuditTargetType;
 import java.time.Instant;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -27,7 +29,7 @@ import java.util.UUID;
  * @param traceId 追踪 ID
  * @param requestId 请求 ID，可为空
  * @param sourceIp 来源 IP，仅登录事件记录
- * @param details 白名单字段
+ * @param details 白名单字段；允许动作级 nullable 值（如 quota.limit.changed.previousLimit）
  * @param schemaVersion 信封版本，M02 固定 1
  */
 public record AuditEvent(
@@ -62,7 +64,11 @@ public record AuditEvent(
         requireText(traceId, "traceId", 64);
         requireOptionalText(requestId, "requestId", 64);
         requireOptionalText(sourceIp, "sourceIp", 45);
-        details = Map.copyOf(details == null ? Map.of() : details);
+        // 防御性不可变拷贝：Map.copyOf 会拒绝 null 值，导致审计动作级 nullable 键（previousLimit）
+        // 在事件层不可达；LinkedHashMap 保留插入顺序，便于 details JSON 稳定输出与审计排障。
+        details = details == null || details.isEmpty()
+                ? Map.of()
+                : Collections.unmodifiableMap(new LinkedHashMap<>(details));
         if (schemaVersion < 1) {
             throw new IllegalArgumentException("schemaVersion must be >= 1");
         }

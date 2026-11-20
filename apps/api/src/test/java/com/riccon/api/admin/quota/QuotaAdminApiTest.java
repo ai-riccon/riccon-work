@@ -90,14 +90,11 @@ class QuotaAdminApiTest extends QuotaApiTestSupport {
     void platformList_hasNoUserFields() {
         Fixture fixture = fixture();
 
-        ApiTestClient.ApiResponse response = client.get(
-                "/api/v1/admin/quotas?page=1&size=100", fixture.platform().sessionCookie(), Map.of());
-
-        assertThat(response.status()).as(response.body()).isEqualTo(200);
-        JsonNode page = client.json(response);
-        assertThat(page.path("page").asInt()).isEqualTo(1);
-        assertThat(page.path("size").asInt()).isEqualTo(100);
-        JsonNode row = findTenant(page, fixture.tenant());
+        JsonNode firstPage = adminQuotaPage(fixture.platform(), 1);
+        assertThat(firstPage.path("page").asInt()).isEqualTo(1);
+        assertThat(firstPage.path("size").asInt()).isEqualTo(100);
+        // 共享库里租户按 created_at ASC 排序，新 fixture 可能落在最后一页；不能假设第 1 页。
+        JsonNode row = findTenantAcrossPages(fixture.platform(), fixture.tenant());
         assertThat(row.path("tenantCode").asText()).isEqualTo(fixture.tenant());
         assertThat(row.path("tenantName").asText()).isNotBlank();
         assertThat(row.path("windows")).hasSize(2);
@@ -141,7 +138,8 @@ class QuotaAdminApiTest extends QuotaApiTestSupport {
         assertThat(allDetails).anySatisfy(details -> {
             assertThat(details.path("window").asText()).isEqualTo("DAILY");
             assertThat(details.path("limit").asInt()).isEqualTo(5);
-            assertThat(details.path("previousLimit").isMissingNode()).isTrue();
+            assertThat(details.has("previousLimit")).isTrue();
+            assertThat(details.path("previousLimit").isNull()).isTrue();
         });
         assertThat(allDetails).anySatisfy(details -> {
             assertThat(details.path("window").asText()).isEqualTo("DAILY");
@@ -152,12 +150,36 @@ class QuotaAdminApiTest extends QuotaApiTestSupport {
         assertThat(allDetails).anySatisfy(details -> {
             assertThat(details.path("window").asText()).isEqualTo("MONTHLY");
             assertThat(details.path("limit").asInt()).isZero();
-            assertThat(details.path("previousLimit").isMissingNode()).isTrue();
+            assertThat(details.has("previousLimit")).isTrue();
+            assertThat(details.path("previousLimit").isNull()).isTrue();
         });
         assertThat(allDetails).anySatisfy(details -> {
             assertThat(details.path("window").asText()).isEqualTo("MONTHLY");
             assertThat(details.path("limit").asInt()).isEqualTo(8);
-            assertThat(details.path("previousLimit").isMissingNode()).isTrue();
+            assertThat(details.has("previousLimit")).isTrue();
+            assertThat(details.path("previousLimit").isNull()).isTrue();
+        });
+
+        // 审计查询端必须能读出 JSON null（first/monthly 为 null，daily 第二次为 5）。
+        ApiTestClient.ApiResponse auditResponse = client.get(
+                "/api/v1/audit-events?action=quota.limit.changed&targetId=" + fixture.tenant() + "&page=1&size=100",
+                fixture.platform().sessionCookie(),
+                Map.of());
+        assertThat(auditResponse.status()).as(auditResponse.body()).isEqualTo(200);
+        JsonNode auditPage = client.json(auditResponse);
+        assertThat(auditPage.path("items")).hasSize(4);
+        assertThat(auditPage.path("items")).anySatisfy(item -> {
+            JsonNode auditDetails = item.path("details");
+            assertThat(auditDetails.path("window").asText()).isEqualTo("DAILY");
+            assertThat(auditDetails.path("limit").asInt()).isEqualTo(5);
+            assertThat(auditDetails.has("previousLimit")).isTrue();
+            assertThat(auditDetails.path("previousLimit").isNull()).isTrue();
+        });
+        assertThat(auditPage.path("items")).anySatisfy(item -> {
+            JsonNode auditDetails = item.path("details");
+            assertThat(auditDetails.path("window").asText()).isEqualTo("DAILY");
+            assertThat(auditDetails.path("limit").asInt()).isEqualTo(7);
+            assertThat(auditDetails.path("previousLimit").asInt()).isEqualTo(5);
         });
 
         ApiTestClient.ApiResponse tenantResponse =
@@ -291,19 +313,59 @@ class QuotaAdminApiTest extends QuotaApiTestSupport {
     }
 
     /**
+     * 读取平台配额分页并断言 200。
+     *
+     * @param platform 平台管理员
+     * @param page 页码
+     * @return 分页 JSON
+     */
+    private JsonNode adminQuotaPage(LoginSession platform, int page) {
+        ApiTestClient.ApiResponse response =
+                client.get("/api/v1/admin/quotas?page=" + page + "&size=100", platform.sessionCookie(), Map.of());
+        assertThat(response.status()).as(response.body()).isEqualTo(200);
+        return client.json(response);
+    }
+
+    /**
+     * 跨页查找租户行，避免共享库里新租户落在第 1 页之外造成假失败。
+     *
+     * <p>租户按 {@code created_at ASC} 排序；fixture 是本次新建租户，优先从最后一页倒序查找，
+     * 不使用超过 OpenAPI 上限 100 的 size。
+     *
+     * @param platform 平台管理员
+     * @param tenant 租户
+     * @return 行
+     */
+    private JsonNode findTenantAcrossPages(LoginSession platform, String tenant) {
+        JsonNode first = adminQuotaPage(platform, 1);
+        JsonNode found = findTenantOrNull(first, tenant);
+        if (found != null) {
+            return found;
+        }
+        int totalPages = first.path("totalPages").asInt();
+        for (int page = totalPages; page >= 2; page--) {
+            found = findTenantOrNull(adminQuotaPage(platform, page), tenant);
+            if (found != null) {
+                return found;
+            }
+        }
+        throw new AssertionError("tenant quota row not found across " + totalPages + " pages: " + tenant);
+    }
+
+    /**
      * 在分页中查找租户行。
      *
      * @param page 分页 JSON
      * @param tenant 租户
-     * @return 行
+     * @return 行；未找到时返回 {@code null}
      */
-    private JsonNode findTenant(JsonNode page, String tenant) {
+    private JsonNode findTenantOrNull(JsonNode page, String tenant) {
         for (JsonNode item : page.path("items")) {
             if (tenant.equals(item.path("tenantId").asText())) {
                 return item;
             }
         }
-        throw new AssertionError("tenant quota row not found: " + tenant);
+        return null;
     }
 
     /**

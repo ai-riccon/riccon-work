@@ -300,12 +300,11 @@ public class PlatformQuotaService {
         details.put("scopeType", scope.name());
         details.put("scopeId", scopeId);
         details.put("window", window.name());
-        Integer previousLimit = previous.get(window);
-        if (previousLimit != null) {
-            // 审计信封当前用 Map.copyOf 保存 details，无法承载 JSON null；首次设置（无旧值）省略该键，
-            // 读取方以缺失表示“没有前值”。待 AuditEvent 支持 null 后改为显式 previousLimit=null（B1a 缺陷）。
-            details.put("previousLimit", previousLimit);
-        }
+        // previousLimit 允许 JSON null：首次设置或“显式不限 → 数字”表示没有可比较的旧值。
+        // AuditDetailsPolicy 已将 previousLimit 列为动作级 nullable，AuditEvent 支持 null 值并保持不可变。
+        details.put("previousLimit", previous.get(window));
+        // limit 为 null 表示显式不限；审计 details 的 limit 不允许 null（B1a REV-TASK-0100-001 F-003），
+        // 继续用 0 表达“不限”，响应仍返回 limit=null。
         details.put("limit", limit == null ? 0 : limit);
         Instant now = clock.instant();
         TenantContext.runWithTenant(

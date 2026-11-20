@@ -33,8 +33,9 @@ import org.springframework.transaction.annotation.Transactional;
  * 配额准入（ADR-0022 第 1.3 节）。
  *
  * <p>必须在创建 run 的既有事务内调用（{@code MANDATORY}），计数累加与 {@code agent_run} 插入要么一起提交，
- * 要么一起回滚。调用方先在租户行上取串行锁，再按固定顺序 TENANT/DAILY → TENANT/MONTHLY → USER/DAILY →
- * USER/MONTHLY 计数；所有事务同序，避免首次创建配额行时的 ODKU 共享锁升级死锁。
+ * 要么一起回滚。实际加锁/计数顺序为：tenant 行 X 锁 → TENANT/DAILY → USER/DAILY → TENANT/MONTHLY →
+ * USER/MONTHLY（与 ADR-0022 §1.3 实测记录一致）；所有事务同序，避免首次创建配额行时的 ODKU 共享锁升级死锁
+ * 与业务行交叉死锁。
  *
  * <p>有限额时使用 {@code UPDATE ... WHERE used_count < :limit} 的条件累加；MySQL InnoDB 的当前读与行锁保证
  * 剩余 1 次时恰好 1 个事务成功，不存在“先查后写”的竞态。关闭执行时仍然计数，只跳过比较与拒绝。
