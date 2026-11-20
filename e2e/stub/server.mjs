@@ -7,7 +7,9 @@
  * - 真实 `fetch` + `ReadableStream` 的 SSE 增量、停止与断线；
  * - multipart 上传、解析轮询、审批状态机与产物预签名下载。
  *
- * 边界：只实现 M02 J1/J2 使用的 OpenAPI 子集；数据全部为合成内容，存活于进程内存。
+ * 边界：实现 M02 J1/J2、M03/M10/M15 页面与 M04 模型路由/key/配额/成本页面使用的 OpenAPI 子集；
+ * 数据全部为合成内容，存活于进程内存。M04 数据由 `POST /__stub__/m04-seed` 填充，空态用
+ * `{"empty":true}`；错误态用 `POST /__stub__/scenario` 的 `m04-*-500` / `m04-switches-env-override`。
  * 测试之间通过 `POST /__stub__/reset` 重置；控制端点不属于产品契约。
  *
  * 运行：`node e2e/stub/server.mjs`（Node 内置模块，无第三方依赖）。
@@ -105,6 +107,22 @@ const M03_DEPT_FILE_ID = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const M03_SOURCE_UNAVAILABLE_FILE_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const M03_SOURCE_UNAVAILABLE_FILE_NAME = '销售部市场分析.pdf';
 
+/** M04 合成目录 UUID；E2E 只依赖这些稳定 ID。 */
+const M04_PROVIDER_PRIMARY = '91919191-9191-4191-8191-000000000001';
+const M04_PROVIDER_SECONDARY = '91919191-9191-4191-8191-000000000002';
+const M04_PROVIDER_DISALLOWED = '91919191-9191-4191-8191-000000000003';
+const M04_MODEL_PRIMARY = '92929292-9292-4292-8292-000000000001';
+const M04_MODEL_SECONDARY = '92929292-9292-4292-8292-000000000002';
+const M04_MODEL_DISABLED = '92929292-9292-4292-8292-000000000003';
+const M04_MODEL_UNPRICED = '92929292-9292-4292-8292-000000000004';
+
+/** 配额重置时间；固定值让页面快照稳定（Asia/Shanghai，带偏移）。 */
+const M04_DAILY_RESET = '2026-11-22T00:00:00+08:00';
+const M04_MONTHLY_RESET = '2026-12-01T00:00:00+08:00';
+
+/** 成本免责声明；与 OpenAPI const 逐字一致。 */
+const M04_COST_DISCLAIMER = '成本为按调用时价格快照估算，不是供应商账单。';
+
 /**
  * E2E 登录账号表；key 为 `tenantCode/username`。
  *
@@ -181,6 +199,9 @@ const M03_CREDENTIALS = {
       'knowledge.read',
       'knowledge.manage',
       'tenant.user.manage',
+      'quota.read',
+      'cost.read',
+      'model.read',
     ],
     tenantId: M03_TENANT_ACME,
     tenantName: '示例企业',
@@ -203,7 +224,14 @@ const M03_CREDENTIALS = {
     username: M03_PLATFORM_USERNAME,
     displayName: M03_PLATFORM_DISPLAY_NAME,
     roles: ['PLATFORM_ADMIN'],
-    permissions: ['platform.tenant.manage', 'platform.department.manage'],
+    permissions: [
+      'platform.tenant.manage',
+      'platform.department.manage',
+      'platform.model.read',
+      'platform.model.manage',
+      'platform.quota.manage',
+      'platform.cost.read',
+    ],
     tenantId: M03_PLATFORM_TENANT,
     tenantName: '平台',
   },
@@ -226,6 +254,341 @@ let traceCounter = 0;
 
 /** 业务状态；reset 时整体替换。 */
 let state = createInitialState();
+
+/**
+ * 创建 M04 空状态；页面在调用 `/__stub__/m04-seed` 前显示空态。
+ *
+ * @returns {object} M04 状态
+ */
+function createM04State() {
+  return {
+    seeded: false,
+    empty: false,
+    providers: [],
+    models: [],
+    /** 内存凭据；apiKey 只用于同请求去重，不进入任何响应。 */
+    credentials: [],
+    routing: {
+      CHAT: { purpose: 'CHAT', version: 1, entries: [], updatedAt: BASE_TIME, updatedBy: null },
+      REPORT: { purpose: 'REPORT', version: 1, entries: [], updatedAt: BASE_TIME, updatedBy: null },
+    },
+    switches: {
+      routingMode: 'ROUTED',
+      failoverEnabled: true,
+      quotaEnforcementEnabled: true,
+      version: 1,
+      source: 'DATABASE',
+      envOverride: null,
+      updatedAt: BASE_TIME,
+      updatedBy: null,
+    },
+    tenantQuotas: {},
+    userQuotas: {},
+    costInvocations: [],
+  };
+}
+
+/**
+ * 填充确定性的 M04 合成数据；重复调用结果相同。
+ *
+ * @param {boolean} [empty] 是否只保留空目录/空列表
+ */
+function seedM04State(empty = false) {
+  const createdAt = BASE_TIME;
+  const providers = [
+    {
+      id: M04_PROVIDER_PRIMARY,
+      code: 'fake-primary',
+      name: '假模型主供应商',
+      protocol: 'OPENAI_COMPATIBLE',
+      baseUrl: 'http://127.0.0.1:18990/v1',
+      environmentLabel: 'DEMO_ONLY',
+      allowed: true,
+      status: 'ACTIVE',
+    },
+    {
+      id: M04_PROVIDER_SECONDARY,
+      code: 'fake-secondary',
+      name: '假模型备用供应商',
+      protocol: 'OPENAI_COMPATIBLE',
+      baseUrl: 'http://127.0.0.1:18990/v1-secondary',
+      environmentLabel: 'PRODUCTION',
+      allowed: true,
+      status: 'ACTIVE',
+    },
+    {
+      id: M04_PROVIDER_DISALLOWED,
+      code: 'fake-disallowed',
+      name: '未进入部署允许列表的端点',
+      protocol: 'OPENAI_COMPATIBLE',
+      baseUrl: 'http://127.0.0.1:18990/v1-disallowed',
+      environmentLabel: 'DEMO_ONLY',
+      allowed: false,
+      status: 'DISABLED',
+    },
+  ];
+  const models = [
+    {
+      id: M04_MODEL_PRIMARY,
+      modelKey: 'fake-chat-primary',
+      displayName: '假模型-主',
+      providerId: M04_PROVIDER_PRIMARY,
+      contextWindow: 32768,
+      maxOutputTokens: 2048,
+      capabilities: { chat: true, stream: true, tool: true },
+      inputPricePer1M: '1.500000',
+      outputPricePer1M: '3.000000',
+      priceCurrency: 'CNY',
+      status: 'ACTIVE',
+      createdAt,
+      updatedAt: createdAt,
+    },
+    {
+      id: M04_MODEL_SECONDARY,
+      modelKey: 'fake-chat-secondary',
+      displayName: '假模型-备用',
+      providerId: M04_PROVIDER_SECONDARY,
+      contextWindow: 32768,
+      maxOutputTokens: 2048,
+      capabilities: { chat: true, stream: true },
+      inputPricePer1M: '2.000000',
+      outputPricePer1M: '4.000000',
+      priceCurrency: 'CNY',
+      status: 'ACTIVE',
+      createdAt,
+      updatedAt: createdAt,
+    },
+    {
+      id: M04_MODEL_DISABLED,
+      modelKey: 'fake-chat-disabled',
+      displayName: '假模型-停用示例',
+      providerId: M04_PROVIDER_PRIMARY,
+      contextWindow: 16384,
+      maxOutputTokens: 1024,
+      capabilities: { chat: true, stream: true },
+      inputPricePer1M: null,
+      outputPricePer1M: null,
+      priceCurrency: null,
+      status: 'DISABLED',
+      createdAt,
+      updatedAt: createdAt,
+    },
+    {
+      id: M04_MODEL_UNPRICED,
+      modelKey: 'fake-chat-unpriced',
+      displayName: '假模型-未定价示例',
+      providerId: M04_PROVIDER_SECONDARY,
+      contextWindow: 16384,
+      maxOutputTokens: 1024,
+      capabilities: { chat: true, stream: true },
+      inputPricePer1M: null,
+      outputPricePer1M: null,
+      priceCurrency: null,
+      status: 'ACTIVE',
+      createdAt,
+      updatedAt: createdAt,
+    },
+  ];
+  const credentials = [
+    {
+      id: '93939393-9393-4393-8393-000000000001',
+      providerId: M04_PROVIDER_PRIMARY,
+      label: '主 key',
+      apiKey: 'stub-primary-key-0001',
+      maskedHint: '****0001',
+      status: 'ACTIVE',
+      priority: 10,
+      version: 1,
+      consecutiveFailures: 0,
+      cooldownUntil: null,
+      createdAt,
+      updatedAt: createdAt,
+      rotatedAt: null,
+      lastUsedAt: '2026-11-20T10:00:00+08:00',
+    },
+    {
+      id: '93939393-9393-4393-8393-000000000002',
+      providerId: M04_PROVIDER_PRIMARY,
+      label: '备用 key',
+      apiKey: 'stub-primary-key-0002',
+      maskedHint: '****0002',
+      status: 'ACTIVE',
+      priority: 20,
+      version: 1,
+      consecutiveFailures: 0,
+      cooldownUntil: null,
+      createdAt,
+      updatedAt: createdAt,
+      rotatedAt: null,
+      lastUsedAt: null,
+    },
+    {
+      id: '93939393-9393-4393-8393-000000000003',
+      providerId: M04_PROVIDER_SECONDARY,
+      label: '备用供应商 key',
+      apiKey: 'stub-secondary-key-0001',
+      maskedHint: '****0001',
+      status: 'ACTIVE',
+      priority: 10,
+      version: 2,
+      consecutiveFailures: 0,
+      cooldownUntil: null,
+      createdAt,
+      updatedAt: createdAt,
+      rotatedAt: null,
+      lastUsedAt: null,
+    },
+  ];
+
+  const routing = {
+    CHAT: {
+      purpose: 'CHAT',
+      version: 4,
+      entries: [M04_MODEL_PRIMARY, M04_MODEL_SECONDARY, M04_MODEL_DISABLED],
+      updatedAt: '2026-11-20T09:00:00+08:00',
+      updatedBy: null,
+    },
+    REPORT: {
+      purpose: 'REPORT',
+      version: 2,
+      entries: [M04_MODEL_PRIMARY],
+      updatedAt: '2026-11-20T09:00:00+08:00',
+      updatedBy: null,
+    },
+  };
+
+  const tenantQuotas = {
+    [M03_TENANT_ACME]: {
+      daily: { limit: 1000, used: 120, source: 'EXPLICIT' },
+      monthly: { limit: 20000, used: 3400, source: 'EXPLICIT' },
+    },
+    [M03_TENANT_BETA]: {
+      daily: { limit: null, used: 5, source: 'EXPLICIT_UNLIMITED' },
+      monthly: { limit: null, used: 10, source: 'EXPLICIT_UNLIMITED' },
+    },
+  };
+  const userQuotas = {
+    [DEMO_USER_ID]: {
+      tenantId: M03_TENANT_ACME,
+      daily: { limit: 100, used: 42, source: 'EXPLICIT' },
+      monthly: { limit: 2000, used: 500, source: 'EXPLICIT' },
+    },
+    [M03_MEMBER_USER_ID]: {
+      tenantId: M03_TENANT_ACME,
+      daily: { limit: 50, used: 3, source: 'EXPLICIT' },
+      monthly: { limit: 500, used: 12, source: 'EXPLICIT' },
+    },
+    [M03_ADMIN_USER_ID]: {
+      tenantId: M03_TENANT_ACME,
+      daily: { limit: 500, used: 0, source: 'DEPLOYMENT_DEFAULT' },
+      monthly: { limit: 5000, used: 0, source: 'DEPLOYMENT_DEFAULT' },
+    },
+  };
+
+  const costInvocations = [
+    {
+      id: '94949494-9494-4494-8494-000000000001',
+      tenantId: M03_TENANT_ACME,
+      modelId: M04_MODEL_PRIMARY,
+      modelDisplayName: '假模型-主',
+      userId: DEMO_USER_ID,
+      userDisplayName: M03_DEMO_DISPLAY_NAME,
+      startedAt: '2026-11-20T09:30:00+08:00',
+      day: '2026-11-20',
+      promptTokens: 1200,
+      completionTokens: 800,
+      inputPricePer1M: '1.500000',
+      outputPricePer1M: '3.000000',
+      priceCurrency: 'CNY',
+      amount: '0.004200',
+      pricingStatus: 'PRICED',
+    },
+    {
+      id: '94949494-9494-4494-8494-000000000002',
+      tenantId: M03_TENANT_ACME,
+      modelId: M04_MODEL_UNPRICED,
+      modelDisplayName: '假模型-未定价示例',
+      userId: M03_MEMBER_USER_ID,
+      userDisplayName: M03_MEMBER_DISPLAY_NAME,
+      startedAt: '2026-11-20T11:00:00+08:00',
+      day: '2026-11-20',
+      promptTokens: 600,
+      completionTokens: 300,
+      inputPricePer1M: null,
+      outputPricePer1M: null,
+      priceCurrency: null,
+      amount: null,
+      pricingStatus: 'UNPRICED',
+    },
+    {
+      id: '94949494-9494-4494-8494-000000000003',
+      tenantId: M03_TENANT_ACME,
+      modelId: M04_MODEL_PRIMARY,
+      modelDisplayName: '假模型-主',
+      userId: DEMO_USER_ID,
+      userDisplayName: M03_DEMO_DISPLAY_NAME,
+      startedAt: '2026-11-19T16:20:00+08:00',
+      day: '2026-11-19',
+      promptTokens: null,
+      completionTokens: null,
+      inputPricePer1M: '1.500000',
+      outputPricePer1M: '3.000000',
+      priceCurrency: 'CNY',
+      amount: null,
+      pricingStatus: 'USAGE_UNKNOWN',
+    },
+    {
+      id: '94949494-9494-4494-8494-000000000004',
+      tenantId: M03_TENANT_BETA,
+      modelId: M04_MODEL_SECONDARY,
+      modelDisplayName: '假模型-备用',
+      userId: M15_OIDC_USER_B_ID,
+      userDisplayName: M15_OIDC_USER_B_DISPLAY_NAME,
+      startedAt: '2026-11-20T14:15:00+08:00',
+      day: '2026-11-20',
+      promptTokens: 2000,
+      completionTokens: 1000,
+      inputPricePer1M: '2.000000',
+      outputPricePer1M: '4.000000',
+      priceCurrency: 'CNY',
+      amount: '0.008000',
+      pricingStatus: 'PRICED',
+    },
+  ];
+
+  state.m04 = {
+    seeded: true,
+    empty,
+    providers: empty ? [] : providers,
+    models: empty ? [] : models,
+    credentials: empty ? [] : credentials,
+    routing: empty
+      ? {
+          CHAT: { purpose: 'CHAT', version: 1, entries: [], updatedAt: BASE_TIME, updatedBy: null },
+          REPORT: {
+            purpose: 'REPORT',
+            version: 1,
+            entries: [],
+            updatedAt: BASE_TIME,
+            updatedBy: null,
+          },
+        }
+      : routing,
+    switches: {
+      routingMode: 'ROUTED',
+      failoverEnabled: true,
+      quotaEnforcementEnabled: true,
+      version: 7,
+      source: 'DATABASE',
+      envOverride: null,
+      updatedAt: '2026-11-20T09:00:00+08:00',
+      updatedBy: null,
+    },
+    tenantQuotas: empty ? {} : tenantQuotas,
+    userQuotas: empty ? {} : userQuotas,
+    costInvocations: empty ? [] : costInvocations,
+  };
+}
 
 /**
  * 创建初始业务状态。
@@ -407,6 +770,8 @@ function createInitialState() {
     departments: [],
     teamWorkspaces: [],
     workspaceMembers: {},
+    // M04：模型路由/key/配额/成本页面的合成状态；由 /__stub__/m04-seed 填充。
+    m04: createM04State(),
   };
 }
 
@@ -483,6 +848,7 @@ const MEMBER_PERMISSIONS = [
   'mcp.read',
   'department.read',
   'knowledge.read',
+  'model.read',
 ];
 
 /**
@@ -1967,6 +2333,25 @@ function handleControl(req, res, pathname, raw) {
     writeResult(res, json({ ok: true, departments: state.departments.length }));
     return true;
   }
+  if (pathname === '/__stub__/m04-seed' && req.method === 'POST') {
+    const body = readJson(raw);
+    seedM04State(body?.empty === true);
+    writeResult(
+      res,
+      json({
+        ok: true,
+        empty: state.m04.empty,
+        providers: state.m04.providers.length,
+        models: state.m04.models.length,
+        credentials: state.m04.credentials.length,
+        routing: {
+          CHAT: state.m04.routing.CHAT.entries.length,
+          REPORT: state.m04.routing.REPORT.entries.length,
+        },
+      }),
+    );
+    return true;
+  }
   if (pathname === '/__stub__/revoke-sessions' && req.method === 'POST') {
     // 模拟会话在服务端失效：保留业务数据，只清空会话表。
     sessions.clear();
@@ -2050,6 +2435,1130 @@ function handleObject(req, res, pathname) {
   });
   res.end(payload);
   return true;
+}
+
+/**
+ * M04 分页响应。
+ *
+ * @param {object[]} items 全部条目
+ * @param {URLSearchParams} searchParams 查询参数
+ * @returns {object} PageMeta + items
+ */
+function m04Page(items, searchParams) {
+  const page = Math.max(1, Number(searchParams.get('page') ?? 1));
+  const size = Math.min(100, Math.max(1, Number(searchParams.get('size') ?? 20)));
+  const start = (page - 1) * size;
+  return {
+    page,
+    size,
+    total: items.length,
+    totalPages: items.length === 0 ? 0 : Math.ceil(items.length / size),
+    items: items.slice(start, start + size),
+  };
+}
+
+/**
+ * 平台管理员校验。
+ *
+ * @param {object} session 会话
+ * @returns {object|null} 403 响应或 null
+ */
+function requirePlatformAdmin(session) {
+  if (currentAccount(session)?.persona !== 'platform-admin') {
+    return problem(
+      403,
+      'RICCON-AUTH-403',
+      '没有权限',
+      '只有平台管理员可以管理模型网关与平台配额。',
+    );
+  }
+  return null;
+}
+
+/**
+ * 租户管理员校验；平台管理员访问租户只读端点同样拒绝。
+ *
+ * @param {object} session 会话
+ * @returns {object|null} 403 响应或 null
+ */
+function requireTenantAdmin(session) {
+  if (currentAccount(session)?.persona !== 'tenant-admin') {
+    return problem(403, 'RICCON-AUTH-403', '没有权限', '只有租户管理员可以读取本租户配额与成本。');
+  }
+  return null;
+}
+
+/**
+ * M04 错误态注入；只影响浏览器 E2E 的 5xx 状态。
+ *
+ * @param {string} kind 页面类型
+ * @param {string} code 稳定错误码
+ * @returns {object|null} 500 响应或 null
+ */
+function m04ScenarioError(kind, code) {
+  if (scenario !== `m04-${kind}-500`) {
+    return null;
+  }
+  return problem(500, code, '服务暂不可用', 'E2E 注入的 M04 错误态。');
+}
+
+/**
+ * 供应商响应。
+ *
+ * @param {object} provider 供应商
+ * @returns {object} OpenAPI ModelProvider
+ */
+function providerResponse(provider) {
+  const m04 = state.m04;
+  return {
+    id: provider.id,
+    code: provider.code,
+    name: provider.name,
+    protocol: provider.protocol,
+    baseUrl: provider.baseUrl,
+    environmentLabel: provider.environmentLabel,
+    allowed: provider.allowed,
+    activeCredentialCount: m04.credentials.filter(
+      (credential) => credential.providerId === provider.id && credential.status === 'ACTIVE',
+    ).length,
+    modelCount: m04.models.filter((model) => model.providerId === provider.id).length,
+    status: provider.status,
+  };
+}
+
+/**
+ * 平台模型响应。
+ *
+ * @param {object} model 模型
+ * @returns {object} OpenAPI AdminModel
+ */
+function adminModelResponse(model) {
+  const provider = state.m04.providers.find((item) => item.id === model.providerId);
+  const priced = model.inputPricePer1M !== null && model.outputPricePer1M !== null;
+  return {
+    id: model.id,
+    modelKey: model.modelKey,
+    displayName: model.displayName,
+    providerId: model.providerId,
+    providerCode: provider?.code ?? 'unknown',
+    environmentLabel: provider?.environmentLabel ?? 'PRODUCTION',
+    contextWindow: model.contextWindow,
+    maxOutputTokens: model.maxOutputTokens,
+    capabilities: model.capabilities ?? null,
+    inputPricePer1M: model.inputPricePer1M,
+    outputPricePer1M: model.outputPricePer1M,
+    priceCurrency: model.priceCurrency,
+    pricingStatus: priced ? 'PRICED' : 'UNPRICED',
+    status: model.status,
+  };
+}
+
+/**
+ * 员工可见模型；不返回 provider、价格或 baseUrl。
+ *
+ * @param {object} model 模型
+ * @returns {object} OpenAPI EmployeeModel
+ */
+function employeeModelResponse(model) {
+  return {
+    id: model.id,
+    modelKey: model.modelKey,
+    displayName: model.displayName,
+    contextWindow: model.contextWindow,
+    maxOutputTokens: model.maxOutputTokens,
+    capabilities: model.capabilities ?? null,
+    status: model.status,
+  };
+}
+
+/**
+ * 路由链响应。
+ *
+ * @param {string} purpose CHAT|REPORT
+ * @returns {object} OpenAPI ModelRouting
+ */
+function routingResponse(purpose) {
+  const chain = state.m04.routing[purpose];
+  const entries = chain.entries
+    .map((modelId, index) => {
+      const model = state.m04.models.find((item) => item.id === modelId);
+      if (!model) {
+        return null;
+      }
+      const provider = state.m04.providers.find((item) => item.id === model.providerId);
+      return {
+        position: index + 1,
+        modelId: model.id,
+        displayName: model.displayName,
+        status: model.status,
+        environmentLabel: provider?.environmentLabel ?? 'PRODUCTION',
+      };
+    })
+    .filter(Boolean);
+  return {
+    purpose,
+    version: chain.version,
+    entries,
+    updatedAt: chain.updatedAt,
+    updatedBy: chain.updatedBy,
+  };
+}
+
+/**
+ * 凭据掩码响应；永不返回 apiKey/ciphertext。
+ *
+ * @param {object} credential 凭据
+ * @param {boolean} [changed] 状态变更接口的结果
+ * @returns {object} OpenAPI ModelCredential
+ */
+function credentialResponse(credential, changed) {
+  return {
+    id: credential.id,
+    providerId: credential.providerId,
+    label: credential.label,
+    maskedHint: credential.maskedHint,
+    status: credential.status,
+    priority: credential.priority,
+    version: credential.version,
+    consecutiveFailures: credential.consecutiveFailures,
+    cooldownUntil: credential.cooldownUntil,
+    ...(changed === undefined ? {} : { changed }),
+    createdAt: credential.createdAt,
+    updatedAt: credential.updatedAt,
+    rotatedAt: credential.rotatedAt,
+    lastUsedAt: credential.lastUsedAt,
+  };
+}
+
+/**
+ * 网关开关响应。
+ *
+ * @returns {object} OpenAPI ModelGatewaySwitches
+ */
+function switchResponse() {
+  return { ...state.m04.switches };
+}
+
+/**
+ * 配额窗口响应。
+ *
+ * @param {object} daily 日窗口
+ * @param {object} monthly 月窗口
+ * @returns {object[]} 两个 QuotaWindowState
+ */
+function quotaWindows(daily, monthly) {
+  return [
+    {
+      window: 'DAILY',
+      limit: daily.limit,
+      used: daily.used,
+      resetsAt: M04_DAILY_RESET,
+      source: daily.source,
+    },
+    {
+      window: 'MONTHLY',
+      limit: monthly.limit,
+      used: monthly.used,
+      resetsAt: M04_MONTHLY_RESET,
+      source: monthly.source,
+    },
+  ];
+}
+
+/**
+ * 租户配额响应。
+ *
+ * @param {string} tenantId 租户代码
+ * @param {boolean} includeName 是否包含租户名
+ * @returns {object} OpenAPI TenantQuota
+ */
+function tenantQuotaResponse(tenantId, includeName) {
+  const quota = state.m04.tenantQuotas[tenantId] ?? {
+    daily: { limit: null, used: 0, source: 'DEPLOYMENT_DEFAULT' },
+    monthly: { limit: null, used: 0, source: 'DEPLOYMENT_DEFAULT' },
+  };
+  const tenant = state.tenants.find((item) => item.id === tenantId);
+  return {
+    tenantId,
+    tenantCode: tenantId,
+    tenantName: includeName ? (tenant?.name ?? null) : null,
+    windows: quotaWindows(quota.daily, quota.monthly),
+  };
+}
+
+/**
+ * 用户配额响应。
+ *
+ * @param {object} user 用户
+ * @returns {object} OpenAPI UserQuota
+ */
+function userQuotaResponse(user) {
+  const quota = state.m04.userQuotas[user.id] ?? {
+    daily: { limit: null, used: 0, source: 'DEPLOYMENT_DEFAULT' },
+    monthly: { limit: null, used: 0, source: 'DEPLOYMENT_DEFAULT' },
+  };
+  return {
+    userId: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    windows: quotaWindows(quota.daily, quota.monthly),
+  };
+}
+
+/**
+ * 成本 micros 转换；金额字符串按 6 位小数解析，避免浮点求和误差。
+ *
+ * @param {string|null} amount 金额
+ * @returns {number} micros
+ */
+function amountToMicros(amount) {
+  if (!amount) {
+    return 0;
+  }
+  const [integer, fraction = ''] = amount.split('.');
+  return Number(integer) * 1_000_000 + Number(fraction.padEnd(6, '0').slice(0, 6));
+}
+
+/**
+ * micros 转 6 位小数金额。
+ *
+ * @param {number} micros micros
+ * @returns {string} 金额
+ */
+function microsToAmount(micros) {
+  return (micros / 1_000_000).toFixed(6);
+}
+
+/**
+ * 成本聚合；按 groupBy 生成 buckets 与 totals。
+ *
+ * @param {object[]} invocations 调用
+ * @param {string} groupBy USER|MODEL|DAY|TENANT
+ * @param {boolean} tenantView 是否租户报告
+ * @returns {object} totals 与 items
+ */
+function costBuckets(invocations, groupBy, tenantView) {
+  const buckets = new Map();
+  const totals = {
+    currency: 'CNY',
+    amount: 0,
+    pricedCalls: 0,
+    unpricedCalls: 0,
+    usageUnknownCalls: 0,
+    currencyMismatchCalls: 0,
+    unbucketedCalls: 0,
+  };
+  for (const invocation of invocations) {
+    let key;
+    let extras;
+    if (groupBy === 'USER') {
+      key = invocation.userId;
+      extras = {
+        userId: invocation.userId,
+        userDisplayName: invocation.userDisplayName,
+        tenantId: tenantView ? null : invocation.tenantId,
+        tenantCode: tenantView ? null : invocation.tenantId,
+      };
+    } else if (groupBy === 'MODEL') {
+      key = invocation.modelId;
+      extras = {
+        modelId: invocation.modelId,
+        modelDisplayName: invocation.modelDisplayName,
+        tenantId: tenantView ? null : invocation.tenantId,
+        tenantCode: tenantView ? null : invocation.tenantId,
+      };
+    } else if (groupBy === 'DAY') {
+      key = invocation.day;
+      extras = {
+        day: invocation.day,
+        tenantId: tenantView ? null : invocation.tenantId,
+        tenantCode: tenantView ? null : invocation.tenantId,
+      };
+    } else {
+      key = invocation.tenantId;
+      extras = { tenantId: invocation.tenantId, tenantCode: invocation.tenantId };
+    }
+    if (!buckets.has(key)) {
+      buckets.set(key, {
+        key: String(key),
+        tenantId: null,
+        tenantCode: null,
+        modelId: null,
+        modelDisplayName: null,
+        ...(tenantView ? { userId: null, userDisplayName: null } : {}),
+        day: null,
+        amount: 0,
+        pricedCalls: 0,
+        unpricedCalls: 0,
+        usageUnknownCalls: 0,
+      });
+    }
+    const bucket = buckets.get(key);
+    if (extras.modelId !== undefined) {
+      bucket.modelId = extras.modelId;
+      bucket.modelDisplayName = extras.modelDisplayName;
+    }
+    if (extras.day !== undefined) {
+      bucket.day = extras.day;
+    }
+    if (tenantView && extras.userId !== undefined) {
+      bucket.userId = extras.userId;
+      bucket.userDisplayName = extras.userDisplayName;
+    }
+    if (!tenantView) {
+      bucket.tenantId = extras.tenantId;
+      bucket.tenantCode = extras.tenantCode;
+    }
+    if (invocation.pricingStatus === 'PRICED') {
+      bucket.pricedCalls += 1;
+      bucket.amount += amountToMicros(invocation.amount);
+      totals.pricedCalls += 1;
+      totals.amount += amountToMicros(invocation.amount);
+    } else if (invocation.pricingStatus === 'UNPRICED') {
+      bucket.unpricedCalls += 1;
+      totals.unpricedCalls += 1;
+    } else {
+      bucket.usageUnknownCalls += 1;
+      totals.usageUnknownCalls += 1;
+    }
+  }
+  const items = [...buckets.values()].map((bucket) => ({
+    ...bucket,
+    amount: microsToAmount(bucket.amount),
+  }));
+  return { totals: { ...totals, amount: microsToAmount(totals.amount) }, items };
+}
+
+/**
+ * 成本报告页。
+ *
+ * @param {object[]} invocations 调用
+ * @param {string} groupBy 聚合维度
+ * @param {boolean} tenantView 是否租户报告
+ * @param {URLSearchParams} searchParams 查询
+ * @returns {object} OpenAPI TenantCostReport / PlatformCostReport
+ */
+function costReport(invocations, groupBy, tenantView, searchParams) {
+  const { totals, items } = costBuckets(invocations, groupBy, tenantView);
+  const page = m04Page(items, searchParams);
+  return {
+    ...page,
+    from: searchParams.get('from') ?? '2026-10-23',
+    to: searchParams.get('to') ?? '2026-11-21',
+    groupBy,
+    currency: 'CNY',
+    currencyMinorUnit: 2,
+    disclaimer: M04_COST_DISCLAIMER,
+    totals,
+    items: page.items,
+  };
+}
+
+/**
+ * 成本明细响应。
+ *
+ * @param {object} invocation 调用
+ * @returns {object} OpenAPI CostInvocation
+ */
+function costInvocationResponse(invocation) {
+  return {
+    id: invocation.id,
+    modelId: invocation.modelId,
+    modelDisplayName: invocation.modelDisplayName,
+    userId: invocation.userId,
+    userDisplayName: invocation.userDisplayName,
+    startedAt: invocation.startedAt,
+    promptTokens: invocation.promptTokens,
+    completionTokens: invocation.completionTokens,
+    inputPricePer1M: invocation.inputPricePer1M,
+    outputPricePer1M: invocation.outputPricePer1M,
+    priceCurrency: invocation.priceCurrency,
+    amount: invocation.amount,
+    pricingStatus: invocation.pricingStatus,
+  };
+}
+
+/**
+ * 解析配额限额：null 表示明确不限，0 等价不限但仍为 EXPLICIT。
+ *
+ * @param {unknown} value 限额
+ * @returns {{limit: number|null, source: string}} 解析结果
+ * @throws {Error} 非法值
+ */
+function parseQuotaLimit(value) {
+  if (value === null) {
+    return { limit: null, source: 'EXPLICIT_UNLIMITED' };
+  }
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error('limit must be a non-negative integer or null');
+  }
+  return { limit: value, source: 'EXPLICIT' };
+}
+
+/**
+ * M04 API 路由；不属于 M02 stub 子集，只服务 B11a/B11b 的模型/配额/成本页面。
+ *
+ * @param {object} req Node 请求
+ * @param {object} res Node 响应
+ * @param {URL} url 解析后的 URL
+ * @param {Buffer} raw 请求体
+ * @param {object} session 会话
+ * @returns {boolean} 是否已处理
+ */
+function handleM04Api(req, res, url, raw, session) {
+  const { pathname, searchParams } = url;
+  const method = req.method ?? 'GET';
+  const m04 = state.m04;
+
+  // 员工可见模型目录：任何已登录角色可读，不返回价格/供应商。
+  if (pathname === '/api/v1/models' && method === 'GET') {
+    const items = m04.empty ? [] : m04.models.filter((model) => model.status === 'ACTIVE');
+    writeResult(res, json(m04Page(items.map(employeeModelResponse), searchParams)));
+    return true;
+  }
+
+  // ---------- 平台模型目录 ----------
+  if (pathname === '/api/v1/admin/model-providers' && method === 'GET') {
+    const forbidden = requirePlatformAdmin(session);
+    if (forbidden) {
+      writeResult(res, forbidden);
+      return true;
+    }
+    const failure = m04ScenarioError('providers', 'RICCON-MODEL-500');
+    if (failure) {
+      writeResult(res, failure);
+      return true;
+    }
+    writeResult(res, json(m04Page(m04.providers.map(providerResponse), searchParams)));
+    return true;
+  }
+  const providerMatch = /^\/api\/v1\/admin\/model-providers\/([^/]+)$/.exec(pathname);
+  if (providerMatch && method === 'PUT') {
+    const forbidden = requirePlatformAdmin(session);
+    if (forbidden) {
+      writeResult(res, forbidden);
+      return true;
+    }
+    const csrfError = requireCsrf(session, req);
+    if (csrfError) {
+      writeResult(res, csrfError);
+      return true;
+    }
+    const provider = m04.providers.find((item) => item.id === decodeURIComponent(providerMatch[1]));
+    if (!provider) {
+      writeResult(res, problem(404, 'RICCON-TENANT-404', '端点不存在', '端点不存在。'));
+      return true;
+    }
+    const body = readJson(raw);
+    if (body && Object.hasOwn(body, 'baseUrl')) {
+      const failure = problem(
+        400,
+        'RICCON-MODEL-400',
+        '参数无效',
+        'baseUrl 是部署管理字段，不可通过 API 修改。',
+      );
+      failure.body.reason = 'ENDPOINT_IMMUTABLE_DEPLOYMENT_MANAGED';
+      failure.body.field = 'baseUrl';
+      writeResult(res, failure);
+      return true;
+    }
+    if (body && Object.hasOwn(body, 'environmentLabel')) {
+      const failure = problem(
+        400,
+        'RICCON-MODEL-400',
+        '参数无效',
+        'environmentLabel 由部署配置管理。',
+      );
+      failure.body.reason = 'ENDPOINT_IMMUTABLE_DEPLOYMENT_MANAGED';
+      failure.body.field = 'environmentLabel';
+      writeResult(res, failure);
+      return true;
+    }
+    const name = typeof body?.name === 'string' ? body.name.trim() : '';
+    if (!name) {
+      writeResult(res, problem(400, 'RICCON-MODEL-400', '参数无效', 'name 不能为空。'));
+      return true;
+    }
+    provider.name = name;
+    writeResult(res, json(providerResponse(provider)));
+    return true;
+  }
+
+  if (pathname === '/api/v1/admin/models' && method === 'GET') {
+    const forbidden = requirePlatformAdmin(session);
+    if (forbidden) {
+      writeResult(res, forbidden);
+      return true;
+    }
+    const failure = m04ScenarioError('models', 'RICCON-MODEL-500');
+    if (failure) {
+      writeResult(res, failure);
+      return true;
+    }
+    writeResult(res, json(m04Page(m04.models.map(adminModelResponse), searchParams)));
+    return true;
+  }
+  const modelMatch = /^\/api\/v1\/admin\/models\/([^/]+)$/.exec(pathname);
+  if (modelMatch && method === 'PATCH') {
+    const forbidden = requirePlatformAdmin(session);
+    if (forbidden) {
+      writeResult(res, forbidden);
+      return true;
+    }
+    const csrfError = requireCsrf(session, req);
+    if (csrfError) {
+      writeResult(res, csrfError);
+      return true;
+    }
+    const model = m04.models.find((item) => item.id === decodeURIComponent(modelMatch[1]));
+    if (!model) {
+      writeResult(res, problem(404, 'RICCON-TENANT-404', '模型不存在', '模型不存在。'));
+      return true;
+    }
+    const body = readJson(raw);
+    if (!['ACTIVE', 'DISABLED'].includes(body?.status)) {
+      writeResult(
+        res,
+        problem(400, 'RICCON-MODEL-400', '参数无效', 'status 必须是 ACTIVE 或 DISABLED。'),
+      );
+      return true;
+    }
+    model.status = body.status;
+    model.updatedAt = new Date().toISOString();
+    writeResult(res, json(adminModelResponse(model)));
+    return true;
+  }
+
+  // ---------- 路由链 ----------
+  if (pathname === '/api/v1/admin/model-routing' && method === 'GET') {
+    const forbidden = requirePlatformAdmin(session);
+    if (forbidden) {
+      writeResult(res, forbidden);
+      return true;
+    }
+    const failure = m04ScenarioError('routing', 'RICCON-MODEL-500');
+    if (failure) {
+      writeResult(res, failure);
+      return true;
+    }
+    writeResult(res, json({ items: [routingResponse('CHAT'), routingResponse('REPORT')] }));
+    return true;
+  }
+  const routingMatch = /^\/api\/v1\/admin\/model-routing\/([^/]+)$/.exec(pathname);
+  if (routingMatch && method === 'PUT') {
+    const forbidden = requirePlatformAdmin(session);
+    if (forbidden) {
+      writeResult(res, forbidden);
+      return true;
+    }
+    const csrfError = requireCsrf(session, req);
+    if (csrfError) {
+      writeResult(res, csrfError);
+      return true;
+    }
+    const purpose = decodeURIComponent(routingMatch[1]).toUpperCase();
+    if (!['CHAT', 'REPORT'].includes(purpose)) {
+      writeResult(
+        res,
+        problem(400, 'RICCON-MODEL-400', '参数无效', 'purpose 必须是 CHAT 或 REPORT。'),
+      );
+      return true;
+    }
+    const body = readJson(raw);
+    if (!body || !Number.isInteger(body.version) || !Array.isArray(body.modelIds)) {
+      writeResult(res, problem(400, 'RICCON-MODEL-400', '参数无效', 'version 与 modelIds 必填。'));
+      return true;
+    }
+    const chain = m04.routing[purpose];
+    if (body.version !== chain.version) {
+      const failure = problem(409, 'RICCON-MODEL-409', '版本冲突', '路由配置已被其他管理员修改。');
+      failure.body.reason = 'VERSION_CONFLICT';
+      failure.body.currentVersion = chain.version;
+      writeResult(res, failure);
+      return true;
+    }
+    if (body.modelIds.length < 1 || body.modelIds.length > 20) {
+      writeResult(
+        res,
+        problem(400, 'RICCON-MODEL-400', '参数无效', '路由链必须包含 1..20 个模型。'),
+      );
+      return true;
+    }
+    const unique = new Set(body.modelIds);
+    if (unique.size !== body.modelIds.length) {
+      writeResult(res, problem(400, 'RICCON-MODEL-400', '参数无效', '路由链模型不能重复。'));
+      return true;
+    }
+    for (const modelId of body.modelIds) {
+      if (!m04.models.some((model) => model.id === modelId)) {
+        const failure = problem(400, 'RICCON-MODEL-400', '参数无效', '路由链包含未知模型。');
+        failure.body.reason = 'UNKNOWN_MODEL';
+        writeResult(res, failure);
+        return true;
+      }
+    }
+    chain.entries = [...body.modelIds];
+    chain.version += 1;
+    chain.updatedAt = new Date().toISOString();
+    chain.updatedBy = currentAccount(session)?.userId ?? null;
+    writeResult(res, json(routingResponse(purpose)));
+    return true;
+  }
+
+  // ---------- key 池 ----------
+  const credentialsMatch =
+    /^\/api\/v1\/admin\/model-providers\/([^/]+)\/credentials(?:\/([^/]+)(?:\/(rotate|disable|enable))?)?$/.exec(
+      pathname,
+    );
+  if (credentialsMatch) {
+    const forbidden = requirePlatformAdmin(session);
+    if (forbidden) {
+      writeResult(res, forbidden);
+      return true;
+    }
+    const providerId = decodeURIComponent(credentialsMatch[1]);
+    const credentialId = credentialsMatch[2] ? decodeURIComponent(credentialsMatch[2]) : null;
+    const action = credentialsMatch[3] ?? null;
+    const provider = m04.providers.find((item) => item.id === providerId);
+    if (!provider) {
+      writeResult(res, problem(404, 'RICCON-TENANT-404', '端点不存在', '端点不存在。'));
+      return true;
+    }
+    if (!credentialId && method === 'GET') {
+      const failure = m04ScenarioError('credentials', 'RICCON-MODEL-500');
+      if (failure) {
+        writeResult(res, failure);
+        return true;
+      }
+      const items = m04.credentials.filter((credential) => credential.providerId === providerId);
+      writeResult(
+        res,
+        json(
+          m04Page(
+            items.map((item) => credentialResponse(item)),
+            searchParams,
+          ),
+        ),
+      );
+      return true;
+    }
+    const csrfError = requireCsrf(session, req);
+    if (csrfError) {
+      writeResult(res, csrfError);
+      return true;
+    }
+    if (!credentialId && method === 'POST') {
+      const body = readJson(raw);
+      const label = typeof body?.label === 'string' ? body.label.trim() : '';
+      const apiKey = typeof body?.apiKey === 'string' ? body.apiKey : '';
+      const priority = body?.priority ?? 100;
+      if (!label || label.length > 64) {
+        writeResult(res, problem(400, 'RICCON-MODEL-400', '参数无效', 'label 必须为 1..64 字符。'));
+        return true;
+      }
+      if (apiKey.length < 16 || apiKey.length > 512) {
+        writeResult(
+          res,
+          problem(400, 'RICCON-MODEL-400', '参数无效', 'apiKey 必须为 16..512 字符。'),
+        );
+        return true;
+      }
+      if (!Number.isInteger(priority) || priority < 1 || priority > 1000) {
+        writeResult(res, problem(400, 'RICCON-MODEL-400', '参数无效', 'priority 必须为 1..1000。'));
+        return true;
+      }
+      if (m04.credentials.some((credential) => credential.apiKey === apiKey)) {
+        const failure = problem(409, 'RICCON-MODEL-409', '凭据冲突', '相同 key 已存在。');
+        failure.body.reason = 'DUPLICATE_CREDENTIAL';
+        writeResult(res, failure);
+        return true;
+      }
+      const now = new Date().toISOString();
+      const credential = {
+        id: nextId('credential'),
+        providerId,
+        label,
+        apiKey,
+        maskedHint: `****${apiKey.slice(-4)}`,
+        status: 'ACTIVE',
+        priority,
+        version: 1,
+        consecutiveFailures: 0,
+        cooldownUntil: null,
+        createdAt: now,
+        updatedAt: now,
+        rotatedAt: null,
+        lastUsedAt: null,
+      };
+      m04.credentials.push(credential);
+      writeResult(res, json(credentialResponse(credential), 201));
+      return true;
+    }
+    const credential = m04.credentials.find(
+      (item) => item.providerId === providerId && item.id === credentialId,
+    );
+    if (!credential) {
+      writeResult(res, problem(404, 'RICCON-TENANT-404', '凭据不存在', '凭据不存在。'));
+      return true;
+    }
+    const body = action === 'rotate' ? readJson(raw) : null;
+    if (action === 'rotate' && method === 'POST') {
+      const apiKey = typeof body?.apiKey === 'string' ? body.apiKey : '';
+      if (apiKey.length < 16 || apiKey.length > 512) {
+        writeResult(
+          res,
+          problem(400, 'RICCON-MODEL-400', '参数无效', 'apiKey 必须为 16..512 字符。'),
+        );
+        return true;
+      }
+      if (m04.credentials.some((item) => item.apiKey === apiKey)) {
+        const failure = problem(409, 'RICCON-MODEL-409', '凭据冲突', '相同 key 已存在。');
+        failure.body.reason = 'DUPLICATE_CREDENTIAL';
+        writeResult(res, failure);
+        return true;
+      }
+      const now = new Date().toISOString();
+      credential.status = 'DISABLED';
+      credential.updatedAt = now;
+      const rotated = {
+        ...credential,
+        id: nextId('credential'),
+        label:
+          typeof body?.label === 'string' && body.label.trim()
+            ? body.label.trim()
+            : credential.label,
+        apiKey,
+        maskedHint: `****${apiKey.slice(-4)}`,
+        status: 'ACTIVE',
+        version: credential.version + 1,
+        consecutiveFailures: 0,
+        cooldownUntil: null,
+        createdAt: now,
+        updatedAt: now,
+        rotatedAt: now,
+        lastUsedAt: null,
+      };
+      m04.credentials.push(rotated);
+      writeResult(res, json(credentialResponse(rotated, true)));
+      return true;
+    }
+    if (action === 'disable' && method === 'POST') {
+      if (credential.status === 'DISABLED') {
+        writeResult(res, json(credentialResponse(credential, false)));
+        return true;
+      }
+      credential.status = 'DISABLED';
+      credential.version += 1;
+      credential.updatedAt = new Date().toISOString();
+      writeResult(res, json(credentialResponse(credential, true)));
+      return true;
+    }
+    if (action === 'enable' && method === 'POST') {
+      if (credential.status === 'ACTIVE') {
+        writeResult(res, json(credentialResponse(credential, false)));
+        return true;
+      }
+      credential.status = 'ACTIVE';
+      credential.version += 1;
+      credential.consecutiveFailures = 0;
+      credential.cooldownUntil = null;
+      credential.updatedAt = new Date().toISOString();
+      writeResult(res, json(credentialResponse(credential, true)));
+      return true;
+    }
+    writeResult(res, problem(404, 'RICCON-NOT-FOUND', '接口不存在', '凭据子操作不存在。'));
+    return true;
+  }
+
+  // ---------- 网关开关 ----------
+  if (pathname === '/api/v1/admin/model-gateway/switches' && method === 'GET') {
+    const forbidden = requirePlatformAdmin(session);
+    if (forbidden) {
+      writeResult(res, forbidden);
+      return true;
+    }
+    const failure = m04ScenarioError('switches', 'RICCON-MODEL-500');
+    if (failure) {
+      writeResult(res, failure);
+      return true;
+    }
+    if (scenario === 'm04-switches-env-override') {
+      m04.switches.source = 'ENVIRONMENT';
+      m04.switches.envOverride = { routingMode: 'BASELINE' };
+    }
+    writeResult(res, json(switchResponse()));
+    return true;
+  }
+  if (pathname === '/api/v1/admin/model-gateway/switches' && method === 'PUT') {
+    const forbidden = requirePlatformAdmin(session);
+    if (forbidden) {
+      writeResult(res, forbidden);
+      return true;
+    }
+    const csrfError = requireCsrf(session, req);
+    if (csrfError) {
+      writeResult(res, csrfError);
+      return true;
+    }
+    if (scenario === 'm04-switches-env-override' || m04.switches.source === 'ENVIRONMENT') {
+      const failure = problem(
+        409,
+        'RICCON-MODEL-409',
+        '环境变量覆盖生效',
+        '部署环境覆盖开关时不可在线修改。',
+      );
+      failure.body.reason = 'ENV_OVERRIDE_ACTIVE';
+      writeResult(res, failure);
+      return true;
+    }
+    const body = readJson(raw);
+    if (
+      !body ||
+      !Number.isInteger(body.version) ||
+      !['ROUTED', 'BASELINE'].includes(body.routingMode) ||
+      typeof body.failoverEnabled !== 'boolean' ||
+      typeof body.quotaEnforcementEnabled !== 'boolean'
+    ) {
+      writeResult(res, problem(400, 'RICCON-MODEL-400', '参数无效', '开关请求字段不完整。'));
+      return true;
+    }
+    if (body.version !== m04.switches.version) {
+      const failure = problem(409, 'RICCON-MODEL-409', '版本冲突', '开关已被其他管理员修改。');
+      failure.body.reason = 'VERSION_CONFLICT';
+      writeResult(res, failure);
+      return true;
+    }
+    m04.switches = {
+      routingMode: body.routingMode,
+      failoverEnabled: body.failoverEnabled,
+      quotaEnforcementEnabled: body.quotaEnforcementEnabled,
+      version: m04.switches.version + 1,
+      source: 'DATABASE',
+      envOverride: null,
+      updatedAt: new Date().toISOString(),
+      updatedBy: currentAccount(session)?.userId ?? null,
+    };
+    writeResult(res, json(switchResponse()));
+    return true;
+  }
+
+  // ---------- 配额 ----------
+  if (pathname === '/api/v1/quotas' && method === 'GET') {
+    const forbidden = requireTenantAdmin(session);
+    if (forbidden) {
+      writeResult(res, forbidden);
+      return true;
+    }
+    const failure = m04ScenarioError('quota', 'RICCON-QUOTA-503');
+    if (failure) {
+      writeResult(res, failure);
+      return true;
+    }
+    writeResult(res, json(tenantQuotaResponse(currentAccount(session).tenantId, false)));
+    return true;
+  }
+  if (pathname === '/api/v1/quotas/users' && method === 'GET') {
+    const forbidden = requireTenantAdmin(session);
+    if (forbidden) {
+      writeResult(res, forbidden);
+      return true;
+    }
+    const failure = m04ScenarioError('quota', 'RICCON-QUOTA-503');
+    if (failure) {
+      writeResult(res, failure);
+      return true;
+    }
+    const tenantId = currentAccount(session).tenantId;
+    const users = state.users.filter(
+      (user) => user.tenantId === tenantId && !targetM04Excluded(user),
+    );
+    writeResult(res, json(m04Page(users.map(userQuotaResponse), searchParams)));
+    return true;
+  }
+  if (pathname === '/api/v1/admin/quotas' && method === 'GET') {
+    const forbidden = requirePlatformAdmin(session);
+    if (forbidden) {
+      writeResult(res, forbidden);
+      return true;
+    }
+    const failure = m04ScenarioError('quota', 'RICCON-QUOTA-503');
+    if (failure) {
+      writeResult(res, failure);
+      return true;
+    }
+    const rows = m04.empty
+      ? []
+      : state.tenants
+          .filter((tenant) => tenant.id !== M03_PLATFORM_TENANT)
+          .map((tenant) => tenantQuotaResponse(tenant.id, true));
+    writeResult(res, json(m04Page(rows, searchParams)));
+    return true;
+  }
+  const tenantQuotaMatch = /^\/api\/v1\/admin\/tenants\/([^/]+)\/quotas$/.exec(pathname);
+  if (tenantQuotaMatch && method === 'PUT') {
+    const forbidden = requirePlatformAdmin(session);
+    if (forbidden) {
+      writeResult(res, forbidden);
+      return true;
+    }
+    const csrfError = requireCsrf(session, req);
+    if (csrfError) {
+      writeResult(res, csrfError);
+      return true;
+    }
+    const tenantId = decodeURIComponent(tenantQuotaMatch[1]);
+    const tenant = state.tenants.find((item) => item.id === tenantId);
+    if (!tenant) {
+      writeResult(res, problem(404, 'RICCON-TENANT-404', '租户不存在', '目标租户不存在。'));
+      return true;
+    }
+    if (tenant.status !== 'ACTIVE') {
+      writeResult(res, problem(409, 'RICCON-QUOTA-409', '租户已暂停', '停用租户不可修改配额。'));
+      return true;
+    }
+    try {
+      const body = readJson(raw);
+      const daily = parseQuotaLimit(body?.limits?.daily ?? null);
+      const monthly = parseQuotaLimit(body?.limits?.monthly ?? null);
+      m04.tenantQuotas[tenantId] = { daily, monthly };
+    } catch (error) {
+      writeResult(res, problem(400, 'RICCON-QUOTA-400', '参数无效', String(error)));
+      return true;
+    }
+    writeResult(res, json(tenantQuotaResponse(tenantId, true)));
+    return true;
+  }
+  const userQuotaMatch = /^\/api\/v1\/admin\/tenants\/([^/]+)\/users\/([^/]+)\/quotas$/.exec(
+    pathname,
+  );
+  if (userQuotaMatch && method === 'PUT') {
+    const forbidden = requirePlatformAdmin(session);
+    if (forbidden) {
+      writeResult(res, forbidden);
+      return true;
+    }
+    const csrfError = requireCsrf(session, req);
+    if (csrfError) {
+      writeResult(res, csrfError);
+      return true;
+    }
+    const tenantId = decodeURIComponent(userQuotaMatch[1]);
+    const userId = decodeURIComponent(userQuotaMatch[2]);
+    const tenant = state.tenants.find((item) => item.id === tenantId);
+    if (!tenant) {
+      writeResult(res, problem(404, 'RICCON-TENANT-404', '租户不存在', '目标租户不存在。'));
+      return true;
+    }
+    const user = state.users.find((item) => item.tenantId === tenantId && item.id === userId);
+    if (!user) {
+      writeResult(res, problem(404, 'RICCON-TENANT-404', '用户不存在', '目标用户不属于该租户。'));
+      return true;
+    }
+    try {
+      const body = readJson(raw);
+      const daily = parseQuotaLimit(body?.limits?.daily ?? null);
+      const monthly = parseQuotaLimit(body?.limits?.monthly ?? null);
+      m04.userQuotas[user.id] = { tenantId, daily, monthly };
+    } catch (error) {
+      writeResult(res, problem(400, 'RICCON-QUOTA-400', '参数无效', String(error)));
+      return true;
+    }
+    writeResult(res, json(userQuotaResponse(user)));
+    return true;
+  }
+
+  // ---------- 成本 ----------
+  if (pathname === '/api/v1/costs' && method === 'GET') {
+    const forbidden = requireTenantAdmin(session);
+    if (forbidden) {
+      writeResult(res, forbidden);
+      return true;
+    }
+    const failure = m04ScenarioError('cost', 'RICCON-COST-503');
+    if (failure) {
+      writeResult(res, failure);
+      return true;
+    }
+    const groupBy = searchParams.get('groupBy') ?? 'DAY';
+    if (!['USER', 'MODEL', 'DAY'].includes(groupBy)) {
+      writeResult(
+        res,
+        problem(400, 'RICCON-COST-400', '参数无效', 'groupBy 必须是 USER/MODEL/DAY。'),
+      );
+      return true;
+    }
+    const tenantId = currentAccount(session).tenantId;
+    const invocations = m04.costInvocations.filter((item) => item.tenantId === tenantId);
+    writeResult(res, json(costReport(invocations, groupBy, true, searchParams)));
+    return true;
+  }
+  if (pathname === '/api/v1/costs/invocations' && method === 'GET') {
+    const forbidden = requireTenantAdmin(session);
+    if (forbidden) {
+      writeResult(res, forbidden);
+      return true;
+    }
+    const failure = m04ScenarioError('cost', 'RICCON-COST-503');
+    if (failure) {
+      writeResult(res, failure);
+      return true;
+    }
+    const tenantId = currentAccount(session).tenantId;
+    const userId = searchParams.get('userId');
+    const modelId = searchParams.get('modelId');
+    let invocations = m04.costInvocations.filter((item) => item.tenantId === tenantId);
+    if (userId) {
+      if (!state.users.some((user) => user.tenantId === tenantId && user.id === userId)) {
+        writeResult(res, problem(404, 'RICCON-TENANT-404', '用户不存在', '目标用户不属于本租户。'));
+        return true;
+      }
+      invocations = invocations.filter((item) => item.userId === userId);
+    }
+    if (modelId) {
+      invocations = invocations.filter((item) => item.modelId === modelId);
+    }
+    writeResult(res, json(m04Page(invocations.map(costInvocationResponse), searchParams)));
+    return true;
+  }
+  if (pathname === '/api/v1/admin/costs' && method === 'GET') {
+    const forbidden = requirePlatformAdmin(session);
+    if (forbidden) {
+      writeResult(res, forbidden);
+      return true;
+    }
+    const failure = m04ScenarioError('cost', 'RICCON-COST-503');
+    if (failure) {
+      writeResult(res, failure);
+      return true;
+    }
+    const groupBy = searchParams.get('groupBy') ?? 'TENANT';
+    if (!['TENANT', 'MODEL', 'DAY'].includes(groupBy)) {
+      writeResult(
+        res,
+        problem(400, 'RICCON-COST-400', '参数无效', 'groupBy 必须是 TENANT/MODEL/DAY。'),
+      );
+      return true;
+    }
+    const tenantFilter = searchParams.get('tenantId');
+    let invocations = m04.costInvocations;
+    if (tenantFilter) {
+      invocations = invocations.filter((item) => item.tenantId === tenantFilter);
+    }
+    writeResult(res, json(costReport(invocations, groupBy, false, searchParams)));
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * 过滤 M04 页面不应展示的合成用户（OIDC 脱敏账号只用于 M15）。
+ *
+ * @param {object} user 用户
+ * @returns {boolean} 是否排除
+ */
+function targetM04Excluded(user) {
+  return user.username === 'oidc-alpha' || user.username === 'oidc-beta';
 }
 
 /**
@@ -2168,9 +3677,7 @@ function canManageDepartment(account, department) {
   if (!account || !department || department.tenantId !== account.tenantId) {
     return false;
   }
-  return (
-    account.persona === 'tenant-admin' || department.managerUserId === account.userId
-  );
+  return account.persona === 'tenant-admin' || department.managerUserId === account.userId;
 }
 
 /**
@@ -2294,9 +3801,7 @@ function manageableDepartmentWorkspaces(account, department) {
  * @returns 用户列表
  */
 function tenantUsers(tenantId) {
-  return state.users.filter(
-    (user) => user.tenantId === tenantId && user.status === 'ACTIVE',
-  );
+  return state.users.filter((user) => user.tenantId === tenantId && user.status === 'ACTIVE');
 }
 
 /**
@@ -2589,10 +4094,16 @@ function handleApi(req, res, url, raw) {
     return true;
   }
 
+  // ---------- M04：模型路由/key/配额/成本（B11a/B11b 复用） ----------
+  if (handleM04Api(req, res, url, raw, session)) {
+    return true;
+  }
+
   // ---------- M03：平台部门管理 ----------
-  const adminTenantMatch = /^\/api\/v1\/admin\/tenants\/([^/]+)\/departments(?:\/([^/]+))?(?:\/(disable|enable|members|manager))?(?:\/([^/]+))?$/.exec(
-    pathname,
-  );
+  const adminTenantMatch =
+    /^\/api\/v1\/admin\/tenants\/([^/]+)\/departments(?:\/([^/]+))?(?:\/(disable|enable|members|manager))?(?:\/([^/]+))?$/.exec(
+      pathname,
+    );
   if (pathname === '/api/v1/admin/tenants' && method === 'GET') {
     const account = currentAccount(session);
     if (account?.persona !== 'platform-admin') {
@@ -2703,9 +4214,7 @@ function handleApi(req, res, url, raw) {
       return true;
     }
 
-    const department = departmentId
-      ? findDepartment(tenantId, departmentId)
-      : null;
+    const department = departmentId ? findDepartment(tenantId, departmentId) : null;
     if (!department) {
       writeResult(
         res,
@@ -2735,8 +4244,7 @@ function handleApi(req, res, url, raw) {
       }
       if (
         state.departments.some(
-          (item) =>
-            item.tenantId === tenantId && item.id !== department.id && item.name === name,
+          (item) => item.tenantId === tenantId && item.id !== department.id && item.name === name,
         )
       ) {
         writeResult(
@@ -2809,10 +4317,7 @@ function handleApi(req, res, url, raw) {
         return true;
       }
       if (department.managerUserId === suffix) {
-        writeResult(
-          res,
-          problem(409, 'RICCON-DEPT-409', '负责人不能移出', '请先移交负责人。'),
-        );
+        writeResult(res, problem(409, 'RICCON-DEPT-409', '负责人不能移出', '请先移交负责人。'));
         return true;
       }
       const user = state.users.find((item) => item.id === suffix);
@@ -2866,8 +4371,7 @@ function handleApi(req, res, url, raw) {
     const department = findDepartment(account?.tenantId, departmentId);
     const user = state.users.find((item) => item.id === account?.userId);
     const allowed =
-      department &&
-      (account.persona === 'tenant-admin' || user?.departmentId === departmentId);
+      department && (account.persona === 'tenant-admin' || user?.departmentId === departmentId);
     if (!allowed) {
       writeResult(res, problem(404, 'RICCON-TENANT-404', '部门不存在', '部门不存在。'));
       return true;
@@ -3137,10 +4641,7 @@ function handleApi(req, res, url, raw) {
       }
       const existing = state.workspaceMembers[workspace.id] ?? [];
       if (existing.includes(user.id)) {
-        writeResult(
-          res,
-          problem(409, 'RICCON-DEPT-409', '成员已存在', '该账号已是空间显式成员。'),
-        );
+        writeResult(res, problem(409, 'RICCON-DEPT-409', '成员已存在', '该账号已是空间显式成员。'));
         return true;
       }
       state.workspaceMembers[workspace.id] = [...existing, user.id];
