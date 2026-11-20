@@ -320,13 +320,13 @@ budget:
 
 ### MCP
 
-| MCP          | 使用者                       | 用途                                                          | 约束                                                                       |
-| ------------ | ---------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `antd`       | builder（前端）、verifier    | antd 6 / Pro 6 / X 的组件 API、demo、changelog                | 组件 API 以 MCP 为准，不凭记忆写                                           |
-| `context7`   | 全员                         | Spring Boot 4.1、Spring AI 2.0、agentscope-java、Umi/Pro 文档 | 先查当前版本文档，再看代码                                                 |
-| `playwright` | verifier                     | E2E、截图、可访问性快照                                       | 只在 sandbox/preview 环境操作                                              |
-| `codegraph`  | architect、builder、verifier | 符号、调用链、影响面                                          | 需在仓库根执行一次 `codegraph init`                                        |
-| `serena`     | architect、builder、verifier | LSP 符号定位、引用查找、重命名与精确编辑                      | 会话开始 `activate_project` 并读 `initial_instructions`；与 codegraph 分工 |
+| MCP          | 使用者                                     | 用途                                                          | 约束                                                                                                             |
+| ------------ | ------------------------------------------ | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `antd`       | builder（前端）、verifier                  | antd 6 / Pro 6 / X 的组件 API、demo、changelog                | 组件 API 以 MCP 为准，不凭记忆写                                                                                 |
+| `context7`   | 全员                                       | Spring Boot 4.1、Spring AI 2.0、agentscope-java、Umi/Pro 文档 | 先查当前版本文档，再看代码                                                                                       |
+| `playwright` | verifier                                   | E2E、截图、可访问性快照                                       | 只在 sandbox/preview 环境操作                                                                                    |
+| `codegraph`  | architect、builder、verifier               | 符号、调用链、影响面                                          | 需在仓库根执行一次 `codegraph init`                                                                              |
+| `serena`     | lead（只读）、architect、builder、verifier | LSP 符号定位、引用查找、重命名与精确编辑                      | 会话开始 `initial_instructions` + `activate_project`；代码任务默认 Serena；与 codegraph 分工；回执记录使用或降级 |
 
 ### Skills
 
@@ -350,28 +350,30 @@ budget:
 - `opencode`：仅当需要修改团队配置或排查 OpenCode 自身行为时加载。
 
 <!-- riccon:team:start -->
+
 ## 内容索引
 
 本文件保留合同和硬规则；详细协作规则按下面索引读取。开始或恢复任何模块前，必须读 Project Contract 和 `docs/COLLABORATION.md`。
 
-| 内容 | 位置 |
-|---|---|
-| 技术栈、命令、工具、DoD、预算 | `AGENTS.md#project-contract` |
-| 角色边界、模块/任务生命周期、验收顺序、评审、证据 | `docs/COLLABORATION.md` |
-| 产品目标、用户、MVC、non-goals、AC | `docs/PRODUCT.md` |
-| 架构、数据模型、API/事件契约、ADR | `docs/ARCHITECTURE.md`、`docs/adr/` |
-| 编码规范、注释、覆盖率门槛 | `docs/CODING-STANDARDS.md` |
-| 产品验收和用户验收 | `docs/ACCEPTANCE.md` |
-| 运行、部署、回滚 | `docs/RUNBOOK.md` |
-| 沙箱和隔离边界 | `docs/SANDBOX.md` |
-| 执行状态、任务、证据、评审、handoff | `.riccon/state.json` 和最新 handoff |
-| 团队内核、命令和 skills | 已安装的 `~/.config/opencode/riccon/` |
+| 内容                                              | 位置                                  |
+| ------------------------------------------------- | ------------------------------------- |
+| 技术栈、命令、工具、DoD、预算                     | `AGENTS.md#project-contract`          |
+| 角色边界、模块/任务生命周期、验收顺序、评审、证据 | `docs/COLLABORATION.md`               |
+| 产品目标、用户、MVC、non-goals、AC                | `docs/PRODUCT.md`                     |
+| 架构、数据模型、API/事件契约、ADR                 | `docs/ARCHITECTURE.md`、`docs/adr/`   |
+| 编码规范、注释、覆盖率门槛                        | `docs/CODING-STANDARDS.md`            |
+| 产品验收和用户验收                                | `docs/ACCEPTANCE.md`                  |
+| 运行、部署、回滚                                  | `docs/RUNBOOK.md`                     |
+| 沙箱和隔离边界                                    | `docs/SANDBOX.md`                     |
+| 执行状态、任务、证据、评审、handoff               | `.riccon/state.json` 和最新 handoff   |
+| 团队内核、命令和 skills                           | 已安装的 `~/.config/opencode/riccon/` |
 
 ## 硬规则
 
 以下规则即使不读详细文档也必须遵守；详细说明见 `docs/COLLABORATION.md`。
 
 - 合同是技术栈、命令、工具和约束的唯一事实源；合同里没有的目录、命令或工具不要假设。
+- 代码任务默认使用 Serena 做符号定位、引用查找、重命名与精确编辑；整体调用链/影响面用 CodeGraph。grep/read 仅用于非代码文件或 MCP 降级，并在任务回执与 `tools_used` 记录原因。
 - 每个任务都有 `write_scope` 和验收标准；不要静默扩大任何一项。并行 builder 使用实例 owner（例如 `riccon/builder-b2`）；同一 owner 同时只能有一个 `in_progress`，不要用 `--force` 绕过。
 - 先提交，再 `riccon evidence run`；strict 下 dirty 证据、空命令、占位命令和掩盖失败的写法不能让 gate 通过。模块 gate 的 `test` 和 `coverage` 优先共用同一条 coverage 全量 EV；长命令移到后台后结束回合等通知，禁止 `sleep`/`tail`/`ps` 轮询。
 - Product 的 brief/AC/non-goals 必须经过 Lead、用户、Architect、Verifier 的评审链；未批准不进入模块实现。
@@ -383,11 +385,18 @@ budget:
 - 产品范围、不可逆技术选择、生产发布、花钱和破坏性操作由用户拥有；其余授权给团队。
 - 文档、注释、commit message、决策包、评审包和 handoff 默认中文；代码注释必须中文，标识符、命令、字段名保持英文。
 - 所有时间默认北京时间（`Asia/Shanghai`，UTC+08:00）；数据库和 API/日志/UI 按合同约定使用带偏移时间。
+
 <!-- riccon:team:end -->
 
 ## 项目补充
 
 项目特定规则；不得削弱团队硬规则和 Project Contract。
+
+### 工具使用（Serena / CodeGraph）
+
+- 代码任务默认使用 Serena 做符号定位、引用查找、重命名与精确编辑；先 `initial_instructions` + `activate_project`，再 `s.lsp.find_symbol` / `find_referencing_symbols` / `rename_symbol` / `s.edit.replace_symbol_body`。整体调用链/影响面用 CodeGraph；grep/read 仅用于非代码文件或 MCP 降级，并在任务回执与 `tools_used` 记录原因。
+- 全量 Maven 测试期间不得同时激活/引导 Serena 的 Java LSP（JDT LS 会触碰 `target/`，与测试并发会污染类文件）；需要并行时先停 LSP，测完再恢复。
+- Verifier 在高风险代码任务评审中检查是否真正使用了符号工具；未用时要求说明降级理由。
 
 ### 时间与数据库
 

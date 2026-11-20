@@ -13,6 +13,14 @@
 
 任何人不能自我验收。高风险任务（认证、权限、迁移、并发、安全、AI 工具调用）在 done 前必须有独立 Verifier 评审。
 
+### 工具分工（代码任务）
+
+- **Serena**：Java/TS 符号级定位、引用查找、重命名与精确编辑。任务开始先 `initial_instructions` + `activate_project`；优先 `s.lsp.find_symbol`、`find_referencing_symbols`、`rename_symbol`、`s.edit.replace_symbol_body`，不要用大段 grep/read 代替符号级操作。
+- **CodeGraph**：整体调用链、影响面、模块关系；与 Serena 分工，不重复做符号搜索。
+- **grep/read**：只用于非代码文件、配置/文档，或 MCP 不可用时的降级；降级必须在任务回执和 `tools_used` 记录原因。
+- **回执**：任务回执列出实际使用的 `serena`/`codegraph` 操作；Verifier 在高风险代码任务评审中检查是否真正使用了符号工具，避免引用漏改。
+- **并发**：Serena 的 Java LSP 会在项目导入时触碰 `target/`；全量 Maven 测试期间不得同时激活/引导 Serena，避免并发构建污染。需要并行时先停 LSP，测完再恢复。
+
 ## 2. 开始与恢复
 
 1. 读 `.riccon/state.json`、最新 handoff、`AGENTS.md` 的 Project Contract 和本文件。
