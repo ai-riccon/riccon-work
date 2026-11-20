@@ -3,6 +3,13 @@ spring:
   flyway:
     enabled: true
     clean-disabled: true
+  # 全量套件会缓存多个 Spring 上下文；每个上下文默认 10 连接会超过 MySQL max_connections。
+  # 测试库为单线程/低并发用例，3 个连接足够；Quota 并发用例在自己的上下文里显式覆盖。
+  datasource:
+    hikari:
+      maximum-pool-size: 3
+      minimum-idle: 0
+      connection-timeout: 5000
   session:
     jdbc:
       initialize-schema: never

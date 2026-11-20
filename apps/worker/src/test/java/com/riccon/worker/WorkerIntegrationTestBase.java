@@ -218,7 +218,8 @@ public abstract class WorkerIntegrationTestBase {
             registry.add("spring.datasource.username", mysql::getUsername);
             registry.add("spring.datasource.password", mysql::getPassword);
         }
-        registry.add("spring.datasource.hikari.maximum-pool-size", () -> "8");
+        registry.add("spring.datasource.hikari.maximum-pool-size", () -> "3");
+        registry.add("spring.datasource.hikari.minimum-idle", () -> "0");
         registry.add("riccon.worker.storage.endpoint", WorkerIntegrationTestBase::storageEndpoint);
         registry.add("riccon.worker.storage.access-key", () -> S3_ACCESS_KEY);
         registry.add("riccon.worker.storage.secret-key", () -> S3_SECRET_KEY);
