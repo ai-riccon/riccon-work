@@ -1,36 +1,16 @@
 ---
-review_id: REV-M02-003
+review_id: REV-M02-004
+previous_review: REV-M02-003
 module_id: M02
 verifier: riccon/verifier
 reviewer:
   agent: riccon/verifier
-  session: ses_verifier_M02_TASK-0032_20261118
+  session: ses_e08d1b473ffezoltlVNmpba9tZ
   model: deepseek-v4.1-flash
   independent: true
+review_kind: module
+head_commit: cb977f98a493bfb7db9f9d4b02731ac62e195053
 verdict: pass
-dod:
-  acceptance: true
-  build: true
-  tests: true
-  coverage: true
-  e2e: true
-  review: true
-  docs: true
-  evidence: true
-dod_evidence:
-  acceptance:
-    - EV-0299
-    - EV-0298
-  build:
-    - EV-0289
-  tests:
-    - EV-0292
-  coverage:
-    - EV-0293
-  e2e:
-    - EV-0301
-  docs:
-    - EV-0297
 reviewed_evidence:
   - EV-0085
   - EV-0086
@@ -238,6 +218,30 @@ reviewed_evidence:
   - EV-0299
   - EV-0300
   - EV-0301
+  - EV-0491
+dod:
+  acceptance: true
+  build: true
+  tests: true
+  coverage: true
+  e2e: true
+  review: true
+  docs: true
+  evidence: true
+dod_evidence:
+  acceptance:
+    - EV-0299
+    - EV-0298
+  build:
+    - EV-0289
+  tests:
+    - EV-0491
+  coverage:
+    - EV-0491
+  e2e:
+    - EV-0301
+  docs:
+    - EV-0297
 findings:
   - id: F-001
     severity: P1
@@ -324,9 +328,24 @@ findings:
     title: "ADR-0009/ADR-0014 仍只描述预签名下载，未记录同源 content 读取路径"
     status: accepted
     evidence: "docs/adr/ADR-0009-tenant-isolation-enforcement.md、ADR-0014-m02-api-event-contract-and-sse.md；新增端点已在 contracts/openapi.yaml 记录，属增量路径，M03 文档收口时补充"
-created_at: "2026-11-18T13:09:58+08:00"
+  - id: REVALIDATION
+    severity: P3
+    status: fixed
+    title: "2026-11-20 用当前内核按合同 commands.test 重录 test/coverage；旧 review 归档为历史"
+    evidence: "EV-0491；旧 review REV-M02-003 归档于 .riccon/archive/reviews/M02-review-REV-M02-003.md"
+created_at: "2026-11-20T12:56:00+08:00"
 ---
 # M02 独立评审（复验 2）：云工作空间与办公协同闭环
+
+## 0. 回溯说明（2026-11-20）
+
+- **回溯原因**：DEC-0022 合并后合同 `commands.test` 改为 `./mvnw -q -T1C verify jacoco:report && pnpm -w test -- --coverage`；本模块旧 test EV（EV-0292）命令文本不再匹配，`gate check` 在 2026-11-20 以 `EV-0292 command does not match commands.test` 失败。代码未回归，属于证据/流程漂移。
+- **本次动作**：在当前 HEAD `cb977f9`（工作树干净）上用合同 `commands.test` 全量重跑一次，并按项目规则同时作为 `test` 与 `coverage` 证据：**EV-0491**（挂 TASK-0008），exit 0，`commit=cb977f98a493bfb7db9f9d4b02731ac62e195053`，`dirty=false`。
+- **本次实测**：Java 765 tests（api 453 / worker 263 / platform-common 33 / arch 12 / domain 4），failures 0、errors 0、skipped 0；前端 46 文件 384 tests passed、0 skipped；前端覆盖率 statements 87.8% / branches 80.75% / functions 84.63% / lines 87.71%；Maven `verify` 含 `jacoco:check` 通过。
+- **评审边界**：本次只重录 test/coverage 并复核证据链；J1/J2 E2E、真实栈、跨租户、审计 append-only、a11y/security 未重跑，仍绑定旧 EV（见正文 §3–§7），结论不扩大。旧 review `REV-M02-003` 原样归档在 `.riccon/archive/reviews/M02-review-REV-M02-003.md`。
+- **遗留（legacy）**：M02 是用户可见模块，但模块文件没有 `product_acceptance` 记录（Product 预验收/用户最终验收为 `not-recorded`）。本评审是独立技术验收，不替代 Product 预验收或用户验收；该流程缺口登记在 M18 回溯报告，由 Lead/Product 决定补录方式。
+- **findings 处理**：旧 findings 全部保留（P1 均已 `fixed`，P2/P3 为 accepted/open），状态未改；正文为旧评审原文，当前状态以 front matter 为准。
+
 
 - **Verdict：`pass`**。REV-M02-002 的两个开放问题均已修复并在真实栈复验：**F-012（P1）** 产物正文改走同源 `GET /api/v1/artifacts/{id}/versions/{v}/content`，浏览器正文渲染为分节 Markdown、下载真实成功（2156 字节）、无 CORS 错误且不再请求对象存储；**F-013（P2）** 审批拒绝进入终态后无需刷新即无“进行中”，且终态后详情轮询停止。
 - **范围**：M02-AC-01..16、合同命令、TASK-0008..0031 全部活动证据审计、真实栈 J1/J2 全链路、F-012/F-013 定向回归、跨租户、审计 append-only、a11y、安全扫描。

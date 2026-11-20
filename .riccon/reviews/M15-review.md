@@ -1,13 +1,15 @@
 ---
-review_id: REV-M15-001
+review_id: REV-M15-002
+previous_review: REV-M15-001
 module_id: M15
 verifier: riccon/verifier
 reviewer:
   agent: riccon/verifier
-  session: ses_verifier_M15_TASK-0086_20261119b
+  session: ses_e08d1b473ffezoltlVNmpba9tZ
   model: deepseek-v4.1-flash
   independent: true
 review_kind: module
+head_commit: cb977f98a493bfb7db9f9d4b02731ac62e195053
 verdict: pass
 reviewed_evidence:
   - EV-0449
@@ -22,6 +24,7 @@ reviewed_evidence:
   - EV-0486
   - EV-0488
   - EV-0489
+  - EV-0496
 dod:
   acceptance: true
   build: true
@@ -40,9 +43,9 @@ dod_evidence:
   build:
     - EV-0482
   tests:
-    - EV-0483
+    - EV-0496
   coverage:
-    - EV-0484
+    - EV-0496
   e2e:
     - EV-0485
   docs:
@@ -78,10 +81,25 @@ findings:
     status: accepted
     title: "两 issuer 真实栈夹具用测试 SQL 模拟历史 issuer"
     evidence: "绑定 API 只接受租户当前配置 issuer；夹具只写测试栈，不改变产品契约"
-created_at: "2026-11-20T00:08:00+08:00"
+  - id: REVALIDATION
+    severity: P3
+    status: fixed
+    title: "2026-11-20 用当前内核按合同 commands.test 重录 test/coverage；旧 review 归档为历史"
+    evidence: "EV-0496；旧 review REV-M15-001 归档于 .riccon/archive/reviews/M15-review-REV-M15-001.md"
+created_at: "2026-11-20T14:04:00+08:00"
 ---
 
 # REV-M15-001：M15（M10 验收补丁：来源 IdP 展示）模块独立验证
+
+## 0. 回溯说明（2026-11-20）
+
+- **回溯原因**：DEC-0022 合并后合同 `commands.test` 改为 `./mvnw -q -T1C verify jacoco:report && pnpm -w test -- --coverage`；本模块旧 test EV（EV-0483）命令文本不再匹配，`gate check` 在 2026-11-20 以 `EV-0483 command does not match commands.test` 失败。代码未回归，属于证据/流程漂移。
+- **本次动作**：在当前 HEAD `cb977f9`（工作树干净）上用合同 `commands.test` 全量重跑一次，并按项目规则同时作为 `test` 与 `coverage` 证据：**EV-0496**（挂 TASK-0084），exit 0，`commit=cb977f98a493bfb7db9f9d4b02731ac62e195053`，`dirty=false`。
+- **本次实测**：Java 765 tests（api 453 / worker 263 / platform-common 33 / arch 12 / domain 4），failures 0、errors 0、skipped 0；前端 46 文件 384 tests passed、0 skipped；前端覆盖率 statements 87.8% / branches 80.75% / functions 84.63% / lines 87.71%；Maven `verify` 含 `jacoco:check` 通过。
+- **评审边界**：本次只重录 test/coverage；真实栈 E2E 18 项、a11y、security、来源 IdP 展示与按钮可访问名称复验未重跑，仍绑定旧 EV（见正文 §2–§5），原结论不扩大。旧 review `REV-M15-001` 原样归档在 `.riccon/archive/reviews/M15-review-REV-M15-001.md`。
+- **Product 复验**：M15-AC-03 的 Product 复验不由本次技术回溯代替；本评审只恢复 gate 的证据链。
+- **findings 处理**：旧 findings 全部保留，状态未改（F-001/F-002/F-004 fixed，F-003/F-005/F-006 accepted）；正文为旧评审原文，当前状态以 front matter 为准。
+
 
 ## 1. 结论
 

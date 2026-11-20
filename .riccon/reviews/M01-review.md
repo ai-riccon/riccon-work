@@ -1,42 +1,16 @@
 ---
-review_id: REV-M01-001
+review_id: REV-M01-002
+previous_review: REV-M01-001
 module_id: M01
 verifier: riccon/verifier
 reviewer:
   agent: riccon/verifier
-  session: ses_e171991cdffeJcrAMAd4tR4azl
+  session: ses_e08d1b473ffezoltlVNmpba9tZ
   model: deepseek-v4.1-flash
   independent: true
+review_kind: module
+head_commit: cb977f98a493bfb7db9f9d4b02731ac62e195053
 verdict: pass
-dod:
-  acceptance: true
-  build: true
-  tests: true
-  coverage: true
-  e2e: true
-  review: true
-  docs: true
-  evidence: true
-dod_evidence:
-  acceptance:
-    - EV-0069
-    - EV-0070
-    - EV-0073
-    - EV-0079
-    - EV-0081
-    - EV-0083
-    - EV-0084
-  build:
-    - EV-0070
-  tests:
-    - EV-0073
-  coverage:
-    - EV-0074
-  e2e:
-    - EV-0075
-  docs:
-    - EV-0081
-    - EV-0067
 reviewed_evidence:
   - EV-0001
   - EV-0002
@@ -96,12 +70,42 @@ reviewed_evidence:
   - EV-0082
   - EV-0083
   - EV-0084
+  - EV-0490
+dod:
+  acceptance: true
+  build: true
+  tests: true
+  coverage: true
+  e2e: true
+  review: true
+  docs: true
+  evidence: true
+dod_evidence:
+  acceptance:
+    - EV-0069
+    - EV-0070
+    - EV-0073
+    - EV-0079
+    - EV-0081
+    - EV-0083
+    - EV-0084
+  build:
+    - EV-0070
+  tests:
+    - EV-0490
+  coverage:
+    - EV-0490
+  e2e:
+    - EV-0075
+  docs:
+    - EV-0081
+    - EV-0067
 findings:
   - id: F-001
     severity: P2
     title: "前端覆盖率 7.69%/7.81%，低于合同 80/70；按 M01 骨架口径有条件接受，M02 gate 前必须补齐"
-    status: open
-    evidence: "EV-0074"
+    status: fixed
+    evidence: "EV-0490：前端 lines 87.71% / branches 80.75%，高于合同 80/70；M02 TASK-0009 已补组件测试与阈值"
   - id: F-002
     severity: P2
     title: "commands.security 失败：pnpm-lock 1 critical + 16 high，pom 1 high；CI 未运行该命令"
@@ -110,8 +114,8 @@ findings:
   - id: F-003
     severity: P3
     title: "前端覆盖率报告把生成代码 src/.umi-production 计入分母，与合同 coverage.exclude 不一致"
-    status: open
-    evidence: "EV-0074"
+    status: fixed
+    evidence: "EV-0490：报告不再包含 src/.umi-production；apps/web/vitest.config.ts:39-49 已排除生成目录"
   - id: F-004
     severity: P2
     title: "开发环境三页均出现 Umi overlay console TypeError；admin/login 同时有 antd 6 Alert message 废弃警告，E2E 未采集 console"
@@ -142,10 +146,23 @@ findings:
     title: "E2E 仅覆盖 /chat 与 /admin/overview 的 Chromium 桌面路径；登录页 axe、375px、键盘路径留待 M02-AC-16"
     status: open
     evidence: "EV-0075；EV-0078"
-created_at: 2026-11-17T10:01:18Z
+  - id: REVALIDATION
+    severity: P3
+    status: fixed
+    title: "2026-11-20 用当前内核按合同 commands.test 重录 test/coverage；旧 review 归档为历史"
+    evidence: "EV-0490；旧 review REV-M01-001 归档于 .riccon/archive/reviews/M01-review-REV-M01-001.md"
+created_at: "2026-11-20T12:40:00+08:00"
 ---
 
 # M01 独立评审：工程基线与 agentscope 冒烟
+
+## 0. 回溯说明（2026-11-20）
+
+- **回溯原因**：DEC-0022 合并后合同 `commands.test` 改为 `./mvnw -q -T1C verify jacoco:report && pnpm -w test -- --coverage`；本模块旧 test EV（EV-0073）命令文本不再匹配，`gate check` 在 2026-11-20 以 `EV-0073 command does not match commands.test` 失败。代码未回归，属于证据/流程漂移。
+- **本次动作**：在当前 HEAD `cb977f9`（工作树干净）上用合同 `commands.test` 全量重跑一次，并按项目规则同时作为 `test` 与 `coverage` 证据（合同 `commands.test` 与 `commands.coverage` 为同一条命令）：**EV-0490**，exit 0，`commit=cb977f98a493bfb7db9f9d4b02731ac62e195053`，`dirty=false`。
+- **本次实测**：Java 765 tests（api 453 / worker 263 / platform-common 33 / arch 12 / domain 4），failures 0、errors 0、skipped 0；前端 46 文件 384 tests passed、0 skipped；前端覆盖率 statements 87.8% / branches 80.75% / functions 84.63% / lines 87.71%；Maven `verify` 含 `jacoco:check` 通过。
+- **评审边界**：本次只重录 test/coverage 并复核证据链；未重跑 E2E/a11y/security（这些 DoD 项仍绑定旧 EV，未受影响，见正文 §2）。旧 review `REV-M01-001` 原样归档在 `.riccon/archive/reviews/M01-review-REV-M01-001.md`，未修改。
+- **findings 处理**：旧 findings 全部保留。F-001（前端覆盖率）与 F-003（生成代码计入分母）由本次 EV-0490 与当前 `apps/web/vitest.config.ts` 直接证明已修复，状态改为 `fixed`；其余 P2/P3 保持原状态，作为历史遗留由后续模块承接。正文 §5 的 findings 表是旧评审原文（历史快照），当前状态以 front matter 为准。
 
 - **Verdict**：`pass`（仅对 M01 基线；P2 已知风险必须进入 M02 gate）。
 - **范围**：M01 三条模块验收、合同命令、agentscope 2.0.5 五项冒烟、T4 威胁模型初稿、证据审计。

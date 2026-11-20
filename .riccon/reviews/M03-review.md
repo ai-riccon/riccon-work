@@ -1,13 +1,15 @@
 ---
-review_id: REV-M03-001
+review_id: REV-M03-002
+previous_review: REV-M03-001
 module_id: M03
 verifier: riccon/verifier
 reviewer:
   agent: riccon/verifier
-  session: ses_verifier_M03_TASK-0050_20261119
+  session: ses_e08d1b473ffezoltlVNmpba9tZ
   model: deepseek-v4.1-flash
   independent: true
 review_kind: module
+head_commit: cb977f98a493bfb7db9f9d4b02731ac62e195053
 verdict: pass
 reviewed_evidence:
   - EV-0306
@@ -33,6 +35,7 @@ reviewed_evidence:
   - EV-0347
   - EV-0348
   - EV-0349
+  - EV-0492
 dod:
   acceptance: true
   build: true
@@ -49,9 +52,9 @@ dod_evidence:
   build:
     - EV-0342
   tests:
-    - EV-0344
+    - EV-0492
   coverage:
-    - EV-0345
+    - EV-0492
   e2e:
     - EV-0346
   docs:
@@ -107,10 +110,24 @@ findings:
     status: accepted
     title: 'M02 TenantIsolationTest 未使用 @Tag("tenant-isolation")'
     evidence: "full verify 仍执行该测试；tag 过滤不会选中，后续测试整理补 tag"
-created_at: 2026-11-19T00:03:30+08:00
+  - id: REVALIDATION
+    severity: P3
+    status: fixed
+    title: "2026-11-20 用当前内核按合同 commands.test 重录 test/coverage；旧 review 归档为历史"
+    evidence: "EV-0492；旧 review REV-M03-001 归档于 .riccon/archive/reviews/M03-review-REV-M03-001.md"
+created_at: "2026-11-20T13:10:00+08:00"
 ---
 
 # M03 模块评审：权限纵深与组织模型
+
+## 0. 回溯说明（2026-11-20）
+
+- **回溯原因**：DEC-0022 合并后合同 `commands.test` 改为 `./mvnw -q -T1C verify jacoco:report && pnpm -w test -- --coverage`；本模块旧 test EV（EV-0344）命令文本不再匹配，`gate check` 在 2026-11-20 以 `EV-0344 command does not match commands.test` 失败。代码未回归，属于证据/流程漂移。
+- **本次动作**：在当前 HEAD `cb977f9`（工作树干净）上用合同 `commands.test` 全量重跑一次，并按项目规则同时作为 `test` 与 `coverage` 证据：**EV-0492**（挂 TASK-0033），exit 0，`commit=cb977f98a493bfb7db9f9d4b02731ac62e195053`，`dirty=false`。
+- **本次实测**：Java 765 tests（api 453 / worker 263 / platform-common 33 / arch 12 / domain 4），failures 0、errors 0、skipped 0；前端 46 文件 384 tests passed、0 skipped；前端覆盖率 statements 87.8% / branches 80.75% / functions 84.63% / lines 87.71%；Maven `verify` 含 `jacoco:check` 通过。
+- **评审边界**：本次只重录 test/coverage；M03 E2E、a11y、security、真实栈检查未重跑，仍绑定旧 EV（见正文“合同命令证据”表），原结论不扩大。旧 review `REV-M03-001` 原样归档在 `.riccon/archive/reviews/M03-review-REV-M03-001.md`。
+- **findings 处理**：旧 findings 全部保留，状态未改（P1 均已 fixed，P2/P3 为 accepted）；正文为旧评审原文，当前状态以 front matter 为准。
+
 
 ## 结论
 
