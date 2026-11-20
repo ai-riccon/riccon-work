@@ -1,11 +1,12 @@
 package com.riccon.worker.persistence;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
@@ -31,9 +32,12 @@ import org.springframework.stereotype.Component;
  * 生产发布顺序见 ADR-0021 §10.2：preflight → 备份 → 一次性迁移 Job → 新 API → drain 旧 Worker →
  * 新 Worker；V11 之后不得重启旧 Worker（回滚窗口以
  * {@code RICCON_WORKER_SCHEMA_VALIDATION_ENABLED=false} 启动并登记工单，仅 M04 前最后一个版本）。
+ *
+ * <p>回滚窗口：校验关闭时必须输出一次固定 WARN {@value #VALIDATION_DISABLED_WARN_CODE}，文案含
+ * {@code schema validation disabled}，供 B10 RUNBOOK 的启动日志断言识别；校验启用时绝不输出该 WARN，
+ * 行为与版本校验保持不变。
  */
 @Component
-@ConditionalOnProperty(name = "riccon.worker.schema.validation-enabled", havingValue = "true", matchIfMissing = true)
 @ConditionalOnBean(JdbcClient.class)
 public class SchemaVersionChecker implements ApplicationRunner {
 
@@ -43,28 +47,52 @@ public class SchemaVersionChecker implements ApplicationRunner {
     /** 稳定错误码前缀，启动失败日志只输出版本与错误码，不输出连接串。 */
     public static final String ERROR_CODE = "RICCON-WORKER-001";
 
+    /** 回滚窗口固定 WARN 码；仅 {@code validation-enabled=false} 时输出。 */
+    public static final String VALIDATION_DISABLED_WARN_CODE = "RICCON-WORKER-002";
+
     /** 日志记录器。 */
     private static final Logger LOG = LoggerFactory.getLogger(SchemaVersionChecker.class);
 
     /** 只读 Flyway 元数据表的 JDBC 客户端。 */
     private final JdbcClient jdbcClient;
 
+    /** 是否执行 schema 版本严格校验；false 仅用于回滚窗口。 */
+    private final boolean validationEnabled;
+
+    /** 防止同一进程内重复调用 run 时重复输出回滚 WARN。 */
+    private final AtomicBoolean validationDisabledWarned = new AtomicBoolean();
+
     /**
      * 创建 schema 版本校验器。
      *
      * @param jdbcClient Spring JDBC 客户端
+     * @param validationEnabled 是否执行版本校验；false 仅用于回滚窗口
      */
-    public SchemaVersionChecker(JdbcClient jdbcClient) {
+    public SchemaVersionChecker(
+            JdbcClient jdbcClient,
+            @Value("${riccon.worker.schema.validation-enabled:true}") boolean validationEnabled) {
         this.jdbcClient = jdbcClient;
+        this.validationEnabled = validationEnabled;
     }
 
     /**
      * Spring Boot 启动回调。
      *
+     * <p>校验关闭时只输出固定回滚 WARN 并跳过版本查询；校验启用时行为与 M02–M04 基线完全一致。
+     *
      * @param args 启动参数
      */
     @Override
     public void run(ApplicationArguments args) {
+        if (!validationEnabled) {
+            if (validationDisabledWarned.compareAndSet(false, true)) {
+                LOG.warn(
+                        "{} schema validation disabled; worker is running in rollback window, expected schema version={}",
+                        VALIDATION_DISABLED_WARN_CODE,
+                        EXPECTED_SCHEMA_VERSION);
+            }
+            return;
+        }
         check();
     }
 

@@ -3,6 +3,10 @@ package com.riccon.worker.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.riccon.worker.WorkerIntegrationTestBase;
 import com.riccon.worker.support.ExternalTestServices;
 import com.riccon.worker.support.TestSchema;
@@ -10,8 +14,11 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.DefaultApplicationArguments;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.testcontainers.mysql.MySQLContainer;
@@ -108,6 +115,92 @@ class SchemaVersionCheckerTest {
     }
 
     /**
+     * 回滚窗口：校验关闭时输出一次固定 WARN，重复调用 run 不重复输出。
+     */
+    @Test
+    void run_validationDisabled_logsFixedRollbackWarningExactlyOnce() {
+        String database = createDatabase();
+        Logger logger = workerSchemaLogger();
+        ListAppender<ILoggingEvent> appender = attachAppender(logger);
+        try {
+            SchemaVersionChecker checker = checker(database, false);
+            checker.run(new DefaultApplicationArguments(new String[0]));
+            checker.run(new DefaultApplicationArguments(new String[0]));
+
+            List<ILoggingEvent> warnings = rollbackWarnings(appender);
+            assertThat(warnings).hasSize(1);
+            assertThat(warnings.get(0).getFormattedMessage())
+                    .contains(SchemaVersionChecker.VALIDATION_DISABLED_WARN_CODE)
+                    .contains("RICCON-WORKER-002")
+                    .contains("schema validation disabled");
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    /** 校验启用且版本匹配时执行正常校验，不输出回滚 WARN。 */
+    @Test
+    void run_validationEnabled_doesNotLogRollbackWarning() {
+        String database = createDatabase();
+        TestSchema.createFlywayHistory(
+                url(database), "root", MYSQL.getPassword(), SchemaVersionChecker.EXPECTED_SCHEMA_VERSION);
+        Logger logger = workerSchemaLogger();
+        ListAppender<ILoggingEvent> appender = attachAppender(logger);
+        try {
+            SchemaVersionChecker checker = checker(database, true);
+            checker.run(new DefaultApplicationArguments(new String[0]));
+
+            assertThat(rollbackWarnings(appender)).isEmpty();
+            assertThat(checker.check()).isEqualTo(SchemaVersionChecker.EXPECTED_SCHEMA_VERSION);
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    /** 校验启用但版本不符时仍按原行为启动失败，且不输出回滚 WARN。 */
+    @Test
+    void run_validationFailure_doesNotLogRollbackWarning() {
+        String database = createDatabase();
+        Logger logger = workerSchemaLogger();
+        ListAppender<ILoggingEvent> appender = attachAppender(logger);
+        try {
+            SchemaVersionChecker checker = checker(database, true);
+            assertThatThrownBy(() -> checker.run(new DefaultApplicationArguments(new String[0])))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining(SchemaVersionChecker.ERROR_CODE);
+
+            assertThat(rollbackWarnings(appender)).isEmpty();
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    /** 返回 Worker schema 校验器 logger。 */
+    private static Logger workerSchemaLogger() {
+        return (Logger) LoggerFactory.getLogger(SchemaVersionChecker.class);
+    }
+
+    /** 挂载并启动一个仅在当前用例生效的 logback appender。 */
+    private static ListAppender<ILoggingEvent> attachAppender(Logger logger) {
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        return appender;
+    }
+
+    /** 过滤出固定回滚 WARN 事件。 */
+    private static List<ILoggingEvent> rollbackWarnings(ListAppender<ILoggingEvent> appender) {
+        return appender.list.stream()
+                .filter(event -> event.getLevel() == Level.WARN)
+                .filter(event ->
+                        event.getFormattedMessage().contains(SchemaVersionChecker.VALIDATION_DISABLED_WARN_CODE))
+                .toList();
+    }
+
+    /**
      * 创建独立数据库，避免修改共享测试库的版本记录。
      *
      * @return 数据库名
@@ -130,8 +223,20 @@ class SchemaVersionCheckerTest {
      * @return 校验器
      */
     private SchemaVersionChecker checker(String database) {
+        return checker(database, true);
+    }
+
+    /**
+     * 构造指定校验开关的校验器。
+     *
+     * @param database 数据库名
+     * @param validationEnabled 是否启用版本校验
+     * @return 校验器
+     */
+    private SchemaVersionChecker checker(String database, boolean validationEnabled) {
         return new SchemaVersionChecker(
-                JdbcClient.create(new DriverManagerDataSource(url(database), "root", MYSQL.getPassword())));
+                JdbcClient.create(new DriverManagerDataSource(url(database), "root", MYSQL.getPassword())),
+                validationEnabled);
     }
 
     /**
