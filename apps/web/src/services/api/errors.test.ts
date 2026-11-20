@@ -57,6 +57,47 @@ describe('API 错误', () => {
     expect(describeApiError(new ApiError('x', { status: 500, code: 'A' }))).toContain('暂时不可用');
   });
 
+  it('503 + RICCON-MODEL-503 优先使用 ProblemDetail detail（M04-AC-05）', async () => {
+    const error = await toApiError(
+      problemResponse(503, 'RICCON-MODEL-503', '模型服务暂不可用，请稍后重试。'),
+    );
+
+    // 文案来自 ProblemDetail.detail，错误码仍保留稳定值供页面展示。
+    expect(describeApiError(error)).toBe('模型服务暂不可用，请稍后重试。');
+    expect(error.code).toBe('RICCON-MODEL-503');
+    expect(error.retryable).toBe(true);
+  });
+
+  it('503 + RICCON-MODEL-503 缺少 detail 时退化为通用 5xx 文案', async () => {
+    const error = await toApiError(problemResponse(503, 'RICCON-MODEL-503'));
+
+    expect(describeApiError(error)).toBe('服务暂时不可用，请稍后重试。');
+    expect(error.code).toBe('RICCON-MODEL-503');
+  });
+
+  it('503 其他错误码保持通用文案且不回显服务端细节', async () => {
+    const error = await toApiError(
+      problemResponse(503, 'RICCON-CHAT-500', 'upstream provider=openai key=sk-live-123 stack'),
+    );
+    const message = describeApiError(error);
+
+    expect(message).toBe('服务暂时不可用，请稍后重试。');
+    expect(message).not.toContain('provider');
+    expect(message).not.toContain('sk-live-123');
+  });
+
+  it('400/429/500 文案不回归', () => {
+    expect(describeApiError(new ApiError('请求参数不正确', { status: 400, code: 'A' }))).toBe(
+      '请求参数不正确',
+    );
+    expect(describeApiError(new ApiError('x', { status: 429, code: 'A' }))).toBe(
+      '请求过于频繁，请稍后重试。',
+    );
+    expect(describeApiError(new ApiError('x', { status: 500, code: 'A' }))).toBe(
+      '服务暂时不可用，请稍后重试。',
+    );
+  });
+
   it('未知异常使用兜底文案', () => {
     expect(describeApiError(new Error('secret'), '兜底')).toBe('兜底');
   });
