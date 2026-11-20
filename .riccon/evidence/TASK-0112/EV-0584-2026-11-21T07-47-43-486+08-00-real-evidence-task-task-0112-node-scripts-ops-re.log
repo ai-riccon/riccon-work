@@ -1,0 +1,28 @@
+# command: REAL_EVIDENCE_TASK=TASK-0112 node scripts/ops/restore-drill.mjs --apply --allow-partial
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-21T07:47:41.652+08:00
+# finished_at: 2026-11-21T07:47:42.462+08:00
+# duration_ms: 809
+# exit_code: 1
+
+# --- stdout ---
+{
+  "mode": "apply",
+  "source": "riccon",
+  "target": "riccon_restore_drill",
+  "via": "compose",
+  "apiBase": null,
+  "keep": false,
+  "criteria": {
+    "tables": "与源库一致",
+    "triggers": 2,
+    "schemaVersion": 11,
+    "credentials": "一行可解密 + fingerprint 匹配",
+    "j1": "partial",
+    "rtoHours": 4,
+    "rpoHours": 24
+  }
+}
+
+# --- stderr ---
+[restore-drill] mysql 执行失败 (exit 1): ERROR 1146 (42S02) at line 1: Table 'riccon.flyway_schema_history' doesn't exist

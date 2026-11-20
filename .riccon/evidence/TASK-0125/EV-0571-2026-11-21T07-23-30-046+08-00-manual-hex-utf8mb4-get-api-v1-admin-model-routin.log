@@ -1,0 +1,52 @@
+# 修复前：默认客户端（auto→latin1）落库的双写 hex
+model_key	stored_hex
+fake-chat-disabled	C3A5C281E280A1C3A6C2A8C2A1C3A5C5BEE280B92DC3A5C281C593C3A7E2809DC2A8C3A7C2A4C2BAC3A4C2BEE280B9C3AFC2BCCB86C3A7C593C5B8C3A5C2AEC5BEC3A6C2A0CB86C3AFC2BCE280B0
+fake-chat-primary	C3A5C281E280A1C3A6C2A8C2A1C3A5C5BEE280B92DC3A4C2B8C2BBC3AFC2BCCB86C3A7C593C5B8C3A5C2AEC5BEC3A6C2A0CB86C3AFC2BCE280B0
+fake-chat-secondary	C3A5C281E280A1C3A6C2A8C2A1C3A5C5BEE280B92DC3A5C2A4E280A1C3A7E2809DC2A8C3AFC2BCCB86C3A7C593C5B8C3A5C2AEC5BEC3A6C2A0CB86C3AFC2BCE280B0
+
+# 修复后：--default-character-set=utf8mb4 回读（显示名 / 列存储 hex）
+model_key	display_name	stored_hex
+fake-chat-disabled	假模型-停用示例（真实栈）	E58187E6A8A1E59E8B2DE5819CE794A8E7A4BAE4BE8BEFBC88E79C9FE5AE9EE6A088EFBC89
+fake-chat-primary	假模型-主（真实栈）	E58187E6A8A1E59E8B2DE4B8BBEFBC88E79C9FE5AE9EE6A088EFBC89
+fake-chat-secondary	假模型-备用（真实栈）	E58187E6A8A1E59E8B2DE5A487E794A8EFBC88E79C9FE5AE9EE6A088EFBC89
+code	name
+fake-primary	假模型主供应商（真实栈）
+fake-secondary	假模型备用供应商（真实栈）
+label
+E2E 真实栈 key
+E2E 真实栈 key
+主 key（真实栈）
+备用 key（真实栈）
+
+# 真实 API 读路径抽查：GET /api/v1/admin/model-routing
+{
+  "status": "passed",
+  "entries": [
+    {
+      "purpose": "CHAT",
+      "id": "0192f0a0-0000-7000-8000-000000000111",
+      "displayName": "假模型-主（真实栈）"
+    },
+    {
+      "purpose": "CHAT",
+      "id": "0192f0a0-0000-7000-8000-000000000112",
+      "displayName": "假模型-备用（真实栈）"
+    },
+    {
+      "purpose": "CHAT",
+      "id": "0192f0a0-0000-7000-8000-000000000113",
+      "displayName": "假模型-停用示例（真实栈）"
+    },
+    {
+      "purpose": "REPORT",
+      "id": "0192f0a0-0000-7000-8000-000000000111",
+      "displayName": "假模型-主（真实栈）"
+    },
+    {
+      "purpose": "REPORT",
+      "id": "0192f0a0-0000-7000-8000-000000000112",
+      "displayName": "假模型-备用（真实栈）"
+    }
+  ],
+  "mismatches": []
+}

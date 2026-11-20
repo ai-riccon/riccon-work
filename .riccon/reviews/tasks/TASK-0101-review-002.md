@@ -9,7 +9,7 @@ reviewer:
   model: opencode-go/deepseek-v4.1-flash
   independent: true
 verdict: pass
-reviewed_commits: [272e690, ef2b0f2, b09aca2]
+reviewed_commits: ["272e690", "ef2b0f2", "b09aca2"]
 head_commit: b09aca222ed667e6764b495e60843b1cf6cc5789
 findings:
   - id: F-001

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0128",
+  "module_id": "M04",
+  "title": "M04 修复：/actuator/info 运维漂移读取路径",
+  "owner": "riccon/builder-route",
+  "status": "in_progress",
+  "write_scope": [
+    "apps/api/src/main/java/com/riccon/api/config/SecurityConfig.java",
+    "apps/worker/src/main/java/com/riccon/worker/config/SecurityConfig.java",
+    "apps/api/src/test/java/com/riccon/api/actuator/**",
+    "apps/worker/src/test/java/com/riccon/worker/actuator/**",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "/actuator/info 对 RICCON_OPS_ALLOWED_CIDRS 允许来源可读（空=loopback），默认拒绝其余来源；不得 permitAll",
+    "B10 seed-model-catalog --check 的 info 指纹漂移检查可执行；补 API/Worker 正/负向测试",
+    "不改 info 内容/契约/迁移；定向测试 + EV"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-21T07:49:14.193+08:00",
+  "updated_at": "2026-11-21T07:49:26.807+08:00",
+  "baseline_commit": "d2bde7f5a1b0652333a7407ed43acb52a4732d65"
+}

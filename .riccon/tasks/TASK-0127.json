@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0127",
+  "module_id": "M04",
+  "title": "M04 修复：Worker 回滚窗口固定 WARN RICCON-WORKER-002",
+  "owner": "riccon/builder-core",
+  "status": "in_progress",
+  "write_scope": [
+    "apps/worker/src/main/java/com/riccon/worker/persistence/SchemaVersionChecker.java",
+    "apps/worker/src/test/java/com/riccon/worker/persistence/**",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "RICCON_WORKER_SCHEMA_VALIDATION_ENABLED=false 时启动输出固定 WARN 码 RICCON-WORKER-002，文案含 schema validation disabled；启用时不输出",
+    "仅回滚窗口语义；不改变 schema 校验行为；补测试断言 WARN 码/文案/条件",
+    "定向测试 + EV；不改契约/迁移/其他任务"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-21T07:49:13.912+08:00",
+  "updated_at": "2026-11-21T07:49:22.097+08:00",
+  "baseline_commit": "d2bde7f5a1b0652333a7407ed43acb52a4732d65"
+}
