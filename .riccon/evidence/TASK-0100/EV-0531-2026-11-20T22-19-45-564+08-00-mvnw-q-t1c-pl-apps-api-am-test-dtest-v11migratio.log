@@ -1,0 +1,97 @@
+# command: ./mvnw -q -T1C -pl apps/api -am test -Dtest='V11MigrationTest,V11VocabularyTest' -DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-20T22:18:49.131+08:00
+# finished_at: 2026-11-20T22:19:44.864+08:00
+# duration_ms: 55732
+# exit_code: 0
+
+# --- stdout ---
+22:19:03.951 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+22:19:03.966 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+22:19:04.025 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+22:19:10.820 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+22:19:10.822 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+22:19:10.865 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+22:19:11.111 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+22:19:11.730 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: 1180e1a84f41186b21d67da63329a3c984c967a212f2491c876b6df41f23e523
+22:19:12.433 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT1.322395S
+22:19:12.444 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+22:19:12.444 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+22:19:12.445 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+22:19:12.446 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+22:19:12.580 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: 657507b6d66add327a74a112ab197f4861407681822528d3d1821abab9de367a
+22:19:12.997 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:59518/riccon using query 'SELECT 1'
+22:19:26.779 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT14.333367S
+22:19:26.780 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:59518/riccon)
+22:19:27.571 [main] INFO org.flywaydb.core.FlywayExecutor -- Database: jdbc:mysql://localhost:59518/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+22:19:27.791 [main] INFO org.flywaydb.core.internal.schemahistory.JdbcTableSchemaHistory -- Schema history table `riccon`.`flyway_schema_history` does not exist yet
+22:19:27.799 [main] INFO org.flywaydb.core.internal.command.DbValidate -- Successfully validated 11 migrations (execution time 00:00.052s)
+22:19:27.837 [main] INFO org.flywaydb.core.internal.schemahistory.JdbcTableSchemaHistory -- Creating Schema History table `riccon`.`flyway_schema_history` ...
+22:19:27.945 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Current version of schema `riccon`: << Empty Schema >>
+22:19:27.961 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "1 - baseline"
+22:19:28.047 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "2 - identity and workspace"
+22:19:28.416 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "3 - files knowledge and conversation"
+22:19:28.891 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "4 - research runs and artifacts"
+22:19:29.286 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "5 - model gateway and mcp"
+22:19:29.623 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "6 - audit event"
+22:19:30.027 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "7 - spring session"
+22:19:30.172 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "8 - approval params envelope"
+22:19:30.307 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "9 - organization and workspace scope"
+22:19:30.820 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "10 - audit query export"
+22:19:31.137 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Successfully applied 10 migrations to schema `riccon`, now at version v10 (execution time 00:02.682s)
+22:19:32.282 [main] INFO org.flywaydb.core.FlywayExecutor -- Database: jdbc:mysql://localhost:59518/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+22:19:32.332 [main] INFO org.flywaydb.core.internal.command.DbValidate -- Successfully validated 11 migrations (execution time 00:00.022s)
+22:19:32.359 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Current version of schema `riccon`: 10
+22:19:32.385 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "11 - model gateway depth"
+22:19:33.101 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Successfully applied 1 migration to schema `riccon`, now at version v11 (execution time 00:00.692s)
+22:19:33.192 [main] INFO org.flywaydb.core.FlywayExecutor -- Database: jdbc:mysql://localhost:59518/riccon_rollback?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+22:19:33.230 [main] INFO org.flywaydb.core.internal.schemahistory.JdbcTableSchemaHistory -- Schema history table `riccon_rollback`.`flyway_schema_history` does not exist yet
+22:19:33.232 [main] INFO org.flywaydb.core.internal.command.DbValidate -- Successfully validated 11 migrations (execution time 00:00.013s)
+22:19:33.251 [main] INFO org.flywaydb.core.internal.schemahistory.JdbcTableSchemaHistory -- Creating Schema History table `riccon_rollback`.`flyway_schema_history` ...
+22:19:33.305 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Current version of schema `riccon_rollback`: << Empty Schema >>
+22:19:33.312 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "1 - baseline"
+22:19:33.355 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "2 - identity and workspace"
+22:19:33.643 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "3 - files knowledge and conversation"
+22:19:34.038 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "4 - research runs and artifacts"
+22:19:34.425 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "5 - model gateway and mcp"
+22:19:34.795 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "6 - audit event"
+22:19:35.245 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "7 - spring session"
+22:19:35.368 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "8 - approval params envelope"
+22:19:35.510 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "9 - organization and workspace scope"
+22:19:36.014 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "10 - audit query export"
+22:19:36.349 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Successfully applied 10 migrations to schema `riccon_rollback`, now at version v10 (execution time 00:02.706s)
+22:19:37.396 [main] INFO org.flywaydb.core.FlywayExecutor -- Database: jdbc:mysql://localhost:59518/riccon_rollback?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+22:19:37.448 [main] INFO org.flywaydb.core.internal.command.DbValidate -- Successfully validated 11 migrations (execution time 00:00.021s)
+22:19:37.468 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Current version of schema `riccon_rollback`: 10
+22:19:37.481 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "11 - model gateway depth"
+22:19:38.144 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Successfully applied 1 migration to schema `riccon_rollback`, now at version v11 (execution time 00:00.635s)
+22:19:38.745 [main] INFO org.flywaydb.core.FlywayExecutor -- Database: jdbc:mysql://localhost:59518/riccon_fresh?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+22:19:38.806 [main] INFO org.flywaydb.core.internal.schemahistory.JdbcTableSchemaHistory -- Schema history table `riccon_fresh`.`flyway_schema_history` does not exist yet
+22:19:38.808 [main] INFO org.flywaydb.core.internal.command.DbValidate -- Successfully validated 11 migrations (execution time 00:00.022s)
+22:19:38.835 [main] INFO org.flywaydb.core.internal.schemahistory.JdbcTableSchemaHistory -- Creating Schema History table `riccon_fresh`.`flyway_schema_history` ...
+22:19:38.909 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Current version of schema `riccon_fresh`: << Empty Schema >>
+22:19:38.916 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_fresh` to version "1 - baseline"
+22:19:38.962 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_fresh` to version "2 - identity and workspace"
+22:19:39.285 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_fresh` to version "3 - files knowledge and conversation"
+22:19:39.618 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_fresh` to version "4 - research runs and artifacts"
+22:19:40.079 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_fresh` to version "5 - model gateway and mcp"
+22:19:40.501 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_fresh` to version "6 - audit event"
+22:19:40.922 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_fresh` to version "7 - spring session"
+22:19:41.040 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_fresh` to version "8 - approval params envelope"
+22:19:41.190 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_fresh` to version "9 - organization and workspace scope"
+22:19:41.687 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_fresh` to version "10 - audit query export"
+22:19:42.005 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_fresh` to version "11 - model gateway depth"
+22:19:42.597 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Successfully applied 11 migrations to schema `riccon_fresh`, now at version v11 (execution time 00:03.295s)
+22:19:43.442 [main] INFO org.flywaydb.core.FlywayExecutor -- Database: jdbc:mysql://localhost:59518/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+22:19:43.529 [main] INFO org.flywaydb.core.FlywayExecutor -- Database: jdbc:mysql://localhost:59518/riccon_fresh?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+22:19:44.405 [main] INFO org.flywaydb.core.FlywayExecutor -- Database: jdbc:mysql://localhost:59518/riccon_rollback?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+22:19:44.453 [main] INFO org.flywaydb.core.FlywayExecutor -- Database: jdbc:mysql://localhost:59518/riccon_rollback?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+
+# --- stderr ---
+
