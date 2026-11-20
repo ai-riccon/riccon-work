@@ -4,7 +4,7 @@
   "module_id": "M04",
   "title": "M04 B4：Worker 路由/降级/尝试记录/首字后语义/开关/移除 BYO 回退 + 注册 7 个指标",
   "owner": "riccon/builder-failover",
-  "status": "in_progress",
+  "status": "review",
   "write_scope": [
     "apps/worker/src/main/java/com/riccon/worker/model/**",
     "apps/worker/src/main/java/com/riccon/worker/chat/**",
@@ -14,7 +14,8 @@
     "apps/worker/src/main/java/com/riccon/worker/audit/service/AuditService.java",
     "apps/worker/src/test/java/com/riccon/worker/model/**",
     "apps/worker/src/test/java/com/riccon/worker/chat/**",
-    ".riccon/**"
+    ".riccon/**",
+    "apps/worker/src/test/java/com/riccon/worker/research/ReportArtifactIntegrationTest.java"
   ],
   "acceptance": [
     "链路解析 + 内层 `maxAttempts=1` + 尝试顺序/上限/预算",
@@ -24,10 +25,18 @@
     "BYO 回退移除（租户级凭据被忽略）+ 注册 7 个路由/降级/key 指标",
     "J1/J2 回归"
   ],
-  "evidence": [],
-  "tools_used": [],
+  "evidence": [
+    "EV-0550"
+  ],
+  "tools_used": [
+    "codegraph — 路由/降级影响面与既有调用点（ModelRegistry/ChatStreamService/两个 Handler）",
+    "git — 提交范围与 dirty 核对",
+    "maven:jdk21 — ./mvnw 定向集成测试（降级矩阵/J1/J2 回归/ArchUnit）",
+    "serena:未使用 — Maven 测试期间不引导 JDT LS；新增类为主，符号影响面由 CodeGraph 覆盖"
+  ],
   "blocker": null,
   "created_at": "2026-11-20T21:05:31.144+08:00",
-  "updated_at": "2026-11-21T03:18:27.684+08:00",
-  "baseline_commit": "84e78c9a535bcac2602e4a4be061b7d006e4c5b6"
+  "updated_at": "2026-11-21T04:31:01.937+08:00",
+  "baseline_commit": "6778d00",
+  "end_commit": "d2a815b50616e85e0b23dc88eb596fee0871c1c0"
 }
