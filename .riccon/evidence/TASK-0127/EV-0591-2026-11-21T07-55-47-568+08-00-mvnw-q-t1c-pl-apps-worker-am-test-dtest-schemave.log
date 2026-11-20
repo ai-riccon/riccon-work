@@ -1,0 +1,46 @@
+# command: ./mvnw -q -T1C -pl apps/worker -am test -Dtest=SchemaVersionCheckerTest -DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-21T07:54:52.377+08:00
+# finished_at: 2026-11-21T07:55:47.064+08:00
+# duration_ms: 54684
+# exit_code: 0
+
+# --- stdout ---
+07:54:59.731 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+07:54:59.740 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+07:54:59.771 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+07:55:01.459 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+07:55:01.460 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+07:55:01.487 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+07:55:01.729 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+07:55:02.189 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: dfe250478abdc3d7d3a2d71a14e2cab44436b984f0aaf7397b932aa94ad3a508
+07:55:02.864 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT1.134845S
+07:55:02.873 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+07:55:02.873 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+07:55:02.875 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+07:55:02.876 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+07:55:02.984 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: f6fc5fcc60be7f76413630098b9de83ab865f4b457b78bd6d86c8bb9aa75eb2b
+07:55:03.397 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:52277/riccon using query 'SELECT 1'
+07:55:13.643 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT10.766744S
+07:55:13.643 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:52277/riccon)
+07:55:13.646 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Creating container for image: opensearchproject/opensearch:3.9.0
+07:55:13.701 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 is starting: 6788fe4cb11fe8b82307a9f20b0dbffc95899f0f221802674394fbb02251ecf4
+07:55:13.954 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /blissful_hoover: Waiting for 180 seconds for URL: http://localhost:52427/_cluster/health?wait_for_status=yellow&timeout=120s (where port 52427 maps to container port 9200)
+07:55:36.362 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 started in PT22.715717S
+07:55:36.363 [main] INFO tc.rustfs/rustfs:1.0.6 -- Creating container for image: rustfs/rustfs:1.0.6
+07:55:36.483 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 is starting: 20469df01068054165dda9ec1c5501d103ac284bca5a38169567ce33583fac90
+07:55:36.955 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /elegant_nobel: Waiting for 60 seconds for URL: http://localhost:52560/health (where port 52560 maps to container port 9000)
+07:55:37.367 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 started in PT1.00464S
+07:55:46.373 [main] WARN com.riccon.worker.persistence.SchemaVersionChecker -- RICCON-WORKER-002 schema validation disabled; worker is running in rollback window, expected schema version=11
+07:55:46.593 [main] INFO com.riccon.worker.persistence.SchemaVersionChecker -- schema.version.checked expected=11 actual=11
+07:55:46.610 [main] INFO com.riccon.worker.persistence.SchemaVersionChecker -- schema.version.checked expected=11 actual=11
+07:55:46.796 [main] INFO com.riccon.worker.persistence.SchemaVersionChecker -- schema.version.checked expected=11 actual=11
+
+# --- stderr ---
+
