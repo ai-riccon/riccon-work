@@ -121,6 +121,12 @@ ruby -e "require 'yaml'; YAML.load_file('contracts/openapi.yaml'); YAML.load_fil
 
 实现落地后，Builder 必须增加契约测试：用 OpenAPI 生成/校验请求响应，用 JSON Schema 校验 outbox 与 SSE 样例；契约测试失败不得通过 gate。
 
+M04 契约测试位置（B2 交付）：`apps/api/src/test/java/com/riccon/api/contract/ModelContract108aTest`（模型/路由/凭据/开关 schema）与 `ModelContract108bTest`（配额/成本 schema）；三个模型端点的运行时响应形状由 `apps/api/src/test/java/com/riccon/api/model/catalog/ModelCatalogApiTest` 断言。运行命令：
+
+```bash
+./mvnw -q -pl apps/api -am test -Dtest='ModelContract108aTest,ModelContract108bTest,ModelCatalogApiTest'
+```
+
 ## 7. 所有者与变更流程
 
 - 公开 REST 与事件：`riccon/architect` 起草，`riccon/product` 确认语义，`riccon/verifier` 核对实现。M04 实现期 `contracts/openapi.yaml` 与 `contracts/README.md` 由 **M04-B2 独占写入**（含配额/成本端点与 `IT-MODEL-108a/108b`）；其他任务只读或向 B2 提变更请求。

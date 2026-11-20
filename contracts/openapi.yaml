@@ -3692,6 +3692,12 @@ components:
         tenantId:
           type: [string, "null"]
           description: 脱敏后的租户标识；平台级事件为 platform
+        field:
+          type: [string, "null"]
+          description: 字段级错误定位；模型端点只读字段、非法状态或 URL 校验使用（ADR-0021 §2.4/§7.3）。
+        reason:
+          type: [string, "null"]
+          description: 稳定原因码，例如 ENDPOINT_SCHEME_NOT_ALLOWED、ENDPOINT_IMMUTABLE_DEPLOYMENT_MANAGED、INVALID_STATUS；只在字段级错误出现。
       additionalProperties: false
     CsrfToken:
       type: object

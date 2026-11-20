@@ -243,7 +243,8 @@ public abstract class WorkerIntegrationTestBase {
         registry.add("riccon.model.allow-legacy-endpoints", () -> "true");
         registry.add("riccon.model.allow-http", () -> "true");
         registry.add("riccon.billing.currency", () -> "CNY");
-        registry.add("riccon.ops.allowed-cidrs", () -> "");
+        // B1c F-001：不在此注册 riccon.ops.allowed-cidrs。动态属性优先级高于子类 @TestPropertySource，
+        // 会让 PrometheusExposureDenyTest 的“非允许来源”配置失效；默认空值由 application-test.yml 提供。
         registry.add("riccon.worker.mcp.allow-stdio", () -> "true");
         registry.add("riccon.worker.mcp.request-timeout", () -> "15s");
         registry.add("riccon.worker.mcp.initialization-timeout", () -> "10s");

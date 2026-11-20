@@ -59,7 +59,7 @@ class PrometheusExposureDenyTest extends WorkerIntegrationTestBase {
                 mockMvc.perform(get("/actuator/prometheus")).andReturn().getResponse();
         String body = response.getContentAsString(StandardCharsets.UTF_8);
 
-        assertThat(response.getStatus()).as(body).isIn(401, 403, 404);
+        assertThat(response.getStatus()).as(body).isEqualTo(403);
         assertThat(body)
                 .doesNotContain("# HELP")
                 .doesNotContain("# TYPE")
