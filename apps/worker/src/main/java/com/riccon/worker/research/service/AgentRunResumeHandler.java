@@ -18,10 +18,13 @@ import com.riccon.worker.mcp.domain.McpToolHandle;
 import com.riccon.worker.mcp.repository.McpRepository;
 import com.riccon.worker.mcp.service.McpGateway;
 import com.riccon.worker.model.domain.ModelException;
-import com.riccon.worker.model.domain.ResolvedModel;
+import com.riccon.worker.model.domain.ModelRoute;
+import com.riccon.worker.model.domain.ModelTarget;
+import com.riccon.worker.model.service.FailoverChatModel;
 import com.riccon.worker.model.service.ModelInvocationService;
 import com.riccon.worker.model.service.ModelInvocationService.InvocationHandle;
-import com.riccon.worker.model.service.ModelRegistry;
+import com.riccon.worker.model.service.ModelMetrics;
+import com.riccon.worker.model.service.ModelRouter;
 import com.riccon.worker.research.domain.ApprovalRecord;
 import com.riccon.worker.research.domain.ArtifactException;
 import com.riccon.worker.research.domain.ArtifactRecord;
@@ -95,11 +98,14 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
     /** 审批服务。 */
     private final ApprovalService approvalService;
 
-    /** 模型解析。 */
-    private final ModelRegistry modelRegistry;
+    /** 模型网关。 */
+    private final ModelRouter modelRouter;
 
     /** 模型调用记录。 */
     private final ModelInvocationService invocationService;
+
+    /** 模型指标。 */
+    private final ModelMetrics modelMetrics;
 
     /** 用户状态。 */
     private final UserAccessRepository userAccessRepository;
@@ -133,8 +139,9 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
      * @param mcpRepository MCP 仓储
      * @param mcpGateway MCP 网关
      * @param approvalService 审批服务
-     * @param modelRegistry 模型解析
+     * @param modelRouter 模型网关
      * @param invocationService 模型调用记录
+     * @param modelMetrics 模型指标
      * @param userAccessRepository 用户状态
      * @param auditService 审计
      * @param researchAgentService 报告 Agent
@@ -150,8 +157,9 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
             McpRepository mcpRepository,
             McpGateway mcpGateway,
             ApprovalService approvalService,
-            ModelRegistry modelRegistry,
+            ModelRouter modelRouter,
             ModelInvocationService invocationService,
+            ModelMetrics modelMetrics,
             UserAccessRepository userAccessRepository,
             AuditService auditService,
             ResearchAgentService researchAgentService,
@@ -165,8 +173,9 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
         this.mcpRepository = Objects.requireNonNull(mcpRepository, "mcpRepository");
         this.mcpGateway = Objects.requireNonNull(mcpGateway, "mcpGateway");
         this.approvalService = Objects.requireNonNull(approvalService, "approvalService");
-        this.modelRegistry = Objects.requireNonNull(modelRegistry, "modelRegistry");
+        this.modelRouter = Objects.requireNonNull(modelRouter, "modelRouter");
         this.invocationService = Objects.requireNonNull(invocationService, "invocationService");
+        this.modelMetrics = Objects.requireNonNull(modelMetrics, "modelMetrics");
         this.userAccessRepository = Objects.requireNonNull(userAccessRepository, "userAccessRepository");
         this.auditService = Objects.requireNonNull(auditService, "auditService");
         this.researchAgentService = Objects.requireNonNull(researchAgentService, "researchAgentService");
@@ -196,6 +205,21 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
      */
     @Override
     public void handle(ClaimedOutboxEvent event) {
+        // inflight 指标覆盖整个恢复处理；失败/成功都在 finally 归还。
+        modelMetrics.agentRunStarted();
+        try {
+            handleResume(event);
+        } finally {
+            modelMetrics.agentRunFinished();
+        }
+    }
+
+    /**
+     * 处理恢复事件的主体逻辑。
+     *
+     * @param event 已领取事件
+     */
+    private void handleResume(ClaimedOutboxEvent event) {
         JsonNode payload = payloadParser.parse(event);
         UUID runId = payloadParser.requiredUuid(payload, "runId");
         UUID researchTaskId = payloadParser.requiredUuid(payload, "researchTaskId");
@@ -356,9 +380,10 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
 
         runRepository.markStage(tenantId, runId, RunStage.GENERATION.name());
         repository.startStage(tenantId, runId, RunStage.GENERATION.name(), attempt);
-        ResolvedModel model;
+        ModelRoute route;
         try {
-            model = modelRegistry.resolve(tenantId);
+            route = modelRouter.resolve(
+                    tenantId, com.riccon.platform.domain.model.ModelPurpose.REPORT, run.traceId(), null);
         } catch (ModelException ex) {
             repository.finishStage(
                     tenantId,
@@ -373,23 +398,44 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
             // 工具已经执行，审批不可复用；生成阶段失败只能由员工重新发起工具审批后重试。
             throw new EventProcessingException(ex.errorCode(), false, ex.getMessage(), ex);
         }
+        ModelTarget target = route.firstModel()
+                .map(routed -> routed.target())
+                .orElseThrow(
+                        () -> new EventProcessingException(WorkerErrorCodes.UNEXPECTED, false, "model route is empty"));
         AgentSession session = null;
         InvocationHandle invocation = null;
+        FailoverChatModel modelClient = null;
         try {
-            session = researchAgentService.prepareGenerationStage(
-                    tenantId, runId, run.userId(), task.topic(), toolResult.text(), model);
             invocation = invocationService.start(
                     tenantId,
                     runId,
                     null,
                     null,
-                    model.model().id(),
-                    model.model().modelKey(),
+                    target.model().id(),
+                    target.model().modelKey(),
                     com.riccon.platform.domain.model.ModelPurpose.REPORT,
                     run.traceId(),
                     null);
+            modelClient = modelRouter.createModel(
+                    route,
+                    tenantId,
+                    invocation,
+                    run.traceId(),
+                    null,
+                    com.riccon.platform.domain.model.ModelPurpose.REPORT);
+            session = researchAgentService.prepareGenerationStage(
+                    tenantId, runId, run.userId(), task.topic(), toolResult.text(), modelClient, target);
             String generated = awaitGeneration(session.events().toIterable().iterator());
-            invocationService.succeeded(invocation, run.traceId(), null, null, null, null);
+            invocationService.succeeded(
+                    invocation,
+                    selectedModelId(modelClient, target),
+                    selectedModelKey(modelClient, target),
+                    run.traceId(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    modelClient.attemptCount());
             invocation = null;
             if (generated == null || generated.isBlank()) {
                 throw new EventProcessingException(
@@ -407,7 +453,7 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                     generated,
                     session.citations(),
                     toolSource,
-                    model.model().modelKey(),
+                    selectedModelKey(modelClient, target),
                     com.riccon.worker.mcp.domain.Digests.sha256Hex(task.topic()),
                     hitCount);
             SavedArtifact saved = artifactWriter.write(tenantId, task, runId, run.userId(), document, run.traceId());
@@ -442,20 +488,20 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                     saved.artifactId(),
                     saved.version().version());
         } catch (EventProcessingException ex) {
-            failInvocation(invocation, run.traceId(), ex.errorCode(), false);
+            failInvocation(invocation, modelClient, run.traceId(), ex.errorCode(), false);
             finishGenerationFailure(tenantId, researchTaskId, runId, attempt, ex.errorCode(), ex.getMessage());
             throw new EventProcessingException(ex.errorCode(), false, ex.getMessage(), ex);
         } catch (ArtifactException ex) {
-            failInvocation(invocation, run.traceId(), ex.errorCode(), false);
+            failInvocation(invocation, modelClient, run.traceId(), ex.errorCode(), false);
             finishGenerationFailure(tenantId, researchTaskId, runId, attempt, ex.errorCode(), ex.getMessage());
             // 工具已执行，自动重试会复用已消费的审批；产物失败需要员工重新审批后重试。
             throw new EventProcessingException(ex.errorCode(), false, ex.getMessage(), ex);
         } catch (ModelException ex) {
-            failInvocation(invocation, run.traceId(), ex.errorCode(), false);
+            failInvocation(invocation, modelClient, run.traceId(), ex.errorCode(), false);
             finishGenerationFailure(tenantId, researchTaskId, runId, attempt, ex.errorCode(), ex.getMessage());
             throw new EventProcessingException(ex.errorCode(), false, ex.getMessage(), ex);
         } catch (RuntimeException ex) {
-            failInvocation(invocation, run.traceId(), WorkerErrorCodes.UNEXPECTED, false);
+            failInvocation(invocation, modelClient, run.traceId(), WorkerErrorCodes.UNEXPECTED, false);
             finishGenerationFailure(
                     tenantId, researchTaskId, runId, attempt, WorkerErrorCodes.UNEXPECTED, "generation failed");
             throw new EventProcessingException(
@@ -557,11 +603,44 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
      * @param errorCode 错误码
      * @param retryable 是否可重试
      */
-    private void failInvocation(InvocationHandle invocation, String traceId, String errorCode, boolean retryable) {
+    private void failInvocation(
+            InvocationHandle invocation, FailoverChatModel model, String traceId, String errorCode, boolean retryable) {
         if (invocation == null) {
             return;
         }
-        invocationService.failed(invocation, traceId, null, errorCode, retryable, null);
+        invocationService.failed(
+                invocation,
+                traceId,
+                null,
+                errorCode,
+                retryable,
+                null,
+                model != null && model.emitted(),
+                model == null ? 0 : model.attemptCount());
+    }
+
+    /**
+     * 返回最终成功模型 ID；未降级时使用链首模型。
+     *
+     * @param model 降级客户端
+     * @param target 链首模型
+     * @return 模型 ID
+     */
+    private static java.util.UUID selectedModelId(FailoverChatModel model, ModelTarget target) {
+        ModelTarget selected = model.selectedTarget();
+        return selected == null ? target.model().id() : selected.model().id();
+    }
+
+    /**
+     * 返回最终成功模型 key；未降级时使用链首模型。
+     *
+     * @param model 降级客户端
+     * @param target 链首模型
+     * @return 模型 key
+     */
+    private static String selectedModelKey(FailoverChatModel model, ModelTarget target) {
+        ModelTarget selected = model.selectedTarget();
+        return selected == null ? target.model().modelKey() : selected.model().modelKey();
     }
 
     /**

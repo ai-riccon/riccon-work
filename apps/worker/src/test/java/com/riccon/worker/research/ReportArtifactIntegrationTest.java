@@ -206,9 +206,10 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
     @Test
     void toolStageFailure_isRetriedAndCompletesOnce() {
         Fixture fixture = fixture("tenant-a", true);
-        // M04：内层 OpenAI 客户端固定 max-attempts=1（ADR-0021 §5.2），一次 429 即 TOOL FAILED；
-        // 重试由 outbox 在原租约释放后承担，而不是同一次模型调用内重试 3 次。
-        stub.rateLimitNext(1);
+        // M04：429/5xx 由 FailoverChatModel 在同一调用内退避重试；本用例验证 outbox 级重试，
+        // 因此注入不可重试的协议错误（400），单模型链耗尽后按 ADR-0021 §5.3 返回统一 503，
+        // 避免同一次调用内自动恢复。
+        stub.forceStatus(400);
 
         assertThat(poller.pollOnce()).isEqualTo(1);
 
@@ -216,8 +217,9 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(outboxStatus(fixture.eventId())).isEqualTo("PENDING");
         assertThat(stageStatus(fixture.runId(), "RETRIEVAL")).isEqualTo("SUCCEEDED");
         assertThat(stageStatus(fixture.runId(), "TOOL")).isEqualTo("FAILED");
-        assertThat(stageErrorCode(fixture.runId(), "TOOL")).isEqualTo("RICCON-MODEL-429");
+        assertThat(stageErrorCode(fixture.runId(), "TOOL")).isEqualTo("RICCON-MODEL-503");
         assertThat(taskStatus(fixture.taskId())).isEqualTo("FAILED");
+        stub.reset();
         makeOutboxAvailable(fixture.eventId());
 
         assertThat(poller.pollOnce()).isEqualTo(1);

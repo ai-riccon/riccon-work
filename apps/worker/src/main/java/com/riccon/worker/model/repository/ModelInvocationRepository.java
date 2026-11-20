@@ -43,19 +43,34 @@ public class ModelInvocationRepository {
      *
      * @param tenantId 当前租户
      * @param id 调用 ID
+     * @param modelId 最终成功模型 ID
+     * @param modelKey 最终成功模型标识快照
      * @param firstTokenMs 首字延迟
      * @param durationMs 总耗时
      * @param promptTokens 输入 token
      * @param completionTokens 输出 token
+     * @param attemptCount 实际尝试次数
      */
     public void succeeded(
             TenantId tenantId,
             UUID id,
+            UUID modelId,
+            String modelKey,
             Integer firstTokenMs,
             long durationMs,
             Integer promptTokens,
-            Integer completionTokens) {
-        invocationJdbc.markSucceeded(tenantId, id, firstTokenMs, durationMs, promptTokens, completionTokens);
+            Integer completionTokens,
+            int attemptCount) {
+        invocationJdbc.markSucceeded(
+                tenantId,
+                id,
+                modelId,
+                modelKey,
+                firstTokenMs,
+                durationMs,
+                promptTokens,
+                completionTokens,
+                attemptCount);
     }
 
     /**
@@ -67,6 +82,7 @@ public class ModelInvocationRepository {
      * @param errorCode 错误码
      * @param durationMs 总耗时
      * @param firstTokenMs 首字延迟
+     * @param attemptCount 实际尝试次数
      */
     public void terminated(
             TenantId tenantId,
@@ -74,7 +90,8 @@ public class ModelInvocationRepository {
             InvocationStatus status,
             String errorCode,
             long durationMs,
-            Integer firstTokenMs) {
-        invocationJdbc.markTerminated(tenantId, id, status, errorCode, durationMs, firstTokenMs);
+            Integer firstTokenMs,
+            int attemptCount) {
+        invocationJdbc.markTerminated(tenantId, id, status, errorCode, durationMs, firstTokenMs, attemptCount);
     }
 }

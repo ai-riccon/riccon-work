@@ -179,7 +179,40 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(body).contains("event: riccon.chat.failed.v1");
         JsonNode failed = firstData(body, "riccon.chat.failed.v1");
         assertThat(failed.path("data").path("code").asText()).isEqualTo("RICCON-MODEL-502");
+        assertThat(failed.path("data").path("retryable").asBoolean()).isTrue();
+        assertThat(failed.path("data").path("message").asText())
+                .isEqualTo(com.riccon.worker.model.domain.ModelException.STREAM_INTERRUPTED_MESSAGE);
         assertThat(runStatus(fixture.runId())).isEqualTo("FAILED");
+        // 首字后失败：调用记录保留首字延迟；失败审计带 emitted=true；不产生第二次模型调用。
+        assertThat(jdbcClient
+                        .sql(
+                                "SELECT first_token_ms FROM model_invocation WHERE tenant_id = :tenantId AND run_id = :runId")
+                        .param("tenantId", fixture.tenantId())
+                        .param("runId", UuidBinary.toBytes(fixture.runId()))
+                        .query(Long.class)
+                        .single())
+                .isNotNull();
+        assertThat(jdbcClient
+                        .sql("""
+                                SELECT COUNT(*) FROM model_invocation_attempt
+                                 WHERE tenant_id = :tenantId AND invocation_id =
+                                       (SELECT id FROM model_invocation WHERE tenant_id = :tenantId AND run_id = :runId)
+                                """)
+                        .param("tenantId", fixture.tenantId())
+                        .param("runId", UuidBinary.toBytes(fixture.runId()))
+                        .query(Integer.class)
+                        .single())
+                .isEqualTo(1);
+        assertThat(jdbcClient
+                        .sql("""
+                                SELECT details FROM audit_event
+                                 WHERE action = 'model.invocation.failed' AND tenant_id = :tenantId
+                                """)
+                        .param("tenantId", fixture.tenantId())
+                        .query(String.class)
+                        .single())
+                .contains("\"emitted\": true");
+        assertThat(stub.requestCount()).isEqualTo(1);
     }
 
     /** 取消等待审批的报告运行：202、运行取消、审批取消。 */

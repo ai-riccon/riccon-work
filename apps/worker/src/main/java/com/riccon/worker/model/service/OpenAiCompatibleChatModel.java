@@ -2,6 +2,7 @@ package com.riccon.worker.model.service;
 
 import com.riccon.worker.config.ModelGatewayProperties;
 import com.riccon.worker.model.domain.ModelException;
+import com.riccon.worker.model.domain.ModelFailureKind;
 import com.riccon.worker.model.domain.ResolvedModel;
 import io.agentscope.core.message.ContentBlock;
 import io.agentscope.core.message.Msg;
@@ -22,7 +23,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -132,59 +132,39 @@ public class OpenAiCompatibleChatModel implements Model {
     private void streamInto(
             FluxSink<ChatResponse> sink, List<Msg> messages, List<ToolSchema> tools, GenerateOptions options) {
         String body = serializeRequest(messages, tools, options);
-        int attempts = Math.max(1, properties.maxAttempts());
         // 取消或下游释放时关闭当前响应体：只靠 sink.isCancelled() 检查要等下一行数据，
         // 上游长时间无增量时取消会被拖到空闲超时。
         AtomicReference<InputStream> activeStream = new AtomicReference<>();
         sink.onCancel(() -> closeQuietly(activeStream.get()));
         sink.onDispose(() -> closeQuietly(activeStream.get()));
-        for (int attempt = 1; attempt <= attempts; attempt++) {
-            if (sink.isCancelled()) {
+        try {
+            HttpResponse<InputStream> response = send(body);
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                activeStream.set(response.body());
+                parseEventStream(response.body(), sink);
                 return;
             }
-            try {
-                HttpResponse<InputStream> response = send(body);
-                if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                    activeStream.set(response.body());
-                    parseEventStream(response.body(), sink);
-                    return;
-                }
-                ModelException failure = translateStatus(response.statusCode());
-                closeQuietly(response.body());
-                if (!failure.retryable() || attempt == attempts) {
-                    sink.error(failure);
-                    return;
-                }
-                LOG.warn(
-                        "model.request.retry modelId={} status={} attempt={} errorCode={}",
-                        resolvedModel.model().id(),
-                        response.statusCode(),
-                        attempt,
-                        failure.errorCode());
-                sleepBackoff(attempt);
-            } catch (ModelException ex) {
-                if (!ex.retryable() || attempt == attempts) {
-                    if (!sink.isCancelled()) {
-                        sink.error(ex);
-                    }
-                    return;
-                }
-                LOG.warn(
-                        "model.request.retry modelId={} attempt={} errorCode={}",
-                        resolvedModel.model().id(),
-                        attempt,
-                        ex.errorCode());
-                sleepBackoff(attempt);
-            } catch (RuntimeException ex) {
-                if (!sink.isCancelled()) {
-                    sink.error(new ModelException(
-                            ModelException.INVALID_RESPONSE, false, "unexpected model client failure", ex));
-                }
-                return;
+            ModelException failure = translateStatus(response.statusCode());
+            closeQuietly(response.body());
+            LOG.warn(
+                    "model.request.failed modelId={} status={} errorCode={}",
+                    resolvedModel.model().id(),
+                    response.statusCode(),
+                    failure.errorCode());
+            sink.error(failure);
+        } catch (ModelException ex) {
+            if (!sink.isCancelled()) {
+                sink.error(ex);
             }
-        }
-        if (!sink.isCancelled()) {
-            sink.error(new ModelException(ModelException.UNAVAILABLE, true, "model request exhausted retries"));
+        } catch (RuntimeException ex) {
+            if (!sink.isCancelled()) {
+                sink.error(new ModelException(
+                        ModelException.INVALID_RESPONSE,
+                        false,
+                        "unexpected model client failure",
+                        ModelFailureKind.INVALID_RESPONSE,
+                        ex));
+            }
         }
     }
 
@@ -206,9 +186,11 @@ public class OpenAiCompatibleChatModel implements Model {
             return httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
-            throw new ModelException(ModelException.TIMEOUT, false, "model request was interrupted", ex);
+            throw new ModelException(
+                    ModelException.TIMEOUT, false, "model request was interrupted", ModelFailureKind.TIMEOUT, ex);
         } catch (IOException ex) {
-            throw new ModelException(ModelException.UNAVAILABLE, true, "model endpoint is unreachable", ex);
+            throw new ModelException(
+                    ModelException.UNAVAILABLE, true, "model endpoint is unreachable", ModelFailureKind.TRANSPORT, ex);
         }
     }
 
@@ -402,8 +384,13 @@ public class OpenAiCompatibleChatModel implements Model {
             }
         } catch (IOException ex) {
             if (!sink.isCancelled()) {
+                // 流中断按传输层失败上报；首字前由降级状态机决定是否切换，首字后只保留已输出内容。
                 sink.error(new ModelException(
-                        ModelException.UNAVAILABLE, false, "model stream terminated unexpectedly", ex));
+                        ModelException.UNAVAILABLE,
+                        false,
+                        "model stream terminated unexpectedly",
+                        ModelFailureKind.TRANSPORT,
+                        ex));
             }
         }
     }
@@ -431,13 +418,20 @@ public class OpenAiCompatibleChatModel implements Model {
             root = objectMapper.readTree(payload);
         } catch (JacksonException ex) {
             sink.error(new ModelException(
-                    ModelException.INVALID_RESPONSE, false, "model stream returned invalid JSON", ex));
+                    ModelException.INVALID_RESPONSE,
+                    false,
+                    "model stream returned invalid JSON",
+                    ModelFailureKind.INVALID_RESPONSE,
+                    ex));
             return true;
         }
         JsonNode error = root.get("error");
         if (error != null && !error.isNull()) {
             sink.error(new ModelException(
-                    ModelException.INVALID_RESPONSE, false, "model endpoint returned an error payload"));
+                    ModelException.INVALID_RESPONSE,
+                    false,
+                    "model endpoint returned an error payload",
+                    ModelFailureKind.INVALID_RESPONSE));
             return true;
         }
         JsonNode choices = root.path("choices");
@@ -589,34 +583,36 @@ public class OpenAiCompatibleChatModel implements Model {
      */
     private static ModelException translateStatus(int status) {
         return switch (status) {
-            case 401 -> new ModelException(ModelException.UNAUTHORIZED, false, "model endpoint rejected credentials");
-            case 403 -> new ModelException(ModelException.FORBIDDEN, false, "model endpoint denied access");
-            case 408 -> new ModelException(ModelException.TIMEOUT, true, "model endpoint timed out");
-            case 429 -> new ModelException(ModelException.RATE_LIMITED, true, "model endpoint rate limited");
+            case 401 ->
+                new ModelException(
+                        ModelException.UNAUTHORIZED,
+                        false,
+                        "model endpoint rejected credentials",
+                        ModelFailureKind.UNAUTHORIZED);
+            case 403 ->
+                new ModelException(
+                        ModelException.FORBIDDEN, false, "model endpoint denied access", ModelFailureKind.FORBIDDEN);
+            case 408 ->
+                new ModelException(ModelException.TIMEOUT, true, "model endpoint timed out", ModelFailureKind.TIMEOUT);
+            case 429 ->
+                new ModelException(
+                        ModelException.RATE_LIMITED,
+                        true,
+                        "model endpoint rate limited",
+                        ModelFailureKind.RATE_LIMITED);
             default ->
                 status >= 500
-                        ? new ModelException(ModelException.UNAVAILABLE, true, "model endpoint is unavailable")
-                        : new ModelException(ModelException.INVALID_RESPONSE, false, "model endpoint rejected request");
+                        ? new ModelException(
+                                ModelException.UNAVAILABLE,
+                                true,
+                                "model endpoint is unavailable",
+                                ModelFailureKind.SERVER_ERROR)
+                        : new ModelException(
+                                ModelException.INVALID_RESPONSE,
+                                false,
+                                "model endpoint rejected request",
+                                ModelFailureKind.INVALID_RESPONSE);
         };
-    }
-
-    /**
-     * 按配置退避；测试使用 0ms 退避，不依赖真实时间。
-     *
-     * @param attempt 当前尝试号
-     */
-    private void sleepBackoff(int attempt) {
-        int index = Math.min(attempt - 1, properties.retryDelays().size() - 1);
-        Duration delay = properties.retryDelays().get(index);
-        if (delay.isZero()) {
-            return;
-        }
-        try {
-            Thread.sleep(delay.toMillis());
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            throw new ModelException(ModelException.TIMEOUT, false, "model retry backoff interrupted", ex);
-        }
     }
 
     /**

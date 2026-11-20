@@ -1,6 +1,6 @@
 package com.riccon.worker.agent.domain;
 
-import com.riccon.worker.model.domain.ResolvedModel;
+import com.riccon.worker.model.domain.ModelTarget;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.agent.RuntimeContext;
 import io.agentscope.core.event.AgentEvent;
@@ -11,20 +11,21 @@ import reactor.core.publisher.Flux;
 /**
  * 一次 Agent 会话。
  *
- * <p>持有 Agent、事件流、模型与引用；调用方必须在 finally 中关闭，释放工具与状态存储资源。
- * 事件流是冷流，订阅前不会访问模型。
+ * <p>持有 Agent、事件流、模型快照与引用；调用方必须在 finally 中关闭，释放工具与状态存储资源。
+ * 事件流是冷流，订阅前不会访问模型。模型快照不含凭据明文；真实 key 由降级客户端在每次尝试时
+ * 按需解密（ADR-0021 §6.5）。
  *
  * @param agent 已构建的 ReActAgent
  * @param events 事件流
  * @param runtimeContext 运行时上下文
- * @param model 本次使用的模型与凭据
+ * @param model 本次调用的链首模型快照
  * @param citations 检索引用
  */
 public record AgentSession(
         ReActAgent agent,
         Flux<AgentEvent> events,
         RuntimeContext runtimeContext,
-        ResolvedModel model,
+        ModelTarget model,
         List<RetrievedChunk> citations)
         implements AutoCloseable {
 

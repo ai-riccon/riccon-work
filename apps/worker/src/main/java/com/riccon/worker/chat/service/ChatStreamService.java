@@ -16,10 +16,13 @@ import com.riccon.worker.chat.repository.UserAccessRepository;
 import com.riccon.worker.common.UuidV7;
 import com.riccon.worker.config.ChatStreamProperties;
 import com.riccon.worker.model.domain.ModelException;
-import com.riccon.worker.model.domain.ResolvedModel;
+import com.riccon.worker.model.domain.ModelRoute;
+import com.riccon.worker.model.domain.ModelTarget;
+import com.riccon.worker.model.service.FailoverChatModel;
 import com.riccon.worker.model.service.ModelInvocationService;
 import com.riccon.worker.model.service.ModelInvocationService.InvocationHandle;
-import com.riccon.worker.model.service.ModelRegistry;
+import com.riccon.worker.model.service.ModelMetrics;
+import com.riccon.worker.model.service.ModelRouter;
 import com.riccon.worker.run.domain.RunDetail;
 import com.riccon.worker.run.repository.RunRepository;
 import io.agentscope.core.event.AgentEndEvent;
@@ -69,8 +72,11 @@ public class ChatStreamService {
     /** 对话 Agent 构建。 */
     private final ChatAgentService chatAgentService;
 
-    /** 模型解析。 */
-    private final ModelRegistry modelRegistry;
+    /** 模型网关（路由 + 降级）。 */
+    private final ModelRouter modelRouter;
+
+    /** 模型指标。 */
+    private final ModelMetrics modelMetrics;
 
     /** 调用记录。 */
     private final ModelInvocationService invocationService;
@@ -102,7 +108,8 @@ public class ChatStreamService {
      * @param runRepository 运行仓库
      * @param conversationRepository 会话仓库
      * @param chatAgentService 对话 Agent 服务
-     * @param modelRegistry 模型解析
+     * @param modelRouter 模型网关
+     * @param modelMetrics 模型指标
      * @param invocationService 调用记录
      * @param eventFactory 事件工厂
      * @param cancellationRegistry 取消注册表
@@ -115,7 +122,8 @@ public class ChatStreamService {
             ConversationRepository conversationRepository,
             UserAccessRepository userAccessRepository,
             ChatAgentService chatAgentService,
-            ModelRegistry modelRegistry,
+            ModelRouter modelRouter,
+            ModelMetrics modelMetrics,
             ModelInvocationService invocationService,
             ChatEventFactory eventFactory,
             AuditService auditService,
@@ -127,7 +135,8 @@ public class ChatStreamService {
         this.conversationRepository = Objects.requireNonNull(conversationRepository, "conversationRepository");
         this.userAccessRepository = Objects.requireNonNull(userAccessRepository, "userAccessRepository");
         this.chatAgentService = Objects.requireNonNull(chatAgentService, "chatAgentService");
-        this.modelRegistry = Objects.requireNonNull(modelRegistry, "modelRegistry");
+        this.modelRouter = Objects.requireNonNull(modelRouter, "modelRouter");
+        this.modelMetrics = Objects.requireNonNull(modelMetrics, "modelMetrics");
         this.invocationService = Objects.requireNonNull(invocationService, "invocationService");
         this.eventFactory = Objects.requireNonNull(eventFactory, "eventFactory");
         this.auditService = Objects.requireNonNull(auditService, "auditService");
@@ -193,40 +202,28 @@ public class ChatStreamService {
         if (!semaphore.tryAcquire()) {
             throw new ChatException(429, "RICCON-QUEUE-429", "Too Many Requests", "worker stream capacity is full");
         }
+        // inflight 指标与信号量同生命周期：进入即 +1，会话结束或打开失败都要 -1。
+        modelMetrics.agentRunStarted();
         boolean sessionCreated = false;
         AgentSession agentSession = null;
         try {
             if (!runRepository.markStreamRunning(tenantId, request.runId(), run.attempt())) {
                 throw new ChatException(409, "RICCON-CHAT-409", "Conflict", "run is already being streamed");
             }
-            ResolvedModel model;
+            ModelRoute route;
             try {
-                model = modelRegistry.resolve(tenantId);
+                route = modelRouter.resolve(tenantId, ModelPurpose.CHAT, traceId, null);
             } catch (ModelException ex) {
                 runRepository.markFailed(tenantId, request.runId(), ex.errorCode(), ex.getMessage());
-                throw new ChatException(500, "RICCON-MODEL-500", "Internal Server Error", ex.getMessage());
+                throw new ChatException(500, ex.errorCode(), "Internal Server Error", ex.getMessage());
             } catch (RuntimeException ex) {
                 runRepository.markFailed(tenantId, request.runId(), "RICCON-MODEL-500", "model resolution failed");
                 throw new ChatException(500, "RICCON-MODEL-500", "Internal Server Error", "model resolution failed");
             }
-            try {
-                agentSession = chatAgentService.prepare(
-                        tenantId,
-                        request.runId(),
-                        request.conversationId(),
-                        request.userId(),
-                        userMessage.content(),
-                        request.fileIds(),
-                        history,
-                        model);
-            } catch (AgentException ex) {
-                runRepository.markFailed(tenantId, request.runId(), ex.errorCode(), ex.getMessage());
-                throw new ChatException(statusFor(ex), ex.errorCode(), "Bad Request", ex.getMessage());
-            } catch (RuntimeException ex) {
-                // 检索/数据库失败属于 Worker 内部错误；运行必须落 FAILED，不能停在 RUNNING。
-                runRepository.markFailed(tenantId, request.runId(), "RICCON-WORKER-500", "agent preparation failed");
-                throw new ChatException(500, "RICCON-WORKER-500", "Internal Server Error", "agent preparation failed");
-            }
+            ModelTarget firstTarget = route.firstModel()
+                    .map(routed -> routed.target())
+                    .orElseThrow(() -> new ChatException(
+                            500, "RICCON-MODEL-503", "Internal Server Error", "model route is empty"));
             UUID messageId = UuidV7.generate();
             InvocationHandle invocation;
             try {
@@ -236,15 +233,37 @@ public class ChatStreamService {
                         request.conversationId(),
                         // API 尚未持久化 assistant 占位消息；message_id 有外键，先留空，SSE 事件仍携带生成的 messageId。
                         null,
-                        model.model().id(),
-                        model.model().modelKey(),
+                        firstTarget.model().id(),
+                        firstTarget.model().modelKey(),
                         ModelPurpose.CHAT,
                         traceId,
                         null);
             } catch (ModelException ex) {
-                close(agentSession);
                 runRepository.markFailed(tenantId, request.runId(), ex.errorCode(), ex.getMessage());
-                throw new ChatException(500, "RICCON-MODEL-500", "Internal Server Error", ex.getMessage());
+                throw new ChatException(500, ex.errorCode(), "Internal Server Error", ex.getMessage());
+            }
+            FailoverChatModel modelClient =
+                    modelRouter.createModel(route, tenantId, invocation, traceId, null, ModelPurpose.CHAT);
+            try {
+                agentSession = chatAgentService.prepare(
+                        tenantId,
+                        request.runId(),
+                        request.conversationId(),
+                        request.userId(),
+                        userMessage.content(),
+                        request.fileIds(),
+                        history,
+                        modelClient,
+                        firstTarget);
+            } catch (AgentException ex) {
+                failInvocation(invocation, modelClient, traceId, ex.errorCode(), false);
+                runRepository.markFailed(tenantId, request.runId(), ex.errorCode(), ex.getMessage());
+                throw new ChatException(statusFor(ex), ex.errorCode(), "Bad Request", ex.getMessage());
+            } catch (RuntimeException ex) {
+                // 检索/数据库失败属于 Worker 内部错误；运行必须落 FAILED，不能停在 RUNNING。
+                failInvocation(invocation, modelClient, traceId, "RICCON-WORKER-500", false);
+                runRepository.markFailed(tenantId, request.runId(), "RICCON-WORKER-500", "agent preparation failed");
+                throw new ChatException(500, "RICCON-WORKER-500", "Internal Server Error", "agent preparation failed");
             }
             long startedAt = clock.millis();
             Iterator<AgentEvent> iterator;
@@ -256,7 +275,7 @@ public class ChatStreamService {
                         .iterator();
             } catch (RuntimeException ex) {
                 ChatException failure = translate(ex);
-                fail(request.runId(), invocation, traceId, failure, null);
+                fail(request.runId(), invocation, modelClient, traceId, failure, null);
                 close(agentSession);
                 throw failure;
             }
@@ -280,14 +299,14 @@ public class ChatStreamService {
                 }
             } catch (RuntimeException ex) {
                 ChatException failure = translate(ex);
-                fail(request.runId(), invocation, traceId, failure, null);
+                fail(request.runId(), invocation, modelClient, traceId, failure, null);
                 close(agentSession);
                 throw failure;
             }
             if (firstDelta == null) {
                 ChatException failure =
                         new ChatException(500, "RICCON-MODEL-502", "Bad Gateway", "model returned no visible answer");
-                fail(request.runId(), invocation, traceId, failure, null);
+                fail(request.runId(), invocation, modelClient, traceId, failure, null);
                 close(agentSession);
                 throw failure;
             }
@@ -300,6 +319,7 @@ public class ChatStreamService {
                         traceId,
                         messageId,
                         agentSession,
+                        modelClient,
                         iterator,
                         firstDelta,
                         firstTokenMs,
@@ -308,7 +328,7 @@ public class ChatStreamService {
             } catch (RuntimeException ex) {
                 ChatException failure =
                         new ChatException(409, "RICCON-CHAT-409", "Conflict", "run is already being streamed");
-                fail(request.runId(), invocation, traceId, failure, firstTokenMs);
+                fail(request.runId(), invocation, modelClient, traceId, failure, firstTokenMs);
                 close(agentSession);
                 throw failure;
             }
@@ -317,6 +337,7 @@ public class ChatStreamService {
         } finally {
             if (!sessionCreated) {
                 semaphore.release();
+                modelMetrics.agentRunFinished();
             }
         }
     }
@@ -336,14 +357,30 @@ public class ChatStreamService {
      *
      * @param runId 运行 ID
      * @param invocation 调用句柄
+     * @param model 降级客户端
      * @param traceId 追踪 ID
      * @param failure 对话错误
      * @param firstTokenMs 首字延迟
      */
     private void fail(
-            UUID runId, InvocationHandle invocation, String traceId, ChatException failure, Integer firstTokenMs) {
+            UUID runId,
+            InvocationHandle invocation,
+            FailoverChatModel model,
+            String traceId,
+            ChatException failure,
+            Integer firstTokenMs) {
+        boolean emitted = model != null && model.emitted();
+        int attempts = model == null ? 0 : model.attemptCount();
         try {
-            invocationService.failed(invocation, traceId, null, failure.code(), false, firstTokenMs);
+            invocationService.failed(
+                    invocation,
+                    traceId,
+                    null,
+                    failure.code(),
+                    retryableFailure(failure),
+                    firstTokenMs,
+                    emitted,
+                    attempts);
         } catch (RuntimeException ex) {
             LOG.error(
                     "chat.stream.terminal_write_failed tenantId={} errorCode={}",
@@ -356,6 +393,39 @@ public class ChatStreamService {
         } catch (RuntimeException ex) {
             LOG.error("chat.stream.run_failed_write_failed runId={}", runId, ex);
         }
+    }
+
+    /**
+     * 记录一次调用失败（用于 Agent 准备阶段，尚未创建流会话）。
+     *
+     * @param invocation 调用句柄
+     * @param model 降级客户端
+     * @param traceId 追踪 ID
+     * @param errorCode 错误码
+     * @param retryable 是否可重试
+     */
+    private void failInvocation(
+            InvocationHandle invocation, FailoverChatModel model, String traceId, String errorCode, boolean retryable) {
+        int attempts = model == null ? 0 : model.attemptCount();
+        try {
+            invocationService.failed(invocation, traceId, null, errorCode, retryable, null, false, attempts);
+        } catch (RuntimeException ex) {
+            LOG.error(
+                    "chat.stream.terminal_write_failed tenantId={} errorCode={}",
+                    invocation.tenantId().value(),
+                    errorCode,
+                    ex);
+        }
+    }
+
+    /**
+     * 首字后中断按契约可重试，其余首字前失败保持不可重试。
+     *
+     * @param failure 对话错误
+     * @return 是否可重试
+     */
+    private static boolean retryableFailure(ChatException failure) {
+        return "RICCON-MODEL-502".equals(failure.code()) || "RICCON-MODEL-504".equals(failure.code());
     }
 
     /**
@@ -421,6 +491,9 @@ public class ChatStreamService {
         /** Agent 会话。 */
         private final AgentSession agentSession;
 
+        /** 降级客户端。 */
+        private final FailoverChatModel model;
+
         /** 事件迭代器。 */
         private final Iterator<AgentEvent> iterator;
 
@@ -455,6 +528,7 @@ public class ChatStreamService {
          * @param traceId 追踪 ID
          * @param messageId 消息 ID
          * @param agentSession Agent 会话
+         * @param model 降级客户端
          * @param iterator 事件迭代器
          * @param firstDelta 首个增量
          * @param firstTokenMs 首字延迟
@@ -467,6 +541,7 @@ public class ChatStreamService {
                 String traceId,
                 UUID messageId,
                 AgentSession agentSession,
+                FailoverChatModel model,
                 Iterator<AgentEvent> iterator,
                 String firstDelta,
                 int firstTokenMs,
@@ -477,6 +552,7 @@ public class ChatStreamService {
             this.traceId = traceId;
             this.messageId = messageId;
             this.agentSession = agentSession;
+            this.model = model;
             this.iterator = iterator;
             this.firstDelta = firstDelta;
             this.firstTokenMs = firstTokenMs;
@@ -514,7 +590,7 @@ public class ChatStreamService {
          * @param failure 对话错误
          */
         public void failBeforeStream(ChatException failure) {
-            fail(request.runId(), invocation, traceId, failure, null);
+            fail(request.runId(), invocation, model, traceId, failure, null);
             cleanup();
         }
 
@@ -527,13 +603,15 @@ public class ChatStreamService {
             Msg result = null;
             boolean ended = false;
             try {
+                ModelTarget startedModel =
+                        model.selectedTarget() == null ? agentSession.model() : model.selectedTarget();
                 writer.write(eventFactory.started(
                         tenantId.value(),
                         request.runId(),
                         messageId,
                         traceId,
-                        agentSession.model().model().id(),
-                        agentSession.model().model().modelKey()));
+                        startedModel.model().id(),
+                        startedModel.model().modelKey()));
                 ChatEvent citation = eventFactory.citations(
                         tenantId.value(), request.runId(), messageId, traceId, agentSession.citations());
                 if (citation != null) {
@@ -578,13 +656,18 @@ public class ChatStreamService {
                             502, "RICCON-MODEL-502", "Bad Gateway", "model stream ended without result");
                 }
                 ChatUsage usage = result == null ? null : result.getChatUsage();
+                ModelTarget completedModel =
+                        model.selectedTarget() == null ? agentSession.model() : model.selectedTarget();
                 invocationService.succeeded(
                         invocation,
+                        completedModel.model().id(),
+                        completedModel.model().modelKey(),
                         traceId,
                         null,
                         firstTokenMs,
                         usage == null ? null : usage.getInputTokens(),
-                        usage == null ? null : usage.getOutputTokens());
+                        usage == null ? null : usage.getOutputTokens(),
+                        model.attemptCount());
                 runRepository.markSucceeded(tenantId, request.runId());
                 writer.write(eventFactory.completed(
                         tenantId.value(),
@@ -619,25 +702,29 @@ public class ChatStreamService {
          * @param failure 对话错误
          */
         private void failStream(ChatEventSink writer, ChatException failure) {
+            boolean interrupted = retryableFailure(failure);
+            String message = interrupted ? ModelException.STREAM_INTERRUPTED_MESSAGE : failure.getMessage();
             try {
-                invocationService.failed(invocation, traceId, null, failure.code(), false, firstTokenMs);
+                invocationService.failed(
+                        invocation,
+                        traceId,
+                        null,
+                        failure.code(),
+                        interrupted,
+                        firstTokenMs,
+                        model.emitted(),
+                        model.attemptCount());
             } catch (RuntimeException ex) {
                 LOG.error("chat.stream.failure_terminal_write_failed runId={}", request.runId(), ex);
             }
             try {
-                runRepository.markFailed(tenantId, request.runId(), failure.code(), failure.getMessage());
+                runRepository.markFailed(tenantId, request.runId(), failure.code(), message);
             } catch (RuntimeException ex) {
                 LOG.error("chat.stream.failure_run_write_failed runId={}", request.runId(), ex);
             }
             try {
                 writer.write(eventFactory.failed(
-                        tenantId.value(),
-                        request.runId(),
-                        messageId,
-                        traceId,
-                        failure.code(),
-                        failure.getMessage(),
-                        false));
+                        tenantId.value(), request.runId(), messageId, traceId, failure.code(), message, interrupted));
             } catch (IOException ex) {
                 LOG.warn("chat.stream.failed_event_write_failed runId={}", request.runId(), ex);
             }
@@ -672,7 +759,7 @@ public class ChatStreamService {
         private String cancelState(String reason) {
             String normalized = normalizeReason(reason);
             try {
-                invocationService.cancelled(invocation, traceId, null, firstTokenMs);
+                invocationService.cancelled(invocation, traceId, null, firstTokenMs, model.attemptCount());
                 runRepository.markCancelled(tenantId, request.runId());
             } catch (RuntimeException ex) {
                 LOG.error("chat.stream.cancel_terminal_write_failed runId={}", request.runId(), ex);
@@ -696,6 +783,7 @@ public class ChatStreamService {
             cancellationRegistry.unregister(request.runId(), cancellation);
             close(agentSession);
             semaphore.release();
+            modelMetrics.agentRunFinished();
         }
     }
 

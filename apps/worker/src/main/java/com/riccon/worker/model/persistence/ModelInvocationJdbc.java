@@ -64,31 +64,43 @@ public class ModelInvocationJdbc {
      *
      * @param tenantId 当前租户
      * @param id 调用 ID
+     * @param modelId 最终成功模型 ID（降级后与首个尝试不同）
+     * @param modelKey 最终成功模型标识快照
      * @param firstTokenMs 首字延迟，可为空
      * @param durationMs 总耗时
      * @param promptTokens 输入 token，可为空
      * @param completionTokens 输出 token，可为空
+     * @param attemptCount 实际尝试次数
      */
     public void markSucceeded(
             TenantId tenantId,
             UUID id,
+            UUID modelId,
+            String modelKey,
             Integer firstTokenMs,
             long durationMs,
             Integer promptTokens,
-            Integer completionTokens) {
+            Integer completionTokens,
+            int attemptCount) {
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("id", UuidBinary.toBytes(id));
+        params.put("modelId", UuidBinary.toBytes(modelId));
+        params.put("modelKey", modelKey);
         params.put("firstTokenMs", firstTokenMs);
         params.put("durationMs", durationMs);
         params.put("promptTokens", promptTokens);
         params.put("completionTokens", completionTokens);
+        params.put("attemptCount", attemptCount);
         tenantJdbc.update(tenantId, """
                 UPDATE model_invocation
                    SET status = 'SUCCEEDED',
+                       model_id = :modelId,
+                       model_key_snapshot = :modelKey,
                        first_token_ms = :firstTokenMs,
                        duration_ms = :durationMs,
                        prompt_tokens = :promptTokens,
                        completion_tokens = :completionTokens,
+                       attempt_count = :attemptCount,
                        finished_at = NOW(6),
                        error_code = NULL
                  WHERE tenant_id = :tenantId
@@ -106,6 +118,7 @@ public class ModelInvocationJdbc {
      * @param errorCode 稳定错误码，可为空（取消时）
      * @param durationMs 总耗时
      * @param firstTokenMs 首字延迟，可为空
+     * @param attemptCount 实际尝试次数
      */
     public void markTerminated(
             TenantId tenantId,
@@ -113,7 +126,8 @@ public class ModelInvocationJdbc {
             InvocationStatus status,
             String errorCode,
             long durationMs,
-            Integer firstTokenMs) {
+            Integer firstTokenMs,
+            int attemptCount) {
         if (status != InvocationStatus.FAILED && status != InvocationStatus.CANCELLED) {
             throw new IllegalArgumentException("terminal status must be FAILED or CANCELLED");
         }
@@ -123,12 +137,14 @@ public class ModelInvocationJdbc {
         params.put("errorCode", errorCode);
         params.put("durationMs", durationMs);
         params.put("firstTokenMs", firstTokenMs);
+        params.put("attemptCount", attemptCount);
         tenantJdbc.update(tenantId, """
                 UPDATE model_invocation
                    SET status = :status,
                        first_token_ms = :firstTokenMs,
                        duration_ms = :durationMs,
                        error_code = :errorCode,
+                       attempt_count = :attemptCount,
                        finished_at = NOW(6)
                  WHERE tenant_id = :tenantId
                    AND id = :id

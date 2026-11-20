@@ -20,6 +20,7 @@ import org.springframework.stereotype.Component;
  *
  * <p>每次调用固定写 {@code model.invocation.started} 与 completed/failed 两条审计；
  * 调用记录用于运行详情。任何写库失败都让当前模型调用失败，禁止静默继续（ADR-0007）。
+ * M04 增记 {@code attempt_count} 与 {@code emitted}，把尝试数与首字后语义落库。
  */
 @Component
 public class ModelInvocationService {
@@ -57,7 +58,7 @@ public class ModelInvocationService {
      * @param runId 运行 ID，可为空
      * @param conversationId 会话 ID，可为空
      * @param messageId 回答消息 ID，可为空
-     * @param modelId 模型 ID
+     * @param modelId 首个尝试模型 ID
      * @param modelKey 模型标识快照
      * @param purpose 用途
      * @param traceId 追踪 ID
@@ -92,25 +93,40 @@ public class ModelInvocationService {
      * 记录成功结束。
      *
      * @param handle 调用句柄
+     * @param actualModelId 最终成功模型 ID（降级后可能与首个尝试不同）
+     * @param actualModelKey 最终成功模型标识快照
      * @param traceId 追踪 ID
      * @param requestId 请求 ID
      * @param firstTokenMs 首字延迟
      * @param promptTokens 输入 token，可为空
      * @param completionTokens 输出 token，可为空
+     * @param attemptCount 实际尝试次数
      */
     public void succeeded(
             InvocationHandle handle,
+            UUID actualModelId,
+            String actualModelKey,
             String traceId,
             String requestId,
             Integer firstTokenMs,
             Integer promptTokens,
-            Integer completionTokens) {
+            Integer completionTokens,
+            int attemptCount) {
         long duration = Math.max(0, clock.millis() - handle.startedAt());
+        int normalizedAttempts = Math.max(1, attemptCount);
         try {
             invocationRepository.succeeded(
-                    handle.tenantId(), handle.id(), firstTokenMs, duration, promptTokens, completionTokens);
+                    handle.tenantId(),
+                    handle.id(),
+                    actualModelId,
+                    actualModelKey,
+                    firstTokenMs,
+                    duration,
+                    promptTokens,
+                    completionTokens,
+                    normalizedAttempts);
             auditService.modelCompleted(
-                    handle.tenantId(), traceId, requestId, handle.modelId(), duration, promptTokens, completionTokens);
+                    handle.tenantId(), traceId, requestId, actualModelId, duration, promptTokens, completionTokens);
         } catch (RuntimeException ex) {
             LOG.error("model.invocation.completion_record_failed invocationId={}", handle.id(), ex);
             throw new ModelException(
@@ -127,6 +143,8 @@ public class ModelInvocationService {
      * @param errorCode 稳定错误码
      * @param retryable 是否可重试
      * @param firstTokenMs 首字延迟
+     * @param emitted 是否已在首字后产生可见输出
+     * @param attemptCount 实际尝试次数
      */
     public void failed(
             InvocationHandle handle,
@@ -134,8 +152,19 @@ public class ModelInvocationService {
             String requestId,
             String errorCode,
             boolean retryable,
-            Integer firstTokenMs) {
-        terminate(handle, traceId, requestId, InvocationStatus.FAILED, errorCode, retryable, firstTokenMs);
+            Integer firstTokenMs,
+            boolean emitted,
+            int attemptCount) {
+        terminate(
+                handle,
+                traceId,
+                requestId,
+                InvocationStatus.FAILED,
+                errorCode,
+                retryable,
+                firstTokenMs,
+                emitted,
+                attemptCount);
     }
 
     /**
@@ -145,9 +174,12 @@ public class ModelInvocationService {
      * @param traceId 追踪 ID
      * @param requestId 请求 ID
      * @param firstTokenMs 首字延迟
+     * @param attemptCount 实际尝试次数
      */
-    public void cancelled(InvocationHandle handle, String traceId, String requestId, Integer firstTokenMs) {
-        terminate(handle, traceId, requestId, InvocationStatus.CANCELLED, null, false, firstTokenMs);
+    public void cancelled(
+            InvocationHandle handle, String traceId, String requestId, Integer firstTokenMs, int attemptCount) {
+        terminate(
+                handle, traceId, requestId, InvocationStatus.CANCELLED, null, false, firstTokenMs, false, attemptCount);
     }
 
     /**
@@ -160,6 +192,8 @@ public class ModelInvocationService {
      * @param errorCode 错误码
      * @param retryable 是否可重试
      * @param firstTokenMs 首字延迟
+     * @param emitted 是否已有可见输出
+     * @param attemptCount 实际尝试次数
      */
     private void terminate(
             InvocationHandle handle,
@@ -168,13 +202,24 @@ public class ModelInvocationService {
             InvocationStatus status,
             String errorCode,
             boolean retryable,
-            Integer firstTokenMs) {
+            Integer firstTokenMs,
+            boolean emitted,
+            int attemptCount) {
         long duration = Math.max(0, clock.millis() - handle.startedAt());
+        int normalizedAttempts = Math.max(1, attemptCount);
         try {
-            invocationRepository.terminated(handle.tenantId(), handle.id(), status, errorCode, duration, firstTokenMs);
+            invocationRepository.terminated(
+                    handle.tenantId(), handle.id(), status, errorCode, duration, firstTokenMs, normalizedAttempts);
             if (status == InvocationStatus.FAILED) {
                 auditService.modelFailed(
-                        handle.tenantId(), traceId, requestId, handle.modelId(), duration, errorCode, retryable);
+                        handle.tenantId(),
+                        traceId,
+                        requestId,
+                        handle.modelId(),
+                        duration,
+                        errorCode,
+                        retryable,
+                        emitted);
             }
         } catch (RuntimeException ex) {
             throw new ModelException(
@@ -187,7 +232,7 @@ public class ModelInvocationService {
      *
      * @param id 调用 ID
      * @param tenantId 租户
-     * @param modelId 模型 ID
+     * @param modelId 首个尝试模型 ID
      * @param startedAt 开始时间（epoch millis）
      */
     public record InvocationHandle(UUID id, TenantId tenantId, UUID modelId, long startedAt) {}
