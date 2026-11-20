@@ -46,6 +46,8 @@ Evidence:
 | ADR-0018 | M03 组织模型、空间可见性与部门数据范围                      | proposed |
 | ADR-0019 | M10 OIDC/SSO：每租户 1 个 IdP、授权码 + PKCE、显式绑定      | proposed |
 | ADR-0020 | M10 审计查询、导出审批与平台跨租户审计边界                  | proposed |
+| ADR-0021 | M04 模型路由、降级状态机与平台托管 key 池                   | proposed |
+| ADR-0022 | M04 配额执行与成本估算                                      | proposed |
 
 说明：
 
@@ -56,3 +58,7 @@ Evidence:
 - ADR-0016 是 ADR-0009 的显式例外：只允许 Worker 领取 outbox 时跨租户读取任务元数据，领取后必须回到 `TenantJdbc`。
 - ADR-0018 为 M03 架构提案，状态 `proposed`，待 verifier/lead/ops 在 M03 gate 前评审；DEC-0014 已确认产品口径，但 ADR 本身不自行标 `accepted`。
 - ADR-0019/0020 为 M10 架构提案，状态 `proposed`；DEC-0013/DEC-0014/DEC-0017 已确认产品口径，但 OIDC 配置来源、失败会话清理、联合登出、审计查询/导出实现与平台边界仍需 Lead/Verifier/Ops 复审（REV-M10-ARCH-001 fail 后已修订 F-001..F-023），未批准前不得进入实现。
+- ADR-0021/0022 为 M04 架构提案，状态 `proposed`；2026-11-20 三轮评审：`REV-M04-OPS-001/002/003` 均 fail（第三轮仅 3×P1：回滚断言行、发布第 6 步、指标 7/2 拆分），`REV-M04-ARCH-001/002` fail、`REV-M04-ARCH-003` **pass**（无新 P0/P1）；本轮已按 ADR-0021 §13 的 R/S/T 行完成窄修，待 OPS-004 确认及 Lead/用户复审。DEC-0023=A 已批准产品范围、18 条 AC 与 OQ-16..26 默认值；V11、API 主密钥/pepper、准入即计费、回滚窗口、单币种、M04/M17 拆分、perf profile 仍需 DEC-0024。未复审通过前不得创建任务或写生产代码。
+- ADR-0021 §7.8 记录了两处需要 Verifier/Product 确认的口径：`modelKey` 是否属于 AC-05 的“内部模型名”、AC-15 的“保存端点”以只读字段 400 + 路由保存校验 + 启动校验三条路径实现。该确认不改变 AC 原文。
+- ADR-0021 §10.6 复用 ADR-0008 的 `riccon_model_requests_total`，将标签集扩展为 `{provider,model,outcome}` 并由 B4 唯一注册；ADR-0008 正文不改（写入边界），不定义第二个同名不同义指标。
+- 契约当前保持 `1.3.0-m04` 全量设计；DEC-0024 批准 M04/M17 后、M04 gate 前必须分段为 `1.3.0-m04a`（quota/cost deferred/移除）与 `1.4.0-m04b`，避免“契约已声明但实现不存在”。
