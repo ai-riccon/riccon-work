@@ -130,7 +130,8 @@ public final class AuditDetailsPolicy {
                     Set.of("modelId", "durationMs", "promptTokens", "completionTokens")),
             Map.entry(
                     AuditActions.MODEL_INVOCATION_FAILED,
-                    Set.of("modelId", "durationMs", "errorCode", "retryable", "emitted")),
+                    // reason 仅用于 Worker 链空（CHAIN_EMPTY）等稳定原因码；与 Worker 策略对称（ADR-0021 §4.1/§7.4）。
+                    Set.of("modelId", "durationMs", "errorCode", "retryable", "emitted", "reason")),
             Map.entry(
                     AuditActions.MCP_TOOL_INVOKED,
                     Set.of("toolName", "paramsSha256", "resultSha256", "durationMs", "approvalId")),
