@@ -322,10 +322,7 @@ test.describe('M04-B11a 真实栈降级与审计', () => {
     }
   });
 
-  test('M04-AC-05 全链失败员工侧稳定 503 文案（F-008 预期失败）', async ({ page }) => {
-    // F-008：API 代理目前把 Worker RICCON-MODEL-503 映射为 RICCON-CHAT-500 与通用
-    // “服务暂时不可用”，未交付 AC-05 要求的稳定错误码与“模型服务暂不可用，请稍后重试。”。
-    // 本用例保留真实断言并标记预期失败；B2/Lead 修复后 Playwright 会因“意外通过”提醒移除标记。
+  test('M04-AC-05 全链失败员工侧稳定 503、错误码与中文文案', async ({ page }) => {
     const seed = readSeed();
     await resetFakeModel();
     await setFakeModelScenario('server_error');
@@ -336,14 +333,24 @@ test.describe('M04-B11a 真实栈降级与审计', () => {
       seed.passwords.alphaMember,
       'Alpha 员工',
     );
-    await createChatAndSend(page, '请总结 2026 年企业协同办公市场');
 
-    // 先确认进入失败态，再标记预期失败，避免登录/提交等前置失败被 test.fail 掩盖。
-    await expect(page.locator('.message-error')).toBeVisible({ timeout: 60_000 });
-    test.fail(
-      true,
-      'F-008：API 需将 Worker RICCON-MODEL-503/固定中文文案透传给员工；owner B2/Lead',
+    // 捕获员工提交消息的 HTTP 响应，直接断言 503 ProblemDetail 与稳定错误码/文案。
+    const failedResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        /\/api\/v1\/conversations\/[^/]+\/messages$/.test(new URL(response.url()).pathname),
+      { timeout: 60_000 },
     );
+    await createChatAndSend(page, '请总结 2026 年企业协同办公市场');
+    const failedResponse = await failedResponsePromise;
+    expect(failedResponse.status()).toBe(503);
+    const problem = (await failedResponse.json()) as {
+      code?: string;
+      detail?: string;
+      title?: string;
+    };
+    expect(problem.code).toBe('RICCON-MODEL-503');
+    expect(problem.detail ?? problem.title).toBe('模型服务暂不可用，请稍后重试。');
 
     await expect(page.getByText('模型服务暂不可用，请稍后重试。')).toBeVisible({
       timeout: 60_000,

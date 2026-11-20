@@ -1,5 +1,4 @@
 import type { Page } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from './fixtures';
 import { expectNoSeriousA11yViolations } from './a11y';
 import { approveWithKeyboard, createResearchTask, openResearch } from './research';
@@ -14,62 +13,6 @@ import {
   loginTenantAdmin,
   seedM04,
 } from '../support/m04-routing';
-
-/**
- * 判断 serious/critical 违规是否属于 B9a 两页的已登记既有问题。
- *
- * 两类问题已记录到 B11a 回执，等待 Lead 开 B9a 修复；在修复前只放行命中 M04 页面
- * 具体节点的违规，其他 serious/critical 仍然失败，避免把整页可访问性问题静默忽略：
- * 1. antd 6 filled 绿色/橙色 Tag 在 12px 下对比度 3.37/3.33:1，低于 WCAG AA 4.5:1；
- *    绿色 Tag 问题自 M02/M15 起存在（F-003），橙色 Tag 由 M04 端点标签引入。
- * 2. 行操作按钮的 `aria-label` 以“轮换/停用/恢复/上移/移除”开头，但 antd 对两字中文
- *    按钮插入空格显示为“轮 换”，触发 label-content-name-mismatch；属于 B9a 页面缺陷。
- *
- * @param violation axe 违规
- * @returns 属于已登记 B9a 问题时返回 true
- */
-function isKnownM04A11yResidual(violation: {
-  id: string;
-  impact?: string | null;
-  nodes: Array<{ target: Array<string | string[]> }>;
-}): boolean {
-  if (violation.id === 'color-contrast') {
-    return violation.nodes.every((node) =>
-      node.target.some((target) => {
-        const text = JSON.stringify(target);
-        return text.includes('ant-tag-green') || text.includes('ant-tag-orange');
-      }),
-    );
-  }
-  if (violation.id === 'label-content-name-mismatch') {
-    return violation.nodes.every((node) =>
-      node.target.some((target) => {
-        const text = JSON.stringify(target);
-        return /aria-label=\\"(上移|从[^\\"]*移除|轮换 key|停用 key|恢复 key)/.test(text);
-      }),
-    );
-  }
-  return false;
-}
-
-/**
- * 对 M04 路由/key 页面执行 axe，过滤已登记 B9a 残余后断言无新的 serious/critical。
- *
- * @param page Playwright 页面
- */
-async function expectNoNewM04A11yViolations(page: Page): Promise<void> {
-  const result = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
-  const blocking = result.violations.filter(
-    (violation) => violation.impact === 'serious' || violation.impact === 'critical',
-  );
-  const unexpected = blocking.filter((violation) => !isKnownM04A11yResidual(violation));
-  expect(
-    unexpected,
-    `发现新的 serious/critical 可访问性问题：${JSON.stringify(unexpected)}`,
-  ).toEqual([]);
-}
 
 /**
  * M04 路由/key 两页合同桩 E2E。
@@ -271,7 +214,7 @@ test.describe('M04 模型路由页', () => {
     await page.keyboard.press('Enter');
     await expect(page.getByText(/已保存对话链（版本 v5）/)).toBeVisible();
     await page.mouse.move(0, 0);
-    await expectNoNewM04A11yViolations(page);
+    await expectNoSeriousA11yViolations(page);
 
     // ---------- 路由页：空态 ----------
     await seedM04(request, { empty: true });
@@ -327,7 +270,7 @@ test.describe('M04 模型路由页', () => {
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
     await page.mouse.move(0, 0);
-    await expectNoNewM04A11yViolations(page);
+    await expectNoSeriousA11yViolations(page);
 
     // ---------- key 页：空态 ----------
     await seedM04(request, { empty: true });
