@@ -133,11 +133,10 @@ test.describe('J1 通用问答与文件处理', () => {
     await expect(drawer).toBeHidden();
   });
 
-  // M02-AC-02 逐格式 UI 证据：XLSX/PNG/JPEG 各上传一个，必须显示“解析成功”并可用于提问。
-  // 本组用例只承担 AC-02 功能证据：完成态引用链接存在既有 serious 对比度缺陷（F-001，需单独修复任务），
-  // 因此暂不纳入 @a11y；修复后应补回 axe 断言，不能用“通过”掩盖该缺陷。
+  // M02-AC-02 逐格式 UI 证据：XLSX/PNG/JPEG 各上传一个，必须显示“解析成功”并可用于提问；
+  // 同时覆盖 F-001 修复后的 axe：流式态、引用 hover 态与完成态均无 serious/critical。
   for (const formatCase of FORMAT_UI_CASES) {
-    test(`${formatCase.format} 上传后显示解析成功并可提问引用`, async ({ page }) => {
+    test(`${formatCase.format} 上传后显示解析成功并可提问引用 @a11y`, async ({ page }) => {
       await login(page);
       await page.getByRole('button', { name: '新建会话' }).click();
       await expect(page.getByText('开始 J1 问答')).toBeVisible();
@@ -162,20 +161,34 @@ test.describe('J1 通用问答与文件处理', () => {
       await composer.fill(formatCase.question);
       await composer.press('Enter');
 
-      await expect(page.getByText(`根据你上传的文件《${formatCase.name}》`)).toBeVisible({
-        timeout: 15_000,
-      });
-      await expect(
-        page.getByText(`文件已完成解析，可用于回答与「${formatCase.question}」相关的问题。`),
-      ).toBeVisible();
-
-      // 引用按钮同时展示文件名与定位；打开抽屉后再次核对定位与片段。
+      // 引用按钮先于正文增量出现；等首行正文落地后再扫 updating 气泡，避免只扫到 loading 态。
       const citation = page.getByRole('button', {
         name: new RegExp(`${escapeRegExp(formatCase.name)} · ${escapeRegExp(formatCase.locator)}`),
       });
       await expect(citation).toBeVisible();
-      await citation.click();
+      await expect(page.getByText(`根据你上传的文件《${formatCase.name}》`)).toBeVisible({
+        timeout: 15_000,
+      });
 
+      // 流式态：停止生成按钮、updating 气泡与引用默认色必须在扫描范围内。
+      await expect(page.getByRole('button', { name: '停止生成' })).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
+
+      await expect(
+        page.getByText(`文件已完成解析，可用于回答与「${formatCase.question}」相关的问题。`),
+      ).toBeVisible();
+
+      // 完成态：success 气泡（#f0f0f0）上的默认 link 色与“运行详情”入口；先移开指针清除 hover。
+      await expect(page.getByRole('button', { name: '运行详情' })).toBeVisible({ timeout: 15_000 });
+      await page.mouse.move(0, 0);
+      await expectNoSeriousA11yViolations(page);
+
+      // 引用 hover 态：F-001 原因为 antd colorLinkHover #579df2 在 #f0f0f0 上仅 2.45:1。
+      await citation.hover();
+      await expectNoSeriousA11yViolations(page);
+
+      // 引用按钮同时展示文件名与定位；打开抽屉后再次核对定位与片段。
+      await citation.click();
       const drawer = page.getByRole('dialog');
       await expect(drawer.getByText('引用详情')).toBeVisible();
       await expect(drawer.getByRole('heading', { name: formatCase.name })).toBeVisible();
@@ -186,9 +199,6 @@ test.describe('J1 通用问答与文件处理', () => {
       await expect(drawer.getByRole('button', { name: '打开原文件' })).toBeVisible();
       await page.keyboard.press('Escape');
       await expect(drawer).toBeHidden();
-
-      // 等流式回答结束，确保断言落在完整回答而非中间态。
-      await expect(page.getByRole('button', { name: '运行详情' })).toBeVisible({ timeout: 15_000 });
     });
   }
 });
