@@ -22,7 +22,7 @@
 ## 模块关系与验收状态
 
 - **M02**：`mvc`，done（2026-11-18）；关闭时无 `product_acceptance` 记录（Product/用户均为 `not-recorded`）。M18 回溯补做 Product 预验收：`pass`（with residual：M18 a11y F-003 P2，见「Product 预验收（M02，M18 回溯）」）；用户最终验收 `pending`，不补造 accepted。
-- **M18**：`fix`，`fixes_module=M02`，building；TASK-0090 完成 7 模块证据回溯（EV-0490..EV-0498），TASK-0092/0093 补 M02 AC-02 与 a11y，TASK-0094 在 `ec6a650` 执行全量合同证据（EV-0512..EV-0517，7 模块 gate 全 pass）。TASK-0091 为本文件回溯预验收；M18 自身 Product 预验收 `pending`，在 M18 gate 后另做，本文件不标 pass。
+- **M18**：`fix`，`fixes_module=M02`，gate pass（REV-M18-001，`state.gate` 2026-11-20 17:45；3 个外部/legacy warnings）；TASK-0090 完成 7 模块证据回溯（EV-0490..EV-0498），TASK-0092/0093 补 M02 AC-02 与 a11y，TASK-0094 在 `ec6a650` 执行全量合同证据（EV-0512..EV-0517）。Product 预验收 `pass`（with residual，见「M18 Product 预验收（gate 后）」）；用户最终验收 `pending`，不补造 accepted。
 - **M03**：`feature`，done；原 gate `bc97d1c` + M13 补丁 gate pass；Product `pass`，用户 `accepted`（DEC-0016）。M18 在 `ec6a650` 全量复验（EV-0512..0515），不改写原结论。
 - **M13**：`fix`，`fixes_module=M03`；代码 `410cddd`，gate pass（REV-M13-001，EV-0352..EV-0359、EV-0361）；Product 复查 R-M03-01..03 `pass`；用户随 M03 `accepted`（DEC-0016）。
 - **M10**：`feature`，`split_from=M03`，alias `M03b`；V1 TASK-0083 done，gate pass（REV-M10-001，29 条 reviewed_evidence；DEC-0018 上限 20h）；M15 修复后 Product 预验收 `pass`，用户最终验收 `accepted`（DEC-0021）。
@@ -188,11 +188,11 @@ Product 预验收不检查实现细节、安全边界、并发或测试充分性
 | M12  | REV-M12-001 | REV-M12-002 | EV-0494                    | PASS | N/A（无用户可见 AC）       | F-002..F-005、F-007 accepted P3                                                                                                                                                  |
 | M13  | REV-M13-001 | REV-M13-002 | EV-0495                    | PASS | `pass`（随 M03 DEC-0016）  | F-001..F-006 accepted                                                                                                                                                            |
 | M15  | REV-M15-001 | REV-M15-002 | EV-0496                    | PASS | `pass`（随 M10 DEC-0021）  | F-003/F-005/F-006 accepted                                                                                                                                                       |
-| M18  | —           | —           | EV-0517（gate 循环）       | —    | `pending`（gate 后另做）   | TASK-0091 只写本文件；M18 module review/gate 未做                                                                                                                                |
+| M18  | —           | REV-M18-001 | EV-0517（gate 循环）       | PASS | `pass`（gate 后预验收）    | 用户最终验收 pending；F-003 P2 accepted；F-008 P3 accepted；M01 open P2（F-007 发布阻断）；M02 F-009/F-014 P3；M11/M14 legacy；真实栈/迁移/k6 未重跑                             |
 
 gate warnings：M01 8 条、M02 2 条，其余 0；M01/M02 的 warning 内容与上表残余一致，不因 gate PASS 视为已解决。
 
-最终全量证据（TASK-0094，`ec6a650`）：EV-0512 build、EV-0513 test/coverage（Java 764/前端 384）、EV-0514 合同 E2E 33 passed、EV-0515 a11y 13 passed、EV-0516 security exit 0、EV-0517 7 模块 gate PASS。第一阶段的 EV-0490..EV-0498 保留为证据漂移修复记录，不覆盖最终全量。
+最终全量证据（TASK-0094，`ec6a650`）：EV-0512 build、EV-0513 test/coverage（Java 764/前端 384）、EV-0514 合同 E2E 33 passed、EV-0515 a11y 13 passed、EV-0516 security exit 0、EV-0517 7 模块 gate PASS；EV-0518 docs/ACCEPTANCE 检查。M18 module review `REV-M18-001` verdict pass；M18 gate exit 0（2026-11-20 17:45，`state.gate`），3 个外部/legacy warnings。第一阶段的 EV-0490..EV-0498 保留为证据漂移修复记录，不覆盖最终全量。
 
 ### M02 预验收明细（M02-AC-01..16）
 
@@ -252,10 +252,29 @@ gate warnings：M01 8 条、M02 2 条，其余 0；M01/M02 的 warning 内容与
 
 M02 是用户可见 MVC 模块，但 2026-11-18 关闭时没有 `product_acceptance` 记录（Product 预验收/用户最终验收均为 `not-recorded`），`REV-M02-003` 只是独立技术评审。本次在 M18 回溯中补做 **Product 预验收**（最终结论 `pass`，with residual：M18 a11y F-003 P2），不补造用户验收；用户最终验收见下一节，结论 `pending`，由 Lead 提交决策包。
 
+### M18 Product 预验收（gate 后）
+
+- **范围**：7 模块证据回溯（M01/M02/M03/M10/M12/M13/M15）+ M02 AC-02 逐格式 UI 证据 + M02 AC-16 a11y P1 修复；不含新的用户可见产品功能。
+- **gate**：M18 gate exit 0（`state.gate` checked_at `2026-11-20T17:45:38+08:00`；REV-M18-001 verdict `pass`）；3 个外部/legacy warnings（REV-M18-001 F-005/F-006/F-007：M01 open P2、M02 F-009/F-014、M11/M14 legacy），无 P0/P1。
+- **结论**：`pass`（with residual）。Product 预验收通过，M18 可由 Lead 按流程标 done；本结论不是用户最终验收，不得写成 accepted。
+- 逐项：
+  - **7 模块 gate**：EV-0498/EV-0517 全部 PASS；M01 8 warnings、M02 2 warnings，其余 0。warning 均对应已登记 open/accepted finding，不因 gate PASS 视为解决。
+  - **M02 AC-02**：`pass`；EV-0509（j1 6/6，XLSX/PNG/JPEG 上传→“解析成功”→提问→引用）、EV-0500/EV-0506（前两轮 5/5）、EV-0514（33 passed 含三格式）。真实解析由 `DocumentParserTest`/`FileParseServiceIntegrationTest` 覆盖；浏览器用例为 stub 解析，残余已标注。
+  - **M02 AC-16**：`pass（with residual）`；EV-0514（四界面状态、375px、键盘）、EV-0515（a11y 13 passed）、EV-0509（失败态与流式/引用/完成态 axe）。
+  - **a11y P1**：F-001（完成态引用链接与停止生成对比度）与 F-002（上传/default 按钮 hover、失败态 danger/重试）fixed；EV-0507/EV-0508/EV-0509/EV-0515，修复面为 `apps/web/src/pages/chat/chat.css` 与 `index.tsx`。
+  - **F-003**：P2 accepted，未修。primary 实心按钮 hover 白字 `#2e7ae6` 仅 4.16:1；窄 allowlist 只放行 `.ant-btn-primary` 的 color-contrast，其他 serious/critical 仍失败；owner `builder-web`，到期 2026-12-04，修复后删除 helper。不声称全局零 serious/critical。
+  - **F-008**：P3 accepted。EV-0511 负向日志仍在 `.riccon/evidence/TASK-0094/`，已从 `TASK-0094.evidence` 移除、不绑定任何 DoD；归档/丢弃口径由 Lead 在 2026-11-21 前处理。不影响 DoD。
+  - **M01/M12**：M01 为工程基线、M12 为维护模块，均无用户可见 AC，Product 验收 N/A legacy；M01 5 条 open P2（含 F-007 MySQL 驱动发布阻断）与 2 条 P3、M12 F-002..F-005/F-007 accepted P3 均不声称解决。
+  - **全量证据**：EV-0512 build、EV-0513 test/coverage（Java 764 / 前端 384，0 fail/error/skip；覆盖率达标）、EV-0514 E2E 33 passed、EV-0515 a11y 13 passed、EV-0516 security exit 0、EV-0517 7 模块 gate + state/doctor、EV-0518 docs/ACCEPTANCE 检查。
+- **残余/未验证**：
+  - 真实栈 E2E/a11y（EV-0299/EV-0488 为旧证据）、迁移回滚（M10 V10 drill 旧证据）与 k6/p95 未重跑；不因 final gate pass 视为已覆盖。
+  - F-003 未修；M01 open P2（F-007 发布阻断）；M02 F-009/F-014 open P3；M02 F-007/F-011/F-015 accepted P2；M11 planned/M14 docs-only legacy。
+- **边界**：M18 不是用户可见产品模块；Product 预验收只核对范围、验收记录、UX 残余与文案，不替代 Verifier 的实现/安全/测试充分性结论，也不替代 gate/release 批准。M18 标 done 后，用户最终验收随 M02/M18 决策包处理；用户未接受前不记通过。
+
 ## 用户最终验收（M02/M18 回溯）
 
 - 结论：`pending`
-- 说明：M02 此前没有用户最终验收记录；本次只补 Product 预验收（`pass`，with residual），不代用户接受。M18 的 Product 预验收按规则在 gate 后另做，本文件不把 M18 标 pass；M18 自身 `product_acceptance` 仍为 `pending`。
+- 说明：M02 此前没有用户最终验收记录；本次只补 Product 预验收（`pass`，with residual），不代用户接受。M18 的 Product 预验收已在 gate 后完成（`pass`，with residual，见「M18 Product 预验收（gate 后）」）；M18 用户最终验收仍 `pending`，M18 自身 `product_acceptance.user_status` 仍为 `pending`。
 - 待用户决定：
   1. **M02 预验收结论**：接受 `pass`（with residual：M18 a11y F-003 P2），还是要求先修复 F-003 再验收。
   2. **M18 回溯范围**：7 模块 gate 恢复（EV-0517）+ M02 AC-02 逐格式 UI 证据（EV-0509）+ a11y P1 修复（EV-0515）；是否接受该范围，或要求补真实栈 E2E/a11y 与迁移回滚。
@@ -263,7 +282,7 @@ M02 是用户可见 MVC 模块，但 2026-11-18 关闭时没有 `product_accepta
   4. **M01 open P2**：F-002（security）、F-004（console）、F-005（ProLayout a11y）、F-006（legacy attestation）、F-007（MySQL 驱动许可，发布阻断）；如何承接，是否升为 M09/发布前置。
   5. **M11 legacy / M14 pending**：M11 planned 但有 done 任务（state 1 warning），M14 docs-only 仍 pending；是否单独立 docs-only closeout。
   6. **M02 用户最终验收记录**：`accepted` / `conditional` / `changes-requested` 及条件、截止时间；由 Lead 建决策包，Product 不代填。
-- 约束：用户未 `accepted`/`conditional` 前，不把 M02 回溯验收记为用户通过；M18 不因本文件而进入 done。真实栈 E2E/a11y（EV-0299/EV-0488 旧证据）与迁移回滚未重跑，不因 final gate pass 视为已覆盖。
+- 约束：用户未 `accepted`/`conditional` 前，不把 M02/M18 回溯验收记为用户通过；M18 模块 done 由 Lead 按流程关闭，本文件只给 Product 预验收，不代替 gate/release 批准。真实栈 E2E/a11y（EV-0299/EV-0488 旧证据）与迁移回滚未重跑，不因 final gate pass 视为已覆盖。
 
 ## 历史模块
 
