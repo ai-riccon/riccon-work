@@ -6,7 +6,7 @@
 | --------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Architect 草案              | pass              | M04 ADR-0021/0022 `proposed`（2026-11-20 第一版；REV-M04-OPS-001 / REV-M04-ARCH-001 fail 后已修订）；M10 ADR-0019/0020 `proposed`（REV-M10-ARCH-002 已通过评审，ADR 状态仍为 proposed）；M03 ADR-0018 `proposed`；M02 ADR-0001..0017 |
 | Lead 完整性/合同一致性      | pass              | M04 设计检查通过（2026-11-20；ADR-0021 §13 矩阵 91 fixed/4 deferred，AC 8/10 归属、19 任务、3 builder 关键路径、契约分段可执行；REV-M04-ARCH-003 / REV-M04-OPS-004 pass）；M10 pass（REV-M10-ARCH-002）；M03 已通过                  |
-| 用户批准（不可逆/高成本项） | pending           | M04 待 DEC-0024（V11、API 主密钥/pepper、准入计费、回滚窗口、单币种、M04/M17 拆分、perf profile）；DEC-0013/0014/0015/0017 已确认产品口径；ADR-0019/0020 本身未复审批准；DEC-0003 许可仍是 release blocker                           |
+| 用户批准（不可逆/高成本项） | pass              | M04 DEC-0024=B（2026-11-20）：不拆，M04 单模块 48h，18 条 AC 全保留；V11/API 主密钥+pepper/生产端点允许列表/准入即计费/默认限额/回滚窗口/单币种/Prometheus 内网/AC-17 perf profile 批准；M17 不创建；契约保持 1.3.0-m04。ADR §8.4 拆分方案降为 fallback，待 Architect 文档更新。DEC-0013/0014/0015/0017 已确认产品口径；ADR-0019/0020 仍 proposed；DEC-0003 许可仍是 release blocker |
 | Verifier 可测试性/安全边界  | pass              | M04 pass（REV-M04-ARCH-003，无新 P0/P1）；M10 pass（REV-M10-ARCH-002）；M03 pass                                                                                                                                                     |
 | Ops 可运维/可回滚           | pass              | M04 pass（REV-M04-OPS-004，2026-11-20；回滚分组断言、ROUTED/true/false、M04 7/M17 2 指标确认）；M10 OPS 生产演练仍未完成；M09 Helm/备份/升级 |
 | 安全/合规评审（如适用）     | pass              | M04 设计安全边界经 REV-M04-ARCH-003 / REV-M04-OPS-004 覆盖（TB-04、TM-39..TM-54、ABUSE-07..11、R-21..R-25、pepper 与 metrics 暴露）；T4 生产安全评审与发布批准仍待 release |
@@ -18,7 +18,7 @@
 | 检查                        | 状态              | 记录                                                                                                             |
 | --------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
 | Lead 完整性/合同一致性      | pass              | Lead 检查通过（2026-11-20）：AC 8/10 归属、19 任务、3 builder 关键路径、契约分段与 M04/M17 acceptance 可执行；REV-M04-ARCH-003 / REV-M04-OPS-004 pass |
-| 用户批准（不可逆/高成本项） | pending           | 待 DEC-0024：V11、API 主密钥/pepper、准入即计费、回滚窗口、单币种、M04/M17 拆分、perf profile、M17 首发配额开关  |
+| 用户批准（不可逆/高成本项） | pass              | M04 DEC-0024=B（2026-11-20）：不拆，M04 单模块 48h，18 条 AC 全保留；V11/API 主密钥+pepper/生产端点允许列表/准入即计费/默认限额/回滚窗口/单币种/Prometheus 内网/AC-17 perf profile 批准；M17 不创建；契约保持 1.3.0-m04。ADR §8.4 拆分方案降为 fallback，待 Architect 文档更新。DEC-0013/0014/0015/0017 已确认产品口径；ADR-0019/0020 仍 proposed；DEC-0003 许可仍是 release blocker |
 | Verifier 可测试性/安全边界  | pass              | pass（REV-M04-ARCH-003，2026-11-20，无新 P0/P1）；ADR-0021 §13 保留历次评审响应                                  |
 | Ops 可运维/可回滚           | pass              | M04 pass（REV-M04-OPS-004，2026-11-20；回滚分组断言、ROUTED/true/false、M04 7/M17 2 指标确认）；M10 OPS 生产演练仍未完成；M09 Helm/备份/升级 |
 | 安全/合规评审（如适用）     | pass              | M04 设计安全边界经 REV-M04-ARCH-003 / REV-M04-OPS-004 覆盖（TB-04、TM-39..TM-54、ABUSE-07..11、R-21..R-25、pepper 与 metrics 暴露）；T4 生产安全评审与发布批准仍待 release |
