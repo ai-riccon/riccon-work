@@ -16,6 +16,7 @@ import com.riccon.api.error.NotFoundException;
 import com.riccon.api.file.domain.FileRecord;
 import com.riccon.api.file.repository.FileRepository;
 import com.riccon.api.identity.domain.RicconPrincipal;
+import com.riccon.api.quota.service.QuotaAdmissionService;
 import com.riccon.api.run.repository.RunRepository;
 import com.riccon.api.web.Validation;
 import com.riccon.api.workspace.service.WorkspaceService;
@@ -84,6 +85,9 @@ public class ChatSubmissionService {
     /** 工作空间可见性。 */
     private final WorkspaceService workspaceService;
 
+    /** 配额准入；与 run 创建同事务。 */
+    private final QuotaAdmissionService quotaAdmissionService;
+
     /** 审计写入。 */
     private final AuditService auditService;
 
@@ -98,6 +102,7 @@ public class ChatSubmissionService {
      * @param runRepository 运行仓储
      * @param fileRepository 文件仓储
      * @param workspaceService 工作空间可见性
+     * @param quotaAdmissionService 配额准入
      * @param auditService 审计写入
      * @param clock UTC 时钟
      */
@@ -107,6 +112,7 @@ public class ChatSubmissionService {
             RunRepository runRepository,
             FileRepository fileRepository,
             WorkspaceService workspaceService,
+            QuotaAdmissionService quotaAdmissionService,
             AuditService auditService,
             Clock clock) {
         this.conversationRepository = Objects.requireNonNull(conversationRepository, "conversationRepository");
@@ -114,6 +120,7 @@ public class ChatSubmissionService {
         this.runRepository = Objects.requireNonNull(runRepository, "runRepository");
         this.fileRepository = Objects.requireNonNull(fileRepository, "fileRepository");
         this.workspaceService = Objects.requireNonNull(workspaceService, "workspaceService");
+        this.quotaAdmissionService = Objects.requireNonNull(quotaAdmissionService, "quotaAdmissionService");
         this.auditService = Objects.requireNonNull(auditService, "auditService");
         this.clock = Objects.requireNonNull(clock, "clock");
     }
@@ -146,6 +153,8 @@ public class ChatSubmissionService {
                 .findById(tenantId, conversationId)
                 .orElseThrow(() -> new NotFoundException("conversation"));
         workspaceService.requireAccessible(tenantId, conversation.workspaceId(), actor.userId());
+        // 在锁定会话行之前先取租户准入串行锁，保证所有 run 创建事务的加锁顺序一致（避免与配额/幂等行交叉死锁）。
+        quotaAdmissionService.lockTenant(tenantId);
         conversation = conversationRepository
                 .findByIdForUpdate(tenantId, conversationId)
                 .orElseThrow(() -> new NotFoundException("conversation"));
@@ -155,6 +164,10 @@ public class ChatSubmissionService {
             throw new ConflictException("clientMessageId was already submitted");
         }
         requireUsableFiles(tenantId, conversation, fileIds);
+
+        // 配额准入放在幂等/权限/文件校验之后、任何消息与 run 插入之前：重复提交不会重复扣配额，
+        // 被拒绝时事务内尚未写入业务数据；计数与 run 插入同事务提交/回滚（ADR-0022 §1.4）。
+        quotaAdmissionService.admit(tenantId, actor.userId());
 
         Instant now = clock.instant();
         long maxSeq = messageRepository.maxSeq(tenantId, conversation.id());

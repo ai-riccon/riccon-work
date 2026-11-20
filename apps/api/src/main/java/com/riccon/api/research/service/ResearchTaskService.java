@@ -11,6 +11,7 @@ import com.riccon.api.identity.domain.RicconPrincipal;
 import com.riccon.api.identity.dto.PageQuery;
 import com.riccon.api.outbox.domain.OutboxEvent;
 import com.riccon.api.outbox.repository.OutboxRepository;
+import com.riccon.api.quota.service.QuotaAdmissionService;
 import com.riccon.api.research.domain.ApprovalSnapshot;
 import com.riccon.api.research.domain.ArtifactCitationSnapshot;
 import com.riccon.api.research.domain.ArtifactSnapshot;
@@ -101,6 +102,9 @@ public class ResearchTaskService {
     /** 工作空间可见性。 */
     private final WorkspaceService workspaceService;
 
+    /** 配额准入；与任务/运行创建同事务。 */
+    private final QuotaAdmissionService quotaAdmissionService;
+
     /** 审计写入。 */
     private final AuditService auditService;
 
@@ -118,6 +122,7 @@ public class ResearchTaskService {
      * @param mcpInvocationRepository MCP 调用仓储
      * @param artifactRepository 产物仓储
      * @param workspaceService 工作空间可见性
+     * @param quotaAdmissionService 配额准入
      * @param auditService 审计写入
      * @param clock UTC 时钟
      */
@@ -130,6 +135,7 @@ public class ResearchTaskService {
             McpInvocationRepository mcpInvocationRepository,
             ArtifactRepository artifactRepository,
             WorkspaceService workspaceService,
+            QuotaAdmissionService quotaAdmissionService,
             AuditService auditService,
             Clock clock) {
         this.researchTaskRepository = Objects.requireNonNull(researchTaskRepository, "researchTaskRepository");
@@ -140,6 +146,7 @@ public class ResearchTaskService {
         this.mcpInvocationRepository = Objects.requireNonNull(mcpInvocationRepository, "mcpInvocationRepository");
         this.artifactRepository = Objects.requireNonNull(artifactRepository, "artifactRepository");
         this.workspaceService = Objects.requireNonNull(workspaceService, "workspaceService");
+        this.quotaAdmissionService = Objects.requireNonNull(quotaAdmissionService, "quotaAdmissionService");
         this.auditService = Objects.requireNonNull(auditService, "auditService");
         this.clock = Objects.requireNonNull(clock, "clock");
     }
@@ -172,6 +179,8 @@ public class ResearchTaskService {
 
         TenantId tenantId = TenantId.of(actor.tenantId());
         workspaceService.requireAccessible(tenantId, workspaceId, actor.userId());
+        // 在锁定幂等记录/插入任务之前先取租户准入串行锁，保证 run 创建事务的加锁顺序一致。
+        quotaAdmissionService.lockTenant(tenantId);
 
         // 先查幂等记录：重复提交应返回既有任务，即使该工具随后被停用，也不改变已受理结果。
         Optional<ResearchTaskSnapshot> existing =
@@ -182,6 +191,9 @@ public class ResearchTaskService {
         if (!researchTaskRepository.isToolAuthorized(tenantId, mcpToolId)) {
             throw new BadRequestException("mcpToolId is not authorized for this tenant");
         }
+
+        // 幂等命中已在前面返回，此处只对新任务准入一次；计数与任务/运行/outbox 同事务回滚（ADR-0022 §1.4）。
+        quotaAdmissionService.admit(tenantId, actor.userId());
 
         Instant now = clock.instant();
         UUID taskId = UuidV7.generate(now);
