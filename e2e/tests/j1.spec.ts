@@ -1,3 +1,5 @@
+import AxeBuilder from '@axe-core/playwright';
+import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { expectNoSeriousA11yViolations } from './a11y';
 import { login } from './session';
@@ -10,6 +12,51 @@ import { login } from './session';
  */
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * 判断 serious/critical 违规是否属于已记录的 primary 实心按钮 hover 对比度问题。
+ *
+ * Builder 残余（F-003，P2 open）：antd primary 实心按钮 hover 背景由 colorPrimaryHover
+ * #2e7ae6 派生，白字对比度仅 4.16:1，低于 WCAG AA 4.5:1；影响“开始新会话/打开原文件”等
+ * primary 按钮，不属于 F-002（outlined/link/danger）修复面。
+ *
+ * @param violation axe 违规
+ * @returns 已记录问题返回 true
+ */
+function isKnownPrimaryHoverContrast(violation: {
+  id: string;
+  impact?: string | null;
+  nodes: Array<{ target: Array<string | string[]> }>;
+}): boolean {
+  return (
+    violation.id === 'color-contrast' &&
+    violation.nodes.every((node) =>
+      node.target.some((target) => JSON.stringify(target).includes('ant-btn-primary')),
+    )
+  );
+}
+
+/**
+ * 断言页面不存在除已记录 primary hover 对比度外的 serious/critical。
+ *
+ * 只放行目标命中 `.ant-btn-primary` 的 color-contrast 节点，其他 serious/critical 仍失败；
+ * F-003 修复后删除本 helper 并改回 `expectNoSeriousA11yViolations`。
+ *
+ * @param page Playwright 页面
+ */
+async function expectNoNewSeriousA11yViolations(page: Page): Promise<void> {
+  const result = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  const blocking = result.violations.filter(
+    (violation) => violation.impact === 'serious' || violation.impact === 'critical',
+  );
+  const unexpected = blocking.filter((violation) => !isKnownPrimaryHoverContrast(violation));
+  const detail = unexpected
+    .map((violation) => `${violation.id} (${violation.impact}): ${violation.help}`)
+    .join('\n');
+  expect(unexpected, `发现新的 serious/critical 可访问性问题：\n${detail}`).toHaveLength(0);
 }
 
 /**
@@ -134,7 +181,7 @@ test.describe('J1 通用问答与文件处理', () => {
   });
 
   // M02-AC-02 逐格式 UI 证据：XLSX/PNG/JPEG 各上传一个，必须显示“解析成功”并可用于提问；
-  // 同时覆盖 F-001 修复后的 axe：流式态、引用 hover 态与完成态均无 serious/critical。
+  // 同时覆盖 F-001/F-002 修复后的 axe：流式态、引用 hover、完成态与上传按钮 hover 均无 serious/critical。
   for (const formatCase of FORMAT_UI_CASES) {
     test(`${formatCase.format} 上传后显示解析成功并可提问引用 @a11y`, async ({ page }) => {
       await login(page);
@@ -156,6 +203,12 @@ test.describe('J1 通用问答与文件处理', () => {
       await expect(fileRow.getByText(formatCase.name, { exact: true })).toBeVisible();
       await expect(fileRow.getByText('解析成功', { exact: true })).toBeVisible({ timeout: 15_000 });
 
+      // F-002 回归：上传按钮 hover 曾为 #2e7ae6（白底 4.16:1），修复后 #0958d9（6.16:1）。
+      const uploadButton = page.getByRole('button', { name: /上传文件/ });
+      await uploadButton.hover();
+      await expect(uploadButton).toHaveCSS('color', 'rgb(9, 88, 217)');
+      await expectNoSeriousA11yViolations(page);
+
       // 提问后回答必须明确引用该文件，证明解析结果已进入可提问上下文。
       const composer = page.getByPlaceholder('输入问题，Enter 发送，Shift+Enter 换行');
       await composer.fill(formatCase.question);
@@ -175,8 +228,7 @@ test.describe('J1 通用问答与文件处理', () => {
       const stopButton = page.getByRole('button', { name: '停止生成' });
       await expect(stopButton).toBeVisible();
       await expect(stopButton).toHaveCSS('color', 'rgb(207, 19, 34)');
-      // 上传按钮点击后指针仍停在其上，会引入与流式态无关的 default button hover（另见 F-002）；
-      // 先移到空白处，让本扫描只覆盖流式与引用状态，不隐藏该 hover 缺陷。
+      // 上传按钮 hover 已在上方单独扫描；这里移开指针，确保引用默认色而非 hover 色被扫描。
       await page.mouse.move(0, 0);
       await expect(citation).toHaveCSS('color', 'rgb(9, 88, 217)');
       await expectNoSeriousA11yViolations(page);
@@ -209,4 +261,63 @@ test.describe('J1 通用问答与文件处理', () => {
       await expect(drawer).toBeHidden();
     });
   }
+
+  // 失败态 danger 文本与重试入口：覆盖文件解析失败、模型失败与对应 hover 态。
+  test('失败态 danger 文本与重试入口 @a11y', async ({ page }) => {
+    await login(page);
+
+    // 空态 primary 实心按钮 hover：F-003（P2 open，白字 #2e7ae6 4.16:1）；
+    // 用窄 allowlist 放行该已知节点，其他 serious/critical 仍失败。
+    const startButton = page.getByRole('button', { name: '开始新会话' });
+    await expect(startButton).toBeVisible();
+    await startButton.hover();
+    await expectNoNewSeriousA11yViolations(page);
+
+    await page.getByRole('button', { name: '新建会话' }).click();
+    await expect(page.getByText('开始 J1 问答')).toBeVisible();
+
+    // 文件名含“损坏”触发 stub 解析失败，覆盖文件解析失败 danger 文本。
+    const fileChooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: /上传文件/ }).click();
+    const fileChooser = await fileChooserPromise;
+    await fileChooser.setFiles({
+      name: '损坏报告.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('%PDF-1.4\n% Riccon stub corrupt file\n'),
+    });
+
+    const failedFile = page.locator('.chat-file-item').filter({ hasText: '损坏报告.pdf' });
+    await expect(failedFile.getByText('解析失败', { exact: true })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(failedFile.getByText(/文件内容无法解析/)).toBeVisible();
+    const retryParse = failedFile.getByRole('button', { name: '重试解析 损坏报告.pdf' });
+    await expect(retryParse).toBeVisible();
+
+    await page.mouse.move(0, 0);
+    await expectNoSeriousA11yViolations(page);
+
+    // 重试解析是 link 按钮，hover 修复为 #003eb3。
+    await retryParse.hover();
+    await expect(retryParse).toHaveCSS('color', 'rgb(0, 62, 179)');
+    await expectNoSeriousA11yViolations(page);
+
+    // 问题含“失败”触发 stub 模型失败，覆盖消息失败 danger 文本与重试入口。
+    const composer = page.getByPlaceholder('输入问题，Enter 发送，Shift+Enter 换行');
+    await composer.fill('请模拟一次失败回答');
+    await composer.press('Enter');
+
+    await expect(page.getByText('合成模型调用失败，请重试。')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('错误码：RICCON-MODEL-500')).toBeVisible();
+    const retry = page.getByRole('button', { name: '重试' });
+    await expect(retry).toBeVisible();
+
+    await page.mouse.move(0, 0);
+    await expectNoSeriousA11yViolations(page);
+
+    // 重试是 default（outlined）按钮，hover 修复为 #0958d9。
+    await retry.hover();
+    await expect(retry).toHaveCSS('color', 'rgb(9, 88, 217)');
+    await expectNoSeriousA11yViolations(page);
+  });
 });
