@@ -26,6 +26,12 @@ public enum AuditTargetType {
     ARTIFACT,
     /** 模型。 */
     MODEL,
+    /** 模型路由链（M04，target_id 为 CHAT/REPORT）。 */
+    MODEL_ROUTING,
+    /** 模型凭据（M04，仅平台托管 key 生命周期）。 */
+    MODEL_CREDENTIAL,
+    /** 配额（M04，target_id 为 scopeId；平台事件 target_id 可为空）。 */
+    QUOTA,
     /** MCP 工具。 */
     MCP_TOOL,
     /** 账号。 */

@@ -27,14 +27,62 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # M04：prometheus 由 SecurityConfig 按 RICCON_OPS_ALLOWED_CIDRS 限制来源（ADR-0021 §2.2）。
+        include: health,info,prometheus
   endpoint:
     health:
       probes:
         enabled: true
       show-details: never
+  info:
+    env:
+      # B10 preflight 通过 /actuator/info 比对 API 与 Worker 的 M04 指纹（非密钥）。
+      enabled: true
+
+# M04 /actuator/info 指纹：必须与 API 一致；不暴露 endpoint URL、key 或密文。
+info:
+  riccon:
+    model:
+      deploymentMode: ${RICCON_MODEL_DEPLOYMENT_MODE:PRODUCTION}
+      endpointSetHash: ${RICCON_MODEL_ENDPOINT_SET_HASH:}
+      routingMode: ${RICCON_MODEL_ROUTING_MODE:}
+      failoverEnabled: ${RICCON_MODEL_FAILOVER_ENABLED:}
+      quotaEnforcementEnabled: ${RICCON_QUOTA_ENFORCEMENT_ENABLED:}
+    masterKeyId: ${RICCON_MASTER_KEY_ID:mk-1}
+    billing:
+      currency: ${RICCON_BILLING_CURRENCY:CNY}
+    quota:
+      tenantDaily: ${RICCON_QUOTA_DEFAULT_TENANT_DAILY:10000}
+      tenantMonthly: ${RICCON_QUOTA_DEFAULT_TENANT_MONTHLY:200000}
+      userDaily: ${RICCON_QUOTA_DEFAULT_USER_DAILY:1000}
+      userMonthly: ${RICCON_QUOTA_DEFAULT_USER_MONTHLY:20000}
 
 riccon:
+  # M04 受管端点与网关开关：与 API 使用同一组键与环境变量，便于 B10 预检漂移。
+  # endpoint 允许列表只来自部署（JSON 数组）；PRODUCTION 未配置时启动失败。
+  model:
+    deployment-mode: ${RICCON_MODEL_DEPLOYMENT_MODE:PRODUCTION}
+    endpoints: ${RICCON_MODEL_ENDPOINTS:}
+    allow-legacy-endpoints: ${RICCON_MODEL_ALLOW_LEGACY_ENDPOINTS:false}
+    allow-http: ${RICCON_MODEL_ALLOW_HTTP:false}
+    gateway:
+      # 环境变量优先级高于 DB 开关；留空表示使用 model_gateway_switch。
+      routing-mode: ${RICCON_MODEL_ROUTING_MODE:}
+      failover-enabled: ${RICCON_MODEL_FAILOVER_ENABLED:}
+      quota-enforcement-enabled: ${RICCON_QUOTA_ENFORCEMENT_ENABLED:}
+  # M04 单币种，必须与 API 一致。
+  billing:
+    currency: ${RICCON_BILLING_CURRENCY:CNY}
+  # M04 默认配额键在 Worker 只用于 /actuator/info 漂移检查；执行在 API（B6）。
+  quota:
+    defaults:
+      tenant-daily: ${RICCON_QUOTA_DEFAULT_TENANT_DAILY:10000}
+      tenant-monthly: ${RICCON_QUOTA_DEFAULT_TENANT_MONTHLY:200000}
+      user-daily: ${RICCON_QUOTA_DEFAULT_USER_DAILY:1000}
+      user-monthly: ${RICCON_QUOTA_DEFAULT_USER_MONTHLY:20000}
+  # M04：/actuator/prometheus 来源允许列表（逗号分隔 CIDR）；空值仅允许 loopback。
+  ops:
+    allowed-cidrs: ${RICCON_OPS_ALLOWED_CIDRS:}
   worker:
     schema:
       # 启动时读取 flyway_schema_history 最大成功版本；与代码期望版本不一致则拒绝启动。
@@ -78,15 +126,29 @@ riccon:
       master-key: ${RICCON_MASTER_KEY:}
       previous-master-key: ${RICCON_MASTER_KEY_PREVIOUS:}
       master-key-id: ${RICCON_MASTER_KEY_ID:mk-1}
+      # M04：启动 canary 用于验证当前主密钥可解开既有 DEK；日志只输出 canary 是否匹配，不输出 key。
+      canary: ${RICCON_MASTER_KEY_CANARY:}
+      # M04：key 去重 fingerprint 的独立 pepper（Base64 32B）；PRODUCTION 缺失即启动失败。
+      # pepper 不随主密钥轮换；丢失后无法新建/去重 key，但历史密文解密不受影响。
+      fingerprint-pepper: ${RICCON_CREDENTIAL_FINGERPRINT_PEPPER:}
     service-token:
       # API → Worker HMAC 共享密钥；缺失/过短时启动失败。生产不得写入仓库。
       secret: ${RICCON_SERVICE_TOKEN_SECRET:}
     model:
       connect-timeout: 5s
       request-timeout: 60s
-      max-attempts: 3
+      # M04：内层 OpenAI 客户端固定不重试；所有重试/换 key/换模型由 FailoverChatModel 拥有，
+      # 保证 HTTP 调用数 = model_invocation_attempt 行数 = 降级审计条数（ADR-0021 §5.2）。
+      max-attempts: 1
       retry-delays: 200ms,1s
-      # 仅本地测试允许 http 模型端点；生产必须为 false。
+      # M04 路由/降级预算（B4 消费）：生产默认；AC-17 perf profile 由部署 env 覆盖为
+      # first-token-timeout=1000ms、pre-first-token-budget=2500ms、retry-delays=50ms,100ms。
+      routing:
+        max-attempts: ${RICCON_MODEL_ROUTING_MAX_ATTEMPTS:3}
+        retry-delays: ${RICCON_MODEL_ROUTING_RETRY_DELAYS:200ms,500ms,1s}
+        first-token-timeout: ${RICCON_MODEL_FIRST_TOKEN_TIMEOUT:30s}
+        pre-first-token-budget: ${RICCON_MODEL_PRE_FIRST_TOKEN_BUDGET:60s}
+      # 仅本地测试允许 http 模型端点；生产必须为 false（与 riccon.model.allow-http 同源）。
       allow-insecure-http: ${RICCON_MODEL_ALLOW_HTTP:false}
       default-max-output-tokens: 2048
     chat:

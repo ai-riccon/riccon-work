@@ -25,14 +25,20 @@ import org.springframework.stereotype.Component;
  * 因此发布只能协调切换，不能纯滚动：停旧 worker → 停 API 写 → 应用 V10 → 起新 API → 起新 worker。
  * DB 到 10 后旧 worker（expected=9）重启会以 {@link #ERROR_CODE} 启动失败；回滚时顺序严格相反，
  * 先回滚 API 代码与 V10 结构并删除 history 行，再启动旧 worker（expected=9），不能先起旧 worker。
+ *
+ * <p>M04：期望版本升到 11。V11 新增路由/开关/尝试/配额/成本表与 {@code provider_credential} 多 key
+ * 唯一键；Worker 写入 {@code model_invocation_attempt} 并读取 key 池，因此不得在 V10 库上接收任务。
+ * 生产发布顺序见 ADR-0021 §10.2：preflight → 备份 → 一次性迁移 Job → 新 API → drain 旧 Worker →
+ * 新 Worker；V11 之后不得重启旧 Worker（回滚窗口以
+ * {@code RICCON_WORKER_SCHEMA_VALIDATION_ENABLED=false} 启动并登记工单，仅 M04 前最后一个版本）。
  */
 @Component
 @ConditionalOnProperty(name = "riccon.worker.schema.validation-enabled", havingValue = "true", matchIfMissing = true)
 @ConditionalOnBean(JdbcClient.class)
 public class SchemaVersionChecker implements ApplicationRunner {
 
-    /** 期望的 schema 最大版本，对应 {@code apps/api/src/main/resources/db/migration/V1..V10}。 */
-    public static final int EXPECTED_SCHEMA_VERSION = 10;
+    /** 期望的 schema 最大版本，对应 {@code apps/api/src/main/resources/db/migration/V1..V11}。 */
+    public static final int EXPECTED_SCHEMA_VERSION = 11;
 
     /** 稳定错误码前缀，启动失败日志只输出版本与错误码，不输出连接串。 */
     public static final String ERROR_CODE = "RICCON-WORKER-001";

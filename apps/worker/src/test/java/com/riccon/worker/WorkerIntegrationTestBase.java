@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
@@ -43,13 +44,29 @@ import tools.jackson.databind.ObjectMapper;
  * <p>仅当显式设置 {@code RICCON_TEST_SERVICES=external} 且提供
  * {@code RICCON_TEST_SERVICES_NAMESPACE} 时，改为复用 compose 热测试栈；见
  * {@link ExternalTestServices}。默认与 CI 行为不变；迁移/回滚测试不经过本类。
+ *
+ * <p>M04：测试上下文使用 {@code test} profile 的 DEMO 端点允许列表、已知测试主密钥与 fingerprint pepper；
+ * schema 期望版本随 V11 升到 11。每次重置额外清空并恢复 M04 全局表（路由链/网关开关），避免测试间漂移。
  */
 @SpringBootTest(properties = {"riccon.worker.outbox.scheduling-enabled=false"})
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 public abstract class WorkerIntegrationTestBase {
 
     /** 测试桶名；external 模式带 namespace，默认模式沿用原值。 */
     protected static final String BUCKET = ExternalTestServices.bucketName();
+
+    /**
+     * M04 测试端点允许列表：DEMO 模式的本地占位端点。
+     *
+     * <p>B2 的 {@code ModelEndpointProperties} 会按 code 与 DB 目录对齐；这里的 code 只用于启动校验，
+     * 既有 Worker 测试仍使用各自动态端口，B2/B4 迁移时应改为测试专属 allowlist 或 legacy seam。
+     */
+    private static final String DEMO_ENDPOINTS =
+            "[{\"code\":\"demo-local\",\"baseUrl\":\"http://127.0.0.1:19090/v1\",\"environmentLabel\":\"DEMO_ONLY\"}]";
+
+    /** M04 fingerprint pepper 的已知测试占位（Base64 32 字节，不对应任何真实环境）。 */
+    private static final String TEST_FINGERPRINT_PEPPER = "cmljY29uLXRlc3QtZmluZ2VycHJpbnQtcGVwcGVyMzI=";
 
     /** S3 测试凭据，仅用于测试栈。 */
     private static final String S3_ACCESS_KEY = ExternalTestServices.storageAccessKey();
@@ -122,6 +139,7 @@ public abstract class WorkerIntegrationTestBase {
             "artifact",
             "approval",
             "mcp_invocation",
+            "model_invocation_attempt",
             "model_invocation",
             "agent_run_stage",
             "agent_run_outbox",
@@ -140,8 +158,13 @@ public abstract class WorkerIntegrationTestBase {
             "tenant_data_key",
             "mcp_tool",
             "mcp_server",
+            "model_routing_entry",
+            "model_routing",
+            "model_gateway_switch",
             "model",
             "model_provider",
+            "quota_usage",
+            "quota_limit",
             "user_role",
             "role_permission",
             "role",
@@ -160,6 +183,16 @@ public abstract class WorkerIntegrationTestBase {
             statement.execute("""
                     INSERT INTO tenant (id, name, status, plan, retention_days)
                     VALUES ('platform', '平台管理', 'ACTIVE', 'internal', 180)
+                    """);
+            // M04 全局种子由 V11 写入；TRUNCATE 后恢复最小基线，避免 B3/B4 测试读到空开关/空链。
+            statement.execute("""
+                    INSERT INTO model_routing (purpose) VALUES ('CHAT'), ('REPORT')
+                    """);
+            statement.execute("""
+                    INSERT INTO model_gateway_switch (switch_key, switch_value)
+                    VALUES ('routingMode', 'ROUTED'),
+                           ('failoverEnabled', 'true'),
+                           ('quotaEnforcementEnabled', 'false')
                     """);
             statement.execute("SET FOREIGN_KEY_CHECKS = 1");
         } catch (SQLException ex) {
@@ -198,10 +231,19 @@ public abstract class WorkerIntegrationTestBase {
         registry.add("riccon.worker.outbox.lease-duration", () -> "30s");
         registry.add("riccon.worker.crypto.master-key", () -> TestCredentials.MASTER_KEY_BASE64);
         registry.add("riccon.worker.crypto.master-key-id", () -> TestCredentials.MASTER_KEY_ID);
+        registry.add("riccon.worker.crypto.canary", () -> "test-canary");
+        registry.add("riccon.worker.crypto.fingerprint-pepper", () -> TEST_FINGERPRINT_PEPPER);
         registry.add("riccon.worker.service-token.secret", () -> TestServiceToken.SECRET);
         registry.add("riccon.worker.model.allow-insecure-http", () -> "true");
         registry.add("riccon.worker.model.retry-delays", () -> "0ms,0ms");
         registry.add("riccon.worker.model.request-timeout", () -> "10s");
+        // M04：Worker 集成上下文显式运行在 DEMO + 受管端点允许列表；主密钥与 pepper 使用已知测试占位。
+        registry.add("riccon.model.deployment-mode", () -> "DEMO");
+        registry.add("riccon.model.endpoints", () -> DEMO_ENDPOINTS);
+        registry.add("riccon.model.allow-legacy-endpoints", () -> "true");
+        registry.add("riccon.model.allow-http", () -> "true");
+        registry.add("riccon.billing.currency", () -> "CNY");
+        registry.add("riccon.ops.allowed-cidrs", () -> "");
         registry.add("riccon.worker.mcp.allow-stdio", () -> "true");
         registry.add("riccon.worker.mcp.request-timeout", () -> "15s");
         registry.add("riccon.worker.mcp.initialization-timeout", () -> "10s");

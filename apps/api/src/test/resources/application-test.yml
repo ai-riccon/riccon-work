@@ -1,5 +1,5 @@
 spring:
-  # 集成测试使用 Testcontainers MySQL 8.4，Flyway 在容器内按 V1–V8 建库；不再排除 DataSource。
+  # 集成测试使用 Testcontainers MySQL 8.4，Flyway 在容器内按 V1–V11 建库；不再排除 DataSource。
   flyway:
     enabled: true
     clean-disabled: true
@@ -8,6 +8,36 @@ spring:
       initialize-schema: never
 
 riccon:
+  # M04：测试上下文只使用占位密钥；均为已知测试值，不对应任何真实环境。
+  # 三处（API test、Worker test、WorkerIntegrationTestBase）必须使用同一把 master key，
+  # 才能覆盖“API 加密 → Worker 解密”的往返（ADR-0021 §6.5、B1b）。
+  crypto:
+    master-key: cmljY29uLXdvcmtlci10ZXN0LW1hc3Rlci1rZXktMzI=
+    previous-master-key: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+    master-key-id: mk-test
+    canary: test-canary
+    fingerprint-pepper: cmljY29uLXRlc3QtZmluZ2VycHJpbnQtcGVwcGVyMzI=
+  # M04：测试默认 DEMO，允许 DB-only 目录兼容；需要生产模式负向用例的测试自行覆盖属性。
+  model:
+    deployment-mode: DEMO
+    endpoints: ""
+    allow-legacy-endpoints: true
+    allow-http: true
+    gateway:
+      # 测试不设置环境变量覆盖；开关从 model_gateway_switch 读取。
+      routing-mode: ""
+      failover-enabled: ""
+      quota-enforcement-enabled: ""
+  billing:
+    currency: CNY
+  quota:
+    defaults:
+      tenant-daily: 10000
+      tenant-monthly: 200000
+      user-daily: 1000
+      user-monthly: 20000
+  ops:
+    allowed-cidrs: ""
   bootstrap:
     admin:
       # 仅测试上下文使用的引导账号；密码是测试占位值，不对应任何真实环境。

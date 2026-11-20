@@ -4,9 +4,11 @@ package com.riccon.platform.domain.identity;
  * 权限码。
  *
  * <p>权限码是 RBAC 判定的唯一依据，格式 {@code <domain>.<action>}。新增权限码必须同时更新对应迁移的权限字典
- * （V2 定义 M02 码，V9 定义 M03 部门码）、角色映射与 OpenAPI 的 {@code x-riccon-permission}。
- * M02 不提供自定义权限；M03 新增 {@value #DEPARTMENT_READ} 与 {@value #PLATFORM_DEPARTMENT_MANAGE}，
- * 部门数据范围由空间谓词执行，既有码值语义不变。
+ * （V2 定义 M02 码，V9 定义 M03 部门码，V11 定义 M04 模型网关/配额/成本码）、角色映射与 OpenAPI 的
+ * {@code x-riccon-permission}。M02 不提供自定义权限；M03 新增 {@value #DEPARTMENT_READ} 与
+ * {@value #PLATFORM_DEPARTMENT_MANAGE}，部门数据范围由空间谓词执行，既有码值语义不变。
+ * M04 新增 {@value #PLATFORM_MODEL_MANAGE}、{@value #QUOTA_READ}、{@value #PLATFORM_QUOTA_MANAGE}、
+ * {@value #COST_READ}、{@value #PLATFORM_COST_READ}；员工无配额/成本入口。
  */
 public interface PermissionCodes {
 
@@ -61,6 +63,16 @@ public interface PermissionCodes {
     String PLATFORM_DEPARTMENT_MANAGE = "platform.department.manage";
     /** 平台模型目录只读（M04 扩展写能力）。 */
     String PLATFORM_MODEL_READ = "platform.model.read";
+    /** 平台模型路由、模型启停、key 池与网关开关管理（M04，仅 PLATFORM_ADMIN；ADR-0021 §7.1）。 */
+    String PLATFORM_MODEL_MANAGE = "platform.model.manage";
+    /** 读取本租户配额与用量（M04，仅 TENANT_ADMIN；ADR-0022 §1.5）。 */
+    String QUOTA_READ = "quota.read";
+    /** 平台管理员跨租户配额查看与整体替换（M04，仅 PLATFORM_ADMIN）。 */
+    String PLATFORM_QUOTA_MANAGE = "platform.quota.manage";
+    /** 读取本租户成本聚合与调用明细（M04，仅 TENANT_ADMIN；ADR-0022 §3.1）。 */
+    String COST_READ = "cost.read";
+    /** 平台管理员跨租户成本聚合，不返回用户明细（M04，仅 PLATFORM_ADMIN）。 */
+    String PLATFORM_COST_READ = "platform.cost.read";
     /** 平台 MCP 目录只读（M07 扩展注册与凭据托管）。 */
     String PLATFORM_MCP_READ = "platform.mcp.read";
     /** 审计查询（M10 启用；M02/M03 只写不读，权限码先保留）。 */

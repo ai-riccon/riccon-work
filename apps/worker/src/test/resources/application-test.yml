@@ -1,0 +1,31 @@
+# Worker 集成测试 profile（由 WorkerIntegrationTestBase 的 @ActiveProfiles("test") 激活）。
+#
+# 这里只放 M04 测试占位：真实主密钥、pepper 与动态端口由 WorkerIntegrationTestBase 的
+# @DynamicPropertySource 注入，禁止把任何真实密钥写入仓库。
+riccon:
+  model:
+    deployment-mode: DEMO
+    endpoints: '[{"code":"demo-local","baseUrl":"http://127.0.0.1:19090/v1","environmentLabel":"DEMO_ONLY"}]'
+    allow-legacy-endpoints: true
+    allow-http: true
+    gateway:
+      routing-mode: ""
+      failover-enabled: ""
+      quota-enforcement-enabled: ""
+  billing:
+    currency: CNY
+  quota:
+    defaults:
+      tenant-daily: 10000
+      tenant-monthly: 200000
+      user-daily: 1000
+      user-monthly: 20000
+  ops:
+    allowed-cidrs: ""
+  worker:
+    crypto:
+      # 已知测试占位；实际值由 WorkerIntegrationTestBase 动态属性覆盖。
+      master-key: cmljY29uLXdvcmtlci10ZXN0LW1hc3Rlci1rZXktMzI=
+      master-key-id: mk-test
+      canary: test-canary
+      fingerprint-pepper: cmljY29uLXRlc3QtZmluZ2VycHJpbnQtcGVwcGVyMzI=
