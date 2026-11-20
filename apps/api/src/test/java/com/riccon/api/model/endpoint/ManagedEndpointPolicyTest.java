@@ -108,6 +108,8 @@ class ManagedEndpointPolicyTest {
                 "https://192.0.0.192/v1",
                 "https://0xa9.0xfe.0xa9.0xfe/v1",
                 "https://0251.0376.0251.0376/v1",
+                "https://2852039166/v1",
+                "https://0xa9fea9fe/v1",
                 "https://[::ffff:a9fe:a9fe]/v1",
                 "https://[fd00:ec2::254]/v1",
                 "https://metadata.google.internal./v1");

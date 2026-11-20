@@ -381,6 +381,9 @@ public final class ManagedEndpointPolicy {
     /**
      * 解析 IPv4/IPv6 字面量；不是字面量时返回 {@code null}。
      *
+     * <p>兼容 inet_aton 的常见编码：点分十进制、每段十六进制（{@code 0x..}）或八进制（前导 0），
+     * 以及 1–4 段数字形式（如 {@code 2852039166} == 169.254.169.254）；IPv4-mapped IPv6 由 JDK 归一化。
+     *
      * @param host 已归一化的 host
      * @return 4 或 16 字节地址；非字面量返回 null
      */
@@ -397,18 +400,79 @@ public final class ManagedEndpointPolicy {
             }
         }
         String[] parts = host.split("\\.", -1);
-        if (parts.length != 4) {
+        if (parts.length < 1 || parts.length > 4) {
             return null;
         }
-        byte[] address = new byte[4];
-        for (int index = 0; index < 4; index++) {
-            int value = parseIpv4Part(parts[index]);
+        if (parts.length == 4) {
+            byte[] address = new byte[4];
+            for (int index = 0; index < 4; index++) {
+                int value = parseIpv4Part(parts[index]);
+                if (value < 0) {
+                    return null;
+                }
+                address[index] = (byte) value;
+            }
+            return address;
+        }
+        long[] values = new long[parts.length];
+        for (int index = 0; index < parts.length; index++) {
+            long value = parseWideIpv4Part(parts[index]);
             if (value < 0) {
                 return null;
             }
-            address[index] = (byte) value;
+            values[index] = value;
         }
-        return address;
+        long numeric;
+        if (parts.length == 1) {
+            numeric = values[0];
+        } else if (parts.length == 2) {
+            if (values[0] > 0xff || values[1] > 0xffffffL) {
+                return null;
+            }
+            numeric = (values[0] << 24) | values[1];
+        } else {
+            if (values[0] > 0xff || values[1] > 0xff || values[2] > 0xffffL) {
+                return null;
+            }
+            numeric = (values[0] << 24) | (values[1] << 16) | values[2];
+        }
+        if (numeric < 0 || numeric > 0xffffffffL) {
+            return null;
+        }
+        return new byte[] {(byte) (numeric >>> 24), (byte) (numeric >>> 16), (byte) (numeric >>> 8), (byte) numeric};
+    }
+
+    /**
+     * 解析宽 IPv4 段（1–3 段形式），支持十进制/十六进制/八进制。
+     *
+     * @param part 段文本
+     * @return 0–0xFFFFFFFF；非法返回 -1
+     */
+    private static long parseWideIpv4Part(String part) {
+        if (part.isEmpty() || part.length() > 10) {
+            return -1;
+        }
+        int radix = 10;
+        int start = 0;
+        if (part.length() > 2 && (part.startsWith("0x") || part.startsWith("0X"))) {
+            radix = 16;
+            start = 2;
+        } else if (part.length() > 1 && part.startsWith("0")) {
+            radix = 8;
+            start = 1;
+        }
+        long value = 0;
+        for (int index = start; index < part.length(); index++) {
+            int digit = Character.digit(part.charAt(index), radix);
+            if (digit < 0) {
+                return -1;
+            }
+            value = value * radix + digit;
+            if (value > 0xffffffffL) {
+                return -1;
+            }
+        }
+        return value;
     }
 
     /**
