@@ -79,6 +79,16 @@ export const routes: RicconRoute[] = [
         title: '模型 key',
       },
       {
+        path: '/admin/quotas',
+        component: '@/pages/admin/quotas',
+        title: '配额',
+      },
+      {
+        path: '/admin/costs',
+        component: '@/pages/admin/costs',
+        title: '成本',
+      },
+      {
         path: '/admin/tenants/:tenantId/users',
         component: '@/pages/admin/users',
         title: '租户用户管理',
@@ -159,7 +169,9 @@ export interface NavigationItem {
  * `/admin/tenants/:tenantId/users`）；审计查询对租户/平台管理员可见；审计导出是租户管理员
  * 入口，平台审批页需要租户上下文，无法用静态菜单表达。
  * M04 新增模型路由与模型 key：两者都是平台全局资源，只按 `platform.model.read` 展示；
- * 租户管理员的配额/成本入口由 M04 B9b 追加，不在本任务注册。
+ * M04 B9b 追加配额/成本入口：同一路径在平台与租户角色下文案不同（租户配额/配额、
+ * 成本看板/成本），因此单独声明 `quotaCostNavigation`，由 `filterAdminNavigation` 在
+ * 审计入口之前合并，保证“路由 / key / 配额 / 成本”四页在平台管理员菜单中连续可见。
  */
 export const adminNavigation: NavigationItem[] = [
   { path: '/admin/overview', label: '管理总览' },
@@ -185,20 +197,65 @@ export const adminNavigation: NavigationItem[] = [
 ];
 
 /**
+ * M04 配额/成本入口。
+ *
+ * 同一路径在平台与租户角色下需要不同菜单文案（AC-13：平台管理员看到“租户配额 / 成本看板”，
+ * 租户管理员只看到“配额 / 成本”），而 `NavigationItem` 一条记录只有一个 label，
+ * 因此按权限分别声明，由 `filterAdminNavigation` 合并。平台管理员与租户管理员的权限集合
+ * 互斥（`platform.quota.manage`/`platform.cost.read` 只授平台角色，`quota.read`/`cost.read`
+ * 只授租户管理员），正常情况下同一角色只会命中一条。
+ */
+export const quotaCostNavigation: NavigationItem[] = [
+  { path: '/admin/quotas', label: '租户配额', permissions: ['platform.quota.manage'] },
+  { path: '/admin/quotas', label: '配额', permissions: ['quota.read'] },
+  { path: '/admin/costs', label: '成本看板', permissions: ['platform.cost.read'] },
+  { path: '/admin/costs', label: '成本', permissions: ['cost.read'] },
+];
+
+/**
+ * 把配额/成本入口插入到审计入口之前。
+ *
+ * 平台管理员期望顺序是“模型路由 → 模型 key → 租户配额 → 成本看板”，租户管理员是
+ * “用户管理 → 配额 → 成本 → 审计查询”；把新增项放在审计之前可同时满足两者，
+ * 且没有 audit 权限时不臆造位置，直接追加到末尾。
+ *
+ * @param base 既有可见菜单
+ * @param extra 配额/成本可见菜单
+ * @returns 合并后的菜单
+ */
+function mergeQuotaCostNavigation(
+  base: NavigationItem[],
+  extra: NavigationItem[],
+): NavigationItem[] {
+  if (extra.length === 0) {
+    return base;
+  }
+  const auditIndex = base.findIndex((item) => item.path === '/admin/audit');
+  if (auditIndex < 0) {
+    return [...base, ...extra];
+  }
+  return [...base.slice(0, auditIndex), ...extra, ...base.slice(auditIndex)];
+}
+
+/**
  * 按会话权限过滤管理端菜单。
  *
  * 未声明 `permissions` 的既有入口不参与前端过滤，避免改变总览/租户/设置的既有布局语义；
- * 声明了权限的入口要求至少命中一个权限码，因此普通员工看不到审计与用户管理入口。
+ * 声明了权限的入口要求至少命中一个权限码，因此普通员工看不到审计、用户管理、模型与配额/成本入口。
  *
  * @param permissions 当前会话权限码；会话未加载时传空数组
  * @returns 当前会话可见的菜单项
  */
 export function filterAdminNavigation(permissions: readonly string[] = []): NavigationItem[] {
-  return adminNavigation.filter(
+  const visible = adminNavigation.filter(
     (item) =>
       item.permissions === undefined ||
       item.permissions.some((permission) => permissions.includes(permission)),
   );
+  const quotaCost = quotaCostNavigation.filter((item) =>
+    item.permissions?.some((permission) => permissions.includes(permission)),
+  );
+  return mergeQuotaCostNavigation(visible, quotaCost);
 }
 
 /** 应用标题，集中定义避免多处硬编码。 */
