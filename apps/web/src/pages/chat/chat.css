@@ -177,6 +177,15 @@
   margin-bottom: 4px;
 }
 
+/* 停止生成对比度：danger link 默认 #ff4d4f 在白底仅 3.27:1，hover #ff7875
+   更低；覆盖为 red-7/8/9（5.57:1 / 7.75:1 / 10.72:1），在保持危险语义的同时
+   满足 WCAG AA normal text。与引用链接一样通过覆盖 Button 内部变量实现。 */
+.chat-page .chat-stop-button.ant-btn {
+  --ant-btn-text-color: #cf1322;
+  --ant-btn-text-color-hover: #a8071a;
+  --ant-btn-text-color-active: #820014;
+}
+
 .chat-composer-hint {
   display: block;
   margin-top: 8px;
@@ -221,6 +230,18 @@
   padding: 0;
   text-align: left;
   white-space: normal;
+}
+
+/* 引用链接对比度：完成态气泡背景是 antd colorFillContent（rgba(0,0,0,0.06)
+   合成后约 #f0f0f0）。antd 默认 hover 色 colorLinkHover #579df2 在该背景上
+   只有 2.45:1，鼠标停留在引用上时会被 axe 判为 serious。
+   antd 6 的组件样式选择器带 :where() 哈希（不增加特异性），这里直接覆盖 Button
+   的内部文本颜色变量，让默认 / hover / active 三态分别达到
+   #0958d9 5.39:1、#003eb3 7.85:1（Chromium 实测）、#002c8c 10.6:1（计算值），无需 !important。 */
+.chat-page .citation-link.ant-btn {
+  --ant-btn-text-color: #0958d9;
+  --ant-btn-text-color-hover: #003eb3;
+  --ant-btn-text-color-active: #002c8c;
 }
 
 .no-citation-note {
