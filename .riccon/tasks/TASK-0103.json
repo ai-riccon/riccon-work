@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0103",
+  "module_id": "M04",
+  "title": "M04 B2：端点允许列表 + 三模型端点 + 模型启停 + Actuator 暴露 + 契约唯一 writer（含配额/成本契约）",
+  "owner": "riccon/builder-route",
+  "status": "planned",
+  "write_scope": [
+    "apps/api/src/main/java/com/riccon/api/model/catalog/**",
+    "apps/api/src/main/java/com/riccon/api/admin/model/catalog/**",
+    "apps/api/src/main/java/com/riccon/api/admin/model/provider/**",
+    "platform/platform-common/src/main/java/com/riccon/platform/common/model/**",
+    "apps/worker/src/main/java/com/riccon/worker/config/ModelEndpointProperties.java",
+    "apps/api/src/main/java/com/riccon/api/config/SecurityConfig.java",
+    "apps/worker/src/main/java/com/riccon/worker/config/SecurityConfig.java",
+    "contracts/openapi.yaml",
+    "contracts/README.md",
+    "apps/api/src/test/java/com/riccon/api/model/**",
+    "apps/api/src/test/java/com/riccon/api/admin/model/**",
+    "apps/api/src/test/java/com/riccon/api/config/**",
+    "apps/worker/src/test/java/com/riccon/worker/config/**",
+    "apps/api/src/test/java/com/riccon/api/contract/**",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "`IT-MODEL-108a`（三个模型端点 + 路由/凭据/开关契约测试）",
+    "`IT-MODEL-108b`（配额/成本端点契约测试，同一 `1.3.0-m04` 全量、无 deferred 分段）",
+    "端点标签/允许状态、只读字段 400、生产模式拒绝演示端点、URL 负向矩阵（含元数据/IP 归一化）、405 无写路由",
+    "内层 `model.max-attempts=1`",
+    "Actuator prometheus 按 `RICCON_OPS_ALLOWED_CIDRS` 控制（空=loopback）且不放宽默认拒绝",
+    "**M04 契约唯一 writer（含 `contracts/README.md`）**，M02/M03/M10 契约零回归"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-20T21:05:30.638+08:00",
+  "updated_at": "2026-11-20T21:05:30.638+08:00"
+}

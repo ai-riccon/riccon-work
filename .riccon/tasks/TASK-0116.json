@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0116",
+  "module_id": "M04",
+  "title": "M04 V2：AC-02 整条 + AC-17/18、配额/成本安全与并发、perf、迁移/回滚/备份、7+2 指标、最终提交全量独立复验",
+  "owner": "riccon/verifier",
+  "status": "planned",
+  "write_scope": [
+    "apps/api/src/test/java/com/riccon/api/security/m04verify/**",
+    "e2e/**",
+    "e2e/perf/**",
+    ".riccon/evidence/**",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "**AC-02 整条**（模型/key/开关写越权：复用 V1 的 `SEC-M04-003a`/`TEN-031`/`IT-MODEL-102` + 独立抽检；配额写越权：`SEC-M04-003b`、`IT-QUOTA-103`；界面无写入口：`E2E-M04-07a/07b` 角色断言；路由审计与审计 fail-closed：`IT-MODEL-102`）",
+    "**AC-17/18** + `PERF-M04-001/002`",
+    "`TEN-032/033`、`IT-QUOTA-101..105`、`IT-COST-101..104`",
+    "迁移/回滚/备份恢复（`OPS-M04-01`：在一次性 MySQL 8.4.13 上独立重放并核对 WARN/工单）",
+    "7+2 指标核对（`OPS-M04-02a` Worker 7 + `OPS-M04-02b` API 2 主 + 3 辅助）",
+    "**在最终提交上独立运行一次全量合同 test/coverage/E2E/a11y/security（与 V1 分开取证），并独立抽样重跑 AC-01、AC-03、AC-05、AC-08、AC-09、AC-11、AC-12、AC-16（引用 V1 证据但不替代）；零 skip**"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-20T21:05:33.887+08:00",
+  "updated_at": "2026-11-20T21:05:33.887+08:00"
+}
