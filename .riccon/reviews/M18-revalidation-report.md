@@ -194,3 +194,13 @@ DEC-0022 合并后，合同 `commands.test` 与 `commands.coverage` 同为：
 3. 记录 M18 墙钟成本（`riccon module cost M18 --confidence estimated --source wall-clock-only …`）。
 4. 决定 M02 Product 预验收/用户验收缺口与 M01 历史 open P2 的承接方式（建议另立任务，不在 M18 修）。
 5. 若要对 7 个模块做完整模块级复验（E2E/a11y/security/真实栈），另立高风险验证任务，避免把本次证据回溯误读为全量复验。
+
+## 11. 并发污染与重跑（F-004 收口，2026-11-20）
+
+- **触发**：TASK-0094 首次全量 test/coverage（EV-0511，`eabb184`，`dirty=true`，exit 1）在 api 出现 5 个失败：`ChatScopeApiTest.stopGeneration_creatorOrRunInitiatorOnly`、`ChatStreamApiTest.stopGeneration_preservesContentAndAudits`、`AuditExportApiTest.list_filtersByStatus`、`AuditExportClockTest.download_shortTtlExpiresWithClock`、`AuditExportPlatformApiTest.platformApproval_singleAdminTenant`。
+- **根因（已确认）**：Serena 的 Eclipse JDT LS（PID 51374）于 16:06 启动后改写 `target/classes`，与 EV-0511 的测试 JVM 并行；EV-0511 日志可见 `NoClassDefFoundError` 堆栈（`com.riccon.api.chat.service.ChatService$1`、`com.riccon.api.audit.repository.AuditExportRepository$2`、`com.riccon.worker.agentscope.HitlPermissionSmokeTest$1` 等），导致停止生成 500 与审计导出计数错误。
+- **清理步骤**：kill JDT LS → 提交 `.serena/project.yml`（`ec6a650`）→ `./mvnw clean` → 用合同命令重跑；**EV-0511 已从 `TASK-0094.evidence` 移除**（`870760c`），不再参与 gate/DoD。
+- **干净重跑结论**：`eabb184..ec6a650` 无 Java 源码变更；EV-0513（`ec6a650`，clean）Java 764 / 前端 384，0 fail/0 error/0 skip；EV-0511 中失败的 5 个类在 EV-0513 的 surefire XML 中均 0 failures/0 errors/0 skipped。EV-0512 build、EV-0514 E2E 33 passed、EV-0515 a11y 13 passed、EV-0516 security、EV-0517 gate 均 exit 0。
+- **判定**：EV-0511 是工具并发污染导致的**环境性失败**，不是源码回归，也不是 retry 掩盖产品失败；清理后的 clean 重跑与最终全量可作为权威证据。EV-0511 已从任务证据移除，不再作为 DoD 证据；其日志/归档状态见下一条。
+- **EV-0511 日志保留状态（evidence hygiene，记录校正）**：Lead 回执称 JSON/日志在清理中未保留、归档目录为空；核对结果：`.ricon/archive/evidence/TASK-0094/` 为空，`find .ricon -name 'EV-0511*'` 无结果；但 `find .riccon -name 'EV-0511*'` 仍命中 `.riccon/evidence/TASK-0094/EV-0511.json`（891 B）与日志（880,740 B）。因此准确表述是“**已从 `TASK-0094.evidence` 移除、未被任何任务/DoD 引用、未移动到归档路径**”，不能写“已归档”；截至本报告更新时点也不是“未保留”。若 Lead 后续删除文件，应将本节更新为“未保留/不可审计”；若保留，建议移动到 `.riccon/archive/evidence-superseded/TASK-0094/` 并记录实际路径。根因与 clean 重跑结论已记录，不影响 DoD。
+- **front matter 说明**：本报告 front matter 的 `verdict: blocked` 是 14:16 时 M18 尚未收口的历史状态；当前 M18 的结论以 `REV-M18-001` 为准。

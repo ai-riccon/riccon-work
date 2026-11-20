@@ -8,9 +8,9 @@ reviewer:
   model: opencode-go/deepseek-v4.1-flash
   independent: true
 review_kind: module
-head_commit: f4f399ab085a1c97377b7a7d4e2272033051f496
-verdict: fail
-verdict_note: "M18 的 acceptance 与最终 DoD 证据成立；但 TASK-0094 证据列表保留了 dirty 失败记录 EV-0511（含 5 个 API 测试失败），strict 绑定下 M18 gate 无法通过。删除/归档该记录、书面说明失败根因并复核后，本评审可转 pass。"
+head_commit: 870760c622aba552f554109fe11f27db8fc8887e
+verdict: pass
+verdict_note: "M18 六条 acceptance 与最终 DoD 证据成立；F-004（EV-0511 dirty/5 个 API 失败）已由 870760c 移出 TASK-0094 证据并确认为 JDT LS/target 并发污染，EV-0513 clean 重跑全绿；无剩余 P0/P1。F-003 P2 accepted、F-008 P3 accepted 保留。"
 reviewed_evidence:
   - EV-0498
   - EV-0500
@@ -18,6 +18,7 @@ reviewed_evidence:
   - EV-0507
   - EV-0508
   - EV-0509
+  - EV-0510
   - EV-0512
   - EV-0513
   - EV-0514
@@ -73,10 +74,10 @@ findings:
     evidence: "e2e/tests/j1.spec.ts:20-55（isKnownPrimaryHoverContrast/expectNoNewSeriousA11yViolations）、:269-274（仅失败态空页使用）；docs/ACCEPTANCE.md:218/230；EV-0515（j1 失败态 @a11y 通过）。未声称已修复，未扩大 allowlist 到其他节点。"
   - id: F-004
     severity: P1
-    status: open
-    title: "TASK-0094 保留 dirty 失败证据 EV-0511（5 个 API 测试失败），strict gate 失败且失败根因未记录"
-    evidence: ".riccon/tasks/TASK-0094.json:20-21；.riccon/evidence/TASK-0094/EV-0511.json（dirty=true、exit_code=1、commit=eabb184）；EV-0511 日志：api `Tests run: 453, Failures: 5`（ChatScopeApiTest.stopGeneration_creatorOrRunInitiatorOnly、ChatStreamApiTest.stopGeneration_preservesContentAndAudits、AuditExportApiTest.list_filtersByStatus、AuditExportClockTest.download_shortTtlExpiresWithClock、AuditExportPlatformApiTest.platformApproval_singleAdminTenant）；gate check 2026-11-20T17:30:13+08:00 报 `1 evidence record(s) were recorded from a dirty working tree: EV-0511`。"
-    note: "eabb184..ec6a650 之间没有 Java 代码变更（只有 .riccon、AGENTS.md、docs/COLLABORATION.md、.serena/project.yml）；最终 clean EV-0513 为 764 tests / 0 fail / 0 error / 0 skip，且 `apps/api/target/surefire-reports` 中这 5 个类在 EV-0513 运行窗口（16:29–16:32）均为 0 failures/0 errors/0 skipped。失败很可能是并发 Serena JDT LS 触碰 target/ 或测试环境隔离问题（ec6a650 才加入该约束），但没有任何书面根因或定向复跑证据，属于 retry 掩盖失败。"
+    status: fixed
+    title: "EV-0511 已从 TASK-0094 证据移除且不用于 DoD；归档目录为空（JSON/日志仍在 active evidence，未实际归档）；根因 JDT LS/target 并发；EV-0513 clean 重跑全绿"
+    evidence: ".riccon/tasks/TASK-0094.json 现为 EV-0510、EV-0512..EV-0517（870760c 移除 EV-0511）；EV-0513（ec6a650，clean，exit 0）Java 764 / 前端 384，0 fail/0 error/0 skip；EV-0511 中失败的 5 个类在 EV-0513 surefire XML 中均 0 failures/0 errors/0 skipped；EV-0512/EV-0514/EV-0515/EV-0516/EV-0517 全部 exit 0。"
+    note: "根因：Serena Eclipse JDT LS（PID 51374）16:06 启动后改写 `target/classes`，与 EV-0511 测试 JVM 并行，日志出现 NoClassDefFoundError（ChatService$1、AuditExportRepository$2、HitlPermissionSmokeTest$1 等）。清理：kill JDT LS → commit `.serena/project.yml`（ec6a650）→ `./mvnw clean` → 合同命令重跑；`eabb184..ec6a650` 无 Java 源码变更。保留状态：`.ricon/archive/evidence/TASK-0094/` 为空，`find .ricon -name 'EV-0511*'` 无结果；但 `find .riccon -name 'EV-0511*'` 仍命中 `.riccon/evidence/TASK-0094/EV-0511.json`（891 B）与日志（880,740 B），文件未被任何任务/DoD 引用但未实际归档，也不是“未保留”。见 F-008。"
   - id: F-005
     severity: P2
     status: open
@@ -92,18 +93,27 @@ findings:
     status: open
     title: "外部残余：M11 仍 planned 但有 done 任务；M14 docs-only 仍 pending"
     evidence: "EV-0517 state validate 1 warning（M11 TASK-0035/0036 done）；M14 模块 status=building、product_acceptance=pending。"
+  - id: F-008
+    severity: P3
+    status: accepted
+    title: "EV-0511 负向日志保留状态不一致：归档目录为空，文件仍在 active evidence"
+    owner: riccon/lead
+    due: "2026-11-21"
+    evidence: "`find .ricon -name 'EV-0511*'` 为空；`find .riccon -name 'EV-0511*'` 命中 `.riccon/evidence/TASK-0094/EV-0511.json`（891 B）与日志（880,740 B）；`TASK-0094.evidence` 已移除引用；报告 §11 已记录根因与 EV-0513 clean 重跑。"
+    note: "不影响 DoD：EV-0511 不绑定任何 DoD，根因与 clean 重跑结论已记录。若 Lead 决定丢弃负向日志，请在报告中明确写“未保留/不可审计”；若保留，建议移动到 `.riccon/archive/evidence-superseded/TASK-0094/` 并记录实际路径。P3 accepted，不阻塞 gate。"
 created_at: "2026-11-20T17:34:00+08:00"
+updated_at: "2026-11-20T17:41:37+08:00"
 ---
 
 # REV-M18-001：M18（已完成模块 gate 证据回溯）模块独立验证
 
 ## 1. 结论
 
-**verdict: fail（模块级独立技术验收）。**
+**verdict: pass（模块级独立技术验收）。**
 
-M18 的六条 acceptance 与最终 DoD 证据本身成立：7 个回溯模块在新 review 下 gate 全部 PASS（EV-0498/EV-0517）；M02 回溯 Product 预验收为 `pass`（with residual F-003）；AC-02 逐格式 UI 证据与 AC-16 a11y P1 修复已由 EV-0508/0509/0514/0515 支撑；最终代码 `ec6a650` 的 build/test/coverage/E2E/a11y/security 全部干净通过（EV-0512..0516），state 0 errors/1 M11 warning、doctor OK（EV-0517）。
+M18 的六条 acceptance 与最终 DoD 证据成立：7 个回溯模块在新 review 下 gate 全部 PASS（EV-0498/EV-0517）；M02 回溯 Product 预验收为 `pass`（with residual F-003）；AC-02 逐格式 UI 证据与 AC-16 a11y P1 修复已由 EV-0508/0509/0514/0515 支撑；最终代码 `ec6a650` 的 build/test/coverage/E2E/a11y/security 全部干净通过（EV-0512..0516），state 0 errors/1 M11 warning、doctor OK（EV-0517）。
 
-但 **M18 gate 仍不能通过**：TASK-0094 的 `evidence` 列表保留了 `EV-0511`——一条 `dirty=true`、`exit_code=1` 的失败全量测试，且该次运行有 **5 个 API 测试失败**。strict 绑定下内核直接判 fail；同时该失败没有任何书面根因或定向复跑说明，属于“retry 掩盖失败”的假绿风险。必须先做证据卫生与根因收口，本评审才能转 `pass`。
+上一轮的 gate 阻断项 **F-004 已 fixed**：`870760c` 把 `EV-0511` 从 `TASK-0094.evidence` 移除；根因确认为 Serena Eclipse JDT LS 并发改写 `target/classes`（日志见 `NoClassDefFoundError: ChatService$1 / AuditExportRepository$2 / HitlPermissionSmokeTest$1`），不是源码失败；kill JDT LS、提交 `.serena/project.yml`、`./mvnw clean` 后用合同命令 clean 重跑，EV-0513 全绿（Java 764 / 前端 384，0 fail/0 error/0 skip），原 5 个失败类均 0 failures/0 errors/0 skipped。无剩余 P0/P1。
 
 本评审是独立技术验收，不是 Product 预验收，也不是用户产品验收；M18 的 `product_acceptance` 仍为 `pending`，不得由本评审替代。
 
@@ -132,7 +142,7 @@ M18 的六条 acceptance 与最终 DoD 证据本身成立：7 个回溯模块在
 | acceptance / gate | EV-0517 | 7 模块 gate 循环 + `state validate` + `doctor`：7/7 PASS；state OK（0 errors，1 warning：M11 planned 但有 done 任务）；doctor OK（0 errors/0 warnings）。                                                                                                                                                                                                                                                                                                |
 | docs              | EV-0518 | `git diff --check && grep -q "M02-AC-02" docs/ACCEPTANCE.md && grep -q "M18 回溯复验" docs/ACCEPTANCE.md`，exit 0；本评审另行人工核对了 `docs/ACCEPTANCE.md` 的 M18/M02/M03/M10/M13/M15/M01/M12 段。                                                                                                                                                                                                                                                     |
 
-**失败尝试（必须处理）**：TASK-0094 另留有 EV-0510（`eabb184`、build、clean exit 0）与 EV-0511（`eabb184`、test/coverage、**dirty=true、exit 1**）。EV-0511 的 api surefire 报 `Tests run: 453, Failures: 5`：
+**已处理的失败尝试**：TASK-0094 另留有 EV-0510（`eabb184`、build、clean exit 0，历史）与 EV-0511（`eabb184`、test/coverage、**dirty=true、exit 1**）。EV-0511 的 api surefire 报 `Tests run: 453, Failures: 5`：
 
 - `ChatScopeApiTest.stopGeneration_creatorOrRunInitiatorOnly`（expected 202，was 500）
 - `ChatStreamApiTest.stopGeneration_preservesContentAndAudits`（expected 202，was 500）
@@ -140,7 +150,7 @@ M18 的六条 acceptance 与最终 DoD 证据本身成立：7 个回溯模块在
 - `AuditExportClockTest.download_shortTtlExpiresWithClock`（expected 1L，was 0L）
 - `AuditExportPlatformApiTest.platformApproval_singleAdminTenant`（expected 200，was 500）
 
-`eabb184..ec6a650` 没有 Java 代码变更；最终 clean 重跑 EV-0513 这 5 个测试全部通过。这更像并发 Serena JDT LS / `target/` 污染或测试环境隔离问题（`ec6a650` 才把该约束写进 AGENTS），但任务/证据/文档均未记录根因或定向复跑，属于 retry 掩盖失败。详见 F-004。
+根因为 Serena Eclipse JDT LS 并发改写 `target/classes`（日志见 `NoClassDefFoundError: ChatService$1 / AuditExportRepository$2 / HitlPermissionSmokeTest$1`），与 EV-0511 的测试 JVM 并行；`eabb184..ec6a650` 没有 Java 代码变更。kill JDT LS、提交 `.serena/project.yml`、`./mvnw clean` 后，EV-0513 在 `ec6a650` clean 重跑 Java 764 / 前端 384 全绿，上述 5 个类均 0 failures/0 errors/0 skipped。`870760c` 已将 EV-0511 从 `TASK-0094.evidence` 移除；它不再绑定 DoD，其日志保留状态见 F-008，不是源码回归，也不是 retry 掩盖产品失败。详见 F-004/F-008。
 
 ## 4. 7 个模块 review 与 gate 复核
 
@@ -167,17 +177,19 @@ M18 的六条 acceptance 与最终 DoD 证据本身成立：7 个回溯模块在
 
 ## 6. Findings
 
-### F-004（P1，open）：dirty 失败 EV-0511 阻断 strict gate，且 5 个测试失败无根因记录
+### F-004（P1，fixed）：EV-0511 已移出证据且不用于 DoD，根因确认为 JDT LS/target 并发污染
 
-- **位置**：`.riccon/tasks/TASK-0094.json:20-21`；`.riccon/evidence/TASK-0094/EV-0511.json`；`EV-0511-*.log`。
-- **观察**：`EV-0511` 为 `dirty=true`、`exit_code=1`，api `Tests run: 453, Failures: 5`；`gate check --module M18` 在 strict 绑定下报 `1 evidence record(s) were recorded from a dirty working tree: EV-0511`。
-- **期望**：strict 下不得保留 dirty 证据；失败尝试应像 EV-0497 一样从任务 evidence 移除/归档，并在报告/任务回执中写明根因与最终 clean 复跑结论，不能仅用 clean rerun 覆盖。
-- **风险**：5 个失败覆盖停止生成与审计导出，若未来复现可能影响 M02/M10 的用户可见路径；现有 clean EV-0513 + EV-0490..0496 多次通过支持“环境性失败”判断，但缺少书面根因/定向复跑，仍属 retry 掩盖失败的假绿风险。
-- **最小修复**：
-  1. 从 TASK-0094 `evidence` 移除 EV-0511（保留日志作审计，可归档到 `.riccon/archive/evidence-superseded/TASK-0094/`），EV-0510 可一并移除（已被 EV-0512 取代，非 gate 必需）。
-  2. 在 TASK-0094 回执或 `M18-revalidation-report.md` 记录 EV-0511 的根因（并发 Serena JDT LS/target 污染或测试环境隔离）与 clean 复跑结论；若无法确认，至少对 5 个失败类在干净环境定向复跑并记录 EV。
-  3. 重跑 `gate check --module M18`；待 F-004 置 fixed、verdict 转 pass 后由 Lead 提交。
-- **说明**：该 finding 不是产品代码回归；EV-0513 在最终代码上 764/0/0/0，E2E/a11y/security 均干净。它的严重级别来自 strict gate 的硬失败与未解释的失败历史，不是当前 HEAD 的功能缺陷。
+- **原问题**：TASK-0094 证据列表保留 `EV-0511`（`dirty=true`、exit 1），api 5 个测试失败；strict 绑定下 gate 直接 fail，且当时没有书面根因。
+- **根因（已确认）**：Serena Eclipse JDT LS（PID 51374）16:06 启动后改写 `target/classes`，与 EV-0511 的测试 JVM 并行；EV-0511 日志可见 `NoClassDefFoundError`（`ChatService$1`、`AuditExportRepository$2`、`HitlPermissionSmokeTest$1` 等），造成停止生成 500 与审计导出计数错误。
+- **清理与复验**：kill JDT LS → commit `.serena/project.yml`（`ec6a650`）→ `./mvnw clean` → 合同命令重跑；`870760c` 从 `TASK-0094.evidence` 移除 EV-0511（现为 EV-0510、EV-0512..EV-0517）。`eabb184..ec6a650` 无 Java 源码变更；EV-0513 clean 重跑 Java 764 / 前端 384，0 fail/0 error/0 skip，原 5 个失败类 surefire 均 0/0/0；EV-0512/EV-0514/EV-0515/EV-0516/EV-0517 全部 exit 0。
+- **判定**：不是源码失败，不是 retry 掩盖产品失败；EV-0511 已不再绑定任何 DoD，其日志保留状态见 F-008。F-004 fixed。
+- **保留状态核对（记录校正）**：`.ricon/archive/evidence/TASK-0094/` 为空，`find .ricon -name 'EV-0511*'` 无结果；但 `find .riccon -name 'EV-0511*'` 仍命中 `.riccon/evidence/TASK-0094/EV-0511.json`（891 B）与日志（880,740 B）。因此当前事实是“已移除引用、未归档、文件仍在 active evidence”，既不是“已归档”，也不是“未保留”；详见 F-008。
+
+### F-008（P3，accepted）：EV-0511 负向日志保留状态不一致
+
+- **观察**：Lead 回执称 EV-0511 JSON/日志在清理中未保留、归档目录为空；核对发现 `.ricon/archive/evidence/TASK-0094/` 确为空且 `find .ricon -name 'EV-0511*'` 无结果，但 `.riccon/evidence/TASK-0094/` 下仍存在 EV-0511.json（891 B）与日志（880,740 B），只是已从 `TASK-0094.evidence` 移除、未被任何任务/DoD 引用。
+- **影响**：不影响 DoD；EV-0511 不绑定 DoD，根因与 EV-0513 clean 重跑结论已记录在报告 §11。负向日志不是 DoD 必需，但“已归档/未保留”的记录必须与产物一致。P3 accepted，不阻塞 gate。
+- **建议**：若 Lead 决定丢弃负向日志，请在报告 §11 明确写“未保留/不可审计”；若保留，建议移动到 `.riccon/archive/evidence-superseded/TASK-0094/` 并更新实际路径，避免继续留在 active evidence 目录造成误读。
 
 ### F-005 / F-006 / F-007（外部残余，open）
 
@@ -201,20 +213,19 @@ M18 的六条 acceptance 与最终 DoD 证据本身成立：7 个回溯模块在
 node "$HOME/.config/opencode/riccon/scripts/riccon.mjs" gate check --module M18 --project .
 ```
 
-实测结果（`2026-11-20T17:35:51+08:00`）：**FAIL，EXIT=1，Errors: 3，Warnings: 3**。三条 errors：
+实测结果（`2026-11-20T17:45:13+08:00`）：**PASS，EXIT=0，Errors: 0，Warnings: 3**。
 
-1. `1 evidence record(s) were recorded from a dirty working tree: EV-0511`（strict 绑定，F-004）。
-2. `review verdict is fail, expected pass`（因为 F-004 P1 open）。
-3. `P1 finding F-004 is open`（F-004 本身）。
+- 上一轮 3 条 errors（dirty EV-0511、review verdict fail、F-004 P1 open）均已消失：EV-0511 已从 TASK-0094 引用移除；本评审 verdict 转 pass；F-004 转 fixed。
+- 3 条 warnings 为 F-005/F-006/F-007 外部残余（M01 open P2、M02 open P3、M11/M14 legacy）；F-008 P3 accepted 不产生 warning。
+- DoD 证据绑定（EV-0512/0513/0514/0515/0516/0517/0518）全部 pass；7 个回溯模块的 gate 已在 EV-0517 中全部 PASS。
+- 仍保留的残余不影响 M18 技术 gate：F-003 P2 accepted、F-008 P3 accepted、M01 open P2、M02 open P3、M11/M14 legacy；M18 用户最终验收仍 pending。
 
-3 条 warnings 为 F-005/F-006/F-007 外部残余（M01 open P2、M02 open P3、M11/M14 legacy）。DoD 证据绑定（EV-0512/0513/0514/0515/0516/0517/0518）全部 pass；7 个回溯模块的 gate 已在 EV-0517 中全部 PASS。**这不是 gate 标准或最终证据本身失败，而是 TASK-0094 证据列表的卫生问题 + 未解释失败。** 修复 F-004 后需重新运行 gate 并更新本评审。
+## 9. F-004 收口记录（已执行）
 
-## 9. 最小修复清单（按顺序）
-
-1. **TASK-0094 证据列表**：移除 `EV-0511`；可选移除 `EV-0510`；保留日志文件并在 `M18-revalidation-report.md`/任务回执标注 superseded。
-2. **失败根因**：书面记录 EV-0511 的 5 个 API 测试失败原因（并发 Serena JDT LS/target 污染或测试环境隔离），并在干净环境对 5 个测试类做一次定向复跑（或确认 EV-0513 的干净全量已覆盖），记录 EV。
-3. **复核**：重新运行 `gate check --module M18`，确认 0 errors（允许 M01/M02 的 open P2/P3 warnings、M11 state warning）。
-4. **评审更新**：Verifier 复核后将 F-004 置 `fixed`、verdict 转 `pass`；Lead 提交 `.riccon/**` 并记录 M18 module review。
+1. **证据清理**：`870760c` 从 `TASK-0094.evidence` 移除 `EV-0511`；现证据为 `EV-0510`、`EV-0512..EV-0517`，`EV-0510` 仅作历史 build，最终 build 由 EV-0512 承接。
+2. **根因与重跑**：确认 JDT LS/target 并发污染；kill LSP、提交 `.serena/project.yml`、`./mvnw clean` 后用合同命令重跑，EV-0513 clean 全绿，EV-0511 的 5 个失败类均 0/0/0。
+3. **记录**：`M18-revalidation-report.md` 第 11 节记录根因、清理和 clean 重跑；明确不是源码失败、不是 retry 掩盖。
+4. **复核**：本评审 F-004 转 `fixed`、verdict 转 `pass`；`gate check --module M18` 已 PASS（0 errors / 3 外部 warnings）。
 5. **后续**：gate 通过后由 Product 做 M18 预验收，再由 Lead 提交用户最终验收；M02 用户最终验收仍按 `docs/ACCEPTANCE.md` 的 decision package 保持 pending。
 
 ## 10. 未验证项与限制
@@ -228,4 +239,4 @@ node "$HOME/.config/opencode/riccon/scripts/riccon.mjs" gate check --module M18 
 
 ---
 
-**评审包摘要**：M18 的 7 模块 gate 恢复、M02 AC-02/AC-16 证据与 a11y 修复均成立；**verdict=fail** 仅因 TASK-0094 保留了 dirty 失败 EV-0511（含 5 个 API 测试失败、无根因记录），strict gate 无法通过。修复证据卫生与根因说明后，本评审可转 pass。
+**评审包摘要**：M18 的 7 模块 gate 恢复、M02 AC-02/AC-16 证据与 a11y 修复均成立；**verdict=pass**。F-004 已 fixed：EV-0511 从 TASK-0094 证据移除且不用于 DoD，根因确认为 JDT LS/target 并发污染，EV-0513 clean 重跑全绿，无源码变更；F-008 P3 accepted（EV-0511 归档目录为空、文件仍在 active evidence 的记录不一致，不影响 DoD）。剩余仅 F-003 P2 accepted 与 M01/M02/M11/M14 外部残余。gate 实测 PASS（0 errors / 3 warnings）。
