@@ -12,6 +12,11 @@ import java.util.Set;
  *
  * <p>标签纪律：禁止 tenant/userId/runId 等高基数标签（ADR-0008、ADR-0021 §10.6）；按租户排查走
  * 日志、审计或 DB 查询，不走指标。
+ *
+ * <p><strong>位置约束</strong>：本类是测试可见的约定载体（package-private，只被
+ * {@link M04MetricsContractTest} 与 {@code scripts/ops/metrics-check} 的交叉校验使用），
+ * 只允许存在于 {@code src/test/java}。B4 在生产代码里注册指标时应使用自己的常量，
+ * 不要把这个类移入 {@code src/main/java}：那会扩大 TASK-0102 的写范围并制造第二个指标名事实源。
  */
 final class M04MetricsContract {
 
