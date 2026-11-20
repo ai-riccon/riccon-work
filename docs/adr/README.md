@@ -58,7 +58,7 @@ Evidence:
 - ADR-0016 是 ADR-0009 的显式例外：只允许 Worker 领取 outbox 时跨租户读取任务元数据，领取后必须回到 `TenantJdbc`。
 - ADR-0018 为 M03 架构提案，状态 `proposed`，待 verifier/lead/ops 在 M03 gate 前评审；DEC-0014 已确认产品口径，但 ADR 本身不自行标 `accepted`。
 - ADR-0019/0020 为 M10 架构提案，状态 `proposed`；DEC-0013/DEC-0014/DEC-0017 已确认产品口径，但 OIDC 配置来源、失败会话清理、联合登出、审计查询/导出实现与平台边界仍需 Lead/Verifier/Ops 复审（REV-M10-ARCH-001 fail 后已修订 F-001..F-023），未批准前不得进入实现。
-- ADR-0021/0022 为 M04 架构提案，状态 `proposed`；2026-11-20 评审：`REV-M04-OPS-001/002/003` 与 `REV-M04-ARCH-001/002` 曾 fail，`REV-M04-ARCH-003`（无新 P0/P1）与 `REV-M04-OPS-004` 为 **pass**。DEC-0024=B 已批准**单模块 48h、18 条 AC 全归 M04、17 个实施任务、契约保持 `1.3.0-m04` 无分段**；ADR-0021 §8/§12 与 ADR-0022 §7/§8 已按单模块收口。ADR 仍 `proposed`，待 `REV-M04-ARCH-004` / `REV-M04-OPS-005` 按单模块口径复核后再转 `accepted`。
+- ADR-0021/0022 为 M04 架构提案，状态 `proposed`；2026-11-20 当前轮次：`REV-M04-OPS-005` **pass**（6 P2 open，已分配）、`REV-M04-ARCH-004` **fail**（1 P1，已按 TASK-0097 修复），待 `REV-M04-ARCH-005` 复核；历次 REV-M04-ARCH-001..004 / OPS-001..005 响应见 ADR-0021 §13。DEC-0024=B 已批准**单模块 48h、18 条 AC 全归 M04、17 个实施任务、契约保持 `1.3.0-m04` 无分段**；ADR-0021 §8/§12 与 ADR-0022 §7/§8 已按单模块收口。ADR 仍 `proposed`，转 `accepted` 需 `REV-M04-ARCH-005` pass。
 - ADR-0021 §7.8 记录了两处需要 Verifier/Product 确认的口径：`modelKey` 是否属于 AC-05 的“内部模型名”、AC-15 的“保存端点”以只读字段 400 + 路由保存校验 + 启动校验三条路径实现。该确认不改变 AC 原文。
 - ADR-0021 §10.6 复用 ADR-0008 的 `riccon_model_requests_total`，将标签集扩展为 `{provider,model,outcome}` 并由 B4 唯一注册；ADR-0008 正文不改（写入边界），不定义第二个同名不同义指标。
 - 契约保持 `1.3.0-m04` 全量设计（含配额/成本端点）；M04 单模块一次交付，不做分段，也不把配额/成本标 `x-riccon-deferred`；`IT-MODEL-108a`（模型/路由/凭据/开关）与 `IT-MODEL-108b`（配额/成本）同为 B2 交付的契约测试。
