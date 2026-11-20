@@ -215,6 +215,10 @@ class CryptoStartupValidationTest {
                 "--spring.flyway.enabled=false",
                 "--spring.session.jdbc.initialize-schema=never",
                 "--riccon.worker.client.service-token-secret=test-service-token-secret-0123456789abcdef",
+                // B2 在 PRODUCTION 模式要求端点允许列表；使用保留文档地址（字面量 IP，不做 DNS），
+                // 确保启动校验越过端点检查，真正到达本测试关注的 crypto 启动失败。
+                "--riccon.model.endpoints=[{\"code\":\"test-local\","
+                        + "\"baseUrl\":\"https://203.0.113.10/v1\",\"environmentLabel\":\"PRODUCTION\"}]",
                 "--riccon.crypto.master-key=" + MASTER_KEY,
                 "--riccon.crypto.fingerprint-pepper="
             };
