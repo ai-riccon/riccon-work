@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0119",
+  "module_id": "M19",
+  "title": "P2 CI 4-shard 分片与合并报告",
+  "owner": "riccon/ops",
+  "status": "planned",
+  "write_scope": [
+    "scripts/test-shards.mjs",
+    "scripts/test-merge-shards.mjs",
+    "scripts/test-services.mjs",
+    ".github/workflows/ci.yml",
+    "docs/RUNBOOK.md",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "分片脚本按类名确定性分组，集合完整且互斥；每个用例恰好执行一次",
+    "合并脚本校验 tests 总数=基线 771+、failures/errors/skips=0；不一致即非 0",
+    "CI 4-shard matrix，每 shard 独立 namespace；上传 shard 日志与合并报告",
+    "后端墙钟 ≤5 分钟；分片仅用于快速反馈，canonical gate 命令保持不变；不改测试断言"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-20T23:46:06.339+08:00",
+  "updated_at": "2026-11-20T23:46:06.339+08:00"
+}

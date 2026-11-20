@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0117",
+  "module_id": "M19",
+  "title": "P0 测试计时与预算：surefire top-N 报告进 CI",
+  "owner": "riccon/ops",
+  "status": "planned",
+  "write_scope": [
+    "scripts/test-timings.mjs",
+    ".github/workflows/ci.yml",
+    "docs/CODING-STANDARDS.md",
+    "docs/RUNBOOK.md",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "新增 scripts/test-timings.mjs：解析 apps/*/target/surefire-reports/*.xml，输出总用例数/总耗时/top-20 慢类；报告缺失时非 0",
+    "CI 上传计时报告 artifact；不改变测试集合与命令",
+    "在 docs 写明 L2 ≤5min、后端全量 ≤10min（分片前）、≤5min（4-shard 后）的预算与超预算处理",
+    "不修改测试代码/生产代码；commands.test 不变"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-20T23:46:05.604+08:00",
+  "updated_at": "2026-11-20T23:46:05.604+08:00"
+}

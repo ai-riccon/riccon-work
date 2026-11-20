@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "id": "M19",
+  "title": "测试基础设施与全量测试提速",
+  "goal": "在不减少后端 771+ 用例、不跳过、不降低断言的前提下，把全量后端墙钟从约 12 分钟降到 CI 4-shard ≤5 分钟，并建立时间预算与慢测试治理；P0 测量、P1 热栈、P2 分片、P3 setup 摊销、P4 测试分层。",
+  "kind": "fix",
+  "status": "planned",
+  "blocker": null,
+  "depends_on": [
+    "M04"
+  ],
+  "acceptance": [
+    "全量后端用例集合不减少（基线 771，零 skip/零 @Disabled），gate 仍可复现；禁止 -DskipTests 或删除用例",
+    "P0：scripts/test-timings.mjs 生成 top-N 与总计报告并进 CI artifact；L2/L3 时间预算写入 docs",
+    "P1：CI 使用 RICCON_TEST_SERVICES=external + 每 job 唯一 namespace 复用 compose 热栈；迁移/回滚仍用一次性容器；commands.test 命令不变",
+    "P2：CI 4-shard 矩阵，每个用例恰好执行一次；合并报告校验 tests/failures/errors/skips；后端墙钟 ≤5 分钟；分片命令不替代 canonical gate，除非另有合同决策",
+    "P3：Worker 以租户级隔离替代每测试 39 表 TRUNCATE、API fixture 缓存；P2 后基线再降 ≥30%；Verifier 独立复跑同一套件",
+    "P4：测试 tag 分层与至少 3 个纯逻辑类下沉（等价断言），由 Verifier 评审；不改变产品 AC/DoD"
+  ],
+  "tasks": [
+    "TASK-0117",
+    "TASK-0118",
+    "TASK-0119"
+  ],
+  "review": null,
+  "fixes_module": null,
+  "split_from": null,
+  "aliases": [],
+  "product_acceptance": {
+    "product_status": "pending",
+    "user_status": "pending",
+    "decision_id": null,
+    "ref": null,
+    "note": "",
+    "accepted_at": null,
+    "updated_at": null
+  },
+  "wall_clock_limit_hours": 16,
+  "started_at": null,
+  "finished_at": null,
+  "created_at": "2026-11-20T23:45:23.082+08:00",
+  "updated_at": "2026-11-20T23:46:06.343+08:00"
+}

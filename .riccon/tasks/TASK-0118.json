@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0118",
+  "module_id": "M19",
+  "title": "P1 CI 复用 compose 热栈（external + namespace）",
+  "owner": "riccon/ops",
+  "status": "planned",
+  "write_scope": [
+    ".github/workflows/ci.yml",
+    "scripts/test-services.mjs",
+    "docs/RUNBOOK.md",
+    "deploy/compose/docker-compose.test.yml",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "CI 在 compose 栈就绪后设置 RICCON_TEST_SERVICES=external 与每个 job 唯一 namespace；Maven 复用 MySQL/OpenSearch/RustFS",
+    "迁移/回滚/schema 测试仍使用一次性容器；不把热栈用于迁移测试",
+    "commands.test 命令不变；证据 note 记录 external/namespace/compose 版本",
+    "失败时输出 compose 日志并清理 namespace；不改变测试断言"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-20T23:46:05.891+08:00",
+  "updated_at": "2026-11-20T23:46:05.891+08:00"
+}
