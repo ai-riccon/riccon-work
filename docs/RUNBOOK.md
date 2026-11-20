@@ -338,7 +338,7 @@ SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history WHERE success =
 | 默认配额 4 键       | `RICCON_QUOTA_DEFAULT_TENANT_DAILY/_TENANT_MONTHLY/_USER_DAILY/_USER_MONTHLY`                                         | 与 API/Worker 两侧一致；默认 10000/200000/1000/20000；`0` 或空 = 不限                                                |
 | DB 连通与体积       | 下方 SQL                                                                                                              | `model_invocation` ≤200 万行且 data+index ≤2 GiB；磁盘余量 ≥2× 表体积；无 >60s 事务/长 MDL                           |
 | API/Worker 指纹漂移 | `node scripts/ops/seed-model-catalog.mjs --check --api-base <API> --worker-base <Worker> [--catalog <目录文件>]`          | exit 0 且 `status=passed`；`/actuator/info` 403/401 时**发布阻断**（不得用 env 快照冒充通过）                        |
-| 目录与部署端点一致  | `node scripts/ops/seed-model-catalog.mjs --catalog <目录文件> [--apply]`（drift 由 `--check` 覆盖）                       | `model_provider.base_url` 与 `RICCON_MODEL_ENDPOINTS` 的 code/baseUrl 逐条一致                                       |
+| 目录与部署端点一致  | `node scripts/ops/seed-model-catalog.mjs --check ... [--catalog <目录文件>] [--endpoints "$RICCON_MODEL_ENDPOINTS"]`（不写库） | `model_provider.base_url` 与 `RICCON_MODEL_ENDPOINTS` 的 code/baseUrl 逐条一致；目录文件与 DB 差异由同一命令报告 |
 
 ```bash
 # Secret 非空与长度（只打印结果，不打印值）
