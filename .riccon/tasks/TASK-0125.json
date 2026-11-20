@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0125",
+  "module_id": "M04",
+  "title": "M04 修复：真实栈 MySQL 客户端 utf8mb4 种子乱码",
+  "owner": "riccon/builder-gateway-e2e",
+  "status": "in_progress",
+  "write_scope": [
+    "scripts/real-stack/**",
+    "e2e/support/**",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "scripts/real-stack 的 mysql 客户端显式 --default-character-set=utf8mb4，模型/路由展示名为正确中文",
+    "seed --mode=catalog 两次幂等且展示名无乱码；真实栈检查可读",
+    "不改生产代码/契约/迁移；自检 + EV"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-21T07:13:24.249+08:00",
+  "updated_at": "2026-11-21T07:13:32.909+08:00",
+  "baseline_commit": "b751b123f8f91060ecfce5df07265b6928039560"
+}
