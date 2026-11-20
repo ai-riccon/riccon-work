@@ -56,9 +56,9 @@ M10 的 OIDC、审计查询/导出与对应 a11y 段落在本文件随 M10 另�
 | ---- | ----- | ---- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | M03  | F-006 | P3   | accepted            | J2 产物正文与引用区重复“引用清单”标题；真实栈测试已定位 `#artifact-citations-title`，产品语义后续收敛                                                                                      |
 | M03  | F-007 | P2   | accepted / residual | PRODUCT 文本漂移：AC-07 演员（平台管理员执行）、AC-21 分段（M03 只验部门管理页）、AC-03 历史数据口径（E2E 用无历史 TEAM 空间租户）；ADR-0018 §8 与 REV-M03-001 已登记，PRODUCT AC 正文未改 |
-| M03  | F-008 | P2   | accepted / residual | 历史 TENANT 空间保持 M02 全租户可见面（R-11）；M03/M13 不提供转换，M04/M09 设计专用迁移                                                                                                    |
+| M03  | F-008 | P2   | accepted / residual | 历史 TENANT 空间保持 M02 全租户可见面（R-11）；M03/M13 不提供转换；R-11 不承接，归 M09 专用迁移（DEC-0023）                                                                                                    |
 | M03  | F-009 | P2   | accepted / residual | 平台来源部门审计事件只写 platform 租户 + `details.targetTenantId`，目标租户不可见；M10 需显式授权查询模型承接                                                                              |
-| M13  | F-001 | P2   | accepted            | 后端 `SessionInfo`/`UserSummary` 未下发 `departmentId`/`departmentName`；前端以 `/departments` 与可选字段兜底，成员/未分配/停用/租户管理员四态 E2E 通过；契约对齐由 M04/M10 承接           |
+| M13  | F-001 | P2   | accepted            | 后端 `SessionInfo`/`UserSummary` 未下发 `departmentId`/`departmentName`；前端以 `/departments` 与可选字段兜底，成员/未分配/停用/租户管理员四态 E2E 通过；R-11、M13 F-001 不承接，归 M09/M10（R-11→M09 专用迁移；M13 F-001 由 Lead 在 M04 后按 `kind: fix` 建维护模块，最迟 M05 gate 前）           |
 | M13  | F-002 | P3   | accepted            | 没有跨空间的独立产物列表；产物从报告任务详情进入；“部门报告可见可打开”已满足，独立产物列表留待后续模块                                                                                     |
 | M13  | F-003 | P3   | accepted            | 重命名 409/403/404 的 UI 文案由 stub 场景覆盖；真实服务端空间授权边界由 M03 DEPT 套件覆盖，真实栈不跑该 UI 错误分支                                                                        |
 | M13  | F-004 | P2   | accepted            | 历史 TENANT 空间保持全租户可见，M03/M13 不提供转换；与 M03 F-008 同一风险（R-11）                                                                                                          |
