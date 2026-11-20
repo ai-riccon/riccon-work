@@ -37,8 +37,8 @@
 - 模块状态：`planned` → `building` → `verifying` → `review_pending` → `done`；活动状态可进入 `blocked`。
 - 模块进入 `review_pending` 前，所有任务必须 done。
 - 任务进入 `in_progress` 前，模块必须是 `building`，依赖必须全部 done。
-- 任务过大时在开始前拆分：`write_scope` 超过 8 项或 acceptance 达到 6 项是提示；最终按“一个可独立验收的用户可见结果”判断。
 - 并行 builder 使用实例 owner（例如 `riccon/builder-b2`）；同一 owner 同时只能有一个 `in_progress`，不要用 `--force` 绕过。需要并行时新建另一个实例 owner。
+- `riccon task new` 要求至少一个 `--write-scope` 和一个 `--acceptance`；任务过大时在开始前拆分：`write_scope` 超过 8 项或 acceptance 达到 6 项是提示；最终按“一个可独立验收的用户可见结果”判断。
 - 模块拆分用 `split_from`/`aliases` 记录；模块 ID 仍是 `M` + 数字。验收失败用 `kind: fix` + `fixes_module`，不要只靠标题或 `depends_on`。
 
 ## 4. 验收顺序
@@ -57,7 +57,8 @@
 
 - 模块评审：`.riccon/reviews/<module>-review.md`，由 `review.schema.json` 校验，参与模块 gate。
 - 任务级/架构级独立评审：`.riccon/reviews/tasks/<task>-review.md`，由 `task-review.schema.json` 校验；不参与模块 gate，由 Lead 在任务 closeout 核对。
-- Review 必须绑定当前模块、最新证据，reviewer 独立，verdict 为 pass；`reviewer.session` 填真实 `ses_...` 会话 ID，旧 review 的合成标签只产生 warning。
+- Review 必须绑定当前模块、最新证据，reviewer 独立，verdict 为 pass；`reviewer.session` 填真实 `ses_...` 会话 ID。0.1.9 起新 review 使用 `ses_verifier_*`、`ses_xxx` 等非真实 ID 会让 gate 失败；2026-11-20 之前的旧 review 只产生 warning。
+- 发布评审写入 `.riccon/reviews/RELEASE-review.md`，使用 `templates/state/release-review.md`；它用 `reviewed_evidence` 覆盖发布证据，DoD 使用合同 `definition_of_done.release`，不复用模块 review 的 `dod_evidence` 绑定。
 - AC 对账必须引用 AC 原文的用户可见结果；AC 要求界面、文案或入口时，API 证据不能单独判 pass，必须绑定 UI/E2E 证据。
 - P0/P1 必须修复；P2/P3 需要书面接受。不要改 review 来强行通过 gate。
 
@@ -69,7 +70,7 @@
 - 测试分层：任务级跑受影响测试；模块 gate 在最终提交上跑一次全量合同 test/coverage/E2E。高风险、跨模块契约和迁移任务在任务完成时跑全量。
 - 同一份代码的全量验证只跑一次；合同允许时 `test` 和 `coverage` 共用同一条 coverage 全量命令和同一条 EV，禁止先跑 test 再跑 coverage 两遍。提交后用 `riccon evidence run` 记录，不要先跑一遍再取证，也不要为取证新建临时工作树。
 - 长测试设置超时并保留日志；命令被移到后台时结束回合等通知，禁止 `sleep`/`tail`/`ps` 轮询。超时是失败，不是通过。执行零个测试的测试命令是失败。
-- 为通过而追加参数（例如 `--no-file-parallelism`）必须写 P2 finding + owner + 到期时间；能修测试就先修。
+- 为通过而追加参数（例如 `--no-file-parallelism`）必须写 P2 finding + owner + 到期时间；能修测试就先修，不得用改命令掩盖 flake。
 - 覆盖率默认指代码行/分支覆盖率，不是 AC 覆盖；门槛见合同 `constraints.coverage`，必须可由 `commands.coverage` 复现。
 - 新项目由 Architect 在 Builder 开始前创建 `docs/CODING-STANDARDS.md`；Builder 必须遵循，Verifier 检查。
 

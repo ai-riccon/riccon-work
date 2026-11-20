@@ -166,20 +166,25 @@ commands:
   a11y: "pnpm -w a11y"
   deploy_preview: "docker compose -f deploy/compose/docker-compose.preview.yml up -d --build"
   deploy_prod: "helm upgrade --install riccon deploy/helm/riccon -n riccon --create-namespace"
-  sandbox: "docker compose -f deploy/compose/docker-compose.test.yml up -d --wait"
+  sandbox: "bash scripts/sandbox.sh"
 sandbox:
   required: true
-  runtime: "Docker Compose（MySQL 8.4、OpenSearch、RustFS）加 agentscope 容器沙箱"
-  network: "构建/测试容器默认无外网；Compose 测试栈仅私有 Docker 网络；Agent 沙箱默认禁外网，仅放行模型与授权 MCP 端点"
+  runtime: "Docker Compose（MySQL 8.4、OpenSearch、RustFS）加一次性沙箱探针"
+  network: none
   mounts:
     - "临时 workspace 卷（每会话隔离）"
   secrets: "本地 .env 与 CI secrets；密钥加密入库，禁止写入镜像、仓库和日志"
   limits:
-    cpu: 2
+    cpus: 2
     memory: 4Gi
     pids: 512
     timeout_minutes: 30
-  evidence: "gate 前运行 commands.sandbox 并产生 passing EV"
+  attestation_terms:
+    - "sandbox.network=none"
+    - "sandbox.uid=10001:10001"
+    - "sandbox.read_only=true"
+    - "sandbox.image=mysql:8.4.13"
+  evidence: ""
 tools:
   required:
     - id: riccon
@@ -373,7 +378,6 @@ budget:
 以下规则即使不读详细文档也必须遵守；详细说明见 `docs/COLLABORATION.md`。
 
 - 合同是技术栈、命令、工具和约束的唯一事实源；合同里没有的目录、命令或工具不要假设。
-- 代码任务默认使用 Serena 做符号定位、引用查找、重命名与精确编辑；整体调用链/影响面用 CodeGraph。grep/read 仅用于非代码文件或 MCP 降级，并在任务回执与 `tools_used` 记录原因。
 - 每个任务都有 `write_scope` 和验收标准；不要静默扩大任何一项。并行 builder 使用实例 owner（例如 `riccon/builder-b2`）；同一 owner 同时只能有一个 `in_progress`，不要用 `--force` 绕过。
 - 先提交，再 `riccon evidence run`；strict 下 dirty 证据、空命令、占位命令和掩盖失败的写法不能让 gate 通过。模块 gate 的 `test` 和 `coverage` 优先共用同一条 coverage 全量 EV；长命令移到后台后结束回合等通知，禁止 `sleep`/`tail`/`ps` 轮询。
 - Product 的 brief/AC/non-goals 必须经过 Lead、用户、Architect、Verifier 的评审链；未批准不进入模块实现。
@@ -384,7 +388,7 @@ budget:
 - 不把密钥写进仓库、`.riccon/`、日志、任务卡、证据、提示词或 handoff。
 - 产品范围、不可逆技术选择、生产发布、花钱和破坏性操作由用户拥有；其余授权给团队。
 - 文档、注释、commit message、决策包、评审包和 handoff 默认中文；代码注释必须中文，标识符、命令、字段名保持英文。
-- 所有时间默认北京时间（`Asia/Shanghai`，UTC+08:00）；数据库和 API/日志/UI 按合同约定使用带偏移时间。
+- 所有时间默认北京时间（`Asia/Shanghai`，UTC+08:00）；API/日志/UI 使用带偏移时间，数据库按合同/ADR 使用带时区类型或显式存储偏移。
 
 <!-- riccon:team:end -->
 
