@@ -81,9 +81,16 @@ public class CryptoConfig {
                     MasterKeyConfigException.Reason.PEPPER_MISSING,
                     "RICCON_CREDENTIAL_FINGERPRINT_PEPPER is required; platform key fingerprints cannot be computed");
         }
-        // 测试 profile 使用仓库内的占位密钥，必须允许；生产与默认环境继续拒绝已知测试密钥。
-        boolean rejectTestKeys = properties.rejectTestKeys() && !testProfile;
-        MasterKeyRing ring = MasterKeyRing.load(masterKey, previousMasterKey, masterKeyId, pepper, rejectTestKeys);
+        // 非 test profile 不允许通过配置关闭已知测试密钥拒绝（ADR-0006 §1/§3）；
+        // test profile 使用仓库占位密钥，必须允许，否则测试无法覆盖正常的加解密路径。
+        if (!testProfile && !properties.rejectTestKeys()) {
+            throw new MasterKeyConfigException(
+                    CryptoErrorCodes.MASTER_KEY_CONFIG,
+                    MasterKeyConfigException.Reason.TEST_KEY_REJECTION_DISABLED,
+                    "riccon.crypto.reject-test-keys must stay true outside the test profile; "
+                            + "known test keys must be rejected");
+        }
+        MasterKeyRing ring = MasterKeyRing.load(masterKey, previousMasterKey, masterKeyId, pepper, !testProfile);
         LOG.info(
                 "envelope encryption ready: masterKeyId={}, previousKey={}, fingerprintPepper={}",
                 ring.masterKeyId(),

@@ -17,6 +17,8 @@ public final class MasterKeyConfigException extends IllegalStateException {
         MASTER_KEY_INVALID,
         /** 生产配置误用已知测试密钥。 */
         TEST_KEY_REJECTED,
+        /** 非 test profile 试图关闭已知测试密钥拒绝。 */
+        TEST_KEY_REJECTION_DISABLED,
         /** pepper 缺失。 */
         PEPPER_MISSING,
         /** pepper Base64 非法或长度不是 32 字节。 */

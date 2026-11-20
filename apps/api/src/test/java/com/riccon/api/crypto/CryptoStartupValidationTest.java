@@ -43,6 +43,9 @@ class CryptoStartupValidationTest {
     /** 已知测试密钥清单中的值；生产默认必须拒绝。 */
     private static final String KNOWN_TEST_KEY = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
 
+    /** 仓库实际使用的测试主密钥（application-test.yml / TestCredentials）。 */
+    private static final String REPOSITORY_TEST_KEY = "cmljY29uLXdvcmtlci10ZXN0LW1hc3Rlci1rZXktMzI=";
+
     /** 生成固定填充的 Base64 值。 */
     private static String base64Of(int length, byte fill) {
         byte[] bytes = new byte[length];
@@ -84,6 +87,41 @@ class CryptoStartupValidationTest {
                         new CryptoConfig().masterKeyProvider(properties(KNOWN_TEST_KEY, PEPPER), new MockEnvironment()))
                 .isInstanceOf(MasterKeyConfigException.class)
                 .hasMessageContaining("known test key");
+    }
+
+    /** 仓库实际测试主密钥在默认 profile 同样被拒绝（清单覆盖 F-001）。 */
+    @Test
+    void repositoryTestKey_defaultProfile_failsStartup() {
+        assertThatThrownBy(() -> new CryptoConfig()
+                        .masterKeyProvider(properties(REPOSITORY_TEST_KEY, PEPPER), new MockEnvironment()))
+                .isInstanceOf(MasterKeyConfigException.class)
+                .hasMessageContaining("known test key")
+                .extracting(ex -> ((MasterKeyConfigException) ex).reason())
+                .isEqualTo(MasterKeyConfigException.Reason.TEST_KEY_REJECTED);
+    }
+
+    /** 非 test profile 不允许通过配置关闭已知测试密钥拒绝。 */
+    @Test
+    void rejectTestKeysDisabled_defaultProfile_failsStartup() {
+        CryptoProperties disabled = new CryptoProperties(MASTER_KEY, "", "mk-test", false, PEPPER);
+
+        assertThatThrownBy(() -> new CryptoConfig().masterKeyProvider(disabled, new MockEnvironment()))
+                .isInstanceOf(MasterKeyConfigException.class)
+                .hasMessageContaining("reject-test-keys")
+                .extracting(ex -> ((MasterKeyConfigException) ex).reason())
+                .isEqualTo(MasterKeyConfigException.Reason.TEST_KEY_REJECTION_DISABLED);
+    }
+
+    /** test profile 允许显式关闭拒绝，使用仓库占位密钥启动。 */
+    @Test
+    void rejectTestKeysDisabled_testProfile_isAllowed() {
+        MockEnvironment environment = new MockEnvironment();
+        environment.setActiveProfiles("test");
+        CryptoProperties disabled = new CryptoProperties(REPOSITORY_TEST_KEY, "", "mk-test", false, PEPPER);
+
+        MasterKeyProvider provider = new CryptoConfig().masterKeyProvider(disabled, environment);
+
+        assertThat(provider.configured()).isTrue();
     }
 
     /** 合法配置创建可用 provider，并完成 canary 自检。 */

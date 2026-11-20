@@ -294,7 +294,7 @@ class EnvelopeDecryptorTest {
                 TestCredentials.MASTER_KEY_ID,
                 1);
         MasterKeyProvider provider =
-                new MasterKeyProvider(new CryptoProperties(TestCredentials.MASTER_KEY_BASE64, "", "mk-test", true));
+                new MasterKeyProvider(new CryptoProperties(TestCredentials.MASTER_KEY_BASE64, "", "mk-test", false));
         return new Fixture(new EnvelopeDecryptor(provider), credential, dataKey);
     }
 

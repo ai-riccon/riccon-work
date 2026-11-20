@@ -17,7 +17,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param masterKey Base64 编码的 32 字节主密钥
  * @param previousMasterKey 轮换窗口内的上一把主密钥，可为空
  * @param masterKeyId 主密钥标识，只用于审计与轮换，不参与加密强度
- * @param rejectTestKeys 是否拒绝已知测试密钥；生产必须保持 true
+ * @param rejectTestKeys 是否拒绝已知测试密钥；非 test profile 强制 true，配置为 false 会导致启动失败
  * @param fingerprintPepper Base64 编码的 32 字节指纹 pepper，可为空
  */
 @ConfigurationProperties(prefix = "riccon.crypto")
@@ -36,5 +36,31 @@ public record CryptoProperties(
         if (masterKeyId == null || masterKeyId.isBlank() || masterKeyId.length() > 64) {
             throw new IllegalArgumentException("riccon.crypto.master-key-id must be 1-64 characters");
         }
+    }
+
+    /**
+     * 脱敏输出：主密钥、上一把主密钥与 pepper 只显示是否已注入，禁止进入日志、异常或调试输出。
+     *
+     * <p>记录默认 {@code toString()} 会拼接全部组件原值，一旦被直接打印即违反 ADR-0006 §5；
+     * 因此在这里覆盖，保持 {@code masterKeyId} 与 {@code rejectTestKeys} 可诊断。
+     */
+    @Override
+    public String toString() {
+        return "CryptoProperties[masterKey=" + redacted(masterKey)
+                + ", previousMasterKey=" + redacted(previousMasterKey)
+                + ", masterKeyId=" + masterKeyId
+                + ", rejectTestKeys=" + rejectTestKeys
+                + ", fingerprintPepper=" + redacted(fingerprintPepper)
+                + "]";
+    }
+
+    /**
+     * 返回脱敏占位，不暴露原值。
+     *
+     * @param value 配置值
+     * @return 已设置返回 {@code [redacted]}，未设置返回 {@code [not set]}
+     */
+    private static String redacted(String value) {
+        return value == null || value.isEmpty() ? "[not set]" : "[redacted]";
     }
 }

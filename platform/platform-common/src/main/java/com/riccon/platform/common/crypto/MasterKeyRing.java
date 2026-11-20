@@ -53,9 +53,26 @@ public final class MasterKeyRing {
     /** 进程级安全随机源；{@link SecureRandom} 线程安全。 */
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    /** 已知测试密钥：生产误用必须启动失败。 */
-    private static final Set<String> KNOWN_TEST_KEYS =
-            Set.of("AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=", "cmljY29uLXRlc3QtbWFzdGVyLWtleS0zMi1ieXRlcyE=");
+    /**
+     * 已知测试密钥（解码后的 32 字节，十六进制）。
+     *
+     * <p>比较必须在 Base64 解码之后进行：JDK 解码器接受无填充输入，按原始字符串比较会被
+     * 去掉末尾 {@code =} 的同一把密钥绕过。清单覆盖仓库实际使用的测试主密钥/上一把密钥
+     * （{@code apps/api/src/test/resources/application-test.yml}、Worker {@code TestCredentials}、
+     * {@code WorkerIntegrationTestBase}）以及历史测试密钥；最后一项是 URL-safe 字母表哨兵
+     * （标准字母表含 {@code +}/{@code /}），用于证明 URL-safe 变体也按解码字节判定。
+     */
+    private static final Set<String> KNOWN_TEST_KEY_HEX = Set.of(
+            // AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=（历史测试密钥）
+            "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            // cmljY29uLXRlc3QtbWFzdGVyLWtleS0zMi1ieXRlcyE=（历史测试密钥）
+            "726963636f6e2d746573742d6d61737465722d6b65792d33322d627974657321",
+            // cmljY29uLXdvcmtlci10ZXN0LW1hc3Rlci1rZXktMzI=（API/Worker 测试主密钥）
+            "726963636f6e2d776f726b65722d746573742d6d61737465722d6b65792d3332",
+            // MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=（API/Worker 测试上一把密钥）
+            "3031323334353637383961626364656630313233343536373839616263646566",
+            // +/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/s=（URL-safe 哨兵，仅测试用）
+            "fbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfb");
 
     /** canary 明文；只用于启动自检，不是密钥。 */
     private static final byte[] CANARY_PLAINTEXT = "riccon-master-key-canary-v1".getBytes(StandardCharsets.UTF_8);
@@ -357,7 +374,11 @@ public final class MasterKeyRing {
     /**
      * 解码并校验 Base64 密钥。
      *
-     * @param encoded Base64 值
+     * <p>先解码再按 32 字节比较已知测试密钥：JDK 解码器接受无填充、不同 padding 与 URL-safe
+     * 字母表，任何能解出同一把密钥的写法都必须被同一控制拒绝，不能依赖原始字符串精确匹配。
+     * 解码失败与命中测试密钥都只报告环境变量名，不回显配置原值。
+     *
+     * @param encoded Base64 值（标准或 URL-safe 字母表、可无填充）
      * @param envName 环境变量名，只用于错误信息
      * @param rejectTestKeys 是否拒绝已知测试密钥
      * @return AES-256 密钥
@@ -370,34 +391,49 @@ public final class MasterKeyRing {
                     MasterKeyConfigException.Reason.MASTER_KEY_MISSING,
                     envName + " is required; refuse to start without envelope encryption");
         }
-        String value = encoded.trim();
-        if (rejectTestKeys && KNOWN_TEST_KEYS.contains(value)) {
-            throw new MasterKeyConfigException(
-                    CryptoErrorCodes.MASTER_KEY_CONFIG,
-                    MasterKeyConfigException.Reason.TEST_KEY_REJECTED,
-                    envName + " is a known test key; inject a real random 32-byte key");
-        }
-        byte[] keyBytes;
+        byte[] keyBytes = decodeBase64(encoded.trim(), envName);
         try {
-            keyBytes = Base64.getDecoder().decode(value);
-        } catch (IllegalArgumentException ex) {
-            throw new MasterKeyConfigException(
-                    CryptoErrorCodes.MASTER_KEY_CONFIG,
-                    MasterKeyConfigException.Reason.MASTER_KEY_INVALID,
-                    envName + " must be valid Base64; value is not logged");
-        }
-        if (keyBytes.length != KEY_BYTES) {
-            Arrays.fill(keyBytes, (byte) 0);
-            throw new MasterKeyConfigException(
-                    CryptoErrorCodes.MASTER_KEY_CONFIG,
-                    MasterKeyConfigException.Reason.MASTER_KEY_INVALID,
-                    envName + " must decode to exactly 32 bytes");
-        }
-        try {
-            // SecretKeySpec 会复制密钥字节；随后立即清零临时数组，减少明文驻留时间。
+            if (keyBytes.length != KEY_BYTES) {
+                throw new MasterKeyConfigException(
+                        CryptoErrorCodes.MASTER_KEY_CONFIG,
+                        MasterKeyConfigException.Reason.MASTER_KEY_INVALID,
+                        envName + " must decode to exactly 32 bytes");
+            }
+            if (rejectTestKeys && KNOWN_TEST_KEY_HEX.contains(HexFormat.of().formatHex(keyBytes))) {
+                throw new MasterKeyConfigException(
+                        CryptoErrorCodes.MASTER_KEY_CONFIG,
+                        MasterKeyConfigException.Reason.TEST_KEY_REJECTED,
+                        envName + " is a known test key; inject a real random 32-byte key");
+            }
+            // SecretKeySpec 会复制密钥字节；finally 中立即清零临时数组，减少明文驻留时间。
             return new SecretKeySpec(keyBytes, "AES");
         } finally {
             Arrays.fill(keyBytes, (byte) 0);
+        }
+    }
+
+    /**
+     * 按标准 Base64 解码；失败时再尝试 URL-safe 字母表。
+     *
+     * <p>两种字母表解出的字节相同，后续统一按字节判定测试密钥，避免用编码差异绕过拒绝逻辑。
+     *
+     * @param value 去除首尾空白后的配置值
+     * @param envName 环境变量名，只用于错误信息
+     * @return 解码后的字节
+     * @throws MasterKeyConfigException 两种字母表都无法解码
+     */
+    private static byte[] decodeBase64(String value, String envName) {
+        try {
+            return Base64.getDecoder().decode(value);
+        } catch (IllegalArgumentException standardAlphabetFailure) {
+            try {
+                return Base64.getUrlDecoder().decode(value);
+            } catch (IllegalArgumentException urlSafeAlphabetFailure) {
+                throw new MasterKeyConfigException(
+                        CryptoErrorCodes.MASTER_KEY_CONFIG,
+                        MasterKeyConfigException.Reason.MASTER_KEY_INVALID,
+                        envName + " must be valid Base64; value is not logged");
+            }
         }
     }
 

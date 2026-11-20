@@ -20,17 +20,32 @@ import org.junit.jupiter.api.Test;
  */
 class MasterKeyRingTest {
 
-    /** 测试当前主密钥（Base64 32 字节，非生产）。 */
-    private static final String CURRENT = "cmljY29uLXdvcmtlci10ZXN0LW1hc3Rlci1rZXktMzI=";
+    /** 测试当前主密钥（非仓库夹具、非生产；避开已知测试密钥清单）。 */
+    private static final String CURRENT = base64Of(32, (byte) 0x33);
 
-    /** 测试上一把主密钥（Base64 32 字节，非生产）。 */
-    private static final String PREVIOUS = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=";
+    /** 测试上一把主密钥（非仓库夹具、非生产；避开已知测试密钥清单）。 */
+    private static final String PREVIOUS = base64Of(32, (byte) 0x44);
 
     /** 测试指纹 pepper（32 字节 0x07，仅测试）。 */
     private static final String PEPPER = base64Of(32, (byte) 7);
 
     /** 已知测试密钥清单中的第一个值；默认必须拒绝。 */
     private static final String KNOWN_TEST_KEY = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
+
+    /** 仓库实际使用的测试主密钥（application-test.yml / TestCredentials / WorkerIntegrationTestBase）。 */
+    private static final String REPOSITORY_TEST_KEY = "cmljY29uLXdvcmtlci10ZXN0LW1hc3Rlci1rZXktMzI=";
+
+    /** 仓库实际使用的测试上一把密钥。 */
+    private static final String REPOSITORY_PREVIOUS_KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=";
+
+    /** 仓库测试主密钥的无填充写法（历史上可绕过精确字符串比较）。 */
+    private static final String REPOSITORY_TEST_KEY_UNPADDED = "cmljY29uLXdvcmtlci10ZXN0LW1hc3Rlci1rZXktMzI";
+
+    /** URL-safe 哨兵的标准 Base64 写法（含 {@code +}/{@code /}）。 */
+    private static final String URL_SAFE_SENTINEL_STANDARD = "+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/s=";
+
+    /** 同一哨兵的 URL-safe 写法（含 {@code -}/{@code _}），解码后字节相同。 */
+    private static final String URL_SAFE_SENTINEL_URL_SAFE = "-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_s=";
 
     /** 随机源。 */
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -118,6 +133,60 @@ class MasterKeyRingTest {
     @Test
     void load_knownTestKey_allowedWhenRejectionDisabled() {
         MasterKeyRing ring = MasterKeyRing.load(KNOWN_TEST_KEY, "", "mk-test", PEPPER, false);
+
+        assertThat(ring.configured()).isTrue();
+    }
+
+    /** 仓库实际使用的测试主密钥/上一把密钥默认必须拒绝（F-001 清单覆盖）。 */
+    @Test
+    void load_repositoryTestKeys_rejectedByDefault() {
+        assertThatThrownBy(() -> MasterKeyRing.load(REPOSITORY_TEST_KEY, "", "mk-test", PEPPER, true))
+                .isInstanceOf(MasterKeyConfigException.class)
+                .hasMessageContaining("known test key")
+                .extracting(ex -> ((MasterKeyConfigException) ex).reason())
+                .isEqualTo(MasterKeyConfigException.Reason.TEST_KEY_REJECTED);
+        assertThatThrownBy(() -> MasterKeyRing.load(REPOSITORY_PREVIOUS_KEY, "", "mk-test", PEPPER, true))
+                .isInstanceOf(MasterKeyConfigException.class)
+                .hasMessageContaining("known test key");
+    }
+
+    /** 无填充写法解码为同一 32 字节，必须同样命中拒绝，不能按原始字符串比较。 */
+    @Test
+    void load_unpaddedRepositoryTestKey_rejected() {
+        assertThatThrownBy(() -> MasterKeyRing.load(REPOSITORY_TEST_KEY_UNPADDED, "", "mk-test", PEPPER, true))
+                .isInstanceOf(MasterKeyConfigException.class)
+                .hasMessageContaining("known test key")
+                .hasMessageNotContaining(REPOSITORY_TEST_KEY_UNPADDED)
+                .extracting(ex -> ((MasterKeyConfigException) ex).reason())
+                .isEqualTo(MasterKeyConfigException.Reason.TEST_KEY_REJECTED);
+    }
+
+    /** URL-safe 字母表写法解码后与标准写法相同，也必须被拒绝。 */
+    @Test
+    void load_urlSafeVariantOfKnownKey_rejected() {
+        assertThatThrownBy(() -> MasterKeyRing.load(URL_SAFE_SENTINEL_STANDARD, "", "mk-test", PEPPER, true))
+                .isInstanceOf(MasterKeyConfigException.class)
+                .extracting(ex -> ((MasterKeyConfigException) ex).reason())
+                .isEqualTo(MasterKeyConfigException.Reason.TEST_KEY_REJECTED);
+        assertThatThrownBy(() -> MasterKeyRing.load(URL_SAFE_SENTINEL_URL_SAFE, "", "mk-test", PEPPER, true))
+                .isInstanceOf(MasterKeyConfigException.class)
+                .extracting(ex -> ((MasterKeyConfigException) ex).reason())
+                .isEqualTo(MasterKeyConfigException.Reason.TEST_KEY_REJECTED);
+    }
+
+    /** 显式关闭拒绝时，仓库测试密钥可用于 test profile / 直接构造。 */
+    @Test
+    void load_repositoryTestKey_allowedWhenRejectionDisabled() {
+        MasterKeyRing ring = MasterKeyRing.load(REPOSITORY_TEST_KEY, REPOSITORY_PREVIOUS_KEY, "mk-test", PEPPER, false);
+
+        assertThat(ring.configured()).isTrue();
+        assertThat(ring.hasPreviousKey()).isTrue();
+    }
+
+    /** 关闭拒绝时，URL-safe 变体仍可正常装配（说明拒绝来自字节比较，而不是解码失败）。 */
+    @Test
+    void load_urlSafeVariant_allowedWhenRejectionDisabled() {
+        MasterKeyRing ring = MasterKeyRing.load(URL_SAFE_SENTINEL_URL_SAFE, "", "mk-test", "", false);
 
         assertThat(ring.configured()).isTrue();
     }
