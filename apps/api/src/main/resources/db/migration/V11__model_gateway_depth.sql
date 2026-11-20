@@ -275,6 +275,12 @@ CREATE TABLE quota_usage (
 
 -- 权限字典。新增权限码必须同步 platform-domain PermissionCodes 与 OpenAPI 的
 -- x-riccon-permission；NOT EXISTS 只服务于失败后 repair 重跑的幂等恢复。
+-- platform.model.read 在 V2 已写入；V11 再次幂等补齐，保证当前 PermissionCodes 全集在 V11 之后
+-- 与 permission 字典一一对应（局部恢复/历史 schema 审计时不依赖 V2 单点）。
+INSERT INTO permission (code, description)
+SELECT 'platform.model.read', '平台模型目录只读'
+ WHERE NOT EXISTS (SELECT 1 FROM permission WHERE code = 'platform.model.read');
+
 INSERT INTO permission (code, description)
 SELECT 'platform.model.manage', '平台模型路由、模型启停、key 池与网关开关管理'
  WHERE NOT EXISTS (SELECT 1 FROM permission WHERE code = 'platform.model.manage');

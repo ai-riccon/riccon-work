@@ -7,11 +7,14 @@ import com.riccon.api.identity.domain.RoleDefinition;
 import com.riccon.api.identity.domain.RoleDefinitions;
 import com.riccon.api.persistence.BinaryUuids;
 import com.riccon.platform.domain.identity.PermissionCodes;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -840,6 +843,33 @@ class V11MigrationTest {
                 .isEqualTo(1L);
         assertThat(rolePermissionCount(fresh, "freshco", MEMBER_ROLE, PermissionCodes.QUOTA_READ))
                 .isZero();
+    }
+
+    /** fresh install 的权限字典必须覆盖 PermissionCodes 的全部常量，且无多余/重复行。 */
+    @Test
+    @DisplayName("空库 V1–V11 的 permission 字典与 PermissionCodes 全集一一对应")
+    void freshDatabase_permissionDictionaryCoversAllPermissionCodes() {
+        List<String> seeded = fresh.sql("SELECT code FROM permission ORDER BY code")
+                .query(String.class)
+                .list();
+        List<String> expected = permissionCodeConstants();
+        assertThat(seeded).doesNotHaveDuplicates().containsExactlyInAnyOrderElementsOf(expected);
+    }
+
+    /** 读取 PermissionCodes 接口的全部 public static final String 常量。 */
+    private static List<String> permissionCodeConstants() {
+        List<String> codes = new ArrayList<>();
+        for (Field field : PermissionCodes.class.getDeclaredFields()) {
+            if (Modifier.isStatic(field.getModifiers()) && field.getType() == String.class) {
+                try {
+                    codes.add((String) field.get(null));
+                } catch (IllegalAccessException exception) {
+                    throw new IllegalStateException(
+                            "cannot read PermissionCodes constant: " + field.getName(), exception);
+                }
+            }
+        }
+        return codes;
     }
 
     /** 多 key 回滚：每组 1 行、有 ACTIVE 保留 ACTIVE 否则 RETIRED，结构回到 V10。 */
