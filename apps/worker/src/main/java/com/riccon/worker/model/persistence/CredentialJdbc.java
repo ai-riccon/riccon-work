@@ -105,10 +105,17 @@ public class CredentialJdbc {
                AND id = :id
             """;
 
-    /** 成功使用时间，仅用于运维观测。 */
+    /**
+     * 成功使用：重置连续失败计数与冷却，并记录最近成功时间。
+     *
+     * <p>`consecutive_failures` 是“连续可重试失败次数”（ADR-0021 §3.2），成功一次即归零，
+     * 否则历史累计会让下一次失败误触发冷却。
+     */
     private static final String UPDATE_LAST_USED = """
             UPDATE provider_credential
-               SET last_used_at = NOW(6)
+               SET last_used_at = NOW(6),
+                   consecutive_failures = 0,
+                   cooldown_until = NULL
              WHERE tenant_id = :tenantId
                AND id = :id
             """;

@@ -315,6 +315,107 @@ class ModelFailoverIntegrationTest extends WorkerIntegrationTestBase {
                 .count();
         assertThat(after).isEqualTo(before + 1);
         assertThat(auditCount("model.invocation.failed")).isEqualTo(1);
+        assertThat((String) onlyAudit("model.invocation.failed").get("details"))
+                .contains("\"reason\": \"CHAIN_EMPTY\"");
+    }
+
+    /**
+     * IT-M04-12：ROUTED 未配置（entries 为空、updated_by 仍为 NULL）时稳定 503，
+     * 不再回退 M02 单模型；不创建模型调用，链空审计带 reason=CHAIN_EMPTY。
+     */
+    @Test
+    @DisplayName("IT-M04-12：ROUTED 未配置空链稳定 503，不回退单模型")
+    void resolve_routedEmptyChain_returns503WithoutModelCall() {
+        UUID model = fixture.createModel(primary.url(), "primary-model");
+        fixture.addPlatformKey(fixture.providerOf(model), "sk-primary", 10, "****mary");
+        TenantId tenant = tenant("tenant-a");
+        double before = prometheusMeterRegistry
+                .get("riccon_model_chain_empty")
+                .tag("purpose", "CHAT")
+                .counter()
+                .count();
+
+        assertThatThrownBy(() -> TenantContext.callWithTenant(
+                        tenant, () -> modelRouter.resolve(tenant, ModelPurpose.CHAT, "trace-chain", null)))
+                .isInstanceOf(ModelException.class)
+                .satisfies(error -> {
+                    ModelException modelError = (ModelException) error;
+                    assertThat(modelError.errorCode()).isEqualTo(ModelException.UNAVAILABLE);
+                    assertThat(modelError.getMessage()).isEqualTo(ModelException.CHAIN_UNAVAILABLE_MESSAGE);
+                });
+
+        assertThat(primary.requestCount()).isZero();
+        assertThat(jdbcClient
+                        .sql("SELECT COUNT(*) FROM model_invocation WHERE tenant_id = :tenantId")
+                        .param("tenantId", tenant.value())
+                        .query(Integer.class)
+                        .single())
+                .isZero();
+        assertThat(prometheusMeterRegistry
+                        .get("riccon_model_chain_empty")
+                        .tag("purpose", "CHAT")
+                        .counter()
+                        .count())
+                .isEqualTo(before + 1);
+        assertThat((String) onlyAudit("model.invocation.failed").get("details"))
+                .contains("\"reason\": \"CHAIN_EMPTY\"");
+    }
+
+    /**
+     * IT-M04-13：BASELINE 模式仍使用 M02 单模型语义（无路由链也可用），并走端点守卫与平台 key 池。
+     */
+    @Test
+    @DisplayName("IT-M04-13：BASELINE 单模型在空链下仍可用")
+    void switches_baseline_withEmptyRoutingChain_usesCatalogModel() {
+        UUID model = fixture.createModel(primary.url(), "primary-model");
+        fixture.addPlatformKey(fixture.providerOf(model), "sk-primary", 10, "****mary");
+        fixture.switches("BASELINE", true);
+        TenantId tenant = tenant("tenant-a");
+
+        StreamRun run = run(tenant, ModelPurpose.CHAT);
+
+        assertThat(run.error()).isNull();
+        assertThat(primary.requestCount()).isEqualTo(1);
+        assertThat(run.route().mode()).isEqualTo(com.riccon.worker.model.domain.ModelRoutingMode.BASELINE);
+    }
+
+    /**
+     * IT-M04-14：BASELINE 空目录同样稳定 503（不做链外或空指针回退）。
+     */
+    @Test
+    @DisplayName("IT-M04-14：BASELINE 空目录稳定 503")
+    void switches_baseline_emptyCatalog_returns503() {
+        fixture.switches("BASELINE", true);
+        TenantId tenant = tenant("tenant-a");
+
+        assertThatThrownBy(() -> TenantContext.callWithTenant(
+                        tenant, () -> modelRouter.resolve(tenant, ModelPurpose.CHAT, "trace-empty", null)))
+                .isInstanceOf(ModelException.class)
+                .satisfies(error ->
+                        assertThat(((ModelException) error).errorCode()).isEqualTo(ModelException.UNAVAILABLE));
+        assertThat(primary.requestCount()).isZero();
+    }
+
+    /**
+     * IT-M04-11：成功调用后重置 consecutive_failures，避免历史累计让下次失败立即冷却。
+     */
+    @Test
+    @DisplayName("IT-M04-11：成功调用重置连续失败计数")
+    void credential_successResetsConsecutiveFailures() {
+        primary.forceStatus(500);
+        UUID model = fixture.createModel(primary.url(), "primary-model");
+        UUID credential = fixture.addPlatformKey(fixture.providerOf(model), "sk-primary", 10, "****mary");
+        fixture.route(ModelPurpose.CHAT, model);
+        TenantId tenant = tenant("tenant-a");
+
+        StreamRun failed = run(tenant, ModelPurpose.CHAT);
+        assertThat(failed.error()).isInstanceOf(ModelException.class);
+        assertThat(fixture.consecutiveFailures(credential)).isEqualTo(2);
+
+        primary.reset();
+        StreamRun success = run(tenant, ModelPurpose.CHAT);
+        assertThat(success.error()).isNull();
+        assertThat(fixture.consecutiveFailures(credential)).isZero();
     }
 
     /**

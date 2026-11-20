@@ -26,7 +26,8 @@ public final class AuditDetailsPolicy {
                     Set.of("modelId", "durationMs", "promptTokens", "completionTokens")),
             Map.entry(
                     AuditActions.MODEL_INVOCATION_FAILED,
-                    Set.of("modelId", "durationMs", "errorCode", "retryable", "emitted")),
+                    // reason 仅用于链空（CHAIN_EMPTY）；其余失败不写该键（ADR-0021 §4.1）。
+                    Set.of("modelId", "durationMs", "errorCode", "retryable", "emitted", "reason")),
             Map.entry(
                     AuditActions.MCP_TOOL_INVOKED,
                     Set.of("toolName", "paramsSha256", "resultSha256", "durationMs", "approvalId")),

@@ -12,6 +12,7 @@ import com.riccon.worker.audit.domain.AuditEvent;
 import com.riccon.worker.audit.domain.WorkerAuditActions;
 import com.riccon.worker.audit.repository.AuditRepository;
 import com.riccon.worker.common.UuidV7;
+import com.riccon.worker.model.domain.ModelException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -172,9 +173,8 @@ public class AuditService {
     /**
      * 全链不可用（链为空/无可用 key），尚未创建调用记录时写一条失败审计。
      *
-     * <p>此时没有具体模型 ID，targetId 使用用途，details 只含错误码、可重试标记与 0 耗时；
-     * 原因是链为空由指标 `riccon_model_chain_empty_total{purpose}` 与运行状态承载，
-     * 不新增 details 键，保持 ADR-0007/ADR-0021 §7.4 白名单不漂移。
+     * <p>此时没有具体模型 ID，targetId 使用用途，details 含稳定原因码 {@code reason=CHAIN_EMPTY}
+     * （ADR-0021 §4.1 第 5 步），便于平台管理员与 M10 审计查询按原因筛选。
      *
      * @param tenantId 租户
      * @param traceId 追踪 ID
@@ -189,6 +189,7 @@ public class AuditService {
         details.put("errorCode", errorCode);
         details.put("retryable", true);
         details.put("emitted", false);
+        details.put("reason", ModelException.REASON_CHAIN_EMPTY);
         append(
                 tenantId,
                 AuditActorType.SERVICE,

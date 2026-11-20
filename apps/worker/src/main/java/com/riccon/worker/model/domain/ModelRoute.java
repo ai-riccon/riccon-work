@@ -9,21 +9,15 @@ import java.util.Optional;
  * 一次运行解析出的模型路由链。
  *
  * <p>链已经过启停、端点允许列表、协议与 key 可用性过滤；顺序即尝试顺序（ADR-0021 §5.2）。
- * {@code configured} 表示是否真的命中了 `model_routing_entry`：迁移基线或未配置链时按 M02
- * 单模型兼容处理（由 resolver 决定），一旦存在显式链就绝不回退到链外模型。
+ * ROUTED 模式下空链是稳定失败，绝不在解析阶段回退到链外模型；BASELINE 模式的链长为 1。
  *
  * @param purpose 用途
  * @param mode 解析时使用的路由模式
  * @param failoverEnabled 降级开关
- * @param configured 是否由有序链产生（false 表示迁移基线兼容）
  * @param models 有序模型与可用 key
  */
 public record ModelRoute(
-        ModelPurpose purpose,
-        ModelRoutingMode mode,
-        boolean failoverEnabled,
-        boolean configured,
-        List<RoutedModel> models) {
+        ModelPurpose purpose, ModelRoutingMode mode, boolean failoverEnabled, List<RoutedModel> models) {
 
     /** 复制链，禁止调用方修改尝试顺序。 */
     public ModelRoute {

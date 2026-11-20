@@ -30,6 +30,9 @@ public class ModelException extends RuntimeException {
     /** 配置或凭据不可用。 */
     public static final String CONFIGURATION = "RICCON-MODEL-500";
 
+    /** 链空失败审计的稳定原因码（ADR-0021 §4.1 第 5 步）。 */
+    public static final String REASON_CHAIN_EMPTY = "CHAIN_EMPTY";
+
     /** 员工可见的全链失败统一文案（ADR-0021 §5.3）。 */
     public static final String CHAIN_UNAVAILABLE_MESSAGE = "模型服务暂不可用，请稍后重试。";
 

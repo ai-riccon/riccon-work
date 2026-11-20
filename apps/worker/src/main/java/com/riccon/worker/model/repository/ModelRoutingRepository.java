@@ -37,14 +37,4 @@ public class ModelRoutingRepository {
     public List<RoutingChainEntry> entries(ModelPurpose purpose) {
         return routingJdbc.findEntries(purpose);
     }
-
-    /**
-     * 判断链是否被管理员显式保存过。
-     *
-     * @param purpose 用途
-     * @return 已保存返回 true
-     */
-    public boolean configured(ModelPurpose purpose) {
-        return routingJdbc.isChainConfigured(purpose);
-    }
 }

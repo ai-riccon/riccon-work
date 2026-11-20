@@ -34,10 +34,9 @@ import org.springframework.stereotype.Component;
  *   <li>链为空：`RICCON-MODEL-503` + 指标 + 失败审计，不发起任何出网。
  * </ol>
  *
- * <p><strong>迁移兼容</strong>：V11 迁移会为 CHAT/REPORT 各播种一条链；如果 `model_routing_entry`
- * 完全为空且链从未被管理员保存过（`updated_by IS NULL`），说明当前库只有“迁移基线/测试夹具”的
- * 单模型目录，按 M02 单模型语义兼容。一旦链被保存过，空链或全部被过滤都稳定失败，绝不回退到
- * 链外模型（ADR-0021 §4.1/§5.6）。基线与兼容路径同样执行端点允许列表与平台 key 池过滤。
+ * <p>ROUTED 模式的空链（无条目、全部停用、端点不允许或没有可用 key）一律稳定 503，
+ * 不按 `updated_by` 或迁移状态做任何运行时回退（ADR-0021 §4.1 第 5 步、§5.6）；BASELINE
+ * 模式才使用 M02 单模型语义，并同样执行端点允许列表与平台 key 池过滤。
  */
 @Component
 public class ModelRouteResolver {
@@ -111,18 +110,9 @@ public class ModelRouteResolver {
             if (models.isEmpty()) {
                 throw chainEmpty(tenantId, purpose, traceId, requestId);
             }
-            return new ModelRoute(purpose, ModelRoutingMode.BASELINE, switches.failoverEnabled(), false, models);
+            return new ModelRoute(purpose, ModelRoutingMode.BASELINE, switches.failoverEnabled(), models);
         }
         List<RoutingChainEntry> entries = routingRepository.entries(purpose);
-        if (entries.isEmpty() && !routingRepository.configured(purpose)) {
-            // 迁移基线/测试夹具：没有链且从未保存过链，使用 M02 单模型语义。
-            LOG.debug("model.routing.chain_missing purpose={} fallback=baseline", purpose);
-            List<RoutedModel> models = baselineChain();
-            if (models.isEmpty()) {
-                throw chainEmpty(tenantId, purpose, traceId, requestId);
-            }
-            return new ModelRoute(purpose, ModelRoutingMode.ROUTED, switches.failoverEnabled(), false, models);
-        }
         List<RoutedModel> models = new ArrayList<>(entries.size());
         for (RoutingChainEntry entry : entries) {
             ModelTarget target;
@@ -156,7 +146,7 @@ public class ModelRouteResolver {
         if (models.isEmpty()) {
             throw chainEmpty(tenantId, purpose, traceId, requestId);
         }
-        return new ModelRoute(purpose, ModelRoutingMode.ROUTED, switches.failoverEnabled(), true, models);
+        return new ModelRoute(purpose, ModelRoutingMode.ROUTED, switches.failoverEnabled(), models);
     }
 
     /**

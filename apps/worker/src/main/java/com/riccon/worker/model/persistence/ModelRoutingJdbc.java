@@ -4,6 +4,7 @@ import com.riccon.platform.domain.model.ModelPurpose;
 import com.riccon.worker.model.domain.ModelDescriptor;
 import com.riccon.worker.model.domain.ProviderDescriptor;
 import com.riccon.worker.model.domain.RoutingChainEntry;
+import com.riccon.worker.persistence.UuidBinary;
 import java.net.URI;
 import java.util.List;
 import java.util.Objects;
@@ -35,13 +36,6 @@ public class ModelRoutingJdbc {
              ORDER BY e.position
             """;
 
-    /** 判断链是否被管理员显式配置过（updated_by 非空）。 */
-    private static final String SELECT_CHAIN_CONFIGURED = """
-            SELECT updated_by
-              FROM model_routing
-             WHERE purpose = :purpose
-            """;
-
     /** 全局表只读客户端。 */
     private final JdbcClient jdbcClient;
 
@@ -66,8 +60,8 @@ public class ModelRoutingJdbc {
                 .param("purpose", purpose.name())
                 .query((rs, rowNum) -> {
                     ModelDescriptor model = new ModelDescriptor(
-                            com.riccon.worker.persistence.UuidBinary.fromBytes(rs.getBytes("id")),
-                            com.riccon.worker.persistence.UuidBinary.fromBytes(rs.getBytes("provider_id")),
+                            UuidBinary.fromBytes(rs.getBytes("id")),
+                            UuidBinary.fromBytes(rs.getBytes("provider_id")),
                             rs.getString("model_key"),
                             rs.getString("display_name"),
                             rs.getInt("max_output_tokens"),
@@ -80,24 +74,5 @@ public class ModelRoutingJdbc {
                     return new RoutingChainEntry(rs.getInt("position"), model, provider);
                 })
                 .list();
-    }
-
-    /**
-     * 判断链是否被管理员保存过（V11 迁移种子为 updated_by NULL）。
-     *
-     * <p>迁移或测试夹具没有条目且未保存过时，resolver 按 M02 单模型兼容处理；一旦管理员
-     * 保存过链，空链/全过滤即稳定失败，绝不回退到链外模型。
-     *
-     * @param purpose 用途
-     * @return 存在链行且 updated_by 非空时返回 true
-     */
-    public boolean isChainConfigured(ModelPurpose purpose) {
-        return jdbcClient
-                .sql(SELECT_CHAIN_CONFIGURED)
-                .param("purpose", purpose.name())
-                .query((rs, rowNum) -> rs.getBytes("updated_by"))
-                .optional()
-                .map(bytes -> bytes != null && bytes.length > 0)
-                .orElse(false);
     }
 }
