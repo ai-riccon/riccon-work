@@ -184,7 +184,7 @@ sandbox:
     - "sandbox.uid=10001:10001"
     - "sandbox.read_only=true"
     - "sandbox.image=mysql:8.4.13"
-  evidence: ""
+  evidence: "EV-0519"
 tools:
   required:
     - id: riccon
@@ -410,6 +410,12 @@ budget:
 ### 成本与预算
 
 - 模块结束用 `riccon module cost` 记录墙钟；本项目不计量 token 与美元成本，`confidence` 用 `estimated`，并在 source/note 注明 wall-clock-only；全部指标为 0 时只能用 `unmeasured`。
+
+### T4 DoD 决策（2026-11-20）
+
+- 保留 `definition_of_done.module` 现有 8 个 key（acceptance/build/tests/coverage/e2e/review/docs/evidence）；本次不把 security/accessibility/performance/migration 加入模块 gate。
+- 这四项继续作为 Verifier 评审项和 release evidence：security → `commands.security` + release DoD；accessibility → `commands.a11y` + E2E `@a11y`；performance → `commands.perf` + 性能预算；migration → ADR/迁移演练 + release rollback。
+- 理由：新增 key 会追溯影响已 done 模块和旧 review，release check 重跑 gate 会失败；需要单独决策和补齐计划，当前不静默改。依据用户 2026-11-20 内核同步指令（默认保留现状）。
 
 ### 验证与证据
 
