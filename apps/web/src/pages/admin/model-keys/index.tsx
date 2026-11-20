@@ -53,13 +53,14 @@ type KeysPhase = 'loading' | 'ready' | 'empty' | 'forbidden' | 'error';
 /**
  * 端点与 key 状态 Tag 的高对比配色。
  *
- * antd 6 filled Tag 默认用 preset 色阶 7 作文字、色阶 1 作背景：绿色 3.37:1、金色 2.76:1，
- * 12px 字号下低于 WCAG 2.1 AA 的 4.5:1（axe color-contrast）。这里把文字加深到色阶 8/9，
- * 背景保持色阶 1 并补齐同色系边框：绿色 5.44:1、金色 6.53:1。Tag 仍保留 preset 颜色
- * （ant-tag-green 等），只在视觉上换成浅底深字。
+ * antd 6 filled Tag 默认用 preset 色阶 7 作文字、色阶 1 作背景：绿色 3.37:1、橙色 3.34:1、
+ * 金色 2.76:1，12px 字号下低于 WCAG 2.1 AA 的 4.5:1（axe color-contrast）。这里把文字加深到
+ * 色阶 8/9，背景保持色阶 1 并补齐同色系边框：绿色 5.44:1、橙色 5.09:1、金色 6.53:1。
+ * Tag 仍保留 preset 颜色（ant-tag-green 等），只在视觉上换成浅底深字。
  */
-const HIGH_CONTRAST_TAG_STYLES: Record<'green' | 'gold', CSSProperties> = {
+const HIGH_CONTRAST_TAG_STYLES: Record<'green' | 'orange' | 'gold', CSSProperties> = {
   green: { color: '#237804', background: '#f6ffed', borderColor: '#b7eb8f' },
+  orange: { color: '#ad4e00', background: '#fff7e6', borderColor: '#ffd591' },
   gold: { color: '#874d00', background: '#fffbe6', borderColor: '#ffe58f' },
 };
 

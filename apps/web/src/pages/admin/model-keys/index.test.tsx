@@ -379,6 +379,19 @@ describe('模型 key 页', () => {
     expect(rotate).toHaveFocus();
   });
 
+  it('演示端点的橙色 Tag 满足 WCAG AA 对比度', async () => {
+    renderPage(
+      createModelApi({
+        listModelProviders: vi.fn(async () =>
+          pageOf([makeProvider({ environmentLabel: 'DEMO_ONLY' })]),
+        ),
+      }),
+    );
+
+    // 橙色“仅演示（非生产）”默认 3.34:1，端点与 key 同页展示，必须 ≥4.5:1。
+    expectAATagContrast(await screen.findByText('仅演示（非生产）'));
+  });
+
   it('不可路由端点禁止新增 key，但保留已有 key 的停用入口', async () => {
     renderPage(
       createModelApi({
