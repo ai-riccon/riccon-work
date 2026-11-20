@@ -4,7 +4,7 @@
   "module_id": "M04",
   "title": "M04 B9a：路由/key 两页 + 路由/菜单 + Web API client + audit target/7d 预设",
   "owner": "riccon/builder-web",
-  "status": "blocked",
+  "status": "done",
   "write_scope": [
     "apps/web/src/pages/admin/model-routing/**",
     "apps/web/src/pages/admin/model-keys/**",
@@ -15,7 +15,9 @@
     "apps/web/src/services/audit/types.ts",
     "apps/web/config/routes.ts",
     "apps/web/src/access.ts",
-    ".riccon/**"
+    ".riccon/**",
+    "apps/web/config/routes.test.ts",
+    "apps/web/src/services/audit/format.ts"
   ],
   "acceptance": [
     "路由/key 两页、key 掩码",
@@ -26,11 +28,12 @@
     "375px/键盘"
   ],
   "evidence": [
-    "EV-0549"
+    "EV-0555"
   ],
   "tools_used": [],
-  "blocker": "write_scope 缺派生文件 apps/web/config/routes.test.ts（既有菜单断言必须同步）与 apps/web/src/services/audit/format.ts（新增 MODEL_ROUTING/MODEL_CREDENTIAL/QUOTA 中文标签必需）；代码已提交 8605325、EV-0549 exit 0，请 Lead 扩充写范围后转 review",
+  "blocker": null,
   "created_at": "2026-11-20T21:05:32.396+08:00",
-  "updated_at": "2026-11-21T04:20:27.194+08:00",
-  "baseline_commit": "74887fac29b097e2e7404f13082748dfcdf18b05"
+  "updated_at": "2026-11-21T05:04:57.193+08:00",
+  "baseline_commit": "74887fac29b097e2e7404f13082748dfcdf18b05",
+  "end_commit": "8605325"
 }
