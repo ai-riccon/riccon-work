@@ -1109,7 +1109,7 @@ DELETE FROM flyway_schema_history WHERE version = '11';
 | A4-F-003    | fixed    | §8.3 V2：最终提交全量独立 test/coverage/E2E/a11y/security + 抽样重跑 8 条 AC                                                 | V2 证据与 V1 分开取证            |
 | A4-F-004    | fixed    | THREAT §8 新增 B-21（`PERF-M04-001/002` + `OPS-M04-01`）；M04 gate 要求 B-18/B-19/B-20/B-21                                  | REV-005；V2 取证                 |
 | A4-F-005    | fixed    | THREAT §10.4：M04 gate acceptance = PRODUCT §10.3 AC-01..18；安全 gate = B-18..B-21；TM/指标/UI 为补充核对                   | REV-005                          |
-| A4-F-006    | deferred | PRODUCT.md:31 的 M17/M04b 否定式记录；PRODUCT 不在本任务写入范围，由 Product 任务（TASK-0098）改口径                         | Product/Lead 后续文档任务        |
+| A4-F-006    | deferred | PRODUCT.md:31 的已撤销拆分 ID 字面；PRODUCT 不在本任务写入范围，由 Product 任务（TASK-0098）改口径                           | Product/Lead 后续文档任务        |
 | A4-F-007    | fixed    | ARCH 评审表：ARCH-004 fail（1 P1，修复中）/ OPS-005 pass（6 P2 open）；Verifier 待 ARCH-005；§13 T-09 同步                   | REV-005 核对                     |
 | A4-F-008    | fixed    | §8.1 B10 依赖补 B3/B4/B5；§8.2 依赖图与隐藏依赖说明                                                                          | Lead 派单前核对                  |
 | A4-F-009    | deferred | EV-0522/0523 覆盖不足属历史证据；由后续证据任务重录                                                                          | Lead/任务 owner                  |
