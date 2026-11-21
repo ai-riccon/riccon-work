@@ -1,7 +1,7 @@
 # M04 性能冒烟（k6）
 
 `mvc-smoke.js` 覆盖 `PERF-M04-001/002`：50 并发首字、首字前降级矩阵、配额争用零超卖、成本查询。
-脚本本身只读 API，不修改生产数据；配额场景会在测试栈内临时打开开关并设置限额，结束后恢复。
+脚本本身只读 API，不修改生产数据；配额场景会在测试栈内临时打开开关并设置租户/用户限额，结束后恢复原值。
 
 ## 推荐入口
 
@@ -47,7 +47,11 @@ k6 run \
 ## 判定与记录
 
 - 首字延迟取运行详情 `modelInvocations[].firstTokenMs`（服务端首字，不是整段 SSE 时长）；
-- 阈值：首字 p95 ≤ 3s、API p95 ≤ 500ms、降级成功率 > 99%、配额 1/49、成本查询 p95 ≤ 2s；
+- `m04_api_ms` 只统计稳态 JSON API：`GET /runs`、成本查询；登录（bcrypt）、workspace 列表、
+  会话创建、开关/配额 setup 与 cleanup 不计入，阈值仍为 p95 ≤ 500ms；
+- 聊天提交是 SSE 端点：TTFB 记入 `m04_chat_submit_ttfb_ms`，完整流记入 `m04_chat_stream_ms`，
+  由首字 p95 ≤ 3s 预算约束，不并入 500ms 的 JSON API 预算；
+- 其他阈值：首字 p95 ≤ 3s、降级成功率 > 99%、配额 1/49、成本查询 p95 ≤ 2s；
 - `handleSummary` 输出 host CPU/内存、镜像 tag、k6 版本、脚本 sha、启动命令、OpenSearch 是否启动；
 - 降级矩阵按“模式 × 一次 k6 运行”执行：每次运行由 `run.mjs` 重设 fake provider key 场景与 key 健康，
   避免 401 失效/冷却让后续请求跳过故障 key，从而把降级跑成“没有降级”。

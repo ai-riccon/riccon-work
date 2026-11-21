@@ -13,6 +13,11 @@
 // - quota：开关 true + 限额=已用+1，50 并发恰好 1 成功/49 个 429（零超卖）；
 // - cost：30/180 天成本查询 p95 ≤ 2s（需要 B7 cost API）。
 //
+// 测量口径：`m04_api_ms` 只统计稳态 JSON API（GET /runs、成本查询）；登录、workspace 列表、
+// 会话创建、开关/配额 setup 与 cleanup 不计入，避免认证 bcrypt 与每 VU 初始化把业务 API p95 拉偏。
+// 聊天提交是 SSE：TTFB 单独记入 `m04_chat_submit_ttfb_ms`，完整流记入 `m04_chat_stream_ms`；
+// 它受首字 p95 ≤ 3s 预算约束，不并入 500ms 的 JSON API 预算。阈值不变。
+//
 // 退出码：阈值失败或前置环境不满足时 k6 非零；这是 gate 信号，不做告警降级。
 // 报告：写 `PERF_M04_REPORT_FILE` 或 `PERF_M04_REPORT_DIR/mvc-smoke-<scenario>.json`，
 // 内含 host CPU/内存、镜像 tag、k6 版本、脚本 sha、启动命令与 mock 所在主机规格。
@@ -42,6 +47,8 @@ const failureMode = (__ENV.PERF_M04_FAILURE_MODE || 'server_error').trim();
 /** 自定义指标；标签只保留场景/操作，不含租户或用户高基数标签。 */
 const firstTokenMs = new Trend('m04_first_token_ms', true);
 const chatStreamMs = new Trend('m04_chat_stream_ms', true);
+/** 聊天提交 TTFB（SSE 首字节，含 Worker started 等待）；独立于 500ms JSON API 预算。 */
+const chatSubmitTtfbMs = new Trend('m04_chat_submit_ttfb_ms', true);
 const runDetailMs = new Trend('m04_run_detail_ms', true);
 const apiMs = new Trend('m04_api_ms', true);
 const degradedSuccess = new Rate('m04_degraded_success');
@@ -241,9 +248,14 @@ function login(tenantCode, username, password) {
  * @param {string} expectedRole 期望角色码
  */
 function assertSession(current, label, expectedTenant, expectedUser, expectedRole) {
-  const response = api(current, 'GET', '/api/v1/auth/session', undefined, {
-    tags: { kind: 'api', op: 'session' },
-  });
+  const response = api(
+    current,
+    'GET',
+    '/api/v1/auth/session',
+    undefined,
+    { tags: { kind: 'api', op: 'session' } },
+    false,
+  );
   if (response.status !== 200) {
     fail(`${label} session check failed: ${response.status} ${response.body}`);
   }
@@ -269,9 +281,10 @@ function assertSession(current, label, expectedTenant, expectedUser, expectedRol
  * @param {string} path 路径
  * @param {object} [body] JSON 体
  * @param {object} [params] k6 参数覆盖
+ * @param {boolean} [measure] 是否计入 m04_api_ms；认证/工作空间/会话/setup 传 false
  * @returns {object} k6 响应
  */
-function api(current, method, path, body, params = {}) {
+function api(current, method, path, body, params = {}, measure = true) {
   // 每次请求前清空 jar，确保只发送当前角色的显式 Cookie（V2 F-004）。
   clearCookieJar();
   const headers = {
@@ -293,7 +306,7 @@ function api(current, method, path, body, params = {}) {
     },
   );
   const kind = paramTags?.kind || 'api';
-  if (kind === 'api') {
+  if (measure && kind === 'api') {
     apiMs.add(response.timings.duration, { op: paramTags?.op || 'api' });
   }
   return response;
@@ -309,7 +322,7 @@ function resolveWorkspace(current) {
   if (workspaceId) {
     return workspaceId;
   }
-  const response = api(current, 'GET', '/api/v1/workspaces?page=1&size=100');
+  const response = api(current, 'GET', '/api/v1/workspaces?page=1&size=100', undefined, {}, false);
   if (response.status !== 200) {
     fail(`list workspaces failed: ${response.status}`);
   }
@@ -337,9 +350,11 @@ function ensureContext() {
       {
         title: 'PERF-M04 冒烟会话',
       },
+      {},
+      false,
     );
     if (response.status !== 201) {
-      fail(`create conversation failed: ${response.status} ${response.text}`);
+      fail(`create conversation failed: ${response.status} ${response.body}`);
     }
     conversationId = response.json().id;
   }
@@ -377,6 +392,10 @@ function sendChat(current, conversation, tag) {
   );
   const duration = Date.now() - startedAt;
   chatStreamMs.add(duration, { scenario: tag });
+  // 聊天提交是 SSE 端点：`ChatService.send` 返回前会等待 Worker 的 started 事件，
+  // TTFB 含 Worker 排队/路由（本矩阵中约 1.4s），不能并入 500ms 的 JSON API 预算；
+  // 这里单独记录 TTFB，完整流时长仍由 m04_chat_stream_ms 记录。
+  chatSubmitTtfbMs.add(response.timings.waiting, { scenario: tag });
   let runId = null;
   if (response.status === 200) {
     const match = /"runId":"([0-9a-f-]{36})"/.exec(response.body || '');
@@ -470,7 +489,7 @@ export function quotaContention() {
   assertSession(admin, 'tenant-admin', tenant, adminUser, 'TENANT_ADMIN');
   assertSession(memberSession, 'member', tenant, member, 'MEMBER');
 
-  const switches = api(platform, 'GET', '/api/v1/admin/model-gateway/switches');
+  const switches = api(platform, 'GET', '/api/v1/admin/model-gateway/switches', undefined, {}, false);
   if (switches.status !== 200) {
     fail(`read switches failed: ${switches.status}`);
   }
@@ -480,18 +499,25 @@ export function quotaContention() {
   let enabledState = null;
   let originalLimits = null;
   try {
-    const enabled = api(platform, 'PUT', '/api/v1/admin/model-gateway/switches', {
-      version: switchState.version,
-      routingMode: switchState.routingMode,
-      failoverEnabled: switchState.failoverEnabled,
-      quotaEnforcementEnabled: true,
-    });
+    const enabled = api(
+      platform,
+      'PUT',
+      '/api/v1/admin/model-gateway/switches',
+      {
+        version: switchState.version,
+        routingMode: switchState.routingMode,
+        failoverEnabled: switchState.failoverEnabled,
+        quotaEnforcementEnabled: true,
+      },
+      {},
+      false,
+    );
     if (enabled.status !== 200) {
       fail(`enable quota failed: ${enabled.status} ${enabled.body}`);
     }
     enabledState = enabled.json();
 
-    const quotas = api(platform, 'GET', '/api/v1/admin/quotas?page=1&size=100');
+    const quotas = api(platform, 'GET', '/api/v1/admin/quotas?page=1&size=100', undefined, {}, false);
     if (quotas.status !== 200) {
       fail(`read quotas failed: ${quotas.status}`);
     }
@@ -507,7 +533,7 @@ export function quotaContention() {
     // 前序 first_token/failover 场景即使关闭执行也会累计用量；用户日窗口可能已超过
     // seed 限额（1000）。两级都设置“剩余=1”，否则用户窗口会先拒绝全部 50 请求，
     // 无法证明租户级零超卖。
-    const userQuotas = api(admin, 'GET', '/api/v1/quotas/users?page=1&size=100');
+    const userQuotas = api(admin, 'GET', '/api/v1/quotas/users?page=1&size=100', undefined, {}, false);
     if (userQuotas.status !== 200) {
       fail(`read user quotas failed: ${userQuotas.status}`);
     }
@@ -524,9 +550,14 @@ export function quotaContention() {
       user: { daily: userDaily.limit, monthly: userMonthly.limit },
     };
 
-    const limitUpdate = api(platform, 'PUT', `/api/v1/admin/tenants/${tenant}/quotas`, {
-      limits: { daily: daily.used + 1, monthly: monthly.limit },
-    });
+    const limitUpdate = api(
+      platform,
+      'PUT',
+      `/api/v1/admin/tenants/${tenant}/quotas`,
+      { limits: { daily: daily.used + 1, monthly: monthly.limit } },
+      {},
+      false,
+    );
     if (limitUpdate.status !== 200) {
       fail(`set quota failed: ${limitUpdate.status} ${limitUpdate.body}`);
     }
@@ -535,15 +566,22 @@ export function quotaContention() {
       'PUT',
       `/api/v1/admin/tenants/${tenant}/users/${userRow.userId}/quotas`,
       { limits: { daily: userDaily.used + 1, monthly: userMonthly.limit } },
+      {},
+      false,
     );
     if (userLimitUpdate.status !== 200) {
       fail(`set user quota failed: ${userLimitUpdate.status} ${userLimitUpdate.body}`);
     }
 
     const workspace = resolveWorkspace(memberSession);
-    const conversation = api(memberSession, 'POST', `/api/v1/workspaces/${workspace}/conversations`, {
-      title: 'PERF-M04 配额争用会话',
-    });
+    const conversation = api(
+      memberSession,
+      'POST',
+      `/api/v1/workspaces/${workspace}/conversations`,
+      { title: 'PERF-M04 配额争用会话' },
+      {},
+      false,
+    );
     if (conversation.status !== 201) {
       fail(`create quota conversation failed: ${conversation.status}`);
     }
@@ -608,12 +646,19 @@ export function quotaContention() {
     let cleanupOk = true;
     // 恢复执行开关与两级限额原值；任何恢复失败都让 m04_quota_cleanup 失败。
     if (enabledState) {
-      const restoredSwitches = api(platform, 'PUT', '/api/v1/admin/model-gateway/switches', {
-        version: enabledState.version,
-        routingMode: enabledState.routingMode,
-        failoverEnabled: enabledState.failoverEnabled,
-        quotaEnforcementEnabled: originalSwitch,
-      });
+      const restoredSwitches = api(
+        platform,
+        'PUT',
+        '/api/v1/admin/model-gateway/switches',
+        {
+          version: enabledState.version,
+          routingMode: enabledState.routingMode,
+          failoverEnabled: enabledState.failoverEnabled,
+          quotaEnforcementEnabled: originalSwitch,
+        },
+        {},
+        false,
+      );
       cleanupOk = cleanupOk && restoredSwitches.status === 200;
       if (restoredSwitches.status !== 200) {
         console.error(
@@ -622,14 +667,21 @@ export function quotaContention() {
       }
     }
     if (originalLimits) {
-      const restoreTenant = api(platform, 'PUT', `/api/v1/admin/tenants/${tenant}/quotas`, {
-        limits: originalLimits.tenant,
-      });
+      const restoreTenant = api(
+        platform,
+        'PUT',
+        `/api/v1/admin/tenants/${tenant}/quotas`,
+        { limits: originalLimits.tenant },
+        {},
+        false,
+      );
       const restoreUser = api(
         platform,
         'PUT',
         `/api/v1/admin/tenants/${tenant}/users/${originalLimits.userId}/quotas`,
         { limits: originalLimits.user },
+        {},
+        false,
       );
       cleanupOk = cleanupOk && restoreTenant.status === 200 && restoreUser.status === 200;
       if (restoreTenant.status !== 200 || restoreUser.status !== 200) {
