@@ -9,16 +9,16 @@
 
 ## 范围
 
-- 模块：M03「权限纵深与组织模型」；M10「身份与审计纵深（M03b）」；M13 为 M03 验收补丁；M18 回溯复验（含 M02 回溯 Product 预验收）；M04「模型网关纵深」（2026-11-21 gate 后 Product 预验收）
+- 模块：M03「权限纵深与组织模型」；M10「身份与审计纵深（M03b）」；M13 为 M03 验收补丁；M18 回溯复验（含 M02 回溯 Product 预验收）；M04「模型网关纵深」（2026-11-21 gate 后 Product 预验收）；M19「测试基础设施与全量测试提速」（2026-11-22 gate 后 Product 预验收，技术性 fix，无用户可见 AC）
 - M18 回溯复验（2026-11-20）：TASK-0090 对 M01/M02/M03/M10/M12/M13/M15 用当前合同 `commands.test` 重录 test/coverage（EV-0490..EV-0496）、重写 `REV-*-002`、恢复 gate（EV-0498）；TASK-0092/0093 补 M02 AC-02 逐格式 UI 证据与 a11y P1 修复；TASK-0094 在最终代码 `ec6a650` 上执行全量合同证据（EV-0512 build、EV-0513 test/coverage、EV-0514 E2E 33 passed、EV-0515 a11y 13 passed、EV-0516 security、EV-0517 gate 循环）。真实栈 E2E/a11y 与迁移回滚未重跑。详见「M18 回溯复验（2026-11-20）」。
 - M03 原 gate：`bc97d1c`（REV-M03-001，EV-0342..EV-0349）
 - M03 验收补丁（M13）：代码 `410cddd`，gate pass（REV-M13-001，EV-0352..EV-0359、EV-0361）；完整合同证据 `6564879`，最终 E2E `650663f`。EV-0360 为中间失败，不引用
 - M10 gate：代码最终提交 `a88d003`，gate pass（REV-M10-001，29 条 reviewed_evidence；DEC-0018 将上限从 12h 提高到 20h）；V1 TASK-0083 done
 - M15 补丁（fixes M10）：后端 `08e0fc6`（EV-0449）、前端 `4538d8c`（EV-0450）、a11y `c4ebd3e`（EV-0478）；TASK-0084/0085/0087/0086 done，gate pass（REV-M15-001）；代码证据 EV-0482..0486、EV-0488 在 `864b0a7`，docs EV-0489 在 `de33ed8`（EV-0487 为中间失败，不引用）
 - M04：`feature`，gate pass（REV-M04-005，2026-11-21；18 条 AC 全 pass）；证据 EV-0675/0676/0677/0681/0682..0686/0687/0689、EV-0669、EV-0640；Product 预验收见「M04 模型网关纵深（gate pass 后 Product 预验收）」
-- 验收日期：2026-11-19（M10 初次）、2026-11-20（M15 后复验）、2026-11-20（M18 回溯与最终全量）、2026-11-21（M04 gate 后）
-- 验收人：Product（M03/M10/M15 预验收；M02 回溯预验收；M04 预验收）；用户（M03/M10 accepted；M02/M18 回溯 accepted，DEC-0025；M04 最终验收 `accepted`，DEC-0027）
-- 参考：REV-M13-001、REV-M03-001、REV-M03-V1-002、REV-M10-001、REV-M15-001、REV-M10-ARCH-002、REV-M10-OPS-001、M10-OPS-DRILL、REV-TASK-0033-002、REV-TASK-0037/0039/0041/0043/0045、REV-TASK-0065-002/0068/0069/0071/0076；M18 回溯：REV-M01-002、REV-M02-004、REV-M03-002、REV-M10-002、REV-M12-002、REV-M13-002、REV-M15-002、REV-M18-REVALIDATION-001；M04：REV-M04-005、REV-TASK-0115-002、TASK-0116/TASK-0139
+- 验收日期：2026-11-19（M10 初次）、2026-11-20（M15 后复验）、2026-11-20（M18 回溯与最终全量）、2026-11-21（M04 gate 后）、2026-11-22（M19 gate 后）
+- 验收人：Product（M03/M10/M15 预验收；M02 回溯预验收；M04 预验收；M19 预验收）；用户（M03/M10 accepted；M02/M18 回溯 accepted，DEC-0025；M04 最终验收 `accepted`，DEC-0027）
+- 参考：REV-M13-001、REV-M03-001、REV-M03-V1-002、REV-M10-001、REV-M15-001、REV-M10-ARCH-002、REV-M10-OPS-001、M10-OPS-DRILL、REV-TASK-0033-002、REV-TASK-0037/0039/0041/0043/0045、REV-TASK-0065-002/0068/0069/0071/0076；M18 回溯：REV-M01-002、REV-M02-004、REV-M03-002、REV-M10-002、REV-M12-002、REV-M13-002、REV-M15-002、REV-M18-REVALIDATION-001；M04：REV-M04-005、REV-TASK-0115-002、TASK-0116/TASK-0139；M19：REV-M19-001、EV-0716/0721/0723/0724
 
 ## 模块关系与验收状态
 
@@ -32,6 +32,7 @@
 - **M12**：维护模块，done；热栈/test-affected/文档无用户可见 AC，Product/用户验收为 `not-recorded`（N/A legacy），不伪造 pass。
 - **M14**：docs-only legacy，building；TASK-0053/0057/0061 已 done，但尚无模块 review/gate；Product/user 结论重置为 `pending`，待独立 closeout 后再验收。
 - **M04**：`feature`，done；gate pass（REV-M04-005，2026-11-21；18 条 AC 全 pass，F-001..F-005/F-011 fixed，P2/P3 残余登记）；Product 预验收 `pass`（with residual：R-M04-01 P2 员工侧配额 429 文案、R-M04-02/03 P3，以及 Verifier F-006/F-008/F-009/F-010/F-012/F-013），见「M04 模型网关纵深（gate pass 后 Product 预验收）」；用户最终验收 `accepted`（DEC-0027，A；with residual，R-M04-01/02/03 转 M05），见「用户最终验收（M04）」。
+- **M19**：`fix`，review_pending（未 done）；gate pass（REV-M19-001，2026-11-22；14.3h/16h）；9 个任务全部 done；Product 预验收 `pass`（with residual F-001..F-005，见「M19 测试基础设施与全量测试提速（gate pass 后 Product 预验收）」）；用户最终验收 `pending`；不改变产品 AC/API/DB/UX/部署行为。
 
 ## 验收标准（M03，M13 补丁后）
 
@@ -364,6 +365,36 @@ M02 是用户可见 MVC 模块，但 2026-11-18 关闭时没有 `product_accepta
 - `REV-M04-005` 的 accepted P2/P3（F-006/F-008/F-009/F-010/F-012/F-013）缺少 `accepted_reason` 与 `reviewed_task_reviews`；由 `REV-M04-006`（`M04-review-supplement-001.md`）补充，明确不替代 M04-005、不参与 gate。旧文件 warning 保留，不追溯改写。
 - `REV-M04-004`/`REV-M04-003` 已从 git history 恢复到 `.riccon/archive/reviews/M04-review-REV-M04-004.md` 与 `...-003.md`，修复 `previous_review` 断链。
 - 边界：本次未改业务源码、未新跑测试、未新录 EV；M20 任务均为 planned，未启动。剩余 legacy warning 属于历史评审清理范围，不是新的 gate 失败。
+
+## M19 测试基础设施与全量测试提速（gate pass 后 Product 预验收）
+
+- **范围**：`fix` 模块，技术性交付，无用户可见 AC。9 个任务全部 done：P0 计时与预算（TASK-0117）、P1 CI 热栈（TASK-0118）、P2 四分片（TASK-0119，含 TASK-0149 竞态修复）、P3 Worker 租户隔离与 API fixture（TASK-0144/0145/0146）、P4 tag 分层与 platform 词汇测试（TASK-0147/0148）。改动限于测试代码、CI、测试脚本与文档；`apps/*/src/main`、`apps/web/src`、`contracts/`、`deploy/` 零 diff，产品 AC/API/DB/UX/部署行为不变。
+- **合同与 gate**：`AGENTS.md` 零 diff，`commands.test`/`commands.coverage`/E2E 文本未改；CI 只新增 4-shard 快速反馈，canonical gate 仍由 Verifier 用合同命令执行。gate PASS（REV-M19-001，verdict `pass`，14.3h/16h）；代码 `b69f019`（PR #1 head），模块评审基于 `254e2a8`（与代码无源码/CI 差异）。
+- **证据**：CI run 44955035025（PR #1 `m19-ci-proof` @ `b69f019`，conclusion success）；EV-0716（合同 test+coverage：196 类/1115 用例/0 fail/0 error/0 skip；前端 493 用例通过）、EV-0721（4 shard + merge：196/1115/0/0/0，每类 runs=1，problems=0）、EV-0723（计时报告 531.132s）、EV-0724（文档/合同一致性）、EV-0717/0718/0719/0722（build/E2E/a11y/security）。EV-0711 为 shard 2 竞态失败证据，EV-0714/0715 为辅助证据，均不作为 DoD 依据。
+
+| 验收项                            | 结果                   | 证据                                         | 核对要点                                                                                                                                                                                                                                     |
+| --------------------------------- | ---------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 用例集合不减少、零 skip/@Disabled | pass                   | EV-0716、EV-0721、EV-0724                    | 196 类/1115 用例（P2 基线 193/1101，P4 +3 类/+14 用例；模块基线 771）；0 fail/0 error/0 skip；`@Disabled`/assume/`@Enabled*` 源码计数 0；测试注解（`@Test`/`@ParameterizedTest`/`@RepeatedTest`）新增 14、删除 0；合并报告每类恰好执行一次。 |
+| P0 计时与预算                     | pass                   | EV-0690、EV-0723、EV-0724；CI artifact       | `test-timings.mjs` 输出 top-20/总计并上传每 shard artifact；空/坏报告负向退出；§10.3 写入 L2 定向回路 ≤5min、后端全量（L3 测试段）≤10min（分片前）/≤5min（分片后）及超预算处理。                                                             |
+| P1 热栈与合同命令                 | pass                   | EV-0694、EV-0724、`.github/workflows/ci.yml` | CI 使用 `RICCON_TEST_SERVICES=external` + 每 job 唯一 namespace；迁移/回滚/schema 测试仍用一次性容器；`commands.test` 文本未改，失败导出 compose 日志并 `down -v`。                                                                          |
+| P2 四分片                         | pass                   | EV-0721                                      | 4 shard 均 success；job 墙钟 213/204/209/198s（≤300s）；merge 196/1115/0/0/0、每类 runs=1、problems=0；分片只跑 test，不替代 canonical gate。                                                                                                |
+| P3 提速与独立复跑                 | pass（附 F-004/F-005） | EV-0697/0698/0704/0705/0707/0716/0723        | Worker 租户级隔离替代每测试 39 表 TRUNCATE；API fixture 缓存；独立全量 531.132s 对 P2 baseline 1231.995s 下降 56.9%（≥30%）；Verifier 独立复跑一致。                                                                                         |
+| P4 tag 分层与平台下沉             | pass（附 F-002）       | EV-0708、EV-0710、EV-0716                    | integration/security/migration/untagged=unit 约定与 `-Dgroups` 选择冒烟通过；platform-domain 新增 3 个词汇测试类 14 用例，由独立 Verifier 评审（REV-TASK-0148）；app 断言零删除、全量不减；P4b 为增量守卫、不降 app 墙钟（F-002）。          |
+| CI ≤5min、零 skip、产品零变更     | pass                   | EV-0721、EV-0724、REV-M19-001                | 4 shard 墙钟 198–213s；merge skipped=0；无产品行为/UX/API/DB/部署变更；无 P0/P1 open finding。                                                                                                                                               |
+
+### 残余风险（M19）
+
+| 来源     | ID    | 级别 | 状态     | owner / due                        | 说明 / 对验收的影响                                                                                                                                                                                                          |
+| -------- | ----- | ---- | -------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Verifier | F-001 | P2   | accepted | `riccon/ops` / M20 gate 前         | M19 后 CI 只跑分片 test，不再运行 canonical `verify`/coverage；覆盖率门槛仍由 Verifier 本机 gate 用合同命令取证。**不改变 M19 技术验收**，但 M20 gate 前必须由 Ops 补 coverage/verify job 或在合同中明确 CI 不做覆盖率门禁。 |
+| Verifier | F-002 | P3   | accepted | `riccon/builder-m19` / M20 gate 前 | P4b 是新增 platform 词汇守卫，不是把 app 测试迁出；P4 不降低 app 用例数与墙钟，提速由 P2/P3 承担；app 断言零删除，接受。                                                                                                     |
+| Verifier | F-003 | P3   | accepted | `riccon/ops` / M20 gate 前         | GitHub Actions Node 20、setup-java v4 弃用告警；本次 CI 全绿，但 M20 gate 前需升级 action 主版本并复跑。                                                                                                                     |
+| Verifier | F-004 | P3   | accepted | `riccon/builder-m19` / M20 gate 前 | 分片 baseline 计时值来自一次未单独录 EV 的全量；仅用于分片负载估算，不参与 gate；重建 baseline 必须用已录 EV 的全量报告。                                                                                                    |
+| Verifier | F-005 | P3   | accepted | `riccon/builder-m19` / M20 gate 前 | 隔离依赖“唯一租户 + 全局状态 helper”约定；改多 fork/并行需重新验证；当前 surefire `forkCount=1/reuseForks=true`。                                                                                                            |
+
+- **Product 结论**：`pass`（with residual）。9 个任务覆盖 P0–P4；196/1115/0/0/0、4 shard ≤213s、P2→P4 −56.9% 均可由评审/证据复核；无产品行为/UX/API/DB/部署变更；合同命令未改；无 P0/P1 open finding。F-001..F-005 均 accepted、有 owner/due，不改变 M19 技术验收；**F-001/F-003 需在 M20 gate 前由 Ops 处理**。
+- **明确不声称**：CI 已强制覆盖率（F-001）；P4 已减少 app 用例/墙钟（F-002）；Actions 升级已完成（F-003）；baseline 计时可独立重建（F-004）；surefire 并行隔离已验证（F-005）；用户已最终验收。
+- **用户最终验收建议**：建议接受 M19 技术验收（附 F-001/F-003 的 M20 gate 前关闭条件；F-002/F-004/F-005 作为维护性残余跟踪）。本结论不是用户最终验收；不标记模块 done、不合并 PR；PR #1 仍 OPEN，合并与模块 done 由 Lead 处理。
 
 ## 历史模块
 
