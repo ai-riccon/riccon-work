@@ -14,11 +14,11 @@ Owner：riccon/builder-m19
 
 ## 2. 可缓存项（安全、不可变或可重置）
 
-| 项                         | 位置                                                   | 为什么可缓存                                                                                                 | 失效/绕过                                                                                                                  |
-| -------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| 平台管理员会话 + CSRF      | `ApiIntegrationTestSupport.cachedPlatformAdminSession` | 引导账号由 V2 种子/`BootstrapAdminRunner` 创建，测试不修改其密码、角色或状态；会话只是“已通过真实登录”的结果 | 每次复用前 `GET /api/v1/auth/session` 只读探针；非 200 立即重新真实登录。认证/会话语义测试调用 `freshPlatformAdminLogin()` |
-| HTTP 连接池                | `ApiTestClient.SHARED_HTTP_CLIENT`                     | JDK `HttpClient` 不保存 Cookie/认证状态；Cookie 与 CSRF 由每次请求显式传入，连接池复用不改变请求语义         | 进程级常量；测试之间没有可变状态。需要独立客户端时仍可自行 new                                                             |
-| fixture 密码的 bcrypt 哈希 | `ApiIntegrationTestSupport.FIXTURE_PASSWORD_HASHES`    | 只有两个固定测试密码；相同密码只做一次强度 12 编码，哈希可被任意多个 fixture 账号复用                        | 进程级缓存；密码策略/创建端点测试仍用真实 HTTP `createUser`，不读取该缓存                                                  |
+| 项                         | 位置                                                   | 为什么可缓存                                                                                                 | 失效/绕过                                                                                                                                       |
+| -------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| 平台管理员会话 + CSRF      | `ApiIntegrationTestSupport.cachedPlatformAdminSession` | 引导账号由 V2 种子/`BootstrapAdminRunner` 创建，测试不修改其密码、角色或状态；会话只是“已通过真实登录”的结果 | 每次复用前 `GET /api/v1/auth/session` 只读探针；非 200 立即重新真实登录。认证/会话语义测试调用 `freshPlatformAdminLogin()`                      |
+| HTTP 连接池                | `ApiTestClient.SHARED_HTTP_CLIENT`                     | JDK `HttpClient` 不保存 Cookie/认证状态；Cookie 与 CSRF 由每次请求显式传入，连接池复用不改变请求语义         | 进程级常量；测试之间没有可变状态。需要独立客户端时仍可自行 new                                                                                  |
+| fixture 密码的 bcrypt 哈希 | `ApiIntegrationTestSupport.FIXTURE_PASSWORD_HASHES`    | 只有两个固定测试密码；相同密码只做一次强度 12 编码，哈希可被任意多个 fixture 账号复用                        | 进程级缓存；创建端点测试仍用真实 HTTP `createUser`，不读取该缓存；账号创建路径目前无短密码/策略拒绝断言（既有缺口），种子路径未取代任何策略测试 |
 
 ### 2.1 fixture 账号种子（`seedLocalUser` / `seedAndLoginLocalUser`）
 
@@ -27,9 +27,12 @@ Owner：riccon/builder-m19
 - 直接写入 `app_user`、`user_credential`（复用 bcrypt 哈希）与 `user_role`（授予人为平台管理员），
   字段值与 `TenantUserAdminService.createLocalUser` 一致；**登录仍走真实 HTTP**（CSRF、bcrypt 校验、
   会话轮换、登录审计全部保留）。
-- 账号创建、权限分配、创建审计与密码策略的真实链路由 `AuthFlowTest`、`TenantIsolationTest`、
+- 账号创建成功路径、权限分配与创建审计的真实链路由 `AuthFlowTest`、`TenantIsolationTest`、
   `TenantIsolationSecurityTest`、`OidcIdentityBindingApiTest`、`QuotaAdminApiTest` 与
   `AuditTestSupport` 等继续通过 `createUser` 覆盖（创建端点与 `user.created` 审计仍有真实 HTTP 断言）。
+  基线有 33 个真实 HTTP `createUser` 调用，本次从 fixture helper 移除 7 个，剩余 26 个调用点不变。
+- 账号创建路径目前没有短密码/密码策略拒绝断言（既有缺口；`AuthFlowTest` 只断言 bcrypt 前缀与强度 12，
+  `OidcIdentityBindingApiTest` 的短密码断言针对 OIDC 解绑而非创建）；种子路径未取代任何策略测试。
 - `DepartmentAdminApiTest`/部门与空间范围套件只把账号当 fixture，账号创建不是其断言目标。
 
 ## 3. 不可缓存项（每个测试必须唯一）
@@ -66,12 +69,17 @@ Owner：riccon/builder-m19
 正式改造后相对基线：API suite **-435.572s（-48.2%）**，用例数与失败/错误/跳过（642/0/0/0）均与基线一致；
 较慢的验证运行仍为 **-309.183s（-34.2%）**，两种口径都远超“API 至少再降约 20s”的要求。
 
+计时口径说明：`EV-0700`/`EV-0703` 的 `test-timings` 包含 `apps/worker` 的 84.809s 残留报告（来自
+TASK-0144 `EV-0698`），不是同一轮运行，不能当作本轮 worker 时间。P3 总体改用 `EV-0696` 的 worker
+约 92s 与独立 Verifier `EV-0704` 的 API 423.582s 计算。
+
 P3 总体（按任务口径对 P2 全量 1236.717s）：
 
 - Worker：`EV-0696` P3 约 91.6–93.3s，P2 为 445.214s，约 -352s。
-- API：902.821s → 467.249s，-435.572s。
-- 合计约 560s（worker 92 + API 467 + platform ≈1），相对 1236.717s 降幅约 **54.7%**；
-  若用 `EV-0700` 同一次运行的 worker 84.809s，合计 553.081s，降幅约 **55.3%**。均 ≥30%。
+- API：独立 Verifier `EV-0704` 423.582s（builder `EV-0700` 467.249s）；对基线 902.821s 分别 -53.1% / -48.2%。
+- platform ≈1s。
+- 合计 **517.137s**（worker ~92 + API 423.582 + platform ≈1），相对 1236.717s 降幅 **58.2%**；
+  用 builder 的 API 467.249s 计算为约 560s，降幅 54.7%。两种口径均 ≥30%。
 
 P2 基线参考：`EV-0695` API 642 用例；P1 `EV-0694` API suite 828.200s（含 11 个重命名残留用例，仅参考）。
 

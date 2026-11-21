@@ -81,8 +81,8 @@ public abstract class ApiIntegrationTestSupport {
      * fixture 密码到 bcrypt 哈希的进程内缓存。
      *
      * <p>bcrypt 强度 12 单次编码约 0.3–0.7 秒；fixture 账号只需“能用同一密码真实登录”，不需要每个账号
-     * 重新编码。相同密码复用同一哈希不改变登录校验语义（bcrypt 校验仍逐次执行），也不影响密码策略测试
-     * （密码策略由真实 HTTP 创建路径覆盖）。
+     * 重新编码。相同密码复用同一哈希不改变登录校验语义（bcrypt 校验仍逐次执行），也不影响任何密码策略
+     * 断言——账号创建路径目前没有短密码/策略拒绝断言（既有缺口），种子路径未取代任何策略测试。
      */
     private static final Map<String, String> FIXTURE_PASSWORD_HASHES = new ConcurrentHashMap<>();
 
@@ -268,9 +268,10 @@ public abstract class ApiIntegrationTestSupport {
      * 成为套件主要耗时。这里复用相同密码的 bcrypt 哈希并直接写入账号、凭据与角色表；真实登录、
      * CSRF、会话与后续权限判断仍由生产代码执行。
      *
-     * <p>账号创建/密码策略/创建审计的真实链路由 {@code AuthFlowTest}、{@code TenantIsolationTest}、
+     * <p>账号创建成功路径与创建审计的真实链路由 {@code AuthFlowTest}、{@code TenantIsolationTest}、
      * {@code TenantIsolationSecurityTest}、{@code OidcIdentityBindingApiTest}、{@code QuotaAdminApiTest}
-     * 与 {@code AuditTestSupport} 等通过 {@link #createUser} 保留覆盖，本方法不得用于这些断言场景。
+     * 与 {@code AuditTestSupport} 等通过 {@link #createUser} 保留覆盖；账号创建路径目前没有短密码/密码策略
+     * 拒绝断言（既有缺口），本方法不得用于这些断言场景。
      *
      * @param tenantCode 目标租户
      * @param username 登录名
@@ -352,7 +353,7 @@ public abstract class ApiIntegrationTestSupport {
      * 创建租户管理员并登录。
      *
      * <p>账号行用 fixture 种子写入（见 {@link #seedLocalUser}），登录走真实 HTTP；本方法用于非账号创建
-     * 目标的 fixture。账号创建端点与密码策略由真实 HTTP 测试覆盖。
+     * 目标的 fixture。账号创建端点由真实 HTTP 测试覆盖；密码策略拒绝断言目前是既有缺口。
      *
      * @param platformAdmin 平台管理员会话
      * @param tenantCode 目标租户
@@ -369,7 +370,7 @@ public abstract class ApiIntegrationTestSupport {
      * 创建普通员工并登录。
      *
      * <p>账号行用 fixture 种子写入（见 {@link #seedLocalUser}），登录走真实 HTTP；本方法用于非账号创建
-     * 目标的 fixture。账号创建端点与密码策略由真实 HTTP 测试覆盖。
+     * 目标的 fixture。账号创建端点由真实 HTTP 测试覆盖；密码策略拒绝断言目前是既有缺口。
      *
      * @param platformAdmin 平台管理员会话
      * @param tenantCode 目标租户

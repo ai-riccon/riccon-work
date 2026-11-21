@@ -1,8 +1,12 @@
 # TASK-0145 诊断：API 套件的既有顺序/残留依赖与 P3b 的顺序验证
 
-日期：2026-11-21
+日期：2026-11-21（2026-11-22 由 TASK-0146 校正计数并补充修复说明）
 Owner：riccon/builder-m19
 范围：只读诊断；未修改 `ModelCatalogApiTest`、`ModelCredential*` 或任何生产代码。
+
+> TASK-0146 修复进展：`ModelCatalogApiTest` 已增加 `@AfterEach` 清理平台占位 DEK/凭据/目录行；
+> `CostAdminApiTest` 已增加 `@AfterEach` 按本测试模型 ID 删除 `model_invocation` 行。详见
+> `.riccon/evidence/TASK-0146/`。
 
 ## 1. 结论
 
@@ -37,8 +41,9 @@ TASK-0145 的平台管理员会话缓存 + fixture 账号种子**没有引入新
 
 - `CostAdminApiTest.platformReport_hasNoUserFieldsAndFiltersByTenant`：平台成本汇总读到上次运行留下的
   `model_invocation` 成本行，期望 0.009000 实得 0.018000。
-- `ModelCredential*` / `M04VerifierGatewaySecurityTest` 的 8 个 createCredential 500：同上文平台 DEK
-  冲突，残留 DEK 与当前 master key ring 不匹配。
+- `ModelCredential*` / `M04VerifierGatewaySecurityTest` 的 9 个 createCredential 500（7 个
+  ModelCredential + 2 个 M04Verifier）：同上文平台 DEK 冲突，残留 DEK 与当前 master key ring 不匹配。
+  合计 9 + 1（CostAdmin）= 10 个失败。
 
 这些类均未被 TASK-0145 修改；API 套件本来只保证“每个 namespace 首次全量”，已有测试没有为
 “同 namespace 第二次全量”设计清理。因此：

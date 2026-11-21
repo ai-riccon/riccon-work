@@ -3,12 +3,15 @@ package com.riccon.api.admin.cost;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.riccon.api.cost.CostApiTestSupport;
+import com.riccon.api.persistence.BinaryUuids;
 import com.riccon.api.support.ApiTestClient;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
@@ -21,6 +24,27 @@ import tools.jackson.databind.JsonNode;
  */
 class CostAdminApiTest extends CostApiTestSupport {
 
+    /** 本类创建的模型 ID；用于 {@link #cleanupCostInvocations()} 精确删除对应调用行。 */
+    private final List<UUID> createdModelIds = new ArrayList<>();
+
+    /**
+     * 清理本测试写入的成本调用行。
+     *
+     * <p>平台报告按固定日期窗口跨租户汇总；同 namespace 第二次全量时，上次运行留下的调用行会重复计入
+     * {@code totals} 与租户桶。这里只删除本测试新建模型的调用行（模型 ID 全局唯一，不会命中其他测试），
+     * 不修改任何断言口径。
+     */
+    @AfterEach
+    void cleanupCostInvocations() {
+        for (UUID modelId : createdModelIds) {
+            jdbcClient
+                    .sql("DELETE FROM model_invocation WHERE model_id = :modelId")
+                    .param("modelId", BinaryUuids.toBytes(modelId))
+                    .update();
+        }
+        createdModelIds.clear();
+    }
+
     /**
      * IT-COST-104：平台聚合无用户字段，且可选租户过滤仍只返回聚合。
      */
@@ -29,7 +53,7 @@ class CostAdminApiTest extends CostApiTestSupport {
     void platformReport_hasNoUserFieldsAndFiltersByTenant() {
         Fixture fixture = fixture();
         TenantOther other = createOtherTenant(fixture);
-        UUID modelId = createPricedModel("3.000000", "6.000000");
+        UUID modelId = createTrackedPricedModel("3.000000", "6.000000");
         UUID ownUser = UUID.fromString(userId(fixture.admin()));
         pricedInvocation(
                 fixture.tenant(),
@@ -91,7 +115,7 @@ class CostAdminApiTest extends CostApiTestSupport {
     void tenantReport_isScopedAndCrossTenantUserIsNotFound() {
         Fixture fixture = fixture();
         TenantOther other = createOtherTenant(fixture);
-        UUID modelId = createPricedModel("3.000000", "6.000000");
+        UUID modelId = createTrackedPricedModel("3.000000", "6.000000");
         UUID ownUser = UUID.fromString(userId(fixture.admin()));
         pricedInvocation(
                 fixture.tenant(),
@@ -212,6 +236,21 @@ class CostAdminApiTest extends CostApiTestSupport {
     private void assertForbidden(ApiTestClient.ApiResponse response) {
         assertThat(response.status()).as(response.body()).isEqualTo(403);
         assertThat(client.json(response).path("code").asText()).isEqualTo("RICCON-AUTH-403");
+    }
+
+    /**
+     * 创建带价格的模型并登记到清理列表。
+     *
+     * <p>模型 ID 只在本测试内使用，{@link #cleanupCostInvocations()} 按该 ID 删除调用行不会影响其他测试。
+     *
+     * @param inputPrice 输入价格
+     * @param outputPrice 输出价格
+     * @return 模型 ID
+     */
+    private UUID createTrackedPricedModel(String inputPrice, String outputPrice) {
+        UUID modelId = createPricedModel(inputPrice, outputPrice);
+        createdModelIds.add(modelId);
+        return modelId;
     }
 
     /**

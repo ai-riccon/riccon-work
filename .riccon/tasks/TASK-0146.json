@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0146",
+  "module_id": "M19",
+  "title": "P3c 收口 API 顺序依赖与 P3b 评审残余",
+  "owner": "riccon/builder-m19",
+  "status": "in_progress",
+  "write_scope": [
+    "apps/api/src/test/**",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "F-002：ModelCatalogApiTest 每测试清理平台 DEK/凭据等全局行（@AfterEach 或等价），fresh namespace 下全量 API 反转顺序通过 642/0/0/0，且不放宽断言",
+    "同 namespace 连续第二次全量：修复全局成本汇总残留；若不可行，提交精确复现、影响评估与 Verifier 接受的书面例外（CI 每 job fresh namespace）",
+    "F-001：更新 SecurityTestSupport 类级契约/所有权注释，说明 seed fixture 账号与真实 HTTP 登录/CSRF/权限的边界；安全断言覆盖不变",
+    "F-003：校正 CACHE-DESIGN/ORDER-DEPENDENCE 的计时口径（worker 残留）、createUser 计数、9+1 失败数与密码策略覆盖表述",
+    "不改生产代码/迁移/pom/CI；先提交再取证；证据命令单行；独立 Verifier 评审后 done"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-22T00:26:10.970+08:00",
+  "updated_at": "2026-11-22T00:26:23.112+08:00",
+  "baseline_commit": "1d1b3677398f6cf6d89ba1458fc2dd0cb86a4c82"
+}

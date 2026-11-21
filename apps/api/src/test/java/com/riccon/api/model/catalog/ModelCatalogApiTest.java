@@ -9,6 +9,7 @@ import com.riccon.api.support.ApiTestClient;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -98,6 +99,18 @@ class ModelCatalogApiTest extends ApiIntegrationTestSupport {
                 .param("providerId", BinaryUuids.toBytes(providerId))
                 .param("keyId", keyId)
                 .update();
+    }
+
+    /**
+     * 每个测试结束后清掉平台占位 DEK、凭据与目录行。
+     *
+     * <p>{@link #cleanup()} 只按本类的 provider code 与 {@code m04-key-} 前缀删除，不触碰其他测试数据；
+     * 若不在此处清理，类最后一个测试的假平台 DEK 会残留到后续类，在反转顺序下让平台凭据测试命中
+     * 无法解包的 DEK 而返回 500。
+     */
+    @AfterEach
+    void cleanupAfterTest() {
+        cleanup();
     }
 
     /** 员工目录只返回可路由模型，且不含 provider/baseUrl/价格。 */
@@ -303,7 +316,12 @@ class ModelCatalogApiTest extends ApiIntegrationTestSupport {
         return createAndLoginMember(admin, tenantCode);
     }
 
-    /** 清理本测试的目录与平台 key，避免跨测试/跨类漂移。 */
+    /**
+     * 清理本测试的目录与平台 key，避免跨测试/跨类漂移。
+     *
+     * <p>在 {@link #seedCatalog()} 与 {@link #cleanupAfterTest()} 中各执行一次；删除范围只限本类的
+     * provider code、其凭据/模型与 {@code m04-key-} 前缀的平台 DEK。
+     */
     private void cleanup() {
         Optional<UUID> existingProvider = jdbcClient
                 .sql("SELECT id FROM model_provider WHERE code = :code")

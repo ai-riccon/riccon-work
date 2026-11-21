@@ -20,8 +20,14 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * M03 独立安全测试基座。
  *
- * <p>由 verifier 维护，不复用 Builder 的部门夹具；所有租户、部门、空间、账号均通过公开 HTTP 接口在真实
- * MySQL 上创建。测试目标是从攻击者视角验证部门/租户边界，而不是重复 Builder 的功能断言。
+ * <p>本基座由 verifier 所有；fixture 性能改造后由 builder 在 verifier 评审下共同维护。租户、部门、空间与
+ * 业务对象仍通过公开 HTTP 接口在真实 MySQL 上创建；fixture 账号（负责人、成员等）可由
+ * {@code seedAndLoginLocalUser} 直接写入账号/凭据/角色表以摊销 bcrypt 编码，但登录、CSRF、会话与后续
+ * 权限判定全部走真实 HTTP 与生产代码。账号创建成功路径与创建审计由真实 {@code createUser} 用例
+ * （AuthFlowTest、TenantIsolationTest、OidcIdentityBindingApiTest、QuotaAdminApiTest、AuditTestSupport 等）
+ * 覆盖；账号创建路径目前没有短密码/密码策略拒绝断言（既有缺口），种子路径未取代任何策略测试。
+ *
+ * <p>测试目标是从攻击者视角验证部门/租户边界，而不是重复 Builder 的功能断言。
  *
  * <ul>
  *   <li>租户 A：部门 A（租户管理员、负责人、同部门成员）、部门 B（其他部门成员）、未分配成员；
