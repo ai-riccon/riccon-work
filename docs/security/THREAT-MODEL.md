@@ -82,7 +82,7 @@ TB-12 审计导出边界：apps/api ↔ 管理员浏览器（审批后的 CSV �
 
 | 基线                 | 位置                                                         | 结论                                                                                            |
 | -------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| API/Worker 默认拒绝  | `apps/api/.../config/SecurityConfig.java`、`apps/worker/...` | 通过：仅 `/actuator/health` 放行，无默认用户、无表单登录                                        |
+| API/Worker 默认拒绝  | `apps/api/.../config/SecurityConfig.java`、`apps/worker/...` | 通过：仅放行 health 与受 CIDR 限制的 info/prometheus（空=loopback）；无默认用户、无表单登录     |
 | 租户上下文 fail-fast | `platform/.../tenant/TenantContext.java`                     | 通过：未设置租户时 `require()` 抛错，不降级为全租户查询                                         |
 | 测试栈网络与凭据     | `deploy/compose/docker-compose.test.yml`                     | 通过：端口绑定 127.0.0.1、私有网络、占位凭据可覆盖                                              |
 | 沙箱默认断网         | `apps/worker/src/test/.../DockerSandboxSmokeTest.java`       | 通过：`network("none")`；M02 不执行用户代码，保持该基线                                         |
@@ -816,28 +816,28 @@ M04 新增用例（Builder/Verifier 共用编号；Verifier 在独立测试类�
 
 ### 10.3 按控制核对
 
-| 控制组         | 证据                                                                              | 命令/位置                                                                       |
-| -------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| 认证/会话/CSRF | `IT-AUTH-001..004`、`IT-CSRF-001`、`E2E-AC-01`                                    | `./mvnw -q -T1C verify`、`pnpm -w e2e`                                          |
-| 租户隔离       | `TEN-001..033`、`E2E-AC-12/13`                                                    | 10.2 节命令                                                                     |
-| 部门数据范围   | `DEPT-001..010`、`IT-DEPT-001..004`、`E2E-M03-01/02`                              | `./mvnw -q -T1C verify -Dgroups=dept-isolation`、`pnpm -w e2e`                  |
-| OIDC/身份      | `SEC-OIDC-001..003`、`IT-OIDC-001..007`、`E2E-M03-03/04`                          | `./mvnw -q -T1C verify`、`pnpm -w e2e`、`pnpm -w a11y`                          |
-| 审计查询/导出  | `IT-AUDIT-101..106`、`SEC-AUDIT-001`、`E2E-M03-05/06`                             | `./mvnw -q -T1C verify`、`pnpm -w e2e`                                          |
-| 审计           | `AUDIT-001..006`、`IT-DEPT-001/004`、`E2E-AC-14/15`                               | `./mvnw -q -T1C verify`                                                         |
-| 密钥           | `KEY-001..006`                                                                    | `./mvnw -q -T1C verify`                                                         |
-| 提示注入       | `INJ-001..012`                                                                    | `./mvnw -q -T1C verify`                                                         |
-| MCP            | `MCP-001..008`、`E2E-AC-08/09/11`                                                 | `./mvnw -q -T1C verify`、`pnpm -w e2e`                                          |
-| 文件与对象存储 | `FILE-001..006`、`TEN-006/013`、`DEPT-003`                                        | `./mvnw -q -T1C verify`                                                         |
-| 知识库口径     | `E2E-M03-02`、固定文案检查、源文件 404                                            | `pnpm -w e2e`、界面评审                                                         |
-| 依赖与密钥扫描 | Trivy 报告                                                                        | `trivy fs --scanners vuln,secret,misconfig ... .`（合同 `commands.security`）   |
-| 模型路由/降级  | `IT-MODEL-101..104/107..109`、`E2E-M04-01/02/03`                                  | `./mvnw -q -T1C verify`、`pnpm -w e2e`、`k6 run e2e/perf/mvc-smoke.js`          |
-| 多 key/端点    | `IT-MODEL-105/106/107`、`SEC-M04-001..006`                                        | `./mvnw -q -T1C verify`、真实栈 fake provider                                   |
-| 配额           | `IT-QUOTA-101..103`、`TEN-032`、`PERF-M04-002`                                    | `./mvnw -q -T1C verify`、`k6`                                                   |
-| 成本           | `IT-COST-101..104`、`TEN-033`、`IT-MODEL-109`                                     | `./mvnw -q -T1C verify`、迁移/回滚演练                                          |
-| 迁移/回滚      | `OPS-M04-01`、B10 RUNBOOK 演练记录、V2 独立重放                                   | 一次性 MySQL 8.4.13 + `scripts/real-stack/run.mjs`、`scripts/ops/restore-drill` |
-| 可观测性       | B1c Worker 7 指标、`scripts/ops/metrics-check`、V2 抓取 API 2 个主指标 + 3 个辅助 | `curl /actuator/prometheus`、`metrics-check`、k6 报告                           |
-| 性能           | k6 报告（首字 p95、API p95、并发）                                                | `k6 run e2e/perf/mvc-smoke.js`（`RICCON_FAKE_MODEL=1`）                         |
-| 沙箱基线       | 现有五个冒烟 + `SEC-SBX-001..002`                                                 | `./mvnw -q -T1C verify`                                                         |
+| 控制组         | 证据                                                                          | 命令/位置                                                                       |
+| -------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 认证/会话/CSRF | `IT-AUTH-001..004`、`IT-CSRF-001`、`E2E-AC-01`                                | `./mvnw -q -T1C verify`、`pnpm -w e2e`                                          |
+| 租户隔离       | `TEN-001..033`、`E2E-AC-12/13`                                                | 10.2 节命令                                                                     |
+| 部门数据范围   | `DEPT-001..010`、`IT-DEPT-001..004`、`E2E-M03-01/02`                          | `./mvnw -q -T1C verify -Dgroups=dept-isolation`、`pnpm -w e2e`                  |
+| OIDC/身份      | `SEC-OIDC-001..003`、`IT-OIDC-001..007`、`E2E-M03-03/04`                      | `./mvnw -q -T1C verify`、`pnpm -w e2e`、`pnpm -w a11y`                          |
+| 审计查询/导出  | `IT-AUDIT-101..106`、`SEC-AUDIT-001`、`E2E-M03-05/06`                         | `./mvnw -q -T1C verify`、`pnpm -w e2e`                                          |
+| 审计           | `AUDIT-001..006`、`IT-DEPT-001/004`、`E2E-AC-14/15`                           | `./mvnw -q -T1C verify`                                                         |
+| 密钥           | `KEY-001..006`                                                                | `./mvnw -q -T1C verify`                                                         |
+| 提示注入       | `INJ-001..012`                                                                | `./mvnw -q -T1C verify`                                                         |
+| MCP            | `MCP-001..008`、`E2E-AC-08/09/11`                                             | `./mvnw -q -T1C verify`、`pnpm -w e2e`                                          |
+| 文件与对象存储 | `FILE-001..006`、`TEN-006/013`、`DEPT-003`                                    | `./mvnw -q -T1C verify`                                                         |
+| 知识库口径     | `E2E-M03-02`、固定文案检查、源文件 404                                        | `pnpm -w e2e`、界面评审                                                         |
+| 依赖与密钥扫描 | Trivy 报告                                                                    | `trivy fs --scanners vuln,secret,misconfig ... .`（合同 `commands.security`）   |
+| 模型路由/降级  | `IT-MODEL-101..104/107..109`、`E2E-M04-01/02/03`                              | `./mvnw -q -T1C verify`、`pnpm -w e2e`、`k6 run e2e/perf/mvc-smoke.js`          |
+| 多 key/端点    | `IT-MODEL-105/106/107`、`SEC-M04-001..006`                                    | `./mvnw -q -T1C verify`、真实栈 fake provider                                   |
+| 配额           | `IT-QUOTA-101..103`、`TEN-032`、`PERF-M04-002`                                | `./mvnw -q -T1C verify`、`k6`                                                   |
+| 成本           | `IT-COST-101..104`、`TEN-033`、`IT-MODEL-109`                                 | `./mvnw -q -T1C verify`、迁移/回滚演练                                          |
+| 迁移/回滚      | `OPS-M04-01`、B10 RUNBOOK 演练记录、V2 独立重放                               | 一次性 MySQL 8.4.13 + `scripts/real-stack/run.mjs`、`scripts/ops/restore-drill` |
+| 可观测性       | B1c Worker 7 指标、`metrics-check`、V2 API 2+3 指标；info/prometheus 见 §10.4 | `curl /actuator/prometheus`、`metrics-check`、k6 报告                           |
+| 性能           | k6 报告（首字 p95、API p95、并发）                                            | `k6 run e2e/perf/mvc-smoke.js`（`RICCON_FAKE_MODEL=1`）                         |
+| 沙箱基线       | 现有五个冒烟 + `SEC-SBX-001..002`                                             | `./mvnw -q -T1C verify`                                                         |
 
 ### 10.4 核对结论的记录方式
 
@@ -871,5 +871,5 @@ M04 的核对必须额外回答：
 - 多 key 是否至少 2 把、401/403 是否立即失效并跳过、轮换是否先插新后停旧、在途是否不被取消、fingerprint 是否 HMAC+pepper、明文是否不出现在任何响应/日志/审计/DB 证据（`IT-MODEL-105/106`、`SEC-M04-005`、`SEC-M04-006`）；
 - 50 并发配额争用是否零超卖；配额存储是否 fail-closed；在途 run 是否继续；拒绝审计是否独立事务（`IT-QUOTA-102`、`PERF-M04-002`）；
 - 成本是否用最终成功快照、6 位小数、未定价/缺 usage/unbucketed 单列、历史不改写；平台无用户字段、租户只看本租户、员工无入口（`IT-COST-101..104`、`TEN-032/033`）；
-- `/actuator/prometheus` 是否按 `RICCON_OPS_ALLOWED_CIDRS` 控制；Worker 7 个 `riccon_*` 指标是否由 `metrics-check` 验证；V2 是否抓取 API 的配额/成本 2 个主指标 + 3 个辅助指标（B-20）；
+- `/actuator/info` 与 `/actuator/prometheus` 是否共用 `RICCON_OPS_ALLOWED_CIDRS` 来源门禁（空=loopback，非允许来源拒绝；API 匿名 401、Worker 403；`info` 仅非敏感指纹键）；Worker 7 个 `riccon_*` 指标是否由 `metrics-check` 验证；V2 是否抓取 API 的配额/成本 2 个主指标 + 3 个辅助指标（B-20）；
 - 关闭路由/降级/配额开关是否下一次请求生效并写审计；BASELINE 是否仍走 allowlist；配额开关 false→true 演练与成本对账窗口是否记录；应用回滚后历史调用是否可读；威胁模型 TB-04/§7 是否已更新（`IT-MODEL-109`、`OPS-M04-01`、B10 RUNBOOK）。

@@ -114,7 +114,7 @@ Scope: M04「模型网关纵深」的路由、降级、多 key、受管端点与
 - **DNS/私网**：客户内网网关通常就是私网地址，因此**允许私网 IP**，但启动时解析 host 并拒绝解析到元数据/链路本地地址；不实现“解析后固定 IP”（JDK HttpClient 无自定义解析钩子），由 TLS 主机名校验 + 禁止重定向 + 部署出网策略共同约束。DNS rebinding 的残余风险记入威胁模型 R-23。
 - **可注入解析 seam**：`ManagedEndpointPolicy` 注入 `HostResolver` 接口（生产 `InetAddress::getAllByName`，测试固定 map），负向用例覆盖十进制/十六进制/八进制 IP、IPv4-mapped IPv6、末尾点 FQDN、阿里云/Oracle/ECS 元数据地址；测试不依赖外部 DNS。
 - **出网允许列表**：生产由 Ops 在 M09 用网络策略限制 Worker 只能访问 `RICCON_MODEL_ENDPOINTS` 的 host/port；M04 在应用层提供配置校验与请求前校验，测试用 Compose 私有网络。运行手册由 Ops 更新（任务 M04-B10）。
-- **Actuator 来源控制**：`RICCON_OPS_ALLOWED_CIDRS`（逗号分隔 CIDR）限制 `/actuator/prometheus`；空值 = 仅 loopback，`PRODUCTION` 空值启动 WARN；非允许来源返回 404/403。M04 应用层只做来源过滤，完整 ingress/网络策略归 M09。B2 实现，B1c 负向测试。
+- **Actuator 来源控制**：`RICCON_OPS_ALLOWED_CIDRS`（逗号分隔 CIDR）同时限制 `/actuator/prometheus` 与 `/actuator/info`，两者共用同一来源门禁，不新增 `permitAll`；空值 = 仅 loopback，`PRODUCTION` 空值启动 WARN；非允许来源拒绝（API 匿名来源按过滤器链返回 401，Worker 返回 403；匿名 401 沿用 REV-TASK-0103-002 F-003 已接受语义）。M04 应用层只做来源过滤，完整 ingress/网络策略归 M09。B2 实现，B1c 负向测试；`info` 的允许/拒绝来源回归由 TASK-0128 覆盖。
 - **测试用 HTTP 开关**：仅 `DEMO` 模式允许 `RICCON_MODEL_ALLOW_HTTP=true`；`PRODUCTION` 模式启动时拒绝该组合。
 
 #### 2.3 “生产/演示”标签的建模
@@ -872,7 +872,7 @@ DELETE FROM flyway_schema_history WHERE version = '11';
   - 框架：`http.server.requests`；B1c `metrics-check` 只断言 Worker 的 7 个路由/降级/key 指标，V2 断言 API 的 2 个主指标 + 3 个辅助指标。
 - 标签纪律：指标禁止 `tenant`/`userId`/`runId` 等高基数标签（ADR-0008）；按租户排查走日志/审计/DB 查询。`riccon_quota_usage_ratio` 只保留 `scope`/`window`。
 - **ADR-0008 同名指标**：`riccon_model_requests_total` 复用 ADR-0008 名称，M04 扩展标签集为 `{provider,model,outcome}` 并作为唯一注册点（B4）；ADR-0008 原 `{outcome}` 视为被 M04 扩展，不定义第二个同名不同义指标。
-- 暴露：`/actuator/prometheus` 按 `RICCON_OPS_ALLOWED_CIDRS` 控制（空=loopback），SecurityConfig（B2）不扩大公网默认拒绝；完整 ingress 归 M09。
+- 暴露：`/actuator/info` 与 `/actuator/prometheus` 共用 `RICCON_OPS_ALLOWED_CIDRS` 来源门禁（逗号分隔 CIDR；空=loopback；非允许来源拒绝，API 匿名 401、Worker 403），SecurityConfig（B2）不扩大公网默认拒绝、不新增 `permitAll`；完整 ingress 归 M09。`info` 仅暴露 S-12/配额等非敏感指纹键，不含 endpoint URL、key 或密文（§2.1/§10.5）。
 - 日志：只记录 `providerCode`、`modelId`、`credentialId`、`errorCode`、`attempt`、`traceId`；禁止 prompt、key、`Authorization`、`baseUrl`、上游响应正文。
 - 告警（B10 阈值表，M09 接入）：路由/降级：降级率 >20%/5min、`riccon_model_credential_invalid_total` 增长、`riccon_model_chain_empty_total >0`、`riccon_agent_runs_inflight` 接近上限；配额/成本：配额拒绝率、`riccon_quota_store_failure_total >0`、成本查询 p95 >2s。
 
