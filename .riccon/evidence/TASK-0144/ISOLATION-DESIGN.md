@@ -3,6 +3,7 @@
 日期：2026-11-21
 Owner：riccon/builder-m19
 范围：`apps/worker/src/test/**`（生产代码与迁移零改动）
+修订：2026-11-21 TASK-0145 按 TASK-0144 评审 F-001 校正 `provider_credential`/`tenant_data_key` 与全表写入描述，只改文档。
 
 ## 1. 目标与约束
 
@@ -30,25 +31,35 @@ Owner：riccon/builder-m19
 
 例外与说明：
 
-- `provider_credential` / `tenant_data_key` 的测试行归 `platform` 租户（M04 平台 key 池语义）；
-  `TestDataFactory.createModelCatalog` 改为每次生成唯一 `key_id`（`dek-<credentialId>`）与唯一
-  provider `code`，因此历史行不会被新 catalog 引用，也无需删除（`provider_credential` 对
-  `tenant_data_key` 有复合外键）。
+- `provider_credential` / `tenant_data_key` 并非全部归 `platform` 租户：
+  - `TestDataFactory.createModelCatalog` 生成的行归 `platform`（M04 平台 key 池语义），每次都生成
+    唯一 `key_id`（`dek-<credentialId>`）与唯一 provider `code`，历史行不会被新 catalog 引用，
+    因此无需删除（`provider_credential` 对 `tenant_data_key` 有复合外键）。
+  - `ModelFailoverIntegrationTest.stream_tenantCredentialIsIgnored` 会通过
+    `ModelFailoverFixture.addKey(tenantId, ...)` 写入**租户级**遗留凭据（命中率 0、被解析忽略）；
+    `ApprovalParamsCryptoTest` 会为**唯一租户**写入 `tenant_data_key`（`open_wrongKey_fails` 还会
+    写第二把 DEK）。这些行按本测试唯一租户隔离，不会命中其他测试的查询或断言。
+- 少数模型测试存在**全表写法**（P3 之前的既有实现，取消 39 表 TRUNCATE 后仍保留，见 §4 例外表）：
+  `ModelRegistryIntegrationTest.resolve_noCredential_fails` 执行 `DELETE FROM provider_credential`；
+  `resolve_httpsEndpoint_succeeds` 与非法 endpoint 用例执行 `UPDATE model_provider SET base_url = ...`
+  （无 WHERE，影响全表）。`ModelRegistryIntegrationTest` 与其同类模型测试都在 `@BeforeEach` 调用
+  `resetModelGatewayState()` 并顺序执行，且后续测试会新建唯一 provider 后显式设置 `base_url`，
+  因此当前不影响结果；风险限于并行执行或新增依赖旧 provider `base_url` 的测试。
 - `agent_run_outbox` 虽然按租户存储，但 `OutboxPoller.pollOnce` / `OutboxClaimer.claim` 是生产上
   唯一按状态跨租户读取的路径。凡使用它们的测试类在 `@BeforeEach` 调用 `clearOutbox()`（单表
   DELETE），否则 `pollOnce()==1` / `claim` 批量计数会被历史 PENDING 事件污染。
 
 ### 2.2 全局目录/种子表（7 张，按需恢复基线）
 
-| 表                        | 分类                            | 测试是否修改             | 恢复策略                                                         |
-| ------------------------- | ------------------------------- | ------------------------ | ---------------------------------------------------------------- |
-| `tenant`                  | V2 种子 `platform` + 租户业务行 | 是（新增唯一租户）       | 唯一 ID；`platform` 行由 JVM 启动幂等补齐                        |
-| `model_routing`           | V11 种子（CHAT/REPORT 两行）    | `updated_by` / `version` | 保留种子行；`resetModelGatewayState()` 复位 `updated_by`         |
-| `model_gateway_switch`    | V11 种子（ROUTED/true/false）   | 是                       | `resetModelGatewayState()` 恢复发版种子                          |
-| `model_provider`          | 全局目录                        | 是（唯一 provider）      | 不删除；旧 provider 保留但不再被 ACTIVE 模型引用                 |
-| `model`                   | 全局目录                        | 是                       | `resetModelGatewayState()` 停用旧模型（`status='DISABLED'`）     |
-| `model_routing_entry`     | 全局路由链                      | 是                       | `resetModelGatewayState()` 清空，测试显式重建                    |
-| `mcp_server` / `mcp_tool` | 全局 MCP 目录（此处 2 张）      | 是                       | `resetMcpCatalog()` 清空；`mcp_tool_grant`/`mcp_invocation` 先删 |
+| 表                        | 分类                            | 测试是否修改                               | 恢复策略                                                             |
+| ------------------------- | ------------------------------- | ------------------------------------------ | -------------------------------------------------------------------- |
+| `tenant`                  | V2 种子 `platform` + 租户业务行 | 是（新增唯一租户）                         | 唯一 ID；`platform` 行由 JVM 启动幂等补齐                            |
+| `model_routing`           | V11 种子（CHAT/REPORT 两行）    | `updated_by` / `version`                   | 保留种子行；`resetModelGatewayState()` 复位 `updated_by`             |
+| `model_gateway_switch`    | V11 种子（ROUTED/true/false）   | 是                                         | `resetModelGatewayState()` 恢复发版种子                              |
+| `model_provider`          | 全局目录                        | 是（唯一 provider + 全表 `base_url` 更新） | 不删除；旧 provider 保留但不再被 ACTIVE 模型引用；全表更新见 §4 例外 |
+| `model`                   | 全局目录                        | 是                                         | `resetModelGatewayState()` 停用旧模型（`status='DISABLED'`）         |
+| `model_routing_entry`     | 全局路由链                      | 是                                         | `resetModelGatewayState()` 清空，测试显式重建                        |
+| `mcp_server` / `mcp_tool` | 全局 MCP 目录（此处 2 张）      | 是                                         | `resetMcpCatalog()` 清空；`mcp_tool_grant`/`mcp_invocation` 先删     |
 
 说明：
 
@@ -84,15 +95,21 @@ Owner：riccon/builder-m19
 - 依赖“前一个测试清库”的测试类（模型、MCP、outbox、产物）改为显式调用对应 reset helper；
   helper 注释写明了恢复的基线。
 
-## 4. 清理例外（仍需按表 DELETE 的类）
+## 4. 清理与全局写入例外（仍需按表/全表 DML 的类）
 
-| helper                     | 表                                                                      | 使用者                                                                                                                                                         | 理由                          |
-| -------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| `clearOutbox()`            | `agent_run_outbox`                                                      | OutboxPollerTest、OutboxClaimerTest、HitlIntegrationTest、ReportArtifactIntegrationTest、FileParseServiceIntegrationTest、KnowledgeIndexServiceIntegrationTest | 生产轮询/领取按状态跨租户     |
-| `resetModelGatewayState()` | `model`、`model_routing_entry`、`model_routing`、`model_gateway_switch` | ChatStream*、Hitl、ReportArtifact、Model*                                                                                                                      | 全局目录/开关，无法按租户隔离 |
-| `resetMcpCatalog()`        | `mcp_tool_grant`、`mcp_invocation`、`mcp_tool`、`mcp_server`            | ChatStreamIntegrationTest、Hitl、ReportArtifact、McpGateway                                                                                                    | 全局唯一 server code / 工具名 |
+| helper / 写法                                          | 表                                                                      | 使用者 / 位置                                                                                                                                                  | 理由                                                        |
+| ------------------------------------------------------ | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `clearOutbox()`                                        | `agent_run_outbox`                                                      | OutboxPollerTest、OutboxClaimerTest、HitlIntegrationTest、ReportArtifactIntegrationTest、FileParseServiceIntegrationTest、KnowledgeIndexServiceIntegrationTest | 生产轮询/领取按状态跨租户                                   |
+| `resetModelGatewayState()`                             | `model`、`model_routing_entry`、`model_routing`、`model_gateway_switch` | ChatStream*、Hitl、ReportArtifact、Model*                                                                                                                      | 全局目录/开关，无法按租户隔离                               |
+| `resetMcpCatalog()`                                    | `mcp_tool_grant`、`mcp_invocation`、`mcp_tool`、`mcp_server`            | ChatStreamIntegrationTest、Hitl、ReportArtifact、McpGateway                                                                                                    | 全局唯一 server code / 工具名                               |
+| `DELETE FROM provider_credential`（无 WHERE）          | `provider_credential`                                                   | `ModelRegistryIntegrationTest.resolve_noCredential_fails`                                                                                                      | 构造“没有任何凭据”的负向用例；类内 `@BeforeEach` 先 reset   |
+| `UPDATE model_provider SET base_url = ...`（无 WHERE） | `model_provider`                                                        | `ModelRegistryIntegrationTest.resolve_httpsEndpoint_succeeds` 与非法 endpoint 用例                                                                             | 构造 endpoint 校验负向/正向用例；旧 provider 不被新测试引用 |
+| 租户级凭据写入                                         | `provider_credential`（`tenant_id` 为本测试唯一租户）                   | `ModelFailoverIntegrationTest.stream_tenantCredentialIsIgnored`（`addKey`）                                                                                    | 验证 BYO 凭据被忽略；唯一租户隔离                           |
+| 租户 DEK 写入                                          | `tenant_data_key`（本测试唯一租户）                                     | `ApprovalParamsCryptoTest`（含 `open_wrongKey_fails` 的第二把 DEK）                                                                                            | 验证错 key/跨租户不可解密；唯一租户隔离                     |
 
-这些是 P3 保留的明确例外，均为小表按需 DML，不再是 39 表全量 TRUNCATE。
+这些是 P3 保留的明确例外，均为小表按需 DML 或按唯一租户隔离的写入，不再是 39 表全量 TRUNCATE。
+全表 `DELETE`/`UPDATE` 两项是 P3 之前的既有写法，只出现在带 `@BeforeEach resetModelGatewayState()`
+的模型测试类中且当前顺序执行通过；若未来改为并行测试，需先改为按本测试 provider 精准更新。
 
 ## 5. 基线与结果
 

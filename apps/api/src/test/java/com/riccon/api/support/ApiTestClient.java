@@ -27,11 +27,19 @@ public final class ApiTestClient {
     /** JSON 序列化器。 */
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /** HTTP 客户端。 */
-    private final HttpClient httpClient = HttpClient.newBuilder()
+    /**
+     * 进程内共享的 HTTP 客户端。
+     *
+     * <p>JDK {@link HttpClient} 本身不保存 Cookie 或认证状态（Cookie/CSRF 都由每次请求显式传入），
+     * 因此可安全跨测试复用连接池，省去每个测试方法新建客户端与 TCP 连接的开销。
+     */
+    private static final HttpClient SHARED_HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
             .followRedirects(HttpClient.Redirect.NEVER)
             .build();
+
+    /** HTTP 客户端。 */
+    private final HttpClient httpClient = SHARED_HTTP_CLIENT;
 
     /** 服务地址，例如 {@code http://127.0.0.1:12345}。 */
     private final String baseUrl;

@@ -53,10 +53,12 @@ abstract class SecurityTestSupport extends FileApiTestSupport {
         LoginSession tenantAdmin = createAndLoginTenantAdmin(platform, tenant);
         UUID tenantAdminId = UUID.fromString(userId(tenantAdmin));
 
+        // 部门/租户边界套件的目标是越权判定，不是账号创建端点：账号行用 fixture 种子写入，
+        // 登录仍走真实 HTTP；账号创建真实链路由 AuthFlowTest/TenantIsolationTest 覆盖。
         String managerUsername = "mgr" + randomSuffix();
-        JsonNode managerUser = createUser(platform, tenant, managerUsername, MEMBER_PASSWORD, List.of("MEMBER"));
-        LoginSession manager = login(tenant, managerUsername, MEMBER_PASSWORD);
-        UUID managerId = UUID.fromString(managerUser.path("id").asText());
+        LoginSession manager =
+                seedAndLoginLocalUser(platform, tenant, managerUsername, MEMBER_PASSWORD, List.of("MEMBER"));
+        UUID managerId = actorId(manager);
 
         CreatedMember sibling = createMember(platform, tenant);
         CreatedMember outsider = createMember(platform, tenant);
@@ -133,9 +135,9 @@ abstract class SecurityTestSupport extends FileApiTestSupport {
      */
     protected CreatedMember createMember(LoginSession platform, String tenant) {
         String username = "mem" + randomSuffix();
-        JsonNode user = createUser(platform, tenant, username, MEMBER_PASSWORD, List.of("MEMBER"));
-        return new CreatedMember(
-                UUID.fromString(user.path("id").asText()), username, login(tenant, username, MEMBER_PASSWORD));
+        // 同 fixture()：隔离套件只需要“可用账号”，账号创建端点由真实 HTTP 用例覆盖。
+        LoginSession session = seedAndLoginLocalUser(platform, tenant, username, MEMBER_PASSWORD, List.of("MEMBER"));
+        return new CreatedMember(actorId(session), username, session);
     }
 
     /**

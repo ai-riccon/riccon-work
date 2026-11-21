@@ -115,7 +115,8 @@ class AuthFlowTest extends ApiIntegrationTestSupport {
     /** 已登录会话可以通过 /session 读取当前用户与令牌。 */
     @Test
     void sessionReturnsCurrentUserAndToken() {
-        LoginSession session = loginPlatformAdmin();
+        // 本用例验证会话读取语义，必须走真实登录而不是 fixture 缓存会话。
+        LoginSession session = freshPlatformAdminLogin();
         ApiTestClient.ApiResponse response = client.get("/api/v1/auth/session", session.sessionCookie(), Map.of());
         assertThat(response.status()).as(response.body()).isEqualTo(200);
         JsonNode body = client.json(response);
@@ -127,7 +128,8 @@ class AuthFlowTest extends ApiIntegrationTestSupport {
     /** 登出使会话失效并写 auth.logout 审计。 */
     @Test
     void logoutInvalidatesSessionAndWritesAudit() {
-        LoginSession session = loginPlatformAdmin();
+        // 本用例会登出会话，必须使用独立真实会话，不能消耗公共 fixture 缓存。
+        LoginSession session = freshPlatformAdminLogin();
         ApiTestClient.ApiResponse logout =
                 client.post("/api/v1/auth/logout", null, session.sessionCookie(), session.csrfToken(), Map.of());
         assertThat(logout.status()).isEqualTo(204);
@@ -296,7 +298,8 @@ class AuthFlowTest extends ApiIntegrationTestSupport {
     /** 密码哈希必须使用 {bcrypt} 前缀与强度 12；会话空闲超时 30 分钟。 */
     @Test
     void credentialsUseBcryptTwelveAndSessionTimeoutIsThirtyMinutes() {
-        LoginSession session = loginPlatformAdmin();
+        // 断言读取“最近一次登录”产生的会话行，因此使用独立真实登录。
+        LoginSession session = freshPlatformAdminLogin();
         String hash = jdbcClient.sql("""
                         SELECT c.password_hash FROM user_credential c
                         JOIN app_user u ON u.tenant_id = c.tenant_id AND u.id = c.user_id
