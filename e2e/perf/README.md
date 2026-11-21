@@ -14,7 +14,7 @@ node scripts/real-stack/run.mjs --mode=perf --perf-modes=server_error,rate_limit
 
 1. 只启动 compose 的 `mysql` 服务（OpenSearch/RustFS 不启动，报告记录 `opensearch: excluded`）；
 2. 生成同一份 DEMO/端点/主密钥 env 注入 API 与 Worker，并设置
-   `RICCON_CHAT_MAX_STREAMS=50`、`RICCON_DB_POOL_SIZE=25`、`RICCON_FAKE_MODEL=1`；
+   `RICCON_CHAT_MAX_STREAMS=50`、`RICCON_DB_POOL_SIZE=50`、`RICCON_FAKE_MODEL=1`；
 3. 用 `seed.mjs --mode=perf` 创建账号与 M04 目录（幂等，不含明文密钥）；
 4. 对每个降级模式重设 fake provider key 场景，依次运行 `first_token`、`failover`、`quota`、`cost`；
 5. 汇总 `perf-m04-matrix.json`，任一 k6 阈值失败即非零。
@@ -25,7 +25,7 @@ node scripts/real-stack/run.mjs --mode=perf --perf-modes=server_error,rate_limit
 
 ```bash
 k6 run \
-  -e PERF_M04_ENV_JSON='{"chatMaxStreams":50,"dbPoolSize":25,"fakeModel":1,"host":{"cpus":8,"memoryBytes":17179869184},"images":{"mysql":"mysql:8.4.13"},"k6Version":"k6 v2.4.0","scriptSha256":"<sha256>","startCommand":"..."}' \
+  -e PERF_M04_ENV_JSON='{"chatMaxStreams":50,"dbPoolSize":50,"fakeModel":1,"host":{"cpus":8,"memoryBytes":17179869184},"images":{"mysql":"mysql:8.4.13"},"k6Version":"k6 v2.4.0","scriptSha256":"<sha256>","startCommand":"..."}' \
   -e PERF_M04_BASE_URL=http://127.0.0.1:18080 \
   -e PERF_M04_SCENARIO=first_token \
   -e PERF_M04_WORKSPACE_ID=<工作空间 ID> \
@@ -52,6 +52,8 @@ k6 run \
 - 聊天提交是 SSE 端点：TTFB 记入 `m04_chat_submit_ttfb_ms`，完整流记入 `m04_chat_stream_ms`，
   由首字 p95 ≤ 3s 预算约束，不并入 500ms 的 JSON API 预算；
 - 其他阈值：首字 p95 ≤ 3s、降级成功率 > 99%、配额 1/49、成本查询 p95 ≤ 2s；
+- **perf profile 连接池为 50**（`dbPoolSize=50`，`dbPoolFloor=25`）；ADR 只要求容量 ≥25，
+  50 是性能验证 profile，不是生产默认承诺，生产池大小仍由部署配置决定；
 - `handleSummary` 输出 host CPU/内存、镜像 tag、k6 版本、脚本 sha、启动命令、OpenSearch 是否启动；
 - 降级矩阵按“模式 × 一次 k6 运行”执行：每次运行由 `run.mjs` 重设 fake provider key 场景与 key 健康，
   避免 401 失效/冷却让后续请求跳过故障 key，从而把降级跑成“没有降级”。

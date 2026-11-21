@@ -484,8 +484,9 @@ function buildEnvSnapshot(context) {
     k6Version: k6Version(),
     scriptSha256: fileSha256("e2e/perf/mvc-smoke.js"),
     // k6 前置校验字段；必须与注入 API/Worker 的 perf profile 一致。
+    // perf profile 使用 50；full 模式保持 25；ADR 的准入下限是 ≥25。
     chatMaxStreams: 50,
-    dbPoolSize: 25,
+    dbPoolSize: context.mode === "perf" ? 50 : 25,
     fakeModel: 1,
     deploymentMode: "DEMO",
     startCommand:
@@ -499,7 +500,8 @@ function buildEnvSnapshot(context) {
       context.mode === "perf"
         ? {
             chatMaxStreams: 50,
-            dbPoolSize: 25,
+            dbPoolSize: 50,
+            dbPoolFloor: 25,
             fakeModel: 1,
             connectTimeout: "500ms",
             firstTokenTimeout: "1000ms",
@@ -523,6 +525,9 @@ function buildEnvSnapshot(context) {
  * @returns {Record<string,string>} 环境变量
  */
 function sharedModelEnv(context) {
+  // perf profile 使用 50 连接承接 50 并发 SSE + 50 个 run-detail GET；full 模式保持 25。
+  // 这是性能验证 profile，不是生产默认承诺（ADR 只要求 ≥25）。
+  const dbPool = context.mode === "perf" ? "50" : "25";
   return {
     RICCON_MASTER_KEY: masterKey,
     RICCON_MASTER_KEY_ID: masterKeyId,
@@ -537,9 +542,9 @@ function sharedModelEnv(context) {
     RICCON_QUOTA_DEFAULT_USER_DAILY: "1000",
     RICCON_QUOTA_DEFAULT_USER_MONTHLY: "20000",
     RICCON_CHAT_MAX_STREAMS: "50",
-    RICCON_DB_POOL_SIZE: "25",
+    RICCON_DB_POOL_SIZE: dbPool,
     RICCON_FAKE_MODEL: "1",
-    SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "25",
+    SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: dbPool,
   };
 }
 
