@@ -4,7 +4,7 @@
   "module_id": "M19",
   "title": "P2 CI 4-shard 分片与合并报告",
   "owner": "riccon/ops",
-  "status": "in_progress",
+  "status": "blocked",
   "write_scope": [
     "scripts/test-shards.mjs",
     "scripts/test-merge-shards.mjs",
@@ -21,15 +21,16 @@
     "后端墙钟 ≤5 分钟；分片仅用于快速反馈，canonical gate 命令保持不变；不改测试断言"
   ],
   "evidence": [
-    "EV-0695"
+    "EV-0695",
+    "EV-0711"
   ],
   "tools_used": [
     "git",
     "node26",
     "docker"
   ],
-  "blocker": null,
+  "blocker": "CI run 44951235547 attempt2 因既有 ChatStreamIntegrationTest.performStream:256 asyncStarted 竞态在 shard 2 稳定失败（attempt1/2 同用例；上一提交 65b3d78 通过），非 M19 配置；4 片墙钟 213/223/172/176s 均≤300s、merge 196/1115、smoke+frontend 绿。修复需改 apps/worker 测试（不在 ops 写范围），需 Lead 决策新任务或临时缓解。",
   "created_at": "2026-11-20T23:46:06.339+08:00",
-  "updated_at": "2026-11-22T05:15:03.810+08:00",
+  "updated_at": "2026-11-22T05:41:18.451+08:00",
   "baseline_commit": "87d7ee68661dd30455d12540663e9780cd700cbe"
 }

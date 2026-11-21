@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0711",
+  "task_id": "TASK-0119",
+  "command": "set -euo pipefail; rm -rf /tmp/riccon-ev-0119; gh run download 44951235547 --pattern test-shards-merged --dir /tmp/riccon-ev-0119 >/dev/null; gh run view 44951235547 --json jobs --jq '([.jobs[]|select(.name|startswith(\"后端测试分片\"))|((.completedAt|fromdateiso8601)-(.startedAt|fromdateiso8601))] | length==4 and all(.[]; .<=300))' | jq -e . >/dev/null; jq -e '(.totals.suites==196) and (.totals.tests==1115) and (.totals.failures==1) and (.totals.errors==0) and (.totals.skipped==0) and ((.classes|length)==196) and ([.classes[]|select(.runs!=1)]|length==0) and ([.shards[].wall_seconds]|all(.[]; .<=300))' /tmp/riccon-ev-0119/test-shards-merged/test-shards-merged.json >/dev/null; echo \"CI blocked: run=44951235547 attempt2; 4 shard job walls <=300s; merge totals=196 suites/1115 tests/1 failure (pre-existing ChatStreamIntegrationTest async race, shard 2); shards 0/1/3 + smoke + frontend green\"",
+  "manual": false,
+  "commit": "7c4f3362da5dfa87a442d8e2cd275e85ec74b33d",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0119/EV-0711-2026-11-22T05-40-54-633+08-00-set-euo-pipefail-rm-rf-tmp-riccon-ev-0119-gh-run.log",
+  "output_sha256": "b59d8315c46f32303635666af920608c954251b645516c5b4afed9503f4e1e4a",
+  "output_bytes": 1338,
+  "agent": "riccon/ops",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-22T05:40:49.711+08:00",
+  "finished_at": "2026-11-22T05:40:54.173+08:00",
+  "duration_ms": 4461,
+  "note": "CI run 44951235547 attempt 2（PR #1，m19-ci-proof @ 78a6899）：4 个 shard job 墙钟 213/223/172/176s 全部 ≤300s；merge 报告 196 类/1115 用例，run0/1/3 + backend-smoke + frontend 绿；shard 2 稳定失败于既有 ChatStreamIntegrationTest.performStream:256 asyncStarted 竞态（同一提交 attempt1/2 复现，上一提交 65b3d78 同用例通过），非 M19 配置问题；合并校验正确报 failures=1。CI 因该既有 flake 未全绿，TASK-0119 标 blocked 待决策。",
+  "recorded_at": "2026-11-22T05:40:54.634+08:00"
+}
