@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { ApiClient } from "./lib/http.mjs";
+import { ApiClient, waitFor } from "./lib/http.mjs";
 import { binaryUuid, queryValue, runSql, uuidHex } from "./lib/mysql.mjs";
 
 const root = process.cwd();
@@ -288,29 +288,38 @@ const betaTools = await beta.get("/api/v1/mcp-tools?page=1&size=100");
 assert.equal(betaTools.status, 200);
 assert.equal(betaTools.data?.total, 0, "beta must not see alpha tool grants");
 
-/**
- * 把 MySQL HEX(BINARY(16)) 转成带连字符的 UUID。
- *
- * @param {string} hex 32 位十六进制
- * @returns {string} UUID
- */
-function hexToUuid(hex) {
-  const value = hex.trim().toLowerCase();
-  assert.match(value, /^[0-9a-f]{32}$/);
-  return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
-}
-
-const j1RunHex = queryValue(`
-SELECT HEX(id) FROM agent_run
- WHERE tenant_id = '${seed.tenants.alpha}' AND kind = 'CHAT'
- ORDER BY created_at DESC, id DESC LIMIT 1;
-`);
-const j1RunId = hexToUuid(j1RunHex);
-const j1Run = await alpha.get(`/api/v1/runs/${j1RunId}`);
-assert.equal(
-  j1Run.status,
-  200,
-  `J1 run detail must be implemented: ${j1Run.status} ${j1Run.text}`,
+const j1Message = await alpha.post(
+  `/api/v1/conversations/${alphaConversation.data.id}/messages`,
+  {
+    content: "真实栈 J1 校验：请返回固定演示内容。",
+    clientMessageId: `checks-j1-${Date.now()}`,
+  },
+  { "Idempotency-Key": `checks-j1-${Date.now()}` },
+);
+assert.ok(
+  [200, 201].includes(j1Message.status),
+  `J1 message must be accepted: ${j1Message.status} ${j1Message.text.slice(0, 400)}`,
+);
+const j1RunMatch = /"runId":"([0-9a-f-]{36})"/.exec(j1Message.text);
+assert.ok(j1RunMatch, "J1 message must expose runId in the SSE stream");
+const j1RunId = j1RunMatch[1];
+// 使用本脚本显式创建的 run 轮询，而不是“最新 CHAT run”：浏览器 M04 用例后置时
+// 最新 run 可能属于降级/失败注入场景，会让 J1 断言产生无关失败（V1 F-004）。
+const j1Run = await waitFor(
+  async () => {
+    const response = await alpha.get(`/api/v1/runs/${j1RunId}`);
+    if (response.status !== 200) {
+      return null;
+    }
+    const invocations = response.data?.modelInvocations ?? [];
+    const succeeded = invocations.some(
+      (invocation) =>
+        invocation.purpose === "CHAT" && invocation.status === "SUCCEEDED",
+    );
+    return succeeded ? response : null;
+  },
+  60_000,
+  500,
 );
 assert.equal(j1Run.data?.kind, "CHAT");
 assert.ok(
@@ -334,7 +343,9 @@ assert.ok(
 const dbFirstToken = Number(
   queryValue(`
 SELECT first_token_ms FROM model_invocation
- WHERE tenant_id = '${seed.tenants.alpha}' AND purpose = 'CHAT'
+ WHERE tenant_id = '${seed.tenants.alpha}'
+   AND run_id = ${binaryUuid(j1RunId)}
+   AND purpose = 'CHAT'
  ORDER BY started_at DESC LIMIT 1;
 `),
 );

@@ -498,29 +498,101 @@ test.describe('M04-B11b 真实栈配额与成本', () => {
     await loginPlatformAdminReal(page);
     await page.setViewportSize({ width: 375, height: 820 });
 
-    // ---------- 路由页：键盘调整顺序并保存（随后恢复原顺序） ----------
+    // ---------- 路由页：键盘调整顺序并保存（随后真正恢复原顺序） ----------
+    // 读取保存前版本与顺序；恢复不依赖“上次成功提示”，而是逐次等待 PUT 响应并用 API/DB 复核，
+    // 避免假绿（V1 F-003：曾导致 B11a 的 E2E-M04-02 在 seed 顺序被改变后失败）。
     await page.goto('/admin/model-routing');
     await expect(page.getByText('路由与端点边界')).toBeVisible();
+    const initialRoutingResponse = await page.request.get('/api/v1/admin/model-routing');
+    expect(initialRoutingResponse.status(), '读取路由链失败').toBe(200);
+    const initialRouting = (await initialRoutingResponse.json()) as {
+      items: Array<{
+        purpose: string;
+        version: number;
+        entries: Array<{ position: number; modelId: string; displayName: string }>;
+      }>;
+    };
+    const initialChatChain = initialRouting.items.find((chain) => chain.purpose === 'CHAT');
+    expect(initialChatChain, 'CHAT 路由链不存在').toBeTruthy();
+    const initialChatVersion = initialChatChain!.version;
+    const initialChatOrder = initialChatChain!.entries.map((entry) => entry.modelId);
+    expect(initialChatOrder.length, 'CHAT 链至少需要两个模型').toBeGreaterThanOrEqual(2);
+    const movedModel = initialChatChain!.entries[0];
+
     const chatCard = page.locator('.model-routing-card').filter({ hasText: '对话链' });
+    const chatSaveButton = chatCard.getByRole('button', { name: '保存对话链' });
+    const isChatRoutingPut = (response: import('@playwright/test').Response): boolean =>
+      response.request().method() === 'PUT' &&
+      new URL(response.url()).pathname === '/api/v1/admin/model-routing/CHAT';
+
     await chatCard
       .getByRole('button', { name: /^下\s*移/ })
       .first()
       .focus();
     await page.keyboard.press('Enter');
-    await chatCard.getByRole('button', { name: '保存对话链' }).focus();
+    const firstSavePromise = page.waitForResponse(isChatRoutingPut);
+    await chatSaveButton.focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByText(/已保存对话链（版本 v/)).toBeVisible();
+    const firstSaveResponse = await firstSavePromise;
+    if (firstSaveResponse.status() !== 200) {
+      throw new Error(
+        `首次路由保存失败：${firstSaveResponse.status()} ${await firstSaveResponse.text()}`,
+      );
+    }
+    const firstSaved = (await firstSaveResponse.json()) as {
+      version: number;
+      entries: Array<{ modelId: string }>;
+    };
+    const reorderedChatOrder = [
+      initialChatOrder[1],
+      initialChatOrder[0],
+      ...initialChatOrder.slice(2),
+    ];
+    expect(firstSaved.version).toBe(initialChatVersion + 1);
+    expect(firstSaved.entries.map((entry) => entry.modelId)).toEqual(reorderedChatOrder);
+    await expect(page.getByText(`已保存对话链（版本 v${initialChatVersion + 1}）`)).toBeVisible();
     await expectNoHorizontalScroll(page);
     await page.mouse.move(0, 0);
     await expectNoSeriousA11yViolations(page);
-    await chatCard
-      .getByRole('button', { name: /^上\s*移/ })
-      .first()
-      .focus();
+
+    // 恢复：刚下移的原首位模型现在位于 #2，对其“上移”后保存，并等待第二次 PUT 成功。
+    const movedRow = chatCard.locator('.model-routing-item').nth(1);
+    await expect(movedRow).toContainText(movedModel.displayName);
+    await movedRow.getByRole('button', { name: /^上\s*移/ }).focus();
     await page.keyboard.press('Enter');
-    await chatCard.getByRole('button', { name: '保存对话链' }).focus();
+    const secondSavePromise = page.waitForResponse(isChatRoutingPut);
+    await chatSaveButton.focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByText(/已保存对话链（版本 v/)).toBeVisible();
+    const secondSaveResponse = await secondSavePromise;
+    if (secondSaveResponse.status() !== 200) {
+      throw new Error(
+        `恢复路由失败：${secondSaveResponse.status()} ${await secondSaveResponse.text()}`,
+      );
+    }
+    const secondSaved = (await secondSaveResponse.json()) as {
+      version: number;
+      entries: Array<{ modelId: string }>;
+    };
+    expect(secondSaved.version).toBe(initialChatVersion + 2);
+    expect(secondSaved.entries.map((entry) => entry.modelId)).toEqual(initialChatOrder);
+    await expect(page.getByText(`已保存对话链（版本 v${initialChatVersion + 2}）`)).toBeVisible();
+
+    // API 与 DB 双重复核：顺序确实回到 seed，且版本连续递增。
+    const restoredRoutingResponse = await page.request.get('/api/v1/admin/model-routing');
+    expect(restoredRoutingResponse.status(), '读取恢复后的路由链失败').toBe(200);
+    const restoredRouting = (await restoredRoutingResponse.json()) as {
+      items: Array<{ purpose: string; version: number; entries: Array<{ modelId: string }> }>;
+    };
+    const restoredChatChain = restoredRouting.items.find((chain) => chain.purpose === 'CHAT');
+    expect(restoredChatChain?.version).toBe(initialChatVersion + 2);
+    expect(restoredChatChain?.entries.map((entry) => entry.modelId)).toEqual(initialChatOrder);
+    const dbChatOrder = realStackQueryValue(`
+SELECT GROUP_CONCAT(LOWER(HEX(model_id)) ORDER BY position SEPARATOR ',')
+  FROM model_routing_entry WHERE purpose = 'CHAT';
+`);
+    expect(dbChatOrder.split(',')).toEqual(
+      initialChatOrder.map((modelId) => modelId.replaceAll('-', '').toLowerCase()),
+    );
 
     // ---------- key 页：键盘打开/关闭弹窗 ----------
     await page.goto('/admin/model-keys');
