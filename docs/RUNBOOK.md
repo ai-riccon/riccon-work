@@ -337,7 +337,7 @@ SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history WHERE success =
 | 币种                | `RICCON_BILLING_CURRENCY`                                                                                             | ISO 4217；**部署后不可在线变更**（见“换币种不可行”）                                                                 |
 | 默认配额 4 键       | `RICCON_QUOTA_DEFAULT_TENANT_DAILY/_TENANT_MONTHLY/_USER_DAILY/_USER_MONTHLY`                                         | 与 API/Worker 两侧一致；默认 10000/200000/1000/20000；`0` 或空 = 不限                                                |
 | DB 连通与体积       | 下方 SQL                                                                                                              | `model_invocation` ≤200 万行且 data+index ≤2 GiB；磁盘余量 ≥2× 表体积；无 >60s 事务/长 MDL                           |
-| API/Worker 指纹漂移 | `node scripts/ops/seed-model-catalog.mjs --check --api-base <API> --worker-base <Worker> [--catalog <目录文件>]`          | exit 0 且 `status=passed`；`/actuator/info` 403/401 时**发布阻断**（不得用 env 快照冒充通过）                        |
+| API/Worker 指纹漂移 | `node scripts/ops/seed-model-catalog.mjs --check --api-base <API> --worker-base <Worker> [--catalog <目录文件>]` | exit 0 且 `status=passed`；**必须从 `RICCON_OPS_ALLOWED_CIDRS` 允许的来源发起**（与 prometheus 同一允许列表，空 = 仅 loopback），其他来源按设计 403；403 不是通过，也不得用 env 快照冒充 |
 | 目录与部署端点一致  | `node scripts/ops/seed-model-catalog.mjs --check ... [--catalog <目录文件>] [--endpoints "$RICCON_MODEL_ENDPOINTS"]`（不写库） | `model_provider.base_url` 与 `RICCON_MODEL_ENDPOINTS` 的 code/baseUrl 逐条一致；目录文件与 DB 差异由同一命令报告 |
 
 ```bash
@@ -372,9 +372,9 @@ docker compose -f deploy/compose/docker-compose.test.yml exec -T \
 - `long_trx`/`long_mdl` 必须为 0；非 0 时先定位并结束来源（长查询/备份/DDL 残留），不要带病迁移。
 - 生产 `--via=client`（`RICCON_DB_*` + PATH 上 `mysql`）；`--via=compose` 只用于测试栈。
 
-> **已知缺口（M04 发布阻断项）**：默认拒绝安全链当前未放行 `/actuator/info`（仅 `/actuator/health`、
-> `/actuator/prometheus` 有规则）。漂移检查的 actuator 通道需要 ops 运维来源在 M09 ingress 或 B2 白名单
-> 中放行；在此之前 preflight 只能记录 gap 并阻止发布，不得把 `--check` 的失败解释为“环境差异”。
+> **来源要求（TASK-0128 起）**：`/actuator/info` 与 `/actuator/prometheus` 共用 `RICCON_OPS_ALLOWED_CIDRS`
+> 允许列表（空 = 仅 loopback）。preflight 必须从允许来源发起；其他来源按设计返回 403，应先修正来源网段
+> 或 ingress，而不是放宽安全链，也不得用 env 快照冒充“指纹一致”。
 
 ### M04-1…6 发布顺序（preflight + 六步，不能纯滚动）
 
@@ -592,13 +592,17 @@ node scripts/ops/seed-model-catalog.mjs --check \
   [--catalog <目录文件>] [--endpoints "$RICCON_MODEL_ENDPOINTS"]
 ```
 
+发起来源：`--api-base`/`--worker-base` 必须落在 `RICCON_OPS_ALLOWED_CIDRS` 允许列表内（与
+`/actuator/prometheus` 同一配置，空 = 仅 loopback）；不在列表内的来源按设计返回 403，属于来源配置问题，
+不是“指纹一致”，也不是放行安全链的理由。
+
 生产/预览用 `--via=client`（`RICCON_DB_*` 读 `model_provider`）；本地测试栈用 `--via=compose`；
 DEMO 的 `http://` 端点需要显式 `--allow-http`，PRODUCTION 只接受 https。
 
 比对键：`deploymentMode`、`endpointSetHash`、`routingMode`、`failoverEnabled`、
 `quotaEnforcementEnabled`、`masterKeyId`、`currency`、`tenantDaily/tenantMonthly/userDaily/userMonthly`。
 判据：API 与 Worker 逐键相等；与目录文件 `deployment` 段期望值一致；`RICCON_MODEL_ENDPOINTS` 的
-code/baseUrl 与 DB `model_provider` 一致。任一 403/401 或缺失键 → exit 1（发布阻断）。
+code/baseUrl 与 DB `model_provider` 一致。任一 403/401（多半是发起来源不在 `RICCON_OPS_ALLOWED_CIDRS`）或缺失键 → exit 1（发布阻断，先修来源而不是绕过）。
 
 ### M04-13 成本对账窗口与容差
 
