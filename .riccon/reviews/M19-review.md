@@ -61,7 +61,7 @@ findings:
     owner: riccon/ops
     due: M20 gate 前
     accepted_reason: "告警为 warn-only，runner 已自动强制 Node 24，CI run 44955035025 结论 success；不影响 M19 的测试集合、墙钟或证据有效性。属 Ops 的工具链维护项，建议 M20 前升级 setup-java@v5 与各 action 主版本并在 CI 复跑。"
-    evidence: "gh api repos/ai-riccon/riccon-work/actions/runs/44955035025/jobs 的 check-run annotations；EV-0713/EV-0721"
+    evidence: "本会话执行 gh api repos/ai-riccon/riccon-work/actions/runs/44955035025/jobs 后逐 job 读取 check-run annotations；CI run 44955035025 conclusion=success"
   - id: F-004
     severity: P3
     title: "分片 baseline 的计时值来自一次未单独录 EV 的全量运行，时间来源不可复核"
