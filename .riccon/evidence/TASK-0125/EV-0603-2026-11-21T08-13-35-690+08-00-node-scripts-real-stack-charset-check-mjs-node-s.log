@@ -1,0 +1,167 @@
+# command: node scripts/real-stack/charset-check.mjs && node scripts/real-stack/seed.mjs --self-test && node scripts/real-stack/run.mjs --self-test
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-21T08:13:30.931+08:00
+# finished_at: 2026-11-21T08:13:35.306+08:00
+# duration_ms: 4374
+# exit_code: 0
+
+# --- stdout ---
+{
+  "status": "passed",
+  "checks": [
+    {
+      "name": "client args include --default-character-set=utf8mb4",
+      "status": "passed",
+      "detail": "--user=riccon --database=riccon --batch --raw --default-character-set=utf8mb4"
+    },
+    {
+      "name": "round-trip stores exact UTF-8 bytes",
+      "status": "passed",
+      "detail": "expected=E58187E6A8A1E59E8B2DE4B8BBEFBC88E79C9FE5AE9EE6A088EFBC89 actual=e58187e6a8a1e59e8b2de4b8bbefbc88e79c9fe5ae9ee6a088efbc89"
+    },
+    {
+      "name": "session charset is utf8mb4",
+      "status": "passed",
+      "detail": "utf8mb4\tutf8mb4"
+    },
+    {
+      "name": "seed catalog textIntegrity passed twice",
+      "status": "passed",
+      "detail": "first=passed second=passed"
+    },
+    {
+      "name": "seed catalog is idempotent",
+      "status": "passed",
+      "detail": "first=\"item\\ttotal\\nproviders\\t2\\nmodels_active\\t2\\nmodels_priced\\t2\\nrouting_chat\\t3\\nrouting_report\\t2\\ncredentials_active\\t2\\nquota_limits\\t8\" second=\"item\\ttotal\\nproviders\\t2\\nmodels_active\\t2\\nmodels_priced\\t2\\nrouting_chat\\t3\\nrouting_report\\t2\\ncredentials_active\\t2\\nquota_limits\\t8\""
+    },
+    {
+      "name": "stored display names match expected Chinese",
+      "status": "passed",
+      "detail": "3 models"
+    }
+  ],
+  "sample": {
+    "0192f0a0-0000-7000-8000-000000000111": "假模型-主（真实栈）",
+    "0192f0a0-0000-7000-8000-000000000112": "假模型-备用（真实栈）",
+    "0192f0a0-0000-7000-8000-000000000113": "假模型-停用示例（真实栈）"
+  }
+}
+{
+  "status": "passed",
+  "endpointBase": "http://127.0.0.1:18990",
+  "providers": [
+    {
+      "code": "fake-primary",
+      "baseUrl": "http://127.0.0.1:18990/v1",
+      "environmentLabel": "DEMO_ONLY"
+    },
+    {
+      "code": "fake-secondary",
+      "baseUrl": "http://127.0.0.1:18990/v1-secondary",
+      "environmentLabel": "DEMO_ONLY"
+    }
+  ],
+  "models": [
+    {
+      "modelKey": "fake-chat-primary",
+      "status": "ACTIVE",
+      "pricing": "PRICED"
+    },
+    {
+      "modelKey": "fake-chat-secondary",
+      "status": "ACTIVE",
+      "pricing": "PRICED"
+    },
+    {
+      "modelKey": "fake-chat-disabled",
+      "status": "DISABLED",
+      "pricing": "UNPRICED"
+    }
+  ],
+  "routing": {
+    "CHAT": 3,
+    "REPORT": 2
+  },
+  "keys": {
+    "fake-primary": 1,
+    "fake-secondary": 1
+  }
+}
+{
+  "status": "passed",
+  "checks": [
+    {
+      "name": "node --check scripts/real-stack/fake-model.mjs",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "name": "node --check scripts/real-stack/seed.mjs",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "name": "node --check scripts/real-stack/checks.mjs",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "name": "node --check scripts/real-stack/charset-check.mjs",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "name": "node --check scripts/real-stack/run.mjs",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "name": "node --check e2e/perf/mvc-smoke.js",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "name": "node --check e2e/support/fake-model/scenarios.mjs",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "name": "node --check e2e/support/fake-model/server.mjs",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "name": "node --check e2e/support/fake-model/index.mjs",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "name": "node --check e2e/stub/server.mjs",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "name": "fake-model --self-test",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "name": "seed --self-test",
+      "status": "passed",
+      "detail": ""
+    },
+    {
+      "name": "mysql client charset utf8mb4",
+      "status": "passed",
+      "detail": "--user=riccon --database=riccon --batch --raw --default-character-set=utf8mb4"
+    },
+    {
+      "name": "k6 available",
+      "status": "passed",
+      "detail": "k6 v2.4.0 (commit/dd9395906d, go1.26.11, darwin/amd64)"
+    }
+  ]
+}
+
+# --- stderr ---
+

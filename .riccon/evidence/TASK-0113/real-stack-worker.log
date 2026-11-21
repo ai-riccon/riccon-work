@@ -673,3 +673,88 @@
 2026-11-21T08:02:56.884+08:00  INFO 52993 --- [riccon-worker] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete
 2026-11-21T08:02:56.893+08:00  INFO 52993 --- [riccon-worker] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
 2026-11-21T08:02:56.900+08:00  INFO 52993 --- [riccon-worker] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-21T08:14:53.367+08:00  INFO 59739 --- [riccon-worker] [           main] com.riccon.worker.WorkerApplication      : Starting WorkerApplication v0.1.0-SNAPSHOT using Java 21.0.13 with PID 59739 (/Users/ricky/Documents/projects/riccon-work/apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar started by ricky in /Users/ricky/Documents/projects/riccon-work)
+2026-11-21T08:14:53.375+08:00  INFO 59739 --- [riccon-worker] [           main] com.riccon.worker.WorkerApplication      : No active profile set, falling back to 1 default profile: "default"
+2026-11-21T08:14:56.649+08:00  INFO 59739 --- [riccon-worker] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 18081 (http)
+2026-11-21T08:14:56.677+08:00  INFO 59739 --- [riccon-worker] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-21T08:14:56.678+08:00  INFO 59739 --- [riccon-worker] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-21T08:14:56.725+08:00  INFO 59739 --- [riccon-worker] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 3219 ms
+2026-11-21T08:14:57.422+08:00  INFO 59739 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=2
+2026-11-21T08:14:59.797+08:00  INFO 59739 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-21T08:14:59.894+08:00  INFO 59739 --- [riccon-worker] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 18081 (http) with context path '/'
+2026-11-21T08:14:59.907+08:00  INFO 59739 --- [riccon-worker] [           main] com.riccon.worker.WorkerApplication      : Started WorkerApplication in 7.745 seconds (process running for 8.844)
+2026-11-21T08:15:04.925+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-21T08:15:05.216+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@19d8d24f
+2026-11-21T08:15:05.220+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-21T08:15:05.416+08:00  INFO 59739 --- [riccon-worker] [io-18081-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-21T08:15:05.416+08:00  INFO 59739 --- [riccon-worker] [io-18081-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-21T08:15:05.418+08:00  INFO 59739 --- [riccon-worker] [io-18081-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-11-21T08:15:10.742+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-alpha fileId=01a1fb74-f7c8-7b6c-adc7-8a037e57bc15 parseId=01a1fb74-f7c8-790b-b04d-ec0ea9b64fd9 chunks=4
+2026-11-21T08:15:10.752+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1fb74-f7c8-7e8c-ab44-581d80b5e7b0 tenantId=tenant-alpha runId=01a1fb74-f7c8-7fc7-9d9e-14a5da5b410f attempts=1
+2026-11-21T08:15:10.752+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-21T08:15:11.991+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-alpha documentId=01a1fb74-ff6c-7eb7-81f8-71c6c0f079a5 chunks=4 dimensions=64
+2026-11-21T08:15:12.003+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1fb74-ff6c-7c9f-8678-606bb42ff1b9 tenantId=tenant-alpha runId=01a1fb74-ff6c-7bf0-abda-83737b699c3d attempts=1
+2026-11-21T08:15:12.004+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-21T08:15:56.512+08:00  INFO 59739 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-21T08:15:56.743+08:00  WARN 59739 --- [riccon-worker] [oundedElastic-2] c.r.w.m.s.OpenAiCompatibleChatModel      : model.request.failed modelId=0192f0a0-0000-7000-8000-000000000111 status=500 errorCode=RICCON-MODEL-503
+2026-11-21T08:15:56.754+08:00  WARN 59739 --- [riccon-worker] [oundedElastic-1] c.r.w.model.service.FailoverChatModel    : model.attempt.failed purpose=CHAT modelId=0192f0a0-0000-7000-8000-000000000111 providerCode=fake-primary attempt=1 errorCode=RICCON-MODEL-503 emitted=false
+2026-11-21T08:15:56.948+08:00  WARN 59739 --- [riccon-worker] [oundedElastic-2] c.r.w.m.s.OpenAiCompatibleChatModel      : model.request.failed modelId=0192f0a0-0000-7000-8000-000000000111 status=500 errorCode=RICCON-MODEL-503
+2026-11-21T08:15:56.952+08:00  WARN 59739 --- [riccon-worker] [oundedElastic-1] c.r.w.model.service.FailoverChatModel    : model.attempt.failed purpose=CHAT modelId=0192f0a0-0000-7000-8000-000000000111 providerCode=fake-primary attempt=2 errorCode=RICCON-MODEL-503 emitted=false
+2026-11-21T08:16:06.894+08:00  INFO 59739 --- [riccon-worker] [io-18081-exec-7] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-21T08:16:07.339+08:00  WARN 59739 --- [riccon-worker] [oundedElastic-2] c.r.w.model.service.FailoverChatModel    : model.attempt.failed purpose=CHAT modelId=0192f0a0-0000-7000-8000-000000000111 providerCode=fake-primary attempt=1 errorCode=RICCON-MODEL-503 emitted=true
+2026-11-21T08:16:07.359+08:00  WARN 59739 --- [riccon-worker] [t-stream-writer] c.r.w.chat.service.ChatStreamService     : chat.stream.failed runId=01a1fb75-d8b1-70c6-b423-49314536c0a2 tenantId=tenant-alpha errorCode=RICCON-MODEL-502
+2026-11-21T08:16:07.804+08:00  INFO 59739 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-21T08:16:20.772+08:00  INFO 59739 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-21T08:16:20.787+08:00  WARN 59739 --- [riccon-worker] [oundedElastic-1] c.r.w.m.s.OpenAiCompatibleChatModel      : model.request.failed modelId=0192f0a0-0000-7000-8000-000000000112 status=500 errorCode=RICCON-MODEL-503
+2026-11-21T08:16:20.793+08:00  WARN 59739 --- [riccon-worker] [oundedElastic-2] c.r.w.model.service.FailoverChatModel    : model.attempt.failed purpose=CHAT modelId=0192f0a0-0000-7000-8000-000000000112 providerCode=fake-secondary attempt=1 errorCode=RICCON-MODEL-503 emitted=false
+2026-11-21T08:16:21.011+08:00  WARN 59739 --- [riccon-worker] [oundedElastic-1] c.r.w.m.s.OpenAiCompatibleChatModel      : model.request.failed modelId=0192f0a0-0000-7000-8000-000000000112 status=500 errorCode=RICCON-MODEL-503
+2026-11-21T08:16:21.017+08:00  WARN 59739 --- [riccon-worker] [oundedElastic-2] c.r.w.model.service.FailoverChatModel    : model.attempt.failed purpose=CHAT modelId=0192f0a0-0000-7000-8000-000000000112 providerCode=fake-secondary attempt=2 errorCode=RICCON-MODEL-503 emitted=false
+2026-11-21T08:16:21.039+08:00  WARN 59739 --- [riccon-worker] [oundedElastic-1] c.r.w.m.s.OpenAiCompatibleChatModel      : model.request.failed modelId=0192f0a0-0000-7000-8000-000000000111 status=500 errorCode=RICCON-MODEL-503
+2026-11-21T08:16:21.043+08:00  WARN 59739 --- [riccon-worker] [oundedElastic-2] c.r.w.model.service.FailoverChatModel    : model.attempt.failed purpose=CHAT modelId=0192f0a0-0000-7000-8000-000000000111 providerCode=fake-primary attempt=3 errorCode=RICCON-MODEL-503 emitted=false
+2026-11-21T08:16:22.135+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-21T08:16:22.136+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] io.agentscope.core.tool.Toolkit          : Registered tool 'market_data' in group 'ungrouped'
+2026-11-21T08:16:22.292+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-alpha runId=01a1fb76-1373-7751-83aa-333367bd7050 approvalId=01a1fb76-14f1-72de-a875-b966ea27160c toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-21T08:16:22.296+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1fb76-1373-7bfc-8999-f0eb817995e7 tenantId=tenant-alpha runId=01a1fb76-1373-7751-83aa-333367bd7050 attempts=1
+2026-11-21T08:16:22.296+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a1fb76-1373-7bfc-8999-f0eb817995e7 tenantId=tenant-alpha runId=01a1fb76-1373-7751-83aa-333367bd7050 reason=WAITING_APPROVAL
+2026-11-21T08:16:22.296+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-21T08:16:22.983+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] i.a.core.tool.mcp.McpSyncClientWrapper   : Initializing MCP sync client: riccon-builtin
+2026-11-21T08:16:23.003+08:00  INFO 59739 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server starting.
+2026-11-21T08:16:23.022+08:00  INFO 59739 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server started
+2026-11-21T08:16:23.087+08:00  INFO 59739 --- [riccon-worker] [pool-9-thread-1] i.m.c.transport.StdioClientTransport     : STDERR Message received: mcp-server: ready
+2026-11-21T08:16:23.135+08:00  INFO 59739 --- [riccon-worker] [pool-6-thread-1] i.m.client.LifecycleInitializer          : Server response with Protocol: 2024-11-05, Capabilities: ServerCapabilities[completions=null, experimental=null, logging=null, prompts=null, resources=null, tools=ToolCapabilities[listChanged=null]], Info: Implementation[name=riccon-real-mcp, title=null, version=1.0.0] and Instructions null
+2026-11-21T08:16:23.198+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] i.a.core.tool.mcp.McpSyncClientWrapper   : Closing MCP sync client: riccon-builtin
+2026-11-21T08:16:23.307+08:00  WARN 59739 --- [riccon-worker] [onPool-worker-1] i.m.c.transport.StdioClientTransport     : Process terminated with code 143
+2026-11-21T08:16:23.326+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.riccon.worker.mcp.service.McpGateway   : mcp.tool.completed tenantId=tenant-alpha runId=01a1fb76-1373-7751-83aa-333367bd7050 toolId=0192f0a0-0000-7000-8000-000000000004 durationMs=469 resultBytes=308
+2026-11-21T08:16:23.368+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-21T08:16:26.529+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.w.r.service.ReportArtifactService    : research.artifact.saved tenantId=tenant-alpha taskId=01a1fb76-1373-73ec-8d90-9cee8b2b6477 artifactId=01a1fb76-256b-7efd-842c-f05948608787 version=1 citations=5
+2026-11-21T08:16:26.541+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.w.r.service.AgentRunResumeHandler    : research.run.generation_completed tenantId=tenant-alpha runId=01a1fb76-1373-7751-83aa-333367bd7050 chars=150 artifactId=01a1fb76-256b-7efd-842c-f05948608787 version=1
+2026-11-21T08:16:26.550+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1fb76-15e2-739b-a3d5-af6a9163194f tenantId=tenant-alpha runId=01a1fb76-1373-7751-83aa-333367bd7050 attempts=1
+2026-11-21T08:16:26.550+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-21T08:16:27.126+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-21T08:16:27.127+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] io.agentscope.core.tool.Toolkit          : Registered tool 'market_data' in group 'ungrouped'
+2026-11-21T08:16:27.183+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-alpha runId=01a1fb76-26f8-7c3a-a955-2d90a58aeca4 approvalId=01a1fb76-2814-7d3a-a3c9-04d9657c6de0 toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-21T08:16:27.187+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1fb76-26f8-7af3-bc37-28f470b3ca00 tenantId=tenant-alpha runId=01a1fb76-26f8-7c3a-a955-2d90a58aeca4 attempts=1
+2026-11-21T08:16:27.187+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a1fb76-26f8-7af3-bc37-28f470b3ca00 tenantId=tenant-alpha runId=01a1fb76-26f8-7c3a-a955-2d90a58aeca4 reason=WAITING_APPROVAL
+2026-11-21T08:16:27.187+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-21T08:16:27.729+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.w.r.service.AgentRunCancelHandler    : research.run.cancelled tenantId=tenant-alpha runId=01a1fb76-26f8-7c3a-a955-2d90a58aeca4 reason=USER_CANCELLED skippedStages=0
+2026-11-21T08:16:27.733+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a1fb76-294a-7c0e-a27e-79f4e48c95fb tenantId=tenant-alpha runId=01a1fb76-26f8-7c3a-a955-2d90a58aeca4 attempts=1
+2026-11-21T08:16:27.733+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.terminal_run_reconciled eventId=01a1fb76-294a-7c0e-a27e-79f4e48c95fb tenantId=tenant-alpha runId=01a1fb76-26f8-7c3a-a955-2d90a58aeca4 eventType=riccon.agent.run.cancel.v1
+2026-11-21T08:16:27.733+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-21T08:16:30.876+08:00  WARN 59739 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a1fb76-34c8-744b-aae6-83491659d7a9 tenantId=tenant-alpha runId=01a1fb76-34c8-78f0-a67a-02a9c7448b87 attempts=1 reason=RICCON-FILE-422: pdf document is not readable
+2026-11-21T08:16:30.876+08:00  INFO 59739 --- [riccon-worker] [   scheduling-1] c.r.worker.run.service.OutboxScheduler   : outbox.poll.completed processed=1
+2026-11-21T08:16:32.361+08:00  INFO 59739 --- [riccon-worker] [m-shutdown-hook] i.a.c.shutdown.GracefulShutdownManager   : Graceful shutdown initiated, 0 active request(s), timeout=infinite
+2026-11-21T08:16:32.363+08:00  INFO 59739 --- [riccon-worker] [m-shutdown-hook] i.a.c.m.transport.HttpTransportFactory   : Shutting down 0 managed HttpTransport(s)
+2026-11-21T08:16:32.369+08:00  INFO 59739 --- [riccon-worker] [ionShutdownHook] o.s.boot.tomcat.GracefulShutdown         : Commencing graceful shutdown. Waiting for active requests to complete
+2026-11-21T08:16:34.383+08:00  INFO 59739 --- [riccon-worker] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete
+2026-11-21T08:16:34.394+08:00  INFO 59739 --- [riccon-worker] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-11-21T08:16:34.404+08:00  INFO 59739 --- [riccon-worker] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.

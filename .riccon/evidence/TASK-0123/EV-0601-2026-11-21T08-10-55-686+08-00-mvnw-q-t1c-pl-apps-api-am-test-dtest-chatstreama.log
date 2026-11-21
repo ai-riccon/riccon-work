@@ -1,0 +1,1186 @@
+# command: ./mvnw -q -T1C -pl apps/api -am test -Dtest='ChatStreamApiTest,ResearchTaskApiTest,ResearchFailureTextTest,ResearchModelUnavailableMappingTest,ChatModelUnavailableApiTest' -Dsurefire.failIfNoSpecifiedTests=false
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-21T08:09:33.450+08:00
+# finished_at: 2026-11-21T08:10:55.301+08:00
+# duration_ms: 81849
+# exit_code: 0
+
+# --- stdout ---
+08:09:44.115 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.research.ResearchModelUnavailableMappingTest]: ResearchModelUnavailableMappingTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+08:09:44.357 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.research.ResearchModelUnavailableMappingTest
+08:09:44.532 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.research.ResearchModelUnavailableMappingTest]: ResearchModelUnavailableMappingTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+08:09:44.533 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ResearchApiTestSupport]: ResearchApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+08:09:44.534 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+08:09:44.536 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.research.ResearchModelUnavailableMappingTest
+08:09:44.683 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+08:09:44.687 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+08:09:44.723 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+08:09:45.921 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+08:09:45.923 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+08:09:45.949 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+08:09:46.130 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+08:09:46.554 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: 19755c0f169fd54ad547e241935dd859272fd9b5509585e04c1be50dd116ba64
+08:09:46.983 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT0.85303S
+08:09:46.991 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+08:09:46.992 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+08:09:46.993 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+08:09:46.993 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+08:09:47.110 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: dcd25041191edcc2ba87bc610664eca3bfa702c6fd51b64702daf2b450064d8f
+08:09:47.443 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:59410/riccon using query 'SELECT 1'
+08:09:55.911 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT8.917216S
+08:09:55.911 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:59410/riccon)
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-21T08:09:56.769+08:00  INFO 56847 --- [riccon-api] [           main] .a.r.ResearchModelUnavailableMappingTest : Starting ResearchModelUnavailableMappingTest using Java 21.0.13 with PID 56847 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-21T08:09:56.771+08:00  INFO 56847 --- [riccon-api] [           main] .a.r.ResearchModelUnavailableMappingTest : The following 1 profile is active: "test"
+2026-11-21T08:09:59.120+08:00  INFO 56847 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-21T08:09:59.143+08:00  INFO 56847 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-21T08:09:59.144+08:00  INFO 56847 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-21T08:09:59.230+08:00  INFO 56847 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2428 ms
+2026-11-21T08:09:59.502+08:00  INFO 56847 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-21T08:09:59.531+08:00  INFO 56847 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-21T08:09:59.570+08:00  INFO 56847 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:59410/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-21T08:09:59.728+08:00  INFO 56847 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon`.`flyway_schema_history` does not exist yet
+2026-11-21T08:09:59.733+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 11 migrations (execution time 00:00.034s)
+2026-11-21T08:09:59.759+08:00  INFO 56847 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon`.`flyway_schema_history` ...
+2026-11-21T08:09:59.827+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: << Empty Schema >>
+2026-11-21T08:09:59.835+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "1 - baseline"
+2026-11-21T08:09:59.886+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "2 - identity and workspace"
+2026-11-21T08:10:00.078+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "3 - files knowledge and conversation"
+2026-11-21T08:10:00.298+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "4 - research runs and artifacts"
+2026-11-21T08:10:00.624+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "5 - model gateway and mcp"
+2026-11-21T08:10:00.852+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "6 - audit event"
+2026-11-21T08:10:01.161+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "7 - spring session"
+2026-11-21T08:10:01.254+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "8 - approval params envelope"
+2026-11-21T08:10:01.350+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "9 - organization and workspace scope"
+2026-11-21T08:10:01.686+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "10 - audit query export"
+2026-11-21T08:10:01.895+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "11 - model gateway depth"
+2026-11-21T08:10:02.232+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 11 migrations to schema `riccon`, now at version v11 (execution time 00:02.113s)
+2026-11-21T08:10:02.524+08:00  INFO 56847 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-21T08:10:02.783+08:00  INFO 56847 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-21T08:10:02.783+08:00  INFO 56847 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-21T08:10:02.783+08:00  INFO 56847 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-21T08:10:02.783+08:00  INFO 56847 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-21T08:10:03.420+08:00  WARN 56847 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist is empty; mode=DEMO allowLegacyEndpoints=true
+2026-11-21T08:10:03.422+08:00  INFO 56847 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=0
+2026-11-21T08:10:03.471+08:00  INFO 56847 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-test, previousKey=true, fingerprintPepper=true
+2026-11-21T08:10:05.573+08:00  INFO 56847 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-21T08:10:05.658+08:00  INFO 56847 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 59560 (http) with context path '/'
+2026-11-21T08:10:05.668+08:00  INFO 56847 --- [riccon-api] [           main] .a.r.ResearchModelUnavailableMappingTest : Started ResearchModelUnavailableMappingTest in 9.405 seconds (process running for 23.404)
+2026-11-21T08:10:06.063+08:00  INFO 56847 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin created
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-21T08:10:07.044+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-21T08:10:07.045+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-21T08:10:07.047+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-11-21T08:10:08.976+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-2] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=t2f4ef527daa9 taskId=01a1fb70-62c7-74a2-a160-9f13d63cd124 runId=01a1fb70-62c7-7924-a2d9-a8d91bf5b88b workspaceId=01a1fb70-627b-7c0c-bd49-fbb4c2ea99a3 toolId=01a1fb70-6289-7967-bc8b-e32eb4faeea8
+2026-11-21T08:10:10.609+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-5] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=tf7cb7f12e7f8 taskId=01a1fb70-692d-744c-b89d-a0ca1759cb4d runId=01a1fb70-692d-74f2-8f1e-071bbd84555b workspaceId=01a1fb70-68fb-7810-9781-6cc027541d85 toolId=01a1fb70-6908-7bf3-9755-e898fe9ab8eb
+2026-11-21T08:10:12.147+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-9] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=td98989f03bac taskId=01a1fb70-6f2f-70bb-9056-7bdc505a6060 runId=01a1fb70-6f2f-786f-806e-0ed556294b03 workspaceId=01a1fb70-6efc-7c9b-91a5-025e36996728 toolId=01a1fb70-6f08-7d1e-814e-525719bbfa27
+2026-11-21T08:10:12.205+08:00  INFO 56847 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.ResearchTaskApiTest]: ResearchTaskApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T08:10:12.248+08:00  INFO 56847 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.ResearchTaskApiTest
+2026-11-21T08:10:12.249+08:00  INFO 56847 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.ResearchTaskApiTest]: ResearchTaskApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T08:10:12.249+08:00  INFO 56847 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ResearchApiTestSupport]: ResearchApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T08:10:12.249+08:00  INFO 56847 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T08:10:12.250+08:00  INFO 56847 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.ResearchTaskApiTest
+2026-11-21T08:10:13.736+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-3] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=tc3d3052c021c taskId=01a1fb70-7565-7c84-9fd4-fa25b81c4262 runId=01a1fb70-7565-7716-b82e-6e11beb9bd9b workspaceId=01a1fb70-753e-7d74-b66e-8f49cb4757be toolId=01a1fb70-7548-7201-96e0-93b4c353b08d
+2026-11-21T08:10:15.235+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-5] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=t45d79f92465d taskId=01a1fb70-7b40-7638-8316-ddc7173d108e runId=01a1fb70-7b40-70f4-b59b-24f65982195b workspaceId=01a1fb70-7b00-73a0-991d-51e91b56f21e toolId=01a1fb70-7b21-77c4-a948-29f8f4a2eed8
+2026-11-21T08:10:15.268+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-6] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=t45d79f92465d taskId=01a1fb70-7b61-70f2-89fb-6542bf23a806 runId=01a1fb70-7b61-7750-971f-719abdfa0676 workspaceId=01a1fb70-7b00-73a0-991d-51e91b56f21e toolId=01a1fb70-7b21-77c4-a948-29f8f4a2eed8
+2026-11-21T08:10:16.827+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-3] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=tf1d40feb1354 taskId=01a1fb70-8177-7446-b357-bec80b068773 runId=01a1fb70-8177-7bd0-ba2a-818ecb0dd706 workspaceId=01a1fb70-814f-7a22-8b6c-5cf75b7d6828 toolId=01a1fb70-815b-7587-a875-5da56f8f105f
+2026-11-21T08:10:16.879+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=a45f7400-19ac-4251-b808-5b334737fb10 path=/api/v1/workspaces/01a1fb70-814f-7a22-8b6c-5cf75b7d6828/research-tasks
+2026-11-21T08:10:16.906+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=5bc32aa3-7925-49dd-8ee8-10e8666bd6e2 path=/api/v1/workspaces/01a1fb70-814f-7a22-8b6c-5cf75b7d6828/research-tasks
+2026-11-21T08:10:16.924+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=6a4b2873-41eb-4d45-be05-b4cd0472053d path=/api/v1/workspaces/01a1fb70-814f-7a22-8b6c-5cf75b7d6828/research-tasks
+2026-11-21T08:10:16.952+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=a9fd91c0-cf2d-4a76-a251-e0dcfe1d34ad path=/api/v1/workspaces/01a1fb70-814f-7a22-8b6c-5cf75b7d6828/research-tasks
+2026-11-21T08:10:18.552+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-9] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=t6a49c255abc1 taskId=01a1fb70-8830-7738-9ea7-d6eec8707148 runId=01a1fb70-8830-7580-8727-2f1c70ff2eb0 workspaceId=01a1fb70-87a2-7755-adce-e37fb0e42332 toolId=01a1fb70-87f3-7f12-9f4c-ce0df83ed759
+2026-11-21T08:10:20.090+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-3] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=tb21fe0500faa taskId=01a1fb70-8e37-7dae-ae41-da035e022186 runId=01a1fb70-8e37-7d76-a635-8742d5d95c38 workspaceId=01a1fb70-8dfc-7a35-bb09-16e62c15ad16 toolId=01a1fb70-8e1a-703e-bd51-93a6b96a23fa
+2026-11-21T08:10:21.596+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-5] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=t609cc07c882c taskId=01a1fb70-9418-786b-bdec-e12ff1ebcfec runId=01a1fb70-9418-7925-af90-b340e8b03825 workspaceId=01a1fb70-93f1-74d5-a0ca-5d5aaa7b2b95 toolId=01a1fb70-93fd-7edb-ad60-81ab9f4d3ee4
+2026-11-21T08:10:24.549+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-8] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=t824df32d1fdb taskId=01a1fb70-9fa2-7d6c-9359-120eb17e3499 runId=01a1fb70-9fa2-7e72-b868-98c36a1f2383 workspaceId=01a1fb70-99d7-743d-9a14-ce7fa036525c toolId=01a1fb70-9f88-74a9-a33f-540dec36b2b6
+2026-11-21T08:10:24.568+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=075ce9c7-37e8-4b2f-936d-9f604d191502 path=/api/v1/research-tasks/01a1fb70-9fa2-7d6c-9359-120eb17e3499
+2026-11-21T08:10:24.589+08:00  INFO 56847 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=a79c76d3-3e43-463a-b872-86ab87f25665 path=/api/v1/research-tasks/01a1fb70-9fa2-7d6c-9359-120eb17e3499
+2026-11-21T08:10:24.608+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=d595fab5-8e5d-4cde-b301-8cc5475c133f path=/api/v1/research-tasks/bb9f33c4-9560-4bce-9ee5-9f74738ecd05
+2026-11-21T08:10:24.627+08:00  INFO 56847 --- [riccon-api] [o-auto-1-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=6d5c14fc-de52-41a8-8696-ea219e9ccc92 path=/api/v1/workspaces/01a1fb70-99d7-743d-9a14-ce7fa036525c/research-tasks
+2026-11-21T08:10:24.640+08:00  INFO 56847 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.chat.ChatModelUnavailableApiTest]: ChatModelUnavailableApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T08:10:24.677+08:00  INFO 56847 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.chat.ChatModelUnavailableApiTest
+2026-11-21T08:10:24.678+08:00  INFO 56847 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.chat.ChatModelUnavailableApiTest]: ChatModelUnavailableApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T08:10:24.678+08:00  INFO 56847 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T08:10:24.679+08:00  INFO 56847 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.chat.ChatModelUnavailableApiTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-21T08:10:24.723+08:00  INFO 56847 --- [riccon-api] [           main] c.r.a.chat.ChatModelUnavailableApiTest   : Starting ChatModelUnavailableApiTest using Java 21.0.13 with PID 56847 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-21T08:10:24.723+08:00  INFO 56847 --- [riccon-api] [           main] c.r.a.chat.ChatModelUnavailableApiTest   : The following 1 profile is active: "test"
+2026-11-21T08:10:25.228+08:00  INFO 56847 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-21T08:10:25.229+08:00  INFO 56847 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-21T08:10:25.229+08:00  INFO 56847 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-21T08:10:25.281+08:00  INFO 56847 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 557 ms
+2026-11-21T08:10:25.306+08:00  INFO 56847 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Starting...
+2026-11-21T08:10:25.316+08:00  INFO 56847 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Start completed.
+2026-11-21T08:10:25.322+08:00  INFO 56847 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:59410/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-21T08:10:25.355+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 11 migrations (execution time 00:00.018s)
+2026-11-21T08:10:25.364+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: 11
+2026-11-21T08:10:25.365+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Schema `riccon` is up to date. No migration necessary.
+2026-11-21T08:10:25.406+08:00  INFO 56847 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-21T08:10:25.437+08:00  INFO 56847 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-21T08:10:25.438+08:00  INFO 56847 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-21T08:10:25.438+08:00  INFO 56847 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-21T08:10:25.438+08:00  INFO 56847 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-21T08:10:25.691+08:00  WARN 56847 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist is empty; mode=DEMO allowLegacyEndpoints=true
+2026-11-21T08:10:25.692+08:00  INFO 56847 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=0
+2026-11-21T08:10:25.696+08:00  INFO 56847 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-test, previousKey=true, fingerprintPepper=true
+2026-11-21T08:10:25.885+08:00  INFO 56847 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-21T08:10:25.900+08:00  INFO 56847 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 59668 (http) with context path '/'
+2026-11-21T08:10:25.903+08:00  INFO 56847 --- [riccon-api] [           main] c.r.a.chat.ChatModelUnavailableApiTest   : Started ChatModelUnavailableApiTest in 1.211 seconds (process running for 43.638)
+2026-11-21T08:10:25.906+08:00  WARN 56847 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin skipped: platform admin already exists
+2026-11-21T08:10:25.913+08:00  INFO 56847 --- [riccon-api] [o-auto-2-exec-1] o.a.c.c.C.[Tomcat-1].[localhost].[/]     : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-21T08:10:25.913+08:00  INFO 56847 --- [riccon-api] [o-auto-2-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-21T08:10:25.915+08:00  INFO 56847 --- [riccon-api] [o-auto-2-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-11-21T08:10:26.826+08:00  INFO 56847 --- [riccon-api] [o-auto-2-exec-8] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chata0568a752102823 conversationId=01a1fb70-a886-723f-9b36-06b2775e513c workspaceId=01a1fb70-a867-7724-be01-cc8689a77633
+2026-11-21T08:10:26.878+08:00  INFO 56847 --- [riccon-api] [o-auto-2-exec-9] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chata0568a752102823 conversationId=01a1fb70-a886-723f-9b36-06b2775e513c runId=01a1fb70-a8b4-737b-bb9f-775c2afd25f1 userMessageId=01a1fb70-a8b4-769b-aec1-1a2730f11aec assistantMessageId=01a1fb70-a8b4-7535-844a-1858df2239a6 attachments=0
+2026-11-21T08:10:26.912+08:00  WARN 56847 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.chat.service.ChatService    : chat.worker.rejected status=400 code=RICCON-CHAT-400 detail=trace header is required
+2026-11-21T08:10:26.913+08:00  INFO 56847 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=83c38aa7-7cfc-452a-8db7-f20c38b0718a path=/api/v1/conversations/01a1fb70-a886-723f-9b36-06b2775e513c/messages
+2026-11-21T08:10:26.952+08:00  INFO 56847 --- [riccon-api] [-auto-2-exec-10] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chata0568a752102823 conversationId=01a1fb70-a886-723f-9b36-06b2775e513c runId=01a1fb70-a902-7923-8a7b-6d9f825f5963 userMessageId=01a1fb70-a902-7acd-97bb-9e32974da8ff assistantMessageId=01a1fb70-a902-75c9-8a92-01d97655bc00 attachments=0
+2026-11-21T08:10:26.964+08:00  WARN 56847 --- [riccon-api] [-auto-2-exec-10] c.riccon.api.chat.service.ChatService    : chat.worker.rejected status=409 code=RICCON-CHAT-409 detail=run is already terminal
+2026-11-21T08:10:26.964+08:00  INFO 56847 --- [riccon-api] [-auto-2-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=a15b9738-16d2-4055-a226-f952a0ec8076 path=/api/v1/conversations/01a1fb70-a886-723f-9b36-06b2775e513c/messages
+2026-11-21T08:10:26.999+08:00  INFO 56847 --- [riccon-api] [o-auto-2-exec-1] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chata0568a752102823 conversationId=01a1fb70-a886-723f-9b36-06b2775e513c runId=01a1fb70-a932-774f-aa17-872b792accb7 userMessageId=01a1fb70-a932-769e-a3a6-2021917d915d assistantMessageId=01a1fb70-a932-737e-9206-68582daa14a8 attachments=0
+2026-11-21T08:10:27.010+08:00  WARN 56847 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.chat.service.ChatService    : chat.worker.rejected status=429 code=RICCON-QUEUE-429 detail=worker stream capacity is full
+2026-11-21T08:10:27.010+08:00  INFO 56847 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-QUEUE-429 traceId=2b09c45d-4887-4cc7-8ae9-8e1c3936eead path=/api/v1/conversations/01a1fb70-a886-723f-9b36-06b2775e513c/messages
+2026-11-21T08:10:27.045+08:00  INFO 56847 --- [riccon-api] [o-auto-2-exec-2] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chata0568a752102823 conversationId=01a1fb70-a886-723f-9b36-06b2775e513c runId=01a1fb70-a961-75f7-9364-ea36b8c43a19 userMessageId=01a1fb70-a961-728b-83f4-b75bb426c720 assistantMessageId=01a1fb70-a961-75ef-8621-646fd6bdf317 attachments=0
+2026-11-21T08:10:27.056+08:00  WARN 56847 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.chat.service.ChatService    : chat.worker.rejected status=500 code=RICCON-CHAT-500 detail=worker request failed
+2026-11-21T08:10:27.056+08:00 ERROR 56847 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request failed code=RICCON-CHAT-500 traceId=0cdac373-7551-45da-bbcb-390c1ab4fd51 path=/api/v1/conversations/01a1fb70-a886-723f-9b36-06b2775e513c/messages
+
+com.riccon.api.error.RicconException: chat upstream failed
+	at com.riccon.api.chat.service.ChatService.mapWorkerCall(ChatService.java:681) ~[classes/:na]
+	at com.riccon.api.chat.service.ChatService.send(ChatService.java:171) ~[classes/:na]
+	at com.riccon.api.chat.controller.ConversationController.sendMessage(ConversationController.java:242) ~[classes/:na]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:252) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:184) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:117) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:934) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:853) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:86) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:963) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:866) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1000) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.doPost(FrameworkServlet.java:903) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:649) ~[tomcat-embed-core-11.0.27.jar:6.1]
+	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:874) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:710) ~[tomcat-embed-core-11.0.27.jar:6.1]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:132) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:59) ~[tomcat-embed-websocket-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:108) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.FilterChainProxy.lambda$doFilterInternal$2(FilterChainProxy.java:235) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$FilterObservation$SimpleFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:491) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:353) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator.lambda$wrapSecured$0(ObservationFilterChainDecorator.java:84) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:131) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.intercept.AuthorizationFilter.doFilter(AuthorizationFilter.java:101) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:126) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:120) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:132) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:86) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AnonymousAuthenticationFilter.doFilter(AnonymousAuthenticationFilter.java:101) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter.doFilter(SecurityContextHolderAwareRequestFilter.java:181) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:246) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:240) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter.doFilterInternal(OAuth2AuthorizationRequestRedirectFilter.java:195) ~[spring-security-oauth2-client-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.csrf.CsrfFilter.doFilterInternal(CsrfFilter.java:135) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at com.riccon.api.web.OriginCheckFilter.doFilterInternal(OriginCheckFilter.java:61) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:91) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:76) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at com.riccon.api.auth.controller.TenantContextFilter.doFilterInternal(TenantContextFilter.java:122) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$0(ObservationFilterChainDecorator.java:336) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:237) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:195) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.ServletRequestPathFilter.doFilter(ServletRequestPathFilter.java:52) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.config.annotation.web.configuration.WebSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebSecurityConfiguration.java:317) ~[spring-security-config-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.session.web.http.SessionRepositoryFilter.doFilterInternal(SessionRepositoryFilter.java:143) ~[spring-session-core-4.1.1.jar:4.1.1]
+	at org.springframework.session.web.http.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:82) ~[spring-session-core-4.1.1.jar:4.1.1]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:110) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:199) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at com.riccon.api.web.TraceIdFilter.doFilterInternal(TraceIdFilter.java:52) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:164) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:77) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:540) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:86) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:71) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:347) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:411) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:71) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:1308) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:2202) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:74) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:947) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:481) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:74) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+
+2026-11-21T08:10:27.956+08:00  INFO 56847 --- [riccon-api] [-auto-2-exec-10] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chata0562857068f4db conversationId=01a1fb70-acf1-7079-b0f6-9cdb7bd052fa workspaceId=01a1fb70-acdb-7a76-9840-abc3ef5cfcfd
+2026-11-21T08:10:27.989+08:00  INFO 56847 --- [riccon-api] [o-auto-2-exec-1] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chata0562857068f4db conversationId=01a1fb70-acf1-7079-b0f6-9cdb7bd052fa runId=01a1fb70-ad10-7ed1-838c-ca4f7c2053b7 userMessageId=01a1fb70-ad10-7a94-aefb-97283c158894 assistantMessageId=01a1fb70-ad10-713a-a94b-95f8d711cfa7 attachments=0
+2026-11-21T08:10:28.001+08:00 ERROR 56847 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request failed code=RICCON-MODEL-503 traceId=8e63e22e-8e9a-4a11-84b7-f6567a13ce10 path=/api/v1/conversations/01a1fb70-acf1-7079-b0f6-9cdb7bd052fa/messages
+
+com.riccon.api.error.RicconException: 模型服务暂不可用，请稍后重试。
+	at com.riccon.api.chat.service.ChatService.modelUnavailable(ChatService.java:695) ~[classes/:na]
+	at com.riccon.api.chat.service.ChatService.send(ChatService.java:188) ~[classes/:na]
+	at com.riccon.api.chat.controller.ConversationController.sendMessage(ConversationController.java:242) ~[classes/:na]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:252) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:184) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:117) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:934) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:853) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:86) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:963) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:866) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1000) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.doPost(FrameworkServlet.java:903) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:649) ~[tomcat-embed-core-11.0.27.jar:6.1]
+	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:874) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:710) ~[tomcat-embed-core-11.0.27.jar:6.1]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:132) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:59) ~[tomcat-embed-websocket-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:108) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.FilterChainProxy.lambda$doFilterInternal$2(FilterChainProxy.java:235) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$FilterObservation$SimpleFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:491) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:353) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator.lambda$wrapSecured$0(ObservationFilterChainDecorator.java:84) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:131) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.intercept.AuthorizationFilter.doFilter(AuthorizationFilter.java:101) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:126) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:120) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:132) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:86) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AnonymousAuthenticationFilter.doFilter(AnonymousAuthenticationFilter.java:101) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter.doFilter(SecurityContextHolderAwareRequestFilter.java:181) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:246) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:240) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter.doFilterInternal(OAuth2AuthorizationRequestRedirectFilter.java:195) ~[spring-security-oauth2-client-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.csrf.CsrfFilter.doFilterInternal(CsrfFilter.java:135) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at com.riccon.api.web.OriginCheckFilter.doFilterInternal(OriginCheckFilter.java:61) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:91) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:76) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at com.riccon.api.auth.controller.TenantContextFilter.doFilterInternal(TenantContextFilter.java:122) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$0(ObservationFilterChainDecorator.java:336) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:237) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:195) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.ServletRequestPathFilter.doFilter(ServletRequestPathFilter.java:52) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.config.annotation.web.configuration.WebSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebSecurityConfiguration.java:317) ~[spring-security-config-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.session.web.http.SessionRepositoryFilter.doFilterInternal(SessionRepositoryFilter.java:143) ~[spring-session-core-4.1.1.jar:4.1.1]
+	at org.springframework.session.web.http.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:82) ~[spring-session-core-4.1.1.jar:4.1.1]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:110) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:199) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at com.riccon.api.web.TraceIdFilter.doFilterInternal(TraceIdFilter.java:52) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:164) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:77) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:540) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:86) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:71) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:347) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:411) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:71) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:1308) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:2202) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:74) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:947) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:481) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:74) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+
+2026-11-21T08:10:28.959+08:00  INFO 56847 --- [riccon-api] [o-auto-2-exec-9] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chata053b607642e18b conversationId=01a1fb70-b0dc-7f77-9bb3-eb2a3f5a5f18 workspaceId=01a1fb70-b0c7-7eb3-91d1-9b9c9dda2196
+2026-11-21T08:10:28.992+08:00  INFO 56847 --- [riccon-api] [-auto-2-exec-10] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chata053b607642e18b conversationId=01a1fb70-b0dc-7f77-9bb3-eb2a3f5a5f18 runId=01a1fb70-b0fb-788b-966c-fca34cd4138f userMessageId=01a1fb70-b0fb-7eac-ad0d-636ab711cc2b assistantMessageId=01a1fb70-b0fb-7a37-bb82-1db7123656b2 attachments=0
+2026-11-21T08:10:29.002+08:00 ERROR 56847 --- [riccon-api] [-auto-2-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request failed code=RICCON-CHAT-500 traceId=7d850e37-02d9-4945-9c84-129f89cb09a2 path=/api/v1/conversations/01a1fb70-b0dc-7f77-9bb3-eb2a3f5a5f18/messages
+
+com.riccon.api.error.RicconException: chat worker failed before first token
+	at com.riccon.api.chat.service.ChatService.send(ChatService.java:190) ~[classes/:na]
+	at com.riccon.api.chat.controller.ConversationController.sendMessage(ConversationController.java:242) ~[classes/:na]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:252) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:184) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:117) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:934) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:853) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:86) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:963) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:866) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1000) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.doPost(FrameworkServlet.java:903) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:649) ~[tomcat-embed-core-11.0.27.jar:6.1]
+	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:874) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:710) ~[tomcat-embed-core-11.0.27.jar:6.1]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:132) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:59) ~[tomcat-embed-websocket-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:108) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.FilterChainProxy.lambda$doFilterInternal$2(FilterChainProxy.java:235) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$FilterObservation$SimpleFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:491) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:353) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator.lambda$wrapSecured$0(ObservationFilterChainDecorator.java:84) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:131) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.intercept.AuthorizationFilter.doFilter(AuthorizationFilter.java:101) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:126) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:120) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:132) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:86) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AnonymousAuthenticationFilter.doFilter(AnonymousAuthenticationFilter.java:101) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter.doFilter(SecurityContextHolderAwareRequestFilter.java:181) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:246) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:240) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter.doFilterInternal(OAuth2AuthorizationRequestRedirectFilter.java:195) ~[spring-security-oauth2-client-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.csrf.CsrfFilter.doFilterInternal(CsrfFilter.java:135) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at com.riccon.api.web.OriginCheckFilter.doFilterInternal(OriginCheckFilter.java:61) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:91) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:76) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at com.riccon.api.auth.controller.TenantContextFilter.doFilterInternal(TenantContextFilter.java:122) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$0(ObservationFilterChainDecorator.java:336) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:237) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:195) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.ServletRequestPathFilter.doFilter(ServletRequestPathFilter.java:52) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.config.annotation.web.configuration.WebSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebSecurityConfiguration.java:317) ~[spring-security-config-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.session.web.http.SessionRepositoryFilter.doFilterInternal(SessionRepositoryFilter.java:143) ~[spring-session-core-4.1.1.jar:4.1.1]
+	at org.springframework.session.web.http.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:82) ~[spring-session-core-4.1.1.jar:4.1.1]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:110) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:199) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at com.riccon.api.web.TraceIdFilter.doFilterInternal(TraceIdFilter.java:52) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:164) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:77) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:540) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:86) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:71) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:347) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:411) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:71) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:1308) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:2202) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:74) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:947) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:481) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:74) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+
+2026-11-21T08:10:29.889+08:00  INFO 56847 --- [riccon-api] [o-auto-2-exec-8] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chata052504eedeb434 conversationId=01a1fb70-b47f-756b-9828-fc2fbdf79c4b workspaceId=01a1fb70-b46c-7fa2-928f-e659bcae729f
+2026-11-21T08:10:29.921+08:00  INFO 56847 --- [riccon-api] [o-auto-2-exec-9] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chata052504eedeb434 conversationId=01a1fb70-b47f-756b-9828-fc2fbdf79c4b runId=01a1fb70-b49d-7ff6-91de-444046839f96 userMessageId=01a1fb70-b49d-7830-ad13-03e91778a90e assistantMessageId=01a1fb70-b49d-7452-89f3-5da9e04f7733 attachments=0
+2026-11-21T08:10:29.930+08:00  WARN 56847 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.chat.service.ChatService    : chat.worker.rejected status=503 code=RICCON-MODEL-503 detail=model chain is unavailable
+2026-11-21T08:10:29.930+08:00 ERROR 56847 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request failed code=RICCON-MODEL-503 traceId=73fe7861-2694-41d0-9aab-fca4c6b9775b path=/api/v1/conversations/01a1fb70-b47f-756b-9828-fc2fbdf79c4b/messages
+
+com.riccon.api.error.RicconException: 模型服务暂不可用，请稍后重试。
+	at com.riccon.api.chat.service.ChatService.modelUnavailable(ChatService.java:695) ~[classes/:na]
+	at com.riccon.api.chat.service.ChatService.mapWorkerCall(ChatService.java:665) ~[classes/:na]
+	at com.riccon.api.chat.service.ChatService.send(ChatService.java:171) ~[classes/:na]
+	at com.riccon.api.chat.controller.ConversationController.sendMessage(ConversationController.java:242) ~[classes/:na]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:252) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:184) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:117) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:934) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:853) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:86) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:963) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:866) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1000) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.doPost(FrameworkServlet.java:903) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:649) ~[tomcat-embed-core-11.0.27.jar:6.1]
+	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:874) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:710) ~[tomcat-embed-core-11.0.27.jar:6.1]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:132) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:59) ~[tomcat-embed-websocket-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:108) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.FilterChainProxy.lambda$doFilterInternal$2(FilterChainProxy.java:235) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$FilterObservation$SimpleFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:491) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:353) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator.lambda$wrapSecured$0(ObservationFilterChainDecorator.java:84) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:131) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.intercept.AuthorizationFilter.doFilter(AuthorizationFilter.java:101) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:126) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:120) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:132) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:86) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AnonymousAuthenticationFilter.doFilter(AnonymousAuthenticationFilter.java:101) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter.doFilter(SecurityContextHolderAwareRequestFilter.java:181) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:246) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:240) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter.doFilterInternal(OAuth2AuthorizationRequestRedirectFilter.java:195) ~[spring-security-oauth2-client-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.csrf.CsrfFilter.doFilterInternal(CsrfFilter.java:135) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at com.riccon.api.web.OriginCheckFilter.doFilterInternal(OriginCheckFilter.java:61) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:91) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:76) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at com.riccon.api.auth.controller.TenantContextFilter.doFilterInternal(TenantContextFilter.java:122) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$0(ObservationFilterChainDecorator.java:336) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:237) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:195) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.ServletRequestPathFilter.doFilter(ServletRequestPathFilter.java:52) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.config.annotation.web.configuration.WebSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebSecurityConfiguration.java:317) ~[spring-security-config-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.session.web.http.SessionRepositoryFilter.doFilterInternal(SessionRepositoryFilter.java:143) ~[spring-session-core-4.1.1.jar:4.1.1]
+	at org.springframework.session.web.http.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:82) ~[spring-session-core-4.1.1.jar:4.1.1]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:110) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:199) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at com.riccon.api.web.TraceIdFilter.doFilterInternal(TraceIdFilter.java:52) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:164) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:77) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:540) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:86) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:71) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:347) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:411) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:71) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:1308) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:2202) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:74) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:947) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:481) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:74) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+
+2026-11-21T08:10:30.827+08:00  INFO 56847 --- [riccon-api] [o-auto-2-exec-7] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chata052512435f9690 conversationId=01a1fb70-b829-7c37-be6a-96b11905fe24 workspaceId=01a1fb70-b815-7f1c-8963-01ab6188bfa4
+2026-11-21T08:10:30.861+08:00  INFO 56847 --- [riccon-api] [o-auto-2-exec-8] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chata052512435f9690 conversationId=01a1fb70-b829-7c37-be6a-96b11905fe24 runId=01a1fb70-b848-7d59-9cc0-a8c169649196 userMessageId=01a1fb70-b848-7f26-aaa7-870e0f5670e7 assistantMessageId=01a1fb70-b848-7a96-917e-ec59446488e3 attachments=0
+2026-11-21T08:10:30.870+08:00  WARN 56847 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.chat.service.ChatService    : chat.worker.rejected status=500 code=RICCON-MODEL-503 detail=model route is empty; provider=mock-openai baseUrl=http://10.9.8.7:8080/v1 apiKey=sk-live-0123456789
+2026-11-21T08:10:30.871+08:00 ERROR 56847 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request failed code=RICCON-MODEL-503 traceId=5db6861e-7e6e-4d8a-a00d-4f2b88e6002b path=/api/v1/conversations/01a1fb70-b829-7c37-be6a-96b11905fe24/messages
+
+com.riccon.api.error.RicconException: 模型服务暂不可用，请稍后重试。
+	at com.riccon.api.chat.service.ChatService.modelUnavailable(ChatService.java:695) ~[classes/:na]
+	at com.riccon.api.chat.service.ChatService.mapWorkerCall(ChatService.java:665) ~[classes/:na]
+	at com.riccon.api.chat.service.ChatService.send(ChatService.java:171) ~[classes/:na]
+	at com.riccon.api.chat.controller.ConversationController.sendMessage(ConversationController.java:242) ~[classes/:na]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:252) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:184) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:117) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:934) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:853) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:86) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:963) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:866) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1000) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.doPost(FrameworkServlet.java:903) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:649) ~[tomcat-embed-core-11.0.27.jar:6.1]
+	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:874) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:710) ~[tomcat-embed-core-11.0.27.jar:6.1]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:132) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:59) ~[tomcat-embed-websocket-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:108) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.FilterChainProxy.lambda$doFilterInternal$2(FilterChainProxy.java:235) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$FilterObservation$SimpleFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:491) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:353) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator.lambda$wrapSecured$0(ObservationFilterChainDecorator.java:84) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:131) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.intercept.AuthorizationFilter.doFilter(AuthorizationFilter.java:101) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:126) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:120) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:132) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:86) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AnonymousAuthenticationFilter.doFilter(AnonymousAuthenticationFilter.java:101) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter.doFilter(SecurityContextHolderAwareRequestFilter.java:181) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:246) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:240) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter.doFilterInternal(OAuth2AuthorizationRequestRedirectFilter.java:195) ~[spring-security-oauth2-client-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.csrf.CsrfFilter.doFilterInternal(CsrfFilter.java:135) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at com.riccon.api.web.OriginCheckFilter.doFilterInternal(OriginCheckFilter.java:61) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:91) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:76) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at com.riccon.api.auth.controller.TenantContextFilter.doFilterInternal(TenantContextFilter.java:122) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$0(ObservationFilterChainDecorator.java:336) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:237) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:195) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.ServletRequestPathFilter.doFilter(ServletRequestPathFilter.java:52) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.config.annotation.web.configuration.WebSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebSecurityConfiguration.java:317) ~[spring-security-config-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.session.web.http.SessionRepositoryFilter.doFilterInternal(SessionRepositoryFilter.java:143) ~[spring-session-core-4.1.1.jar:4.1.1]
+	at org.springframework.session.web.http.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:82) ~[spring-session-core-4.1.1.jar:4.1.1]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:110) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:199) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at com.riccon.api.web.TraceIdFilter.doFilterInternal(TraceIdFilter.java:52) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:164) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:77) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:540) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:86) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:71) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:347) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:411) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:71) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:1308) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:2202) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:74) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:947) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:481) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:74) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+
+2026-11-21T08:10:30.889+08:00  INFO 56847 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.ChatStreamApiTest]: ChatStreamApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T08:10:30.891+08:00  INFO 56847 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.ChatStreamApiTest
+2026-11-21T08:10:30.891+08:00  INFO 56847 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.ChatStreamApiTest]: ChatStreamApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T08:10:30.891+08:00  INFO 56847 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T08:10:30.892+08:00  INFO 56847 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.ChatStreamApiTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-21T08:10:30.918+08:00  INFO 56847 --- [riccon-api] [           main] com.riccon.api.ChatStreamApiTest         : Starting ChatStreamApiTest using Java 21.0.13 with PID 56847 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-21T08:10:30.918+08:00  INFO 56847 --- [riccon-api] [           main] com.riccon.api.ChatStreamApiTest         : The following 1 profile is active: "test"
+2026-11-21T08:10:31.250+08:00  INFO 56847 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-21T08:10:31.250+08:00  INFO 56847 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-21T08:10:31.250+08:00  INFO 56847 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-21T08:10:31.292+08:00  INFO 56847 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 372 ms
+2026-11-21T08:10:31.311+08:00  INFO 56847 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-3 - Starting...
+2026-11-21T08:10:31.318+08:00  INFO 56847 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-3 - Start completed.
+2026-11-21T08:10:31.324+08:00  INFO 56847 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:59410/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-21T08:10:31.348+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 11 migrations (execution time 00:00.012s)
+2026-11-21T08:10:31.355+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: 11
+2026-11-21T08:10:31.356+08:00  INFO 56847 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Schema `riccon` is up to date. No migration necessary.
+2026-11-21T08:10:31.393+08:00  INFO 56847 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-21T08:10:31.420+08:00  INFO 56847 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-21T08:10:31.421+08:00  INFO 56847 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-21T08:10:31.421+08:00  INFO 56847 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-21T08:10:31.421+08:00  INFO 56847 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-21T08:10:31.670+08:00  WARN 56847 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist is empty; mode=DEMO allowLegacyEndpoints=true
+2026-11-21T08:10:31.670+08:00  INFO 56847 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=0
+2026-11-21T08:10:31.674+08:00  INFO 56847 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-test, previousKey=true, fingerprintPepper=true
+2026-11-21T08:10:31.861+08:00  INFO 56847 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-21T08:10:31.873+08:00  INFO 56847 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 59697 (http) with context path '/'
+2026-11-21T08:10:31.876+08:00  INFO 56847 --- [riccon-api] [           main] com.riccon.api.ChatStreamApiTest         : Started ChatStreamApiTest in 0.979 seconds (process running for 49.611)
+2026-11-21T08:10:31.879+08:00  WARN 56847 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin skipped: platform admin already exists
+2026-11-21T08:10:31.886+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-1] o.a.c.c.C.[Tomcat-2].[localhost].[/]     : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-21T08:10:31.886+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-21T08:10:31.887+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 0 ms
+2026-11-21T08:10:32.822+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-8] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chate5f55ef46637 conversationId=01a1fb70-bff4-710d-a253-46a111dcf1ac workspaceId=01a1fb70-bfdb-7da2-a0c0-f221455b6fa6
+2026-11-21T08:10:32.866+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-9] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chate5f55ef46637 conversationId=01a1fb70-bff4-710d-a253-46a111dcf1ac runId=01a1fb70-c01c-7079-8b6d-1e959f034cc0 userMessageId=01a1fb70-c01c-7f00-95d0-26791979daaf assistantMessageId=01a1fb70-c01c-782c-8d20-5b901a41610a attachments=0
+2026-11-21T08:10:32.987+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-1] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chate5f55ef46637 conversationId=01a1fb70-bff4-710d-a253-46a111dcf1ac runId=01a1fb70-c096-7192-b0fa-7fb2a5990f13 userMessageId=01a1fb70-c096-7ffb-bd6e-af7ae8f57a96 assistantMessageId=01a1fb70-c096-7296-97ca-a9cc98f99fcd attachments=0
+2026-11-21T08:10:33.965+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-1] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chatac46bb923336 conversationId=01a1fb70-c46b-7b8d-982b-8877a6a221e4 workspaceId=01a1fb70-c457-7482-aa89-1568aedec893
+2026-11-21T08:10:34.001+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-2] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chatac46bb923336 conversationId=01a1fb70-c46b-7b8d-982b-8877a6a221e4 runId=01a1fb70-c48c-7d03-90e9-cabac04baa7c userMessageId=01a1fb70-c48c-7891-92bb-ac1500716493 assistantMessageId=01a1fb70-c48c-7c09-87aa-dce094eba67c attachments=0
+2026-11-21T08:10:34.062+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=c3b7bf11-975f-4173-a639-b08226610098 path=/api/v1/conversations/01a1fb70-c46b-7b8d-982b-8877a6a221e4/stop
+2026-11-21T08:10:34.086+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=50225786-5995-4215-8248-ca61c2ea74e8 path=/api/v1/conversations/01a1fb70-c46b-7b8d-982b-8877a6a221e4/stop
+2026-11-21T08:10:34.978+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-3] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chatf623abd32f4e conversationId=01a1fb70-c860-7517-a1f2-13afa08094ef workspaceId=01a1fb70-c84d-7f06-9295-23ab273cd089
+2026-11-21T08:10:35.009+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-4] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chatf623abd32f4e conversationId=01a1fb70-c860-7517-a1f2-13afa08094ef runId=01a1fb70-c87d-741c-a388-296d877516fb userMessageId=01a1fb70-c87d-7d41-a502-fd8872585d75 assistantMessageId=01a1fb70-c87d-71c4-b0fc-3bebe0fac459 attachments=0
+2026-11-21T08:10:35.017+08:00  WARN 56847 --- [riccon-api] [o-auto-3-exec-4] c.riccon.api.chat.service.ChatService    : chat.worker.rejected status=500 code=RICCON-MODEL-500 detail=mock model failure
+2026-11-21T08:10:35.018+08:00 ERROR 56847 --- [riccon-api] [o-auto-3-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request failed code=RICCON-CHAT-500 traceId=90207983-65bf-48a5-8b56-fbbd80085525 path=/api/v1/conversations/01a1fb70-c860-7517-a1f2-13afa08094ef/messages
+
+com.riccon.api.error.RicconException: chat upstream failed
+	at com.riccon.api.chat.service.ChatService.mapWorkerCall(ChatService.java:681) ~[classes/:na]
+	at com.riccon.api.chat.service.ChatService.send(ChatService.java:171) ~[classes/:na]
+	at com.riccon.api.chat.controller.ConversationController.sendMessage(ConversationController.java:242) ~[classes/:na]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:252) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:184) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:117) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:934) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:853) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:86) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:963) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:866) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1000) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.doPost(FrameworkServlet.java:903) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:649) ~[tomcat-embed-core-11.0.27.jar:6.1]
+	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:874) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:710) ~[tomcat-embed-core-11.0.27.jar:6.1]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:132) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:59) ~[tomcat-embed-websocket-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:108) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.FilterChainProxy.lambda$doFilterInternal$2(FilterChainProxy.java:235) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$FilterObservation$SimpleFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:491) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:353) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator.lambda$wrapSecured$0(ObservationFilterChainDecorator.java:84) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:131) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.intercept.AuthorizationFilter.doFilter(AuthorizationFilter.java:101) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:126) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:120) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:132) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:86) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AnonymousAuthenticationFilter.doFilter(AnonymousAuthenticationFilter.java:101) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter.doFilter(SecurityContextHolderAwareRequestFilter.java:181) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:246) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:240) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter.doFilterInternal(OAuth2AuthorizationRequestRedirectFilter.java:195) ~[spring-security-oauth2-client-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.csrf.CsrfFilter.doFilterInternal(CsrfFilter.java:135) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at com.riccon.api.web.OriginCheckFilter.doFilterInternal(OriginCheckFilter.java:61) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:91) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:76) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at com.riccon.api.auth.controller.TenantContextFilter.doFilterInternal(TenantContextFilter.java:122) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$0(ObservationFilterChainDecorator.java:336) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:237) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:195) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.ServletRequestPathFilter.doFilter(ServletRequestPathFilter.java:52) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.config.annotation.web.configuration.WebSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebSecurityConfiguration.java:317) ~[spring-security-config-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.session.web.http.SessionRepositoryFilter.doFilterInternal(SessionRepositoryFilter.java:143) ~[spring-session-core-4.1.1.jar:4.1.1]
+	at org.springframework.session.web.http.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:82) ~[spring-session-core-4.1.1.jar:4.1.1]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:110) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:199) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at com.riccon.api.web.TraceIdFilter.doFilterInternal(TraceIdFilter.java:52) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:164) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:77) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:540) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:86) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:71) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:347) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:411) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:71) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:1308) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:2202) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:74) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:947) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:481) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:74) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+
+2026-11-21T08:10:35.892+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-2] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chat481f8a80211b conversationId=01a1fb70-cbf2-7f17-8b02-f3af90a8579c workspaceId=01a1fb70-cbe2-732b-80e7-7b012017d72a
+2026-11-21T08:10:35.924+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-3] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chat481f8a80211b conversationId=01a1fb70-cbf2-7f17-8b02-f3af90a8579c runId=01a1fb70-cc0f-762d-ab64-4ac5bf7d2f33 userMessageId=01a1fb70-cc0f-77f2-a592-b4f067c953e6 assistantMessageId=01a1fb70-cc0f-742f-8395-7b1fa6ccf649 attachments=0
+2026-11-21T08:10:35.990+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-5] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chat481f8a80211b conversationId=01a1fb70-cbf2-7f17-8b02-f3af90a8579c runId=01a1fb70-cc52-730e-83fe-042324692886 userMessageId=01a1fb70-cc52-74aa-8a5a-01189657bab6 assistantMessageId=01a1fb70-cc52-7e68-8a19-642dc61b09c3 attachments=0
+2026-11-21T08:10:36.079+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=960ab608-87dc-46ce-9826-3a0b39f2f0b5 path=/api/v1/conversations/01a1fb70-cbf2-7f17-8b02-f3af90a8579c/messages
+2026-11-21T08:10:36.951+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-7] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chateb9dcb0bd841 conversationId=01a1fb70-d015-70ea-9a97-8dd90ea849ae workspaceId=01a1fb70-d003-7d59-b008-6fdc34eee52c
+2026-11-21T08:10:36.984+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-8] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chateb9dcb0bd841 conversationId=01a1fb70-d015-70ea-9a97-8dd90ea849ae runId=01a1fb70-d034-73a3-b65f-7b3fb8a782f4 userMessageId=01a1fb70-d034-79fa-93d1-912899672c99 assistantMessageId=01a1fb70-d034-7e5c-ae54-0b6d4d8734f9 attachments=0
+2026-11-21T08:10:37.913+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-7] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chatd3650e335948 conversationId=01a1fb70-d3d7-79cb-a2ea-4b1dc85e8d8c workspaceId=01a1fb70-d3c4-71c1-8b65-5111d3baf962
+2026-11-21T08:10:37.943+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-8] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chatd3650e335948 conversationId=01a1fb70-d3d7-79cb-a2ea-4b1dc85e8d8c runId=01a1fb70-d3f3-7335-b549-28964f281082 userMessageId=01a1fb70-d3f3-7888-b841-44f8e1fe0464 assistantMessageId=01a1fb70-d3f3-7a56-bea7-728c98b51b05 attachments=0
+2026-11-21T08:10:37.997+08:00  INFO 56847 --- [riccon-api] [-auto-3-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=489b6156-d65e-4e27-9f59-a06e21ce08a1 path=/api/v1/conversations/01a1fb70-d3d7-79cb-a2ea-4b1dc85e8d8c/messages
+2026-11-21T08:10:38.883+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-8] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chate4067902e93d conversationId=01a1fb70-d7a1-7659-8b7c-a78e69d6e645 workspaceId=01a1fb70-d78f-795d-8936-42947242384d
+2026-11-21T08:10:38.912+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-9] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chate4067902e93d conversationId=01a1fb70-d7a1-7659-8b7c-a78e69d6e645 runId=01a1fb70-d7bc-7523-973a-2c76d1f249c1 userMessageId=01a1fb70-d7bc-7548-b63c-7a3979c9ebfc assistantMessageId=01a1fb70-d7bc-7f1e-afa3-17b8e4ddf74b attachments=0
+2026-11-21T08:10:39.830+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-9] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chatdf74e939acd9 conversationId=01a1fb70-db54-7470-a90d-686a8e7addbf workspaceId=01a1fb70-db43-73c5-83e8-baf4a6d43c1d
+2026-11-21T08:10:39.846+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=0eafcdb3-dc0e-4659-a248-507452685545 path=/api/v1/conversations/01a1fb70-db54-7470-a90d-686a8e7addbf/messages
+2026-11-21T08:10:39.861+08:00  INFO 56847 --- [riccon-api] [-auto-3-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=355ef950-c2bb-40e4-b513-c73b97ebb329 path=/api/v1/conversations/01a1fb70-db54-7470-a90d-686a8e7addbf/messages
+2026-11-21T08:10:39.886+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=ad2200c3-7fcc-440a-b030-04c88954954e path=/api/v1/conversations/01a1fb70-db54-7470-a90d-686a8e7addbf/messages
+2026-11-21T08:10:39.904+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=39dca9cc-b230-433c-94a4-76d04a56eb8f path=/api/v1/conversations/01a1fb70-db54-7470-a90d-686a8e7addbf/messages
+2026-11-21T08:10:39.919+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=4df9da0c-d7ee-4d93-980e-131876b67d5e path=/api/v1/conversations/01a1fb70-db54-7470-a90d-686a8e7addbf/messages
+2026-11-21T08:10:40.812+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-8] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chat4895b429607b conversationId=01a1fb70-df2b-70ec-8363-024b0449928d workspaceId=01a1fb70-df19-7ef2-a744-4fc28241015e
+2026-11-21T08:10:41.696+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-6] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chat837a5acb838a conversationId=01a1fb70-e29d-74da-80b3-a3e175b31433 workspaceId=01a1fb70-e28c-7378-bfce-238b522b9b06
+2026-11-21T08:10:41.712+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=9596db89-8dd1-44f6-85a7-6c6886ad9f0a path=/api/v1/conversations/01a1fb70-df2b-70ec-8363-024b0449928d/messages
+2026-11-21T08:10:41.729+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=5728483f-e77c-43bd-bc4f-227925dfbc51 path=/api/v1/conversations/01a1fb70-df2b-70ec-8363-024b0449928d/stop
+2026-11-21T08:10:42.586+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-6] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chat1257c63c65fe conversationId=01a1fb70-e619-73fe-8199-758e908e29e3 workspaceId=01a1fb70-e608-7b7a-b5c4-8355cda7cc7b
+2026-11-21T08:10:42.617+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-7] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chat1257c63c65fe conversationId=01a1fb70-e619-73fe-8199-758e908e29e3 runId=01a1fb70-e635-7f90-8441-409c8b48ec32 userMessageId=01a1fb70-e635-7815-bf1e-eac6cfb70f0d assistantMessageId=01a1fb70-e635-7e6e-8a78-fb606b9f9779 attachments=0
+2026-11-21T08:10:48.580+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-6] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chata691a60c7f7c conversationId=01a1fb70-fd82-7e25-b0b8-57d8e9078dd2 workspaceId=01a1fb70-fd71-740f-8fdf-3f8cbc28ed1b
+2026-11-21T08:10:48.613+08:00  INFO 56847 --- [riccon-api] [o-auto-3-exec-7] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chata691a60c7f7c conversationId=01a1fb70-fd82-7e25-b0b8-57d8e9078dd2 runId=01a1fb70-fd9f-7ef9-b821-724afc7b3da0 userMessageId=01a1fb70-fd9f-7b59-977f-ea0c1e633d14 assistantMessageId=01a1fb70-fd9f-7155-9ac5-801378c5f286 attachments=0
+
+# --- stderr ---
+
