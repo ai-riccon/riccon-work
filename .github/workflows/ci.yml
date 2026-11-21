@@ -23,17 +23,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  backend:
-    name: 后端构建与验证
+  # M19 P2：后端测试拆成 4 个分片并行，只做快速反馈；模块 gate 仍在本机/verifier 跑
+  # canonical `./mvnw -q -T1C verify jacoco:report`（commands.test 不变）。
+  # 分片集合来自 scripts/test-shards-baseline.json；每片跑“除其他 3 片之外的所有类”，
+  # 未登记的新测试类会在所有分片执行，由 backend-merge 以重复类/额外类失败，不会静默漏跑。
+  backend-shards:
+    name: 后端测试分片 ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    # M19 P1：后端测试复用本 job 的 compose 测试栈（external 模式），不再为每个测试类启动
-    # Testcontainers。namespace 在每个 CI run 内唯一（满足 test-services.mjs 的
-    # [a-z0-9](?:[a-z0-9-]{0,28}[a-z0-9])? 校验），避免与其他 job 或残留数据冲突。
-    # 迁移/回滚/schema 测试仍各自启动一次性容器，不读取热栈。
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    # 每个分片独立 namespace（≤30 字符，满足 test-services.mjs 校验），复用本 job 的 compose
+    # 热栈；迁移/回滚/schema 测试仍各自启动一次性容器，不受 external 影响。
     env:
       RICCON_TEST_SERVICES: external
-      RICCON_TEST_SERVICES_NAMESPACE: ci-${{ github.run_id }}-backend
+      RICCON_TEST_SERVICES_NAMESPACE: ci-${{ github.run_id }}-b${{ matrix.shard }}
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
@@ -45,12 +51,152 @@ jobs:
           java-version: "21"
           cache: maven
 
-      # M19 P0/P1：计时脚本与 namespace 准备脚本是 Node 脚本；固定 Node 26 与合同/前端 job 一致，
-      # 不依赖 runner 默认版本。
       - name: 安装 Node 26
         uses: actions/setup-node@v4
         with:
           node-version: "26"
+
+      # 先校验基线：4 片互斥完整、源码测试类均已登记。测试集合变更未重建基线时在这里快速失败，
+      # 不必先跑 20 分钟测试。
+      - name: 校验分片基线
+        run: node scripts/test-shards.mjs --check
+
+      - name: 校验测试栈编排
+        run: docker compose -f deploy/compose/docker-compose.test.yml config
+
+      - name: 启动测试依赖
+        run: docker compose -f deploy/compose/docker-compose.test.yml up -d --wait
+
+      - name: 准备分片 namespace
+        run: node scripts/test-services.mjs prepare --namespace "$RICCON_TEST_SERVICES_NAMESPACE"
+
+      - name: 记录分片开始时间
+        run: |
+          set -euo pipefail
+          mkdir -p .ci/test-shards
+          date +%s > ".ci/test-shards/shard-${{ matrix.shard }}-start-epoch"
+
+      # 分片只跑 surefire test，不用 verify/jacoco：分片覆盖率不完整，覆盖率仍由 canonical gate 采集。
+      # -Dtest 使用排除语法（Surefire 3.5.6），排除其他 3 片的全部类。
+      - name: 运行分片测试
+        timeout-minutes: 20
+        run: |
+          set -euo pipefail
+          SHARD="${{ matrix.shard }}"
+          FILTER="$(node scripts/test-shards.mjs --shard "$SHARD" --print-test-filter)"
+          node scripts/test-shards.mjs --shard "$SHARD" --emit --out-dir .ci/test-shards
+          echo "shard=${SHARD} namespace=${RICCON_TEST_SERVICES_NAMESPACE} filter_chars=${#FILTER}"
+          ./mvnw -q -T1C test \
+            -Dtest="$FILTER" \
+            -Dsurefire.failIfNoSpecifiedTests=false \
+            -Djacoco.skip=true
+
+      # 计时报告与 host 墙钟分开记录：surefire 时间用于预算口径，墙钟用于与 CI 关键路径估算对照。
+      - name: 生成分片计时报告
+        if: always()
+        run: |
+          set -euo pipefail
+          SHARD="${{ matrix.shard }}"
+          # 先写墙钟，保证测试阶段早失败时仍有分片耗时记录；再生成 surefire 计时（无报告时会失败，
+          # 属预期：job 已因上游步骤失败）。
+          START="$(cat ".ci/test-shards/shard-${SHARD}-start-epoch")"
+          END="$(date +%s)"
+          printf '{"shard":%s,"wall_seconds":%s,"started_at_epoch":%s,"finished_at_epoch":%s}\n' \
+            "$SHARD" "$((END - START))" "$START" "$END" \
+            > ".ci/test-shards/shard-${SHARD}-timings.json"
+          node scripts/test-timings.mjs --out-dir ".ci/test-timings/shard-${SHARD}"
+
+      - name: 上传分片报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-shard-${{ matrix.shard }}
+          # .ci 是隐藏目录，upload-artifact v4 默认排除隐藏文件，必须显式开启。
+          include-hidden-files: true
+          path: |
+            apps/*/target/surefire-reports/TEST-*.xml
+            platform/*/target/surefire-reports/TEST-*.xml
+            .ci/test-shards
+            .ci/test-timings
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: 失败时导出依赖日志
+        if: failure()
+        run: |
+          echo "RICCON_TEST_SERVICES=${RICCON_TEST_SERVICES:-<未设置>}"
+          echo "RICCON_TEST_SERVICES_NAMESPACE=${RICCON_TEST_SERVICES_NAMESPACE:-<未设置>}"
+          echo "github.run_id=${{ github.run_id }}"
+          docker compose version
+          docker compose -f deploy/compose/docker-compose.test.yml logs --no-color
+
+      - name: 清理测试依赖
+        if: always()
+        # CI runner 是一次性的：down -v 会一并删除 namespace 数据库与数据卷，无需额外 DROP。
+        run: docker compose -f deploy/compose/docker-compose.test.yml down -v
+
+  # M19 P2：4 片合集必须与基线完全一致。任一 shard 失败时本 job 仍执行（if: always()），
+  # 报告缺失/重复/变少的类，而不是只显示“上游失败”。
+  backend-merge:
+    name: 后端分片合并校验
+    needs: backend-shards
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node 26
+        uses: actions/setup-node@v4
+        with:
+          node-version: "26"
+
+      - name: 下载全部 shard 产物
+        uses: actions/download-artifact@v4
+        with:
+          pattern: backend-shard-*
+          path: .ci/shards
+
+      - name: 合并校验分片报告
+        run: |
+          set -euo pipefail
+          node scripts/test-merge-shards.mjs \
+            --shards-root .ci/shards \
+            --baseline scripts/test-shards-baseline.json \
+            --out-dir .ci/test-shards-merged \
+            --shard-count 4
+
+      - name: 上传合并报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-shards-merged
+          include-hidden-files: true
+          path: .ci/test-shards-merged
+          retention-days: 14
+          if-no-files-found: warn
+
+  # M19 P2：迁移冒烟与格式检查独立成一个 job，避免 4 个分片重复跑迁移冒烟。
+  # 迁移冒烟仍使用默认 riccon 库与手工 SQL，不读写 external namespace。
+  backend-smoke:
+    name: 后端冒烟（迁移 + 格式）
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      # 格式检查不依赖数据库，先跑以便快速失败。
+      - name: 代码格式检查
+        run: ./mvnw -q spotless:check
 
       - name: 校验测试栈编排
         run: docker compose -f deploy/compose/docker-compose.test.yml config
@@ -115,47 +261,18 @@ jobs:
             echo "audit_event DELETE 未被触发器拒绝"; exit 1
           fi
 
-      # M19 P1：在 compose 栈就绪后为本 job 创建 external namespace 数据库（api/worker 各一个）。
-      # 迁移冒烟使用默认 riccon 库与手工 SQL，不读写 namespace；迁移测试仍自建一次性容器。
-      - name: 准备 external namespace
-        run: node scripts/test-services.mjs prepare --namespace "$RICCON_TEST_SERVICES_NAMESPACE"
-
-      # M19 P1：命令与测试集合保持不变，只通过 job 级 env 注入 external 模式与 namespace，
-      # 复用 MySQL/OpenSearch/RustFS。
-      - name: 构建与测试
-        run: ./mvnw -q -T1C verify
-
-      # M19 P0：只测量、不改测试集合与命令。放在“构建与测试”之后，复用同一次 surefire 产出。
-      # 若构建在测试前失败导致没有报告，本步骤会非 0 退出（无报告就无法计时，属预期），
-      # 但不会覆盖上游失败：job 已因前面的步骤失败，且下方仍保留依赖日志与清理步骤。
-      - name: 生成测试计时报告
-        if: always()
-        run: node scripts/test-timings.mjs --out-dir .ci/test-timings
-
-      - name: 上传测试计时报告
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-timings-${{ github.run_id }}
-          path: .ci/test-timings
-          retention-days: 14
-          if-no-files-found: warn
-
-      - name: 代码格式检查
-        run: ./mvnw -q spotless:check
-
+      # M19 P2：分片与热栈迁移到 backend-shards；本 job 不再跑构建与全量测试，
+      # 只保留迁移冒烟与格式检查（canonical gate 仍由本地/verifier 跑完整 verify）。
       - name: 失败时导出依赖日志
         if: failure()
         run: |
           echo "RICCON_TEST_SERVICES=${RICCON_TEST_SERVICES:-<未设置>}"
-          echo "RICCON_TEST_SERVICES_NAMESPACE=${RICCON_TEST_SERVICES_NAMESPACE:-<未设置>}"
           docker compose version
           docker compose -f deploy/compose/docker-compose.test.yml logs --no-color
 
       - name: 清理测试依赖
         if: always()
-        # CI runner 是一次性的：down -v 会一并删除 namespace 数据库与数据卷，无需额外 DROP。
-        # 本地复用共享热栈时不要照抄这一步（会清空其他 agent 的数据），只停止不删卷。
+        # CI runner 是一次性的：down -v 会一并删除数据卷，无需额外 DROP。
         run: docker compose -f deploy/compose/docker-compose.test.yml down -v
 
   frontend:

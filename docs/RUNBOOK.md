@@ -49,7 +49,7 @@ docker compose -f deploy/compose/docker-compose.test.yml down -v
 
 ### 热测试栈与受影响测试（M12，可选）
 
-M12 起本地内层循环可显式复用同一套 compose 服务；默认与模块 gate 不启用，CI backend job 自 M19 P1 起显式启用（见下文「CI 热栈」）。启动/停止/重置统一通过脚本操作，不另造服务：
+M12 起本地内层循环可显式复用同一套 compose 服务；默认与模块 gate 不启用，CI 后端分片自 M19 P1/P2 起显式启用（见下文「CI 热栈与测试分片」）。启动/停止/重置统一通过脚本操作，不另造服务：
 
 ```bash
 # 启动、状态、停止（默认保留数据卷）
@@ -77,7 +77,7 @@ node scripts/test-services.mjs reset --namespace builder-0054
 - 每个 agent 使用自己的 namespace；数据库、S3 桶和 OpenSearch 索引前缀都按 namespace 派生。同一 namespace 只允许一个测试 JVM，第二个会被 MySQL 命名锁拒绝（`already in use by another test JVM`）；禁止多个 agent 并行共用。
 - 启动 compose 与运行测试必须使用同一组凭据环境变量，否则会出现认证失败。
 - 迁移、回滚与 schema 版本测试始终使用一次性容器（`V9MigrationTest`/`V10MigrationTest`；`SchemaVersionCheckerTest` 的 external 分支也会自建容器），不得连接热栈。
-- 热栈用于本地 L1 内层循环与 CI backend job（M19 P1），不能作为任务完成或模块 gate 证据；L2/L3 仍按 `docs/CODING-STANDARDS.md` §10.1 运行合同命令并由 verifier 独立取证。
+- 热栈用于本地 L1 内层循环与 CI 后端分片（M19 P1/P2），不能作为任务完成或模块 gate 证据；L2/L3 仍按 `docs/CODING-STANDARDS.md` §10.1 运行合同命令并由 verifier 独立取证。
 - 细节与 baseline 见 M12-A：`RICCON_TEST_SERVICES_NAMESPACE` 必填、`scripts/test-services.mjs benchmark` 可用于本机对比，但基准结果同样不是 gate 证据。
 
 受影响测试映射只用于内层循环，输出建议命令而不自动执行：
@@ -103,28 +103,78 @@ pnpm test:affected -- --base HEAD~1 --dry-run
 | OpenSearch 旧索引干扰                              | `reset --namespace <ns>` 清理 `riccon-kb-<ns>-` 前缀索引；测试基类启动时也会清理当前 namespace 前缀。 |
 | 迁移/回滚测试误连热栈                              | 检查是否误设 `RICCON_TEST_SERVICES`；迁移测试必须使用一次性容器。                                     |
 
-### CI 热栈（external + namespace，M19 P1）
+### CI 热栈与测试分片（external + namespace + 4-shard，M19 P1/P2）
 
-CI backend job 的集成测试不再启动 Testcontainers，而是复用本 job 启动的一套 compose 测试栈；命令与测试集合不变（仍是 `./mvnw -q -T1C verify`），只通过 job 级环境变量切换连接方式：
+CI 后端由三个 job 组成，替代 M19 P1 之前的单个 `backend` job：
 
-| 变量                             | CI 值                        | 说明                                                                   |
-| -------------------------------- | ---------------------------- | ---------------------------------------------------------------------- |
-| `RICCON_TEST_SERVICES`           | `external`                   | 显式启用热栈；拼写错误时测试直接失败，不会静默回落到 Testcontainers    |
-| `RICCON_TEST_SERVICES_NAMESPACE` | `ci-<github.run_id>-backend` | 每个 run 唯一；满足 `[a-z0-9](?:[a-z0-9-]{0,28}[a-z0-9])?`（≤30 字符） |
+| job              | 作用                                                       | 失败时的含义                                     |
+| ---------------- | ---------------------------------------------------------- | ------------------------------------------------ |
+| `backend-shards` | 4 片矩阵并行跑 surefire `test`（快速反馈）                 | 某片用例失败/编译失败；分片 namespace 或热栈异常 |
+| `backend-merge`  | 校验 4 片合集 = 基线（每类恰好一次、0 failure/error/skip） | 有漏跑、重复跑、用例变少或报告缺失               |
+| `backend-smoke`  | 迁移冒烟（默认 `riccon` 库）+ `spotless:check`             | 迁移/触发器/格式回归                             |
 
-backend job 顺序：`compose config` → `up -d --wait` → 迁移冒烟（默认 `riccon` 库 + 手工 SQL）→ `prepare --namespace` → `构建与测试` → 计时报告 → 失败时先打印 `external`/`namespace`/`docker compose version` 再导出容器日志 → `down -v`。CI runner 是一次性的，`down -v` 等价于清理 namespace 数据库与数据卷，不再额外 `DROP DATABASE`。
+`commands.test` 不变：模块 gate 仍跑 canonical `./mvnw -q -T1C verify jacoco:report`，由 verifier 取证。CI 分片只用于快速反馈，不产生覆盖率，也不能替代 gate。
 
-本地复现（用自己的 namespace，不要复用 CI 值）：
+分片 job 的环境变量与 P1 相同，只是 namespace 按分片区分（≤30 字符，满足 `[a-z0-9](?:[a-z0-9-]{0,28}[a-z0-9])?`）：
+
+| 变量                             | CI 值                         | 说明                       |
+| -------------------------------- | ----------------------------- | -------------------------- |
+| `RICCON_TEST_SERVICES`           | `external`                    | 显式启用热栈               |
+| `RICCON_TEST_SERVICES_NAMESPACE` | `ci-<github.run_id>-b<shard>` | 每片独立数据库/桶/索引前缀 |
+
+每片的执行顺序：`--check` 校验基线 → `compose config` → `up -d --wait` → `prepare --namespace` → `mvnw test`（带排除过滤器）→ 计时报告与墙钟 → 上传 surefire XML/分片清单/计时 → 失败时打印 external/namespace/compose 版本与容器日志 → `down -v`。
+
+分片命令（本地复现同 CI，`N` 为 0..3）：
 
 ```bash
-docker compose -f deploy/compose/docker-compose.test.yml up -d --wait
-node scripts/test-services.mjs prepare --namespace m19p1local
-RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=m19p1local ./mvnw -q -T1C verify
+export RICCON_TEST_SERVICES=external
+export RICCON_TEST_SERVICES_NAMESPACE=m19p2local0
+node scripts/test-services.mjs prepare --namespace "$RICCON_TEST_SERVICES_NAMESPACE"
+FILTER="$(node scripts/test-shards.mjs --shard 0 --print-test-filter)"
+./mvnw -q -T1C test -Dtest="$FILTER" -Dsurefire.failIfNoSpecifiedTests=false -Djacoco.skip=true
 ```
 
-- 迁移、回滚与 schema 版本测试始终使用一次性容器（`V9/V10/V11MigrationTest`、`SchemaVersionCheckerTest` 的 external 分支），不受 CI 热栈影响；迁移冒烟仍用默认 `riccon` 库。
+- 分片只跑 `test`，不用 `verify`/`jacoco:report`：分片覆盖率不完整，覆盖率仍由 canonical gate 采集。`-Djacoco.skip=true` 只关闭采集代理，不改变测试内容与断言。
+- `-Dtest` 用 Surefire 3.5.6 的排除语法（`!FQCN`）：每片运行“除其他 3 片之外的所有类”。未登记到基线的新测试类不会被任何排除列表命中，会在 4 片全部执行，合并时以“重复类/额外类”失败，靠运行时集合校验防漏跑，不依赖源码命名扫描。
+- 迁移、回滚与 schema 版本测试（`V9/V10/V11MigrationTest`、`SchemaVersionCheckerTest` 的 external 分支）仍使用一次性容器，不受热栈影响；迁移冒烟在 `backend-smoke` 用默认 `riccon` 库，不读写 namespace。
 - 本地复用共享热栈时只 `stop`（保留数据卷），不要照抄 CI 的 `down -v`，否则会清空其他 agent 的数据。
-- 与 `docs/CODING-STANDARDS.md` 的关系：§10.1 的 L1/L2/L3 分层、取证与 gate 结论不变；§10.2 已同步（M19 P1）；§10.3 的时间预算口径不变，预算数字只在那边维护。
+
+### 分片基线与合并校验（M19 P2）
+
+`scripts/test-shards-baseline.json` 是“哪些测试类必须各跑一次”的权威集合，来自一次全量、0 failure/error/skip 的 surefire 运行：
+
+```bash
+# 查看 4 片分布（类数/用例/基线时间）
+node scripts/test-shards.mjs
+
+# 校验基线聚合值、4 片互斥完整、源码测试类均已登记
+node scripts/test-shards.mjs --check
+
+# 单片的排除过滤器与分片清单
+node scripts/test-shards.mjs --shard 2 --print-test-filter
+node scripts/test-shards.mjs --shard 2 --emit --out-dir .ci/test-shards
+
+# 本地演练：用现有全量报告模拟 4 片目录（仅演练，不参与 CI），再跑合并校验
+node scripts/test-shards.mjs --simulate "$TMPDIR/shards"
+node scripts/test-merge-shards.mjs --shards-root "$TMPDIR/shards" \
+  --baseline scripts/test-shards-baseline.json --out-dir "$TMPDIR/merged"
+
+# 合并校验（CI 下载的分片目录）
+node scripts/test-merge-shards.mjs --shards-root .ci/shards \
+  --baseline scripts/test-shards-baseline.json --out-dir .ci/test-shards-merged
+```
+
+- 分片算法：按模块（`apps/*`、`platform/*`）分组，模块内按基线时间降序、类名升序做 LPT 分配；同一模块内每个分片的累计时间最小，因此 `-T1C` 并行构建 api/worker 时，分片墙钟约等于 max(api 子集, worker 子集) + 固定开销。
+- **测试集合变更（新增/删除/重命名测试类）必须重建基线并随代码提交**：
+  ```bash
+  RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=<ns> ./mvnw -q -T1C verify
+  node scripts/test-shards.mjs --update-baseline
+  git add scripts/test-shards-baseline.json
+  ```
+  `--update-baseline` 拒绝非绿色运行（failure/error/skip 非 0），也拒绝报告里找不到测试源码的类。Surefire 不会清理 `target/surefire-reports`，类重命名/换模块后旧 XML 会残留；遇到这类报错先删对应 `target/surefire-reports` 再跑全量。
+- 合并校验项：分片齐全且编号完整（0..3）、基线每个类恰好出现一次、无额外类、每类用例数不减少、总用例数不少于基线、failures/errors/skips 全为 0。任一不满足非 0 退出，并打印具体类名与计数；报告写入 `test-shards-merged.json`/`.md`。
+- CI artifact：`backend-shard-<N>`（surefire XML、`.ci/test-shards`、`.ci/test-timings`）与 `test-shards-merged`，保留 14 天。`.ci` 是隐藏目录，workflow 里必须显式 `include-hidden-files: true`，否则 artifact 为空。
+- 分片排查：合并报告里的 `基线测试类没有任何分片执行` 多为排除过滤器用了旧基线或某片 artifact 缺失；`执行了 N 次` 多为新增测试未登记到基线。两种都先看 `--check` 输出，再决定重建基线还是修 job。
 
 ### 测试计时与预算（M19）
 
@@ -142,7 +192,7 @@ node scripts/test-timings.mjs --reports-root "$TMPDIR/empty"
 ```
 
 - 报告字段：用例总数、失败/错误/跳过数、累计 suite 时间（各 suite 时间相加，不是墙钟）、按模块汇总、top-20 最慢测试类（时间降序，同时间按类名升序）。
-- CI artifact：backend job 的 `生成测试计时报告` / `上传测试计时报告` 两步，artifact 名 `test-timings-<github.run_id>`，保留 14 天，内容为 `.ci/test-timings/test-timings.md` 与 `.ci/test-timings/test-timings.json`。
+- CI artifact：`backend-shard-<N>` 里包含各片 `.ci/test-timings/shard-<N>/test-timings.md` 与 `.json`，artifact `test-shards-merged` 里包含合并报告，均保留 14 天。
 - 报告缺失、为空或 XML 解析失败时脚本非 0 退出并打印原因；这是预期行为，不要用 `|| true` 掩盖。
 - 预算数字与超预算处理见 `docs/CODING-STANDARDS.md` §10.3。
 
@@ -372,16 +422,16 @@ SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history WHERE success =
 
 ### M04-0 preflight（零副作用，失败即停）
 
-| 检查项              | 命令/来源                                                                                                             | 通过判据                                                                                                             |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| 主密钥与 Secret     | 环境变量存在性 + base64 长度（见下）                                                                                  | `RICCON_MASTER_KEY`/`RICCON_CREDENTIAL_FINGERPRINT_PEPPER` 均为 32 字节；轮换窗口才注入 `RICCON_MASTER_KEY_PREVIOUS` |
-| service token / DB  | `RICCON_SERVICE_TOKEN_SECRET`、`RICCON_DB_*` 由密钥管理注入                                                           | 非空；日志、工单、证据里不出现值                                                                                     |
-| 端点与模式          | `RICCON_MODEL_DEPLOYMENT_MODE`、`RICCON_MODEL_ENDPOINTS`、`RICCON_MODEL_ALLOW_HTTP`、`RICCON_MODEL_ENDPOINT_SET_HASH` | PRODUCTION 只允许 https、未配置端点即启动失败；DEMO 才允许 http                                                      |
-| 币种                | `RICCON_BILLING_CURRENCY`                                                                                             | ISO 4217；**部署后不可在线变更**（见“换币种不可行”）                                                                 |
-| 默认配额 4 键       | `RICCON_QUOTA_DEFAULT_TENANT_DAILY/_TENANT_MONTHLY/_USER_DAILY/_USER_MONTHLY`                                         | 与 API/Worker 两侧一致；默认 10000/200000/1000/20000；`0` 或空 = 不限                                                |
-| DB 连通与体积       | 下方 SQL                                                                                                              | `model_invocation` ≤200 万行且 data+index ≤2 GiB；磁盘余量 ≥2× 表体积；无 >60s 事务/长 MDL                           |
-| API/Worker 指纹漂移 | `node scripts/ops/seed-model-catalog.mjs --check --api-base <API> --worker-base <Worker> [--catalog <目录文件>]` | exit 0 且 `status=passed`；**必须从 `RICCON_OPS_ALLOWED_CIDRS` 允许的来源发起**（与 prometheus 同一允许列表，空 = 仅 loopback），其他来源按设计 403；403 不是通过，也不得用 env 快照冒充 |
-| 目录与部署端点一致  | `node scripts/ops/seed-model-catalog.mjs --check ... [--catalog <目录文件>] [--endpoints "$RICCON_MODEL_ENDPOINTS"]`（不写库） | `model_provider.base_url` 与 `RICCON_MODEL_ENDPOINTS` 的 code/baseUrl 逐条一致；目录文件与 DB 差异由同一命令报告 |
+| 检查项              | 命令/来源                                                                                                                      | 通过判据                                                                                                                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 主密钥与 Secret     | 环境变量存在性 + base64 长度（见下）                                                                                           | `RICCON_MASTER_KEY`/`RICCON_CREDENTIAL_FINGERPRINT_PEPPER` 均为 32 字节；轮换窗口才注入 `RICCON_MASTER_KEY_PREVIOUS`                                                                     |
+| service token / DB  | `RICCON_SERVICE_TOKEN_SECRET`、`RICCON_DB_*` 由密钥管理注入                                                                    | 非空；日志、工单、证据里不出现值                                                                                                                                                         |
+| 端点与模式          | `RICCON_MODEL_DEPLOYMENT_MODE`、`RICCON_MODEL_ENDPOINTS`、`RICCON_MODEL_ALLOW_HTTP`、`RICCON_MODEL_ENDPOINT_SET_HASH`          | PRODUCTION 只允许 https、未配置端点即启动失败；DEMO 才允许 http                                                                                                                          |
+| 币种                | `RICCON_BILLING_CURRENCY`                                                                                                      | ISO 4217；**部署后不可在线变更**（见“换币种不可行”）                                                                                                                                     |
+| 默认配额 4 键       | `RICCON_QUOTA_DEFAULT_TENANT_DAILY/_TENANT_MONTHLY/_USER_DAILY/_USER_MONTHLY`                                                  | 与 API/Worker 两侧一致；默认 10000/200000/1000/20000；`0` 或空 = 不限                                                                                                                    |
+| DB 连通与体积       | 下方 SQL                                                                                                                       | `model_invocation` ≤200 万行且 data+index ≤2 GiB；磁盘余量 ≥2× 表体积；无 >60s 事务/长 MDL                                                                                               |
+| API/Worker 指纹漂移 | `node scripts/ops/seed-model-catalog.mjs --check --api-base <API> --worker-base <Worker> [--catalog <目录文件>]`               | exit 0 且 `status=passed`；**必须从 `RICCON_OPS_ALLOWED_CIDRS` 允许的来源发起**（与 prometheus 同一允许列表，空 = 仅 loopback），其他来源按设计 403；403 不是通过，也不得用 env 快照冒充 |
+| 目录与部署端点一致  | `node scripts/ops/seed-model-catalog.mjs --check ... [--catalog <目录文件>] [--endpoints "$RICCON_MODEL_ENDPOINTS"]`（不写库） | `model_provider.base_url` 与 `RICCON_MODEL_ENDPOINTS` 的 code/baseUrl 逐条一致；目录文件与 DB 差异由同一命令报告                                                                         |
 
 ```bash
 # Secret 非空与长度（只打印结果，不打印值）
@@ -555,12 +605,12 @@ node scripts/ops/rewrap-credentials.mjs --apply --via=client
 目录/价格变更（新增端点、模型、价格、币种）只能按下表；路由/开关**必须走管理端 API**（乐观锁 + 审计），
 运维不得 SQL 直改：
 
-| 变更          | 步骤                                                                                                                                      | 禁止                                                        |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| 变更          | 步骤                                                                                                                                             | 禁止                                                        |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
 | 新增端点      | 更新 `RICCON_MODEL_ENDPOINTS`（含 code/baseUrl/https）→ `seed-model-catalog.mjs --catalog <目录文件> --apply` → 重启 API/Worker → `--check` 比对 | 只改 env 不种 DB；脚本会 `--check` 报 endpoint 漂移         |
-| 新增模型/改价 | 目录文件加模型或改价格 → `seed-model-catalog.mjs --apply`（幂等 upsert）→ 需要时 `update-model-price.mjs --apply`                         | 改历史 `model_invocation` 快照；DELETE 旧模型               |
-| 改单个价格    | `update-model-price.mjs --provider-code <c> --model-key <k> --input/--output <p> [--apply]`，打印 before/after                            | 用 UPDATE 直改库；批量 SQL 无审计                           |
-| 换币种        | **不可行**：新部署 + 历史报告按币种隔离；旧快照保持原币种                                                                                 | 在线改 `RICCON_BILLING_CURRENCY`（会产生 currencyMismatch） |
+| 新增模型/改价 | 目录文件加模型或改价格 → `seed-model-catalog.mjs --apply`（幂等 upsert）→ 需要时 `update-model-price.mjs --apply`                                | 改历史 `model_invocation` 快照；DELETE 旧模型               |
+| 改单个价格    | `update-model-price.mjs --provider-code <c> --model-key <k> --input/--output <p> [--apply]`，打印 before/after                                   | 用 UPDATE 直改库；批量 SQL 无审计                           |
+| 换币种        | **不可行**：新部署 + 历史报告按币种隔离；旧快照保持原币种                                                                                        | 在线改 `RICCON_BILLING_CURRENCY`（会产生 currencyMismatch） |
 
 ### M04-9 备份恢复演练（preview RPO ≤24h、RTO ≤4h）
 
@@ -696,16 +746,16 @@ node scripts/ops/cost-reconcile.mjs --api-base http://127.0.0.1:18080 --tenant t
 
 ### M04-15 故障与恢复
 
-| 现象                                   | 可能原因                         | 处置                                                                                    |
-| -------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------- |
-| J1/J2 返回 503（链空）                 | 路由链为空/模型全停用/端点未放行 | 管理端补链或 `RICCON_MODEL_ROUTING_MODE=BASELINE`；查 `riccon_model_chain_empty_total`  |
-| 请求持续 401/403 后切备用              | 主 key 失效/被上游拒绝           | 管理端轮换或停用失效 key；`credential_invalid_total` 定位 provider                      |
-| 429 但租户未超限                       | 用户维度限额更小/窗口边界        | `GET /api/v1/quotas`、`/quotas/users` 核对；审计 `quota.exceeded` 的 `scopeType/window` |
-| 503 `RICCON-QUOTA-503`                 | 配额存储失败/锁等待/死锁         | 先恢复 DB；不建议自动重试（可能重复建 run）；核对 `innodb_lock_wait_timeout` 与事务超时 |
-| 开关 PUT 409 `ENV_OVERRIDE_ACTIVE`     | env 覆盖了 DB 开关               | 变更部署 env 并重启；或移除 env 后由 DB 接管（写审计 `source=DEPLOYMENT`）              |
-| 成本页 503                             | 查询超时/DB 不可用               | 缩小范围（≤180 天）、核对索引；`cost_report_queries_total` 与日志                       |
-| 成本金额与账单差异                     | 未定价/usage 缺失/混合版本窗口   | 查 `cost_status` 分布、`unbucketedCalls`、`currencyMismatchCalls`；回填后按 M04-13 对账 |
-| Worker 启动失败 `RICCON-WORKER-001`    | schema ≠11（DB 已升未切/版本错） | 按 M04-1…6 顺序切换；**不要**用关闭校验绕过（仅回滚窗口，见 M04-7）                     |
+| 现象                                   | 可能原因                                           | 处置                                                                                                               |
+| -------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| J1/J2 返回 503（链空）                 | 路由链为空/模型全停用/端点未放行                   | 管理端补链或 `RICCON_MODEL_ROUTING_MODE=BASELINE`；查 `riccon_model_chain_empty_total`                             |
+| 请求持续 401/403 后切备用              | 主 key 失效/被上游拒绝                             | 管理端轮换或停用失效 key；`credential_invalid_total` 定位 provider                                                 |
+| 429 但租户未超限                       | 用户维度限额更小/窗口边界                          | `GET /api/v1/quotas`、`/quotas/users` 核对；审计 `quota.exceeded` 的 `scopeType/window`                            |
+| 503 `RICCON-QUOTA-503`                 | 配额存储失败/锁等待/死锁                           | 先恢复 DB；不建议自动重试（可能重复建 run）；核对 `innodb_lock_wait_timeout` 与事务超时                            |
+| 开关 PUT 409 `ENV_OVERRIDE_ACTIVE`     | env 覆盖了 DB 开关                                 | 变更部署 env 并重启；或移除 env 后由 DB 接管（写审计 `source=DEPLOYMENT`）                                         |
+| 成本页 503                             | 查询超时/DB 不可用                                 | 缩小范围（≤180 天）、核对索引；`cost_report_queries_total` 与日志                                                  |
+| 成本金额与账单差异                     | 未定价/usage 缺失/混合版本窗口                     | 查 `cost_status` 分布、`unbucketedCalls`、`currencyMismatchCalls`；回填后按 M04-13 对账                            |
+| Worker 启动失败 `RICCON-WORKER-001`    | schema ≠11（DB 已升未切/版本错）                   | 按 M04-1…6 顺序切换；**不要**用关闭校验绕过（仅回滚窗口，见 M04-7）                                                |
 | 回滚后旧 Worker 无 `RICCON-WORKER-002` | WARN 已实现（TASK-0127/EV-0591），但开关或版本不对 | 确认 `RICCON_WORKER_SCHEMA_VALIDATION_ENABLED=false` 且为 M04 前最后一个 Worker 版本；该 WARN 必须逐字出现恰好一次 |
 
 ### M04-16 性能预算与 CI perf job
