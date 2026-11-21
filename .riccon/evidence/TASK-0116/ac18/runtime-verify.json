@@ -1,30 +1,48 @@
 {
-  "generatedAt": "2026-11-21T04:47:20.892Z",
+  "generatedAt": "2026-11-21T04:50:10.000Z",
   "checks": {
     "startup": "passed",
     "ac18SwitchCloseAudit": "passed",
     "ac18J1": "passed",
     "ac18J2": "passed",
-    "quotaStoreFailure": "passed"
+    "quotaStoreFailure": "passed",
+    "apiMetricRejections": "passed",
+    "apiMetricUsageRatio": "passed",
+    "apiMetricCostQueries": "passed",
+    "apiMetricStoreFailureContractName": "failed",
+    "apiMetricStoreFailureContractNameReason": "ADR-0021 §10.6 要求的 riccon_quota_store_failure_total 缺失；实际存在 riccon_quota_store_failures_total=1",
+    "apiMetricOverLimitObserved": "passed",
+    "apiMetricLabelDiscipline": "passed",
+    "opsM0402a": "passed"
   },
   "observations": {
     "switchesBefore": {
       "routingMode": "ROUTED",
       "failoverEnabled": true,
-      "quotaEnforcementEnabled": false,
-      "version": 5
+      "quotaEnforcementEnabled": true,
+      "version": 10
     },
     "j1": {
-      "runId": "01a1fc6e-5431-756d-ad0a-2a49d1a336cf",
+      "runId": "01a1fc70-e84b-7b92-8add-a877dcdd9fc8",
       "status": "SUCCEEDED",
       "modelKey": "fake-chat-primary",
-      "firstTokenMs": 224
+      "firstTokenMs": 216
     },
     "quotaRejection": {
-      "acceptedRun": "01a1fc6e-7f06-75ac-ab7d-d2ebceeb4f18",
+      "acceptedRun": "01a1fc71-1303-765c-807d-a11a91379c50",
       "rejectedStatus": 429
+    },
+    "apiMetrics": {
+      "rejections": 1,
+      "usageRatio": 4,
+      "costQueries": 4,
+      "storeFailureContractName": 0,
+      "storeFailureActualSeries": [
+        "riccon_quota_store_failures_total{reason=\"lock_wait\"} 1.0"
+      ],
+      "overLimitObserved": 1
     }
   },
   "status": "failed",
-  "error": "Error: API metric riccon_quota_store_failure_total missing\n    at requireOk (file:///Users/ricky/Documents/projects/riccon-work/.riccon/evidence/TASK-0116/m04-v2-runtime-verify.mjs:135:11)\n    at file:///Users/ricky/Documents/projects/riccon-work/.riccon/evidence/TASK-0116/m04-v2-runtime-verify.mjs:546:3\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)"
+  "error": "Error: waitFor timeout after 120000ms; last=false\n    at waitFor (file:///Users/ricky/Documents/projects/riccon-work/scripts/real-stack/lib/http.mjs:193:9)\n    at async file:///Users/ricky/Documents/projects/riccon-work/.riccon/evidence/TASK-0116/m04-v2-runtime-verify.mjs:639:3"
 }

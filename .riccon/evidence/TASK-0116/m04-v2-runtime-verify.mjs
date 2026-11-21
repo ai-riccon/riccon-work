@@ -636,11 +636,17 @@ try {
   );
   const expectedWarn =
     "RICCON-WORKER-002 schema validation disabled; worker is running in rollback window, expected schema version=11";
-  await waitFor(
-    async () => readFileSync(warnLog, "utf8").includes("RICCON-WORKER-002"),
-    120_000,
-    500,
-  );
+  let warnObserved = false;
+  try {
+    await waitFor(
+      async () => readFileSync(warnLog, "utf8").includes("RICCON-WORKER-002"),
+      60_000,
+      500,
+    );
+    warnObserved = true;
+  } catch {
+    warnObserved = false;
+  }
   // 多等 5 秒，确认没有第二条（“恰好一次”）。
   await new Promise((resolve) => setTimeout(resolve, 5000));
   const warnContent = readFileSync(warnLog, "utf8");
@@ -656,7 +662,15 @@ try {
     !warnContent.includes("RICCON-WORKER-001"),
     "rollback window must not emit RICCON-WORKER-001",
   );
+  // 校验启用时应输出 schema.version.checked；缺失说明 SchemaVersionChecker 未注册（不是 WARN 文案问题）。
+  const mainWorkerLog = readFileSync(path.join(runDir, "worker.log"), "utf8");
+  check(
+    "workerSchemaVersionCheckRuns",
+    mainWorkerLog.includes("schema.version.checked"),
+    "SchemaVersionChecker 未运行：主 Worker 启动日志缺少 schema.version.checked（@ConditionalOnBean 在用户组件阶段无法匹配自动配置的 JdbcClient）",
+  );
   report.observations.workerWarn = expectedWarn;
+  report.observations.workerWarnObserved = warnObserved;
 
   if (failures.length > 0) {
     report.status = "failed";
