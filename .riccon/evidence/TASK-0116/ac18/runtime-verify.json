@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-21T04:54:55.768Z",
+  "generatedAt": "2026-11-21T07:48:27.795Z",
   "checks": {
     "startup": "passed",
     "ac18SwitchCloseAudit": "passed",
@@ -9,51 +9,41 @@
     "apiMetricRejections": "passed",
     "apiMetricUsageRatio": "passed",
     "apiMetricCostQueries": "passed",
-    "apiMetricStoreFailureContractName": "failed",
-    "apiMetricStoreFailureContractNameReason": "ADR-0021 §10.6 要求的 riccon_quota_store_failure_total 缺失；实际存在 riccon_quota_store_failures_total=1",
+    "apiMetricStoreFailureContractName": "passed",
     "apiMetricOverLimitObserved": "passed",
     "apiMetricLabelDiscipline": "passed",
     "opsM0402a": "passed",
-    "workerRollbackWarn": "failed",
-    "workerRollbackWarnReason": "RICCON-WORKER-002 must appear exactly once, got 0",
+    "workerRollbackWarn": "passed",
     "workerRollbackNoVersionError": "passed",
-    "workerSchemaVersionCheckRuns": "failed",
-    "workerSchemaVersionCheckRunsReason": "SchemaVersionChecker 未运行：主 Worker 启动日志缺少 schema.version.checked（@ConditionalOnBean 在用户组件阶段无法匹配自动配置的 JdbcClient）"
+    "workerSchemaVersionCheckRuns": "passed"
   },
   "observations": {
     "switchesBefore": {
       "routingMode": "ROUTED",
       "failoverEnabled": true,
-      "quotaEnforcementEnabled": true,
-      "version": 15
+      "quotaEnforcementEnabled": false,
+      "version": 1
     },
     "j1": {
-      "runId": "01a1fc75-4526-7070-9060-f789d0a8f0f1",
+      "runId": "01a1fd14-4f60-777e-b693-e0bf5a8252c1",
       "status": "SUCCEEDED",
       "modelKey": "fake-chat-primary",
-      "firstTokenMs": 220
+      "firstTokenMs": 329
     },
     "quotaRejection": {
-      "acceptedRun": "01a1fc75-6de8-7f6e-a7df-b7ec292ec9c5",
+      "acceptedRun": "01a1fd14-8360-703e-a12c-1b44c3c694c0",
       "rejectedStatus": 429
     },
     "apiMetrics": {
       "rejections": 1,
       "usageRatio": 4,
       "costQueries": 4,
-      "storeFailureContractName": 0,
-      "storeFailureActualSeries": [
-        "riccon_quota_store_failures_total{reason=\"lock_wait\"} 1.0"
-      ],
+      "storeFailureContractName": 1,
+      "storeFailureActualSeries": [],
       "overLimitObserved": 1
     },
     "workerWarn": "RICCON-WORKER-002 schema validation disabled; worker is running in rollback window, expected schema version=11",
-    "workerWarnObserved": false
+    "workerWarnObserved": true
   },
-  "status": "failed",
-  "failures": [
-    "apiMetricStoreFailureContractName: ADR-0021 §10.6 要求的 riccon_quota_store_failure_total 缺失；实际存在 riccon_quota_store_failures_total=1",
-    "workerRollbackWarn: RICCON-WORKER-002 must appear exactly once, got 0",
-    "workerSchemaVersionCheckRuns: SchemaVersionChecker 未运行：主 Worker 启动日志缺少 schema.version.checked（@ConditionalOnBean 在用户组件阶段无法匹配自动配置的 JdbcClient）"
-  ]
+  "status": "passed"
 }

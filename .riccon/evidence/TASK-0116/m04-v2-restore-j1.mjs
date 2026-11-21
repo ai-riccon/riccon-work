@@ -188,12 +188,10 @@ try {
   await waitHealth("http://127.0.0.1:18083/actuator/health");
   await waitHealth("http://127.0.0.1:18990/__health__", 30_000);
 
-  const seed = JSON.parse(
-    readFileSync(
-      path.join(repoRoot, ".riccon/evidence/TASK-0116/real-stack-seed.json"),
-      "utf8",
-    ),
-  );
+  const seedFile =
+    process.env.M04_SEED_FILE ??
+    path.join(repoRoot, ".riccon/evidence/TASK-0116/real-stack-seed.json");
+  const seed = JSON.parse(readFileSync(seedFile, "utf8"));
   const member = new ApiClient("http://127.0.0.1:18089");
   await member.login(
     seed.tenants.alpha,
