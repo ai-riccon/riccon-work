@@ -1,0 +1,14 @@
+# command: git diff --check && git diff --quiet f31b3ec..HEAD -- AGENTS.md && ./mvnw -q spotless:check && node scripts/test-shards.mjs --check && grep -q "10.3 测试时间预算" docs/CODING-STANDARDS.md && grep -q "后端全量 ≤ 5 分钟" docs/CODING-STANDARDS.md && grep -q "10.4 测试 tag 分层" docs/CODING-STANDARDS.md && grep -q "CI 热栈与测试分片" docs/RUNBOOK.md && grep -q "./mvnw -q -T1C verify jacoco:report && pnpm -w test -- --coverage" AGENTS.md && ruby -ryaml -e "YAML.load_file(%q{.github/workflows/ci.yml}); puts %q{YAML OK}" && echo "M19 docs/contract consistency OK"
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-22T06:49:28.554+08:00
+# finished_at: 2026-11-22T06:49:32.895+08:00
+# duration_ms: 4339
+# exit_code: 0
+
+# --- stdout ---
+分片自检通过：196 类 / 1115 用例，4 片互斥完整，源码测试类均已登记
+YAML OK
+M19 docs/contract consistency OK
+
+# --- stderr ---
+

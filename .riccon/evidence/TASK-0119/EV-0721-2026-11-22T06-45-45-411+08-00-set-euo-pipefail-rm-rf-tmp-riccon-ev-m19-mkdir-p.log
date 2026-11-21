@@ -1,0 +1,22 @@
+# command: set -euo pipefail && rm -rf /tmp/riccon-ev-m19 && mkdir -p /tmp/riccon-ev-m19/shards /tmp/riccon-ev-m19/report && gh run download 44955035025 --pattern "backend-shard-*" --dir /tmp/riccon-ev-m19/shards >/dev/null && gh run download 44955035025 --pattern test-shards-merged --dir /tmp/riccon-ev-m19/report >/dev/null && node scripts/test-merge-shards.mjs --shards-root /tmp/riccon-ev-m19/shards --out-dir /tmp/riccon-ev-m19/verify-merged --shard-count 4 && gh run view 44955035025 --json conclusion,jobs > /tmp/riccon-ev-m19/run.json && python3 -c "import json; d=json.load(open(\"/tmp/riccon-ev-m19/run.json\")); shards=[j for j in d[\"jobs\"] if j[\"name\"].startswith(\"后端测试分片\")]; import datetime as t; walls=[int((t.datetime.fromisoformat(j[\"completedAt\"].replace(\"Z\",\"+00:00\"))-t.datetime.fromisoformat(j[\"startedAt\"].replace(\"Z\",\"+00:00\"))).total_seconds()) for j in shards]; m=json.load(open(\"/tmp/riccon-ev-m19/report/test-shards-merged/test-shards-merged.json\")); assert d[\"conclusion\"]==\"success\", d[\"conclusion\"]; assert len(shards)==4 and all(j[\"conclusion\"]==\"success\" for j in shards), [(j[\"name\"],j[\"conclusion\"]) for j in shards]; assert all(w<=300 for w in walls), walls; assert m[\"verdict\"]==\"pass\" and m[\"totals\"][\"suites\"]==196 and m[\"totals\"][\"tests\"]==1115 and m[\"totals\"][\"failures\"]==0 and m[\"totals\"][\"errors\"]==0 and m[\"totals\"][\"skipped\"]==0, m[\"totals\"]; assert len(m[\"classes\"])==196 and all(c[\"runs\"]==1 for c in m[\"classes\"]), [c for c in m[\"classes\"] if c[\"runs\"]!=1]; assert not m[\"problems\"], m[\"problems\"]; print(\"ci_run=44955035025 conclusion=success shard_walls_s=\"+str(walls)+\" merged=196/1115/0/0/0 runs_once=yes problems=0\")"
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-22T06:45:32.603+08:00
+# finished_at: 2026-11-22T06:45:44.885+08:00
+# duration_ms: 12281
+# exit_code: 0
+
+# --- stdout ---
+后端分片合并校验
+  分片 0（backend-shard-0）: 类 48 / 用例 245 / failures=0 errors=0 skipped=0 suite=135.036s wall=144s
+  分片 1（backend-shard-1）: 类 48 / 用例 254 / failures=0 errors=0 skipped=0 suite=142.42s wall=135s
+  分片 2（backend-shard-2）: 类 49 / 用例 317 / failures=0 errors=0 skipped=0 suite=148.561s wall=142s
+  分片 3（backend-shard-3）: 类 51 / 用例 299 / failures=0 errors=0 skipped=0 suite=134.162s wall=126s
+  总计: 类 196 / 用例 1115 / failures=0 errors=0 skipped=0
+  基线: 类 196 / 用例 1115
+结论: pass（4 片互斥完整，每个用例恰好执行一次）
+已写入: /tmp/riccon-ev-m19/verify-merged/test-shards-merged.json
+已写入: /tmp/riccon-ev-m19/verify-merged/test-shards-merged.md
+ci_run=44955035025 conclusion=success shard_walls_s=[198, 213, 209, 204] merged=196/1115/0/0/0 runs_once=yes problems=0
+
+# --- stderr ---
+
