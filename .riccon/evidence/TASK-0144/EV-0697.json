@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0697",
+  "task_id": "TASK-0144",
+  "command": "set -euo pipefail && node scripts/test-services.mjs reset --namespace m19p3v && rm -rf apps/worker/target/surefire-reports platform/*/target/surefire-reports && RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=m19p3v perl -e 'alarm shift; exec @ARGV' 1500 ./mvnw -q -T1C -pl apps/worker -am test > \"$TMPDIR/m19p3v-verify-run1.log\" 2>&1 && node scripts/test-timings.mjs --out-dir \"$TMPDIR/m19p3v-verify-run1\" && rm -rf apps/worker/target/surefire-reports platform/*/target/surefire-reports && RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=m19p3v perl -e 'alarm shift; exec @ARGV' 1500 ./mvnw -q -T1C -pl apps/worker -am test > \"$TMPDIR/m19p3v-verify-run2.log\" 2>&1 && node scripts/test-timings.mjs --out-dir \"$TMPDIR/m19p3v-verify-run2\"",
+  "manual": false,
+  "commit": "11a7323da4922ecbddd8ef0b99fe72adfd208eaf",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0144/EV-0697-2026-11-21T21-29-56-406+08-00-set-euo-pipefail-node-scripts-test-services-mjs-.log",
+  "output_sha256": "53a5ef5e19d60a577d293d259b319dc7bb9480d532e64958dda53282dea567a0",
+  "output_bytes": 6114,
+  "agent": "riccon/verifier",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-21T21:25:53.261+08:00",
+  "finished_at": "2026-11-21T21:29:55.841+08:00",
+  "duration_ms": 242579,
+  "note": "TASK-0144 独立 Verifier 复跑：新 namespace m19p3v，首次 reset；连续两次全量 worker（第二次不清库），要求 356/0/0/0 并记录 suite 时间对比 P2 基线 EV-0695",
+  "recorded_at": "2026-11-21T21:29:56.410+08:00"
+}

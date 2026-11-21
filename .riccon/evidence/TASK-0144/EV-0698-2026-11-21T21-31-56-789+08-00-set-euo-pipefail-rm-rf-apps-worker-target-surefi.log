@@ -1,0 +1,46 @@
+# command: set -euo pipefail && rm -rf apps/worker/target/surefire-reports platform/*/target/surefire-reports && RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=m19p3v perl -e 'alarm shift; exec @ARGV' 1500 ./mvnw -q -T1C -pl apps/worker -am test -Dsurefire.runOrder=reversealphabetical > "$TMPDIR/m19p3v-verify-reverse.log" 2>&1 && node scripts/test-timings.mjs --out-dir "$TMPDIR/m19p3v-verify-reverse"
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-21T21:30:15.939+08:00
+# finished_at: 2026-11-21T21:31:56.065+08:00
+# duration_ms: 100125
+# exit_code: 0
+
+# --- stdout ---
+测试计时报告（surefire）
+  报告根目录: /Users/ricky/Documents/projects/riccon-work
+  用例总数: 447
+  失败/错误/跳过: 0/0/0
+  累计 suite 时间: 85.899s
+
+按模块汇总:
+  apps/worker: tests=356 failures=0 errors=0 skipped=0 time=84.809s
+  platform/platform-common: tests=87 failures=0 errors=0 skipped=0 time=0.699s
+  platform/platform-domain: tests=4 failures=0 errors=0 skipped=0 time=0.391s
+
+最慢 20 个测试类:
+   1.   17.801s  com.riccon.worker.persistence.SchemaVersionCheckerTest (apps/worker)
+   2.   14.249s  com.riccon.worker.run.service.OutboxPollerTest (apps/worker)
+   3.   12.118s  com.riccon.worker.research.ReportArtifactIntegrationTest (apps/worker)
+   4.    4.973s  com.riccon.worker.research.HitlIntegrationTest (apps/worker)
+   5.    4.103s  com.riccon.worker.chat.ChatStreamFirstTokenIntegrationTest (apps/worker)
+   6.    3.173s  com.riccon.worker.model.ModelFailoverIntegrationTest (apps/worker)
+   7.    3.146s  com.riccon.worker.model.OpenAiCompatibleChatModelStreamingTest (apps/worker)
+   8.    3.098s  com.riccon.worker.parse.service.FileParseServiceIntegrationTest (apps/worker)
+   9.    2.582s  com.riccon.worker.chat.ChatStreamIntegrationTest (apps/worker)
+  10.    2.008s  com.riccon.worker.run.service.OutboxSchedulerTest (apps/worker)
+  11.    1.896s  com.riccon.worker.index.service.KnowledgeIndexServiceIntegrationTest (apps/worker)
+  12.    1.799s  com.riccon.worker.agentscope.DockerSandboxSmokeTest (apps/worker)
+  13.    1.596s  com.riccon.worker.chat.ChatStreamFlushIntegrationTest (apps/worker)
+  14.    1.493s  com.riccon.worker.model.ModelAttemptBudgetIntegrationTest (apps/worker)
+  15.    1.392s  com.riccon.worker.persistence.SchemaVersionCheckerStartupEnabledTest (apps/worker)
+  16.    1.186s  com.riccon.worker.run.persistence.OutboxClaimerTest (apps/worker)
+  17.    0.925s  com.riccon.worker.persistence.SchemaVersionCheckerStartupDisabledTest (apps/worker)
+  18.    0.811s  com.riccon.worker.actuator.PrometheusExposureDenyTest (apps/worker)
+  19.    0.792s  com.riccon.worker.index.service.OpenSearchIndexClientTest (apps/worker)
+  20.    0.758s  com.riccon.worker.actuator.InfoLoopbackAccessTest (apps/worker)
+
+已写入: /var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/m19p3v-verify-reverse/test-timings.md
+已写入: /var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/m19p3v-verify-reverse/test-timings.json
+
+# --- stderr ---
+

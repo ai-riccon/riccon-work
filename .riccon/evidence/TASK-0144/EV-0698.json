@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0698",
+  "task_id": "TASK-0144",
+  "command": "set -euo pipefail && rm -rf apps/worker/target/surefire-reports platform/*/target/surefire-reports && RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=m19p3v perl -e 'alarm shift; exec @ARGV' 1500 ./mvnw -q -T1C -pl apps/worker -am test -Dsurefire.runOrder=reversealphabetical > \"$TMPDIR/m19p3v-verify-reverse.log\" 2>&1 && node scripts/test-timings.mjs --out-dir \"$TMPDIR/m19p3v-verify-reverse\"",
+  "manual": false,
+  "commit": "11a7323da4922ecbddd8ef0b99fe72adfd208eaf",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0144/EV-0698-2026-11-21T21-31-56-789+08-00-set-euo-pipefail-rm-rf-apps-worker-target-surefi.log",
+  "output_sha256": "ddf4e0c6693a2ac03529b4f9c18d015cbe3dd7bed31ece93b3874326a80038e7",
+  "output_bytes": 3026,
+  "agent": "riccon/verifier",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-21T21:30:15.939+08:00",
+  "finished_at": "2026-11-21T21:31:56.065+08:00",
+  "duration_ms": 100125,
+  "note": "TASK-0144 独立 Verifier 顺序无关性：同一 namespace m19p3v 残留数据上，reversealphabetical 顺序全量 worker；要求 356/0/0/0",
+  "recorded_at": "2026-11-21T21:31:56.791+08:00"
+}
