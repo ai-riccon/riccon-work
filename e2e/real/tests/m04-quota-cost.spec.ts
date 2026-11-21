@@ -574,6 +574,8 @@ test.describe('M04-B11b 真实栈配额与成本', () => {
     await expectNoSeriousA11yViolations(page);
 
     // ---------- 租户管理员入口：只有配额/成本 ----------
+    // 菜单入口在桌面宽度核对：375px 时管理端侧栏收起，链接不进入可访问性树。
+    await page.setViewportSize({ width: 1280, height: 900 });
     await logout(page);
     await loginRealLocal(
       page,
@@ -590,7 +592,8 @@ test.describe('M04-B11b 真实栈配额与成本', () => {
     await expect(page.getByRole('link', { name: '模型路由', exact: true })).toHaveCount(0);
     await expect(page.getByRole('link', { name: '模型 key', exact: true })).toHaveCount(0);
 
-    // 只读页无写入口。
+    // 只读页无写入口（375px）。
+    await page.setViewportSize({ width: 375, height: 820 });
     await page.goto(M04_QUOTA_COST_FIXTURES.routes.quotas);
     await expect(
       page.getByText('只读视图：本租户日/月限额与用户用量；限额修改只由平台管理员执行。'),
