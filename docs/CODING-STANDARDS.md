@@ -209,7 +209,7 @@ platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
 - 本地热栈必须显式 opt-in：`RICCON_TEST_SERVICES=external` + 每个 agent 唯一的 `RICCON_TEST_SERVICES_NAMESPACE`；同一 namespace 同时只允许一个测试 JVM，命名锁失败时不得强行复用。
 - `node scripts/test-affected.mjs` / `pnpm test:affected` 只根据 git 变更给出 L1 定向命令，不录 EV，不能替代 L2/L3 的合同全量测试与 verifier 证据。
 - 迁移、回滚与 schema 版本测试始终使用一次性容器，不得指向热栈。
-- 默认、CI 与模块 gate 不设置 `RICCON_TEST_SERVICES`，仍使用 Testcontainers；启动/停止/重置、namespace 规则与故障处理见 `docs/RUNBOOK.md` 的“热测试栈与受影响测试”。
+- 默认与模块 gate 不设置 `RICCON_TEST_SERVICES`，仍使用 Testcontainers；CI backend job 是唯一例外（M19 P1）：显式 `RICCON_TEST_SERVICES=external` + 每个 job 唯一 namespace 复用 compose 热栈，命令与测试集合不变，迁移/回滚/schema 测试仍用一次性容器。启动/停止/重置、namespace 规则、CI 热栈流程与故障处理见 `docs/RUNBOOK.md` 的“热测试栈与受影响测试”和“CI 热栈（external + namespace，M19 P1）”。
 
 ### 10.3 测试时间预算（M19）
 
