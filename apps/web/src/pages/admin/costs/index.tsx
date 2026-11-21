@@ -56,10 +56,88 @@ type CostsMode = 'platform' | 'tenant';
 /** 页面主阶段。 */
 type CostsPhase = 'loading' | 'ready' | 'empty' | 'forbidden' | 'error';
 
+/** 聚合维度联合类型；平台与租户允许的枚举不同。 */
+type CostGroupBy = TenantCostGroupBy | PlatformCostGroupBy;
+
 /** 报告中与角色无关的公共字段；平台/租户桶都可按 `CostBucket` 消费。 */
 interface CostReportView extends CostReportBase {
   groupBy: string;
   items: CostBucket[];
+}
+
+/**
+ * 判断聚合维度是否属于当前角色允许的集合。
+ *
+ * 平台只允许 TENANT/MODEL/DAY，租户只允许 USER/MODEL/DAY；会话未加载（mode=null）时
+ * 返回 false，由调用方回落到角色默认维度，避免刷新时先用 DAY 查询。
+ *
+ * @param groupBy 聚合维度
+ * @param mode 当前角色模式
+ * @returns 是否允许
+ */
+function isGroupByForMode(groupBy: CostGroupBy, mode: CostsMode | null): boolean {
+  if (mode === 'platform') {
+    return groupBy !== 'USER';
+  }
+  if (mode === 'tenant') {
+    return groupBy !== 'TENANT';
+  }
+  return false;
+}
+
+/** antd 6 `components.ExpandIcon` 的入参；`type='all'` 是表头全展开图标。 */
+interface CostExpandIconProps {
+  /** 展开状态。 */
+  expanded: boolean;
+  /** 当前行是否可展开。 */
+  expandable: boolean;
+  /** rc-table 注入的切换处理；调用后触发 `expandable.onExpand`。 */
+  onClick: React.MouseEventHandler<HTMLElement>;
+  /** 图标类型：行内或表头全展开。 */
+  type: 'row' | 'all';
+  /** 行内图标对应的成本桶。 */
+  record?: CostBucket;
+}
+
+/**
+ * 生成租户成本表的展开图标组件。
+ *
+ * antd 6 已弃用 `expandable.expandIcon`（console 会打印 deprecation），官方迁移目标是
+ * `components.ExpandIcon`。这里用闭包捕获当前维度，生成可访问名称（“查看明细：王敏”），
+ * 并保留原生 Button 的 Enter/Space 键盘行为；表头全展开图标不渲染，避免出现无目标操作。
+ *
+ * @param groupBy 当前聚合维度
+ * @returns 供 Table `components.ExpandIcon` 使用的组件
+ */
+function createCostExpandIcon(groupBy: CostGroupBy) {
+  /**
+   * 行展开图标。
+   *
+   * @param props rc-table 注入的展开状态与点击处理
+   * @returns 行内“查看/收起明细”按钮；表头或不可展开行返回 null
+   */
+  return function CostExpandIcon({
+    expanded,
+    expandable,
+    onClick,
+    type,
+    record,
+  }: CostExpandIconProps) {
+    if (!expandable || type !== 'row' || !record) {
+      return null;
+    }
+    return (
+      <Button
+        aria-label={`${expanded ? '收起明细' : '查看明细'}：${costBucketTitle(record, groupBy)}`}
+        autoInsertSpace={false}
+        onClick={onClick}
+        size="small"
+        type="link"
+      >
+        {expanded ? '收起明细' : '查看明细'}
+      </Button>
+    );
+  };
 }
 
 /** 服务端 page 上限；分页组件按此截断，避免用户点到第 201 页才收到 400。 */
@@ -134,9 +212,16 @@ export default function CostsPage({ api = defaultCostApi }: CostsPageProps) {
   const canReadTenant = hasCostPermission(permissions, COST_PERMISSIONS.read);
   const mode: CostsMode | null = canPlatform ? 'platform' : canReadTenant ? 'tenant' : null;
 
-  const [groupBy, setGroupBy] = useState<TenantCostGroupBy | PlatformCostGroupBy>(() =>
-    canPlatform ? 'TENANT' : canReadTenant ? 'USER' : 'DAY',
+  const [selectedGroupBy, setSelectedGroupBy] = useState<CostGroupBy | null>(() =>
+    canPlatform ? 'TENANT' : canReadTenant ? 'USER' : null,
   );
+  // 会话未加载时 state 为 null；mode 解析后立即回落到角色默认维度，避免先请求 DAY。
+  const groupBy: CostGroupBy =
+    selectedGroupBy && isGroupByForMode(selectedGroupBy, mode)
+      ? selectedGroupBy
+      : mode === 'platform'
+        ? 'TENANT'
+        : 'USER';
   const [range, setRange] = useState(() => defaultCostRange());
   const [draftFrom, setDraftFrom] = useState(range.from);
   const [draftTo, setDraftTo] = useState(range.to);
@@ -155,16 +240,6 @@ export default function CostsPage({ api = defaultCostApi }: CostsPageProps) {
       void authStore.restore(defaultApi);
     }
   }, [auth.status]);
-
-  // 会话从“未加载”恢复后，若默认维度不属于当前角色，切换到该角色的默认维度。
-  useEffect(() => {
-    if (mode === 'platform' && groupBy === 'USER') {
-      setGroupBy('TENANT');
-    }
-    if (mode === 'tenant' && groupBy === 'TENANT') {
-      setGroupBy('USER');
-    }
-  }, [mode, groupBy]);
 
   /**
    * 加载成本报告。
@@ -255,7 +330,7 @@ export default function CostsPage({ api = defaultCostApi }: CostsPageProps) {
    * @param value Segmented 选中值
    */
   const handleGroupChange = (value: string | number): void => {
-    setGroupBy(value as TenantCostGroupBy);
+    setSelectedGroupBy(value as CostGroupBy);
     setPage(1);
     setExpandedKeys([]);
   };
@@ -281,6 +356,8 @@ export default function CostsPage({ api = defaultCostApi }: CostsPageProps) {
     () => groups.map((item) => ({ value: item.value, label: item.label })),
     [groups],
   );
+  // 租户表把展开图标迁到 antd 6 的 `components.ExpandIcon`；组件身份随维度变化即可。
+  const tableComponents = useMemo(() => ({ ExpandIcon: createCostExpandIcon(groupBy) }), [groupBy]);
 
   const columns: ColumnsType<CostBucket> = [
     {
@@ -618,6 +695,7 @@ export default function CostsPage({ api = defaultCostApi }: CostsPageProps) {
             </Typography.Paragraph>
             <Table<CostBucket>
               columns={columns}
+              components={mode === 'tenant' ? tableComponents : undefined}
               dataSource={report.items}
               expandable={
                 mode === 'tenant'
@@ -629,20 +707,6 @@ export default function CostsPage({ api = defaultCostApi }: CostsPageProps) {
                             ? [...previous, record.key]
                             : previous.filter((key) => key !== record.key),
                         ),
-                      expandIcon: ({ expanded, onExpand, record }) => (
-                        <Button
-                          aria-label={`${expanded ? '收起明细' : '查看明细'}：${costBucketTitle(
-                            record,
-                            groupBy,
-                          )}`}
-                          autoInsertSpace={false}
-                          onClick={(event) => onExpand(record, event)}
-                          size="small"
-                          type="link"
-                        >
-                          {expanded ? '收起明细' : '查看明细'}
-                        </Button>
-                      ),
                       expandedRowRender: (record) => (
                         <InvocationPanel
                           api={api}
@@ -657,6 +721,9 @@ export default function CostsPage({ api = defaultCostApi }: CostsPageProps) {
                     }
                   : undefined
               }
+              // 平台表没有行内按钮；给行加 tabIndex 让 375px 横向滚动区可键盘聚焦
+              // （axe scrollable-region-focusable），不改变表格 role 与行语义。
+              onRow={mode === 'platform' ? () => ({ tabIndex: 0 }) : undefined}
               pagination={{
                 current: report.page,
                 pageSize: report.size,

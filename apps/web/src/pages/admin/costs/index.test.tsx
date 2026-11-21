@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/services/api/errors';
 import type { SessionInfo } from '@/services/api/types';
@@ -340,6 +340,55 @@ describe('成本页', () => {
     expect(await screen.findByText('成本报告加载失败')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: /重\s*试/ }));
     expect(await screen.findByText('acme')).toBeVisible();
+  });
+
+  it('平台成本表滚动区内的行可键盘聚焦（scrollable-region-focusable）', async () => {
+    const api = createCostApi();
+    const { container } = renderPage(api);
+    await screen.findByText('acme');
+
+    const rows = Array.from(container.querySelectorAll('.ant-table-tbody tr.ant-table-row'));
+    expect(rows.length).toBeGreaterThan(0);
+    rows.forEach((row) => expect(row).toHaveAttribute('tabindex', '0'));
+  });
+
+  it('刷新时会话恢复后按角色默认维度查询，不先请求 DAY', async () => {
+    authStore.reset();
+    const restoreSpy = vi.spyOn(authStore, 'restore').mockResolvedValue(authStore.getSnapshot());
+    try {
+      const api = createCostApi();
+      renderPage(api);
+      expect(api.getTenantCostReport).not.toHaveBeenCalled();
+
+      act(() => authStore.setAuthenticated(TENANT_ADMIN_SESSION));
+
+      await waitFor(() => expect(api.getTenantCostReport).toHaveBeenCalled());
+      const calls = vi.mocked(api.getTenantCostReport).mock.calls;
+      expect(calls.length).toBeGreaterThan(0);
+      expect(calls.every(([query]) => query.groupBy === 'USER')).toBe(true);
+      expect(calls.some(([query]) => query.groupBy === 'DAY')).toBe(false);
+      expect(api.getPlatformCostReport).not.toHaveBeenCalled();
+    } finally {
+      restoreSpy.mockRestore();
+    }
+  });
+
+  it('租户成本表不再触发 antd expandIcon 弃用警告', async () => {
+    authStore.reset();
+    authStore.setAuthenticated(TENANT_ADMIN_SESSION);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      const api = createCostApi();
+      renderPage(api);
+      await screen.findByText('王敏');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const messages = errorSpy.mock.calls.map((call) => call.join(' ')).join('\n');
+      expect(messages).not.toMatch(/deprecated/i);
+      expect(messages).not.toMatch(/expandable\.expandIcon/);
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 
   it('租户管理员按用户聚合，展开分组后显示调用价格快照与未定价状态', async () => {
