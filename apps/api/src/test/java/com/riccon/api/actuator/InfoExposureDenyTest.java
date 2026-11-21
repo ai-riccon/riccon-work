@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.riccon.api.support.ApiIntegrationTestSupport;
 import com.riccon.api.support.ApiTestClient;
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.TestPropertySource;
@@ -29,6 +30,18 @@ class InfoExposureDenyTest extends ApiIntegrationTestSupport {
         ApiTestClient.ApiResponse response = client.get("/actuator/info");
 
         assertThat(response.status()).as(response.body()).isIn(401, 403, 404);
+        assertThat(response.body()).doesNotContain("deploymentMode").doesNotContain("\"riccon\"");
+    }
+
+    /** 已认证平台管理员从非允许来源读取 info 仍被拒绝：来源过滤不是业务 RBAC。 */
+    @Test
+    @DisplayName("OPS-M04-02b：平台管理员从非允许来源读取 /actuator/info 仍被拒绝")
+    void platformAdminFromNonAllowlistedSourceIsDenied() {
+        LoginSession admin = loginPlatformAdmin();
+
+        ApiTestClient.ApiResponse response = client.get("/actuator/info", admin.sessionCookie(), Map.of());
+
+        assertThat(response.status()).as(response.body()).isIn(403, 404);
         assertThat(response.body()).doesNotContain("deploymentMode").doesNotContain("\"riccon\"");
     }
 
