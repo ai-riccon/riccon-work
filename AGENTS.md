@@ -48,15 +48,15 @@ product:
     - id: M03
       title: "权限纵深与组织模型"
       goal: "组织/部门、部门数据范围、部门维度越权测试套件"
-      status: building
+      status: done
     - id: M10
       title: "身份与审计纵深（M03b）"
       goal: "OIDC/SSO、审计查询与导出审批、身份与导出越权用例"
-      status: planned
+      status: done
     - id: M04
       title: "模型网关纵深"
       goal: "路由、降级、多 key、配额执行、成本看板"
-      status: planned
+      status: done
     - id: M05
       title: "知识库纵深"
       goal: "Excel/图片/OCR、文档级 ACL、1 个外部连接器"

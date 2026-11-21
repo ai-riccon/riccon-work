@@ -58,9 +58,11 @@
 - 模块评审：`.riccon/reviews/<module>-review.md`，由 `review.schema.json` 校验，参与模块 gate。
 - 任务级/架构级独立评审：`.riccon/reviews/tasks/<task>-review.md`，由 `task-review.schema.json` 校验；不参与模块 gate，由 Lead 在任务 closeout 核对。
 - Review 必须绑定当前模块、最新证据，reviewer 独立，verdict 为 pass；`reviewer.session` 填真实 `ses_...` 会话 ID。0.1.9 起新 review 使用 `ses_verifier_*`、`ses_xxx` 等非真实 ID 会让 gate 失败；2026-11-20 之前的旧 review 只产生 warning。
+- pass 时不得保留 open finding：P0/P1 必须 fixed；P2/P3 必须 fixed 或 accepted，accepted 必须写 owner、due、accepted_reason。模块评审用 `reviewed_task_reviews` 列出每个已有 task review 的最新 review_id。影响 AC 的 accepted finding 必须写成 `pass (with residual)`。
+- 替换模块评审前先归档旧文件到 `.riccon/archive/reviews/`；`previous_review` 找不到会让 `state validate` warning。
 - 发布评审写入 `.riccon/reviews/RELEASE-review.md`，使用 `templates/state/release-review.md`；它用 `reviewed_evidence` 覆盖发布证据，DoD 使用合同 `definition_of_done.release`，不复用模块 review 的 `dod_evidence` 绑定。
 - AC 对账必须引用 AC 原文的用户可见结果；AC 要求界面、文案或入口时，API 证据不能单独判 pass，必须绑定 UI/E2E 证据。
-- P0/P1 必须修复；P2/P3 需要书面接受。不要改 review 来强行通过 gate。
+- P0/P1 必须修复；P2/P3 必须按上面的 `accepted` 字段书面接受。不要改 review 来强行通过 gate。
 
 ## 6. 证据与测试
 

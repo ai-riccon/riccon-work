@@ -352,6 +352,19 @@ M02 是用户可见 MVC 模块，但 2026-11-18 关闭时没有 `product_accepta
 - 说明：用户按 A 接受 M04（DEC-0027）。本结论不改写 Product 预验收 `pass`、18 条 AC 表，也不改写 M02/M03/M10/M18 的历史结论。
 - 下一步：M05 承接 R-M04-01/02/03 与 F-006/F-008/F-010/F-013 相关测试/口径补齐；生产发布按 release gate 与用户批准另行处理。
 
+## M04 遗留评审收口（2026-11-21 内核升级）
+
+- 背景：团队内核 0.1.9 → 0.1.11 后，`state validate` 对旧评审的 open/accepted finding 只告警；本次只做书面收口，不追溯改写历史评审与证据。
+- `REV-TASK-0108-001` 的 8 条 open P2（F-001..F-008）已在 `REV-TASK-0108-002` 标记为 accepted，并逐条绑定修复任务；M04 已用户验收（DEC-0027），残余不改变已验收 AC 结论，但 M20 gate 前必须关闭：
+  - TASK-0140：F-001 价格快照时点、F-003 报表成本断言、F-004 first_token_ms、F-012 负 token。
+  - TASK-0141：F-002 真实 MySQL 3 秒查询保护、F-005 平台五类计数。
+  - TASK-0142：F-006 `TenantContextFilter` 平台成本例外角色校验与负向测试（高风险，独立 Verifier）。
+  - TASK-0143：F-007 OpenAPI Page 上限、F-008 AC-12 403/404 口径、F-010 tenantId/userId 边界。
+- `REV-TASK-0108-001` 的 P3 F-009/F-011 由 Lead accepted：历史 EV/任务卡不追溯改写；M20 起新 EV 保留测试汇总并标注 superseded，高风险任务 `tools_used` 必须记录 Serena/CodeGraph 或降级理由。
+- `REV-M04-005` 的 accepted P2/P3（F-006/F-008/F-009/F-010/F-012/F-013）缺少 `accepted_reason` 与 `reviewed_task_reviews`；由 `REV-M04-006`（`M04-review-supplement-001.md`）补充，明确不替代 M04-005、不参与 gate。旧文件 warning 保留，不追溯改写。
+- `REV-M04-004`/`REV-M04-003` 已从 git history 恢复到 `.riccon/archive/reviews/M04-review-REV-M04-004.md` 与 `...-003.md`，修复 `previous_review` 断链。
+- 边界：本次未改业务源码、未新跑测试、未新录 EV；M20 任务均为 planned，未启动。剩余 legacy warning 属于历史评审清理范围，不是新的 gate 失败。
+
 ## 历史模块
 
 | 模块 | Product 预验收                                                     | 用户最终验收               | 记录                                                                                                                 |

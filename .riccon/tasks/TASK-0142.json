@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0142",
+  "module_id": "M20",
+  "title": "平台成本租户过滤角色校验与负向测试（REV-TASK-0108 F-006）",
+  "owner": "riccon/builder-core",
+  "status": "planned",
+  "write_scope": [
+    "apps/api/src/main/java/com/riccon/api/auth/controller/TenantContextFilter.java",
+    "apps/api/src/test/java/com/riccon/api/admin/cost/**",
+    "docs/adr/ADR-0009-tenant-isolation-enforcement.md",
+    "docs/adr/ADR-0022-m04-quota-and-cost.md",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "TenantContextFilter 的平台成本例外同时校验 platform.cost.read，或由 ADR-0009 记录例外并证明 defense-in-depth",
+    "负向测试覆盖平台非管理员、X-Tenant-Id 伪造、其他路径/方法",
+    "独立 Verifier 高风险安全评审通过并绑定证据"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-21T17:33:29.918+08:00",
+  "updated_at": "2026-11-21T17:33:29.918+08:00"
+}

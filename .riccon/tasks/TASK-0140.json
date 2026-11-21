@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0140",
+  "module_id": "M20",
+  "title": "成本快照时点 + 报表成本/首字断言（REV-TASK-0108 F-001/F-003/F-004/F-012）",
+  "owner": "riccon/builder-cost",
+  "status": "planned",
+  "write_scope": [
+    "apps/worker/src/main/java/com/riccon/worker/model/service/ModelInvocationService.java",
+    "apps/worker/src/main/java/com/riccon/worker/research/service/AgentRunRequestedHandler.java",
+    "apps/worker/src/main/java/com/riccon/worker/research/service/AgentRunResumeHandler.java",
+    "apps/worker/src/test/java/com/riccon/worker/model/**",
+    "apps/worker/src/test/java/com/riccon/worker/research/**",
+    "docs/adr/ADR-0022-m04-quota-and-cost.md",
+    "docs/ARCHITECTURE.md",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "价格快照在最终成功尝试开始时读取一次，或由 Architect 修订 ADR-0022/架构/列注释并在评审记录，AC-11 口径一致",
+    "报表生成路径断言 model_invocation 为 PRICED 且金额与固定样例一致；聊天路径有端到端成本断言",
+    "报表 TOOL/GENERATION 调用写 first_token_ms，或书面记录 AgentScope 无法提供的原因并由 Lead 接受",
+    "provider 负 token 不生成负金额：写库前拒绝或归一为 USAGE_UNKNOWN",
+    "受影响测试通过并绑定证据"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-21T17:33:16.164+08:00",
+  "updated_at": "2026-11-21T17:33:16.164+08:00"
+}
