@@ -12,7 +12,7 @@
 // 退出码：任一断言失败非 0；成功写 `runtime-verify.json`。
 
 import { spawn } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import {
   copyFileSync,
   mkdirSync,
@@ -75,7 +75,7 @@ const endpointHash = createHash("sha256")
   )
   .digest("hex");
 
-const serviceSecret = `m04-v2-verifier-${Date.now()}`;
+const serviceSecret = `m04-v2-verifier-${randomBytes(24).toString("hex")}`;
 const sharedEnv = {
   RICCON_MASTER_KEY: masterKey,
   RICCON_MASTER_KEY_ID: masterKeyId,

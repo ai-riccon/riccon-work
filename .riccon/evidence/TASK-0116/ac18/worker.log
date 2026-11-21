@@ -1,0 +1,38 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-21T12:44:30.722+08:00  INFO 61486 --- [riccon-worker] [           main] com.riccon.worker.WorkerApplication      : Starting WorkerApplication v0.1.0-SNAPSHOT using Java 21.0.13 with PID 61486 (/Users/ricky/Documents/projects/riccon-work/apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar started by ricky in /Users/ricky/Documents/projects/riccon-work)
+2026-11-21T12:44:30.727+08:00  INFO 61486 --- [riccon-worker] [           main] com.riccon.worker.WorkerApplication      : No active profile set, falling back to 1 default profile: "default"
+2026-11-21T12:44:33.121+08:00  INFO 61486 --- [riccon-worker] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 18081 (http)
+2026-11-21T12:44:33.142+08:00  INFO 61486 --- [riccon-worker] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-21T12:44:33.142+08:00  INFO 61486 --- [riccon-worker] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-21T12:44:33.178+08:00  INFO 61486 --- [riccon-worker] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2365 ms
+2026-11-21T12:44:33.625+08:00  INFO 61486 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=2
+2026-11-21T12:44:33.727+08:00  WARN 61486 --- [riccon-worker] [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'chatStreamController' defined in URL [jar:nested:/Users/ricky/Documents/projects/riccon-work/apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar/!BOOT-INF/classes/!/com/riccon/worker/chat/controller/ChatStreamController.class]: Unsatisfied dependency expressed through constructor parameter 1: Error creating bean with name 'serviceTokenValidator' defined in URL [jar:nested:/Users/ricky/Documents/projects/riccon-work/apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar/!BOOT-INF/classes/!/com/riccon/worker/chat/service/ServiceTokenValidator.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'riccon.worker.service-token-com.riccon.worker.config.ServiceTokenProperties': Could not bind properties to 'ServiceTokenProperties' : prefix=riccon.worker.service-token, ignoreInvalidFields=false, ignoreUnknownFields=true
+2026-11-21T12:44:33.731+08:00  INFO 61486 --- [riccon-worker] [           main] o.apache.catalina.core.StandardService   : Stopping service [Tomcat]
+2026-11-21T12:44:33.754+08:00  INFO 61486 --- [riccon-worker] [           main] .s.b.a.l.ConditionEvaluationReportLogger : 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-11-21T12:44:33.784+08:00 ERROR 61486 --- [riccon-worker] [           main] o.s.b.d.LoggingFailureAnalysisReporter   : 
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Failed to bind properties under 'riccon.worker.service-token' to com.riccon.worker.config.ServiceTokenProperties:
+
+    Reason: java.lang.IllegalArgumentException: riccon.worker.service-token.secret must be at least 32 characters (injected at deploy)
+
+Action:
+
+Update your application's configuration
+
