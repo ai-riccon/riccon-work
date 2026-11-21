@@ -1,0 +1,142 @@
+{
+  "status": "failed",
+  "generatedAt": "2026-11-21T05:52:33.016Z",
+  "mode": "perf",
+  "env": {
+    "generatedAt": "2026-11-21T05:47:42.706Z",
+    "mode": "perf",
+    "host": {
+      "platform": "darwin 24.6.0",
+      "arch": "x64",
+      "cpus": 12,
+      "cpuModel": "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz",
+      "memoryBytes": 17179869184,
+      "memoryGiB": 16,
+      "node": "v26.13.0"
+    },
+    "images": {
+      "compose": [
+        "rustfs/rustfs:1.0.6",
+        "mysql:8.4.13",
+        "opensearchproject/opensearch:3.9.0"
+      ],
+      "started": [
+        "mysql:8.4.13"
+      ]
+    },
+    "k6Version": "k6 v2.4.0 (commit/dd9395906d, go1.26.11, darwin/amd64)",
+    "scriptSha256": "c85206b4a6bffb199d72da4c399e1bb6729a021f81a8dafa382a412ec005ffbd",
+    "chatMaxStreams": 50,
+    "dbPoolSize": 25,
+    "fakeModel": 1,
+    "deploymentMode": "DEMO",
+    "startCommand": "node scripts/real-stack/run.mjs --mode=perf",
+    "startupCommands": [
+      "java -jar apps/api/target/riccon-api-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/MASTER_KEY_ID/FINGERPRINT_PEPPER/BILLING_CURRENCY/QUOTA_DEFAULT_*/DB_POOL)",
+      "java -jar apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/CHAT_MAX_STREAMS/DB_POOL_SIZE/MODEL_FIRST_TOKEN_TIMEOUT/PRE_FIRST_TOKEN_BUDGET)",
+      "node scripts/real-stack/fake-model.mjs --scenario ok --chunk-count 6"
+    ],
+    "perfProfile": {
+      "chatMaxStreams": 50,
+      "dbPoolSize": 25,
+      "fakeModel": 1,
+      "connectTimeout": "500ms",
+      "firstTokenTimeout": "1000ms",
+      "preFirstTokenBudget": "2500ms",
+      "maxAttempts": 3,
+      "retryDelays": "50ms,100ms",
+      "duration": "45s"
+    },
+    "openSearch": "excluded (perf mode; 2C4Gi sandbox 不足，主机规格见 host)"
+  },
+  "fingerprint": {
+    "api": {
+      "deploymentMode": "DEMO",
+      "endpointSetHash": "45f1b03d8c4b3b8901c8960ecb498d83165b34b92bd18fbddab53356820ca7a2",
+      "routingMode": "",
+      "failoverEnabled": "",
+      "quotaEnforcementEnabled": "",
+      "masterKeyId": "mk-1",
+      "currency": "CNY",
+      "tenantDaily": "10000",
+      "tenantMonthly": "200000",
+      "userDaily": "1000",
+      "userMonthly": "20000"
+    },
+    "worker": {
+      "deploymentMode": "DEMO",
+      "endpointSetHash": "45f1b03d8c4b3b8901c8960ecb498d83165b34b92bd18fbddab53356820ca7a2",
+      "routingMode": "",
+      "failoverEnabled": "",
+      "quotaEnforcementEnabled": "",
+      "masterKeyId": "mk-1",
+      "currency": "CNY",
+      "tenantDaily": "10000",
+      "tenantMonthly": "200000",
+      "userDaily": "1000",
+      "userMonthly": "20000"
+    },
+    "matched": true
+  },
+  "phases": {
+    "compose": "passed",
+    "fingerprint": "passed",
+    "seed": "passed"
+  },
+  "runs": [
+    {
+      "scenario": "first_token",
+      "failureMode": null,
+      "status": 99,
+      "report": ".riccon/evidence/TASK-0137/perf-m04-first_token.json",
+      "log": ".riccon/evidence/TASK-0137/perf-m04-first_token.log"
+    },
+    {
+      "scenario": "failover",
+      "failureMode": "server_error",
+      "status": 0,
+      "report": ".riccon/evidence/TASK-0137/perf-m04-failover-server_error.json",
+      "log": ".riccon/evidence/TASK-0137/perf-m04-failover-server_error.log"
+    },
+    {
+      "scenario": "failover",
+      "failureMode": "rate_limited",
+      "status": 99,
+      "report": ".riccon/evidence/TASK-0137/perf-m04-failover-rate_limited.json",
+      "log": ".riccon/evidence/TASK-0137/perf-m04-failover-rate_limited.log"
+    },
+    {
+      "scenario": "failover",
+      "failureMode": "unauthorized",
+      "status": 0,
+      "report": ".riccon/evidence/TASK-0137/perf-m04-failover-unauthorized.json",
+      "log": ".riccon/evidence/TASK-0137/perf-m04-failover-unauthorized.log"
+    },
+    {
+      "scenario": "failover",
+      "failureMode": "timeout",
+      "status": 0,
+      "report": ".riccon/evidence/TASK-0137/perf-m04-failover-timeout.json",
+      "log": ".riccon/evidence/TASK-0137/perf-m04-failover-timeout.log"
+    },
+    {
+      "scenario": "quota",
+      "failureMode": null,
+      "status": 0,
+      "report": ".riccon/evidence/TASK-0137/perf-m04-quota.json",
+      "log": ".riccon/evidence/TASK-0137/perf-m04-quota.log"
+    },
+    {
+      "scenario": "cost",
+      "failureMode": null,
+      "status": 0,
+      "report": ".riccon/evidence/TASK-0137/perf-m04-cost.json",
+      "log": ".riccon/evidence/TASK-0137/perf-m04-cost.log"
+    }
+  ],
+  "notes": [
+    "perf 模式只启动 MySQL 与假模型/API/Worker；OpenSearch 与 Web 未启动，主机规格见 env.host。",
+    "每个降级模式独立一次 k6 运行并在前后重置 fake provider key 场景与 key 健康，避免 401 失效/冷却掩盖降级。",
+    "配额场景会通过开关 GET/PUT 临时打开 quotaEnforcementEnabled，并把租户/用户日限额设为已用+1；结束后恢复开关与两级限额原值。"
+  ]
+}
