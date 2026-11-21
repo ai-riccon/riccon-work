@@ -261,7 +261,7 @@ test.describe('M04 成本页', () => {
     await expect(
       page.getByText(/金额按 6 位小数计算，展示按币种最小单位（当前 CNY 2 位）四舍五入一次/),
     ).toBeVisible();
-    // 整页刷新时会话恢复前 groupBy 初值为 DAY（P2，B9b 后续修复）；用例显式选择 AC-11 的平台默认维度。
+    // 显式选择 AC-11 的平台默认维度，不依赖会话恢复时序（TASK-0131 已校正角色初值）。
     await page.getByText('按租户', { exact: true }).click();
     await expect(page.getByText('合计（按租户）')).toBeVisible();
 
@@ -328,7 +328,7 @@ test.describe('M04 成本页', () => {
       await route.fulfill({ response, json: payload });
     });
     await page.reload();
-    // 刷新后的初始维度取决于会话恢复时机（P2），显式选择 DAY 后再断言注入的边界计数。
+    // 显式选择 DAY 后再断言注入的边界计数，不依赖会话恢复时序。
     await page.getByText('按日', { exact: true }).click();
     await expect(page.getByText('合计（按日）')).toBeVisible();
     await expect(costTotalsItem(page, '币种不一致调用（不计入金额）')).toContainText('2');
@@ -351,7 +351,7 @@ test.describe('M04 成本页', () => {
     await expect(
       page.getByText('本租户聚合：按用户、模型、日查看估算成本，可展开分组查看调用价格快照。'),
     ).toBeVisible();
-    // 整页刷新时会话恢复前 groupBy 初值为 DAY（P2，B9b 后续修复）；显式选择租户默认维度。
+    // 显式选择 AC-11 的租户默认维度，不依赖会话恢复时序（TASK-0131 已校正角色初值）。
     await page.getByText('按用户', { exact: true }).click();
     await expect(page.getByText('合计（按用户）')).toBeVisible();
     const tenantAmount = costTotalsItem(page, '合计金额');

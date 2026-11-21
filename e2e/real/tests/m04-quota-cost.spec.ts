@@ -409,7 +409,7 @@ test.describe('M04-B11b 真实栈配额与成本', () => {
     );
     await page.goto(M04_QUOTA_COST_FIXTURES.routes.costs);
     await expect(page.getByText(M04_QUOTA_COST_FIXTURES.disclaimer).first()).toBeVisible();
-    // 整页刷新时会话恢复前 groupBy 初值为 DAY（P2，B9b 后续修复）；显式选择租户 AC-11 默认维度。
+    // 显式选择租户 AC-11 默认维度，不依赖会话恢复时序（TASK-0131 已校正角色初值）。
     await page.getByText('按用户', { exact: true }).click();
     await expect(page.getByText('合计（按用户）')).toBeVisible();
     await page.getByRole('button', { name: '查看明细：Alpha 员工' }).click();
@@ -436,7 +436,7 @@ test.describe('M04-B11b 真实栈配额与成本', () => {
 
       // UI：未定价调用单列，明细显示“未定价”。
       await page.reload();
-      // 刷新后的初始维度取决于会话恢复时机（P2），显式选择 USER 后再断言。
+      // 显式选择 USER 后再断言，不依赖会话恢复时序。
       await page.getByText('按用户', { exact: true }).click();
       await expect(page.getByText('合计（按用户）')).toBeVisible();
       await expect(
