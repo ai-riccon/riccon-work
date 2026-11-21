@@ -329,16 +329,16 @@ SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history WHERE success =
 
 ### M04-0 preflight（零副作用，失败即停）
 
-| 检查项              | 命令/来源                                                                                                                      | 通过判据                                                                                                                                                                                 |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 主密钥与 Secret     | 环境变量存在性 + base64 长度（见下）                                                                                           | `RICCON_MASTER_KEY`/`RICCON_CREDENTIAL_FINGERPRINT_PEPPER` 均为 32 字节；轮换窗口才注入 `RICCON_MASTER_KEY_PREVIOUS`                                                                     |
-| service token / DB  | `RICCON_SERVICE_TOKEN_SECRET`、`RICCON_DB_*` 由密钥管理注入                                                                    | 非空；日志、工单、证据里不出现值                                                                                                                                                         |
-| 端点与模式          | `RICCON_MODEL_DEPLOYMENT_MODE`、`RICCON_MODEL_ENDPOINTS`、`RICCON_MODEL_ALLOW_HTTP`、`RICCON_MODEL_ENDPOINT_SET_HASH`          | PRODUCTION 只允许 https、未配置端点即启动失败；DEMO 才允许 http                                                                                                                          |
-| 币种                | `RICCON_BILLING_CURRENCY`                                                                                                      | ISO 4217；**部署后不可在线变更**（见“换币种不可行”）                                                                                                                                     |
-| 默认配额 4 键       | `RICCON_QUOTA_DEFAULT_TENANT_DAILY/_TENANT_MONTHLY/_USER_DAILY/_USER_MONTHLY`                                                  | 与 API/Worker 两侧一致；默认 10000/200000/1000/20000；`0` 或空 = 不限                                                                                                                    |
-| DB 连通与体积       | 下方 SQL                                                                                                                       | `model_invocation` ≤200 万行且 data+index ≤2 GiB；磁盘余量 ≥2× 表体积；无 >60s 事务/长 MDL                                                                                               |
-| API/Worker 指纹漂移 | `node scripts/ops/seed-model-catalog.mjs --check --api-base <API> --worker-base <Worker> [--catalog <目录文件>]`               | exit 0 且 `status=passed`；**必须从 `RICCON_OPS_ALLOWED_CIDRS` 允许的来源发起**（与 prometheus 同一允许列表，空 = 仅 loopback），其他来源按设计 403；403 不是通过，也不得用 env 快照冒充 |
-| 目录与部署端点一致  | `node scripts/ops/seed-model-catalog.mjs --check ... [--catalog <目录文件>] [--endpoints "$RICCON_MODEL_ENDPOINTS"]`（不写库） | `model_provider.base_url` 与 `RICCON_MODEL_ENDPOINTS` 的 code/baseUrl 逐条一致；目录文件与 DB 差异由同一命令报告                                                                         |
+| 检查项              | 命令/来源                                                                                                             | 通过判据                                                                                                             |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 主密钥与 Secret     | 环境变量存在性 + base64 长度（见下）                                                                                  | `RICCON_MASTER_KEY`/`RICCON_CREDENTIAL_FINGERPRINT_PEPPER` 均为 32 字节；轮换窗口才注入 `RICCON_MASTER_KEY_PREVIOUS` |
+| service token / DB  | `RICCON_SERVICE_TOKEN_SECRET`、`RICCON_DB_*` 由密钥管理注入                                                           | 非空；日志、工单、证据里不出现值                                                                                     |
+| 端点与模式          | `RICCON_MODEL_DEPLOYMENT_MODE`、`RICCON_MODEL_ENDPOINTS`、`RICCON_MODEL_ALLOW_HTTP`、`RICCON_MODEL_ENDPOINT_SET_HASH` | PRODUCTION 只允许 https、未配置端点即启动失败；DEMO 才允许 http                                                      |
+| 币种                | `RICCON_BILLING_CURRENCY`                                                                                             | ISO 4217；**部署后不可在线变更**（见“换币种不可行”）                                                                 |
+| 默认配额 4 键       | `RICCON_QUOTA_DEFAULT_TENANT_DAILY/_TENANT_MONTHLY/_USER_DAILY/_USER_MONTHLY`                                         | 与 API/Worker 两侧一致；默认 10000/200000/1000/20000；`0` 或空 = 不限                                                |
+| DB 连通与体积       | 下方 SQL                                                                                                              | `model_invocation` ≤200 万行且 data+index ≤2 GiB；磁盘余量 ≥2× 表体积；无 >60s 事务/长 MDL                           |
+| API/Worker 指纹漂移 | `node scripts/ops/seed-model-catalog.mjs --check --api-base <API> --worker-base <Worker> [--catalog <目录文件>]` | exit 0 且 `status=passed`；**必须从 `RICCON_OPS_ALLOWED_CIDRS` 允许的来源发起**（与 prometheus 同一允许列表，空 = 仅 loopback），其他来源按设计 403；403 不是通过，也不得用 env 快照冒充 |
+| 目录与部署端点一致  | `node scripts/ops/seed-model-catalog.mjs --check ... [--catalog <目录文件>] [--endpoints "$RICCON_MODEL_ENDPOINTS"]`（不写库） | `model_provider.base_url` 与 `RICCON_MODEL_ENDPOINTS` 的 code/baseUrl 逐条一致；目录文件与 DB 差异由同一命令报告 |
 
 ```bash
 # Secret 非空与长度（只打印结果，不打印值）
@@ -512,12 +512,12 @@ node scripts/ops/rewrap-credentials.mjs --apply --via=client
 目录/价格变更（新增端点、模型、价格、币种）只能按下表；路由/开关**必须走管理端 API**（乐观锁 + 审计），
 运维不得 SQL 直改：
 
-| 变更          | 步骤                                                                                                                                             | 禁止                                                        |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| 变更          | 步骤                                                                                                                                      | 禁止                                                        |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | 新增端点      | 更新 `RICCON_MODEL_ENDPOINTS`（含 code/baseUrl/https）→ `seed-model-catalog.mjs --catalog <目录文件> --apply` → 重启 API/Worker → `--check` 比对 | 只改 env 不种 DB；脚本会 `--check` 报 endpoint 漂移         |
-| 新增模型/改价 | 目录文件加模型或改价格 → `seed-model-catalog.mjs --apply`（幂等 upsert）→ 需要时 `update-model-price.mjs --apply`                                | 改历史 `model_invocation` 快照；DELETE 旧模型               |
-| 改单个价格    | `update-model-price.mjs --provider-code <c> --model-key <k> --input/--output <p> [--apply]`，打印 before/after                                   | 用 UPDATE 直改库；批量 SQL 无审计                           |
-| 换币种        | **不可行**：新部署 + 历史报告按币种隔离；旧快照保持原币种                                                                                        | 在线改 `RICCON_BILLING_CURRENCY`（会产生 currencyMismatch） |
+| 新增模型/改价 | 目录文件加模型或改价格 → `seed-model-catalog.mjs --apply`（幂等 upsert）→ 需要时 `update-model-price.mjs --apply`                         | 改历史 `model_invocation` 快照；DELETE 旧模型               |
+| 改单个价格    | `update-model-price.mjs --provider-code <c> --model-key <k> --input/--output <p> [--apply]`，打印 before/after                            | 用 UPDATE 直改库；批量 SQL 无审计                           |
+| 换币种        | **不可行**：新部署 + 历史报告按币种隔离；旧快照保持原币种                                                                                 | 在线改 `RICCON_BILLING_CURRENCY`（会产生 currencyMismatch） |
 
 ### M04-9 备份恢复演练（preview RPO ≤24h、RTO ≤4h）
 
@@ -653,16 +653,16 @@ node scripts/ops/cost-reconcile.mjs --api-base http://127.0.0.1:18080 --tenant t
 
 ### M04-15 故障与恢复
 
-| 现象                                   | 可能原因                                           | 处置                                                                                                               |
-| -------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| J1/J2 返回 503（链空）                 | 路由链为空/模型全停用/端点未放行                   | 管理端补链或 `RICCON_MODEL_ROUTING_MODE=BASELINE`；查 `riccon_model_chain_empty_total`                             |
-| 请求持续 401/403 后切备用              | 主 key 失效/被上游拒绝                             | 管理端轮换或停用失效 key；`credential_invalid_total` 定位 provider                                                 |
-| 429 但租户未超限                       | 用户维度限额更小/窗口边界                          | `GET /api/v1/quotas`、`/quotas/users` 核对；审计 `quota.exceeded` 的 `scopeType/window`                            |
-| 503 `RICCON-QUOTA-503`                 | 配额存储失败/锁等待/死锁                           | 先恢复 DB；不建议自动重试（可能重复建 run）；核对 `innodb_lock_wait_timeout` 与事务超时                            |
-| 开关 PUT 409 `ENV_OVERRIDE_ACTIVE`     | env 覆盖了 DB 开关                                 | 变更部署 env 并重启；或移除 env 后由 DB 接管（写审计 `source=DEPLOYMENT`）                                         |
-| 成本页 503                             | 查询超时/DB 不可用                                 | 缩小范围（≤180 天）、核对索引；`cost_report_queries_total` 与日志                                                  |
-| 成本金额与账单差异                     | 未定价/usage 缺失/混合版本窗口                     | 查 `cost_status` 分布、`unbucketedCalls`、`currencyMismatchCalls`；回填后按 M04-13 对账                            |
-| Worker 启动失败 `RICCON-WORKER-001`    | schema ≠11（DB 已升未切/版本错）                   | 按 M04-1…6 顺序切换；**不要**用关闭校验绕过（仅回滚窗口，见 M04-7）                                                |
+| 现象                                   | 可能原因                         | 处置                                                                                    |
+| -------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------- |
+| J1/J2 返回 503（链空）                 | 路由链为空/模型全停用/端点未放行 | 管理端补链或 `RICCON_MODEL_ROUTING_MODE=BASELINE`；查 `riccon_model_chain_empty_total`  |
+| 请求持续 401/403 后切备用              | 主 key 失效/被上游拒绝           | 管理端轮换或停用失效 key；`credential_invalid_total` 定位 provider                      |
+| 429 但租户未超限                       | 用户维度限额更小/窗口边界        | `GET /api/v1/quotas`、`/quotas/users` 核对；审计 `quota.exceeded` 的 `scopeType/window` |
+| 503 `RICCON-QUOTA-503`                 | 配额存储失败/锁等待/死锁         | 先恢复 DB；不建议自动重试（可能重复建 run）；核对 `innodb_lock_wait_timeout` 与事务超时 |
+| 开关 PUT 409 `ENV_OVERRIDE_ACTIVE`     | env 覆盖了 DB 开关               | 变更部署 env 并重启；或移除 env 后由 DB 接管（写审计 `source=DEPLOYMENT`）              |
+| 成本页 503                             | 查询超时/DB 不可用               | 缩小范围（≤180 天）、核对索引；`cost_report_queries_total` 与日志                       |
+| 成本金额与账单差异                     | 未定价/usage 缺失/混合版本窗口   | 查 `cost_status` 分布、`unbucketedCalls`、`currencyMismatchCalls`；回填后按 M04-13 对账 |
+| Worker 启动失败 `RICCON-WORKER-001`    | schema ≠11（DB 已升未切/版本错） | 按 M04-1…6 顺序切换；**不要**用关闭校验绕过（仅回滚窗口，见 M04-7）                     |
 | 回滚后旧 Worker 无 `RICCON-WORKER-002` | WARN 已实现（TASK-0127/EV-0591），但开关或版本不对 | 确认 `RICCON_WORKER_SCHEMA_VALIDATION_ENABLED=false` 且为 M04 前最后一个 Worker 版本；该 WARN 必须逐字出现恰好一次 |
 
 ### M04-16 性能预算与 CI perf job
