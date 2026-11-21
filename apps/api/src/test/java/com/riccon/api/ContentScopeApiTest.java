@@ -35,6 +35,7 @@ import tools.jackson.databind.JsonNode;
  * <p>测试不 mock 持久化；文件上传与下载地址使用真实 RustFS 容器，其他对象通过迁移后的真实表种子。
  */
 @Tag("dept-isolation")
+@Tag("security")
 class ContentScopeApiTest extends FileApiTestSupport {
 
     /** 额外成员统一密码。 */

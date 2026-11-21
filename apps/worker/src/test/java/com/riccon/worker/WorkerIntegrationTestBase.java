@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -57,7 +58,12 @@ import tools.jackson.databind.ObjectMapper;
  * <p>M04：测试上下文使用 {@code test} profile 的 DEMO 端点允许列表、已知测试主密钥与 fingerprint pepper；
  * schema 期望版本随 V11 升到 11。V11 的全局种子（平台租户、路由链、网关开关）在 JVM 启动时
  * 幂等补齐，测试内修改由各测试类按需恢复。
+ *
+ * <p>M19 P4a：类级 {@code @Tag("integration")} 由所有子类继承，新增 Worker 集成测试继承本类即可；
+ * 迁移/schema 版本测试不继承本类，单独标注 {@code migration}。标签只用于选择，不改变默认执行集合；
+ * 规则见 {@code docs/CODING-STANDARDS.md} §10.4。
  */
+@Tag("integration")
 @SpringBootTest(properties = {"riccon.worker.outbox.scheduling-enabled=false"})
 @AutoConfigureMockMvc
 @ActiveProfiles("test")

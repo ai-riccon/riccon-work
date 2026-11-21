@@ -12,6 +12,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.TestPropertySource;
 import tools.jackson.databind.JsonNode;
@@ -30,6 +31,7 @@ import tools.jackson.databind.JsonNode;
             "riccon.model.allow-legacy-endpoints=false",
             "riccon.model.allow-http=false"
         })
+@Tag("security")
 class M04VerifierProductionEndpointTest extends ApiIntegrationTestSupport {
 
     /** 生产端点代码。 */

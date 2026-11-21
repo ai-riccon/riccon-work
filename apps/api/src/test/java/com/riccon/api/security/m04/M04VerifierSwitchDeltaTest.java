@@ -11,6 +11,7 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -23,6 +24,7 @@ import tools.jackson.databind.ObjectMapper;
  * 环境变量覆盖语义由本类的独立复跑（Builder `ModelGatewaySwitchEnvOverrideTest`）与本类外的
  * 定向证据补充。
  */
+@Tag("security")
 class M04VerifierSwitchDeltaTest extends ApiIntegrationTestSupport {
 
     /** JSON 解析器。 */

@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.test.context.TestPropertySource;
@@ -40,6 +41,7 @@ import tools.jackson.databind.ObjectMapper;
             "riccon.model.allow-legacy-endpoints=false",
             "riccon.model.allow-http=false"
         })
+@Tag("security")
 class ModelRoutingAuditSecurityTest extends ApiIntegrationTestSupport {
 
     /** 允许列表内的供应商代码。 */

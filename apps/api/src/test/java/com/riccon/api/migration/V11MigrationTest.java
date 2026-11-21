@@ -24,6 +24,7 @@ import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -47,6 +48,7 @@ import org.testcontainers.mysql.MySQLContainer;
  * <p>生产执行前提：V11 的一次性迁移 Job、备份/恢复与旧 Worker 回滚窗口仍需 B10 RUNBOOK 与
  * 用户 T4 生产批准；本测试只证明迁移与回滚在非生产副本上可执行。
  */
+@Tag("migration")
 class V11MigrationTest {
 
     /** 与合同 stack.versions.mysql 一致的测试镜像；命令参数与 API 集成测试保持一致。 */

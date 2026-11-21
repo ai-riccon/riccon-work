@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import org.junit.jupiter.api.Tag;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -34,7 +35,12 @@ import tools.jackson.databind.ObjectMapper;
  *   <li>租户 B：独立成员，用于跨租户用例；
  *   <li>个人空间由首次访问自动创建，部门空间通过租户管理员创建。
  * </ul>
+ *
+ * <p>M19 P4a：类级 {@code @Tag("security")} 由所有子类继承，并叠加在从
+ * {@link FileApiTestSupport} 继承的 {@code integration} 之上；子类保留自己的
+ * {@code dept-isolation}/{@code tenant-isolation} 标签。标签只用于选择，不改变默认执行集合。
  */
+@Tag("security")
 abstract class SecurityTestSupport extends FileApiTestSupport {
 
     /** 普通成员统一密码。 */

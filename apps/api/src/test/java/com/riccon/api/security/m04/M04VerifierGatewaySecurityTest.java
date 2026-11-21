@@ -13,6 +13,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +44,7 @@ import tools.jackson.databind.ObjectMapper;
             "riccon.model.allow-legacy-endpoints=false",
             "riccon.model.allow-http=false"
         })
+@Tag("security")
 class M04VerifierGatewaySecurityTest extends ApiIntegrationTestSupport {
 
     /** 允许列表内的生产标签端点代码。 */

@@ -16,6 +16,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.DefaultApplicationArguments;
@@ -31,6 +32,7 @@ import org.testcontainers.utility.DockerImageName;
  * {@link WorkerIntegrationTestBase} 的共享一次性容器以保持启动次数不变；external 模式必须
  * 启动自己的一次性容器。
  */
+@Tag("migration")
 class SchemaVersionCheckerTest {
 
     /** 测试数据库容器；external 模式为独立一次性容器。 */

@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -31,7 +32,13 @@ import tools.jackson.databind.JsonNode;
  * <p>仅当显式设置 {@code RICCON_TEST_SERVICES=external} 且提供
  * {@code RICCON_TEST_SERVICES_NAMESPACE} 时，改为复用 compose 热测试栈；见
  * {@link ExternalTestServices}。默认与 CI 行为不变。
+ *
+ * <p>M19 P4a：类级 {@code @Tag("integration")} 会被所有子类继承（JUnit 5/6 {@code @Tag} 是
+ * {@code @Inherited}），因此新增 API 集成测试只需继承本类，不再逐类标注；子类叠加的
+ * {@code security}/{@code dept-isolation} 等标签与 {@code integration} 共存。标签只用于选择，
+ * 不改变默认执行集合；规则见 {@code docs/CODING-STANDARDS.md} §10.4。
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 public abstract class ApiIntegrationTestSupport {

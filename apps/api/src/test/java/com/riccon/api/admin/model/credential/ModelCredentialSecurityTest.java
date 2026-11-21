@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.TestPropertySource;
 import tools.jackson.databind.JsonNode;
@@ -32,6 +33,7 @@ import tools.jackson.databind.ObjectMapper;
             "riccon.model.allow-legacy-endpoints=true",
             "riccon.model.allow-http=true"
         })
+@Tag("security")
 class ModelCredentialSecurityTest extends ApiIntegrationTestSupport {
 
     /** 本测试类的 provider code。 */

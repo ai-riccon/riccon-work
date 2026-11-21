@@ -225,6 +225,52 @@ platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
   - **禁止**用删除用例、加 `@Disabled`/`skip`、放宽断言或 `-DskipTests` 来达标；用例集合与 `commands.test` 不变。
   - 分片（P2）落地后若要让分片命令成为 gate 证据，必须另提合同决策，不得默认替换 `commands.test`。
 
+### 10.4 测试 tag 分层（M19 P4a）
+
+- 目的与边界：JUnit 5/6 类级标签只用于**按层选择执行**与报告归类，不改变默认执行集合、用例数量、断言或执行顺序。`commands.test`/`commands.coverage` 与模块 gate 仍是全量命令（§10.1）；标签过滤结果不能冒充全量或 gate 证据。
+- 标签定义：
+
+| 标签           | 含义                                                                 | 声明位置                                                                                 |
+| -------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `integration`  | 需要 Spring 上下文、真实 MySQL/RustFS/OpenSearch 或 HTTP 端口        | `ApiIntegrationTestSupport`、`FileApiTestSupport`、`WorkerIntegrationTestBase`；子类继承 |
+| `security`     | 越权、租户/部门隔离、凭据泄露、安全审计边界                          | `SecurityTestSupport`；未继承它的独立套件逐类标注                                        |
+| `migration`    | Flyway 迁移、回滚、schema 版本校验；始终使用一次性容器               | `V9MigrationTest`、`V10MigrationTest`、`V11MigrationTest`、`SchemaVersionCheckerTest`    |
+| `unit`（约定） | 未带上述标签即 unit：纯 JUnit/AssertJ/ArchUnit，不启动 Spring 与容器 | 不逐类标注                                                                               |
+
+- 当前映射（M19 P4a）：
+  - `integration`：API 全部 `@SpringBootTest` 基类子类（含文件、研究、配额、成本、审计与安全套件），以及 Worker `WorkerIntegrationTestBase` 子类。
+  - `security`：`DepartmentIsolationTest`、`TenantIsolationSecurityTest`（继承 `SecurityTestSupport`），`TenantIsolationTest`，`ChatScopeApiTest`、`ContentScopeApiTest`，`M04VerifierGatewaySecurityTest`、`M04VerifierProductionEndpointTest`、`M04VerifierSwitchDeltaTest`、`M04V2VerifierBoundaryTest`，`ModelCredentialSecurityTest`、`ModelRoutingAuditSecurityTest`；原有 `dept-isolation`/`tenant-isolation` 标签保留。认证/会话功能流（`AuthFlowTest`、`OidcLoginFlowTest`）仍归 `integration`，不强行并入 `security`。
+  - `migration`：上表四个类；它们不继承集成基类，因此只带 `migration`。
+  - 其余测试类（含 `platform/**` 的纯单测与 ArchUnit）视为 unit。
+- 继承规则：
+  - JUnit 5/6 的 `@Tag` 是可继承注解：类级标签沿抽象基类多级传递到子类；`@Nested` 继承外层类标签；接口上的标签不继承。新增测试优先继承现有基类，不复制标签。
+  - `security` 是叠加标签：安全套件同时具备 `integration`；`-Dgroups=integration` 会包含安全套件。
+- Surefire 选择示例（JUnit Platform provider；均为 L1 排障/定向命令）：
+
+```bash
+# API 集成层（含安全套件）
+./mvnw -q -pl apps/api -am test -Dgroups=integration -Dsurefire.failIfNoSpecifiedTests=false
+
+# 安全套件（继承的 security 标签与类上原有 dept/tenant 标签共同生效）
+./mvnw -q -pl apps/api -am test -Dgroups=security -Dsurefire.failIfNoSpecifiedTests=false
+
+# 迁移/回滚/schema 版本（一次性容器）
+./mvnw -q -pl apps/api -am test -Dgroups=migration -Dsurefire.failIfNoSpecifiedTests=false
+./mvnw -q -pl apps/worker -am test -Dgroups=migration -Dsurefire.failIfNoSpecifiedTests=false
+
+# 类名与标签同时过滤：冒烟确认继承标签生效
+./mvnw -q -pl apps/api -am test -Dtest=DepartmentIsolationTest#deptSuiteIntegrityManifest \
+  -Dgroups=security -Dsurefire.failIfNoSpecifiedTests=false
+
+# unit（未打标签）：排除慢层；示例只跑 platform-common
+./mvnw -q -pl platform/platform-common test -DexcludedGroups=integration,security,migration
+```
+
+- `-pl <module> -am` 会一并构建 platform 模块；这些模块没有匹配标签的测试，必须加 `-Dsurefire.failIfNoSpecifiedTests=false`，否则 Maven 以“没有执行测试”失败。该参数只避免无关模块阻断，不能把空选择当作通过：每次选择冒烟都必须看到预期的非零用例数。
+- `-Dgroups=unit` **不会**选中未打标签的测试；untagged=unit 是分类约定，不是可过滤标签。只跑 unit 用 `-DexcludedGroups=integration,security,migration`，可再配合 `-Dtest` 或模块选择。
+- 迁移/Schema 测试禁止指向热栈（§10.2）；external 模式下 `SchemaVersionCheckerTest` 也自建一次性容器。
+- 与分片基线的关系：`scripts/test-shards.mjs` 以类名与 surefire 用例计数为基线，标签不参与分片；新增 tag 不改变基线类集合/用例数，仍以 `node scripts/test-shards.mjs --check` 校验。
+
 ## 11. 数据库与迁移
 
 - 只使用 Flyway；迁移文件位于 `apps/api/src/main/resources/db/migration`。
