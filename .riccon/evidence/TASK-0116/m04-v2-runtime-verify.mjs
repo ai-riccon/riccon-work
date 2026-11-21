@@ -136,6 +136,18 @@ function requireOk(condition, message) {
   }
 }
 
+/** 非致命断言：记录失败但继续执行，最终统一以非零退出（不吞掉失败）。 */
+const failures = [];
+function check(name, condition, message) {
+  if (condition) {
+    report.checks[name] = "passed";
+  } else {
+    report.checks[name] = "failed";
+    report.checks[`${name}Reason`] = message;
+    failures.push(`${name}: ${message}`);
+  }
+}
+
 /** 读取 seed 的开关版本并整组保存。 */
 async function putSwitches(
   client,
@@ -527,34 +539,43 @@ try {
   const mainRatio = metricLines("riccon_quota_usage_ratio");
   const auxQueries = metricLines("riccon_cost_report_queries_total");
   const auxStoreFailure = metricLines("riccon_quota_store_failure_total");
+  const auxStoreFailureActual = metricLines(
+    "riccon_quota_store_failures_total",
+  );
   const auxOverLimit = metricLines("riccon_quota_over_limit_observed_total");
-  requireOk(
+  check(
+    "apiMetricRejections",
     mainRejections.some(
       (line) =>
         line.includes('scope="TENANT"') && line.includes('window="DAILY"'),
     ),
-    "API metric riccon_quota_rejections_total missing TENANT/DAILY",
+    "riccon_quota_rejections_total missing TENANT/DAILY",
   );
-  requireOk(
+  check(
+    "apiMetricUsageRatio",
     mainRatio.length >= 4,
-    "API metric riccon_quota_usage_ratio series missing",
+    "riccon_quota_usage_ratio series missing",
   );
-  requireOk(
+  check(
+    "apiMetricCostQueries",
     auxQueries.some((line) => line.includes('group_by="DAY"')),
-    "API metric riccon_cost_report_queries_total missing",
+    "riccon_cost_report_queries_total missing",
   );
-  requireOk(
+  check(
+    "apiMetricStoreFailureContractName",
     auxStoreFailure.length >= 1,
-    "API metric riccon_quota_store_failure_total missing",
+    `ADR-0021 §10.6 要求的 riccon_quota_store_failure_total 缺失；实际存在 riccon_quota_store_failures_total=${auxStoreFailureActual.length}`,
   );
-  requireOk(
+  check(
+    "apiMetricOverLimitObserved",
     auxOverLimit.length >= 1,
-    "API metric riccon_quota_over_limit_observed_total missing",
+    "riccon_quota_over_limit_observed_total missing",
   );
   const forbiddenLabels = [...mainRejections, ...mainRatio].filter((line) =>
     /tenant|userId|runId/.test(line),
   );
-  requireOk(
+  check(
+    "apiMetricLabelDiscipline",
     forbiddenLabels.length === 0,
     `high-cardinality labels found: ${forbiddenLabels[0]}`,
   );
@@ -562,10 +583,10 @@ try {
     rejections: mainRejections.length,
     usageRatio: mainRatio.length,
     costQueries: auxQueries.length,
-    storeFailure: auxStoreFailure.length,
+    storeFailureContractName: auxStoreFailure.length,
+    storeFailureActualSeries: auxStoreFailureActual,
     overLimitObserved: auxOverLimit.length,
   };
-  report.checks.opsM0402b = "passed";
 
   // ---------- Worker 7 指标 ----------
   const metricsCheck = spawn(
@@ -587,11 +608,11 @@ try {
     metricsCheck.on("close", resolve),
   );
   writeFileSync(path.join(runDir, "metrics-check.log"), metricsOut);
-  requireOk(
+  check(
+    "opsM0402a",
     metricsCode === 0,
-    `metrics-check failed (exit ${metricsCode}); see ac18/metrics-check.log`,
+    `metrics-check exit ${metricsCode}; see ac18/metrics-check.log`,
   );
-  report.checks.opsM0402a = "passed";
 
   // ---------- 回滚窗口固定 WARN ----------
   const warnLog = path.join(runDir, "worker-rollback.log");
@@ -625,20 +646,31 @@ try {
   const warnContent = readFileSync(warnLog, "utf8");
   const warnCount = warnContent.split(expectedWarn).length - 1;
   writeFileSync(path.join(runDir, "worker-rollback-warn.txt"), warnContent);
-  requireOk(
+  check(
+    "workerRollbackWarn",
     warnCount === 1,
     `RICCON-WORKER-002 must appear exactly once, got ${warnCount}`,
   );
-  requireOk(
+  check(
+    "workerRollbackNoVersionError",
     !warnContent.includes("RICCON-WORKER-001"),
     "rollback window must not emit RICCON-WORKER-001",
   );
-  report.checks.workerRollbackWarn = "passed";
   report.observations.workerWarn = expectedWarn;
 
-  report.status = "passed";
-  console.log("[m04-v2] runtime verification passed");
-  console.log(JSON.stringify(report, null, 2));
+  if (failures.length > 0) {
+    report.status = "failed";
+    report.failures = failures;
+    console.error(`[m04-v2] ${failures.length} check(s) failed:`);
+    for (const failure of failures) {
+      console.error(` - ${failure}`);
+    }
+    process.exitCode = 1;
+  } else {
+    report.status = "passed";
+    console.log("[m04-v2] runtime verification passed");
+    console.log(JSON.stringify(report, null, 2));
+  }
 } catch (error) {
   report.status = "failed";
   report.error = String(error?.stack ?? error);
