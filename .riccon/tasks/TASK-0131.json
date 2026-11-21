@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0131",
+  "module_id": "M04",
+  "title": "M04 修复：成本页 antd ExpandIcon 与滚动区键盘可聚焦",
+  "owner": "riccon/builder-web",
+  "status": "review",
+  "write_scope": [
+    "apps/web/src/pages/admin/costs/**",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "租户成本表 expandable.expandIcon 迁移到 components.ExpandIcon，console 不再出现 antd deprecated 警告",
+    "平台成本表滚动区可键盘聚焦（onRow tabIndex/等价），axe scrollable-region-focusable 消除；375px 不横向溢出",
+    "平台/租户 groupBy 初值按角色（TENANT/USER）纠正（P2）",
+    "组件测试；vitest/typecheck/build；不改后端/契约/E2E specs；EV"
+  ],
+  "evidence": [
+    "EV-0611",
+    "EV-0612",
+    "EV-0613"
+  ],
+  "tools_used": [
+    "grep/read：核对 antd 6 InternalTable 弃用警告与 @rc-component/table ExpandIconProps 签名，检查 dist 产物中的 ExpandIcon/tabIndex",
+    "Serena/CodeGraph 未使用：缺陷文件:行已由任务给出，单页面小改动；并行任务期间不启动 Serena Java LSP"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-21T09:23:06.918+08:00",
+  "updated_at": "2026-11-21T09:29:06.365+08:00",
+  "baseline_commit": "559aa940c4becc3c6da5a1130258333d7517ea65",
+  "end_commit": "b1c8922d305c5a02273b90e273e9ab8ee1cd2452"
+}
