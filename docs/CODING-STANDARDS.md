@@ -211,6 +211,20 @@ platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
 - 迁移、回滚与 schema 版本测试始终使用一次性容器，不得指向热栈。
 - 默认、CI 与模块 gate 不设置 `RICCON_TEST_SERVICES`，仍使用 Testcontainers；启动/停止/重置、namespace 规则与故障处理见 `docs/RUNBOOK.md` 的“热测试栈与受影响测试”。
 
+### 10.3 测试时间预算（M19）
+
+- 依据 DEC-0026（P0–P4 已批准）：先测量、后提速；本小节只定义预算与超预算处理，不改变 §10.1/§10.2 的分层、取证与 gate 结论。
+- 预算口径：
+  - **L2 ≤ 5 分钟**：专指任务级**定向受影响测试回路**，范围由 `node scripts/test-affected.mjs` 给出的建议命令界定。它不是 §10.1 的 L2（任务收尾受影响模块全量），后者仍按 §10.1 执行。
+  - **后端全量 ≤ 10 分钟**：CI `构建与测试`（`./mvnw -q -T1C verify`）在 4-shard 分片（P2）落地前的墙钟上限。
+  - **后端全量 ≤ 5 分钟**：4-shard 分片落地后的墙钟上限。
+- 测量来源：`node scripts/test-timings.mjs` 的 surefire 汇总（用例数、失败/错误/跳过、累计 suite 时间、top-20 慢类）与 CI backend job 的步骤墙钟；两者同时看，不以单次本地数字替代 CI 口径。
+- 超预算处理：
+  - 先看报告 top-20，确认是 setup 摊销（容器/迁移/夹具）还是单类真实耗时；
+  - 建 P2 任务并写明 `owner` 与 `due`（例如归入 M19 的 P1/P3/P4 任务），在任务卡和评审中留痕；
+  - **禁止**用删除用例、加 `@Disabled`/`skip`、放宽断言或 `-DskipTests` 来达标；用例集合与 `commands.test` 不变。
+  - 分片（P2）落地后若要让分片命令成为 gate 证据，必须另提合同决策，不得默认替换 `commands.test`。
+
 ## 11. 数据库与迁移
 
 - 只使用 Flyway；迁移文件位于 `apps/api/src/main/resources/db/migration`。

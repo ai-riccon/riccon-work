@@ -104,6 +104,22 @@ jobs:
       - name: 构建与测试
         run: ./mvnw -q -T1C verify
 
+      # M19 P0：只测量、不改测试集合与命令。放在“构建与测试”之后，复用同一次 surefire 产出。
+      # 若构建在测试前失败导致没有报告，本步骤会非 0 退出（无报告就无法计时，属预期），
+      # 但不会覆盖上游失败：job 已因前面的步骤失败，且下方仍保留依赖日志与清理步骤。
+      - name: 生成测试计时报告
+        if: always()
+        run: node scripts/test-timings.mjs --out-dir .ci/test-timings
+
+      - name: 上传测试计时报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-timings-${{ github.run_id }}
+          path: .ci/test-timings
+          retention-days: 14
+          if-no-files-found: warn
+
       - name: 代码格式检查
         run: ./mvnw -q spotless:check
 

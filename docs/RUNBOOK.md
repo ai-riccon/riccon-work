@@ -103,6 +103,26 @@ pnpm test:affected -- --base HEAD~1 --dry-run
 | OpenSearch 旧索引干扰                              | `reset --namespace <ns>` 清理 `riccon-kb-<ns>-` 前缀索引；测试基类启动时也会清理当前 namespace 前缀。 |
 | 迁移/回滚测试误连热栈                              | 检查是否误设 `RICCON_TEST_SERVICES`；迁移测试必须使用一次性容器。                                     |
 
+### 测试计时与预算（M19）
+
+测试时间预算的数字与超预算处理只写在 `docs/CODING-STANDARDS.md` §10.3，本节只给操作方式，避免两处数字漂移。
+
+```bash
+# 汇总本仓库已有的 surefire 报告（apps/* 与 platform/*），stdout 打印人读摘要
+node scripts/test-timings.mjs
+
+# 同时写出 Markdown/JSON，供 CI artifact 或对比使用
+node scripts/test-timings.mjs --out-dir "$TMPDIR/riccon-test-timings"
+
+# 负向自测：指向空目录或坏 XML 时必须非 0 退出
+node scripts/test-timings.mjs --reports-root "$TMPDIR/empty"
+```
+
+- 报告字段：用例总数、失败/错误/跳过数、累计 suite 时间（各 suite 时间相加，不是墙钟）、按模块汇总、top-20 最慢测试类（时间降序，同时间按类名升序）。
+- CI artifact：backend job 的 `生成测试计时报告` / `上传测试计时报告` 两步，artifact 名 `test-timings-<github.run_id>`，保留 14 天，内容为 `.ci/test-timings/test-timings.md` 与 `.ci/test-timings/test-timings.json`。
+- 报告缺失、为空或 XML 解析失败时脚本非 0 退出并打印原因；这是预期行为，不要用 `|| true` 掩盖。
+- 预算数字与超预算处理见 `docs/CODING-STANDARDS.md` §10.3。
+
 ## 本地运行
 
 ```bash
