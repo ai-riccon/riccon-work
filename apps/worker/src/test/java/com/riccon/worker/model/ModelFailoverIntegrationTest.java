@@ -71,9 +71,10 @@ class ModelFailoverIntegrationTest extends WorkerIntegrationTestBase {
     @Autowired
     private PrometheusMeterRegistry prometheusMeterRegistry;
 
-    /** 启动桩与夹具。 */
+    /** 启动桩与夹具；恢复全局模型目录/路由/开关基线。 */
     @BeforeEach
     void setUp() {
+        resetModelGatewayState();
         primary = new TestModelStub();
         secondary = new TestModelStub();
         keyAware = new ApiKeyRoutingStub();
@@ -181,7 +182,7 @@ class ModelFailoverIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(keyAware.authorizations()).containsExactly("Bearer sk-first", "Bearer sk-second");
         assertThat(fixture.credentialStatus(firstKey)).isEqualTo("INVALID");
         assertThat(fixture.credentialStatus(secondKey)).isEqualTo("ACTIVE");
-        Map<String, Object> invalidated = onlyAudit("model.credential.invalidated");
+        Map<String, Object> invalidated = onlyAuditForTarget("model.credential.invalidated", firstKey);
         assertThat(invalidated.get("tenantId")).isEqualTo("platform");
         assertThat(invalidated.get("actorType")).isEqualTo("SYSTEM");
         assertThat((String) invalidated.get("details")).contains(firstKey.toString(), "UNAUTHORIZED");
@@ -210,7 +211,8 @@ class ModelFailoverIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(error.getMessage()).isEqualTo(ModelException.CHAIN_UNAVAILABLE_MESSAGE);
         assertThat(fixture.credentialStatus(firstKey)).isEqualTo("INVALID");
         assertThat(fixture.credentialStatus(secondKey)).isEqualTo("INVALID");
-        assertThat(auditCount("model.credential.invalidated")).isEqualTo(2);
+        assertThat(auditCountForTargets("model.credential.invalidated", firstKey, secondKey))
+                .isEqualTo(2);
         assertThat(run.model().attemptCount()).isEqualTo(2);
     }
 
@@ -220,14 +222,15 @@ class ModelFailoverIntegrationTest extends WorkerIntegrationTestBase {
     @Test
     @DisplayName("IT-M04-04：租户级凭据被忽略")
     void stream_tenantCredentialIsIgnored() {
-        data.createTenant("tenant-a");
+        String tenantId = uniqueTenant("tenant-a");
+        data.createTenant(tenantId);
         keyAware.statusFor("sk-tenant", 401);
         UUID model = fixture.createModel(keyAware.url(), "key-model");
         UUID provider = fixture.providerOf(model);
-        fixture.addKey("tenant-a", provider, "sk-tenant", 10, "****enant");
+        fixture.addKey(tenantId, provider, "sk-tenant", 10, "****enant");
         fixture.addPlatformKey(provider, "sk-platform", 50, "****form");
         fixture.route(ModelPurpose.CHAT, model);
-        TenantId tenant = TenantId.of("tenant-a");
+        TenantId tenant = TenantId.of(tenantId);
 
         StreamRun run = run(tenant, ModelPurpose.CHAT);
 
@@ -256,7 +259,8 @@ class ModelFailoverIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(((ModelException) run.error()).errorCode()).isEqualTo(ModelException.UNAVAILABLE);
         assertThat(primary.requestCount()).isEqualTo(1);
         assertThat(secondary.requestCount()).isZero();
-        assertThat(auditCount("model.failover.triggered")).isZero();
+        assertThat(auditCountForTenant("model.failover.triggered", tenant.value()))
+                .isZero();
     }
 
     /**
@@ -314,8 +318,10 @@ class ModelFailoverIntegrationTest extends WorkerIntegrationTestBase {
                 .counter()
                 .count();
         assertThat(after).isEqualTo(before + 1);
-        assertThat(auditCount("model.invocation.failed")).isEqualTo(1);
-        assertThat((String) onlyAudit("model.invocation.failed").get("details"))
+        assertThat(auditCountForTenant("model.invocation.failed", tenant.value()))
+                .isEqualTo(1);
+        assertThat((String) onlyAuditForTenant("model.invocation.failed", tenant.value())
+                        .get("details"))
                 .contains("\"reason\": \"CHAIN_EMPTY\"");
     }
 
@@ -357,7 +363,8 @@ class ModelFailoverIntegrationTest extends WorkerIntegrationTestBase {
                         .counter()
                         .count())
                 .isEqualTo(before + 1);
-        assertThat((String) onlyAudit("model.invocation.failed").get("details"))
+        assertThat((String) onlyAuditForTenant("model.invocation.failed", tenant.value())
+                        .get("details"))
                 .contains("\"reason\": \"CHAIN_EMPTY\"");
     }
 
@@ -458,7 +465,7 @@ class ModelFailoverIntegrationTest extends WorkerIntegrationTestBase {
                         firstTokens.get(0),
                         true,
                         run.model().attemptCount()));
-        Map<String, Object> failed = onlyAudit("model.invocation.failed");
+        Map<String, Object> failed = onlyAuditForTenant("model.invocation.failed", tenant.value());
         assertThat((String) failed.get("details")).contains("\"emitted\": true");
     }
 
@@ -495,7 +502,7 @@ class ModelFailoverIntegrationTest extends WorkerIntegrationTestBase {
                         SELECT status, attempt_count FROM model_invocation
                          WHERE tenant_id = :tenantId AND id = :id
                         """)
-                .param("tenantId", "tenant-a")
+                .param("tenantId", tenant.value())
                 .param(
                         "id",
                         com.riccon.worker.persistence.UuidBinary.toBytes(
@@ -591,12 +598,13 @@ class ModelFailoverIntegrationTest extends WorkerIntegrationTestBase {
     }
 
     /**
-     * 创建租户并返回标识。
+     * 创建租户并返回标识；每个测试生成唯一租户。
      *
-     * @param tenantId 租户 ID
+     * @param tenantPrefix 可读租户前缀
      * @return 租户标识
      */
-    private TenantId tenant(String tenantId) {
+    private TenantId tenant(String tenantPrefix) {
+        String tenantId = uniqueTenant(tenantPrefix);
         data.createTenant(tenantId);
         return TenantId.of(tenantId);
     }
@@ -689,17 +697,20 @@ class ModelFailoverIntegrationTest extends WorkerIntegrationTestBase {
     }
 
     /**
-     * 读取唯一一条指定动作审计的关键列。
+     * 读取唯一一条指定动作和租户的审计关键列。
      *
      * @param action 动作
+     * @param tenant 租户
      * @return 列映射
      */
-    private Map<String, Object> onlyAudit(String action) {
+    private Map<String, Object> onlyAuditForTenant(String action, String tenant) {
         return jdbcClient
                 .sql("""
-                        SELECT tenant_id, actor_type, details FROM audit_event WHERE action = :action
+                        SELECT tenant_id, actor_type, details FROM audit_event
+                         WHERE action = :action AND tenant_id = :tenantId
                         """)
                 .param("action", action)
+                .param("tenantId", tenant)
                 .query((rs, rowNum) -> Map.<String, Object>of(
                         "tenantId", rs.getString("tenant_id"),
                         "actorType", rs.getString("actor_type"),
@@ -708,15 +719,60 @@ class ModelFailoverIntegrationTest extends WorkerIntegrationTestBase {
     }
 
     /**
-     * 统计指定动作审计条数。
+     * 读取唯一一条指定动作和目标 ID 的审计关键列。
+     *
+     * <p>平台级 key 失效事件以 tenant=platform 写入，无法用请求租户过滤；credentialId 每次测试
+     * 唯一，用 target_id 精确匹配本测试事件，不依赖清空 append-only 审计表。
      *
      * @param action 动作
+     * @param targetId 目标 ID
+     * @return 列映射
+     */
+    private Map<String, Object> onlyAuditForTarget(String action, UUID targetId) {
+        return jdbcClient
+                .sql("""
+                        SELECT tenant_id, actor_type, details FROM audit_event
+                         WHERE action = :action AND target_id = :targetId
+                        """)
+                .param("action", action)
+                .param("targetId", targetId.toString())
+                .query((rs, rowNum) -> Map.<String, Object>of(
+                        "tenantId", rs.getString("tenant_id"),
+                        "actorType", rs.getString("actor_type"),
+                        "details", rs.getString("details")))
+                .single();
+    }
+
+    /**
+     * 统计指定动作和租户的审计条数。
+     *
+     * @param action 动作
+     * @param tenant 租户
      * @return 条数
      */
-    private int auditCount(String action) {
+    private int auditCountForTenant(String action, String tenant) {
         return jdbcClient
-                .sql("SELECT COUNT(*) FROM audit_event WHERE action = :action")
+                .sql("SELECT COUNT(*) FROM audit_event WHERE action = :action AND tenant_id = :tenantId")
                 .param("action", action)
+                .param("tenantId", tenant)
+                .query((rs, rowNum) -> rs.getInt(1))
+                .single();
+    }
+
+    /**
+     * 统计指定动作和目标 ID 集合的审计条数。
+     *
+     * @param action 动作
+     * @param targetIds 目标 ID
+     * @return 条数
+     */
+    private int auditCountForTargets(String action, UUID... targetIds) {
+        List<String> ids =
+                java.util.Arrays.stream(targetIds).map(UUID::toString).toList();
+        return jdbcClient
+                .sql("SELECT COUNT(*) FROM audit_event WHERE action = :action AND target_id IN (:targetIds)")
+                .param("action", action)
+                .param("targetIds", ids)
                 .query((rs, rowNum) -> rs.getInt(1))
                 .single();
     }

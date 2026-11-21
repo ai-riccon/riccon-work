@@ -8,9 +8,11 @@ import com.riccon.worker.support.TestSchema;
 import com.riccon.worker.support.TestServiceToken;
 import java.net.URI;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
+import java.util.UUID;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,15 +40,23 @@ import tools.jackson.databind.ObjectMapper;
  * Worker 集成测试基类。
  *
  * <p>默认启动真实 MySQL、OpenSearch 与 RustFS（S3 兼容，ADR-0002 替代不可用的 MinIO 镜像），
- * 执行 {@code apps/api} 的权威迁移并写入 Flyway 版本记录。所有子类共享同一组容器，
- * 每个测试前清空业务表；测试不依赖 {@code Thread.sleep}，等待使用容器 wait strategy 与数据库状态断言。
+ * 执行 {@code apps/api} 的权威迁移并写入 Flyway 版本记录。所有子类共享同一组容器；测试不依赖
+ * {@code Thread.sleep}，等待使用容器 wait strategy 与数据库状态断言。
+ *
+ * <p>M19 P3 起不再在每个测试前 TRUNCATE 39 张业务表：业务数据通过每个测试唯一的租户
+ * （{@link #uniqueTenant(String)}）隔离，测试只读写自己的租户。全局目录、网关开关与跨租户
+ * outbox 无法按租户隔离，只有确实写这些表的测试类才在自己的 {@code @BeforeEach} 中调用
+ * {@link #resetModelGatewayState()}、{@link #resetMcpCatalog()} 或 {@link #clearOutbox()}；
+ * 每个 helper 都写明恢复的基线与理由。{@code audit_event} 是 append-only 且按月分区，任何
+ * 测试都不得删除它：审计断言必须带本测试租户或唯一目标 ID。
  *
  * <p>仅当显式设置 {@code RICCON_TEST_SERVICES=external} 且提供
  * {@code RICCON_TEST_SERVICES_NAMESPACE} 时，改为复用 compose 热测试栈；见
  * {@link ExternalTestServices}。默认与 CI 行为不变；迁移/回滚测试不经过本类。
  *
  * <p>M04：测试上下文使用 {@code test} profile 的 DEMO 端点允许列表、已知测试主密钥与 fingerprint pepper；
- * schema 期望版本随 V11 升到 11。每次重置额外清空并恢复 M04 全局表（路由链/网关开关），避免测试间漂移。
+ * schema 期望版本随 V11 升到 11。V11 的全局种子（平台租户、路由链、网关开关）在 JVM 启动时
+ * 幂等补齐，测试内修改由各测试类按需恢复。
  */
 @SpringBootTest(properties = {"riccon.worker.outbox.scheduling-enabled=false"})
 @AutoConfigureMockMvc
@@ -93,6 +103,8 @@ public abstract class WorkerIntegrationTestBase {
                     ExternalTestServices.password(),
                     SchemaVersionChecker.EXPECTED_SCHEMA_VERSION);
             ExternalTestServices.purgeSearchIndices();
+            ensureGlobalBaseline(
+                    ExternalTestServices.jdbcUrl(), ExternalTestServices.username(), ExternalTestServices.password());
         } else {
             startContainers();
             TestSchema.applyMigrations(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
@@ -101,6 +113,7 @@ public abstract class WorkerIntegrationTestBase {
                     mysql.getUsername(),
                     mysql.getPassword(),
                     SchemaVersionChecker.EXPECTED_SCHEMA_VERSION);
+            ensureGlobalBaseline(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
         }
         createBucket();
     }
@@ -125,80 +138,88 @@ public abstract class WorkerIntegrationTestBase {
     protected TestDataFactory data;
 
     /**
-     * 清空业务表并重建数据构造器。
+     * 每个测试重建数据构造器。
      *
-     * <p>{@code audit_event} 有 append-only 触发器与分区，测试不写审计；
-     * {@code flyway_schema_history} 与全局权限字典保持不动。
+     * <p>不再清空业务表：业务数据由唯一租户隔离。需要恢复全局状态的测试类在自己的
+     * {@code @BeforeEach} 中调用 {@link #resetModelGatewayState()}、{@link #resetMcpCatalog()}
+     * 或 {@link #clearOutbox()}，避免把所有测试都拖入全表清理。
      */
     @BeforeEach
-    void resetDatabase() {
-        String[] tables = {
-            "audit_event",
-            "artifact_citation",
-            "artifact_version",
-            "artifact",
-            "approval",
-            "mcp_invocation",
-            "model_invocation_attempt",
-            "model_invocation",
-            "agent_run_stage",
-            "agent_run_outbox",
-            "agent_run",
-            "research_task",
-            "message_citation",
-            "message",
-            "conversation",
-            "knowledge_chunk",
-            "knowledge_document",
-            "file_chunk",
-            "file_parse",
-            "file",
-            "mcp_tool_grant",
-            "provider_credential",
-            "tenant_data_key",
-            "mcp_tool",
-            "mcp_server",
-            "model_routing_entry",
-            "model_routing",
-            "model_gateway_switch",
-            "model",
-            "model_provider",
-            "quota_usage",
-            "quota_limit",
-            "user_role",
-            "role_permission",
-            "role",
-            "user_credential",
-            "workspace",
-            "app_user",
-            "tenant"
-        };
-        try (Connection connection = dataSource.getConnection();
-                Statement statement = connection.createStatement()) {
-            statement.execute("SET FOREIGN_KEY_CHECKS = 0");
-            for (String table : tables) {
-                statement.execute("TRUNCATE TABLE " + table);
-            }
-            // 平台保留租户由 V2 迁移插入；清空后必须恢复，否则平台级凭据外键与跨租户审计无法写入。
-            statement.execute("""
-                    INSERT INTO tenant (id, name, status, plan, retention_days)
-                    VALUES ('platform', '平台管理', 'ACTIVE', 'internal', 180)
-                    """);
-            // M04 全局种子由 V11 写入；TRUNCATE 后恢复最小基线，避免 B3/B4 测试读到空开关/空链。
-            statement.execute("""
-                    INSERT INTO model_routing (purpose) VALUES ('CHAT'), ('REPORT')
-                    """);
-            statement.execute("""
-                    INSERT INTO model_gateway_switch (switch_key, switch_value)
-                    VALUES ('routingMode', 'ROUTED'),
-                           ('failoverEnabled', 'true'),
-                           ('quotaEnforcementEnabled', 'false')
-                    """);
-            statement.execute("SET FOREIGN_KEY_CHECKS = 1");
-        } catch (SQLException ex) {
-            throw new IllegalStateException("failed to reset integration test database", ex);
-        }
+    void prepareData() {
         data = new TestDataFactory(jdbcClient, s3Client, objectMapper, BUCKET);
+    }
+
+    /**
+     * 生成带随机后缀的测试租户 ID。
+     *
+     * <p>租户 ID 同时用于 MySQL 行隔离、OpenSearch 索引别名与 S3 key 前缀；随机后缀保证同一
+     * external namespace 连续多次全量运行时不会与历史租户或唯一键冲突。TenantId 允许字符为
+     * 字母、数字、下划线与短横线，随机后缀只使用十六进制。
+     *
+     * @param prefix 可读前缀（例如 tenant-a）
+     * @return 长度不超过 64 的唯一租户 ID
+     */
+    protected static String uniqueTenant(String prefix) {
+        return prefix + "-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+    }
+
+    /**
+     * 恢复 M04 全局模型目录、路由链与网关开关的可重复基线。
+     *
+     * <p>受影响的全局状态：
+     *
+     * <ul>
+     *   <li>{@code model}：BASELINE/单模型解析取最早的 ACTIVE 模型。旧测试的模型若保持 ACTIVE，
+     *       会复用已经关闭的测试桩端口；这里统一停用，目录本身保留以满足外键。
+     *   <li>{@code model_routing_entry}：全局表，测试自建链在测试间清空；{@code model_routing}
+     *       的 V11 种子行保留，只复位“已保存”标记。
+     *   <li>{@code model_gateway_switch}：恢复 V11 发版种子 ROUTED/true/false。
+     * </ul>
+     *
+     * <p>平台 DEK 与 provider_credential 由 {@code TestDataFactory.createModelCatalog} 使用
+     * 唯一 key id，历史行不会被新 catalog 引用，因此无需删除（provider_credential 对
+     * tenant_data_key 有外键，删除顺序也会更复杂）。
+     */
+    protected void resetModelGatewayState() {
+        jdbcClient
+                .sql("UPDATE model SET status = 'DISABLED' WHERE status <> 'DISABLED'")
+                .update();
+        jdbcClient.sql("DELETE FROM model_routing_entry").update();
+        jdbcClient.sql("UPDATE model_routing SET updated_by = NULL").update();
+        jdbcClient.sql("""
+                        UPDATE model_gateway_switch
+                           SET switch_value = CASE switch_key
+                                 WHEN 'routingMode' THEN 'ROUTED'
+                                 WHEN 'failoverEnabled' THEN 'true'
+                                 WHEN 'quotaEnforcementEnabled' THEN 'false'
+                                 ELSE switch_value
+                               END
+                        """).update();
+    }
+
+    /**
+     * 清空 MCP 全局目录与调用记录。
+     *
+     * <p>{@code mcp_server.code} 是全局唯一键，测试固定使用 {@code riccon-builtin} 等白名单 code；
+     * 不清理会与上一次测试冲突。{@code mcp_invocation} 与 {@code mcp_tool_grant} 通过外键
+     * 引用工具，必须先删；{@code approval.mcp_tool_id} 只是逻辑引用，不受影响。
+     */
+    protected void resetMcpCatalog() {
+        jdbcClient.sql("DELETE FROM mcp_tool_grant").update();
+        jdbcClient.sql("DELETE FROM mcp_invocation").update();
+        jdbcClient.sql("DELETE FROM mcp_tool").update();
+        jdbcClient.sql("DELETE FROM mcp_server").update();
+    }
+
+    /**
+     * 清空跨租户 outbox。
+     *
+     * <p>{@code OutboxPoller.pollOnce} 与 {@code OutboxClaimer.claim} 是唯一按状态跨租户读取的
+     * 生产路径，无法用租户过滤隔离。使用它们的测试类必须先清空残留事件，才能继续用
+     * {@code pollOnce() == 1} 之类的精确计数断言；这是 P3 保留的按表清理例外之一。
+     */
+    protected void clearOutbox() {
+        jdbcClient.sql("DELETE FROM agent_run_outbox").update();
     }
 
     /**
@@ -289,6 +310,56 @@ public abstract class WorkerIntegrationTestBase {
         objectStorage.waitingFor(
                 Wait.forHttp("/health").forPort(9000).forStatusCode(200).withStartupTimeout(Duration.ofSeconds(60)));
         objectStorage.start();
+    }
+
+    /**
+     * 幂等补齐 V2/V11 的全局种子。
+     *
+     * <p>每个测试 JVM 启动后执行一次；热栈数据库可能来自上一次运行，不能假设种子仍然存在。
+     * 只插入缺失行，不覆盖运维或测试已修改的值：测试内的开关恢复由
+     * {@link #resetModelGatewayState()} 负责。
+     *
+     * @param jdbcUrl 数据库 URL
+     * @param username 用户名
+     * @param password 密码
+     */
+    private static void ensureGlobalBaseline(String jdbcUrl, String username, String password) {
+        try (Connection connection = DriverManager.getConnection(jdbcUrl, username, password);
+                Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    INSERT INTO tenant (id, name, status, plan, retention_days)
+                    SELECT 'platform', '平台管理', 'ACTIVE', 'internal', 180 FROM DUAL
+                     WHERE NOT EXISTS (SELECT 1 FROM tenant WHERE id = 'platform')
+                    """);
+            statement.execute("""
+                    INSERT INTO model_routing (purpose)
+                    SELECT 'CHAT' FROM DUAL
+                     WHERE NOT EXISTS (SELECT 1 FROM model_routing WHERE purpose = 'CHAT')
+                    """);
+            statement.execute("""
+                    INSERT INTO model_routing (purpose)
+                    SELECT 'REPORT' FROM DUAL
+                     WHERE NOT EXISTS (SELECT 1 FROM model_routing WHERE purpose = 'REPORT')
+                    """);
+            statement.execute("""
+                    INSERT INTO model_gateway_switch (switch_key, switch_value)
+                    SELECT 'routingMode', 'ROUTED' FROM DUAL
+                     WHERE NOT EXISTS (SELECT 1 FROM model_gateway_switch WHERE switch_key = 'routingMode')
+                    """);
+            statement.execute("""
+                    INSERT INTO model_gateway_switch (switch_key, switch_value)
+                    SELECT 'failoverEnabled', 'true' FROM DUAL
+                     WHERE NOT EXISTS (SELECT 1 FROM model_gateway_switch WHERE switch_key = 'failoverEnabled')
+                    """);
+            statement.execute("""
+                    INSERT INTO model_gateway_switch (switch_key, switch_value)
+                    SELECT 'quotaEnforcementEnabled', 'false' FROM DUAL
+                     WHERE NOT EXISTS (
+                           SELECT 1 FROM model_gateway_switch WHERE switch_key = 'quotaEnforcementEnabled')
+                    """);
+        } catch (SQLException ex) {
+            throw new IllegalStateException("failed to ensure global test baseline rows", ex);
+        }
     }
 
     /** 创建测试桶；容器每次 JVM 新启动，已存在视为成功。 */

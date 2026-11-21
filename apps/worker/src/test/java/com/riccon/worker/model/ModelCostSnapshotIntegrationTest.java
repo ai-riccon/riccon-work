@@ -38,9 +38,10 @@ class ModelCostSnapshotIntegrationTest extends WorkerIntegrationTestBase {
     /** 模型目录夹具。 */
     private ModelFailoverFixture fixture;
 
-    /** 每个用例重建夹具。 */
+    /** 每个用例重建夹具；恢复全局模型基线。 */
     @BeforeEach
     void setUp() {
+        resetModelGatewayState();
         fixture = new ModelFailoverFixture(jdbcClient);
     }
 
@@ -296,12 +297,13 @@ class ModelCostSnapshotIntegrationTest extends WorkerIntegrationTestBase {
     }
 
     /**
-     * 创建测试租户。
+     * 创建测试租户；每个测试唯一。
      *
-     * @param tenantId 租户代码
+     * @param tenantPrefix 可读租户前缀
      * @return 租户
      */
-    private TenantId tenant(String tenantId) {
+    private TenantId tenant(String tenantPrefix) {
+        String tenantId = uniqueTenant(tenantPrefix);
         data.createTenant(tenantId);
         return TenantId.of(tenantId);
     }

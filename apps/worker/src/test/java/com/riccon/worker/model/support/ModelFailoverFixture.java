@@ -12,9 +12,9 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 /**
  * B4 集成测试夹具：平台 key 池、路由链与开关。
  *
- * <p>通过显式 SQL 造真实目录/凭据/链，不绕过外键、唯一键或状态约束；每个测试前由
- * {@code WorkerIntegrationTestBase} 清空业务表。加密复用 {@link TestCredentials}，
- * 与生产信封格式一致。
+ * <p>通过显式 SQL 造真实目录/凭据/链，不绕过外键、唯一键或状态约束；调用方在
+ * {@code @BeforeEach} 中先调用 {@code resetModelGatewayState()} 恢复全局基线。
+ * 加密复用 {@link TestCredentials}，与生产信封格式一致。
  */
 public final class ModelFailoverFixture {
 

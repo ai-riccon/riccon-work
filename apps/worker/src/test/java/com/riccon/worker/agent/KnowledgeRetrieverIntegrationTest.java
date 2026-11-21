@@ -27,7 +27,7 @@ class KnowledgeRetrieverIntegrationTest extends WorkerIntegrationTestBase {
     /** 知识库命中带分数与标题。 */
     @Test
     void retrieve_knowledge_returnsScoredChunks() {
-        String tenant = "tenant-a";
+        String tenant = uniqueTenant("tenant-a");
         UUID user = seedTenant(tenant);
         UUID documentId = data.createKnowledgeDocument(tenant, "市场报告", null, user);
         data.createKnowledgeChunk(tenant, documentId, 1, "市场增长很快，客户需求旺盛。", 1);
@@ -47,7 +47,7 @@ class KnowledgeRetrieverIntegrationTest extends WorkerIntegrationTestBase {
     /** 文件分块与知识库结果合并后连续编号。 */
     @Test
     void retrieve_withFile_renumbersSources() {
-        String tenant = "tenant-a";
+        String tenant = uniqueTenant("tenant-a");
         UUID user = seedTenant(tenant);
         UUID workspaceId = data.createWorkspace(tenant, user);
         UUID fileId = createParsedFile(tenant, workspaceId, user, "上传资料", "文件中的市场信息");
@@ -67,11 +67,13 @@ class KnowledgeRetrieverIntegrationTest extends WorkerIntegrationTestBase {
     /** 跨租户文件统一返回 404。 */
     @Test
     void retrieve_fileFromOtherTenant_failsNotFound() {
-        UUID userA = seedTenant("tenant-a");
-        UUID userB = seedTenant("tenant-b");
-        UUID workspaceB = data.createWorkspace("tenant-b", userB);
-        UUID foreignFile = createParsedFile("tenant-b", workspaceB, userB, "B 文件", "B 的内容");
-        TenantId tenantA = TenantId.of("tenant-a");
+        String tenantAId = uniqueTenant("tenant-a");
+        String tenantBId = uniqueTenant("tenant-b");
+        UUID userA = seedTenant(tenantAId);
+        UUID userB = seedTenant(tenantBId);
+        UUID workspaceB = data.createWorkspace(tenantBId, userB);
+        UUID foreignFile = createParsedFile(tenantBId, workspaceB, userB, "B 文件", "B 的内容");
+        TenantId tenantA = TenantId.of(tenantAId);
         assertThat(userA).isNotNull();
 
         assertThatThrownBy(() -> TenantContext.callWithTenant(
@@ -84,7 +86,7 @@ class KnowledgeRetrieverIntegrationTest extends WorkerIntegrationTestBase {
     /** 空查询返回空知识库结果，但文件仍可加载。 */
     @Test
     void retrieve_blankQuery_returnsFileChunksOnly() {
-        String tenant = "tenant-a";
+        String tenant = uniqueTenant("tenant-a");
         UUID user = seedTenant(tenant);
         UUID workspaceId = data.createWorkspace(tenant, user);
         UUID fileId = createParsedFile(tenant, workspaceId, user, "资料", "正文");

@@ -20,8 +20,8 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * 集成测试数据构造器。
  *
- * <p>只通过显式 SQL 与 S3 写入构造真实数据，不绕过租户键、外键与状态约束；测试结束后由
- * 基类统一清空数据。ID 统一使用 UUIDv7，和生产路径一致。
+ * <p>只通过显式 SQL 与 S3 写入构造真实数据，不绕过租户键、外键与状态约束；业务数据由每个测试
+ * 唯一的租户隔离，测试不再统一清空业务表。ID 统一使用 UUIDv7，和生产路径一致。
  */
 public final class TestDataFactory {
 
@@ -538,7 +538,8 @@ public final class TestDataFactory {
         UUID providerId = UuidBinary.newV7();
         UUID modelId = UuidBinary.newV7();
         UUID credentialId = UuidBinary.newV7();
-        String keyId = "dek-test";
+        // key id 必须唯一：测试不再清理 tenant_data_key，固定 key id 会与历史测试的主键冲突。
+        String keyId = "dek-" + credentialId;
         byte[] dek = TestCredentials.newDek();
         TestCredentials.WrappedDek wrapped = TestCredentials.wrap(
                 TestCredentials.MASTER_KEY_BASE64, "platform", TestCredentials.PURPOSE, keyId, dek);
@@ -548,7 +549,7 @@ public final class TestDataFactory {
                         VALUES (:id, :code, 'Stub', 'OPENAI_COMPATIBLE', :baseUrl, 'ACTIVE')
                         """)
                 .param("id", UuidBinary.toBytes(providerId))
-                .param("code", "openai-compatible-" + providerId.toString().substring(0, 8))
+                .param("code", "openai-compatible-" + providerId.toString().replace("-", ""))
                 .param("baseUrl", baseUrl)
                 .update();
         jdbcClient

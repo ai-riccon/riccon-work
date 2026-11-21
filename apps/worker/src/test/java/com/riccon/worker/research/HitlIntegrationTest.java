@@ -42,9 +42,12 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
     /** 模型桩。 */
     private TestModelStub stub;
 
-    /** 启动模型桩。 */
+    /** 启动模型桩；恢复全局模型与 MCP 目录基线，并清空跨租户 outbox 残留。 */
     @BeforeEach
     void setUp() {
+        resetModelGatewayState();
+        resetMcpCatalog();
+        clearOutbox();
         stub = new TestModelStub();
     }
 
@@ -105,7 +108,7 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
 
         UUID approvalId = approvalId(fixture.runId());
         approve(fixture.userId(), approvalId);
-        UUID resumeEvent = data.publishResearchResume("tenant-a", fixture.runId(), fixture.taskId(), approvalId);
+        UUID resumeEvent = data.publishResearchResume(fixture.tenant(), fixture.runId(), fixture.taskId(), approvalId);
 
         assertThat(poller.pollOnce()).isEqualTo(1);
 
@@ -116,7 +119,7 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(stageStatus(fixture.runId(), "GENERATION")).isEqualTo("SUCCEEDED");
         assertThat(mcpStatus(fixture.runId())).isEqualTo("SUCCEEDED");
         assertThat(mcpResultSha(fixture.runId())).hasSize(64);
-        assertThat(auditCount("mcp.tool.invoked")).isEqualTo(1);
+        assertThat(auditCount("mcp.tool.invoked", fixture.tenant())).isEqualTo(1);
         JsonNode toolDetails = objectMapper.readTree(stageDetails(fixture.runId(), "TOOL"));
         assertThat(toolDetails.path("paramsPreview").path("text").asText()).isEqualTo("market-data");
         assertThat(toolDetails.path("resultSummary").asText()).startsWith("sha256=");
@@ -133,7 +136,7 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(approvalDetails.path("approvalDecidedBy").asText())
                 .isEqualTo(fixture.userId().toString());
         assertThat(approvalDetails.path("approvalDecidedAt").asText()).isNotBlank();
-        assertThat(auditCount("model.invocation.completed")).isEqualTo(2);
+        assertThat(auditCount("model.invocation.completed", fixture.tenant())).isEqualTo(2);
         assertThat(stub.requestCount()).isEqualTo(2);
     }
 
@@ -151,14 +154,14 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
                 .map(UuidBinary::fromBytes)
                 .orElseThrow();
         approve(fixture.userId(), approvalId);
-        data.publishResearchResume("tenant-a", fixture.runId(), fixture.taskId(), approvalId);
+        data.publishResearchResume(fixture.tenant(), fixture.runId(), fixture.taskId(), approvalId);
         assertThat(poller.pollOnce()).isEqualTo(1);
         assertThat(mcpInvocationCount(fixture.runId())).isEqualTo(1);
 
         assertThatThrownBy(() -> TenantContext.callWithTenant(
-                        TenantId.of("tenant-a"),
+                        TenantId.of(fixture.tenant()),
                         () -> mcpGateway.invoke(new McpGateway.McpInvocationCommand(
-                                TenantId.of("tenant-a"),
+                                TenantId.of(fixture.tenant()),
                                 fixture.runId(),
                                 fixture.taskId(),
                                 approvalId,
@@ -183,7 +186,7 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
                 .param("id", UuidBinary.toBytes(approvalId))
                 .update();
         approve(fixture.userId(), approvalId);
-        UUID resumeEvent = data.publishResearchResume("tenant-a", fixture.runId(), fixture.taskId(), approvalId);
+        UUID resumeEvent = data.publishResearchResume(fixture.tenant(), fixture.runId(), fixture.taskId(), approvalId);
 
         assertThat(poller.pollOnce()).isEqualTo(1);
 
@@ -212,7 +215,7 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
                 .param("id", UuidBinary.toBytes(approvalId))
                 .update();
         approve(fixture.userId(), approvalId);
-        UUID resumeEvent = data.publishResearchResume("tenant-a", fixture.runId(), fixture.taskId(), approvalId);
+        UUID resumeEvent = data.publishResearchResume(fixture.tenant(), fixture.runId(), fixture.taskId(), approvalId);
 
         assertThat(poller.pollOnce()).isEqualTo(1);
 
@@ -229,7 +232,7 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(poller.pollOnce()).isEqualTo(1);
         UUID approvalId = approvalId(fixture.runId());
         reject(fixture.userId(), approvalId);
-        UUID resumeEvent = data.publishResearchResume("tenant-a", fixture.runId(), fixture.taskId(), approvalId);
+        UUID resumeEvent = data.publishResearchResume(fixture.tenant(), fixture.runId(), fixture.taskId(), approvalId);
 
         assertThat(poller.pollOnce()).isEqualTo(1);
 
@@ -244,7 +247,7 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
     void requestedThenCancel_cancelsRunAndApproval() {
         Fixture fixture = fixture("tenant-a");
         assertThat(poller.pollOnce()).isEqualTo(1);
-        UUID cancelEvent = data.publishResearchCancel("tenant-a", fixture.runId(), "USER_CANCELLED");
+        UUID cancelEvent = data.publishResearchCancel(fixture.tenant(), fixture.runId(), "USER_CANCELLED");
 
         assertThat(poller.pollOnce()).isEqualTo(1);
 
@@ -269,7 +272,7 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(stageStatus(fixture.runId(), "APPROVAL")).isEqualTo("RUNNING");
 
         cancelInApiFirst(fixture);
-        UUID cancelEvent = data.publishResearchCancel("tenant-a", fixture.runId(), "USER_CANCELLED");
+        UUID cancelEvent = data.publishResearchCancel(fixture.tenant(), fixture.runId(), "USER_CANCELLED");
 
         assertThat(poller.pollOnce()).isEqualTo(1);
 
@@ -294,7 +297,7 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
         UUID approvalId = approvalId(fixture.runId());
         reject(fixture.userId(), approvalId);
         cancelInApiFirst(fixture);
-        UUID cancelEvent = data.publishResearchCancel("tenant-a", fixture.runId(), "USER_CANCELLED");
+        UUID cancelEvent = data.publishResearchCancel(fixture.tenant(), fixture.runId(), "USER_CANCELLED");
 
         assertThat(poller.pollOnce()).isEqualTo(1);
 
@@ -331,11 +334,10 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
     /** 未授权工具导致不可重试失败，运行 FAILED。 */
     @Test
     void requestedWithoutGrant_failsRun() {
-        String tenant = "tenant-a";
-        Fixture fixture = fixture(tenant);
+        Fixture fixture = fixture("tenant-a");
         jdbcClient
                 .sql("DELETE FROM mcp_tool_grant WHERE tenant_id = :tenantId")
-                .param("tenantId", tenant)
+                .param("tenantId", fixture.tenant())
                 .update();
 
         assertThat(poller.pollOnce()).isEqualTo(1);
@@ -350,7 +352,8 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
     void requestedWithDisabledUser_failsRun() {
         Fixture fixture = fixture("tenant-a");
         jdbcClient
-                .sql("UPDATE app_user SET status = 'DISABLED' WHERE tenant_id = 'tenant-a' AND id = :id")
+                .sql("UPDATE app_user SET status = 'DISABLED' WHERE tenant_id = :tenantId AND id = :id")
+                .param("tenantId", fixture.tenant())
                 .param("id", UuidBinary.toBytes(fixture.userId()))
                 .update();
 
@@ -358,11 +361,12 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
 
         assertThat(runStatus(fixture.runId())).isEqualTo("FAILED");
         assertThat(outboxStatus(fixture.eventId())).isEqualTo("DEAD");
-        assertThat(auditCount("user.access.denied")).isEqualTo(1);
+        assertThat(auditCount("user.access.denied", fixture.tenant())).isEqualTo(1);
     }
 
-    /** 构造租户、目录、模型与报告任务。 */
-    private Fixture fixture(String tenant) {
+    /** 构造租户、目录、模型与报告任务；每个测试生成唯一租户。 */
+    private Fixture fixture(String tenantPrefix) {
+        String tenant = uniqueTenant(tenantPrefix);
         data.createTenant(tenant);
         UUID user = data.createUser(tenant);
         UUID workspace = data.createWorkspace(tenant, user);
@@ -382,7 +386,7 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
         data.createModelCatalog(stub.url(), TestCredentials.API_KEY);
         TestDataFactory.ResearchPublished published =
                 data.publishResearchRequested(tenant, workspace, user, "市场调研", tool);
-        return new Fixture(published.runId(), published.taskId(), published.eventId(), user);
+        return new Fixture(tenant, published.runId(), published.taskId(), published.eventId(), user);
     }
 
     /** 批准审批。 */
@@ -476,16 +480,24 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
      * @param fixture 夹具
      */
     private void cancelInApiFirst(Fixture fixture) {
-        jdbcClient.sql("""
+        jdbcClient
+                .sql("""
                         UPDATE agent_run
                            SET status = 'CANCELLED', finished_at = NOW(6)
-                         WHERE tenant_id = 'tenant-a' AND id = :id
-                        """).param("id", UuidBinary.toBytes(fixture.runId())).update();
-        jdbcClient.sql("""
+                         WHERE tenant_id = :tenantId AND id = :id
+                        """)
+                .param("tenantId", fixture.tenant())
+                .param("id", UuidBinary.toBytes(fixture.runId()))
+                .update();
+        jdbcClient
+                .sql("""
                         UPDATE research_task
                            SET status = 'CANCELLED', finished_at = NOW(6)
-                         WHERE tenant_id = 'tenant-a' AND id = :id
-                        """).param("id", UuidBinary.toBytes(fixture.taskId())).update();
+                         WHERE tenant_id = :tenantId AND id = :id
+                        """)
+                .param("tenantId", fixture.tenant())
+                .param("id", UuidBinary.toBytes(fixture.taskId()))
+                .update();
     }
 
     /** outbox 状态。 */
@@ -583,11 +595,12 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
                 .orElseThrow();
     }
 
-    /** 审计数量。 */
-    private int auditCount(String action) {
+    /** 审计数量；按本测试唯一租户过滤，audit_event 只追加不删除。 */
+    private int auditCount(String action, String tenant) {
         return jdbcClient
-                .sql("SELECT COUNT(*) FROM audit_event WHERE action = :action")
+                .sql("SELECT COUNT(*) FROM audit_event WHERE action = :action AND tenant_id = :tenantId")
                 .param("action", action)
+                .param("tenantId", tenant)
                 .query(Integer.class)
                 .single();
     }
@@ -595,10 +608,11 @@ class HitlIntegrationTest extends WorkerIntegrationTestBase {
     /**
      * 夹具。
      *
+     * @param tenant 租户
      * @param runId 运行
      * @param taskId 任务
      * @param eventId requested 事件
      * @param userId 用户
      */
-    private record Fixture(UUID runId, UUID taskId, UUID eventId, UUID userId) {}
+    private record Fixture(String tenant, UUID runId, UUID taskId, UUID eventId, UUID userId) {}
 }

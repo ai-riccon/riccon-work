@@ -62,9 +62,10 @@ class ModelAttemptBudgetIntegrationTest extends WorkerIntegrationTestBase {
     @Autowired
     private ModelInvocationService invocationService;
 
-    /** 启动桩与夹具。 */
+    /** 启动桩与夹具；恢复全局模型基线。 */
     @BeforeEach
     void setUp() {
+        resetModelGatewayState();
         primary = new TestModelStub();
         secondary = new TestModelStub();
         tertiary = new TestModelStub();
@@ -93,8 +94,9 @@ class ModelAttemptBudgetIntegrationTest extends WorkerIntegrationTestBase {
         fixture.addPlatformKey(fixture.providerOf(second), "sk-secondary", 10, "****dary");
         fixture.addPlatformKey(fixture.providerOf(third), "sk-tertiary", 10, "****iary");
         fixture.route(ModelPurpose.CHAT, first, second, third);
-        data.createTenant("tenant-a");
-        TenantId tenant = TenantId.of("tenant-a");
+        String tenantId = uniqueTenant("tenant-a");
+        data.createTenant(tenantId);
+        TenantId tenant = TenantId.of(tenantId);
 
         ModelRoute route = TenantContext.callWithTenant(
                 tenant, () -> modelRouter.resolve(tenant, ModelPurpose.CHAT, "trace-b4", null));

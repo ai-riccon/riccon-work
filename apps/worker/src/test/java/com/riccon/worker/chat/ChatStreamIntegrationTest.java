@@ -41,9 +41,12 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
     /** 模型桩。 */
     private TestModelStub stub;
 
-    /** 启动模型桩。 */
+    /** 启动模型桩；恢复 M04 全局模型基线（旧模型停用、路由链/开关复位）。 */
     @BeforeEach
     void setUp() {
+        resetModelGatewayState();
+        // cancel_waitingApprovalRun 会创建白名单 server code 的 MCP 目录，避免跨测试唯一键冲突。
+        resetMcpCatalog();
         stub = new TestModelStub();
     }
 
@@ -67,7 +70,7 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(body).contains("event: riccon.chat.completed.v1");
         assertThat(body).doesNotContain("你是 Riccon").doesNotContain("UNTRUSTED_DATA");
         JsonNode started = firstData(body, "riccon.chat.started.v1");
-        assertThat(started.path("tenantId").asText()).isEqualTo("tenant-a");
+        assertThat(started.path("tenantId").asText()).isEqualTo(fixture.tenantId());
         assertThat(started.path("runId").asText()).isEqualTo(fixture.runId().toString());
         assertThat(started.path("messageId").asText()).isNotBlank();
         assertThat(started.path("data").path("modelKey").asText()).isEqualTo("fake-model");
@@ -76,8 +79,8 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(completed.path("data").path("firstTokenMs").asInt()).isGreaterThanOrEqualTo(0);
         assertThat(runStatus(fixture.runId())).isEqualTo("SUCCEEDED");
         assertThat(invocationStatus(fixture.runId())).isEqualTo("SUCCEEDED");
-        assertThat(auditCount("model.invocation.started")).isEqualTo(1);
-        assertThat(auditCount("model.invocation.completed")).isEqualTo(1);
+        assertThat(auditCount("model.invocation.started", fixture.tenantId())).isEqualTo(1);
+        assertThat(auditCount("model.invocation.completed", fixture.tenantId())).isEqualTo(1);
     }
 
     /** 缺少服务令牌返回 ProblemDetail 401。 */
@@ -127,7 +130,7 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
 
         Map<String, Object> body = requestBody(fixture);
         body.put("runId", foreignRun.toString());
-        String foreignToken = TestServiceToken.mint("tenant-a", fixture.userId(), foreignRun);
+        String foreignToken = TestServiceToken.mint(fixture.tenantId(), fixture.userId(), foreignRun);
 
         MvcResult result = mockMvc.perform(post("/internal/v1/chat/streams")
                         .header(HttpHeaders.SERVICE_TOKEN, foreignToken)
@@ -142,7 +145,7 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
                         .path("code")
                         .asText())
                 .isEqualTo("RICCON-TENANT-404");
-        assertThat(auditCount("tenant.access.denied")).isEqualTo(1);
+        assertThat(auditCount("tenant.access.denied", fixture.tenantId())).isEqualTo(1);
     }
 
     /** 首字前失败返回 ProblemDetail，运行与调用进入 FAILED。 */
@@ -163,7 +166,7 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(problem.path("code").asText()).isEqualTo("RICCON-MODEL-503");
         assertThat(runStatus(fixture.runId())).isEqualTo("FAILED");
         assertThat(invocationStatus(fixture.runId())).isEqualTo("FAILED");
-        assertThat(auditCount("model.invocation.failed")).isEqualTo(1);
+        assertThat(auditCount("model.invocation.failed", fixture.tenantId())).isEqualTo(1);
     }
 
     /** 首字后失败发送 failed 事件并保留已生成内容。 */
@@ -218,7 +221,7 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
     /** 取消等待审批的报告运行：202、运行取消、审批取消。 */
     @Test
     void cancel_waitingApprovalRun_cancelsRunAndApproval() throws Exception {
-        String tenant = "tenant-a";
+        String tenant = uniqueTenant("tenant-a");
         UUID user = seedTenant(tenant);
         UUID workspace = data.createWorkspace(tenant, user);
         UUID toolId = createTool();
@@ -262,7 +265,8 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
     void cancel_terminalRun_returns409() throws Exception {
         ChatFixture fixture = chatFixture("tenant-a", "问题");
         jdbcClient
-                .sql("UPDATE agent_run SET status = 'SUCCEEDED' WHERE tenant_id = 'tenant-a' AND id = :id")
+                .sql("UPDATE agent_run SET status = 'SUCCEEDED' WHERE tenant_id = :tenantId AND id = :id")
+                .param("tenantId", fixture.tenantId())
                 .param("id", UuidBinary.toBytes(fixture.runId()))
                 .update();
 
@@ -279,7 +283,7 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
     void cancel_unknownRun_returns404AndAudits() throws Exception {
         ChatFixture fixture = chatFixture("tenant-a", "问题");
         UUID unknown = UUID.randomUUID();
-        String token = TestServiceToken.mint("tenant-a", fixture.userId(), unknown);
+        String token = TestServiceToken.mint(fixture.tenantId(), fixture.userId(), unknown);
 
         mockMvc.perform(post("/internal/v1/runs/" + unknown + "/cancel")
                         .header(HttpHeaders.SERVICE_TOKEN, token)
@@ -287,7 +291,7 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isNotFound());
-        assertThat(auditCount("tenant.access.denied")).isEqualTo(1);
+        assertThat(auditCount("tenant.access.denied", fixture.tenantId())).isEqualTo(1);
     }
 
     /** 非法取消原因返回 400。 */
@@ -306,7 +310,7 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
     /** 非 CHAT 运行拒绝流式请求。 */
     @Test
     void stream_nonChatRun_returns403() throws Exception {
-        String tenant = "tenant-a";
+        String tenant = uniqueTenant("tenant-a");
         UUID user = seedTenant(tenant);
         UUID workspace = data.createWorkspace(tenant, user);
         UUID taskId = data.createResearchTask(tenant, workspace, user, "主题", null);
@@ -332,7 +336,8 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
     void stream_terminalRun_returns409() throws Exception {
         ChatFixture fixture = chatFixture("tenant-a", "问题");
         jdbcClient
-                .sql("UPDATE agent_run SET status = 'CANCELLED' WHERE tenant_id = 'tenant-a' AND id = :id")
+                .sql("UPDATE agent_run SET status = 'CANCELLED' WHERE tenant_id = :tenantId AND id = :id")
+                .param("tenantId", fixture.tenantId())
                 .param("id", UuidBinary.toBytes(fixture.runId()))
                 .update();
 
@@ -420,7 +425,8 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
     void stream_disabledUser_returns403() throws Exception {
         ChatFixture fixture = chatFixture("tenant-a", "问题");
         jdbcClient
-                .sql("UPDATE app_user SET status = 'DISABLED' WHERE tenant_id = 'tenant-a' AND id = :id")
+                .sql("UPDATE app_user SET status = 'DISABLED' WHERE tenant_id = :tenantId AND id = :id")
+                .param("tenantId", fixture.tenantId())
                 .param("id", UuidBinary.toBytes(fixture.userId()))
                 .update();
 
@@ -431,16 +437,17 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
                         .content(requestJson(fixture)))
                 .andExpect(status().isForbidden());
 
-        assertThat(auditCount("user.access.denied")).isEqualTo(1);
+        assertThat(auditCount("user.access.denied", fixture.tenantId())).isEqualTo(1);
     }
 
-    /** 构造对话夹具。 */
-    private ChatFixture chatFixture(String tenant, String question) {
-        return chatFixture(tenant, question, true);
+    /** 构造对话夹具；每个测试生成唯一租户，避免业务数据跨测试残留。 */
+    private ChatFixture chatFixture(String tenantPrefix, String question) {
+        return chatFixture(tenantPrefix, question, true);
     }
 
     /** 构造对话夹具，可选是否创建模型目录。 */
-    private ChatFixture chatFixture(String tenant, String question, boolean withModel) {
+    private ChatFixture chatFixture(String tenantPrefix, String question, boolean withModel) {
+        String tenant = uniqueTenant(tenantPrefix);
         UUID user = seedTenant(tenant);
         UUID workspace = data.createWorkspace(tenant, user);
         UUID conversation = data.createConversation(tenant, workspace, user);
@@ -462,11 +469,12 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
 
     /** 创建另一租户的运行。 */
     private UUID foreignChatRun() {
-        UUID user = seedTenant("tenant-b");
-        UUID workspace = data.createWorkspace("tenant-b", user);
-        UUID conversation = data.createConversation("tenant-b", workspace, user);
-        data.createMessage("tenant-b", conversation, 1, "USER", "foreign");
-        return data.createChatRun("tenant-b", conversation, user);
+        String tenant = uniqueTenant("tenant-b");
+        UUID user = seedTenant(tenant);
+        UUID workspace = data.createWorkspace(tenant, user);
+        UUID conversation = data.createConversation(tenant, workspace, user);
+        data.createMessage(tenant, conversation, 1, "USER", "foreign");
+        return data.createChatRun(tenant, conversation, user);
     }
 
     /** 创建工具。 */
@@ -556,11 +564,12 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
                 .single();
     }
 
-    /** 审计数量。 */
-    private int auditCount(String action) {
+    /** 审计数量；按本测试唯一租户过滤，audit_event 只追加不删除。 */
+    private int auditCount(String action, String tenant) {
         return jdbcClient
-                .sql("SELECT COUNT(*) FROM audit_event WHERE action = :action")
+                .sql("SELECT COUNT(*) FROM audit_event WHERE action = :action AND tenant_id = :tenantId")
                 .param("action", action)
+                .param("tenantId", tenant)
                 .query(Integer.class)
                 .single();
     }

@@ -56,9 +56,10 @@ class ChatStreamFlushIntegrationTest extends WorkerIntegrationTestBase {
     /** 模型桩。 */
     private TestModelStub stub;
 
-    /** 启动模型桩。 */
+    /** 启动模型桩；恢复 M04 全局模型基线。 */
     @BeforeEach
     void setUp() {
+        resetModelGatewayState();
         stub = new TestModelStub();
     }
 
@@ -140,8 +141,9 @@ class ChatStreamFlushIntegrationTest extends WorkerIntegrationTestBase {
         throw new IllegalStateException("event was not received: " + eventType);
     }
 
-    /** 构造对话夹具。 */
-    private Fixture fixture(String tenant, String question) {
+    /** 构造对话夹具；每个测试生成唯一租户。 */
+    private Fixture fixture(String tenantPrefix, String question) {
+        String tenant = uniqueTenant(tenantPrefix);
         UUID user = seedTenant(tenant);
         UUID workspace = data.createWorkspace(tenant, user);
         UUID conversation = data.createConversation(tenant, workspace, user);

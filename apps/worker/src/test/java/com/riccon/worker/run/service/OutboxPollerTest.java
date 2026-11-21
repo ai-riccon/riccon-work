@@ -18,6 +18,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -44,12 +45,18 @@ class OutboxPollerTest extends WorkerIntegrationTestBase {
     @Autowired
     private Clock clock;
 
+    /** pollOnce 跨租户领取事件；每个测试先清空残留 outbox，保证精确计数。 */
+    @BeforeEach
+    void clearStaleOutbox() {
+        clearOutbox();
+    }
+
     /** 未实现事件安全跳过并进入 DEAD。 */
     @Test
     void pollOnce_unsupportedEvent_marksDead() {
         Seed seed = seedFileRun("tenant-a");
         UUID eventId =
-                data.createOutbox("tenant-a", seed.runId(), "riccon.agent.run.unknown.v1", "{}", "unsupported-1");
+                data.createOutbox(seed.tenant(), seed.runId(), "riccon.agent.run.unknown.v1", "{}", "unsupported-1");
 
         assertThat(poller.pollOnce()).isEqualTo(1);
 
@@ -62,7 +69,8 @@ class OutboxPollerTest extends WorkerIntegrationTestBase {
     @Test
     void pollOnce_invalidPayload_marksDeadAndFailsRun() {
         Seed seed = seedFileRun("tenant-a");
-        UUID eventId = data.createOutbox("tenant-a", seed.runId(), EventTypes.FILE_PARSE_REQUESTED, "{}", "invalid-1");
+        UUID eventId =
+                data.createOutbox(seed.tenant(), seed.runId(), EventTypes.FILE_PARSE_REQUESTED, "{}", "invalid-1");
 
         assertThat(poller.pollOnce()).isEqualTo(1);
 
@@ -74,7 +82,7 @@ class OutboxPollerTest extends WorkerIntegrationTestBase {
     /** 运行类别与事件不匹配时拒绝执行。 */
     @Test
     void pollOnce_runKindMismatch_marksDead() {
-        String tenant = "tenant-a";
+        String tenant = uniqueTenant("tenant-a");
         data.createTenant(tenant);
         UUID userId = data.createUser(tenant);
         UUID runId = data.createRun(tenant, RunKind.KNOWLEDGE_INDEX, null, userId, 3);
@@ -98,10 +106,11 @@ class OutboxPollerTest extends WorkerIntegrationTestBase {
         Seed seed = seedFileRun("tenant-a");
         jdbcClient
                 .sql("UPDATE agent_run SET status = 'SUCCEEDED' WHERE tenant_id = :tenantId AND id = :id")
-                .param("tenantId", "tenant-a")
+                .param("tenantId", seed.tenant())
                 .param("id", UuidBinary.toBytes(seed.runId()))
                 .update();
-        UUID eventId = data.createOutbox("tenant-a", seed.runId(), EventTypes.FILE_PARSE_REQUESTED, "{}", "terminal-1");
+        UUID eventId =
+                data.createOutbox(seed.tenant(), seed.runId(), EventTypes.FILE_PARSE_REQUESTED, "{}", "terminal-1");
 
         assertThat(poller.pollOnce()).isEqualTo(1);
 
@@ -119,11 +128,11 @@ class OutboxPollerTest extends WorkerIntegrationTestBase {
         jdbcClient
                 .sql("UPDATE agent_run SET status = 'CANCELLED', finished_at = NOW(6) "
                         + "WHERE tenant_id = :tenantId AND id = :id")
-                .param("tenantId", "tenant-a")
+                .param("tenantId", seed.tenant())
                 .param("id", UuidBinary.toBytes(seed.runId()))
                 .update();
-        UUID eventId =
-                data.createOutbox("tenant-a", seed.runId(), EventTypes.FILE_PARSE_REQUESTED, "{}", "terminal-optin-1");
+        UUID eventId = data.createOutbox(
+                seed.tenant(), seed.runId(), EventTypes.FILE_PARSE_REQUESTED, "{}", "terminal-optin-1");
         java.util.concurrent.atomic.AtomicInteger handled = new java.util.concurrent.atomic.AtomicInteger();
         OutboxEventHandler reconciler = new OutboxEventHandler() {
             @Override
@@ -159,7 +168,7 @@ class OutboxPollerTest extends WorkerIntegrationTestBase {
     @Test
     void pollOnce_futureLease_skips() {
         Seed seed = seedFileRun("tenant-a");
-        UUID eventId = data.createOutbox("tenant-a", seed.runId(), EventTypes.FILE_PARSE_REQUESTED, "{}", "lease-1");
+        UUID eventId = data.createOutbox(seed.tenant(), seed.runId(), EventTypes.FILE_PARSE_REQUESTED, "{}", "lease-1");
         jdbcClient
                 .sql("""
                         UPDATE agent_run_outbox
@@ -167,7 +176,7 @@ class OutboxPollerTest extends WorkerIntegrationTestBase {
                                lease_owner = 'busy'
                          WHERE tenant_id = :tenantId AND id = :id
                         """)
-                .param("tenantId", "tenant-a")
+                .param("tenantId", seed.tenant())
                 .param("id", UuidBinary.toBytes(eventId))
                 .update();
 
@@ -178,7 +187,7 @@ class OutboxPollerTest extends WorkerIntegrationTestBase {
     @Test
     void pollOnce_retryableFailure_schedulesRetryThenDead() {
         Seed seed = seedFileRun("tenant-a");
-        UUID eventId = data.createOutbox("tenant-a", seed.runId(), EventTypes.FILE_PARSE_REQUESTED, "{}", "retry-1");
+        UUID eventId = data.createOutbox(seed.tenant(), seed.runId(), EventTypes.FILE_PARSE_REQUESTED, "{}", "retry-1");
         OutboxPoller custom = customPoller(failingHandler(true));
 
         assertThat(custom.pollOnce()).isEqualTo(1);
@@ -201,7 +210,7 @@ class OutboxPollerTest extends WorkerIntegrationTestBase {
     void pollOnce_nonRetryableFailure_marksDeadImmediately() {
         Seed seed = seedFileRun("tenant-a");
         UUID eventId =
-                data.createOutbox("tenant-a", seed.runId(), EventTypes.FILE_PARSE_REQUESTED, "{}", "non-retry-1");
+                data.createOutbox(seed.tenant(), seed.runId(), EventTypes.FILE_PARSE_REQUESTED, "{}", "non-retry-1");
         OutboxPoller custom = customPoller(failingHandler(false));
 
         assertThat(custom.pollOnce()).isEqualTo(1);
@@ -215,7 +224,7 @@ class OutboxPollerTest extends WorkerIntegrationTestBase {
     void pollOnce_unexpectedRuntime_retriesWithWorker500() {
         Seed seed = seedFileRun("tenant-a");
         UUID eventId =
-                data.createOutbox("tenant-a", seed.runId(), EventTypes.FILE_PARSE_REQUESTED, "{}", "unexpected-1");
+                data.createOutbox(seed.tenant(), seed.runId(), EventTypes.FILE_PARSE_REQUESTED, "{}", "unexpected-1");
         OutboxEventHandler broken = new OutboxEventHandler() {
             @Override
             public String eventType() {
@@ -244,12 +253,10 @@ class OutboxPollerTest extends WorkerIntegrationTestBase {
     /** 跨租户 fileId 不得读取其他租户数据。 */
     @Test
     void pollOnce_crossTenantFile_doesNotLeak() {
-        String tenantA = "tenant-a";
-        String tenantB = "tenant-b";
-        Seed seedA = seedFileRun(tenantA);
-        Seed seedB = seedFileRun(tenantB);
+        Seed seedA = seedFileRun("tenant-a");
+        Seed seedB = seedFileRun("tenant-b");
         UUID eventId = data.createOutbox(
-                tenantA,
+                seedA.tenant(),
                 seedA.runId(),
                 EventTypes.FILE_PARSE_REQUESTED,
                 data.fileParsePayload(seedB.fileId(), seedB.parseId(), 1),
@@ -259,14 +266,14 @@ class OutboxPollerTest extends WorkerIntegrationTestBase {
 
         assertThat(outboxStatus(eventId)).isEqualTo("DEAD");
         assertThat(runStatus(seedA.runId())).isEqualTo("FAILED");
-        assertThat(parseStatus(tenantB, seedB.parseId())).isEqualTo("PENDING");
+        assertThat(parseStatus(seedB.tenant(), seedB.parseId())).isEqualTo("PENDING");
     }
 
     /** 退避序列与配置一致，超出长度取最后一个。 */
     @Test
     void retryDelay_usesConfiguredSequence() {
         Seed seed = seedFileRun("tenant-a");
-        UUID eventId = data.createOutbox("tenant-a", seed.runId(), EventTypes.FILE_PARSE_REQUESTED, "{}", "delay-1");
+        UUID eventId = data.createOutbox(seed.tenant(), seed.runId(), EventTypes.FILE_PARSE_REQUESTED, "{}", "delay-1");
         OutboxPoller custom = customPoller(failingHandler(true));
 
         assertThat(custom.retryDelay(1)).isEqualTo(Duration.ofMillis(10));
@@ -324,19 +331,20 @@ class OutboxPollerTest extends WorkerIntegrationTestBase {
     }
 
     /**
-     * 创建带文件和解析尝试的运行与 outbox。
+     * 创建带文件和解析尝试的运行与 outbox；每次生成唯一租户。
      *
-     * @param tenant 租户
+     * @param tenantPrefix 可读租户前缀
      * @return 种子
      */
-    private Seed seedFileRun(String tenant) {
+    private Seed seedFileRun(String tenantPrefix) {
+        String tenant = uniqueTenant(tenantPrefix);
         data.createTenant(tenant);
         UUID userId = data.createUser(tenant);
         UUID workspaceId = data.createWorkspace(tenant, userId);
         UUID fileId = data.createFile(tenant, workspaceId, userId, FileFormat.PDF, TestDocuments.pdf(1));
         UUID parseId = data.createParse(tenant, fileId, 1);
         UUID runId = data.createRun(tenant, RunKind.FILE_PARSE, fileId, userId, 3);
-        return new Seed(runId, fileId, parseId);
+        return new Seed(tenant, runId, fileId, parseId);
     }
 
     /**
@@ -401,9 +409,10 @@ class OutboxPollerTest extends WorkerIntegrationTestBase {
     /**
      * 测试种子。
      *
+     * @param tenant 租户
      * @param runId 运行 ID
      * @param fileId 文件 ID
      * @param parseId 解析 ID
      */
-    private record Seed(UUID runId, UUID fileId, UUID parseId) {}
+    private record Seed(String tenant, UUID runId, UUID fileId, UUID parseId) {}
 }
