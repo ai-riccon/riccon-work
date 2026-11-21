@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
@@ -36,9 +35,12 @@ import org.springframework.stereotype.Component;
  * <p>回滚窗口：校验关闭时必须输出一次固定 WARN {@value #VALIDATION_DISABLED_WARN_CODE}，文案含
  * {@code schema validation disabled}，供 B10 RUNBOOK 的启动日志断言识别；校验启用时绝不输出该 WARN，
  * 行为与版本校验保持不变。
+ *
+ * <p>注册方式：本类必须是普通 {@code @Component} 并由构造器直接依赖 {@link JdbcClient}。不得再使用
+ * {@code @ConditionalOnBean(JdbcClient.class)}：组件扫描阶段条件早于 JDBC 自动配置求值，会导致真实
+ * Worker 上下文根本不创建该 Bean，启动校验与回滚 WARN 同时失效（V2 F-002）。
  */
 @Component
-@ConditionalOnBean(JdbcClient.class)
 public class SchemaVersionChecker implements ApplicationRunner {
 
     /** 期望的 schema 最大版本，对应 {@code apps/api/src/main/resources/db/migration/V1..V11}。 */
