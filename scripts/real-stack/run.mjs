@@ -62,6 +62,9 @@ const OIDC_ISSUER = `http://127.0.0.1:${OIDC_PORT}/realms/${OIDC_REALM}`;
 /** 租户配置的 IdP 展示名；浏览器断言与 API 配置共用同一值。 */
 const OIDC_PROVIDER_NAME = "Alpha 测试企业 IdP";
 
+/** Worker 启动时校验的 Flyway 期望版本；API 必须先迁移到这里再起 Worker。 */
+const FLYWAY_EXPECTED_VERSION = 11;
+
 /** 证据文件。 */
 const SEED_FILE = path.join(evidenceDir, "real-stack-seed.json");
 const ENV_SNAPSHOT_FILE = path.join(evidenceDir, "real-stack-env.json");
@@ -549,12 +552,60 @@ function sharedModelEnv(context) {
 }
 
 /**
- * 启动 API/Worker；返回共享 env 供后续阶段复用。
+ * 读取 Flyway 最大成功版本；表尚未创建或查询失败时返回 0。
+ *
+ * @returns {number} 最大成功版本
+ */
+function currentFlywayVersion() {
+  const result = runSql(
+    `SELECT COALESCE(MAX(CAST(version AS UNSIGNED)), 0) AS version
+       FROM flyway_schema_history WHERE success = 1;`,
+    { allowFailure: true, repoRoot },
+  );
+  if (result.status !== 0) {
+    return 0;
+  }
+  const lines = String(result.stdout ?? "")
+    .trim()
+    .split("\n")
+    .filter(Boolean);
+  const value = Number(lines[lines.length - 1]);
+  return Number.isFinite(value) ? value : 0;
+}
+
+/**
+ * 等待 API 完成 Flyway 迁移到期望版本。
+ *
+ * @param {number} expected 期望版本
+ * @param {number} [timeoutMs] 超时
+ * @returns {Promise<number>} 实际达到的版本
+ */
+async function waitForFlywayVersion(expected, timeoutMs = 120_000) {
+  const deadline = Date.now() + timeoutMs;
+  let last = 0;
+  while (Date.now() < deadline) {
+    last = currentFlywayVersion();
+    if (last >= expected) {
+      return last;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error(
+    `timeout waiting for flyway version ${expected}; last=${last}`,
+  );
+}
+
+/**
+ * 启动 API 与 Worker。
+ *
+ * 顺序约束：`down -v` 后必须先由 API（唯一迁移者）完成 Flyway 到 V11，再启动 Worker；
+ * Worker 启动时会校验 `flyway_schema_history` 最大成功版本，早启动会以 RICCON-WORKER-001 退出。
  *
  * @param {object} context 上下文
  * @param {object} [extra] 额外 env（perf 超时 profile）
+ * @returns {Promise<{flywayVersion: number}>} 启动结果
  */
-function startApplications(context, extra = {}) {
+async function startApplications(context, extra = {}) {
   const shared = { ...sharedModelEnv(context), ...extra };
   start(
     "api",
@@ -587,6 +638,12 @@ function startApplications(context, extra = {}) {
       },
     },
   );
+  await waitForHttp(`http://127.0.0.1:${API_PORT}/actuator/health`, 120_000);
+  const flywayVersion = await waitForFlywayVersion(FLYWAY_EXPECTED_VERSION, 120_000);
+  console.log(
+    `[real-stack] api ready (flyway=${flywayVersion}); starting worker`,
+  );
+
   start(
     "worker",
     "java",
@@ -604,6 +661,8 @@ function startApplications(context, extra = {}) {
       },
     },
   );
+  await waitForHttp(`http://127.0.0.1:${WORKER_PORT}/actuator/health`, 120_000);
+  return { flywayVersion };
 }
 
 /**
@@ -919,9 +978,8 @@ async function runFull() {
   });
   await waitForHttp(`http://127.0.0.1:${OIDC_PORT}/__oidc__/health`, 30_000);
 
-  startApplications(context);
-  await waitForHttp(`http://127.0.0.1:${API_PORT}/actuator/health`, 120_000);
-  await waitForHttp(`http://127.0.0.1:${WORKER_PORT}/actuator/health`, 120_000);
+  const startup = await startApplications(context);
+  phases.migration = startup.flywayVersion >= FLYWAY_EXPECTED_VERSION ? "passed" : "failed";
   const fingerprint = await verifyActuatorFingerprint();
   context.fingerprint = fingerprint;
   phases.fingerprint = fingerprint.matched ? "passed" : "default-deny-recorded";
@@ -1187,7 +1245,7 @@ async function runPerf() {
   });
   await waitForHttp(`http://127.0.0.1:${MODEL_PORT}/__health__`, 30_000);
 
-  startApplications(context, {
+  const startup = await startApplications(context, {
     // AC-17 假模型 perf profile（ADR-0021 §5.2）；生产默认不承诺 3s 失败注入。
     RICCON_MODEL_FIRST_TOKEN_TIMEOUT: "1000ms",
     RICCON_MODEL_PRE_FIRST_TOKEN_BUDGET: "2500ms",
@@ -1196,8 +1254,7 @@ async function runPerf() {
     RICCON_MODEL_CONNECT_TIMEOUT: "500ms",
     RICCON_WORKER_MODEL_CONNECT_TIMEOUT: "500ms",
   });
-  await waitForHttp(`http://127.0.0.1:${API_PORT}/actuator/health`, 120_000);
-  await waitForHttp(`http://127.0.0.1:${WORKER_PORT}/actuator/health`, 120_000);
+  phases.migration = startup.flywayVersion >= FLYWAY_EXPECTED_VERSION ? "passed" : "failed";
   const fingerprint = await verifyActuatorFingerprint();
   context.fingerprint = fingerprint;
   phases.fingerprint = fingerprint.matched ? "passed" : "default-deny-recorded";
