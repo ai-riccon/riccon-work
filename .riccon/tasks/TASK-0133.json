@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0133",
+  "module_id": "M04",
+  "title": "M04 修复：模型网关开关 GET/PUT 端点",
+  "owner": "riccon/builder-route",
+  "status": "done",
+  "write_scope": [
+    "apps/api/src/main/java/com/riccon/api/admin/model/gateway/**",
+    "apps/api/src/main/java/com/riccon/api/model/gateway/**",
+    "apps/api/src/test/java/com/riccon/api/admin/model/gateway/**",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "GET/PUT /api/v1/admin/model-gateway/switches，version 乐观锁 409，platform.model.read/manage，审计 model.gateway.switch.changed",
+    "环境覆盖/默认值语义；B10 quota-drill 可 PUT 开关；AC-02 开关段可通过",
+    "已认证/租户/员工权限；契约已定义端点，不改契约；定向测试 + EV"
+  ],
+  "evidence": [
+    "EV-0634"
+  ],
+  "tools_used": [
+    "codegraph",
+    "grep",
+    "shell"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-21T10:55:24.910+08:00",
+  "updated_at": "2026-11-21T11:46:44.086+08:00",
+  "baseline_commit": "29de1cb",
+  "end_commit": "ffd12ac"
+}
