@@ -4,7 +4,7 @@
   "module_id": "M19",
   "title": "P0 测试计时与预算：surefire top-N 报告进 CI",
   "owner": "riccon/ops",
-  "status": "in_progress",
+  "status": "review",
   "write_scope": [
     "scripts/test-timings.mjs",
     ".github/workflows/ci.yml",
@@ -18,10 +18,17 @@
     "在 docs 写明 L2 ≤5min、后端全量 ≤10min（分片前）、≤5min（4-shard 后）的预算与超预算处理",
     "不修改测试代码/生产代码；commands.test 不变"
   ],
-  "evidence": [],
-  "tools_used": [],
+  "evidence": [
+    "EV-0690"
+  ],
+  "tools_used": [
+    "read/grep：定位 CI job 与文档小节（非符号重构，Serena/CodeGraph 对新文件无索引，降级理由见回执）",
+    "node：脚本语法检查与本地计时/负向运行",
+    "ruby yaml：CI 工作流语法校验",
+    "git：diff/commit 与证据绑定"
+  ],
   "blocker": null,
   "created_at": "2026-11-20T23:46:05.604+08:00",
-  "updated_at": "2026-11-21T17:50:29.046+08:00",
-  "baseline_commit": "830723e6dafb864f3a4ddca900e54261a0c9d3a4"
+  "updated_at": "2026-11-21T17:55:57.933+08:00",
+  "baseline_commit": "f31b3ec"
 }
