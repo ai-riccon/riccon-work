@@ -202,7 +202,7 @@ node scripts/test-timings.mjs --reports-root "$TMPDIR/empty"
 # 1. 启动测试栈（MySQL 已在 compose 中固定审计触发器所需参数，无需手工 SET GLOBAL）
 docker compose -f deploy/compose/docker-compose.test.yml up -d --wait
 
-# 2. 启动 API（默认端口 8080，连接 13306 的 MySQL；启动时执行 Flyway V1–V10）
+# 2. 启动 API（默认端口 8080，连接 13306 的 MySQL；启动时执行 Flyway V1–V11）
 ./mvnw -q -pl apps/api spring-boot:run
 
 # 3. 启动 Worker（默认端口 8081；M01 无数据库依赖，M02 持久化实现任务加入 JDBC 后需要 MySQL）
@@ -237,7 +237,7 @@ export RICCON_BOOTSTRAP_ADMIN_PASSWORD='<至少 12 位，部署时注入，禁�
 - Spring Session 表由 V7 创建，必须保持 `spring.session.jdbc.initialize-schema=never`，禁止应用自动建表。
 - V10（M10，审计查询与导出）新增 `audit_export_request` 表、`audit_event` 两条查询索引（`idx_audit_tenant_action_time`、`idx_audit_tenant_actor_time`）、`audit.export.approve` / `platform.audit.export.approve` 两条权限并回填既有 `TENANT_ADMIN` / `PLATFORM_ADMIN` 角色映射；纯 additive，append-only 触发器不变。生产执行见下文“V10 生产迁移”。
 
-#### 测试栈迁移演练（V1–V10，可复制）
+#### 测试栈迁移演练（V1–V11，可复制）
 
 > **仅测试栈。** 以下参数与凭据只属于 `deploy/compose/docker-compose.test.yml`。生产迁移账号是否具备 `TRIGGER`、是否开启 `log_bin_trust_function_creators`（或改用 DBA 预建触发器）由 M09 决定，禁止直接照搬本节配置。
 
@@ -258,16 +258,18 @@ docker compose -f deploy/compose/docker-compose.test.yml exec -T \
   -e MYSQL_PWD="${RICCON_DB_PASSWORD:-riccon_test_only}" \
   mysql mysql --user=riccon -e "SHOW VARIABLES LIKE 'log_bin_trust_function_creators';"
 
-# 4. 按文件顺序执行 V1..V10；任一步失败立即中断，不吞错误
+# 4. 按 Flyway 版本号顺序执行 V1..V11（不能用 shell 字典序：V10 会排到 V2 之前，
+#    导致外键引用尚未创建的 app_user）；任一步失败立即中断，不吞错误
 set -euo pipefail
-for migration in apps/api/src/main/resources/db/migration/V*.sql; do
+migrations="$(printf '%s\n' apps/api/src/main/resources/db/migration/V*.sql | sort -V)"
+while IFS= read -r migration; do
   echo "== ${migration}"
   docker compose -f deploy/compose/docker-compose.test.yml exec -T \
     -e MYSQL_PWD="${RICCON_DB_PASSWORD:-riccon_test_only}" \
     mysql mysql --user=riccon --database=riccon --batch --show-warnings < "${migration}"
-done
+done <<< "${migrations}"
 
-# 5. 校验结构：39 张表（Flyway 口径 40）、2 个触发器、V10 对象
+# 5. 校验结构：45 张表（Flyway 口径 46）、2 个触发器、V10 对象
 docker compose -f deploy/compose/docker-compose.test.yml exec -T \
   -e MYSQL_PWD="${RICCON_DB_PASSWORD:-riccon_test_only}" \
   mysql mysql --user=riccon --database=riccon --batch -e "
@@ -310,8 +312,8 @@ docker compose -f deploy/compose/docker-compose.test.yml down -v
 | 检查项                            | 期望                                                                                                     |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `log_bin_trust_function_creators` | `ON`                                                                                                     |
-| 迁移输出                          | V1–V10 逐条无错误；不得出现 `ERROR 1419`                                                                 |
-| `table_count`                     | 39（手工重放不含 `flyway_schema_history`；API 经 Flyway 启动后为 40，与 `ApiApplicationTests` 口径一致） |
+| 迁移输出                          | V1–V11 逐条无错误；不得出现 `ERROR 1419`                                                                 |
+| `table_count`                     | 45（手工重放不含 `flyway_schema_history`；API 经 Flyway 启动后为 46，与 `ApiApplicationTests` 口径一致） |
 | `trigger_count`                   | 2（`trg_audit_event_no_update`、`trg_audit_event_no_delete`）                                            |
 | `v10_tables` / `v10_indexes`      | 1（`audit_export_request`）/ 2（两条 `audit_event` 复合索引）                                            |
 | `v10_permissions`                 | 2（`audit.export.approve`、`platform.audit.export.approve`）                                             |
@@ -319,7 +321,7 @@ docker compose -f deploy/compose/docker-compose.test.yml down -v
 
 手工重放只用于演练与 CI 冒烟，不会写入 `flyway_schema_history`。**不要在同一数据卷上随即启动 API**：Flyway 会因“非空 schema 但无历史表”拒绝迁移；需要继续用 API 验证时先 `down -v` 再 `up -d --wait`。
 
-CI 的 `backend` job 使用同一个 compose 文件和同一文件顺序做冒烟（`.github/workflows/ci.yml` 的“迁移冒烟”步骤），并在跑 `./mvnw -q -T1C verify` 之前执行。表数不写死：期望值从 `apps/api/src/main/resources/db/migration/V*.sql` 的 `CREATE TABLE` 数量推导，并额外断言 V10 表、索引、权限与 append-only 触发器。
+CI 的 `backend-smoke` job 使用同一个 compose 文件做冒烟（`.github/workflows/ci.yml` 的“迁移冒烟”步骤），按 Flyway 版本号顺序（`sort -V`）重放全部 `V*.sql`；本 job 只跑迁移冒烟与 `spotless:check`，不跑构建与全量测试（canonical gate 仍由本地/verifier 跑 `./mvnw -q -T1C verify jacoco:report`）。表数不写死：期望值从 `apps/api/src/main/resources/db/migration/V*.sql` 的 `CREATE TABLE` 数量推导，并额外断言 V10 表、索引、权限与 append-only 触发器。
 
 > 合同 `commands.run` 引用 `deploy/compose/docker-compose.dev.yml`，该文件由后续 ops 任务建立；M01 用测试栈替代。不要在 M01 中创建生产/预览编排。
 
