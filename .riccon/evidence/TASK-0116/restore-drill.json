@@ -5,7 +5,7 @@
   ],
   "rto": {
     "limitHours": 4,
-    "actualHours": 0.0009
+    "actualHours": 0.0013
   },
   "rpo": {
     "declaredHours": 24,
@@ -22,21 +22,37 @@
     "triggers": 2,
     "schemaVersion": 11,
     "dataKeys": 2,
-    "credentials": 4
+    "credentials": 2
   },
   "restored": {
     "tables": 46,
     "triggers": 2,
     "schemaVersion": 11,
     "dataKeys": 2,
-    "credentials": 4
+    "credentials": 2
   },
   "dump": {
-    "bytes": 686252,
+    "bytes": 221641,
     "path": null
   },
-  "restoreMs": 2683,
-  "rtoMs": 3111,
+  "restoreMs": 3900,
+  "rtoMs": 4571,
+  "grants": {
+    "applied": true,
+    "user": "riccon",
+    "hosts": [
+      "%"
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ],
+    "scope": "riccon_restore_drill.*",
+    "retained": true,
+    "note": "演练库与库级授权保留；删除演练库前需回收授权"
+  },
   "credentialCheck": {
     "status": "passed",
     "detail": {
@@ -65,5 +81,6 @@
     "status": "skipped",
     "reason": "未提供 --api-base"
   },
-  "cleanup": "kept"
+  "cleanup": "kept",
+  "revokedGrants": []
 }
