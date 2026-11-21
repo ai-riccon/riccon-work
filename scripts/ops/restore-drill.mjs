@@ -15,11 +15,15 @@
 // - 目标库名必须匹配 `^riccon_restore_[a-z0-9_]+$`，且 `/^riccon$/` 源库不会被当作目标；
 // - 必须显式 `--apply` 才执行 DROP/CREATE/导入；缺省只打印计划；
 // - 演练库默认在结束时删除（`--keep` 保留），避免把演练数据当业务数据；
-// - 输出不含主密钥/pepper/明文 key；报告只含计数、耗时与判定。
+// - 导入成功后由管理账号给**应用运行账号**授予演练库上的最小 DML（SELECT/INSERT/UPDATE/DELETE），
+//   作用域仅 `riccon_restore_*.*`，不带 GRANT OPTION、不建账号、不触碰源库；删除演练库前先回收授权，
+//   避免 mysql.db 残留（MySQL 的 DROP DATABASE 不会自动清理库级授权）；
+// - 输出不含主密钥/pepper/明文 key；报告只含计数、耗时、授权账号/主机与判定。
 //
 // 用法：
 //   node scripts/ops/restore-drill.mjs --apply [--source riccon] [--target riccon_restore_drill]
 //       [--api-base http://127.0.0.1:18089] [--keep] [--via compose|client]
+//       [--grant-user riccon] [--grant-host %] [--no-grant]
 //   node scripts/ops/restore-drill.mjs --self-test
 //
 // 退出码：0 演练通过；1 判据失败；2 用法/环境/证据不完整（可用 --allow-partial 记录为 partial）。
@@ -49,11 +53,24 @@ const RTO_LIMIT_HOURS = 4;
 /** RPO 声明值（小时）；由备份策略保证，脚本只记录。 */
 const RPO_DECLARED_HOURS = 24;
 
+/**
+ * 演练库上授予应用运行账号的权限：只够 rewrap 只读校验与 J1 冒烟（API Flyway 校验/加锁 + DML）。
+ * 不含 DDL、GRANT OPTION 或全局权限；导入本身仍由管理账号执行。
+ */
+const GRANT_PRIVILEGES = ["SELECT", "INSERT", "UPDATE", "DELETE"];
+
+/** 授权账号名守卫（不允许引号/反引号，避免 SQL 注入）。 */
+const GRANT_USER_PATTERN = /^[A-Za-z0-9_.-]{1,32}$/;
+
+/** 授权主机守卫（允许 MySQL 通配符 % 与下划线、IPv4/IPv6 字符）。 */
+const GRANT_HOST_PATTERN = /^[A-Za-z0-9_.:%-]{1,255}$/;
+
 /** 用法。 */
 function usage() {
   console.log(`用法：
   node scripts/ops/restore-drill.mjs --apply [--source riccon] [--target riccon_restore_drill]
       [--api-base <URL>] [--keep] [--allow-partial] [--via compose|client] [--dump <path>] [--report <path>]
+      [--grant-user <user>] [--grant-host <host>] [--no-grant]
   node scripts/ops/restore-drill.mjs --self-test
   node scripts/ops/restore-drill.mjs --help
 
@@ -67,12 +84,16 @@ function usage() {
   --dump <path>      复用/保存 dump 文件；缺省写入系统临时目录
   --report <path>    报告路径；默认 .riccon/evidence/<REAL_EVIDENCE_TASK>/restore-drill.json
   --via compose|client  compose=测试栈容器；client=RICCON_DB_* + PATH 上的 mysql/mysqldump
+  --grant-user <u>   演练库授权账号，默认等于应用运行账号（compose=riccon；client=RICCON_DB_USER）
+  --grant-host <h>   授权主机；缺省从 mysql.user 自动发现该账号已有主机（不新建账号）
+  --no-grant         跳过演练库授权（需自行保证校验/J1 账号有权限，否则会 1044）
   --self-test        纯静态自检（不连库）
 
 环境变量：
   RICCON_MASTER_KEY  Base64 32 字节主密钥（可解密判据必需）
   RICCON_CREDENTIAL_FINGERPRINT_PEPPER  pepper（fingerprint 校验必需）
   RICCON_DRILL_MEMBER_TENANT/USERNAME/PASSWORD  J1 冒烟凭据（可选）
+  RICCON_DRILL_GRANT_USER  演练库授权账号（等价 --grant-user）
   RICCON_DB_*（--via=client）`);
 }
 
@@ -93,6 +114,9 @@ function parseArgs(argv) {
     dump: null,
     report: null,
     via: "compose",
+    grantUser: null,
+    grantHost: null,
+    noGrant: false,
     selfTest: false,
     help: false,
   };
@@ -120,6 +144,13 @@ function parseArgs(argv) {
     else if (arg.startsWith("--report=")) options.report = arg.split("=")[1];
     else if (arg === "--via") options.via = next();
     else if (arg.startsWith("--via=")) options.via = arg.split("=")[1];
+    else if (arg === "--grant-user") options.grantUser = next();
+    else if (arg.startsWith("--grant-user="))
+      options.grantUser = arg.split("=")[1];
+    else if (arg === "--grant-host") options.grantHost = next();
+    else if (arg.startsWith("--grant-host="))
+      options.grantHost = arg.split("=")[1];
+    else if (arg === "--no-grant") options.noGrant = true;
     else throw usageError(`未知参数: ${arg}`);
   }
   if (!["compose", "client"].includes(options.via)) {
@@ -324,7 +355,9 @@ function structure(database, options, admin = false) {
     schemaVersion: safeNumber(
       `SELECT COALESCE(MAX(CAST(version AS UNSIGNED)), 0) FROM \`${database}\`.flyway_schema_history WHERE success = 1;`,
     ),
-    dataKeys: safeNumber(`SELECT COUNT(*) FROM \`${database}\`.tenant_data_key;`),
+    dataKeys: safeNumber(
+      `SELECT COUNT(*) FROM \`${database}\`.tenant_data_key;`,
+    ),
     credentials: safeNumber(
       `SELECT COUNT(*) FROM \`${database}\`.provider_credential;`,
     ),
@@ -370,11 +403,142 @@ function dump(options) {
 }
 
 /**
+ * 解析演练库授权账号：默认与 API/Worker 运行账号一致（compose=riccon，client=RICCON_DB_USER）。
+ *
+ * @param {object} options 选项
+ * @returns {string} 账号名
+ */
+function grantUser(options) {
+  const configured =
+    options.grantUser ??
+    process.env.RICCON_DRILL_GRANT_USER ??
+    (options.via === "compose" ? "riccon" : process.env.RICCON_DB_USER);
+  if (!configured) {
+    throw envError(
+      "--via=client 需要 --grant-user 或 RICCON_DB_USER 指定演练库授权账号",
+    );
+  }
+  if (!GRANT_USER_PATTERN.test(configured)) {
+    throw usageError(
+      `--grant-user 非法（只允许字母/数字/下划线/点/短横）: ${configured}`,
+    );
+  }
+  return configured;
+}
+
+/**
+ * 校验授权主机。
+ *
+ * @param {string} host 主机
+ * @returns {string} 主机
+ */
+function assertGrantHost(host) {
+  if (!GRANT_HOST_PATTERN.test(host ?? "")) {
+    throw usageError(
+      `--grant-host 非法（只允许字母/数字/下划线/点/冒号/百分号/短横）: ${host}`,
+    );
+  }
+  return host;
+}
+
+/**
+ * 授权账号在 mysql.user 中已存在的主机；只读发现，不创建账号。
+ *
+ * @param {object} options 选项
+ * @param {string} user 账号
+ * @returns {string[]} 主机列表
+ */
+function grantHosts(options, user) {
+  if (options.grantHost) return [assertGrantHost(options.grantHost)];
+  let stdout;
+  try {
+    stdout = queryValue(
+      // GROUP_CONCAT 走单值读取，避免 mysql --batch 的表头混进主机列表。
+      `SELECT COALESCE(GROUP_CONCAT(host ORDER BY host SEPARATOR ','), '') FROM mysql.user WHERE user = '${user}';`,
+      options,
+      true,
+    );
+  } catch (error) {
+    throw envError(
+      `读取 mysql.user 发现 ${user} 的主机失败；请用 --grant-host 显式指定（${error.message}）`,
+    );
+  }
+  const hosts = (stdout ?? "")
+    .split(",")
+    .map((host) => host.trim())
+    .filter(Boolean);
+  if (hosts.length === 0) {
+    throw envError(
+      `mysql.user 中不存在账号 ${user}；演练库授权无从授予，用 --grant-user/--grant-host 指定运行账号`,
+    );
+  }
+  return hosts.map(assertGrantHost);
+}
+
+/**
+ * 演练库授权 SQL（纯函数）。
+ *
+ * @param {string} user 账号
+ * @param {string} host 主机
+ * @param {string} target 演练库（已通过 assertTargetName）
+ * @returns {string} SQL
+ */
+function grantStatement(user, host, target) {
+  return `GRANT ${GRANT_PRIVILEGES.join(", ")} ON \`${target}\`.* TO '${user}'@'${host}';`;
+}
+
+/**
+ * 回收演练库授权 SQL（纯函数）。
+ *
+ * @param {string} user 账号
+ * @param {string} host 主机
+ * @param {string} target 演练库（已通过 assertTargetName）
+ * @returns {string} SQL
+ */
+function revokeStatement(user, host, target) {
+  return `REVOKE ALL PRIVILEGES ON \`${target}\`.* FROM '${user}'@'${host}';`;
+}
+
+/**
+ * 给应用运行账号授予演练库最小 DML，使 rewrap 只读校验与 J1 冒烟不再 1044。
+ *
+ * @param {string} target 演练库
+ * @param {object} options 选项
+ * @returns {{applied: boolean, user?: string, hosts?: string[], privileges?: string[], scope?: string, reason?: string}} 授权结果
+ */
+function grantDrillAccess(target, options) {
+  if (options.noGrant) {
+    return {
+      applied: false,
+      reason: "--no-grant：由运维保证校验/J1 账号已具备演练库权限",
+    };
+  }
+  const user = grantUser(options);
+  const hosts = grantHosts(options, user);
+  for (const host of hosts) {
+    try {
+      runSql(grantStatement(user, host, target), options, true);
+    } catch (error) {
+      throw envError(
+        `演练库授权失败（管理账号需具备该库 GRANT 权限）: ${user}@${host} → ${target}.*：${error.message}`,
+      );
+    }
+  }
+  return {
+    applied: true,
+    user,
+    hosts,
+    privileges: [...GRANT_PRIVILEGES],
+    scope: `${target}.*`,
+  };
+}
+
+/**
  * 重建并导入演练库。
  *
  * @param {string} file dump 文件
  * @param {object} options 选项
- * @returns {{ms: number}} 结果
+ * @returns {{ms: number, grants: object}} 结果
  */
 function restore(file, options) {
   const startedAt = Date.now();
@@ -404,7 +568,10 @@ function restore(file, options) {
   if (importResult.status !== 0) {
     throw new Error(`导入演练库失败: ${(importResult.stderr || "").trim()}`);
   }
-  return { ms: Date.now() - startedAt };
+  // 导入由管理账号完成；随后按需把演练库上的最小 DML 授予应用运行账号，
+  // 使 credential check 与 J1 冒烟能以与生产相同的账号运行（原来首跑 1044）。
+  const grants = grantDrillAccess(target, options);
+  return { ms: Date.now() - startedAt, grants };
 }
 
 /**
@@ -500,13 +667,33 @@ async function j1Smoke(apiBase) {
 }
 
 /**
- * 删除演练库。
+ * 删除演练库：先回收本次授予的库级权限，再 DROP。
+ * MySQL 的 DROP DATABASE 不会自动清理 mysql.db 里的库级授权，残留会扩大授权面。
  *
  * @param {object} options 选项
- * @returns {string} 结果
+ * @param {object|null} grants 授权结果
+ * @returns {object} 结果
  */
-function dropTarget(options) {
+function dropTarget(options, grants = null) {
   const target = assertTargetName(options.target);
+  const revoked = [];
+  if (grants?.applied) {
+    for (const host of grants.hosts) {
+      const result = runClient([`--user=${adminUser()}`, "--batch"], {
+        input: revokeStatement(grants.user, host, target),
+        options,
+        admin: true,
+      });
+      if (result.status !== 0) {
+        const detail = (result.stderr || result.stdout || "").trim();
+        // 1141/1147：该账号在演练库上没有授权（已被手动回收），视为已清理。
+        if (!/ERROR 114[17]/.test(detail)) {
+          throw new Error(`回收演练库授权失败: ${detail}`);
+        }
+      }
+      revoked.push(`${grants.user}@${host}`);
+    }
+  }
   const result = runClient([`--user=${adminUser()}`, "--batch"], {
     input: `DROP DATABASE IF EXISTS \`${target}\`;`,
     options,
@@ -515,7 +702,7 @@ function dropTarget(options) {
   if (result.status !== 0) {
     throw new Error(`删除演练库失败: ${(result.stderr || "").trim()}`);
   }
-  return "dropped";
+  return { cleanup: "dropped", revoked };
 }
 
 /**
@@ -539,6 +726,48 @@ function selfTest() {
     if (!failed) throw new Error(`非法目标库未被拒绝: ${bad}`);
   }
   assertTargetName("riccon_restore_drill");
+  if (grantUser({ via: "compose" }) !== "riccon") {
+    throw new Error("compose 默认授权账号应为 riccon");
+  }
+  if (grantUser({ via: "client", grantUser: "drill_app" }) !== "drill_app") {
+    throw new Error("--grant-user 覆盖失败");
+  }
+  for (const bad of ["riccon'", "riccon`", "ric con", ""]) {
+    let failed = false;
+    try {
+      assertGrantHost(bad);
+    } catch {
+      failed = true;
+    }
+    if (!failed) throw new Error(`非法授权主机未被拒绝: ${bad}`);
+  }
+  for (const bad of ["riccon'", "riccon`", "a b", "*"]) {
+    let failed = false;
+    try {
+      grantUser({ via: "client", grantUser: bad });
+    } catch {
+      failed = true;
+    }
+    if (!failed) throw new Error(`非法授权账号未被拒绝: ${bad}`);
+  }
+  const grant = grantStatement("riccon", "%", "riccon_restore_drill");
+  if (
+    !/^GRANT SELECT, INSERT, UPDATE, DELETE ON `riccon_restore_drill`\.\* TO 'riccon'@'%';$/.test(
+      grant,
+    )
+  ) {
+    throw new Error(`授权 SQL 形状不符: ${grant}`);
+  }
+  if (/GRANT OPTION|\*\.\*|\bALL\b/i.test(grant)) {
+    throw new Error(`授权 SQL 越界（不得含全局/ALL/GRANT OPTION）: ${grant}`);
+  }
+  const revoke = revokeStatement("riccon", "%", "riccon_restore_drill");
+  if (
+    revoke !==
+    "REVOKE ALL PRIVILEGES ON `riccon_restore_drill`.* FROM 'riccon'@'%';"
+  ) {
+    throw new Error(`回收 SQL 形状不符: ${revoke}`);
+  }
   const rto = (hours) => hours <= RTO_LIMIT_HOURS;
   if (!rto(0.5) || rto(4.1)) throw new Error("RTO 判定失败");
   const report = buildReport({
@@ -592,6 +821,8 @@ function selfTest() {
         status: "passed",
         checks: [
           "target-guard",
+          "grant-scope",
+          "grant-sql-guard",
           "rto-limit",
           "report-positive",
           "report-negative",
@@ -697,6 +928,21 @@ async function main() {
     via: options.via,
     apiBase: options.apiBase ?? null,
     keep: options.keep,
+    grants: options.noGrant
+      ? { applied: false, reason: "--no-grant" }
+      : {
+          applied: "on-import",
+          user:
+            options.grantUser ??
+            process.env.RICCON_DRILL_GRANT_USER ??
+            (options.via === "compose"
+              ? "riccon"
+              : (process.env.RICCON_DB_USER ?? null)),
+          host: options.grantHost ?? "auto（从 mysql.user 发现已有主机）",
+          privileges: GRANT_PRIVILEGES,
+          scope: `${options.target}.*`,
+          revokeOnCleanup: !options.keep,
+        },
     criteria: {
       tables: "与源库一致",
       triggers: EXPECTED_TRIGGERS,
@@ -713,7 +959,10 @@ async function main() {
     return;
   }
   const sourceStructure = structure(options.source, options, false);
-  if (sourceStructure.tables === 0 || sourceStructure.schemaVersion !== EXPECTED_SCHEMA_VERSION) {
+  if (
+    sourceStructure.tables === 0 ||
+    sourceStructure.schemaVersion !== EXPECTED_SCHEMA_VERSION
+  ) {
     throw new Error(
       `源库 ${options.source} 未初始化：tables=${sourceStructure.tables} MAX(version)=${sourceStructure.schemaVersion}；` +
         "先由 apps/api 跑 Flyway V1–V11 并完成 M04 种子，再执行恢复演练（空库演练不算通过）",
@@ -745,10 +994,22 @@ async function main() {
     dump: { bytes: dumped.bytes, path: options.dump ?? null },
     restoreMs: restored.ms,
     rtoMs: dumped.ms + restored.ms,
+    grants: restored.grants,
     credentialCheck,
     j1,
   });
-  report.cleanup = options.keep ? "kept" : dropTarget(options);
+  if (options.keep) {
+    report.cleanup = "kept";
+    report.revokedGrants = [];
+    if (report.grants?.applied) {
+      report.grants.retained = true;
+      report.grants.note = "演练库与库级授权保留；删除演练库前需回收授权";
+    }
+  } else {
+    const cleanup = dropTarget(options, restored.grants);
+    report.cleanup = cleanup.cleanup;
+    report.revokedGrants = cleanup.revoked;
+  }
   const reportPath =
     options.report ??
     path.join(
