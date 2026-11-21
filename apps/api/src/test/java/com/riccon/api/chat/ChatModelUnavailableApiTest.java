@@ -2,6 +2,12 @@ package com.riccon.api.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.spi.IThrowableProxy;
+import ch.qos.logback.classic.spi.StackTraceElementProxy;
+import ch.qos.logback.core.read.ListAppender;
+import com.riccon.api.chat.service.ChatService;
 import com.riccon.api.persistence.BinaryUuids;
 import com.riccon.api.support.ApiIntegrationTestSupport;
 import com.riccon.api.support.ApiTestClient;
@@ -16,6 +22,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -24,6 +31,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import tools.jackson.databind.JsonNode;
@@ -104,6 +112,90 @@ class ChatModelUnavailableApiTest extends ApiIntegrationTestSupport {
         assertThat(failed.runErrorCode()).isEqualTo("RICCON-MODEL-503");
         assertThat(failed.runErrorMessage()).isEqualTo("模型服务暂不可用，请稍后重试。");
         assertThat(failed.messageErrorCode()).isEqualTo("RICCON-MODEL-503");
+    }
+
+    /**
+     * V1 F-001 负向用例：Worker detail 携带上游凭据与内网地址时，日志不得回显原文。
+     *
+     * <p>用 Logback {@link ListAppender} 捕获请求期间 {@code com.riccon} 命名空间的日志，断言只出现状态、
+     * 错误码与关联 ID；surefire 输出由构建命令 grep 兜底。响应与落库说明仍保持 AC-05 文案。
+     */
+    @Test
+    @DisplayName("Worker detail 中的 apiKey/baseUrl 不进入日志")
+    void modelUnavailable_logsNoWorkerDetailCanary() {
+        Fixture fixture = fixture();
+        WORKER.reply(
+                500,
+                "RICCON-MODEL-503",
+                "model route is empty; provider=mock-openai baseUrl=http://10.9.8.7:8080/v1 apiKey=sk-live-canary-9876543210");
+
+        Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+        ListAppender<ILoggingEvent> captured = new ListAppender<>();
+        captured.start();
+        root.addAppender(captured);
+        ApiTestClient.ApiResponse response;
+        try {
+            response = send(fixture);
+        } finally {
+            root.detachAppender(captured);
+            captured.stop();
+        }
+
+        assertThat(response.status()).isEqualTo(503);
+        JsonNode problem = client.json(response);
+        assertThat(problem.path("code").asText()).isEqualTo("RICCON-MODEL-503");
+        assertThat(problem.path("detail").asText()).isEqualTo("模型服务暂不可用，请稍后重试。");
+        assertThat(response.body())
+                .doesNotContain("apiKey")
+                .doesNotContain("baseUrl")
+                .doesNotContain("sk-live")
+                .doesNotContain("10.9.8.7");
+
+        // 日志仍须保留可定位的安全字段，避免为了脱敏而删除整条日志。
+        List<String> chatServiceLines = captured.list.stream()
+                .filter(event -> ChatService.class.getName().equals(event.getLoggerName()))
+                .map(ChatModelUnavailableApiTest::renderLogEvent)
+                .toList();
+        assertThat(chatServiceLines)
+                .anySatisfy(line -> assertThat(line)
+                        .contains("chat.worker.rejected")
+                        .contains("status=500")
+                        .contains("code=RICCON-MODEL-503")
+                        .contains("runId="));
+
+        List<String> ricconLines = captured.list.stream()
+                .filter(event ->
+                        event.getLoggerName() != null && event.getLoggerName().startsWith("com.riccon"))
+                .map(ChatModelUnavailableApiTest::renderLogEvent)
+                .toList();
+        assertThat(String.join("\n", ricconLines))
+                .doesNotContain("apiKey")
+                .doesNotContain("baseUrl")
+                .doesNotContain("sk-live")
+                .doesNotContain("10.9.8.7")
+                .doesNotContain("model route is empty");
+    }
+
+    /**
+     * 渲染日志事件（含异常链），用于检查日志是否回显上游原文。
+     *
+     * @param event 日志事件
+     * @return 可检索的文本
+     */
+    private static String renderLogEvent(ILoggingEvent event) {
+        StringBuilder text = new StringBuilder(event.getFormattedMessage());
+        IThrowableProxy throwable = event.getThrowableProxy();
+        while (throwable != null) {
+            text.append('\n').append(throwable.getClassName()).append(": ").append(throwable.getMessage());
+            StackTraceElementProxy[] stack = throwable.getStackTraceElementProxyArray();
+            if (stack != null) {
+                for (StackTraceElementProxy element : stack) {
+                    text.append('\n').append(element.getSTEAsString());
+                }
+            }
+            throwable = throwable.getCause();
+        }
+        return text.toString();
     }
 
     /** 其他 Worker 错误保持既有状态与错误码语义。 */

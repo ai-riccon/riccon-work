@@ -168,7 +168,7 @@ public class ChatService {
         } catch (WorkerChatClient.WorkerCallException exception) {
             recordPreFirstFailure(
                     submission, exception.code(), failureMessageForStorage(exception.code(), exception.getMessage()));
-            throw mapWorkerCall(exception);
+            throw mapWorkerCall(exception, submission.runId(), submission.traceId());
         } catch (WorkerChatClient.WorkerTimeoutException exception) {
             recordPreFirstFailure(
                     submission, ErrorCodes.CHAT_STREAM_TIMEOUT, "worker did not produce the first event in time");
@@ -450,7 +450,7 @@ public class ChatService {
                 }
                 throw new ConflictException("chat run is already terminal");
             }
-            throw mapWorkerCall(exception);
+            throw mapWorkerCall(exception, runId, traceId);
         } catch (WorkerChatClient.WorkerUnavailableException exception) {
             throw upstreamFailure("chat worker cancel failed", exception);
         }
@@ -651,15 +651,21 @@ public class ChatService {
      * <p>全链不可用（{@link ErrorCodes#MODEL_UNAVAILABLE}）按 AC-05 统一映射为 HTTP 503 与固定中文文案；
      * 其他状态保持既有语义，避免把 400/409/429/500 等业务差异抹平。
      *
+     * <p>日志只保留状态、错误码与关联 ID：Worker {@code detail} 可能携带上游地址或凭据（V1 F-001），
+     * 不得写入日志或 surefire 输出。
+     *
      * @param exception Worker 错误
+     * @param runId 运行 ID
+     * @param traceId 追踪 ID
      * @return 对外业务异常
      */
-    private RicconException mapWorkerCall(WorkerChatClient.WorkerCallException exception) {
+    private RicconException mapWorkerCall(WorkerChatClient.WorkerCallException exception, UUID runId, String traceId) {
         LOG.warn(
-                "chat.worker.rejected status={} code={} detail={}",
+                "chat.worker.rejected status={} code={} runId={} traceId={}",
                 exception.status(),
                 exception.code(),
-                exception.getMessage());
+                runId,
+                traceId);
         // Worker 当前以 HTTP 500 承载 RICCON-MODEL-503；按错误码识别，后续 Worker 改为 503 仍可命中。
         if (ErrorCodes.MODEL_UNAVAILABLE.equals(exception.code())) {
             return modelUnavailable();
