@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0130",
+  "module_id": "M04",
+  "title": "M04 修复：B9b 成本 BigInt 构建降级与配额 Modal console error",
+  "owner": "riccon/builder-web",
+  "status": "review",
+  "write_scope": [
+    "apps/web/src/services/cost/**",
+    "apps/web/src/pages/admin/quotas/**",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "成本 format 不再使用 BigInt 指数运算（10n ** BigInt(...)）；改用 BigInt(\"1\"+\"0\".repeat(scale)) 或等价；dev 与生产构建均不崩溃",
+    "配额 Modal 在 tenant=null/未挂载 Form 时不调用 resetFields；console 无 useForm 警告；保留 409/空态行为",
+    "补单测；定向 vitest/typecheck/build 通过；不降低金额精度/舍入",
+    "不改后端/契约/E2E specs；提交 + EV"
+  ],
+  "evidence": [
+    "EV-0608",
+    "EV-0609",
+    "EV-0610"
+  ],
+  "tools_used": [
+    "grep/read：定位 rc-field-form warningUnhooked 的 setTimeout 警告与检查 apps/web/dist 构建产物中的 BigInt/Math.pow",
+    "antd MCP 未使用：本修复不涉及组件 API，只改金额工具与 Modal 生命周期；缺陷文件:行由任务给出"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-21T08:50:31.715+08:00",
+  "updated_at": "2026-11-21T08:56:01.197+08:00",
+  "baseline_commit": "675977cf080870a993e2e19203aa517e5585cb20",
+  "end_commit": "0e95989776f9340064618972ec61578be4eb2673"
+}
