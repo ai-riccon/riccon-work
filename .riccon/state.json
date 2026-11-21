@@ -5,12 +5,15 @@
   "gate": {
     "status": "fail",
     "module_id": "M04",
-    "checked_at": "2026-11-21T11:58:11.111+08:00",
+    "checked_at": "2026-11-21T13:14:56.000+08:00",
     "reasons": [
-      "task TASK-0115 is review, not done",
-      "task TASK-0115 changed files outside write_scope: apps/api/src/main/java/com/riccon/api/admin/model/gateway/config/ModelGatewaySwitchProperties.java, apps/api/src/main/java/com/riccon/api/admin/model/gateway/controller/ModelGatewaySwitchController.java, apps/api/src/main/java/com/riccon/api/admin/model/gateway/domain/GatewaySwitchRow.java, apps/api/src/main/java/com/riccon/api/admin/model/gateway/domain/ModelGatewayRoutingMode.java, apps/api/src/main/java/com/riccon/api/admin/model/gateway/domain/ModelGatewaySwitchEnvOverrideException.java, apps/api/src/main/java/com/riccon/api/admin/model/gateway/domain/ModelGatewaySwitchValidationException.java, apps/api/src/main/java/com/riccon/api/admin/model/gateway/domain/ModelGatewaySwitchVersionConflictException.java, apps/api/src/main/java/com/riccon/api/admin/model/gateway/dto/ModelGatewaySwitchResponse.java, apps/api/src/main/java/com/riccon/api/admin/model/gateway/dto/ModelGatewaySwitchUpdateRequest.java, apps/api/src/main/java/com/riccon/api/admin/model/gateway/persistence/ModelGatewaySwitchJdbc.java, apps/api/src/main/java/com/riccon/api/admin/model/gateway/repository/ModelGatewaySwitchRepository.java, apps/api/src/main/java/com/riccon/api/admin/model/gateway/service/ModelGatewaySwitchService.java, apps/api/src/main/java/com/riccon/api/admin/model/gateway/web/GatewaySwitchProblems.java, apps/api/src/main/java/com/riccon/api/chat/service/ChatService.java, apps/api/src/test/java/com/riccon/api/admin/model/gateway/ModelGatewaySwitchApiTest.java, apps/api/src/test/java/com/riccon/api/admin/model/gateway/ModelGatewaySwitchEnvOverrideTest.java, apps/api/src/test/java/com/riccon/api/admin/model/gateway/ModelGatewaySwitchPropertiesTest.java, apps/api/src/test/java/com/riccon/api/admin/model/gateway/ModelGatewaySwitchServiceTest.java, apps/api/src/test/java/com/riccon/api/chat/ChatModelUnavailableApiTest.java, scripts/real-stack/checks.mjs",
-      "task TASK-0116 is planned, not done",
-      "no review found for module M04"
+      "task TASK-0116 is in_progress, not done",
+      "review verdict is fail, expected pass",
+      "DoD acceptance is not marked true in the review",
+      "P1 finding F-001 is open: API 配额存储故障指标名与 ADR/THREAT B-20 不一致：实现为 riccon_quota_store_failures_total，合同要求 riccon_quota_store_failure_total",
+      "P1 finding F-002 is open: SchemaVersionChecker 在真实 Worker 中从未运行：@ConditionalOnBean(JdbcClient.class) 在用户组件阶段不匹配自动配置 Bean，导致 V11 schema 严格校验与 RICCON-WORKER-002 回滚 WARN 均失效",
+      "P1 finding F-003 is open: PERF-M04-001 未通过：first_token 场景 50 并发 API p95=519.459ms，超过合同 500ms 预算",
+      "P1 finding F-004 is open: PERF-M04-002 无法取证：k6 同 VU 三次登录（平台/租户管理员/员工）后，per-VU cookie jar 覆盖显式 platform Cookie，平台读开关返回 403，配额争用场景未执行"
     ]
   },
   "health": "unknown",
@@ -23,7 +26,7 @@
     "cost_usd": 0
   },
   "created_at": "2026-11-17T07:03:19.696Z",
-  "updated_at": "2026-11-21T13:11:24.428+08:00",
+  "updated_at": "2026-11-21T13:14:56.002+08:00",
   "active_tasks": {
     "riccon/verifier": "TASK-0116"
   }
