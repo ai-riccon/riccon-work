@@ -1,0 +1,45 @@
+
+Running 1 test using 1 worker
+
+[1/1] [chromium] › e2e/real/tests/m04-quota-cost.spec.ts:333:3 › M04-B11b 真实栈配额与成本 › E2E-M04-06 真实栈成本快照、未定价与未分桶边界
+  1) [chromium] › e2e/real/tests/m04-quota-cost.spec.ts:333:3 › M04-B11b 真实栈配额与成本 › E2E-M04-06 真实栈成本快照、未定价与未分桶边界 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('合计（按用户）')
+    Expected: visible
+    Timeout: 60000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('合计（按用户）') with timeout 60000ms
+      - waiting for getByText('合计（按用户）')
+
+
+      410 |     await page.goto(M04_QUOTA_COST_FIXTURES.routes.costs);
+      411 |     await expect(page.getByText(M04_QUOTA_COST_FIXTURES.disclaimer).first()).toBeVisible();
+    > 412 |     await expect(page.getByText('合计（按用户）')).toBeVisible();
+          |                                             ^
+      413 |     await page.getByRole('button', { name: '查看明细：Alpha 员工' }).click();
+      414 |     const panel = page.locator('.costs-invocation-panel');
+      415 |     await expect(panel.getByText('1.500000').first()).toBeVisible();
+        at /Users/ricky/Documents/projects/riccon-work/e2e/real/tests/m04-quota-cost.spec.ts:412:45
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/m04-quota-cost-M04-B11b-真实-8cee0-2E-M04-06-真实栈成本快照、未定价与未分桶边界-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/m04-quota-cost-M04-B11b-真实-8cee0-2E-M04-06-真实栈成本快照、未定价与未分桶边界-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/m04-quota-cost-M04-B11b-真实-8cee0-2E-M04-06-真实栈成本快照、未定价与未分桶边界-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/m04-quota-cost-M04-B11b-真实-8cee0-2E-M04-06-真实栈成本快照、未定价与未分桶边界-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+  1 failed
+    [chromium] › e2e/real/tests/m04-quota-cost.spec.ts:333:3 › M04-B11b 真实栈配额与成本 › E2E-M04-06 真实栈成本快照、未定价与未分桶边界 
+
