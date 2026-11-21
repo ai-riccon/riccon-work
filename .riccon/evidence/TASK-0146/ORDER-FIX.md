@@ -52,6 +52,14 @@ RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=m19p3cor \
   `ModelCredentialLifecycleApiTest` + `ModelCredentialSecurityTest`，共 19 用例）：
   **19/0/0/0** 与第二次 **19/0/0/0**（不 reset）。
 
+定向日志（namespace `m19p3cor`）：
+
+| 文件                                     | 内容                                   | sha256（前 16 位）                      |
+| ---------------------------------------- | -------------------------------------- | --------------------------------------- |
+| `PRE-FIX-3CLASS-REVERSE.log`             | 修复前 16 用例 / 7 failures（2 + 5）   | `02abfcd82068d701`                      |
+| `POST-FIX-3CLASS-REVERSE.log`            | 修复后 16/0/0/0                        | `68ec0639a0979151`                      |
+| `POST-FIX-SAME-NS-RUN1.log` / `RUN2.log` | 同 namespace 两次 19/0/0/0（不 reset） | `f37db923bba426a0` / `e6f5fe926d489dcb` |
+
 ### 2.4 全量验证（EV-0706）
 
 命令（单行）：fresh namespace `m19p3rev` → 反转全量 → reset → 正向全量 → 不 reset 再跑正向全量；
