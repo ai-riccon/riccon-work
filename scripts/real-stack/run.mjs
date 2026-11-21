@@ -1247,7 +1247,7 @@ async function runPerf() {
     notes: [
       "perf 模式只启动 MySQL 与假模型/API/Worker；OpenSearch 与 Web 未启动，主机规格见 env.host。",
       "每个降级模式独立一次 k6 运行并在前后重置 fake provider key 场景与 key 健康，避免 401 失效/冷却掩盖降级。",
-      "配额场景会临时打开 quotaEnforcementEnabled 并设置限额=已用+1，结束后恢复 false 与不限。",
+      "配额场景会通过开关 GET/PUT 临时打开 quotaEnforcementEnabled，并把租户/用户日限额设为已用+1；结束后恢复开关与两级限额原值。",
     ],
   };
   writeFileSync(

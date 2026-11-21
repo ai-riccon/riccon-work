@@ -158,6 +158,17 @@ let session = null;
 let conversationId = null;
 
 /**
+ * 清空 VU 默认 cookie jar。
+ *
+ * k6 会把响应 Set-Cookie 存入 VU 级 jar，并在请求时与显式 Cookie 头合并；平台/租户/员工
+ * 共用同一 VU 时，后登录角色会覆盖显式 Cookie（V2 F-004）。本脚本所有会话都通过显式
+ * Cookie 头传递，因此每次请求前清空 jar 即可实现角色隔离。
+ */
+function clearCookieJar() {
+  http.cookieJar().clear(baseUrl);
+}
+
+/**
  * 解析响应中的会话 Cookie 与登录 CSRF。
  *
  * @param {object} response k6 响应
@@ -185,6 +196,7 @@ function sessionFromResponse(response) {
  * @returns {{cookie: string, csrf: string}} 会话材料
  */
 function login(tenantCode, username, password) {
+  clearCookieJar();
   const csrfResponse = http.get(`${baseUrl}/api/v1/auth/csrf`, {
     tags: { kind: 'api', op: 'csrf' },
   });
@@ -193,6 +205,8 @@ function login(tenantCode, username, password) {
   }
   const anonymous = sessionFromResponse(csrfResponse);
   const csrfToken = csrfResponse.json().token;
+  // 登录请求只带匿名会话的显式 Cookie；先清空 jar，避免同名 Cookie 合并。
+  clearCookieJar();
   const loginResponse = http.post(
     `${baseUrl}/api/v1/auth/login`,
     JSON.stringify({ tenantCode, username, password }),
@@ -209,10 +223,42 @@ function login(tenantCode, username, password) {
     fail(`login failed for ${tenantCode}/${username}: ${loginResponse.status}`);
   }
   const authenticated = sessionFromResponse(loginResponse);
+  // 登录完成后清空 jar；后续请求按角色显式 Cookie，互不覆盖。
+  clearCookieJar();
   return {
     cookie: authenticated.cookie || anonymous.cookie,
     csrf: authenticated.csrf,
   };
+}
+
+/**
+ * 校验会话身份与角色，作为 Cookie 隔离的运行时自检。
+ *
+ * @param {object} current 会话
+ * @param {string} label 角色标签
+ * @param {string} expectedTenant 期望租户代码
+ * @param {string} expectedUser 期望用户名
+ * @param {string} expectedRole 期望角色码
+ */
+function assertSession(current, label, expectedTenant, expectedUser, expectedRole) {
+  const response = api(current, 'GET', '/api/v1/auth/session', undefined, {
+    tags: { kind: 'api', op: 'session' },
+  });
+  if (response.status !== 200) {
+    fail(`${label} session check failed: ${response.status} ${response.body}`);
+  }
+  const body = response.json();
+  const actualTenant = body.tenant?.id;
+  const actualUser = body.user?.username;
+  if (actualTenant !== expectedTenant || actualUser !== expectedUser) {
+    fail(
+      `${label} session mismatch: tenant=${actualTenant} user=${actualUser}; ` +
+        `expected ${expectedTenant}/${expectedUser}`,
+    );
+  }
+  if (!Array.isArray(body.roles) || !body.roles.includes(expectedRole)) {
+    fail(`${label} role mismatch: ${JSON.stringify(body.roles)}; expected ${expectedRole}`);
+  }
 }
 
 /**
@@ -226,6 +272,8 @@ function login(tenantCode, username, password) {
  * @returns {object} k6 响应
  */
 function api(current, method, path, body, params = {}) {
+  // 每次请求前清空 jar，确保只发送当前角色的显式 Cookie（V2 F-004）。
+  clearCookieJar();
   const headers = {
     cookie: current.cookie,
     'content-type': 'application/json',
@@ -414,113 +462,184 @@ export function quotaContention() {
   const admin = login(tenant, adminUser, adminPassword);
   const memberSession = login(tenant, member, memberPassword);
 
+  // Cookie 隔离自检：三个角色必须是不同会话，且身份/角色与登录账号一致。
+  if (new Set([platform.cookie, admin.cookie, memberSession.cookie]).size !== 3) {
+    fail('platform/admin/member sessions share the same cookie; cookie jar isolation is broken');
+  }
+  assertSession(platform, 'platform', platformTenant, platformUser, 'PLATFORM_ADMIN');
+  assertSession(admin, 'tenant-admin', tenant, adminUser, 'TENANT_ADMIN');
+  assertSession(memberSession, 'member', tenant, member, 'MEMBER');
+
   const switches = api(platform, 'GET', '/api/v1/admin/model-gateway/switches');
   if (switches.status !== 200) {
     fail(`read switches failed: ${switches.status}`);
   }
   const switchState = switches.json();
-  const enabled = api(platform, 'PUT', '/api/v1/admin/model-gateway/switches', {
-    version: switchState.version,
-    routingMode: switchState.routingMode,
-    failoverEnabled: switchState.failoverEnabled,
-    quotaEnforcementEnabled: true,
-  });
-  if (enabled.status !== 200) {
-    fail(`enable quota failed: ${enabled.status} ${enabled.body}`);
-  }
-  const enabledState = enabled.json();
+  const originalSwitch = switchState.quotaEnforcementEnabled;
 
-  const quotas = api(platform, 'GET', '/api/v1/admin/quotas?page=1&size=100');
-  if (quotas.status !== 200) {
-    fail(`read quotas failed: ${quotas.status}`);
-  }
-  const row = quotas
-    .json()
-    .items.find((item) => item.tenantId === tenant || item.tenantCode === tenant);
-  if (!row) {
-    fail(`tenant ${tenant} quota row missing`);
-  }
-  const daily = row.windows.find((window) => window.window === 'DAILY');
-  const monthly = row.windows.find((window) => window.window === 'MONTHLY');
-  const limitUpdate = api(platform, 'PUT', `/api/v1/admin/tenants/${tenant}/quotas`, {
-    limits: { daily: daily.used + 1, monthly: monthly.limit },
-  });
-  if (limitUpdate.status !== 200) {
-    fail(`set quota failed: ${limitUpdate.status} ${limitUpdate.body}`);
-  }
-
-  const workspace = resolveWorkspace(memberSession);
-  const conversation = api(memberSession, 'POST', `/api/v1/workspaces/${workspace}/conversations`, {
-    title: 'PERF-M04 配额争用会话',
-  });
-  if (conversation.status !== 201) {
-    fail(`create quota conversation failed: ${conversation.status}`);
-  }
-
-  // 50 个不同幂等键的并发提交；只有 1 个能通过原子准入。
-  const requests = [];
-  for (let index = 0; index < 50; index += 1) {
-    const suffix = `${__VU}-${__ITER}-${index}-${Date.now()}`;
-    requests.push({
-      method: 'POST',
-      url: `${baseUrl}/api/v1/conversations/${conversation.json().id}/messages`,
-      body: JSON.stringify({
-        content: 'PERF-M04 配额争用请求',
-        clientMessageId: `quota-${suffix}`,
-      }),
-      params: {
-        headers: {
-          cookie: memberSession.cookie,
-          'content-type': 'application/json',
-          'x-csrf-token': memberSession.csrf,
-          'idempotency-key': `quota-${suffix}`,
-        },
-        tags: { kind: 'api', op: 'quota-submit' },
-        timeout: '30s',
-      },
+  let enabledState = null;
+  let originalLimits = null;
+  try {
+    const enabled = api(platform, 'PUT', '/api/v1/admin/model-gateway/switches', {
+      version: switchState.version,
+      routingMode: switchState.routingMode,
+      failoverEnabled: switchState.failoverEnabled,
+      quotaEnforcementEnabled: true,
     });
-  }
-  const responses = http.batch(requests);
-  let allowed = 0;
-  let rejected = 0;
-  let other = 0;
-  for (const response of responses) {
-    if (response.status === 200) {
-      allowed += 1;
-    } else if (response.status === 429) {
-      rejected += 1;
-    } else {
-      other += 1;
+    if (enabled.status !== 200) {
+      fail(`enable quota failed: ${enabled.status} ${enabled.body}`);
     }
-  }
-  quotaAllowed.add(allowed);
-  quotaRejected.add(rejected);
-  check(
-    { allowed, rejected, other },
-    {
-      '恰好 1 个成功': (value) => value.allowed === 1,
-      '恰好 49 个 429': (value) => value.rejected === 49,
-      '没有 5xx/其他状态': (value) => value.other === 0,
-    },
-  );
+    enabledState = enabled.json();
 
-  // 恢复：配额开关回到 false，租户/用户限额恢复为不限，避免影响后续场景。
-  const restoredSwitches = api(platform, 'PUT', '/api/v1/admin/model-gateway/switches', {
-    version: enabledState.version,
-    routingMode: enabledState.routingMode,
-    failoverEnabled: enabledState.failoverEnabled,
-    quotaEnforcementEnabled: false,
-  });
-  const restoreTenant = api(platform, 'PUT', `/api/v1/admin/tenants/${tenant}/quotas`, {
-    limits: { daily: null, monthly: null },
-  });
-  const cleanupOk = restoredSwitches.status === 200 && restoreTenant.status === 200;
-  // m04_quota_cleanup 由自定义 Rate 记录；阈值在 buildThresholds 中断言为 1。
-  addQuotaCleanup(cleanupOk);
-  if (!cleanupOk) {
-    console.error(
-      `quota cleanup failed: switches=${restoredSwitches.status} tenant=${restoreTenant.status}`,
+    const quotas = api(platform, 'GET', '/api/v1/admin/quotas?page=1&size=100');
+    if (quotas.status !== 200) {
+      fail(`read quotas failed: ${quotas.status}`);
+    }
+    const row = quotas
+      .json()
+      .items.find((item) => item.tenantId === tenant || item.tenantCode === tenant);
+    if (!row) {
+      fail(`tenant ${tenant} quota row missing`);
+    }
+    const daily = row.windows.find((window) => window.window === 'DAILY');
+    const monthly = row.windows.find((window) => window.window === 'MONTHLY');
+
+    // 前序 first_token/failover 场景即使关闭执行也会累计用量；用户日窗口可能已超过
+    // seed 限额（1000）。两级都设置“剩余=1”，否则用户窗口会先拒绝全部 50 请求，
+    // 无法证明租户级零超卖。
+    const userQuotas = api(admin, 'GET', '/api/v1/quotas/users?page=1&size=100');
+    if (userQuotas.status !== 200) {
+      fail(`read user quotas failed: ${userQuotas.status}`);
+    }
+    const userRow = (userQuotas.json().items || []).find((item) => item.username === member);
+    if (!userRow) {
+      fail(`user ${member} quota row missing`);
+    }
+    const userDaily = (userRow.windows || []).find((window) => window.window === 'DAILY');
+    const userMonthly = (userRow.windows || []).find((window) => window.window === 'MONTHLY');
+
+    originalLimits = {
+      userId: userRow.userId,
+      tenant: { daily: daily.limit, monthly: monthly.limit },
+      user: { daily: userDaily.limit, monthly: userMonthly.limit },
+    };
+
+    const limitUpdate = api(platform, 'PUT', `/api/v1/admin/tenants/${tenant}/quotas`, {
+      limits: { daily: daily.used + 1, monthly: monthly.limit },
+    });
+    if (limitUpdate.status !== 200) {
+      fail(`set quota failed: ${limitUpdate.status} ${limitUpdate.body}`);
+    }
+    const userLimitUpdate = api(
+      platform,
+      'PUT',
+      `/api/v1/admin/tenants/${tenant}/users/${userRow.userId}/quotas`,
+      { limits: { daily: userDaily.used + 1, monthly: userMonthly.limit } },
     );
+    if (userLimitUpdate.status !== 200) {
+      fail(`set user quota failed: ${userLimitUpdate.status} ${userLimitUpdate.body}`);
+    }
+
+    const workspace = resolveWorkspace(memberSession);
+    const conversation = api(memberSession, 'POST', `/api/v1/workspaces/${workspace}/conversations`, {
+      title: 'PERF-M04 配额争用会话',
+    });
+    if (conversation.status !== 201) {
+      fail(`create quota conversation failed: ${conversation.status}`);
+    }
+
+    // 50 个不同幂等键的并发提交；只有 1 个能通过原子准入。
+    const requests = [];
+    for (let index = 0; index < 50; index += 1) {
+      const suffix = `${__VU}-${__ITER}-${index}-${Date.now()}`;
+      requests.push({
+        method: 'POST',
+        url: `${baseUrl}/api/v1/conversations/${conversation.json().id}/messages`,
+        body: JSON.stringify({
+          content: 'PERF-M04 配额争用请求',
+          clientMessageId: `quota-${suffix}`,
+        }),
+        params: {
+          headers: {
+            cookie: memberSession.cookie,
+            'content-type': 'application/json',
+            'x-csrf-token': memberSession.csrf,
+            'idempotency-key': `quota-${suffix}`,
+          },
+          tags: { kind: 'api', op: 'quota-submit' },
+          timeout: '30s',
+        },
+      });
+    }
+    clearCookieJar();
+    const responses = http.batch(requests);
+    let allowed = 0;
+    let rejected = 0;
+    let other = 0;
+    const rejectionCodes = new Set();
+    for (const response of responses) {
+      if (response.status === 200) {
+        allowed += 1;
+      } else if (response.status === 429) {
+        rejected += 1;
+        try {
+          rejectionCodes.add(response.json().code || 'MISSING_CODE');
+        } catch (error) {
+          rejectionCodes.add('UNPARSEABLE');
+        }
+      } else {
+        other += 1;
+      }
+    }
+    quotaAllowed.add(allowed);
+    quotaRejected.add(rejected);
+    const rejectionCodeList = [...rejectionCodes].sort().join(',');
+    check(
+      { allowed, rejected, other, rejectionCodeList },
+      {
+        '恰好 1 个成功': (value) => value.allowed === 1,
+        '恰好 49 个 429': (value) => value.rejected === 49,
+        '没有 5xx/其他状态': (value) => value.other === 0,
+        '拒绝码均为 RICCON-QUOTA-429': (value) =>
+          value.rejectionCodeList === 'RICCON-QUOTA-429',
+      },
+    );
+  } finally {
+    let cleanupOk = true;
+    // 恢复执行开关与两级限额原值；任何恢复失败都让 m04_quota_cleanup 失败。
+    if (enabledState) {
+      const restoredSwitches = api(platform, 'PUT', '/api/v1/admin/model-gateway/switches', {
+        version: enabledState.version,
+        routingMode: enabledState.routingMode,
+        failoverEnabled: enabledState.failoverEnabled,
+        quotaEnforcementEnabled: originalSwitch,
+      });
+      cleanupOk = cleanupOk && restoredSwitches.status === 200;
+      if (restoredSwitches.status !== 200) {
+        console.error(
+          `quota cleanup switch failed: status=${restoredSwitches.status} body=${restoredSwitches.body}`,
+        );
+      }
+    }
+    if (originalLimits) {
+      const restoreTenant = api(platform, 'PUT', `/api/v1/admin/tenants/${tenant}/quotas`, {
+        limits: originalLimits.tenant,
+      });
+      const restoreUser = api(
+        platform,
+        'PUT',
+        `/api/v1/admin/tenants/${tenant}/users/${originalLimits.userId}/quotas`,
+        { limits: originalLimits.user },
+      );
+      cleanupOk = cleanupOk && restoreTenant.status === 200 && restoreUser.status === 200;
+      if (restoreTenant.status !== 200 || restoreUser.status !== 200) {
+        console.error(
+          `quota cleanup limits failed: tenant=${restoreTenant.status} user=${restoreUser.status}`,
+        );
+      }
+    }
+    // m04_quota_cleanup 由自定义 Rate 记录；阈值在 buildThresholds 中断言为 1。
+    addQuotaCleanup(cleanupOk);
   }
 }
 
