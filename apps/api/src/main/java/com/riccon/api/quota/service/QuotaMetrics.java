@@ -30,8 +30,8 @@ public class QuotaMetrics {
     /** 关闭执行时观察到的超限量计数器。 */
     public static final String OVER_LIMIT_OBSERVED = "riccon.quota.over.limit.observed";
 
-    /** 存储故障计数器。 */
-    public static final String STORE_FAILURES = "riccon.quota.store.failures";
+    /** 存储故障计数器名；Prometheus 输出 {@code riccon_quota_store_failure_total}（ADR-0022、ADR-0021 §10.6）。 */
+    public static final String STORE_FAILURE = "riccon.quota.store.failure";
 
     /** 每个维度/窗口的最大观察比。 */
     private final Map<QuotaScope, Map<QuotaWindow, AtomicReference<Double>>> ratios = new EnumMap<>(QuotaScope.class);
@@ -110,7 +110,7 @@ public class QuotaMetrics {
      * @param reason deadlock、lock_wait 或 store
      */
     public void recordStoreFailure(String reason) {
-        Counter.builder(STORE_FAILURES)
+        Counter.builder(STORE_FAILURE)
                 .tags("reason", reason)
                 .description("配额存储故障次数")
                 .register(registry)
