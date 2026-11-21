@@ -4,7 +4,7 @@
   "module_id": "M04",
   "title": "M04 B11b：配额/成本 E2E + 四页 @a11y + 配额争用/成本边界断言",
   "owner": "riccon/builder-gateway-e2e",
-  "status": "in_progress",
+  "status": "blocked",
   "write_scope": [
     "e2e/tests/m04-quota-cost*.spec.ts",
     "e2e/real/tests/m04-quota-cost*.spec.ts",
@@ -20,9 +20,19 @@
     "AC-02 界面无写入口（配额/成本两页，租户管理员/员工）；零 skip"
   ],
   "evidence": [],
-  "tools_used": [],
-  "blocker": null,
+  "tools_used": [
+    "playwright-cli",
+    "node26",
+    "pnpm10",
+    "docker",
+    "maven",
+    "jdk21",
+    "riccon",
+    "git",
+    "codegraph"
+  ],
+  "blocker": "B9b 页面缺陷阻塞：1) apps/web/src/services/cost/format.ts:61 的 10n ** BigInt 被构建降级为 Math.pow(10n,…)，成本页 TypeError 崩溃（dev+dist），E2E-M04-06/07b 成本段失败；2) quota-limit-modal.tsx 关闭态调用 form.resetFields 触发 useForm console.error，console 守卫失败。另 B8 stub PUT 配额响应缺 used 导致 NaN，用例内已用 patchStubQuotaSaveUsage 临时补丁。详见 .riccon/evidence/TASK-0114/blocker-b9b-web-defects.md；真实栈 E2E-M04-05 已定向通过。",
   "created_at": "2026-11-20T21:05:33.391+08:00",
-  "updated_at": "2026-11-21T08:16:45.093+08:00",
+  "updated_at": "2026-11-21T08:49:55.030+08:00",
   "baseline_commit": "b78ba1a867719a5d63bdcfce2f9c6dabd616983a"
 }
