@@ -68,6 +68,7 @@
 
 - 证据是命令、退出码、日志、commit 和 hash，不是“我跑过了”。
 - 先提交，再 `riccon evidence run`；strict 下 `dirty: true` 的证据会让 gate 失败。
+- `riccon evidence run` 的命令必须是单行：证据日志头只记录命令首行，多行命令会在 `task done`/gate 校验时报 `command does not match its log header`。需要多步时用 `&&`/`;` 合并，或把脚本落到仓库/临时文件后用单行调用；不要改写证据文件来绕过。
 - 空命令、`not-implemented`、`true`/`echo`/`sleep`、未加引号的管道、`|| true`、`; true`、后台 `&` 等掩盖失败的写法不能建立 done。
 - 测试分层：任务级跑受影响测试；模块 gate 在最终提交上跑一次全量合同 test/coverage/E2E。高风险、跨模块契约和迁移任务在任务完成时跑全量。
 - 同一份代码的全量验证只跑一次；合同允许时 `test` 和 `coverage` 共用同一条 coverage 全量命令和同一条 EV，禁止先跑 test 再跑 coverage 两遍。提交后用 `riccon evidence run` 记录，不要先跑一遍再取证，也不要为取证新建临时工作树。
