@@ -32,6 +32,43 @@ reviewed_evidence:
   - EV-0657
   - EV-0658
   - EV-0659
+  - EV-0522
+  - EV-0523
+  - EV-0525
+  - EV-0526
+  - EV-0527
+  - EV-0528
+  - EV-0534
+  - EV-0537
+  - EV-0543
+  - EV-0544
+  - EV-0545
+  - EV-0546
+  - EV-0552
+  - EV-0553
+  - EV-0554
+  - EV-0555
+  - EV-0556
+  - EV-0557
+  - EV-0560
+  - EV-0564
+  - EV-0583
+  - EV-0591
+  - EV-0600
+  - EV-0601
+  - EV-0602
+  - EV-0603
+  - EV-0604
+  - EV-0605
+  - EV-0606
+  - EV-0607
+  - EV-0610
+  - EV-0613
+  - EV-0622
+  - EV-0634
+  - EV-0635
+  - EV-0636
+  - EV-0639
 dod:
   acceptance: false
   build: true
@@ -50,7 +87,6 @@ dod_evidence:
     - EV-0641
   e2e:
     - EV-0643
-    - EV-0646
   docs:
     - EV-0659
 findings:
