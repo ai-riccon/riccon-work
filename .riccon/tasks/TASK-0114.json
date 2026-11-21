@@ -31,8 +31,8 @@
     "git",
     "codegraph"
   ],
-  "blocker": "B9b 页面缺陷阻塞：1) apps/web/src/services/cost/format.ts:61 的 10n ** BigInt 被构建降级为 Math.pow(10n,…)，成本页 TypeError 崩溃（dev+dist），E2E-M04-06/07b 成本段失败；2) quota-limit-modal.tsx 关闭态调用 form.resetFields 触发 useForm console.error，console 守卫失败。另 B8 stub PUT 配额响应缺 used 导致 NaN，用例内已用 patchStubQuotaSaveUsage 临时补丁。详见 .riccon/evidence/TASK-0114/blocker-b9b-web-defects.md；真实栈 E2E-M04-05 已定向通过。",
+  "blocker": "TASK-0130 修复已验证；剩余 2 个 B9b 页面问题阻塞：1) 租户成本表 expandable.expandIcon 使用 antd 6 已废弃 API，console.error 使 E2E-M04-06 守卫失败（apps/web/src/pages/admin/costs/index.tsx 租户 expandable；迁移 components.ExpandIcon）；2) 平台成本表 scroll={{x:900}} 的 .ant-table-content 在 375px 不可键盘聚焦，axe scrollable-region-focusable serious，E2E-M04-07b 与真实栈 @a11y 失败（建议 onRow tabIndex=0 或等价方案）。另 P2：整页刷新成本页默认 DAY（groupBy 初始化早于会话恢复）。合同桩 1 passed/2 failed、a11y 14 passed/1 failed、真实栈 2 passed/1 failed；E2E-M04-05 与真实栈 E2E-M04-06 已通过。详见 .riccon/evidence/TASK-0114/blocker-cost-a11y-and-antd-deprecation.md",
   "created_at": "2026-11-20T21:05:33.391+08:00",
-  "updated_at": "2026-11-21T08:49:55.030+08:00",
+  "updated_at": "2026-11-21T09:22:40.569+08:00",
   "baseline_commit": "b78ba1a867719a5d63bdcfce2f9c6dabd616983a"
 }
