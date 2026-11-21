@@ -409,6 +409,8 @@ test.describe('M04-B11b 真实栈配额与成本', () => {
     );
     await page.goto(M04_QUOTA_COST_FIXTURES.routes.costs);
     await expect(page.getByText(M04_QUOTA_COST_FIXTURES.disclaimer).first()).toBeVisible();
+    // 整页刷新时会话恢复前 groupBy 初值为 DAY（P2，B9b 后续修复）；显式选择租户 AC-11 默认维度。
+    await page.getByText('按用户', { exact: true }).click();
     await expect(page.getByText('合计（按用户）')).toBeVisible();
     await page.getByRole('button', { name: '查看明细：Alpha 员工' }).click();
     const panel = page.locator('.costs-invocation-panel');
@@ -432,6 +434,21 @@ test.describe('M04-B11b 真实栈配额与成本', () => {
       );
       expect(String(unpricedReport.totals.amount)).toBe(pricedAmount);
 
+      // UI：未定价调用单列，明细显示“未定价”。
+      await page.reload();
+      // 刷新后的初始维度取决于会话恢复时机（P2），显式选择 USER 后再断言。
+      await page.getByText('按用户', { exact: true }).click();
+      await expect(page.getByText('合计（按用户）')).toBeVisible();
+      await expect(
+        page
+          .locator('.ant-descriptions-item')
+          .filter({ hasText: '未定价调用（单列，不计入金额）' }),
+      ).toContainText('1');
+      await page.getByRole('button', { name: '查看明细：Alpha 员工' }).click();
+      await expect(
+        page.locator('.costs-invocation-panel').getByText('未定价').first(),
+      ).toBeVisible();
+
       // ---------- UNBUCKETED：回滚窗口旧 Worker 的 cost_day=NULL 行单独计数 ----------
       unbucketedInvocationId = realStackQueryValue(
         `SELECT LOWER(HEX(id)) FROM model_invocation WHERE tenant_id='${seed.tenants.alpha}' AND cost_status='UNPRICED' ORDER BY started_at DESC LIMIT 1;`,
@@ -446,14 +463,10 @@ test.describe('M04-B11b 真实栈配额与成本', () => {
       );
       expect(String(unbucketedReport.totals.amount)).toBe(pricedAmount);
 
-      // UI 重载：未定价与未分桶只进入调用量统计，明细显示“未定价”。
+      // UI 重载：未分桶单列且仍不计金额；未定价行已转为未分桶，金额合计保持不变。
       await page.reload();
+      await page.getByText('按用户', { exact: true }).click();
       await expect(page.getByText('合计（按用户）')).toBeVisible();
-      await expect(
-        page
-          .locator('.ant-descriptions-item')
-          .filter({ hasText: '未定价调用（单列，不计入金额）' }),
-      ).toContainText('1');
       await expect(
         page
           .locator('.ant-descriptions-item')
@@ -462,10 +475,6 @@ test.describe('M04-B11b 真实栈配额与成本', () => {
       await expect(
         page.locator('.ant-descriptions-item').filter({ hasText: '合计金额' }),
       ).toContainText(`精确值 ${pricedAmount} CNY`);
-      await page.getByRole('button', { name: '查看明细：Alpha 员工' }).click();
-      await expect(
-        page.locator('.costs-invocation-panel').getByText('未定价').first(),
-      ).toBeVisible();
     } finally {
       runRealStackSql(
         "UPDATE model SET input_price_per_1m='1.500000', output_price_per_1m='3.000000' WHERE model_key='fake-chat-primary';",
@@ -552,6 +561,8 @@ test.describe('M04-B11b 真实栈配额与成本', () => {
 
     // ---------- 成本页：键盘切换聚合维度 ----------
     await page.goto(M04_QUOTA_COST_FIXTURES.routes.costs);
+    // 同上：显式选择平台默认维度，再验证键盘切换。
+    await page.getByText('按租户', { exact: true }).click();
     await expect(page.getByText('合计（按租户）')).toBeVisible();
     const modelRadio = page.getByRole('radio', { name: '按模型' });
     await modelRadio.focus();

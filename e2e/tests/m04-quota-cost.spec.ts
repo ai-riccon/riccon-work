@@ -261,6 +261,9 @@ test.describe('M04 成本页', () => {
     await expect(
       page.getByText(/金额按 6 位小数计算，展示按币种最小单位（当前 CNY 2 位）四舍五入一次/),
     ).toBeVisible();
+    // 整页刷新时会话恢复前 groupBy 初值为 DAY（P2，B9b 后续修复）；用例显式选择 AC-11 的平台默认维度。
+    await page.getByText('按租户', { exact: true }).click();
+    await expect(page.getByText('合计（按租户）')).toBeVisible();
 
     const platformAmount = costTotalsItem(page, '合计金额');
     await expect(platformAmount.getByText(M04_QUOTA_COST_FIXTURES.platform.amount)).toBeVisible();
@@ -294,7 +297,8 @@ test.describe('M04 成本页', () => {
     await page.getByText('按模型', { exact: true }).click();
     await expect(page.getByText('合计（按模型）')).toBeVisible();
     await expect(page.getByRole('columnheader', { name: '模型' })).toBeVisible();
-    await expect(costBucketRow(page, '假模型-主')).toContainText('CNY 0.01');
+    await expect(costBucketRow(page, '假模型-主')).toContainText('CNY 0.00');
+    await expect(costBucketRow(page, '假模型-备用')).toContainText('CNY 0.01');
     const unpricedModelRow = costBucketRow(page, '假模型-未定价示例');
     await expect(unpricedModelRow).toContainText('CNY 0.00');
     await expect(unpricedModelRow).toContainText('1');
@@ -324,6 +328,8 @@ test.describe('M04 成本页', () => {
       await route.fulfill({ response, json: payload });
     });
     await page.reload();
+    // 刷新后的初始维度取决于会话恢复时机（P2），显式选择 DAY 后再断言注入的边界计数。
+    await page.getByText('按日', { exact: true }).click();
     await expect(page.getByText('合计（按日）')).toBeVisible();
     await expect(costTotalsItem(page, '币种不一致调用（不计入金额）')).toContainText('2');
     await expect(costTotalsItem(page, '未分桶调用（回滚窗口/未回填，不计入金额）')).toContainText(
@@ -345,6 +351,8 @@ test.describe('M04 成本页', () => {
     await expect(
       page.getByText('本租户聚合：按用户、模型、日查看估算成本，可展开分组查看调用价格快照。'),
     ).toBeVisible();
+    // 整页刷新时会话恢复前 groupBy 初值为 DAY（P2，B9b 后续修复）；显式选择租户默认维度。
+    await page.getByText('按用户', { exact: true }).click();
     await expect(page.getByText('合计（按用户）')).toBeVisible();
     const tenantAmount = costTotalsItem(page, '合计金额');
     await expect(tenantAmount.getByText(M04_QUOTA_COST_FIXTURES.tenant.amount)).toBeVisible();
@@ -376,7 +384,9 @@ test.describe('M04 成本页', () => {
 
     // 未定价用户：价格为空、金额“不计入金额”、状态“未定价”。
     await page.getByRole('button', { name: '查看明细：王敏' }).click();
-    const memberPanel = page.locator('.costs-invocation-panel');
+    const memberPanel = page
+      .locator('.costs-invocation-panel')
+      .filter({ hasText: '假模型-未定价示例' });
     await expect(memberPanel.getByText('假模型-未定价示例').first()).toBeVisible();
     await expect(memberPanel.getByText('未定价').first()).toBeVisible();
     await expect(memberPanel.getByText('不计入金额').first()).toBeVisible();
