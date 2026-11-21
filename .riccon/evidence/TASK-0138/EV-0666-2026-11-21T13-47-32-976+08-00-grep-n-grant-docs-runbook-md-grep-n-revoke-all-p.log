@@ -1,0 +1,14 @@
+# command: grep -n '还需演练库的 GRANT 权限' docs/RUNBOOK.md && grep -n 'REVOKE ALL PRIVILEGES ON <演练库>' docs/RUNBOOK.md && grep -n -- '--no-grant' docs/RUNBOOK.md
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-21T13:47:32.369+08:00
+# finished_at: 2026-11-21T13:47:32.393+08:00
+# duration_ms: 23
+# exit_code: 0
+
+# --- stdout ---
+541:  不得把 admin 密码写进命令历史或证据。该账号除建库/导入外**还需演练库的 GRANT 权限**：
+546:- 演练库删除前脚本会先 `REVOKE ALL PRIVILEGES ON <演练库>.*` 再 `DROP DATABASE`（MySQL 不随
+548:  `--no-grant` 只用于“运行账号本来就有演练库权限”的场景，否则 credential 校验/J1 会报 `ERROR 1044`。
+
+# --- stderr ---
+
