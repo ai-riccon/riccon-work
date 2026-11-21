@@ -486,9 +486,10 @@ SELECT COUNT(*) FROM provider_credential WHERE status IN ('DISABLED','INVALID');
 key 收敛行数与归档位置、风险接受人。**混合版本窗口（旧 Worker 不写 `cost_day`）不可用于成本对账**，
 这些行计入 `unbucketedCalls`，回滚结束后用 `scripts/ops/backfill-cost-day.mjs` 回填再对账。
 
-> **实现状态（残余风险）**：`RICCON_WORKER_SCHEMA_VALIDATION_ENABLED=false` 目前只跳过
-> `SchemaVersionChecker` Bean，**代码尚未输出 `RICCON-WORKER-002` WARN**。回滚演练以“该行必须出现”为
-> 通过判据，因此需 builder 补齐固定 WARN（含属性映射）后才能通过 V2 独立重放；在补齐前本项记为阻塞。
+> **实现状态**：TASK-0127（EV-0591）已实现固定 WARN。`RICCON_WORKER_SCHEMA_VALIDATION_ENABLED=false`
+> 启动时 `SchemaVersionChecker` 输出恰好一次固定 WARN，格式为 “RICCON-WORKER-002 schema validation
+> disabled; worker is running in rollback window, expected schema version=11”；校验启用时绝不输出。
+> 回滚演练判据：该 WARN 逐字出现一次，缺失或重复均判失败，以代码与日志实际输出为准（不得改写文案）。
 
 ### M04-8 主密钥轮换（rewrap）与幂等种子/价格
 
@@ -655,7 +656,7 @@ node scripts/ops/cost-reconcile.mjs --api-base http://127.0.0.1:18080 --tenant t
 | 成本页 503                             | 查询超时/DB 不可用               | 缩小范围（≤180 天）、核对索引；`cost_report_queries_total` 与日志                       |
 | 成本金额与账单差异                     | 未定价/usage 缺失/混合版本窗口   | 查 `cost_status` 分布、`unbucketedCalls`、`currencyMismatchCalls`；回填后按 M04-13 对账 |
 | Worker 启动失败 `RICCON-WORKER-001`    | schema ≠11（DB 已升未切/版本错） | 按 M04-1…6 顺序切换；**不要**用关闭校验绕过（仅回滚窗口，见 M04-7）                     |
-| 回滚后旧 Worker 无 `RICCON-WORKER-002` | 固定 WARN 未实现（已知缺口）     | 阻止回滚演练判 pass；由 builder 补齐后重放                                              |
+| 回滚后旧 Worker 无 `RICCON-WORKER-002` | WARN 已实现（TASK-0127/EV-0591），但开关或版本不对 | 确认 `RICCON_WORKER_SCHEMA_VALIDATION_ENABLED=false` 且为 M04 前最后一个 Worker 版本；该 WARN 必须逐字出现恰好一次 |
 
 ### M04-16 性能预算与 CI perf job
 
