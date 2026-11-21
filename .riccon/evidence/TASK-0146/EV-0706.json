@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0706",
+  "task_id": "TASK-0146",
+  "command": "set -euo pipefail; NS=m19p3rev; node scripts/test-services.mjs reset --namespace \"$NS\"; rm -rf apps/api/target/surefire-reports apps/worker/target/surefire-reports platform/*/target/surefire-reports; RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=\"$NS\" perl -e 'alarm shift; exec @ARGV' 1800 ./mvnw -q -T1C -pl apps/api -am test -Dsurefire.runOrder=reversealphabetical; node -e 'const fs=require(\"fs\"),p=\"apps/api/target/surefire-reports\",f=fs.readdirSync(p).filter(x=>x.startsWith(\"TEST-\")&&x.endsWith(\".xml\")),s={t:0,f:0,e:0,k:0};for(const n of f){const x=fs.readFileSync(p+\"/\"+n,\"utf8\");s.t+=+(x.match(/tests=\"(\\d+)\"/)||[0,0])[1];s.f+=+(x.match(/failures=\"(\\d+)\"/)||[0,0])[1];s.e+=+(x.match(/errors=\"(\\d+)\"/)||[0,0])[1];s.k+=+(x.match(/skipped=\"(\\d+)\"/)||[0,0])[1]}console.log(process.argv[1]+\" classes=\"+f.length+\" tests=\"+s.t+\" failures=\"+s.f+\" errors=\"+s.e+\" skipped=\"+s.k);if(s.t!==642||s.f||s.e||s.k)process.exit(1)' reverse; node scripts/test-timings.mjs --out-dir \"$TMPDIR/m19p3rev/timings-reverse\"; node scripts/test-services.mjs reset --namespace \"$NS\"; rm -rf apps/api/target/surefire-reports apps/worker/target/surefire-reports platform/*/target/surefire-reports; RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=\"$NS\" perl -e 'alarm shift; exec @ARGV' 1800 ./mvnw -q -T1C -pl apps/api -am test; node -e 'const fs=require(\"fs\"),p=\"apps/api/target/surefire-reports\",f=fs.readdirSync(p).filter(x=>x.startsWith(\"TEST-\")&&x.endsWith(\".xml\")),s={t:0,f:0,e:0,k:0};for(const n of f){const x=fs.readFileSync(p+\"/\"+n,\"utf8\");s.t+=+(x.match(/tests=\"(\\d+)\"/)||[0,0])[1];s.f+=+(x.match(/failures=\"(\\d+)\"/)||[0,0])[1];s.e+=+(x.match(/errors=\"(\\d+)\"/)||[0,0])[1];s.k+=+(x.match(/skipped=\"(\\d+)\"/)||[0,0])[1]}console.log(process.argv[1]+\" classes=\"+f.length+\" tests=\"+s.t+\" failures=\"+s.f+\" errors=\"+s.e+\" skipped=\"+s.k);if(s.t!==642||s.f||s.e||s.k)process.exit(1)' forward; node scripts/test-timings.mjs --out-dir \"$TMPDIR/m19p3rev/timings-forward\"; rm -rf apps/api/target/surefire-reports apps/worker/target/surefire-reports platform/*/target/surefire-reports; RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=\"$NS\" perl -e 'alarm shift; exec @ARGV' 1800 ./mvnw -q -T1C -pl apps/api -am test; node -e 'const fs=require(\"fs\"),p=\"apps/api/target/surefire-reports\",f=fs.readdirSync(p).filter(x=>x.startsWith(\"TEST-\")&&x.endsWith(\".xml\")),s={t:0,f:0,e:0,k:0};for(const n of f){const x=fs.readFileSync(p+\"/\"+n,\"utf8\");s.t+=+(x.match(/tests=\"(\\d+)\"/)||[0,0])[1];s.f+=+(x.match(/failures=\"(\\d+)\"/)||[0,0])[1];s.e+=+(x.match(/errors=\"(\\d+)\"/)||[0,0])[1];s.k+=+(x.match(/skipped=\"(\\d+)\"/)||[0,0])[1]}console.log(process.argv[1]+\" classes=\"+f.length+\" tests=\"+s.t+\" failures=\"+s.f+\" errors=\"+s.e+\" skipped=\"+s.k);if(s.t!==642||s.f||s.e||s.k)process.exit(1)' second; node scripts/test-timings.mjs --out-dir \"$TMPDIR/m19p3rev/timings-second\"; ./mvnw -q spotless:check; git diff --check; node -e 'console.log(\"task_0146_evidence_ok reverse=642 forward=642 same_namespace_second=642\")'",
+  "manual": false,
+  "commit": "6014cbe0446010aa1a5df5d9ad507783676d63fb",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0146/EV-0706-2026-11-22T01-04-29-542+08-00-set-euo-pipefail-ns-m19p3rev-node-scripts-test-s.log",
+  "output_sha256": "1ee38d601d3bb5f4f563ea849c678a2dea3f44f84076f985e6e637be4b5675cf",
+  "output_bytes": 3793101,
+  "agent": "riccon/builder-m19",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-22T00:41:10.666+08:00",
+  "finished_at": "2026-11-22T01:04:28.937+08:00",
+  "duration_ms": 1398269,
+  "note": "TASK-0146 顺序/残留修复验证：fresh namespace m19p3rev 反转全量 642/0/0/0、reset 后正向全量 642/0/0/0、同 namespace 不 reset 第二次全量 642/0/0/0；修复 ModelCatalogApiTest @AfterEach 清理平台占位 DEK/凭据与 CostAdminApiTest @AfterEach 按本测试模型清理 model_invocation；含 test-timings、spotless 与 git diff 检查",
+  "recorded_at": "2026-11-22T01:04:29.565+08:00"
+}
