@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0692",
+  "task_id": "TASK-0118",
+  "command": "set -euo pipefail\nNS=m19p1local\necho \"external=external namespace=$NS compose=$(docker compose version --short)\"\nnode scripts/test-services.mjs prepare --namespace \"$NS\"\nRICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=\"$NS\" perl -e 'alarm shift; exec @ARGV' 1500 ./mvnw -q -T1C verify\nnode scripts/test-timings.mjs --out-dir \"${TMPDIR:-/tmp}/m19p1-timings\"\nnode --check scripts/test-services.mjs\nruby -ryaml -e 'YAML.load_file(\".github/workflows/ci.yml\"); puts \"yaml ok\"'\ngit diff --check",
+  "manual": false,
+  "commit": "2190b574191fc84a5962d5e2a48ad582223e59ac",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0118/EV-0692-2026-11-21T18-16-56-831+08-00-set-euo-pipefail-ns-m19p1local-echo-external-ext.log",
+  "output_sha256": "51c6b3ee5556c1873f8d2489ef581dcda012825cbae15f767bb2b8bcfca563c4",
+  "output_bytes": 1440346,
+  "agent": "unknown",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-21T18:02:09.775+08:00",
+  "finished_at": "2026-11-21T18:16:56.108+08:00",
+  "duration_ms": 886331,
+  "note": "外部证据：P1 CI 热栈本地全量（supersede EV-0691 的探索性 echo 失败）。external=external namespace=m19p1local compose=5.7.1；命令含 prepare + RICCON_TEST_SERVICES=external ./mvnw -q -T1C verify（25 分钟 alarm 硬超时）+ test-timings + node --check + YAML 校验 + git diff --check；CI 本身尚未在 GitHub Actions 运行。",
+  "recorded_at": "2026-11-21T18:16:56.840+08:00"
+}

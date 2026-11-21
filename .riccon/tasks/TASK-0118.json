@@ -4,7 +4,7 @@
   "module_id": "M19",
   "title": "P1 CI 复用 compose 热栈（external + namespace）",
   "owner": "riccon/ops",
-  "status": "in_progress",
+  "status": "review",
   "write_scope": [
     ".github/workflows/ci.yml",
     "scripts/test-services.mjs",
@@ -18,10 +18,20 @@
     "commands.test 命令不变；证据 note 记录 external/namespace/compose 版本",
     "失败时输出 compose 日志并清理 namespace；不改变测试断言"
   ],
-  "evidence": [],
-  "tools_used": [],
+  "evidence": [
+    "EV-0691",
+    "EV-0692"
+  ],
+  "tools_used": [
+    "read/grep：定位 CI job、RUNBOOK 与 compose/test-services；本任务是 CI/YAML/Node 脚本，Serena/CodeGraph 无可查符号，按任务说明降级",
+    "node 26：test-services prepare、test-timings 与 node --check",
+    "ruby yaml：CI 工作流语法校验",
+    "docker compose：测试栈、namespace 数据库核对与版本",
+    "mvnw/JDK 21：external 全量 verify",
+    "git：diff/commit 与证据绑定"
+  ],
   "blocker": null,
   "created_at": "2026-11-20T23:46:05.891+08:00",
-  "updated_at": "2026-11-21T17:58:50.721+08:00",
+  "updated_at": "2026-11-21T18:17:59.818+08:00",
   "baseline_commit": "4805a4a5aaa71604ed3529f49ee4060640d5e720"
 }
