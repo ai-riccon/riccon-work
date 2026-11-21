@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0707",
+  "task_id": "TASK-0146",
+  "command": "set -euo pipefail; NS=m19p3vfix; node scripts/test-services.mjs reset --namespace \"$NS\"; rm -rf apps/api/target/surefire-reports apps/worker/target/surefire-reports platform/*/target/surefire-reports; RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=\"$NS\" perl -e 'alarm shift; exec @ARGV' 1800 ./mvnw -q -T1C -pl apps/api -am test -Dsurefire.runOrder=reversealphabetical; node -e 'const fs=require(\"fs\"),p=\"apps/api/target/surefire-reports\",f=fs.readdirSync(p).filter(x=>x.startsWith(\"TEST-\")&&x.endsWith(\".xml\")),s={t:0,f:0,e:0,k:0};for(const n of f){const x=fs.readFileSync(p+\"/\"+n,\"utf8\");s.t+=+(x.match(/tests=\"(\\d+)\"/)||[0,0])[1];s.f+=+(x.match(/failures=\"(\\d+)\"/)||[0,0])[1];s.e+=+(x.match(/errors=\"(\\d+)\"/)||[0,0])[1];s.k+=+(x.match(/skipped=\"(\\d+)\"/)||[0,0])[1]}console.log(process.argv[1]+\" classes=\"+f.length+\" tests=\"+s.t+\" failures=\"+s.f+\" errors=\"+s.e+\" skipped=\"+s.k);if(s.t!==642||s.f||s.e||s.k)process.exit(1)' reverse; node scripts/test-timings.mjs --out-dir \"$TMPDIR/m19p3vfix/timings-reverse\"; rm -rf apps/api/target/surefire-reports apps/worker/target/surefire-reports platform/*/target/surefire-reports; RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=\"$NS\" perl -e 'alarm shift; exec @ARGV' 1800 ./mvnw -q -T1C -pl apps/api -am test; node -e 'const fs=require(\"fs\"),p=\"apps/api/target/surefire-reports\",f=fs.readdirSync(p).filter(x=>x.startsWith(\"TEST-\")&&x.endsWith(\".xml\")),s={t:0,f:0,e:0,k:0};for(const n of f){const x=fs.readFileSync(p+\"/\"+n,\"utf8\");s.t+=+(x.match(/tests=\"(\\d+)\"/)||[0,0])[1];s.f+=+(x.match(/failures=\"(\\d+)\"/)||[0,0])[1];s.e+=+(x.match(/errors=\"(\\d+)\"/)||[0,0])[1];s.k+=+(x.match(/skipped=\"(\\d+)\"/)||[0,0])[1]}console.log(process.argv[1]+\" classes=\"+f.length+\" tests=\"+s.t+\" failures=\"+s.f+\" errors=\"+s.e+\" skipped=\"+s.k);if(s.t!==642||s.f||s.e||s.k)process.exit(1)' second; node scripts/test-timings.mjs --out-dir \"$TMPDIR/m19p3vfix/timings-second\"; ./mvnw -q spotless:check; git diff --check; node -e 'console.log(\"verifier_task_0146_ok reverse=642 same_namespace_second=642\")' ",
+  "manual": false,
+  "commit": "18fe8a034870b786eea0520b81c7546c1ccf51b1",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0146/EV-0707-2026-11-22T01-30-06-869+08-00-set-euo-pipefail-ns-m19p3vfix-node-scripts-test-.log",
+  "output_sha256": "64f4fa57852ad6f60653ebffb21c4afb81b1c32c23ef69528359b34ed74361dd",
+  "output_bytes": 2527542,
+  "agent": "unknown",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-22T01:14:28.650+08:00",
+  "finished_at": "2026-11-22T01:30:06.260+08:00",
+  "duration_ms": 937609,
+  "note": "Verifier TASK-0146 独立复跑：fresh namespace m19p3vfix 反转全量 642/0/0/0，同 namespace 不 reset 第二次默认顺序全量 642/0/0/0，验证 @AfterEach 清理与成本残留修复；含 test-timings、spotless:check、git diff --check",
+  "recorded_at": "2026-11-22T01:30:06.884+08:00"
+}
