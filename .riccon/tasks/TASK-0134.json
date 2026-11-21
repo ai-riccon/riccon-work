@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0134",
+  "module_id": "M04",
+  "title": "M04 修复：真实栈恢复路由假绿与 checks latest CHAT",
+  "owner": "riccon/builder-gateway-e2e",
+  "status": "review",
+  "write_scope": [
+    "e2e/real/tests/m04-quota-cost.spec.ts",
+    "e2e/support/m04-quota-cost*",
+    "scripts/real-stack/checks.mjs",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "m04-quota-cost 恢复路由顺序必须真正保存并验证版本/DB，不得命中上次成功提示；E2E-M04-02 全量真实栈不再被污染",
+    "checks.mjs 的 J1 使用明确 run/tenant 而非“最新 CHAT run”",
+    "全量真实栈 M04-B11a/B11b 回归；不改生产代码/契约；EV"
+  ],
+  "evidence": [
+    "EV-0631",
+    "EV-0632"
+  ],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-21T10:55:25.110+08:00",
+  "updated_at": "2026-11-21T11:20:51.697+08:00",
+  "baseline_commit": "ff6c383",
+  "end_commit": "493067a9d776b016bc977e3dadb2c82e80bf1a7d"
+}
