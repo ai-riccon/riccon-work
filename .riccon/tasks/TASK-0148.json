@@ -4,7 +4,7 @@
   "module_id": "M19",
   "title": "P4b 3 个纯逻辑测试下沉 platform 并更新分片基线",
   "owner": "riccon/builder-m19",
-  "status": "planned",
+  "status": "review",
   "write_scope": [
     "apps/api/src/test/**",
     "apps/worker/src/test/**",
@@ -18,9 +18,17 @@
     "新增测试类后重建 scripts/test-shards-baseline.json（从一次干净全量 surefire 报告），node scripts/test-shards.mjs --check 与合并校验通过；后端用例数 ≥1101 且零 skip",
     "跑 platform 测试 + 一次全量后端（或 CI 同款 shard 合并）证明新测试执行；证据单行；由 Verifier 评审等价断言"
   ],
-  "evidence": [],
-  "tools_used": [],
+  "evidence": [
+    "EV-0709"
+  ],
+  "tools_used": [
+    "serena",
+    "maven",
+    "docker-compose",
+    "riccon"
+  ],
   "blocker": null,
   "created_at": "2026-11-22T01:37:22.639+08:00",
-  "updated_at": "2026-11-22T01:37:22.639+08:00"
+  "updated_at": "2026-11-22T02:27:34.807+08:00",
+  "baseline_commit": "f5922239c5c91c7086807ac026053e1276823733"
 }
