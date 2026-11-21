@@ -1,7 +1,30 @@
 {
-  "generatedAt": "2026-11-21T04:44:28.729Z",
-  "checks": {},
-  "observations": {},
+  "generatedAt": "2026-11-21T04:47:20.892Z",
+  "checks": {
+    "startup": "passed",
+    "ac18SwitchCloseAudit": "passed",
+    "ac18J1": "passed",
+    "ac18J2": "passed",
+    "quotaStoreFailure": "passed"
+  },
+  "observations": {
+    "switchesBefore": {
+      "routingMode": "ROUTED",
+      "failoverEnabled": true,
+      "quotaEnforcementEnabled": false,
+      "version": 5
+    },
+    "j1": {
+      "runId": "01a1fc6e-5431-756d-ad0a-2a49d1a336cf",
+      "status": "SUCCEEDED",
+      "modelKey": "fake-chat-primary",
+      "firstTokenMs": 224
+    },
+    "quotaRejection": {
+      "acceptedRun": "01a1fc6e-7f06-75ac-ab7d-d2ebceeb4f18",
+      "rejectedStatus": 429
+    }
+  },
   "status": "failed",
-  "error": "Error: waitFor timeout after 150000ms; last=null\n    at waitFor (file:///Users/ricky/Documents/projects/riccon-work/scripts/real-stack/lib/http.mjs:193:9)\n    at async waitHealth (file:///Users/ricky/Documents/projects/riccon-work/.riccon/evidence/TASK-0116/m04-v2-runtime-verify.mjs:118:3)\n    at async file:///Users/ricky/Documents/projects/riccon-work/.riccon/evidence/TASK-0116/m04-v2-runtime-verify.mjs:284:3"
+  "error": "Error: API metric riccon_quota_store_failure_total missing\n    at requireOk (file:///Users/ricky/Documents/projects/riccon-work/.riccon/evidence/TASK-0116/m04-v2-runtime-verify.mjs:135:11)\n    at file:///Users/ricky/Documents/projects/riccon-work/.riccon/evidence/TASK-0116/m04-v2-runtime-verify.mjs:546:3\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)"
 }
