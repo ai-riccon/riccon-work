@@ -1,10 +1,10 @@
 {
   "scenario": "first_token",
   "failureMode": null,
-  "generatedAt": "2026-11-21T06:15:02.375Z",
+  "generatedAt": "2026-11-21T06:27:39.974Z",
   "baseUrl": "http://127.0.0.1:18080",
   "env": {
-    "generatedAt": "2026-11-21T06:13:46.636Z",
+    "generatedAt": "2026-11-21T06:26:24.157Z",
     "mode": "perf",
     "host": {
       "platform": "darwin 24.6.0",
@@ -28,7 +28,7 @@
     "k6Version": "k6 v2.4.0 (commit/dd9395906d, go1.26.11, darwin/amd64)",
     "scriptSha256": "ed36cb1f9beac7eaecd9d763f9475c59bea99dd4418298a135d516ca5e4e31da",
     "chatMaxStreams": 50,
-    "dbPoolSize": 25,
+    "dbPoolSize": 50,
     "fakeModel": 1,
     "deploymentMode": "DEMO",
     "startCommand": "node scripts/real-stack/run.mjs --mode=perf",
@@ -39,7 +39,8 @@
     ],
     "perfProfile": {
       "chatMaxStreams": 50,
-      "dbPoolSize": 25,
+      "dbPoolSize": 50,
+      "dbPoolFloor": 25,
       "fakeModel": 1,
       "connectTimeout": "500ms",
       "firstTokenTimeout": "1000ms",
@@ -59,68 +60,68 @@
     ]
   },
   "metrics": {
-    "http_req_failed": {
-      "passes": 0,
-      "fails": 1874,
-      "rate": 0
-    },
     "iterations": {
-      "count": 862,
-      "rate": 18.56168716175524
-    },
-    "m04_run_detail_ms": {
-      "p(95)": 506.8499999999998,
-      "max": 671,
-      "count": 862,
-      "avg": 346,
-      "min": 31,
-      "med": 346,
-      "p(90)": 458.9
+      "count": 873,
+      "rate": 18.5382408126825
     },
     "m04_first_token_ms": {
-      "count": 862,
-      "avg": 26.77262180974478,
+      "max": 377,
+      "count": 873,
+      "avg": 26.544100801832762,
       "min": 17,
       "med": 24,
-      "p(90)": 29,
-      "p(95)": 32,
-      "max": 329
-    },
-    "m04_chat_submit_ttfb_ms": {
-      "count": 862,
-      "avg": 1557.7926090487258,
-      "min": 1097.284,
-      "med": 1498.7005,
-      "p(90)": 1854.3552,
-      "p(95)": 2008.7092499999999,
-      "max": 2708.936
-    },
-    "m04_api_ms": {
-      "count": 862,
-      "avg": 345.7584918793505,
-      "min": 31.051,
-      "med": 345.5295,
-      "p(90)": 458.44309999999996,
-      "p(95)": 506.49914999999976,
-      "max": 670.212
-    },
-    "m04_chat_stream_ms": {
-      "p(95)": 2782.4499999999994,
-      "max": 3811,
-      "count": 862,
-      "avg": 2190.5150812064967,
-      "min": 1392,
-      "med": 2130,
-      "p(90)": 2577.9
+      "p(90)": 28,
+      "p(95)": 32
     },
     "http_req_duration": {
-      "p(95)": 2558.54295,
-      "max": 3811.042,
-      "count": 1874,
-      "avg": 1217.9318223052314,
-      "min": 30.624,
-      "med": 611.1320000000001,
-      "p(90)": 2399.6222
+      "count": 1896,
+      "avg": 1213.8422848101281,
+      "min": 18.715,
+      "med": 105.211,
+      "p(90)": 2772.9545,
+      "p(95)": 2891.7382500000003,
+      "max": 3287.494
+    },
+    "m04_chat_stream_ms": {
+      "p(90)": 2901,
+      "p(95)": 2976.8,
+      "max": 3288,
+      "count": 873,
+      "avg": 2464.131729667812,
+      "min": 1196,
+      "med": 2418
+    },
+    "m04_chat_submit_ttfb_ms": {
+      "p(90)": 2796.6992000000005,
+      "p(95)": 2867.265,
+      "max": 3152.944,
+      "count": 873,
+      "avg": 2362.27502405498,
+      "min": 987.243,
+      "med": 2322.881
+    },
+    "m04_api_ms": {
+      "avg": 45.96173310423822,
+      "min": 18.715,
+      "med": 44.674,
+      "p(90)": 56.63880000000001,
+      "p(95)": 61.777,
+      "max": 121.895,
+      "count": 873
+    },
+    "m04_run_detail_ms": {
+      "avg": 46.194730813287514,
+      "min": 19,
+      "med": 45,
+      "p(90)": 57,
+      "p(95)": 62,
+      "max": 123,
+      "count": 873
+    },
+    "http_req_failed": {
+      "fails": 1896,
+      "rate": 0,
+      "passes": 0
     }
   }
 }
