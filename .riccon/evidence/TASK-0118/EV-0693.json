@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0693",
+  "task_id": "TASK-0118",
+  "command": "set -euo pipefail\ngit diff --check\nruby -ryaml -e 'YAML.load_file(\".github/workflows/ci.yml\"); puts \"yaml ok\"'\nnode --check scripts/test-services.mjs\nnode scripts/test-timings.mjs --out-dir \"${TMPDIR:-/tmp}/m19p1-doc-final\"",
+  "manual": false,
+  "commit": "bc86d8f55603553452e0cf1fa81f128620d03f2a",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0118/EV-0693-2026-11-21T18-21-32-392+08-00-set-euo-pipefail-git-diff-check-ruby-ryaml-e-yam.log",
+  "output_sha256": "414a6b670932a1369629da27efb9eb7b33ec30931e7a4a8b205b074f3dfd923e",
+  "output_bytes": 2785,
+  "agent": "unknown",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-21T18:21:31.357+08:00",
+  "finished_at": "2026-11-21T18:21:31.924+08:00",
+  "duration_ms": 565,
+  "note": "docs-only follow-up：§10.2/RUNBOOK 同步；功能全量见 EV-0692（commit 2190b57）；本 EV 仅绑定最终文档提交。未重跑 1114 用例（文档-only）。",
+  "recorded_at": "2026-11-21T18:21:32.394+08:00"
+}

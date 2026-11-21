@@ -1,0 +1,53 @@
+# command: set -euo pipefail
+git diff --check
+ruby -ryaml -e 'YAML.load_file(".github/workflows/ci.yml"); puts "yaml ok"'
+node --check scripts/test-services.mjs
+node scripts/test-timings.mjs --out-dir "${TMPDIR:-/tmp}/m19p1-doc-final"
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-21T18:21:31.357+08:00
+# finished_at: 2026-11-21T18:21:31.924+08:00
+# duration_ms: 565
+# exit_code: 0
+
+# --- stdout ---
+yaml ok
+测试计时报告（surefire）
+  报告根目录: /Users/ricky/Documents/projects/riccon-work
+  用例总数: 1114
+  失败/错误/跳过: 0/0/0
+  累计 suite 时间: 1225.641s
+
+按模块汇总:
+  apps/api: tests=653 failures=0 errors=0 skipped=0 time=810.993s
+  apps/worker: tests=358 failures=0 errors=0 skipped=0 time=402.288s
+  platform/platform-architecture-tests: tests=12 failures=0 errors=0 skipped=0 time=11.069s
+  platform/platform-common: tests=87 failures=0 errors=0 skipped=0 time=0.882s
+  platform/platform-domain: tests=4 failures=0 errors=0 skipped=0 time=0.409s
+
+最慢 20 个测试类:
+   1.   90.142s  com.riccon.api.security.TenantIsolationSecurityTest (apps/api)
+   2.   75.961s  com.riccon.api.WorkspaceScopeTest (apps/api)
+   3.   52.509s  com.riccon.api.security.DepartmentIsolationTest (apps/api)
+   4.   47.861s  com.riccon.worker.research.ApprovalParamsCryptoTest (apps/worker)
+   5.   41.648s  com.riccon.worker.chat.ChatStreamIntegrationTest (apps/worker)
+   6.   34.808s  com.riccon.worker.model.ModelFailoverIntegrationTest (apps/worker)
+   7.   33.069s  com.riccon.worker.research.ReportArtifactIntegrationTest (apps/worker)
+   8.   31.586s  com.riccon.api.research.ResearchModelUnavailableMappingTest (apps/api)
+   9.   30.074s  com.riccon.api.migration.V10MigrationTest (apps/api)
+  10.   27.668s  com.riccon.api.migration.V11MigrationTest (apps/api)
+  11.   27.229s  com.riccon.api.DepartmentAdminApiTest (apps/api)
+  12.   25.455s  com.riccon.worker.research.HitlIntegrationTest (apps/worker)
+  13.   22.814s  com.riccon.worker.parse.service.FileParseServiceIntegrationTest (apps/worker)
+  14.   22.799s  com.riccon.api.m10.audit.AuditExportApiTest (apps/api)
+  15.   22.587s  com.riccon.api.migration.V9MigrationTest (apps/api)
+  16.   22.424s  com.riccon.api.m10.identity.OidcIdentityBindingApiTest (apps/api)
+  17.   21.753s  com.riccon.worker.run.service.OutboxPollerTest (apps/worker)
+  18.   21.708s  com.riccon.worker.run.persistence.OutboxClaimerTest (apps/worker)
+  19.   19.694s  com.riccon.api.ChatStreamApiTest (apps/api)
+  20.   18.226s  com.riccon.api.m10.audit.AuditQueryApiTest (apps/api)
+
+已写入: /var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/m19p1-doc-final/test-timings.md
+已写入: /var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/m19p1-doc-final/test-timings.json
+
+# --- stderr ---
+
