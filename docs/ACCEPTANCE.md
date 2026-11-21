@@ -17,7 +17,7 @@
 - M15 补丁（fixes M10）：后端 `08e0fc6`（EV-0449）、前端 `4538d8c`（EV-0450）、a11y `c4ebd3e`（EV-0478）；TASK-0084/0085/0087/0086 done，gate pass（REV-M15-001）；代码证据 EV-0482..0486、EV-0488 在 `864b0a7`，docs EV-0489 在 `de33ed8`（EV-0487 为中间失败，不引用）
 - M04：`feature`，gate pass（REV-M04-005，2026-11-21；18 条 AC 全 pass）；证据 EV-0675/0676/0677/0681/0682..0686/0687/0689、EV-0669、EV-0640；Product 预验收见「M04 模型网关纵深（gate pass 后 Product 预验收）」
 - 验收日期：2026-11-19（M10 初次）、2026-11-20（M15 后复验）、2026-11-20（M18 回溯与最终全量）、2026-11-21（M04 gate 后）
-- 验收人：Product（M03/M10/M15 预验收；M02 回溯预验收；M04 预验收）；用户（M03/M10 accepted；M02/M18 回溯 accepted，DEC-0025；M04 最终验收 `pending`）
+- 验收人：Product（M03/M10/M15 预验收；M02 回溯预验收；M04 预验收）；用户（M03/M10 accepted；M02/M18 回溯 accepted，DEC-0025；M04 最终验收 `accepted`，DEC-0027）
 - 参考：REV-M13-001、REV-M03-001、REV-M03-V1-002、REV-M10-001、REV-M15-001、REV-M10-ARCH-002、REV-M10-OPS-001、M10-OPS-DRILL、REV-TASK-0033-002、REV-TASK-0037/0039/0041/0043/0045、REV-TASK-0065-002/0068/0069/0071/0076；M18 回溯：REV-M01-002、REV-M02-004、REV-M03-002、REV-M10-002、REV-M12-002、REV-M13-002、REV-M15-002、REV-M18-REVALIDATION-001；M04：REV-M04-005、REV-TASK-0115-002、TASK-0116/TASK-0139
 
 ## 模块关系与验收状态
@@ -31,7 +31,7 @@
 - **M11**：legacy docs-only 模块，TASK-0035/0036 done；无模块 gate；状态保持 planned 并保留 `state validate` warning，后续单独 docs-only closeout 或 handoff 注记，不增加任务、不使用 `--force`。
 - **M12**：维护模块，done；热栈/test-affected/文档无用户可见 AC，Product/用户验收为 `not-recorded`（N/A legacy），不伪造 pass。
 - **M14**：docs-only legacy，building；TASK-0053/0057/0061 已 done，但尚无模块 review/gate；Product/user 结论重置为 `pending`，待独立 closeout 后再验收。
-- **M04**：`feature`，review_pending；gate pass（REV-M04-005，2026-11-21；18 条 AC 全 pass，F-001..F-005/F-011 fixed，P2/P3 残余登记）；Product 预验收 `pass`（with residual：R-M04-01 P2 员工侧配额 429 文案、R-M04-02/03 P3，以及 Verifier F-006/F-008/F-009/F-010/F-012/F-013），见「M04 模型网关纵深（gate pass 后 Product 预验收）」；用户最终验收 `pending`，本文件不写成 accepted。
+- **M04**：`feature`，done；gate pass（REV-M04-005，2026-11-21；18 条 AC 全 pass，F-001..F-005/F-011 fixed，P2/P3 残余登记）；Product 预验收 `pass`（with residual：R-M04-01 P2 员工侧配额 429 文案、R-M04-02/03 P3，以及 Verifier F-006/F-008/F-009/F-010/F-012/F-013），见「M04 模型网关纵深（gate pass 后 Product 预验收）」；用户最终验收 `accepted`（DEC-0027，A；with residual，R-M04-01/02/03 转 M05），见「用户最终验收（M04）」。
 
 ## 验收标准（M03，M13 补丁后）
 
@@ -343,6 +343,14 @@ M02 是用户可见 MVC 模块，但 2026-11-18 关闭时没有 `product_accepta
 - 上述残余均有 owner/到期或建议去向；F-006/F-008/F-009/F-010/F-012/F-013 按 Verifier accepted 保留，R-M04-01/02/03 作为 Product 观察项转 M05 跟踪，不阻塞模块 done。
 - **明确不声称**：员工已看到配额限额类型/重置时间（R-M04-01）；真实并发在途轮换已验证（F-006）；生产 K8s/Helm、真实供应商端点、跨区域容灾已验证；M10 的 MFA/审计哈希链/跨租户审计明细已解决。生产迁移/OPS-004/OPS-010/T4 发布批准仍未完成。
 - **边界**：本结论不是用户最终验收。Lead 可按流程记录 `product_status=pass` 并标 done；用户 `accepted` 前不进入下一个用户可见模块。
+
+## 用户最终验收（M04）
+
+- 结论：`accepted`（with residual）
+- 决策 ID：`DEC-0027`（A）
+- 条件/剩余项：接受 M04 gate pass、Product 预验收 `pass`（with residual）与 18 条 AC 结论；**R-M04-01（P2，员工聊天/报告 429 文案未透传）、R-M04-02（P3，相对重置时间）、R-M04-03（P3，三处定向证据）转 M05 跟踪**；F-006/F-008/F-009/F-010/F-012/F-013 按 Verifier accepted 保留。R-M04-01 仍 open，不声称已解决；生产发布仍需 release gate。
+- 说明：用户按 A 接受 M04（DEC-0027）。本结论不改写 Product 预验收 `pass`、18 条 AC 表，也不改写 M02/M03/M10/M18 的历史结论。
+- 下一步：M05 承接 R-M04-01/02/03 与 F-006/F-008/F-010/F-013 相关测试/口径补齐；生产发布按 release gate 与用户批准另行处理。
 
 ## 历史模块
 
