@@ -1,0 +1,10 @@
+# M04 SEC-M04-005 / TM-53 canary scan（V1 独立扫描）
+# 时间: 2026-11-21T10:50:24+0800
+# 范围: .riccon/evidence/TASK-0105/0113/0114/0115 的 .log; apps/*/target/surefire-reports; real-stack 日志
+# 模式: apiKey=|Authorization: Bearer|baseUrl=http|sk-[A-Za-z0-9_-]{8,}|enc:v1:
+---
+.riccon/evidence/TASK-0115/EV-0623-2026-11-21T10-34-15-203+08-00-mvnw-q-t1c-verify-jacoco-report-pnpm-w-test-cove.log:1623:2026-11-21T10:23:56.338+08:00  WARN 6041 --- [riccon-api] [o-auto-4-exec-8] c.riccon.api.chat.service.ChatService    : chat.worker.rejected status=500 code=RICCON-MODEL-503 detail=model route is empty; provider=mock-openai baseUrl=http://10.9.8.7:8080/v1 apiKey=sk-live-0123456789
+.riccon/evidence/TASK-0115/canary-scan.log:4:# 模式: apiKey=|Authorization: Bearer|baseUrl=http|sk-[A-Za-z0-9_-]{8,}|enc:v1:
+apps/api/target/surefire-reports/TEST-com.riccon.api.chat.ChatModelUnavailableApiTest.xml:773:2026-11-21T10:23:56.338+08:00  WARN 6041 --- [riccon-api] [o-auto-4-exec-8] c.riccon.api.chat.service.ChatService    : chat.worker.rejected status=500 code=RICCON-MODEL-503 detail=model route is empty; provider=mock-openai baseUrl=http://10.9.8.7:8080/v1 apiKey=sk-live-0123456789
+---
+# 结果：命中行见上；无命中时由报告记录 clean
