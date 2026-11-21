@@ -1,0 +1,22 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: e2e/perf/mvc-smoke.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 1 max VUs, 10m30s max duration (incl. graceful stop):
+              * quota: 1 iterations for each of 1 VUs (maxDuration: 10m0s, exec: quotaContention, gracefulStop: 30s)
+
+[perf-m04] scenario=quota report=/Users/ricky/Documents/projects/riccon-work/.riccon/evidence/TASK-0116/perf-m04-quota.json
+
+running (00m00.9s), 0/1 VUs, 1 complete and 0 interrupted iterations
+quota ✓ [ 100% ] 1 VUs  00m00.9s/10m0s  1/1 iters, 1 per VU
+
+time="2026-11-21T13:06:33+08:00" level=error msg="GoError: read switches failed: 403\n\tat go.k6.io/k6/v2/internal/js/modules/k6.(*K6).Fail-fm (native)\n\tat quotaContention (file:///Users/ricky/Documents/projects/riccon-work/e2e/perf/mvc-smoke.js:419:9(41))\n" executor=per-vu-iterations hint="script exception" scenario=quota source=stacktrace
+time="2026-11-21T13:06:34+08:00" level=error msg="thresholds on metrics 'm04_quota_allowed, m04_quota_rejected' have been crossed"
