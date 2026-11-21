@@ -77,7 +77,7 @@ export function costTotalsItem(page: Page, label: string | RegExp) {
  * 在真实栈执行一段只作用于测试栈的 SQL。
  *
  * 复用 `scripts/real-stack/lib/mysql.mjs` 的 compose+utf8mb4 参数，避免字符集与连接参数漂移；
- * 只用于配额开关初始化和成本边界夹具，不改变产品语义。
+ * 只用于成本边界夹具，不改变产品语义。
  *
  * @param sql SQL 文本
  */
@@ -178,6 +178,120 @@ export async function loginByApi(
   const body = (await response.json()) as { csrfToken?: string };
   expect(body.csrfToken, '登录响应缺少 csrfToken').toBeTruthy();
   return body.csrfToken as string;
+}
+
+/**
+ * 真实栈网关开关响应；字段与 OpenAPI `ModelGatewaySwitches` 对齐。
+ */
+export interface GatewaySwitches {
+  routingMode: 'ROUTED' | 'BASELINE';
+  failoverEnabled: boolean;
+  quotaEnforcementEnabled: boolean;
+  version: number;
+  source: 'DATABASE' | 'ENVIRONMENT';
+  envOverride?: Record<string, unknown> | null;
+  updatedAt: string;
+  updatedBy: string | null;
+}
+
+/**
+ * 读取真实栈网关开关。
+ *
+ * @param request 平台管理员请求上下文
+ * @returns 当前生效开关
+ */
+export async function readGatewaySwitches(request: APIRequestContext): Promise<GatewaySwitches> {
+  const response = await request.get('/api/v1/admin/model-gateway/switches');
+  expect(response.status(), '读取网关开关失败').toBe(200);
+  return (await response.json()) as GatewaySwitches;
+}
+
+/**
+ * 通过 PUT 切换配额执行开关，保留路由与降级开关原值。
+ *
+ * 环境变量覆盖生效时管理端写接口会返回 409 `ENV_OVERRIDE_ACTIVE`（或 GET 的
+ * `source=ENVIRONMENT`）；测试栈不应存在覆盖，出现时直接失败并输出覆盖键。
+ *
+ * @param request 平台管理员请求上下文
+ * @param csrf CSRF 令牌
+ * @param enabled 目标值
+ * @returns 保存后的开关
+ */
+export async function setQuotaEnforcement(
+  request: APIRequestContext,
+  csrf: string,
+  enabled: boolean,
+): Promise<GatewaySwitches> {
+  const current = await readGatewaySwitches(request);
+  if (current.source === 'ENVIRONMENT') {
+    throw new Error(
+      `测试栈存在网关开关环境覆盖（${JSON.stringify(current.envOverride ?? {})}），无法通过 API 切换配额执行开关`,
+    );
+  }
+  const response = await request.put('/api/v1/admin/model-gateway/switches', {
+    headers: { 'X-CSRF-TOKEN': csrf },
+    data: {
+      version: current.version,
+      routingMode: current.routingMode,
+      failoverEnabled: current.failoverEnabled,
+      quotaEnforcementEnabled: enabled,
+    },
+  });
+  if (response.status() === 409) {
+    const problem = (await response.json()) as {
+      code?: string;
+      reason?: string;
+      detail?: string;
+    };
+    throw new Error(
+      `切换网关开关被拒绝（409 ${problem.code ?? ''} ${problem.reason ?? ''}）：${
+        problem.detail ?? '环境覆盖生效或版本冲突'
+      }`,
+    );
+  }
+  if (response.status() !== 200) {
+    throw new Error(`切换网关开关失败：${response.status()} ${await response.text()}`);
+  }
+  const saved = (await response.json()) as GatewaySwitches;
+  expect(saved.quotaEnforcementEnabled).toBe(enabled);
+  expect(saved.version).toBe(current.version + 1);
+  return saved;
+}
+
+/**
+ * 通过 PUT 恢复网关开关原值（读取最新 version 后整组保存）。
+ *
+ * @param request 平台管理员请求上下文
+ * @param csrf CSRF 令牌
+ * @param original 原始开关值
+ */
+export async function restoreGatewaySwitches(
+  request: APIRequestContext,
+  csrf: string,
+  original: Pick<GatewaySwitches, 'routingMode' | 'failoverEnabled' | 'quotaEnforcementEnabled'>,
+): Promise<void> {
+  const current = await readGatewaySwitches(request);
+  if (current.source === 'ENVIRONMENT') {
+    throw new Error(
+      `测试栈存在网关开关环境覆盖（${JSON.stringify(current.envOverride ?? {})}），无法恢复开关`,
+    );
+  }
+  const response = await request.put('/api/v1/admin/model-gateway/switches', {
+    headers: { 'X-CSRF-TOKEN': csrf },
+    data: {
+      version: current.version,
+      routingMode: original.routingMode,
+      failoverEnabled: original.failoverEnabled,
+      quotaEnforcementEnabled: original.quotaEnforcementEnabled,
+    },
+  });
+  if (response.status() !== 200) {
+    throw new Error(`恢复网关开关失败：${response.status()} ${await response.text()}`);
+  }
+  const restored = (await response.json()) as GatewaySwitches;
+  expect(restored.quotaEnforcementEnabled).toBe(original.quotaEnforcementEnabled);
+  expect(restored.routingMode).toBe(original.routingMode);
+  expect(restored.failoverEnabled).toBe(original.failoverEnabled);
 }
 
 /**

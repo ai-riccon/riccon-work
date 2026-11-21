@@ -5,9 +5,12 @@ import {
   M04_QUOTA_COST_FIXTURES,
   csrfToken,
   loginByApi,
-  realStackQueryValue,
+  readGatewaySwitches,
   readPrometheus,
+  realStackQueryValue,
+  restoreGatewaySwitches,
   runRealStackSql,
+  setQuotaEnforcement,
 } from '../../support/m04-quota-cost';
 import { expectNoHorizontalScroll, loginRealLocal, logout } from '../../support/m04-routing';
 import { readSeed, type RealSeed } from './real-session';
@@ -16,8 +19,8 @@ import { readSeed, type RealSeed } from './real-session';
  * M04-B11b 真实栈 E2E：配额 429/拒绝审计/指标、成本快照与边界、四页 375px/a11y。
  *
  * 数据由 `scripts/real-stack/run.mjs` 启动的真实 API/Worker/Web 与 seed 准备；
- * 配额执行开关按 B10 演练口径直接改测试栈 `model_gateway_switch`（M04 API 未提供开关写端点），
- * 成本边界通过测试栈模型价格与 `cost_day` 夹具构造，结束后全部恢复。
+ * 配额执行开关通过 `GET/PUT /api/v1/admin/model-gateway/switches` 切换（version 乐观锁，
+ * 结束后恢复原值）；成本边界通过测试栈模型价格与 `cost_day` 夹具构造，结束后全部恢复。
  * 运行方式（定向）：
  *
  * ```bash
@@ -210,8 +213,14 @@ test.describe('M04-B11b 真实栈配额与成本', () => {
     const monthly = alpha!.windows.find((window) => window.window === 'MONTHLY');
     expect(daily && monthly, '租户配额必须包含 DAILY/MONTHLY 窗口').toBeTruthy();
     const original = { daily: daily!.limit, monthly: monthly!.limit };
+    const switchesBefore = await readGatewaySwitches(request);
+    const switchesOriginal = {
+      routingMode: switchesBefore.routingMode,
+      failoverEnabled: switchesBefore.failoverEnabled,
+      quotaEnforcementEnabled: switchesBefore.quotaEnforcementEnabled,
+    };
 
-    // 剩余恰好 1 次：已用 + 1；同时打开执行开关（测试栈 SQL 夹具，B10 演练口径）。
+    // 剩余恰好 1 次：已用 + 1；同时通过管理 API 打开执行开关（保留路由/降级原值）。
     const limitResponse = await request.put(`/api/v1/admin/tenants/${seed.tenants.alpha}/quotas`, {
       headers: { 'X-CSRF-TOKEN': platformCsrf },
       data: { limits: { daily: daily!.used + 1, monthly: monthly!.limit } },
@@ -225,9 +234,8 @@ test.describe('M04-B11b 真实栈配额与成本', () => {
     );
 
     const metricsBefore = quotaRejectionCount(await readPrometheus(request));
-    runRealStackSql(
-      "UPDATE model_gateway_switch SET switch_value='true' WHERE switch_key='quotaEnforcementEnabled';",
-    );
+    const enabledSwitches = await setQuotaEnforcement(request, platformCsrf, true);
+    expect(enabledSwitches.quotaEnforcementEnabled).toBe(true);
 
     try {
       // 租户管理员只读页：保存后的限额与 +08:00 重置时间可见，且无写入口。
@@ -323,9 +331,7 @@ test.describe('M04-B11b 真实栈配额与成本', () => {
         /riccon_quota_rejections_total\{[^}]*scope="TENANT"[^}]*window="DAILY"[^}]*\}\s+[1-9]/,
       );
     } finally {
-      runRealStackSql(
-        "UPDATE model_gateway_switch SET switch_value='false' WHERE switch_key='quotaEnforcementEnabled';",
-      );
+      await restoreGatewaySwitches(request, platformCsrf, switchesOriginal);
       await restoreTenantQuota(request, platformCsrf, seed, original);
     }
   });
