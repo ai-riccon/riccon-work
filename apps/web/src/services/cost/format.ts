@@ -40,6 +40,10 @@ export type CostErrorContext = 'platform-report' | 'tenant-report' | 'invocation
  * 使用 BigInt 做十进制整数运算，避免 `Number`/`parseFloat` 的二进制浮点误差；
  * 金额在契约中是 `\d{1,14}(\.\d{1,6})?` 字符串，这里只接受该形状，其他输入按 0 处理。
  *
+ * 除数用 `BigInt('1' + '0'.repeat(scale))` 构造而不是 `10n ** BigInt(scale)`：
+ * Umi/webpack 的 Babel 目标会把 `**` 降级为 `Math.pow`，而 `Math.pow` 不接受 BigInt，
+ * 生产构建会在成本页直接抛 `TypeError`。字符串构造在 dev 与生产构建中行为一致。
+ *
  * @param value 十进制字符串，例如 `0.123456`
  * @param scale 保留小数位（0..6）
  * @returns 指定小数位的字符串；scale=0 时不含小数点
@@ -58,7 +62,7 @@ export function roundDecimalString(value: string, scale: number): string {
   if (nextDigit >= 5) {
     scaled += 1n;
   }
-  const divisor = 10n ** BigInt(safeScale);
+  const divisor = BigInt(`1${'0'.repeat(safeScale)}`);
   const integer = scaled / divisor;
   if (safeScale === 0) {
     return integer.toString();

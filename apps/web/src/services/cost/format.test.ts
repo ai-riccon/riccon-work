@@ -33,6 +33,24 @@ describe('成本金额精度', () => {
     expect(roundDecimalString('0', 6)).toBe('0.000000');
   });
 
+  it('覆盖 scale 0/2/6 的边界与进位，不使用指数运算也能保持精度', () => {
+    // scale=0：无小数点，0.5 按 HALF_UP 进位。
+    expect(roundDecimalString('0.5', 0)).toBe('1');
+    expect(roundDecimalString('0.499999', 0)).toBe('0');
+    // scale=2：跨整数进位与千分位前的最大值。
+    expect(roundDecimalString('0.005', 2)).toBe('0.01');
+    expect(roundDecimalString('99999999999999.999999', 2)).toBe('100000000000000.00');
+    // scale=6：契约精度只保留 6 位，第 7 位决定进位。
+    expect(roundDecimalString('0.1234564', 6)).toBe('0.123456');
+    expect(roundDecimalString('0.1234565', 6)).toBe('0.123457');
+    expect(roundDecimalString('12', 6)).toBe('12.000000');
+    // 非法 scale 收敛到 0..6；非法金额按 0 处理，不抛异常。
+    expect(roundDecimalString('1.5', -2)).toBe('2');
+    expect(roundDecimalString('1.2345678', 9)).toBe('1.234568');
+    expect(roundDecimalString('abc', 0)).toBe('0');
+    expect(roundDecimalString('abc', 6)).toBe('0.000000');
+  });
+
   it('非法金额输入退化为 0，不抛异常也不产生 NaN', () => {
     expect(roundDecimalString('abc', 2)).toBe('0.00');
     expect(roundDecimalString('-1.25', 2)).toBe('0.00');

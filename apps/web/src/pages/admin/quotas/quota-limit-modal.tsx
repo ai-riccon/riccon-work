@@ -40,10 +40,11 @@ export function QuotaLimitModal({ api, tenant, onClose, onSaved }: QuotaLimitMod
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 打开或切换目标租户时，用服务端生效限额填充表单；关闭时清空，避免下次误用旧值。
+  // 打开或切换目标租户时，用服务端生效限额填充表单；关闭时只清错误，不调用
+  // form.resetFields()：Modal 关闭后 Form 已卸载，rc-field-form 会因此打印
+  // “useForm is not connected” 警告，而重新打开时 setFieldsValue 会覆盖旧值。
   useEffect(() => {
     if (!tenant) {
-      form.resetFields();
       setError(null);
       return;
     }

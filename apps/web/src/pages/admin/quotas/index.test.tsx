@@ -179,6 +179,41 @@ describe('配额页', () => {
     expect(await screen.findByText(/已用 12 \/ 5,000/)).toBeVisible();
   });
 
+  it('弹窗关闭与重开不产生 useForm 未连接警告', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    /** rc-field-form 的未连接警告在 setTimeout(0) 中触发；等一个宏任务再断言。 */
+    const flushWarning = () => new Promise((resolve) => setTimeout(resolve, 0));
+    /** 断言当前没有 useForm 未连接警告。 */
+    const expectNoUseFormWarning = (): void => {
+      expect(errorSpy.mock.calls.map((call) => call.join(' ')).join('\n')).not.toMatch(/useForm/);
+    };
+    try {
+      const api = createQuotaApi();
+      renderPage(api);
+      await screen.findByText('示例企业');
+      await flushWarning();
+      expectNoUseFormWarning();
+
+      fireEvent.click(screen.getByRole('button', { name: '调整限额：示例企业' }));
+      const dialog = await screen.findByRole('dialog');
+      await flushWarning();
+      expectNoUseFormWarning();
+
+      // 取消关闭后 Form 已卸载；这里不再调用 resetFields，不能出现未连接警告。
+      fireEvent.click(within(dialog).getByRole('button', { name: '取消' }));
+      await flushWarning();
+      expectNoUseFormWarning();
+
+      // 重新打开时用服务端值覆盖表单，不依赖关闭时的 resetFields。
+      fireEvent.click(screen.getByRole('button', { name: '调整限额：示例企业' }));
+      await flushWarning();
+      expectNoUseFormWarning();
+      expect(screen.getByLabelText('日限额（次/自然日）')).toHaveValue('1000');
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
   it('保存遇到停用租户 409 时保留弹窗并显示固定文案', async () => {
     const api = createQuotaApi({
       updateTenantQuota: vi.fn(async () => {
