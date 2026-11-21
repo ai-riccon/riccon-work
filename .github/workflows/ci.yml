@@ -27,6 +27,13 @@ jobs:
     name: 后端构建与验证
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # M19 P1：后端测试复用本 job 的 compose 测试栈（external 模式），不再为每个测试类启动
+    # Testcontainers。namespace 在每个 CI run 内唯一（满足 test-services.mjs 的
+    # [a-z0-9](?:[a-z0-9-]{0,28}[a-z0-9])? 校验），避免与其他 job 或残留数据冲突。
+    # 迁移/回滚/schema 测试仍各自启动一次性容器，不读取热栈。
+    env:
+      RICCON_TEST_SERVICES: external
+      RICCON_TEST_SERVICES_NAMESPACE: ci-${{ github.run_id }}-backend
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
@@ -37,6 +44,13 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
+
+      # M19 P0/P1：计时脚本与 namespace 准备脚本是 Node 脚本；固定 Node 26 与合同/前端 job 一致，
+      # 不依赖 runner 默认版本。
+      - name: 安装 Node 26
+        uses: actions/setup-node@v4
+        with:
+          node-version: "26"
 
       - name: 校验测试栈编排
         run: docker compose -f deploy/compose/docker-compose.test.yml config
@@ -101,6 +115,13 @@ jobs:
             echo "audit_event DELETE 未被触发器拒绝"; exit 1
           fi
 
+      # M19 P1：在 compose 栈就绪后为本 job 创建 external namespace 数据库（api/worker 各一个）。
+      # 迁移冒烟使用默认 riccon 库与手工 SQL，不读写 namespace；迁移测试仍自建一次性容器。
+      - name: 准备 external namespace
+        run: node scripts/test-services.mjs prepare --namespace "$RICCON_TEST_SERVICES_NAMESPACE"
+
+      # M19 P1：命令与测试集合保持不变，只通过 job 级 env 注入 external 模式与 namespace，
+      # 复用 MySQL/OpenSearch/RustFS。
       - name: 构建与测试
         run: ./mvnw -q -T1C verify
 
@@ -125,10 +146,16 @@ jobs:
 
       - name: 失败时导出依赖日志
         if: failure()
-        run: docker compose -f deploy/compose/docker-compose.test.yml logs --no-color
+        run: |
+          echo "RICCON_TEST_SERVICES=${RICCON_TEST_SERVICES:-<未设置>}"
+          echo "RICCON_TEST_SERVICES_NAMESPACE=${RICCON_TEST_SERVICES_NAMESPACE:-<未设置>}"
+          docker compose version
+          docker compose -f deploy/compose/docker-compose.test.yml logs --no-color
 
       - name: 清理测试依赖
         if: always()
+        # CI runner 是一次性的：down -v 会一并删除 namespace 数据库与数据卷，无需额外 DROP。
+        # 本地复用共享热栈时不要照抄这一步（会清空其他 agent 的数据），只停止不删卷。
         run: docker compose -f deploy/compose/docker-compose.test.yml down -v
 
   frontend:
