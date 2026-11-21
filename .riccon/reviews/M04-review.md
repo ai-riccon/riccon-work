@@ -243,6 +243,15 @@ created_at: "2026-11-21T13:32:00+08:00"
 - **Worker 7+2+3 指标**：`metrics-check --base-url` Worker 7 指标通过（EV-0650 `opsM0402a`）；API 抓取 `riccon_quota_rejections_total{TENANT,DAILY}=1`、`riccon_quota_usage_ratio` 4 序列、`riccon_cost_report_queries_total`、`riccon_quota_over_limit_observed_total` 通过；`riccon_quota_store_failure_total` 不存在，实际为 `riccon_quota_store_failures_total{reason="lock_wait"}`（F-001）。
 - **回滚窗口 WARN**：`RICCON_WORKER_SCHEMA_VALIDATION_ENABLED=false` 启动 60s 未出现 `RICCON-WORKER-002`；校验启用时也无 `schema.version.checked`。根因 `@ConditionalOnBean(JdbcClient.class)`（F-002）。
 
+## 威胁模型 B-18..B-21 核对
+
+| 威胁 | 结论 | 依据 |
+| ---- | ---- | ---- |
+| B-18 模型网关越权与凭据边界 | **closed** | `SEC-M04-001/002/003a/003b/004/005/006/007/008/009`、`IT-MODEL-105/106/107`、`TEN-031/032/033` 在 EV-0640/EV-0650 通过；端点拒绝、无链外回退、响应/日志/审计无 key/内部地址（EV-0646 checks/security passed）。 |
+| B-19 配额与成本正确性 | **open（F-004）** | IT-QUOTA-102、IT-COST-101..104、TEN-032/033 通过；`PERF-M04-002` 因脚本缺陷未执行，未满足“50 并发零超卖”性能证据；历史金额不变由 EV-0640/0656 覆盖。 |
+| B-20 可观测性 | **open（F-001）** | `metrics-check`（OPS-M04-02a）通过；API 2 主 + `riccon_cost_report_queries_total` + `riccon_quota_over_limit_observed_total` 通过；合同要求的 `riccon_quota_store_failure_total` 缺失（实际复数）。 |
+| B-21 性能与迁移/回滚 | **open（F-002/F-003/F-004）** | V11 forward/rollback/rewrap/恢复/backfill 有证据（EV-0641/0653/0654/0655/0656）；`PERF-M04-001` API p95 超预算、`PERF-M04-002` 未执行、回滚 WARN 缺失（F-002）。 |
+
 ## Findings
 
 ### F-001（P1 open）API 存储故障指标名与合同不一致
