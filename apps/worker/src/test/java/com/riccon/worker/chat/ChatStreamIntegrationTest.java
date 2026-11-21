@@ -3,7 +3,6 @@ package com.riccon.worker.chat;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.riccon.platform.domain.contract.HttpHeaders;
@@ -29,6 +28,9 @@ import tools.jackson.databind.ObjectMapper;
 
 /** 内部对话流：SSE 字段、租户绑定、失败语义与取消。 */
 class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
+
+    /** 等待 SSE 异步终态的上限；超时按测试失败处理，避免调度异常时永久挂起。 */
+    private static final long ASYNC_RESULT_TIMEOUT_MILLIS = 30_000;
 
     /** MockMvc。 */
     @Autowired
@@ -172,7 +174,12 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
     /** 首字后失败发送 failed 事件并保留已生成内容。 */
     @Test
     void stream_modelFailsAfterFirstToken_emitsFailedEvent() throws Exception {
+        // 桩会把两个首字分片和错误帧一次性写出；低核机器上 Reactor 的缓冲可能先投递错误帧，
+        // 导致 Worker 在首字前就判定失败（CI shard 2 的实际失败形态）。先让桩在首个内容帧后
+        // 暂停，等首段请求返回（open() 已消费首字并启动异步）再由 performStream 放开闸门，
+        // 使“首字后失败”在任意调度顺序下都确定发生，不依赖 sleep 或重试。
         stub.errorAfterChunk();
+        stub.holdAfterFirstContent();
         ChatFixture fixture = chatFixture("tenant-a", "问题");
 
         MvcResult result = performStream(fixture, fixture.token());
@@ -246,15 +253,29 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(approvalStatus(approvalId)).isEqualTo("CANCELLED");
     }
 
-    /** 执行 SSE 请求并完成异步分发。 */
+    /**
+     * 执行 SSE 请求并完成异步分发。
+     *
+     * <p>不能只断言 {@code request().asyncStarted()}：它只反映断言瞬间的异步状态，不等待
+     * SseEmitter 结束，也无法区分“异步未启动”和“控制器已同步返回 ProblemDetail”。
+     * {@link MvcResult#getAsyncResult(long)} 会阻塞到 DeferredResult 完成并触发 ASYNC dispatch，
+     * 再执行 {@code asyncDispatch}，SSE 终态在任何线程调度顺序下都确定可达，且失败会被明确报告。
+     *
+     * @param fixture 对话夹具
+     * @param token 服务令牌
+     * @return 完成异步分发后的结果
+     * @throws Exception 请求或等待失败
+     */
     private MvcResult performStream(ChatFixture fixture, String token) throws Exception {
         MvcResult pending = mockMvc.perform(post("/internal/v1/chat/streams")
                         .header(HttpHeaders.SERVICE_TOKEN, token)
                         .header(HttpHeaders.TRACE_ID, "trace-chat")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson(fixture)))
-                .andExpect(request().asyncStarted())
                 .andReturn();
+        // 首段请求返回时 open() 已消费首字并启动异步；未使用暂停闸门时 countDown 是空操作。
+        stub.releaseContent();
+        pending.getAsyncResult(ASYNC_RESULT_TIMEOUT_MILLIS);
         return mockMvc.perform(asyncDispatch(pending))
                 .andExpect(status().isOk())
                 .andReturn();
