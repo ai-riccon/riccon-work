@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0694",
+  "task_id": "TASK-0118",
+  "command": "set -euo pipefail; NS=m19p1local; echo \"external=external namespace=$NS compose=$(docker compose version --short)\"; node scripts/test-services.mjs reset --namespace \"$NS\"; RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=\"$NS\" perl -e 'alarm shift; exec @ARGV' 1500 ./mvnw -q -T1C verify; node scripts/test-timings.mjs --out-dir \"${TMPDIR:-/tmp}/m19p1-final\"; node --check scripts/test-services.mjs; ruby -ryaml -e 'YAML.load_file(\".github/workflows/ci.yml\"); puts \"yaml ok\"'; git diff --check",
+  "manual": false,
+  "commit": "77138a88cfd82e52456aee8f66be8ce8bfe5ad4b",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0118/EV-0694-2026-11-21T18-39-54-047+08-00-set-euo-pipefail-ns-m19p1local-echo-external-ext.log",
+  "output_sha256": "d3096f3f2bc012f39817e31cabcf5ba4ff80a5b6b27edc434a14996cc41a86c3",
+  "output_bytes": 1440550,
+  "agent": "unknown",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-21T18:24:57.514+08:00",
+  "finished_at": "2026-11-21T18:39:53.358+08:00",
+  "duration_ms": 895842,
+  "note": "P1 重新取证：external 全量 1114 用例；单行命令规避多行日志头校验；reset namespace 后运行",
+  "recorded_at": "2026-11-21T18:39:54.056+08:00"
+}
