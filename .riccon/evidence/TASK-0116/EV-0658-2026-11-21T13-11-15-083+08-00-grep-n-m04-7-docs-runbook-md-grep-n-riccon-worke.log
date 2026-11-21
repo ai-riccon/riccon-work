@@ -1,0 +1,24 @@
+# command: grep -n 'M04-7 回滚' docs/RUNBOOK.md && grep -n 'RICCON-WORKER-002' docs/RUNBOOK.md && grep -n 'B-18' docs/security/THREAT-MODEL.md && grep -n 'B-21' docs/security/THREAT-MODEL.md && grep -n 'status: accepted' docs/adr/ADR-0021-m04-model-routing-failover-multi-key.md
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-21T13:11:14.670+08:00
+# finished_at: 2026-11-21T13:11:14.696+08:00
+# duration_ms: 25
+# exit_code: 1
+
+# --- stdout ---
+446:### M04-7 回滚（应用回滚，不做 down migration）
+689:1. **应用回滚**：回滚到上一个 `-exec.jar` 或 Helm revision；API 与 Worker 可独立回滚。M04 的 Worker 回滚必须先收敛多 key 并以 `RICCON_WORKER_SCHEMA_VALIDATION_ENABLED=false` 启动，见“M04-7 回滚”。
+690:2. **数据库**：Flyway 只向前迁移，不提供 `undo`。破坏性变更必须预先准备反向 SQL 与备份；回滚前先停止写入。V10 回滚还必须由维护账号删除 `flyway_schema_history` 的 V10 行并校验 `MAX(version)=9`，详见“V10 生产迁移（OPS-007）”；V11 回滚见“M04-7 回滚”。
+468:   并在工单登记；确认启动日志出现固定 WARN 码 RICCON-WORKER-002（文案 schema validation disabled）
+485:回滚工单必须登记：窗口起止、`MAX(version)` 人工核对结果、旧 Worker 版本、`RICCON-WORKER-002` 日志行、
+490:> 启动时 `SchemaVersionChecker` 输出恰好一次固定 WARN，格式为 “RICCON-WORKER-002 schema validation
+659:| 回滚后旧 Worker 无 `RICCON-WORKER-002` | WARN 已实现（TASK-0127/EV-0591），但开关或版本不对 | 确认 `RICCON_WORKER_SCHEMA_VALIDATION_ENABLED=false` 且为 M04 前最后一个 Worker 版本；该 WARN 必须逐字出现恰好一次 |
+603:发布（含一体机与私有化交付）前必须全部关闭；M02 gate 至少关闭 B-02 至 B-06、B-09、B-10、B-12、B-14；M03 gate 额外要求 B-15 与 B-06 的续期记录；M10 gate 额外要求 B-15（全量）、B-16、B-17 与 B-06 的续期记录；M04 gate 额外要求 **B-18、B-19、B-20、B-21** 与 B-06 的续期记录。
+624:| B-18 | M04 模型网关越权与凭据边界：端点可由用户输入、密钥明文外泄、降级到未授权端点、配额写越权、跨租户配额/成本访问                              | `SEC-M04-001/002/003a/003b/004/005/006/007/008/009`、`IT-MODEL-105/106/107`、`TEN-031/032/033` 全过；端点启动/保存拒绝、无链外回退、响应/日志/审计无明文；配额端点 403/404、无跨租户内容                                                                                                                    | verifier      |
+866:- **M04 gate 的 acceptance 口径 = `docs/PRODUCT.md §10.3` 的 AC-01..18（18 条）全部通过**；安全 gate 额外要求 B-18/B-19/B-20/B-21 全部关闭。判定分工见 ADR-0021 §8.4：V1 判 AC-01、AC-03..16（15 条），V2 判 AC-02、AC-17、AC-18 整条并在最终提交独立抽样复跑（不替代 V1）。TM-39..TM-54、7+2+3 指标与 AC-13/14 四页 UI 是补充核对项，不得以 TM/指标通过替代 AC，也不得漏核 AC-13/14 的加载/空/错误/403/成功五态、三条键盘路径与 axe。
+603:发布（含一体机与私有化交付）前必须全部关闭；M02 gate 至少关闭 B-02 至 B-06、B-09、B-10、B-12、B-14；M03 gate 额外要求 B-15 与 B-06 的续期记录；M10 gate 额外要求 B-15（全量）、B-16、B-17 与 B-06 的续期记录；M04 gate 额外要求 **B-18、B-19、B-20、B-21** 与 B-06 的续期记录。
+627:| B-21 | M04 性能预算与迁移/回滚未验证：首字/API p95、配额争用、V11 迁移/回滚/备份恢复/rewrap 无证据                                                | `PERF-M04-001`（首字 p95 ≤3s、API p95 ≤500ms、降级成功率 100%）、`PERF-M04-002`；`OPS-M04-01`（V11 迁移/回滚/备份恢复/rewrap；V2 在一次性 MySQL 8.4.13 上独立重放并核对 WARN/工单）；B10 RUNBOOK 演练记录（RPO ≤24h、RTO ≤4h；客户生产 SOW 可覆盖）；任一缺失则 AC-17/18 不可 pass                          | verifier      |
+866:- **M04 gate 的 acceptance 口径 = `docs/PRODUCT.md §10.3` 的 AC-01..18（18 条）全部通过**；安全 gate 额外要求 B-18/B-19/B-20/B-21 全部关闭。判定分工见 ADR-0021 §8.4：V1 判 AC-01、AC-03..16（15 条），V2 判 AC-02、AC-17、AC-18 整条并在最终提交独立抽样复跑（不替代 V1）。TM-39..TM-54、7+2+3 指标与 AC-13/14 四页 UI 是补充核对项，不得以 TM/指标通过替代 AC，也不得漏核 AC-13/14 的加载/空/错误/403/成功五态、三条键盘路径与 axe。
+
+# --- stderr ---
+
