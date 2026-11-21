@@ -625,6 +625,8 @@ test.describe('M04 四页可访问性与入口', () => {
     await page.unroute(PLATFORM_COST_API);
 
     // ---------- 租户管理员：只看到配额/成本；路由/key 403；配额只读 ----------
+    // 菜单入口在桌面宽度核对：375px 时管理端侧栏收起，链接不进入可访问性树。
+    await page.setViewportSize({ width: 1280, height: 900 });
     await page.context().clearCookies();
     await seedM04(request);
     await loginTenantAdmin(page);
@@ -635,6 +637,7 @@ test.describe('M04 四页可访问性与入口', () => {
     await expect(page.getByRole('link', { name: '成本看板', exact: true })).toHaveCount(0);
     await expect(page.getByRole('link', { name: '模型路由', exact: true })).toHaveCount(0);
     await expect(page.getByRole('link', { name: '模型 key', exact: true })).toHaveCount(0);
+    await page.setViewportSize({ width: 375, height: 820 });
 
     await page.goto('/admin/model-routing');
     await expect(page.getByText('没有访问权限')).toBeVisible();
