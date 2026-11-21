@@ -100,4 +100,9 @@ Owner：riccon/builder-m19
   91.760+105.214+134.432+113.808 = **445.214s**（注意：任务卡写的 358 与 EV-0695 的
   356 不一致；以证据报告为准，本次未删除任何用例）。
 - P3 两次全量（同一 namespace `m19p3w`，第二次不 reset）：均为 **356 tests / 0 failures /
-  0 errors / 0 skipped**；累计 suite time 见 EV 记录与 `$TMPDIR/m19p3w/run*/` 报告。
+  0 errors / 0 skipped**；累计 suite time 分别为 **93.267s** 与 **91.623s**（EV-0696），
+  相对 P2 基线 445.214s 降幅约 **79%**。两次全量墙钟 111s / 110s。
+- 补充顺序检查（非 EV，同一结果树）：`-Dsurefire.runOrder=reversealphabetical` 全量通过
+  （356/0/0/0，suite 84.103s），说明结果不依赖类执行顺序。
+- 口径说明：任务卡写 358，但 EV-0695 的 worker 四个分片报告合计 356；本次保留全部既有用例，
+  未新增/删除/跳过任何测试。
