@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0700",
+  "task_id": "TASK-0145",
+  "command": "set -euo pipefail; NS=m19p3b4; echo \"external=external namespace=$NS P3b-api-after\"; node scripts/test-services.mjs reset --namespace \"$NS\"; rm -rf apps/api/target/surefire-reports platform/*/target/surefire-reports; START=$(date +%s); RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=\"$NS\" perl -e 'alarm shift; exec @ARGV' 1800 ./mvnw -q -T1C -pl apps/api -am test; END=$(date +%s); echo \"wall_seconds=$((END-START))\"; node scripts/test-timings.mjs --out-dir \"$TMPDIR/m19p3b4/timings\"; TESTS=$(grep -ho 'tests=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); SKIPPED=$(grep -ho 'skipped=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); FAILURES=$(grep -ho 'failures=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); ERRORS=$(grep -ho 'errors=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); echo \"api_tests=$TESTS failures=$FAILURES errors=$ERRORS skipped=$SKIPPED\"; test \"$TESTS\" = \"642\"; test \"$FAILURES\" = \"0\"; test \"$ERRORS\" = \"0\"; test \"$SKIPPED\" = \"0\"; ./mvnw -q spotless:check; git diff --check; echo \"all_checks_ok\"",
+  "manual": false,
+  "commit": "69b3a0cd81042648f83166564ae2ab400e2e107a",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0145/EV-0700-2026-11-21T22-46-03-300+08-00-set-euo-pipefail-ns-m19p3b4-echo-external-extern.log",
+  "output_sha256": "aac157d55c38c1b9fb6eb319b47dd6bf5f642b6003d8a3f39ad4d700579bcee3",
+  "output_bytes": 1263284,
+  "agent": "riccon/builder-m19",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-21T22:37:24.078+08:00",
+  "finished_at": "2026-11-21T22:46:02.703+08:00",
+  "duration_ms": 518624,
+  "note": "M19 P3b API after（重跑，#EV-0699 因 Serena JDT LS 并发污染 target/test-classes 判为无效）：改造前基线 namespace m19p3b0 为 642 用例 / suite 902.821s / 墙钟 948s；本 EV 在干净提交上使用新 namespace m19p3b4（先 reset）跑全量；同 namespace 不 reset + reversealphabetical 的第二次全量另录 EV",
+  "recorded_at": "2026-11-21T22:46:03.310+08:00"
+}
