@@ -1,0 +1,636 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-21T16:01:07.396+08:00  INFO 19579 --- [riccon-api] [           main] com.riccon.api.ApiApplication            : Starting ApiApplication v0.1.0-SNAPSHOT using Java 21.0.13 with PID 19579 (/Users/ricky/Documents/projects/riccon-work/apps/api/target/riccon-api-0.1.0-SNAPSHOT-exec.jar started by ricky in /Users/ricky/Documents/projects/riccon-work)
+2026-11-21T16:01:07.407+08:00  INFO 19579 --- [riccon-api] [           main] com.riccon.api.ApiApplication            : No active profile set, falling back to 1 default profile: "default"
+2026-11-21T16:01:10.678+08:00  INFO 19579 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 18080 (http)
+2026-11-21T16:01:10.717+08:00  INFO 19579 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-21T16:01:10.717+08:00  INFO 19579 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-21T16:01:10.782+08:00  INFO 19579 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 3278 ms
+2026-11-21T16:01:11.103+08:00  INFO 19579 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-21T16:01:11.477+08:00  INFO 19579 --- [riccon-api] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@1dd64243
+2026-11-21T16:01:11.480+08:00  INFO 19579 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-21T16:01:11.519+08:00  INFO 19579 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://127.0.0.1:13306/riccon?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8 (MySQL 8.4)
+2026-11-21T16:01:11.707+08:00  INFO 19579 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon`.`flyway_schema_history` does not exist yet
+2026-11-21T16:01:11.713+08:00  INFO 19579 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 11 migrations (execution time 00:00.037s)
+2026-11-21T16:01:11.748+08:00  INFO 19579 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon`.`flyway_schema_history` ...
+2026-11-21T16:01:11.843+08:00  INFO 19579 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: << Empty Schema >>
+2026-11-21T16:01:11.858+08:00  INFO 19579 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "1 - baseline"
+2026-11-21T16:01:11.936+08:00  INFO 19579 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "2 - identity and workspace"
+2026-11-21T16:01:12.209+08:00  INFO 19579 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "3 - files knowledge and conversation"
+2026-11-21T16:01:12.529+08:00  INFO 19579 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "4 - research runs and artifacts"
+2026-11-21T16:01:12.939+08:00  INFO 19579 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "5 - model gateway and mcp"
+2026-11-21T16:01:13.258+08:00  INFO 19579 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "6 - audit event"
+2026-11-21T16:01:13.619+08:00  INFO 19579 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "7 - spring session"
+2026-11-21T16:01:13.749+08:00  INFO 19579 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "8 - approval params envelope"
+2026-11-21T16:01:13.885+08:00  INFO 19579 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "9 - organization and workspace scope"
+2026-11-21T16:01:14.337+08:00  INFO 19579 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "10 - audit query export"
+2026-11-21T16:01:14.622+08:00  INFO 19579 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "11 - model gateway depth"
+2026-11-21T16:01:15.154+08:00  INFO 19579 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 11 migrations to schema `riccon`, now at version v11 (execution time 00:02.850s)
+2026-11-21T16:01:15.623+08:00  INFO 19579 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=1 enabled=1
+2026-11-21T16:01:15.896+08:00  INFO 19579 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-21T16:01:15.896+08:00  INFO 19579 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-21T16:01:15.896+08:00  INFO 19579 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-21T16:01:15.896+08:00  INFO 19579 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-21T16:01:16.490+08:00  INFO 19579 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=2
+2026-11-21T16:01:16.529+08:00  INFO 19579 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-1, previousKey=false, fingerprintPepper=true
+2026-11-21T16:01:19.030+08:00  INFO 19579 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-21T16:01:19.125+08:00  INFO 19579 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 18080 (http) with context path '/'
+2026-11-21T16:01:19.136+08:00  INFO 19579 --- [riccon-api] [           main] com.riccon.api.ApiApplication            : Started ApiApplication in 12.671 seconds (process running for 13.856)
+2026-11-21T16:01:19.365+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-21T16:01:19.365+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-21T16:01:19.367+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-11-21T16:01:19.658+08:00  INFO 19579 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin created
+2026-11-21T16:01:34.263+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-2] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1fd1f-faad-78d7-bac4-0bada848194c sizeBytes=1153 format=DOCX
+2026-11-21T16:01:43.018+08:00  WARN 19579 --- [riccon-api] [io-18080-exec-8] c.r.a.o.i.OidcDiscoveryClient            : oidc.discovery.failed issuer=http://127.0.0.1:18995/realms/alpha reason=idp_unavailable
+2026-11-21T16:02:14.837+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=80491751-9e2a-4b05-8e9b-f884113be0e6 path=/api/v1/auth/login
+2026-11-21T16:02:16.504+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUDIT-400 traceId=f35c4518-ccf8-483e-b789-5f5d20669914 path=/api/v1/audit-events
+2026-11-21T16:02:16.539+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUDIT-400 traceId=144e3af2-00ac-40d3-9772-4472517fd097 path=/api/v1/audit-events
+2026-11-21T16:02:16.572+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUDIT-400 traceId=cbe205e5-b18b-4ba6-b571-3691fd646499 path=/api/v1/audit-events
+2026-11-21T16:02:16.606+08:00  INFO 19579 --- [riccon-api] [o-18080-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUDIT-400 traceId=6c37fdfb-0157-4477-bc39-95b8447fcbaf path=/api/v1/audit-events
+2026-11-21T16:02:16.636+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=0d48290e-4956-4c97-9dc4-569f1a21784b path=/api/v1/audit-events
+2026-11-21T16:02:16.703+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request method not supported traceId=598a01d9-2fa8-45c1-a999-0fc22c1842bf path=/api/v1/audit-events method=POST
+2026-11-21T16:02:16.805+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUDIT-403 traceId=1d713651-c9e0-42ba-a05e-cf0d2d2af912 path=/api/v1/audit-exports/01a1fd20-a225-71cf-950a-c8c96d903d14/decision
+2026-11-21T16:02:16.892+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUDIT-403 traceId=5dfa05eb-4223-4ab1-b1e8-f98acebc96f8 path=/api/v1/audit-exports/01a1fd20-a225-71cf-950a-c8c96d903d14/download
+2026-11-21T16:02:16.921+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=155f210f-b845-4594-b537-ccf3a0a3aadd path=/api/v1/audit-exports/01a1fd20-a225-71cf-950a-c8c96d903d14/download
+2026-11-21T16:02:17.059+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUDIT-403 traceId=e9be10dc-7cb9-4f47-be67-b848314f32f6 path=/api/v1/audit-exports
+2026-11-21T16:02:17.740+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=a9f5fc75-3bad-48f2-b670-0634a92809ff path=/api/v1/audit-exports/01a1fd20-a225-71cf-950a-c8c96d903d14
+2026-11-21T16:02:17.775+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=fa7c581a-65b2-4fc0-bdc7-b6eb50f88afb path=/api/v1/audit-exports/01a1fd20-a225-71cf-950a-c8c96d903d14/download
+2026-11-21T16:02:17.810+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUDIT-409 traceId=5acab702-9201-4141-8df2-82ad5ee38ac1 path=/api/v1/admin/tenants/tenant-alpha/audit-exports
+2026-11-21T16:02:33.863+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-1] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd20-e4fe-77a5-a472-7928e59593c3 workspaceId=01a1fd1f-f712-70bf-8612-f58560cea694
+2026-11-21T16:02:34.119+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-2] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1fd20-e5e1-772f-bd13-ceef8b3c573a sizeBytes=1153 format=DOCX
+2026-11-21T16:02:36.087+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-3] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd20-e4fe-77a5-a472-7928e59593c3 runId=01a1fd20-ed9f-7170-b70f-21b3255b2491 userMessageId=01a1fd20-ed9f-7e51-b95f-088e0275eb39 assistantMessageId=01a1fd20-ed9f-7c03-96f4-592f43aedb74 attachments=1
+2026-11-21T16:02:39.613+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-1] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd20-fb74-7630-a34f-c37ced12f320 workspaceId=01a1fd1f-f712-70bf-8612-f58560cea694
+2026-11-21T16:02:39.845+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-4] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1fd20-fc46-7de1-ba81-f4bae0107498 sizeBytes=1153 format=DOCX
+2026-11-21T16:02:41.290+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-5] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd20-fb74-7630-a34f-c37ced12f320 runId=01a1fd21-01fb-76bd-84b3-76d011df0a0e userMessageId=01a1fd21-01fb-76ab-9898-45adda8dcb6b assistantMessageId=01a1fd21-01fb-79ee-86cd-24e91d463238 attachments=1
+2026-11-21T16:02:46.952+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-3] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd21-181a-7054-a0c0-9806c65fad66 workspaceId=01a1fd1f-f712-70bf-8612-f58560cea694
+2026-11-21T16:02:47.349+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-5] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1fd21-1975-7dc1-a116-60a742e89493 sizeBytes=1153 format=DOCX
+2026-11-21T16:02:49.425+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-6] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd21-181a-7054-a0c0-9806c65fad66 runId=01a1fd21-21b2-77e4-ba0c-4f1b5404ec70 userMessageId=01a1fd21-21b2-7b85-92fa-14e2a271894a assistantMessageId=01a1fd21-21b2-7591-9947-0c053dd75bae attachments=1
+2026-11-21T16:02:56.724+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-6] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd21-3e4b-7656-b50f-937f6dc34e9e workspaceId=01a1fd1f-f712-70bf-8612-f58560cea694
+2026-11-21T16:02:56.950+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-9] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1fd21-3f18-78f0-a9a1-fd9c4f65bc11 sizeBytes=1153 format=DOCX
+2026-11-21T16:02:58.410+08:00  INFO 19579 --- [riccon-api] [o-18080-exec-10] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd21-3e4b-7656-b50f-937f6dc34e9e runId=01a1fd21-44db-71a3-a35e-2fd6045226e7 userMessageId=01a1fd21-44db-7a92-9fbc-a08ee102b3b3 assistantMessageId=01a1fd21-44db-7f9b-b81d-dd0701c9ca17 attachments=1
+2026-11-21T16:03:04.331+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-8] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=tenant-alpha taskId=01a1fd21-5c02-7bef-95f4-6be2a9522da0 runId=01a1fd21-5c02-78ab-bd5f-9c39acfbbeba workspaceId=01a1fd1f-f712-70bf-8612-f58560cea694 toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-21T16:03:06.025+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-1] c.r.a.research.service.ApprovalService   : research.approval.decided tenantId=tenant-alpha approvalId=01a1fd21-5ddb-7835-9ddf-64a8b62d4697 taskId=01a1fd21-5c02-7bef-95f4-6be2a9522da0 runId=01a1fd21-5c02-78ab-bd5f-9c39acfbbeba decision=APPROVE
+2026-11-21T16:03:11.055+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-2] c.r.a.research.service.ArtifactService   : artifact.content.served tenantId=tenant-alpha artifactId=01a1fd21-729f-7dae-af15-3b5bd9e9e1ae version=1 sizeBytes=2020
+2026-11-21T16:03:13.684+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-5] c.r.a.research.service.ArtifactService   : artifact.content.served tenantId=tenant-alpha artifactId=01a1fd21-729f-7dae-af15-3b5bd9e9e1ae version=1 sizeBytes=2020
+2026-11-21T16:03:13.882+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-9] c.r.a.research.service.ArtifactService   : artifact.content.served tenantId=tenant-alpha artifactId=01a1fd21-729f-7dae-af15-3b5bd9e9e1ae version=1 sizeBytes=2020
+2026-11-21T16:03:17.789+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-8] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=tenant-alpha taskId=01a1fd21-9093-76d6-9b81-1ae450b5c50e runId=01a1fd21-9093-799e-aa12-ccd017a20fcc workspaceId=01a1fd1f-f712-70bf-8612-f58560cea694 toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-21T16:03:19.312+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-1] c.r.a.research.service.ApprovalService   : research.approval.decided tenantId=tenant-alpha approvalId=01a1fd21-918c-7389-aab8-b3357efdf594 taskId=01a1fd21-9093-76d6-9b81-1ae450b5c50e runId=01a1fd21-9093-799e-aa12-ccd017a20fcc decision=REJECT
+2026-11-21T16:03:28.326+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=fc7ba966-f236-4e9f-91b8-96fd42e6ea9b path=/api/v1/auth/login
+2026-11-21T16:03:34.243+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-3] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd21-d0dd-7f85-bb78-0c164652ce3a workspaceId=01a1fd1f-f712-70bf-8612-f58560cea694
+2026-11-21T16:03:34.351+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-7] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd21-d0dd-7f85-bb78-0c164652ce3a runId=01a1fd21-d13a-7668-b07c-f459b5d261ea userMessageId=01a1fd21-d13a-77fa-b990-53b51e5dd82c assistantMessageId=01a1fd21-d13a-7dcd-9e8c-a1e1b3503d36 attachments=0
+2026-11-21T16:03:37.473+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-6] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd21-dd7d-749a-8c4a-c33192286455 workspaceId=01a1fd1f-f712-70bf-8612-f58560cea694
+2026-11-21T16:03:37.533+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-9] c.r.a.q.c.QuotaExceptionHandler          : quota.exceeded tenantId=tenant-alpha scopeType=TENANT window=DAILY limit=7 used=7 traceId=4d0703af-dcb4-445a-8db4-9dc6a81925f6
+2026-11-21T16:03:40.538+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-8] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd21-e976-752f-b702-18592545b84d workspaceId=01a1fd1f-f712-70bf-8612-f58560cea694
+2026-11-21T16:03:40.604+08:00  INFO 19579 --- [riccon-api] [o-18080-exec-10] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd21-e976-752f-b702-18592545b84d runId=01a1fd21-e9b3-7df2-bdd8-6e036cd15d2d userMessageId=01a1fd21-e9b3-769d-9479-c619149065e3 assistantMessageId=01a1fd21-e9b3-7ada-803e-8754169f52d7 attachments=0
+2026-11-21T16:03:47.492+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-5] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd22-049f-7d05-ad7d-dc5b228e3d00 workspaceId=01a1fd1f-f712-70bf-8612-f58560cea694
+2026-11-21T16:03:47.564+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-9] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd22-049f-7d05-ad7d-dc5b228e3d00 runId=01a1fd22-04e2-7328-b3e6-cc46df2401df userMessageId=01a1fd22-04e2-7c77-99f1-3162bda16899 assistantMessageId=01a1fd22-04e2-7e0d-8f10-002759a63738 attachments=0
+2026-11-21T16:03:55.838+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=842a86f4-1359-44f7-9e2c-86b54d261f3f path=/api/v1/departments
+2026-11-21T16:03:55.838+08:00  INFO 19579 --- [riccon-api] [o-18080-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=e4477fc1-ea83-4b7d-a065-985ae93ce1e6 path=/api/v1/workspaces
+2026-11-21T16:04:09.700+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-2] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd22-5b5f-70b4-8e39-0fb71e64919d workspaceId=01a1fd1f-f712-70bf-8612-f58560cea694
+2026-11-21T16:04:09.974+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-1] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd22-5b5f-70b4-8e39-0fb71e64919d runId=01a1fd22-5c69-72c8-899e-570e0093e91c userMessageId=01a1fd22-5c69-7a1b-a587-7a9f5a0ad06b assistantMessageId=01a1fd22-5c69-77e3-b666-796566a5f9a1 attachments=0
+2026-11-21T16:04:20.220+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-3] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd22-8476-740d-ad1d-70fdfc0e3320 workspaceId=01a1fd1f-f712-70bf-8612-f58560cea694
+2026-11-21T16:04:20.450+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-4] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd22-8476-740d-ad1d-70fdfc0e3320 runId=01a1fd22-8555-7163-a768-5d65c10846f0 userMessageId=01a1fd22-8555-7c30-9cba-10615a451cf3 assistantMessageId=01a1fd22-8555-76f4-aacd-9d756f8c468f attachments=0
+2026-11-21T16:04:21.390+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-5] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd22-8476-740d-ad1d-70fdfc0e3320 runId=01a1fd22-88fb-7ce8-889a-a255a02f9c51 userMessageId=01a1fd22-88fb-7142-aafc-5824a6b1d143 assistantMessageId=01a1fd22-88fb-7a06-a5da-84d7598240ad attachments=0
+2026-11-21T16:04:27.529+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=9e2993bb-792f-42d0-8246-2b2096d54c2d path=/api/v1/workspaces
+2026-11-21T16:04:27.531+08:00  INFO 19579 --- [riccon-api] [o-18080-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=41dcb16f-2ddd-4ce5-b77f-921a2369d9c8 path=/api/v1/departments
+2026-11-21T16:04:34.378+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-7] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd22-bbc3-787f-bc98-cee472d65c0a workspaceId=01a1fd1f-f712-70bf-8612-f58560cea694
+2026-11-21T16:04:34.612+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-5] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd22-bbc3-787f-bc98-cee472d65c0a runId=01a1fd22-bca7-7b10-b0cb-88478161b274 userMessageId=01a1fd22-bca7-75d1-8230-8de81e37b8a3 assistantMessageId=01a1fd22-bca7-72aa-a7d5-866d47a0d178 attachments=0
+2026-11-21T16:04:34.918+08:00  WARN 19579 --- [riccon-api] [io-18080-exec-5] c.riccon.api.chat.service.ChatService    : chat.worker.rejected status=500 code=RICCON-MODEL-503 runId=01a1fd22-bca7-7b10-b0cb-88478161b274 traceId=52ba6dee-7fb3-41cf-b698-86a5422fc174
+2026-11-21T16:04:34.919+08:00 ERROR 19579 --- [riccon-api] [io-18080-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request failed code=RICCON-MODEL-503 traceId=52ba6dee-7fb3-41cf-b698-86a5422fc174 path=/api/v1/conversations/01a1fd22-bbc3-787f-bc98-cee472d65c0a/messages
+
+com.riccon.api.error.RicconException: 模型服务暂不可用，请稍后重试。
+	at com.riccon.api.chat.service.ChatService.modelUnavailable(ChatService.java:701) ~[!/:0.1.0-SNAPSHOT]
+	at com.riccon.api.chat.service.ChatService.mapWorkerCall(ChatService.java:671) ~[!/:0.1.0-SNAPSHOT]
+	at com.riccon.api.chat.service.ChatService.send(ChatService.java:171) ~[!/:0.1.0-SNAPSHOT]
+	at com.riccon.api.chat.controller.ConversationController.sendMessage(ConversationController.java:242) ~[!/:0.1.0-SNAPSHOT]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:252) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:184) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:117) ~[spring-webmvc-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:934) ~[spring-webmvc-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:853) ~[spring-webmvc-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:86) ~[spring-webmvc-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:963) ~[spring-webmvc-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:866) ~[spring-webmvc-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1000) ~[spring-webmvc-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.doPost(FrameworkServlet.java:903) ~[spring-webmvc-7.0.10.jar!/:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:649) ~[tomcat-embed-core-11.0.27.jar!/:6.1]
+	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:874) ~[spring-webmvc-7.0.10.jar!/:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:710) ~[tomcat-embed-core-11.0.27.jar!/:6.1]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:132) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:59) ~[tomcat-embed-websocket-11.0.27.jar!/:11.0.27]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:108) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.FilterChainProxy.lambda$doFilterInternal$2(FilterChainProxy.java:235) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$FilterObservation$SimpleFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:491) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:353) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator.lambda$wrapSecured$0(ObservationFilterChainDecorator.java:84) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:131) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.access.intercept.AuthorizationFilter.doFilter(AuthorizationFilter.java:101) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:126) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:120) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:132) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:86) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.authentication.AnonymousAuthenticationFilter.doFilter(AnonymousAuthenticationFilter.java:101) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter.doFilter(SecurityContextHolderAwareRequestFilter.java:181) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:246) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:240) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter.doFilterInternal(OAuth2AuthorizationRequestRedirectFilter.java:195) ~[spring-security-oauth2-client-7.1.2.jar!/:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.csrf.CsrfFilter.doFilterInternal(CsrfFilter.java:135) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at com.riccon.api.web.OriginCheckFilter.doFilterInternal(OriginCheckFilter.java:74) ~[!/:0.1.0-SNAPSHOT]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:91) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:76) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at com.riccon.api.auth.controller.TenantContextFilter.doFilterInternal(TenantContextFilter.java:122) ~[!/:0.1.0-SNAPSHOT]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$0(ObservationFilterChainDecorator.java:336) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:237) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:195) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.filter.ServletRequestPathFilter.doFilter(ServletRequestPathFilter.java:52) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.config.annotation.web.configuration.WebSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebSecurityConfiguration.java:317) ~[spring-security-config-7.1.2.jar!/:7.1.2]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.springframework.session.web.http.SessionRepositoryFilter.doFilterInternal(SessionRepositoryFilter.java:143) ~[spring-session-core-4.1.1.jar!/:4.1.1]
+	at org.springframework.session.web.http.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:82) ~[spring-session-core-4.1.1.jar!/:4.1.1]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:110) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:199) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at com.riccon.api.web.TraceIdFilter.doFilterInternal(TraceIdFilter.java:52) ~[!/:0.1.0-SNAPSHOT]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:164) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:77) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:540) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:86) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:71) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:347) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:411) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:71) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:1308) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:2202) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:74) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:947) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:481) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:74) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+
+2026-11-21T16:04:52.448+08:00  WARN 19579 --- [riccon-api] [io-18080-exec-9] c.r.a.o.i.OidcDiscoveryClient            : oidc.discovery.failed issuer=http://127.0.0.1:18995/realms/alpha reason=idp_unavailable
+2026-11-21T16:05:34.643+08:00  INFO 19579 --- [riccon-api] [o-18080-exec-10] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=tenant-alpha taskId=01a1fd23-a72c-70c8-9874-c072803a9bee runId=01a1fd23-a72c-739e-af52-48106c27fd5b workspaceId=01a1fd1f-f712-70bf-8612-f58560cea694 toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-21T16:05:35.241+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-2] c.r.a.research.service.ApprovalService   : research.approval.decided tenantId=tenant-alpha approvalId=01a1fd23-a917-7b3c-81a9-7cd72e979b1d taskId=01a1fd23-a72c-70c8-9874-c072803a9bee runId=01a1fd23-a72c-739e-af52-48106c27fd5b decision=APPROVE
+2026-11-21T16:05:39.577+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-1] c.r.a.research.service.ArtifactService   : artifact.download.url tenantId=tenant-alpha artifactId=01a1fd23-b82a-79d0-9b7c-5e2e9b7f3bfa version=1
+2026-11-21T16:05:39.644+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-2] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=tenant-alpha taskId=01a1fd23-bab5-7038-b552-f8cddaa28c21 runId=01a1fd23-bab5-7396-a412-1e3728961eb6 workspaceId=01a1fd1f-f712-70bf-8612-f58560cea694 toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-21T16:05:40.263+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-5] c.r.a.research.service.ApprovalService   : research.approval.decided tenantId=tenant-alpha approvalId=01a1fd23-bcd0-7520-8961-e313f78cd5d3 taskId=01a1fd23-bab5-7038-b552-f8cddaa28c21 runId=01a1fd23-bab5-7396-a412-1e3728961eb6 decision=REJECT
+2026-11-21T16:05:41.713+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-4] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd23-c2cc-7e59-9f4e-0e08293fdc46 workspaceId=01a1fd1f-f712-70bf-8612-f58560cea694
+2026-11-21T16:05:41.745+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=c5b246dc-50a5-4aef-bbeb-9d538a5acc95 path=/api/v1/conversations/01a1fd23-c2cc-7e59-9f4e-0e08293fdc46
+2026-11-21T16:05:41.772+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=bd7c50cc-4df8-48fe-a87a-1563bf820aa0 path=/api/v1/research-tasks/01a1fd23-a72c-70c8-9874-c072803a9bee
+2026-11-21T16:05:41.802+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=ae8617a9-6faa-4f21-88f7-da3e2566b9d5 path=/api/v1/artifacts/01a1fd23-b82a-79d0-9b7c-5e2e9b7f3bfa
+2026-11-21T16:05:41.832+08:00  INFO 19579 --- [riccon-api] [o-18080-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=6cb253ff-d809-4eee-88e6-7ede8489a983 path=/api/v1/artifacts/01a1fd23-b82a-79d0-9b7c-5e2e9b7f3bfa/versions/1
+2026-11-21T16:05:41.859+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=cb97c0f4-489b-4ec0-8fe7-59d62ccd1df0 path=/api/v1/artifacts/01a1fd23-b82a-79d0-9b7c-5e2e9b7f3bfa/versions/1/download-url
+2026-11-21T16:05:41.887+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=bf837658-d8af-4e08-8460-30520c9c79f3 path=/api/v1/artifacts/01a1fd23-b82a-79d0-9b7c-5e2e9b7f3bfa/versions/1/content
+2026-11-21T16:05:41.918+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=be8affe8-058c-421b-89cc-41e79edd9202 path=/api/v1/knowledge/documents/01a1fd20-00ea-7d5c-9f00-9b8258ba3b94
+2026-11-21T16:05:41.951+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=c592f4da-b472-4832-a56d-a02b7cd74cf7 path=/api/v1/files/01a1fd1f-faad-78d7-bac4-0bada848194c
+2026-11-21T16:05:41.990+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-3] c.r.a.research.service.ArtifactService   : artifact.content.served tenantId=tenant-alpha artifactId=01a1fd23-b82a-79d0-9b7c-5e2e9b7f3bfa version=1 sizeBytes=2020
+2026-11-21T16:05:42.052+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=0b1df8c5-d52f-4368-90c1-dce75c5d0edf path=/api/v1/workspaces/01a1fd1f-f712-70bf-8612-f58560cea694/research-tasks
+2026-11-21T16:05:42.085+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=2fbd722c-b867-4a3a-9b67-b7df6e8dc0f3 path=/api/v1/workspaces/01a1fd1f-f8af-703e-83cb-58c483461f10/research-tasks
+2026-11-21T16:05:42.144+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-9] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-beta fileId=01a1fd23-c46a-7ff9-9604-c3343a695692 sizeBytes=1153 format=DOCX
+2026-11-21T16:05:42.183+08:00  INFO 19579 --- [riccon-api] [o-18080-exec-10] c.riccon.api.file.service.FileService    : file.deleted tenantId=tenant-beta fileId=01a1fd23-c46a-7ff9-9604-c3343a695692
+2026-11-21T16:05:43.809+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-1] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd23-c2cc-7e59-9f4e-0e08293fdc46 runId=01a1fd23-cae1-7622-b24a-41763d87c82e userMessageId=01a1fd23-cae1-7361-be28-818e95e220c2 assistantMessageId=01a1fd23-cae1-7e83-ba77-3a65909dfbb0 attachments=0
+2026-11-21T16:05:47.267+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=93f70895-e5a6-4215-8342-c123c6d8915f path=/api/v1/runs/01a1fd23-cae1-7622-b24a-41763d87c82e
+2026-11-21T16:05:47.305+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=35a046bc-0e79-4818-9d13-c368e49eed77 path=/api/v1/runs/01a1fd23-a72c-739e-af52-48106c27fd5b
+2026-11-21T16:05:47.584+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-ARTIFACT-413 traceId=b94a258b-6946-48df-b944-400305b1931a path=/api/v1/artifacts/4dd9ceab-dd4e-4238-bb5b-af8f5ec2d0b7/versions/1/content
+2026-11-21T16:05:47.883+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=c72e887d-d27b-445d-a422-ae40b7206d8b path=/api/v1/admin/model-providers
+2026-11-21T16:05:47.906+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=58d0510b-e5b4-4807-be31-58ebb8d7282a path=/api/v1/admin/models
+2026-11-21T16:05:56.600+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=c3269d72-9829-4a5b-9716-eb69fa9865bb path=/api/v1/quotas
+2026-11-21T16:05:56.762+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=c98c7f72-27f7-4b27-82e6-56f16c89f0da path=/api/v1/admin/tenants/tenant-beta/users/01a1fd1f-f095-7bb5-ab3d-18f87aa4921b/quotas
+2026-11-21T16:05:56.786+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-QUOTA-400 traceId=b9bb6ae4-0bc3-4b23-85b4-65b03ebbb87c path=/api/v1/admin/tenants/tenant-alpha/quotas
+2026-11-21T16:05:56.866+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=430ae011-8833-4333-896c-57809e49c8ec path=/api/v1/costs
+2026-11-21T16:05:58.857+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=86997b7a-6893-4d55-8722-dc1fbe4bdf02 path=/api/v1/admin/tenants/tenant-alpha/departments
+2026-11-21T16:05:58.882+08:00  INFO 19579 --- [riccon-api] [o-18080-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=b10edb0b-8f44-4987-988e-79852a962762 path=/api/v1/admin/tenants/tenant-alpha/departments
+2026-11-21T16:05:58.915+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=0b96de58-fff7-42bb-94bf-e228e5fbd639 path=/api/v1/admin/tenants/tenant-m03-missing-mwq4iq29/departments
+2026-11-21T16:05:59.077+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=fa51e0df-ce6b-4830-8737-3318c4568cfe path=/api/v1/admin/tenants/tenant-m03-susp-mwq4iq29/departments
+2026-11-21T16:05:59.279+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-DEPT-409 traceId=a14ee8c9-9827-4257-b62e-265acf4863af path=/api/v1/admin/tenants/tenant-alpha/departments/01a1fd24-06c9-7f3c-9ae8-ec1d4868e1e9/members
+2026-11-21T16:05:59.310+08:00  INFO 19579 --- [riccon-api] [o-18080-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-DEPT-409 traceId=e3dcad65-ad2f-4b8e-9f4b-86babfbd1126 path=/api/v1/admin/tenants/tenant-alpha/departments
+2026-11-21T16:05:59.342+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-DEPT-409 traceId=3af1e3bf-aa1f-49b7-8e75-459ef493a42b path=/api/v1/admin/tenants/tenant-alpha/departments/01a1fd24-06f7-7370-afc0-db9fd23c9fb8/members
+2026-11-21T16:06:00.168+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-9] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd24-0ae4-730d-a9f0-04c1da1e95c2 workspaceId=01a1fd24-0a72-7598-b55b-ae81d638834f
+2026-11-21T16:06:00.219+08:00  INFO 19579 --- [riccon-api] [o-18080-exec-10] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1fd24-0b06-7883-b11b-37011851f5de sizeBytes=32 format=PDF
+2026-11-21T16:06:00.263+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=790ecc8f-031c-4072-9048-6685909c547d path=/api/v1/workspaces/01a1fd24-0a72-7598-b55b-ae81d638834f
+2026-11-21T16:06:00.304+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=e25b93ae-089a-4859-a9a6-d3e82d91fb5e path=/api/v1/conversations/01a1fd24-0ae4-730d-a9f0-04c1da1e95c2
+2026-11-21T16:06:00.339+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=84ee5170-93bb-42ed-a663-df900c6cf071 path=/api/v1/files/01a1fd24-0b06-7883-b11b-37011851f5de
+2026-11-21T16:06:00.376+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=da0e7180-8047-414c-8ca9-6cabe536098e path=/api/v1/files/01a1fd24-0b06-7883-b11b-37011851f5de/download-url
+2026-11-21T16:06:00.408+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=312db57f-5885-4d26-a354-c82d6a190649 path=/api/v1/workspaces/01a1fd24-0a72-7598-b55b-ae81d638834f
+2026-11-21T16:06:00.434+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=93c6a35c-bdde-4675-bcd0-757a1e7c7c85 path=/api/v1/workspaces/01a1fd24-0a72-7598-b55b-ae81d638834f
+2026-11-21T16:06:00.459+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=7e6891e3-5d89-4cf9-94c6-196e611f24cb path=/api/v1/conversations/01a1fd24-0ae4-730d-a9f0-04c1da1e95c2
+2026-11-21T16:06:00.526+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=351a29f7-d2d3-436c-9105-66a68374f27a path=/api/v1/admin/tenants/tenant-alpha/departments/01a1fd24-06c9-7f3c-9ae8-ec1d4868e1e9/members
+2026-11-21T16:06:00.954+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-DEPT-409 traceId=001f2809-8568-4a62-b916-e4f4458970ce path=/api/v1/admin/tenants/tenant-alpha/departments/01a1fd24-06c9-7f3c-9ae8-ec1d4868e1e9/members/01a1fd1f-f095-7bb5-ab3d-18f87aa4921b
+2026-11-21T16:06:01.064+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=45b23c9e-1694-4753-ac3b-4f2a0121d7d9 path=/api/v1/workspaces/01a1fd24-0a72-7598-b55b-ae81d638834f
+2026-11-21T16:06:01.127+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=5f83fd5b-253e-416b-a898-bbf653f37d95 path=/api/v1/workspaces/01a1fd24-0a72-7598-b55b-ae81d638834f
+2026-11-21T16:06:01.157+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=5d998f62-28e4-4eb7-943a-2db0524fe409 path=/api/v1/workspaces/01a1fd24-0a98-79b3-ac5c-676208977c72
+2026-11-21T16:06:01.539+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=9118a02a-39a4-48be-9042-919d7f11b853 path=/api/v1/workspaces/01a1fd24-0a72-7598-b55b-ae81d638834f
+2026-11-21T16:06:01.632+08:00  INFO 19579 --- [riccon-api] [io-18080-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=45e1a755-8f26-494c-94e6-25672c421906 path=/api/v1/admin/tenants/tenant-beta/departments/01a1fd24-06c9-7f3c-9ae8-ec1d4868e1e9/members
+2026-11-21T16:06:02.440+08:00  INFO 19579 --- [riccon-api] [ionShutdownHook] o.s.boot.tomcat.GracefulShutdown         : Commencing graceful shutdown. Waiting for active requests to complete
+2026-11-21T16:06:04.457+08:00  INFO 19579 --- [riccon-api] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete
+2026-11-21T16:06:04.477+08:00  INFO 19579 --- [riccon-api] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-11-21T16:06:04.484+08:00  INFO 19579 --- [riccon-api] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-21T16:06:57.472+08:00  INFO 20659 --- [riccon-api] [           main] com.riccon.api.ApiApplication            : Starting ApiApplication v0.1.0-SNAPSHOT using Java 21.0.13 with PID 20659 (/Users/ricky/Documents/projects/riccon-work/apps/api/target/riccon-api-0.1.0-SNAPSHOT-exec.jar started by ricky in /Users/ricky/Documents/projects/riccon-work)
+2026-11-21T16:06:57.478+08:00  INFO 20659 --- [riccon-api] [           main] com.riccon.api.ApiApplication            : No active profile set, falling back to 1 default profile: "default"
+2026-11-21T16:07:00.245+08:00  INFO 20659 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 18080 (http)
+2026-11-21T16:07:00.270+08:00  INFO 20659 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-21T16:07:00.271+08:00  INFO 20659 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-21T16:07:00.320+08:00  INFO 20659 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2757 ms
+2026-11-21T16:07:00.605+08:00  INFO 20659 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-21T16:07:00.926+08:00  INFO 20659 --- [riccon-api] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@2ef913a4
+2026-11-21T16:07:00.928+08:00  INFO 20659 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-21T16:07:00.964+08:00  INFO 20659 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://127.0.0.1:13306/riccon?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8 (MySQL 8.4)
+2026-11-21T16:07:01.164+08:00  INFO 20659 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon`.`flyway_schema_history` does not exist yet
+2026-11-21T16:07:01.171+08:00  INFO 20659 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 11 migrations (execution time 00:00.043s)
+2026-11-21T16:07:01.213+08:00  INFO 20659 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon`.`flyway_schema_history` ...
+2026-11-21T16:07:01.324+08:00  INFO 20659 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: << Empty Schema >>
+2026-11-21T16:07:01.341+08:00  INFO 20659 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "1 - baseline"
+2026-11-21T16:07:01.420+08:00  INFO 20659 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "2 - identity and workspace"
+2026-11-21T16:07:01.703+08:00  INFO 20659 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "3 - files knowledge and conversation"
+2026-11-21T16:07:02.073+08:00  INFO 20659 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "4 - research runs and artifacts"
+2026-11-21T16:07:02.423+08:00  INFO 20659 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "5 - model gateway and mcp"
+2026-11-21T16:07:02.739+08:00  INFO 20659 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "6 - audit event"
+2026-11-21T16:07:03.105+08:00  INFO 20659 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "7 - spring session"
+2026-11-21T16:07:03.230+08:00  INFO 20659 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "8 - approval params envelope"
+2026-11-21T16:07:03.355+08:00  INFO 20659 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "9 - organization and workspace scope"
+2026-11-21T16:07:03.858+08:00  INFO 20659 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "10 - audit query export"
+2026-11-21T16:07:04.205+08:00  INFO 20659 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "11 - model gateway depth"
+2026-11-21T16:07:04.710+08:00  INFO 20659 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 11 migrations to schema `riccon`, now at version v11 (execution time 00:02.926s)
+2026-11-21T16:07:05.083+08:00  INFO 20659 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=1 enabled=1
+2026-11-21T16:07:05.340+08:00  INFO 20659 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-21T16:07:05.340+08:00  INFO 20659 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-21T16:07:05.340+08:00  INFO 20659 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-21T16:07:05.340+08:00  INFO 20659 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-21T16:07:05.883+08:00  INFO 20659 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=2
+2026-11-21T16:07:05.921+08:00  INFO 20659 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-1, previousKey=false, fingerprintPepper=true
+2026-11-21T16:07:08.268+08:00  INFO 20659 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-21T16:07:08.356+08:00  INFO 20659 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 18080 (http) with context path '/'
+2026-11-21T16:07:08.367+08:00  INFO 20659 --- [riccon-api] [           main] com.riccon.api.ApiApplication            : Started ApiApplication in 11.651 seconds (process running for 12.749)
+2026-11-21T16:07:08.708+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-21T16:07:08.709+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-21T16:07:08.711+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-11-21T16:07:08.870+08:00  INFO 20659 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin created
+2026-11-21T16:07:21.814+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-2] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1fd25-488e-70f8-b751-45966b19866e sizeBytes=1153 format=DOCX
+2026-11-21T16:07:31.199+08:00  WARN 20659 --- [riccon-api] [io-18080-exec-9] c.r.a.o.i.OidcDiscoveryClient            : oidc.discovery.failed issuer=http://127.0.0.1:18995/realms/alpha reason=idp_unavailable
+2026-11-21T16:08:02.800+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=fb0c7fc6-5e2d-4fca-bcbf-cfec1a687f61 path=/api/v1/auth/login
+2026-11-21T16:08:04.303+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUDIT-400 traceId=77ad06cf-4bb7-4cf7-97e4-566e128231cd path=/api/v1/audit-events
+2026-11-21T16:08:04.340+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUDIT-400 traceId=1104c3c3-5334-47fd-bea6-7793ee61d7f7 path=/api/v1/audit-events
+2026-11-21T16:08:04.375+08:00  INFO 20659 --- [riccon-api] [o-18080-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUDIT-400 traceId=a22bbc7d-d7da-449a-9a2a-5da4b0510bd0 path=/api/v1/audit-events
+2026-11-21T16:08:04.412+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUDIT-400 traceId=a5eb7944-9284-4534-b7e3-32dcfc7230c7 path=/api/v1/audit-events
+2026-11-21T16:08:04.455+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=16c16566-01ea-496b-9b01-4103870c2595 path=/api/v1/audit-events
+2026-11-21T16:08:04.534+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request method not supported traceId=d2fde5a3-c64d-4bb4-8127-d6e665bd3087 path=/api/v1/audit-events method=POST
+2026-11-21T16:08:04.640+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUDIT-403 traceId=337c5cc6-366f-4880-8646-7e98cf98e5c3 path=/api/v1/audit-exports/01a1fd25-f0dd-7d4d-8aa4-e85ffbbd1b48/decision
+2026-11-21T16:08:04.724+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUDIT-403 traceId=f2de5fd4-dbd4-4615-987d-554c643f198e path=/api/v1/audit-exports/01a1fd25-f0dd-7d4d-8aa4-e85ffbbd1b48/download
+2026-11-21T16:08:04.753+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=174ec97d-7225-4356-a1a9-f470997f992e path=/api/v1/audit-exports/01a1fd25-f0dd-7d4d-8aa4-e85ffbbd1b48/download
+2026-11-21T16:08:04.900+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUDIT-403 traceId=004dc4b0-f986-44cc-88ca-2ecac1fce200 path=/api/v1/audit-exports
+2026-11-21T16:08:05.598+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=26ae7100-844e-4fe6-813b-4ad14bddd7b6 path=/api/v1/audit-exports/01a1fd25-f0dd-7d4d-8aa4-e85ffbbd1b48
+2026-11-21T16:08:05.632+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=5a264653-c0e4-4d67-b430-b15d2ed8ec24 path=/api/v1/audit-exports/01a1fd25-f0dd-7d4d-8aa4-e85ffbbd1b48/download
+2026-11-21T16:08:05.667+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUDIT-409 traceId=f421cffc-3da0-4c93-a472-633b453cf280 path=/api/v1/admin/tenants/tenant-alpha/audit-exports
+2026-11-21T16:08:22.232+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-2] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd26-35d0-72a9-b608-a6481f3c5470 workspaceId=01a1fd25-451f-73a3-bd0c-0ee7c6a7da0c
+2026-11-21T16:08:22.474+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-3] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1fd26-36a7-790f-9153-c9c24f1b1c17 sizeBytes=1153 format=DOCX
+2026-11-21T16:08:24.449+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-4] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd26-35d0-72a9-b608-a6481f3c5470 runId=01a1fd26-3e67-73b7-b3a2-47f69be9205d userMessageId=01a1fd26-3e67-7d56-a047-4fde45b08e59 assistantMessageId=01a1fd26-3e67-748f-a4fb-af50ff638d46 attachments=1
+2026-11-21T16:08:27.663+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-2] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd26-4b09-7d94-86e6-38608f458278 workspaceId=01a1fd25-451f-73a3-bd0c-0ee7c6a7da0c
+2026-11-21T16:08:27.870+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-3] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1fd26-4bc2-7132-988f-be433df4be0a sizeBytes=1153 format=DOCX
+2026-11-21T16:08:29.824+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-6] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd26-4b09-7d94-86e6-38608f458278 runId=01a1fd26-5370-75a9-b55d-ca07890e39c0 userMessageId=01a1fd26-5370-7047-91d9-76f207d2c271 assistantMessageId=01a1fd26-5370-794e-b7e2-94eeefd5c4ff attachments=1
+2026-11-21T16:08:35.124+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-4] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd26-682e-7d03-8056-74ba12e48a94 workspaceId=01a1fd25-451f-73a3-bd0c-0ee7c6a7da0c
+2026-11-21T16:08:35.331+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-6] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1fd26-68e1-756e-96d1-e2758bab698d sizeBytes=1153 format=DOCX
+2026-11-21T16:08:37.267+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-7] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd26-682e-7d03-8056-74ba12e48a94 runId=01a1fd26-7084-70b5-9419-b95e2f1ddc96 userMessageId=01a1fd26-7084-76f7-9eb6-1eff34cd9454 assistantMessageId=01a1fd26-7084-79b2-bca2-b435c340776e attachments=1
+2026-11-21T16:08:43.706+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-7] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd26-89b4-71a1-ab87-64f8c2ce265e workspaceId=01a1fd25-451f-73a3-bd0c-0ee7c6a7da0c
+2026-11-21T16:08:43.996+08:00  INFO 20659 --- [riccon-api] [o-18080-exec-10] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1fd26-8abc-764e-9c11-035f1709b804 sizeBytes=1153 format=DOCX
+2026-11-21T16:08:45.943+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-1] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd26-89b4-71a1-ab87-64f8c2ce265e runId=01a1fd26-926b-7eb6-97c1-3c151e41742a userMessageId=01a1fd26-926b-70fc-a5b2-bc884ec25bbf assistantMessageId=01a1fd26-926b-725c-a566-49c35222e627 attachments=1
+2026-11-21T16:08:51.863+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-9] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=tenant-alpha taskId=01a1fd26-a98d-755b-be08-b3fe831be766 runId=01a1fd26-a98d-74cf-8ad5-0771aa6badb9 workspaceId=01a1fd25-451f-73a3-bd0c-0ee7c6a7da0c toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-21T16:08:53.573+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-3] c.r.a.research.service.ApprovalService   : research.approval.decided tenantId=tenant-alpha approvalId=01a1fd26-ac10-7579-884d-62a658c403e0 taskId=01a1fd26-a98d-755b-be08-b3fe831be766 runId=01a1fd26-a98d-74cf-8ad5-0771aa6badb9 decision=APPROVE
+2026-11-21T16:08:58.533+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-2] c.r.a.research.service.ArtifactService   : artifact.content.served tenantId=tenant-alpha artifactId=01a1fd26-bf75-74ee-b3d9-0ad71358f299 version=1 sizeBytes=2020
+2026-11-21T16:09:00.983+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-6] c.r.a.research.service.ArtifactService   : artifact.content.served tenantId=tenant-alpha artifactId=01a1fd26-bf75-74ee-b3d9-0ad71358f299 version=1 sizeBytes=2020
+2026-11-21T16:09:01.190+08:00  INFO 20659 --- [riccon-api] [o-18080-exec-10] c.r.a.research.service.ArtifactService   : artifact.content.served tenantId=tenant-alpha artifactId=01a1fd26-bf75-74ee-b3d9-0ad71358f299 version=1 sizeBytes=2020
+2026-11-21T16:09:05.155+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-9] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=tenant-alpha taskId=01a1fd26-dd78-7d47-99c0-dbf9161d7f59 runId=01a1fd26-dd78-7869-85c5-843472ea88e3 workspaceId=01a1fd25-451f-73a3-bd0c-0ee7c6a7da0c toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-21T16:09:06.679+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-3] c.r.a.research.service.ApprovalService   : research.approval.decided tenantId=tenant-alpha approvalId=01a1fd26-de8e-7b4b-ab3a-123ee0c666e2 taskId=01a1fd26-dd78-7d47-99c0-dbf9161d7f59 runId=01a1fd26-dd78-7869-85c5-843472ea88e3 decision=REJECT
+2026-11-21T16:09:15.767+08:00  INFO 20659 --- [riccon-api] [o-18080-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-001 traceId=c43d9529-2129-40a2-bfed-03606b340468 path=/api/v1/auth/login
+2026-11-21T16:09:22.650+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-4] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd27-21d4-77c4-9caf-1c807adf5e13 workspaceId=01a1fd25-451f-73a3-bd0c-0ee7c6a7da0c
+2026-11-21T16:09:22.745+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-8] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd27-21d4-77c4-9caf-1c807adf5e13 runId=01a1fd27-222c-7002-8fd6-8c15b9d9d0b1 userMessageId=01a1fd27-222c-77ff-a07d-208707f82152 assistantMessageId=01a1fd27-222c-77ce-b560-7b69fd7d18c5 attachments=0
+2026-11-21T16:09:25.895+08:00  INFO 20659 --- [riccon-api] [o-18080-exec-10] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd27-2e82-7a14-929e-fb7607b9712e workspaceId=01a1fd25-451f-73a3-bd0c-0ee7c6a7da0c
+2026-11-21T16:09:25.953+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-7] c.r.a.q.c.QuotaExceptionHandler          : quota.exceeded tenantId=tenant-alpha scopeType=TENANT window=DAILY limit=7 used=7 traceId=2868ef36-6aea-41e4-b87a-19561919d0e1
+2026-11-21T16:09:29.102+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-1] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd27-3b09-79c4-9a0e-20954802769d workspaceId=01a1fd25-451f-73a3-bd0c-0ee7c6a7da0c
+2026-11-21T16:09:29.179+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-2] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd27-3b09-79c4-9a0e-20954802769d runId=01a1fd27-3b52-7b24-b79c-faed17627f3c userMessageId=01a1fd27-3b52-77e4-ad4b-12d6caba1df0 assistantMessageId=01a1fd27-3b52-73ed-80b3-bde2be87cf1e attachments=0
+2026-11-21T16:09:36.034+08:00  INFO 20659 --- [riccon-api] [o-18080-exec-10] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd27-561a-7554-83d9-22d5b3085c53 workspaceId=01a1fd25-451f-73a3-bd0c-0ee7c6a7da0c
+2026-11-21T16:09:36.163+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-9] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd27-561a-7554-83d9-22d5b3085c53 runId=01a1fd27-5697-705b-bddc-e2c1216512bc userMessageId=01a1fd27-5697-7b21-8023-f4643fcb7a38 assistantMessageId=01a1fd27-5697-7afc-9822-c2fb20e84cb2 attachments=0
+2026-11-21T16:09:44.696+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=f40ad3a1-e775-41c3-9a3b-e73d73e460d5 path=/api/v1/departments
+2026-11-21T16:09:44.698+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=20cfa358-b4e0-4d46-a126-03d162215a7c path=/api/v1/workspaces
+2026-11-21T16:09:58.942+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-2] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd27-af98-7762-9d28-8064a9815876 workspaceId=01a1fd25-451f-73a3-bd0c-0ee7c6a7da0c
+2026-11-21T16:09:59.175+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-5] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd27-af98-7762-9d28-8064a9815876 runId=01a1fd27-b07a-7ef5-b2f7-7810b50372d1 userMessageId=01a1fd27-b07a-770d-b52d-b25aabf544a0 assistantMessageId=01a1fd27-b07a-7a27-98c7-3aa46c756533 attachments=0
+2026-11-21T16:10:09.224+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-4] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd27-d7c2-72af-91d9-1db1f0118534 workspaceId=01a1fd25-451f-73a3-bd0c-0ee7c6a7da0c
+2026-11-21T16:10:09.466+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-8] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd27-d7c2-72af-91d9-1db1f0118534 runId=01a1fd27-d8ad-7d0f-a7d7-421aa14b86b9 userMessageId=01a1fd27-d8ad-7b7c-9da1-a67b38faca9d assistantMessageId=01a1fd27-d8ad-73db-bd51-ce8b8814b3a4 attachments=0
+2026-11-21T16:10:10.410+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-9] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd27-d7c2-72af-91d9-1db1f0118534 runId=01a1fd27-dc58-7f72-95cd-c3e7fe9841c5 userMessageId=01a1fd27-dc58-7ac5-9f81-e52ea57db780 assistantMessageId=01a1fd27-dc58-787a-bca8-2ecab8ffd7a6 attachments=0
+2026-11-21T16:10:16.613+08:00  INFO 20659 --- [riccon-api] [o-18080-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=f5666aa1-5677-4aec-b7bd-6f88a4afa8b6 path=/api/v1/workspaces
+2026-11-21T16:10:16.613+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=7305aaef-9e2a-4cd5-9ee9-bac77c68af2d path=/api/v1/departments
+2026-11-21T16:10:23.534+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-6] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd28-0fa4-7f97-abf1-53c5db2f5c84 workspaceId=01a1fd25-451f-73a3-bd0c-0ee7c6a7da0c
+2026-11-21T16:10:23.791+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-9] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd28-0fa4-7f97-abf1-53c5db2f5c84 runId=01a1fd28-10a4-7df5-b3e3-4355e64d26dd userMessageId=01a1fd28-10a4-701a-9c40-0846d41e475a assistantMessageId=01a1fd28-10a4-7a3c-863c-e69534d7b9d0 attachments=0
+2026-11-21T16:10:24.141+08:00  WARN 20659 --- [riccon-api] [io-18080-exec-9] c.riccon.api.chat.service.ChatService    : chat.worker.rejected status=500 code=RICCON-MODEL-503 runId=01a1fd28-10a4-7df5-b3e3-4355e64d26dd traceId=7d9833b4-b34d-48f7-a2ab-d7091a108217
+2026-11-21T16:10:24.142+08:00 ERROR 20659 --- [riccon-api] [io-18080-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request failed code=RICCON-MODEL-503 traceId=7d9833b4-b34d-48f7-a2ab-d7091a108217 path=/api/v1/conversations/01a1fd28-0fa4-7f97-abf1-53c5db2f5c84/messages
+
+com.riccon.api.error.RicconException: 模型服务暂不可用，请稍后重试。
+	at com.riccon.api.chat.service.ChatService.modelUnavailable(ChatService.java:701) ~[!/:0.1.0-SNAPSHOT]
+	at com.riccon.api.chat.service.ChatService.mapWorkerCall(ChatService.java:671) ~[!/:0.1.0-SNAPSHOT]
+	at com.riccon.api.chat.service.ChatService.send(ChatService.java:171) ~[!/:0.1.0-SNAPSHOT]
+	at com.riccon.api.chat.controller.ConversationController.sendMessage(ConversationController.java:242) ~[!/:0.1.0-SNAPSHOT]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:252) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:184) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:117) ~[spring-webmvc-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:934) ~[spring-webmvc-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:853) ~[spring-webmvc-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:86) ~[spring-webmvc-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:963) ~[spring-webmvc-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:866) ~[spring-webmvc-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1000) ~[spring-webmvc-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.doPost(FrameworkServlet.java:903) ~[spring-webmvc-7.0.10.jar!/:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:649) ~[tomcat-embed-core-11.0.27.jar!/:6.1]
+	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:874) ~[spring-webmvc-7.0.10.jar!/:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:710) ~[tomcat-embed-core-11.0.27.jar!/:6.1]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:132) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:59) ~[tomcat-embed-websocket-11.0.27.jar!/:11.0.27]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:108) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.FilterChainProxy.lambda$doFilterInternal$2(FilterChainProxy.java:235) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$FilterObservation$SimpleFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:491) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:353) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator.lambda$wrapSecured$0(ObservationFilterChainDecorator.java:84) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:131) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.access.intercept.AuthorizationFilter.doFilter(AuthorizationFilter.java:101) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:126) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:120) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:132) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:86) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.authentication.AnonymousAuthenticationFilter.doFilter(AnonymousAuthenticationFilter.java:101) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter.doFilter(SecurityContextHolderAwareRequestFilter.java:181) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:246) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:240) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter.doFilterInternal(OAuth2AuthorizationRequestRedirectFilter.java:195) ~[spring-security-oauth2-client-7.1.2.jar!/:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.csrf.CsrfFilter.doFilterInternal(CsrfFilter.java:135) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at com.riccon.api.web.OriginCheckFilter.doFilterInternal(OriginCheckFilter.java:74) ~[!/:0.1.0-SNAPSHOT]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:91) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:76) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at com.riccon.api.auth.controller.TenantContextFilter.doFilterInternal(TenantContextFilter.java:122) ~[!/:0.1.0-SNAPSHOT]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$0(ObservationFilterChainDecorator.java:336) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:237) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:195) ~[spring-security-web-7.1.2.jar!/:7.1.2]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.filter.ServletRequestPathFilter.doFilter(ServletRequestPathFilter.java:52) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.security.config.annotation.web.configuration.WebSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebSecurityConfiguration.java:317) ~[spring-security-config-7.1.2.jar!/:7.1.2]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.springframework.session.web.http.SessionRepositoryFilter.doFilterInternal(SessionRepositoryFilter.java:143) ~[spring-session-core-4.1.1.jar!/:4.1.1]
+	at org.springframework.session.web.http.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:82) ~[spring-session-core-4.1.1.jar!/:4.1.1]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:110) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:199) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at com.riccon.api.web.TraceIdFilter.doFilterInternal(TraceIdFilter.java:52) ~[!/:0.1.0-SNAPSHOT]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar!/:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:164) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:77) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:540) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:86) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:71) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:347) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:411) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:71) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:1308) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:2202) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:74) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:947) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:481) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:74) ~[tomcat-embed-core-11.0.27.jar!/:11.0.27]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+
+2026-11-21T16:10:41.627+08:00  WARN 20659 --- [riccon-api] [io-18080-exec-1] c.r.a.o.i.OidcDiscoveryClient            : oidc.discovery.failed issuer=http://127.0.0.1:18995/realms/alpha reason=idp_unavailable
+2026-11-21T16:11:23.168+08:00  INFO 20659 --- [riccon-api] [o-18080-exec-10] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=tenant-alpha taskId=01a1fd28-f89a-7932-8f33-05993dee533c runId=01a1fd28-f89a-75e7-b19e-04f782c1e830 workspaceId=01a1fd25-451f-73a3-bd0c-0ee7c6a7da0c toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-21T16:11:23.763+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-4] c.r.a.research.service.ApprovalService   : research.approval.decided tenantId=tenant-alpha approvalId=01a1fd28-fa58-708d-95e2-c279f88455e1 taskId=01a1fd28-f89a-7932-8f33-05993dee533c runId=01a1fd28-f89a-75e7-b19e-04f782c1e830 decision=APPROVE
+2026-11-21T16:11:28.085+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-5] c.r.a.research.service.ArtifactService   : artifact.download.url tenantId=tenant-alpha artifactId=01a1fd29-0981-759b-aee9-783619efc718 version=1
+2026-11-21T16:11:28.151+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-4] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=tenant-alpha taskId=01a1fd29-0c10-7efb-9113-3bc30e8fa63a runId=01a1fd29-0c10-7e8b-b4f6-a4560748e61a workspaceId=01a1fd25-451f-73a3-bd0c-0ee7c6a7da0c toolId=0192f0a0-0000-7000-8000-000000000004
+2026-11-21T16:11:28.764+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-6] c.r.a.research.service.ApprovalService   : research.approval.decided tenantId=tenant-alpha approvalId=01a1fd29-0e1a-74ad-8487-ce5af9515958 taskId=01a1fd29-0c10-7efb-9113-3bc30e8fa63a runId=01a1fd29-0c10-7e8b-b4f6-a4560748e61a decision=REJECT
+2026-11-21T16:11:30.218+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-8] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd29-1425-74a0-bdcb-abc2ce9a2df3 workspaceId=01a1fd25-451f-73a3-bd0c-0ee7c6a7da0c
+2026-11-21T16:11:30.250+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=40751d67-a2cd-41ee-85d4-a5ce2ce8d58a path=/api/v1/conversations/01a1fd29-1425-74a0-bdcb-abc2ce9a2df3
+2026-11-21T16:11:30.280+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=7d0404f7-690d-433c-b95d-09d523d7601e path=/api/v1/research-tasks/01a1fd28-f89a-7932-8f33-05993dee533c
+2026-11-21T16:11:30.309+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=91353fce-e50e-420e-89a7-8642816e7f0e path=/api/v1/artifacts/01a1fd29-0981-759b-aee9-783619efc718
+2026-11-21T16:11:30.341+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=e25430e3-62cb-42f8-8918-25a593692327 path=/api/v1/artifacts/01a1fd29-0981-759b-aee9-783619efc718/versions/1
+2026-11-21T16:11:30.371+08:00  INFO 20659 --- [riccon-api] [o-18080-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=802f4ef5-29b4-4173-b4fb-65a9eb32d380 path=/api/v1/artifacts/01a1fd29-0981-759b-aee9-783619efc718/versions/1/download-url
+2026-11-21T16:11:30.400+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=732745fd-1d55-47a5-9a44-c683ededf2d4 path=/api/v1/artifacts/01a1fd29-0981-759b-aee9-783619efc718/versions/1/content
+2026-11-21T16:11:30.430+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=9a4ddd91-ca91-4304-9dae-340a706e12ee path=/api/v1/knowledge/documents/01a1fd25-50cd-7336-9844-36640cd3445a
+2026-11-21T16:11:30.461+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=d9217a7f-cbfb-4c90-ae74-a12f360b4f43 path=/api/v1/files/01a1fd25-488e-70f8-b751-45966b19866e
+2026-11-21T16:11:30.500+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-2] c.r.a.research.service.ArtifactService   : artifact.content.served tenantId=tenant-alpha artifactId=01a1fd29-0981-759b-aee9-783619efc718 version=1 sizeBytes=2020
+2026-11-21T16:11:30.569+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=096b81b2-12d9-414b-848d-46b6cba91019 path=/api/v1/workspaces/01a1fd25-451f-73a3-bd0c-0ee7c6a7da0c/research-tasks
+2026-11-21T16:11:30.605+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=9c5a48da-da40-46a2-a74e-5861c884ec9f path=/api/v1/workspaces/01a1fd25-46a5-7886-86c9-ceafe50d57ba/research-tasks
+2026-11-21T16:11:30.664+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-9] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-beta fileId=01a1fd29-15d2-70c7-a6f8-a4d58a3dd9c6 sizeBytes=1153 format=DOCX
+2026-11-21T16:11:30.704+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-7] c.riccon.api.file.service.FileService    : file.deleted tenantId=tenant-beta fileId=01a1fd29-15d2-70c7-a6f8-a4d58a3dd9c6
+2026-11-21T16:11:32.217+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-5] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=tenant-alpha conversationId=01a1fd29-1425-74a0-bdcb-abc2ce9a2df3 runId=01a1fd29-1bf0-7a09-a233-c997c5fed5c3 userMessageId=01a1fd29-1bf0-7e9e-bd5d-0bab27e96fd7 assistantMessageId=01a1fd29-1bf0-72ed-b909-8e3a990b6bb8 attachments=0
+2026-11-21T16:11:35.630+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=f34d984b-249c-461f-889c-8c423a0edb2d path=/api/v1/runs/01a1fd29-1bf0-7a09-a233-c997c5fed5c3
+2026-11-21T16:11:35.659+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=d21eec37-f59a-40db-8218-98c72bd4d98d path=/api/v1/runs/01a1fd28-f89a-75e7-b19e-04f782c1e830
+2026-11-21T16:11:35.935+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-ARTIFACT-413 traceId=bab95858-36d5-41e0-b17d-5d0e8ddc12c6 path=/api/v1/artifacts/0747e86f-4b61-4db0-9637-d271e3594ed8/versions/1/content
+2026-11-21T16:11:36.239+08:00  INFO 20659 --- [riccon-api] [o-18080-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=e6c633a9-dcac-4ea7-81ed-dca676662c06 path=/api/v1/admin/model-providers
+2026-11-21T16:11:36.263+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=76fb59ad-8e53-402a-b4d2-e6e1cdb5b271 path=/api/v1/admin/models
+2026-11-21T16:11:44.993+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=28aee7f6-44c0-4434-9ce5-6e9d6694b7a3 path=/api/v1/quotas
+2026-11-21T16:11:45.155+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=7559c820-dd8d-402b-8fb3-8e74873f662d path=/api/v1/admin/tenants/tenant-beta/users/01a1fd25-4003-7ba5-b947-8a1a68fa85c9/quotas
+2026-11-21T16:11:45.178+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-QUOTA-400 traceId=8f9a52b1-0c71-44b7-948d-6cc400398182 path=/api/v1/admin/tenants/tenant-alpha/quotas
+2026-11-21T16:11:45.259+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=3fbbc876-3ca4-47bb-b141-e0f34753e37e path=/api/v1/costs
+2026-11-21T16:11:47.263+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=3d513b10-791f-4ec2-a079-d93f2d168ad0 path=/api/v1/admin/tenants/tenant-alpha/departments
+2026-11-21T16:11:47.286+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=7b3370c3-8438-4858-97ba-b649cf02b638 path=/api/v1/admin/tenants/tenant-alpha/departments
+2026-11-21T16:11:47.318+08:00  INFO 20659 --- [riccon-api] [o-18080-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=9427f240-1992-4572-b916-ea928e92b2e7 path=/api/v1/admin/tenants/tenant-m03-missing-mwq4q6wj/departments
+2026-11-21T16:11:47.457+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=3249996d-14bd-46e7-97f7-34a07de39e8a path=/api/v1/admin/tenants/tenant-m03-susp-mwq4q6wj/departments
+2026-11-21T16:11:47.626+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-DEPT-409 traceId=107b877f-7393-48ff-a0df-b9e9751f550a path=/api/v1/admin/tenants/tenant-alpha/departments/01a1fd29-579e-7029-97d5-a9a6a58e80bd/members
+2026-11-21T16:11:47.657+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-DEPT-409 traceId=7be2bc3c-200c-4802-a4e2-5d51c87e130b path=/api/v1/admin/tenants/tenant-alpha/departments
+2026-11-21T16:11:47.688+08:00  INFO 20659 --- [riccon-api] [o-18080-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-DEPT-409 traceId=8eadf6b0-7a64-4010-8a3b-3792f85e3669 path=/api/v1/admin/tenants/tenant-alpha/departments/01a1fd29-57c1-76ac-9a45-583651e6822b/members
+2026-11-21T16:11:48.500+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-9] c.r.a.chat.service.ConversationService   : conversation.created tenantId=tenant-alpha conversationId=01a1fd29-5b8f-7a23-8f20-929c31e88298 workspaceId=01a1fd29-5b1d-7a85-b1b9-73c8c00863e1
+2026-11-21T16:11:48.554+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-7] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tenant-alpha fileId=01a1fd29-5bb4-7670-b085-f3b0e29f916a sizeBytes=32 format=PDF
+2026-11-21T16:11:48.588+08:00  INFO 20659 --- [riccon-api] [o-18080-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=b4793fde-342e-47be-b5a6-1d9f04830424 path=/api/v1/workspaces/01a1fd29-5b1d-7a85-b1b9-73c8c00863e1
+2026-11-21T16:11:48.621+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=8a1db188-0150-418f-a4fc-6425980c594e path=/api/v1/conversations/01a1fd29-5b8f-7a23-8f20-929c31e88298
+2026-11-21T16:11:48.654+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=5d589174-3544-40bd-b09e-878d36734bf3 path=/api/v1/files/01a1fd29-5bb4-7670-b085-f3b0e29f916a
+2026-11-21T16:11:48.692+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=d7fdacf5-d9d6-4579-828a-36b14712d8cf path=/api/v1/files/01a1fd29-5bb4-7670-b085-f3b0e29f916a/download-url
+2026-11-21T16:11:48.725+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=44027444-4853-4b0f-a4e3-1403d3fcee61 path=/api/v1/workspaces/01a1fd29-5b1d-7a85-b1b9-73c8c00863e1
+2026-11-21T16:11:48.750+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=83fbad4c-3987-494a-93b8-06ecd4d24068 path=/api/v1/workspaces/01a1fd29-5b1d-7a85-b1b9-73c8c00863e1
+2026-11-21T16:11:48.774+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=8b5501f0-a5a6-481c-82c7-f74686f4407e path=/api/v1/conversations/01a1fd29-5b8f-7a23-8f20-929c31e88298
+2026-11-21T16:11:48.841+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=d6bdfc3b-8b28-410d-bc9a-0230377258d8 path=/api/v1/admin/tenants/tenant-alpha/departments/01a1fd29-579e-7029-97d5-a9a6a58e80bd/members
+2026-11-21T16:11:49.267+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-DEPT-409 traceId=939860e0-e0e1-4fad-ace9-c1e57ff1b301 path=/api/v1/admin/tenants/tenant-alpha/departments/01a1fd29-579e-7029-97d5-a9a6a58e80bd/members/01a1fd25-4003-7ba5-b947-8a1a68fa85c9
+2026-11-21T16:11:49.382+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=6764704d-c145-4d9d-a5a5-f704a640fa2d path=/api/v1/workspaces/01a1fd29-5b1d-7a85-b1b9-73c8c00863e1
+2026-11-21T16:11:49.450+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=577d3c89-e2a2-4e70-a0e6-cc95a1c0837c path=/api/v1/workspaces/01a1fd29-5b1d-7a85-b1b9-73c8c00863e1
+2026-11-21T16:11:49.481+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=2f447bd8-6ca2-4f32-bcce-50c297c80434 path=/api/v1/workspaces/01a1fd29-5b42-72fc-90c5-21594f6cdfab
+2026-11-21T16:11:49.871+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=1ebfa5f4-d787-42eb-bd30-f86ef9af59ab path=/api/v1/workspaces/01a1fd29-5b1d-7a85-b1b9-73c8c00863e1
+2026-11-21T16:11:49.961+08:00  INFO 20659 --- [riccon-api] [io-18080-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=619da4a5-15de-48c8-ae83-d1298cb771ba path=/api/v1/admin/tenants/tenant-beta/departments/01a1fd29-579e-7029-97d5-a9a6a58e80bd/members
+2026-11-21T16:11:50.762+08:00  INFO 20659 --- [riccon-api] [ionShutdownHook] o.s.boot.tomcat.GracefulShutdown         : Commencing graceful shutdown. Waiting for active requests to complete
+2026-11-21T16:11:52.779+08:00  INFO 20659 --- [riccon-api] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete
+2026-11-21T16:11:52.812+08:00  INFO 20659 --- [riccon-api] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-11-21T16:11:52.825+08:00  INFO 20659 --- [riccon-api] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
