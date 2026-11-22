@@ -2,7 +2,7 @@
   "schema_version": 1,
   "id": "TASK-0141",
   "module_id": "M20",
-  "title": "成本查询真实 3s 保护 + 平台五项计数测试（REV-TASK-0108 F-002/F-005）",
+  "title": "成本查询真实 3s 保护 + 平台五项计数 + 查询参数边界测试（REV-TASK-0108 F-002/F-005/F-010）",
   "owner": "riccon/builder-cost",
   "status": "planned",
   "write_scope": [
@@ -15,11 +15,13 @@
   "acceptance": [
     "真实 MySQL 证明查询在 3 秒中止并返回 RICCON-COST-503，不返回部分结果",
     "平台成本五类互斥计数（PRICED/UNPRICED/USAGE_UNKNOWN/currencyMismatch/unbucketed）与总量一致性有测试",
-    "受影响测试通过并绑定证据"
+    "受影响测试通过并绑定证据",
+    "空白/纯空白 tenantId 返回 400 RICCON-COST-400，不再归一为“未提供”全租户（契约见 ADR-0022 §2.4/TASK-0143）",
+    "userId/modelId 非 UUID 返回 400 RICCON-REQUEST-400，响应不含租户信息；page=201 返回 400 RICCON-COST-400，锁定 CostPage.maximum=200"
   ],
   "evidence": [],
   "tools_used": [],
   "blocker": null,
   "created_at": "2026-11-21T17:33:25.137+08:00",
-  "updated_at": "2026-11-21T17:33:25.137+08:00"
+  "updated_at": "2026-11-22T12:29:47.770+08:00"
 }
