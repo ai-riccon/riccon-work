@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0153",
+  "module_id": "M22",
+  "title": "CI coverage job 改用全限定 JaCoCo goal",
+  "owner": "riccon/ops",
+  "status": "in_progress",
+  "write_scope": [
+    ".github/workflows/ci.yml",
+    "docs/RUNBOOK.md",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "backend-coverage 使用 ./mvnw -q -T1C verify org.jacoco:jacoco-maven-plugin:report（全限定 goal，不依赖 jacoco prefix 元数据），保留 verify 阶段 jacoco:check 与报告上传",
+    "同一 PR 分支最终 CI run success，backend-coverage success 且 jacoco artifact 4 份；无 Node20 告警；不改产品代码/测试/pom/合同",
+    "docs/RUNBOOK.md 同步全限定 goal 与原因；先提交再取证；证据单行"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-22T10:12:01.442+08:00",
+  "updated_at": "2026-11-22T10:12:06.308+08:00",
+  "baseline_commit": "106655b68691bfcbc8a562f365095115aa5c41d1"
+}
