@@ -4,7 +4,7 @@
   "module_id": "M05",
   "title": "M05 docs：ADR-0023/ARCHITECTURE 与 V12 实际实现对齐（权限/COPY/bbox/outbox/锁等待）",
   "owner": "riccon/architect",
-  "status": "blocked",
+  "status": "review",
   "write_scope": [
     "docs/adr/ADR-0023-m05-knowledge-depth.md",
     "docs/ARCHITECTURE.md"
@@ -14,10 +14,13 @@
     "ADR §7.2 改为 COPY+LOCK=SHARED 并记录 MySQL 8.4 拒绝 INPLACE；回滚清单补 bbox/ocr_confidence、idx_outbox_lane；实际锁等待结论与 M09 演练承接写清",
     "ADR §7.3 明确 per-lane max-processing（heavy 65m / default 30m）解决连接器 60m 冲突；ARCHITECTURE 对应段落同步；git diff --check 与 contract validate 通过"
   ],
-  "evidence": [],
+  "evidence": [
+    "EV-0780"
+  ],
   "tools_used": [],
-  "blocker": "文档已提交 25e8ac4；共享工作树存在 TASK-0180 等并行任务未提交改动，无法在干净树录制 EV。需待并行提交完成后重跑 evidence 并转 review。",
+  "blocker": null,
   "created_at": "2026-11-22T22:27:03.665+08:00",
-  "updated_at": "2026-11-22T22:41:15.733+08:00",
-  "baseline_commit": "5d9cbba95173bd085f0be2a4beb353a35e7d6288"
+  "updated_at": "2026-11-22T22:49:24.309+08:00",
+  "baseline_commit": "501658e13d3e22d559f6a0e74fbd1b58048945d3",
+  "end_commit": "25e8ac4"
 }
