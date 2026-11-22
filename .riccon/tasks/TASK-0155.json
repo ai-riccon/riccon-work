@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0155",
+  "module_id": "M20",
+  "title": "M20 F-001 文档一致性：价格快照交叉引用、ADR-0022 §2.6 首字口径与 RUNBOOK（REV-TASK-0140-001 F-001/F-002）",
+  "owner": "riccon/architect",
+  "status": "planned",
+  "write_scope": [
+    "docs/adr/ADR-0021-m04-model-routing-failover-multi-key.md",
+    "docs/adr/ADR-0022-m04-quota-and-cost.md",
+    "docs/RUNBOOK.md",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "ADR-0021 §3.3/§5 加“价格快照时点以 ADR-0022 §2.1（2026-11-22 修订）为准”；ADR-0022 §2.1 的“运维 SQL”改为“部署种子/update-model-price.mjs/运维 SQL”",
+    "ADR-0022 §2.6 删除“(或 TextBlockStartEvent)”，写明只认首个非空且非纯空白 TextBlockDeltaEvent、以产生首个可见增量的 ModelCallStartEvent 为起点、已记录后不被后续 Start 覆盖",
+    "RUNBOOK M04-8 补“价格变更对在途调用在成功终态生效；关键运行期避免改价或接受估算口径”",
+    "文档 grep 证据通过；不修改已应用迁移 V11；不改变 M04-AC-11/AC-18 用户可见结果"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-22T13:07:20.593+08:00",
+  "updated_at": "2026-11-22T13:07:20.593+08:00"
+}
