@@ -16,10 +16,19 @@
     "surefire 并行/多 fork 下的全局状态约定与首响应闸门语义有测试或书面约束；不弱化断言",
     "不改生产代码/迁移/pom；先提交再取证；证据单行；独立 Verifier 评审"
   ],
-  "evidence": [],
-  "tools_used": [],
+  "evidence": [
+    "EV-0737"
+  ],
+  "tools_used": [
+    "codegraph_explore：定位 OpenAiCompatibleChatModel.handlePayload、TestModelStub、ModelFailoverIntegrationTest、WorkerIntegrationTestBase 的调用面与影响面",
+    "read/grep：完整读取测试源码、CODING-STANDARDS、surefire 报告与 shard 脚本；未激活 Serena JDT LS，避免全量 Maven 期间 target/ 并发污染（项目规则），Java 编辑按已读源码精确修改",
+    "docker compose + scripts/test-services.mjs：启动 compose 测试栈并准备 external namespace m22t152",
+    "mvnw/JDK 21：定向 OpenAiCompatibleChatModelStreamingTest 3/0/0/0、spotless:check；EV-0737 clean verify jacoco:report（1800s 显式超时）",
+    "node scripts/test-shards.mjs / test-merge-shards.mjs：--update-baseline、--check、--simulate 与合并校验",
+    "git：分支确认、diff --check、提交与 HEAD/EV 绑定；未合并 PR #2"
+  ],
   "blocker": null,
   "created_at": "2026-11-22T08:52:03.530+08:00",
-  "updated_at": "2026-11-22T09:42:51.007+08:00",
+  "updated_at": "2026-11-22T10:02:58.286+08:00",
   "baseline_commit": "294e164fa8ccdfa6ff9426eacd9ade404072bd90"
 }
