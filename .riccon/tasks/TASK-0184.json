@@ -4,7 +4,7 @@
   "module_id": "M24",
   "title": "M24 E2E：修复 M04-AC-01 全量负载下 UI 时序竞态",
   "owner": "riccon/builder-gateway-e2e",
-  "status": "blocked",
+  "status": "review",
   "write_scope": [
     "e2e/real/tests/m04-routing.spec.ts"
   ],
@@ -14,7 +14,8 @@
   ],
   "evidence": [
     "EV-0805",
-    "EV-0806"
+    "EV-0806",
+    "EV-0807"
   ],
   "tools_used": [
     "riccon",
@@ -25,8 +26,9 @@
     "playwright-cli",
     "codegraph"
   ],
-  "blocker": "全量 M04-B11a|M04-B11b 连续 2 次（EV-0805/EV-0806）中 M04-AC-01 均通过（各 10 passed），但既有“M04-B11a 真实栈 key 生命周期与路由审计”用例把 CHAT 链 fake-chat-primary 下移保存后未还原，导致后续 R-M04-03 引用用例按种子顺序断言运行详情为 fake-chat-secondary 时确定性失败（实际 drawer 为 fake-chat-primary；运行后 DB CHAT 链为 [secondary, primary, disabled]）。与 M04-AC-01 无关，非 flake。按指令未改其他用例；需 Lead 授权追加该用例的链还原清理（不改断言语义）或单开任务后再跑 2 次全量。",
+  "blocker": null,
   "created_at": "2026-11-23T01:33:10.458+08:00",
-  "updated_at": "2026-11-23T01:57:50.160+08:00",
-  "baseline_commit": "9f3bf6ec39ff5309714aafbf7be8150e0f3a1487"
+  "updated_at": "2026-11-23T02:18:01.995+08:00",
+  "baseline_commit": "e7082c8f33df3de9522cce06406f130a4376afb8",
+  "end_commit": "9018026"
 }
