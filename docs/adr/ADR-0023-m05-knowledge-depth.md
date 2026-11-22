@@ -125,7 +125,7 @@ Scope: M05「知识库纵深」的 Excel 结构化抽取、图片/扫描件 OCR�
 ### 3.5 验证
 
 - `IT-KB-101`：多工作表、行带、空表标记、隐藏表警告、行列/字符/段落上限与已索引/未索引范围；换行优先切分。
-- `IT-KB-102`：加密工作簿、损坏 XML、伪装扩展名/非 XLSX 的稳定错误码与中文原因；不产生半索引文档。
+- `IT-KB-102`：**拒绝 vs FAILED 分开断言**——不支持格式（`.xls`/CSV/伪装扩展名）在上传/登记阶段拒绝且不建文档；已接受但损坏/加密的 XLSX 建文档后 `FAILED`（`KB_PARSE_CORRUPT`/`KB_PARSE_ENCRYPTED`）并可 reindex 重试；不产生半索引文档。
 - `IT-KB-103`：引用显示 `工作表!区域`，打开可定位到对应工作表/区域；整表片段不伪造单元格。
 - `IT-KB-116`：ZIP 炸弹/资源上限 fixture 被拒；100 MB 级 fixture（或 20 MB 慢测试替代）解析 RSS 增量 ≤ 256 MB，不 OOM。
 
@@ -790,7 +790,7 @@ Schema 增量（additive；M05 字段与 M05b 连接器类型分属两个版本�
 
 - 文档软删除（`deleted_at`）；检索/列表立即不可见；分块与对象保留 30 天恢复窗口后由 M09 维护任务清理。
 - 正常保留：`retention_expires_at` 默认创建后 180 天（合同 `data.retention`；租户可用 `tenant.retention_days` 覆盖），历史行 NULL 按 `created_at + 180 天` 计算（不回溯 UPDATE）；界面显示当前策略（Product AC-21）。**策略变更不回溯已有文档**；到期测试用注入 `Clock` 构造过期行，不实际等待 180 天；`IT-KB-111` 断言 `retentionExpiresAt`/`retentionPolicy` 与到期清理。
-- 到期清理（AC-21 A / DEC-0034）：M05 提供最小任务（API 每日 03:00 `Asia/Shanghai`，批量 500）：条件 `status IN ('INDEXED','FAILED','PENDING') AND deleted_at IS NULL AND COALESCE(retention_expires_at, created_at + 180 天) <= now` → 软删除 + 审计 `knowledge.document.deleted`（`reason=RETENTION`）；**仅 `status='INDEXED'` 的文档发 `mode=DELETE` 索引事件**，其余只软删除；条件更新保证多实例幂等。物理对象/分块清理仍归 M09（软删除后 30 天窗口），作为 **release blocker** 跟踪。
+- 到期清理（AC-21 A / DEC-0034）：M05 提供最小任务（API 每日 03:00 `Asia/Shanghai`，批量 500）：条件 `status IN ('INDEXED','INDEXING','FAILED','PENDING') AND deleted_at IS NULL AND COALESCE(retention_expires_at, created_at + 180 天) <= now` → 软删除 + 审计 `knowledge.document.deleted`（`reason=RETENTION`）；**已索引或 `INDEXING` 且已有分块/索引文档的，发 `mode=DELETE` 清理索引，不等待索引完成**；其余只软删除。条件更新保证多实例幂等。物理对象/分块清理仍归 M09（软删除后 30 天窗口），作为 **release blocker** 跟踪。
 - 索引清理：删除事件 `mode=DELETE` 立即执行 `_delete_by_query`；失败可重试，重试不影响“已软删除即不可见”。
 - 连接器项 tombstone 保留 180 天（防“删除-重现”风暴），到期由 M09 清理；`kb_connector` 软删除后凭据密文保留 30 天再置空。
 - 引用：聊天与产物引用读取时重判 ACL/删除/版本并返回 `sourceStatus`；不可访问时不返回正文、片段、标题或定位（TM-68）。审计/取证所需的快照仍保留在库中，不随展示遮蔽删除。
@@ -1019,7 +1019,7 @@ Schema 增量（additive；M05 字段与 M05b 连接器类型分属两个版本�
 | P4  | 源文件空间与文档可见性不一致时警告还是阻断                                     | Product（DEC-0034：知识库下载按 ACL，不阻断）       | §5.3、B3                                      |
 | P5  | 产物引用在 ACL 撤销/源删除后是否仍展示                                         | Product（DEC-0034：不可访问时不展示正文/片段/定位） | §5.4、§10、TM-68                              |
 | P6  | 引用区域高亮口径：文本块/坐标 vs 页图叠加框选；是否需要页图端点                | **DEC-0034 选 A**：文本块/坐标，不新增页图端点      | §4.3、§7.4、§11.1；B 方案 +12–16h 不启用      |
-| P7  | Product AC-06 写“平台管理员读租户正文 → 无入口或 403”；ADR-0009 统一跨租户 404 | Product（待改 AC-06 为 §11.1 的 404 措辞）          | 保持跨租户不可区分性；不为 403 引入存在性探测 |
+| P7  | Product AC-06 写“平台管理员读租户正文 → 无入口或 403”；ADR-0009 统一跨租户 404 | **fixed（Product 已改 AC-06 为 404 措辞）**         | 保持跨租户不可区分性；不为 403 引入存在性探测 |
 | P8  | AC-21 物理清理归属：M05 软删除+索引 vs M05 物理清理                            | **DEC-0034 选 A**：物理清理归 M09，release blocker  | §10、§11.1；B 方案 +8h 不启用                 |
 | L1  | ADR-0009 §6 增加 `connector` 对象 key 类别                                     | Lead + Ops                                          | B6 对象存储路径                               |
 | L2  | `THREAT-MODEL.md` 合入 TM-55..TM-71（70/71 仅对应 P6=B/P8=B，选 A 登记不适用） | Lead（威胁模型 owner）                              | M05 安全 gate                                 |

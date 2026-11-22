@@ -351,7 +351,7 @@ M05 的完整决策见 `docs/adr/ADR-0023-m05-knowledge-depth.md`（`proposed`�
 
 ### 范围与现状
 
-- 合同范围：Excel 结构化抽取、图片/扫描件 OCR、文档级 ACL、1 个外部连接器。Product §11 草案另把 M04 的 R-M04-01/02（`RICCON-QUOTA-429` 文案与相对重置时间）并入 M05，属范围增量，需 Lead/用户确认（ADR-0023 §13.3 L4）。
+- 合同范围：Excel 结构化抽取、图片/扫描件 OCR、文档级 ACL、1 个外部连接器。DEC-0034 已批准将 M04 R-M04-01/02（`RICCON-QUOTA-429` 文案与相对重置时间）并入 M05，B8 承担前端（ADR-0023 §13.3 L4）。
 - M02 已有：PDF/DOCX/XLSX/PNG/JPEG 上传与引用；XLSX 用 POI DOM（20k 行 × 200 列上限，整表一个 `cellRange`）；图片只返回元数据；PDF 仅文本层；检索走 MySQL `LIKE`，OpenSearch 只做可重建索引；知识库租户级共享。
 - M05 不切换检索后端：**MySQL 是 ACL 与命中的权威**，OpenSearch 新增字段只用于诊断/未来优化（若切换必须两阶段复核，`IT-KB-117`）。
 
