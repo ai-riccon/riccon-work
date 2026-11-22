@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0786",
+  "task_id": "TASK-0181",
+  "command": "set -euo pipefail; for i in $(seq 1 10); do pnpm --filter @riccon/web exec vitest run src/pages/chat/knowledge-and-sharing.test.tsx > /tmp/m24-ks-$i.log 2>&1; grep -E \"Tests  [0-9]+ passed\" /tmp/m24-ks-$i.log; done; pnpm -w typecheck; pnpm --filter @riccon/web run lint; echo ks-10x-ok",
+  "manual": false,
+  "commit": "8eefc20f5cf65e0ba8d4c218697060e1397eebce",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0181/EV-0786-2026-11-22T23-25-41-462+08-00-set-euo-pipefail-for-i-in-seq-1-10-do-pnpm-filte.log",
+  "output_sha256": "78e7fecb8b2f965fdf929a4f74b1316762047697aeafb64c1a6999fb0ccadc25",
+  "output_bytes": 1565,
+  "agent": "riccon/builder-web",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-22T23:24:01.568+08:00",
+  "finished_at": "2026-11-22T23:25:40.736+08:00",
+  "duration_ms": 99167,
+  "note": "同类异步竞态：先等销售部再断言；单文件 10 次+typecheck+lint",
+  "recorded_at": "2026-11-22T23:25:41.464+08:00"
+}
