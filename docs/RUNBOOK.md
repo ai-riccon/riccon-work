@@ -633,6 +633,8 @@ node scripts/ops/rewrap-credentials.mjs --apply --via=client
 | 改单个价格    | `update-model-price.mjs --provider-code <c> --model-key <k> --input/--output <p> [--apply]`，打印 before/after                                   | 用 UPDATE 直改库；批量 SQL 无审计                           |
 | 换币种        | **不可行**：新部署 + 历史报告按币种隔离；旧快照保持原币种                                                                                        | 在线改 `RICCON_BILLING_CURRENCY`（会产生 currencyMismatch） |
 
+> **价格变更对在途调用在成功终态生效**（ADR-0022 §2.1，2026-11-22 修订）：关键运行期避免改价，或由 Lead/Architect 书面接受估算口径。
+
 ### M04-9 备份恢复演练（preview RPO ≤24h、RTO ≤4h）
 
 预览/测试环境基线：RPO ≤24h、RTO ≤4h；客户生产可由 SOW 覆盖，覆盖值必须写进交付文档，

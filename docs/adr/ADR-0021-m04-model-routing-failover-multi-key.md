@@ -275,6 +275,8 @@ CREATE TABLE model_invocation_attempt (
 ) ENGINE = InnoDB COMMENT = '模型调用尝试明细（M04）';
 ```
 
+> **价格快照时点**：上方 `input_price_per_1m`/`output_price_per_1m`/`price_currency` 列注释的“最终成功尝试开始时”是已应用迁移 V11 的历史设计文案，不得据此推断当前实现；价格快照时点以 ADR-0022 §2.1（2026-11-22 修订）的“成功终态读取一次”为准。
+
 - **`model_invocation` 不加 CHECK**：MySQL 8.4 的 `ADD CONSTRAINT ... CHECK` 只能 `ALGORITHM=COPY`（阻塞 DML + 全表重建），大表上不可接受。`cost_status` 用 `NOT NULL DEFAULT`，`cost_status/cost_amount/attempt_count` 的合法值由 Worker 应用层校验 + `IT-COST-101/102`、`IT-MODEL-103` 覆盖；**AC 不要求数据库 CHECK**。新增小表（`quota_*`、`attempt`、`routing`、`switch`）继续用 CHECK，因为它们是空表/小表。
 - 不加与既有 `idx_model_invocation_model (tenant_id, model_id, started_at)` 重叠的 `(started_at, tenant_id, model_id)`；平台跨租户按日查询改用 `(tenant_id, cost_day)` + `(tenant_id, started_at)` 组合，避免重复索引。
 - `provider_id` 只建索引，**不建数据库 FK**：它是调用时快照，历史 provider 可以停用；应用层在写入前校验 provider 存在。MySQL 8.4 的 ADD FK 需要 COPY 或 `foreign_key_checks=OFF`，M04 不承担该窗口（OPS-M04-019）。
@@ -352,6 +354,8 @@ INSERT INTO model_gateway_switch (switch_key, switch_value) VALUES
 - 不含 `baseUrl`、provider code、key、提示词。审计写入失败 → 保存失败（500），不返回“已保存”。
 
 ### 5. 降级状态机
+
+> 成本快照时点不在此节定义：以 ADR-0022 §2.1（2026-11-22 修订）的“成功终态读取一次”为准；本节的首字前/后语义不改变价格快照时点。
 
 #### 5.1 触发分类
 
