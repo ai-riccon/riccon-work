@@ -493,10 +493,11 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
         Instant modelCallStartedAt = null;
         while (iterator.hasNext()) {
             AgentEvent event = iterator.next();
-            if (event instanceof ModelCallStartEvent) {
-                modelCallStartedAt = ModelFirstToken.eventInstant(event);
-            }
             if (firstTokenMs == null) {
+                // 首字出现后冻结起点：后续模型调用属于下一轮，不能改写已观测的首字。
+                if (event instanceof ModelCallStartEvent) {
+                    modelCallStartedAt = ModelFirstToken.eventInstant(event);
+                }
                 firstTokenMs = ModelFirstToken.firstTokenMs(modelCallStartedAt, event);
             }
             if (event instanceof RequireUserConfirmEvent confirm) {

@@ -226,6 +226,19 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(generation.get("pricingVersion")).isEqualTo("v1");
         assertThat((Integer) generation.get("firstTokenMs")).isNotNull().isGreaterThanOrEqualTo(0);
         assertThat(generation.get("costDay")).isEqualTo(expectedDay((Instant) generation.get("startedAt")));
+
+        // 首字口径同样落到 attempt 表（ADR-0022 §2.6）：TOOL 没有可见文本时保持 NULL，
+        // GENERATION 有文本且 usage 时必须有值；attempt 的毫秒来自 FailoverChatModel 的墙钟差值。
+        List<Map<String, Object>> attempts = attempts(fixture.runId());
+        assertThat(attempts).hasSize(2);
+        Map<String, Object> toolAttempt = attempts.get(0);
+        assertThat(toolAttempt.get("purpose")).isEqualTo("REPORT");
+        assertThat(toolAttempt.get("status")).isEqualTo("SUCCEEDED");
+        assertThat(toolAttempt.get("firstTokenMs")).isNull();
+        Map<String, Object> generationAttempt = attempts.get(1);
+        assertThat(generationAttempt.get("purpose")).isEqualTo("REPORT");
+        assertThat(generationAttempt.get("status")).isEqualTo("SUCCEEDED");
+        assertThat((Integer) generationAttempt.get("firstTokenMs")).isNotNull().isGreaterThanOrEqualTo(0);
     }
 
     /** 审批拒绝：终止运行与任务、记录决定与审批人，不产生任何产物。 */
@@ -822,6 +835,34 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
                            SET input_price_per_1m = 3.000000, output_price_per_1m = 6.000000
                          WHERE id = :id
                         """).param("id", UuidBinary.toBytes(modelId)).update();
+    }
+
+    /**
+     * 读取运行的全部模型调用尝试（按调用开始时间与尝试号排序），用于区分 TOOL 与 GENERATION 阶段。
+     *
+     * @param runId 运行 ID
+     * @return 尝试状态与首字列
+     */
+    private List<Map<String, Object>> attempts(UUID runId) {
+        return jdbcClient
+                .sql("""
+                        SELECT i.purpose, a.status, a.first_token_ms
+                          FROM model_invocation_attempt a
+                          JOIN model_invocation i
+                            ON i.tenant_id = a.tenant_id
+                           AND i.id = a.invocation_id
+                         WHERE i.run_id = :runId
+                         ORDER BY i.started_at, i.id, a.attempt_no
+                        """)
+                .param("runId", UuidBinary.toBytes(runId))
+                .query((rs, rowNum) -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("purpose", rs.getString("purpose"));
+                    row.put("status", rs.getString("status"));
+                    row.put("firstTokenMs", rs.getObject("first_token_ms", Integer.class));
+                    return row;
+                })
+                .list();
     }
 
     /**

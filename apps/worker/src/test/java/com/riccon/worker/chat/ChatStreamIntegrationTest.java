@@ -98,7 +98,7 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
     @Test
     void stream_happyPath_persistsPricedInvocationFromUsage() throws Exception {
         ChatFixture fixture = chatFixture("tenant-a", "市场问题");
-        setModelPrices();
+        setModelPrices(fixture.modelId());
 
         MvcResult result = performStream(fixture, fixture.token());
         assertThat(normalize(result.getResponse().getContentAsString(StandardCharsets.UTF_8)))
@@ -514,11 +514,9 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
                 .param("tenantId", tenant)
                 .param("id", UuidBinary.toBytes(document))
                 .update();
-        if (withModel) {
-            data.createModelCatalog(stub.url(), TestCredentials.API_KEY);
-        }
+        UUID modelId = withModel ? data.createModelCatalog(stub.url(), TestCredentials.API_KEY) : null;
         String token = TestServiceToken.mint(tenant, user, runId);
-        return new ChatFixture(tenant, user, conversation, userMessage, runId, token);
+        return new ChatFixture(tenant, user, conversation, userMessage, runId, token, modelId);
     }
 
     /** 创建另一租户的运行。 */
@@ -591,13 +589,17 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
         return objectMapper.readTree(body.substring(dataIndex + "data: ".length(), end));
     }
 
-    /** 为当前测试的 ACTIVE 模型设置固定价格，用于断言固定样例金额。 */
-    private void setModelPrices() {
+    /**
+     * 为当前测试创建的模型设置固定价格，用于断言固定样例金额。
+     *
+     * @param modelId 模型目录 ID
+     */
+    private void setModelPrices(UUID modelId) {
         jdbcClient.sql("""
                         UPDATE model
                            SET input_price_per_1m = 3.000000, output_price_per_1m = 6.000000
-                         WHERE status = 'ACTIVE'
-                        """).update();
+                         WHERE id = :id
+                        """).param("id", UuidBinary.toBytes(modelId)).update();
     }
 
     /**
@@ -715,7 +717,14 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
      * @param userMessageId 用户消息
      * @param runId 运行
      * @param token 服务令牌
+     * @param modelId 模型目录 ID；未创建模型时为空
      */
     private record ChatFixture(
-            String tenantId, UUID userId, UUID conversationId, UUID userMessageId, UUID runId, String token) {}
+            String tenantId,
+            UUID userId,
+            UUID conversationId,
+            UUID userMessageId,
+            UUID runId,
+            String token,
+            UUID modelId) {}
 }
