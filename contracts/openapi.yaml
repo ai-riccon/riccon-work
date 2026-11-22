@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
   title: Riccon API
-  version: 1.3.0-m04
+  version: 1.4.0-m05
   description: |
-    Riccon M04 公开 REST 契约（J1 通用问答与文件处理、J2 市场调研报告、部门与空间数据范围、OIDC/SSO、审计查询与导出、模型路由/降级/多 key、配额与成本）。
+    Riccon M05 公开 REST 契约（J1 通用问答与文件处理、J2 市场调研报告、部门与空间数据范围、OIDC/SSO、审计查询与导出、模型路由/降级/多 key、配额与成本、知识库文档级 ACL/下载/重索引、Excel/OCR 引用定位）。
 
     ## 认证与会话
     - 内置账号：`tenantCode + username + password`；租户代码即 `tenant.id`。
@@ -44,10 +44,21 @@ info:
     - 成本：调用时价格快照、6 位小数、展示按币种最小单位四舍五入、合计按未舍入值；未定价与 token 缺失单列；单一币种；固定文案“成本为按调用时价格快照估算，不是供应商账单。”
     - 平台管理员只看租户聚合；租户管理员只看本租户用户/模型/日明细；员工无入口；跨租户统一 404。
 
+    ## 知识库 ACL 与解析（M05）
+    - 文档可见范围 `visibility` 取值 `TENANT`（本租户全员，历史文档默认）/ `DEPT`（单个部门，部门须 `ACTIVE`）/ `USERS`（显式名单，单文档最多 200 人）；创建人始终可见且不可移除。新文档默认 `TENANT`，保存前必须提示影响。
+    - 列表、详情、检索、引用打开与知识库下载执行同一文档 ACL；ACL 变更下一次请求生效。不可见、跨租户、跨部门与已软删除统一 `404 RICCON-TENANT-404`；文档已可见但非创建人且非 `TENANT_ADMIN` 修改 ACL/删除/重索引返回 `403 RICCON-AUTH-403`。
+    - 租户管理员（`TENANT_ADMIN`）对本租户文档有管理性读取；绕过文档 ACL 的读取写 `knowledge.document.admin_read` 审计。平台管理员不读取租户文档内容，直接访问统一 404。
+    - 知识库下载 `GET /api/v1/knowledge/documents/{documentId}/download` 由服务端按请求重判 ACL 并流式代理，设置 `Content-Type`/`Content-Disposition`；不返回对象 key 或预签名 URL。原工作空间文件路径仍只按空间谓词判定，两条路径互不放大。
+    - 引用可用性：`Citation`/`ArtifactCitation` 的 `sourceStatus` 取值 `AVAILABLE`/`NO_ACCESS`（ACL 撤销）/`DELETED`（源文档软删除）/`UPDATED`（源内容版本变化）；`NO_ACCESS`/`DELETED` 时 `title`/`snippet` 为空串、定位字段为 `null`，不返回正文，库内快照仅用于审计/取证。
+    - 解析：`parseEngine` 记录 `PDFBOX`/`POI`/`TESSERACT`/`RAPIDOCR`/`NONE`；`warnings[]` 为白名单警告数组，不含原文；`parseSummary` 只含工作表/范围/空表/OCR 置信度等结构元数据。`force=true` 的重索引整本重做，缺省只补缺失页。
+    - 保留：文档保留默认 180 天，租户策略可覆盖；`retentionPolicy` 取值 `DEPLOYMENT_DEFAULT`/`TENANT_POLICY`/`EXPLICIT`。软删除与保留到期后不再出现在列表与检索；物理对象与分块清理由 M09 承接，M05 不做物理删除。
+    - 本版本不含外部连接器；连接器契约（`1.5.0-m05b`）由 M05b 单独交付。
+
     ## 错误
     统一使用 RFC 9457 `application/problem+json`，至少包含 `type/title/status/code/traceId`。
     错误码格式 `RICCON-<DOMAIN>-<NNN>`；禁止返回堆栈、SQL、内部主机、密钥或完整提示词。
-    部门/空间成员关系冲突使用 `RICCON-DEPT-409`；跨租户/跨部门/不可见统一 `RICCON-TENANT-404`；OIDC 绑定冲突使用 `RICCON-OIDC-409`；审计查询/导出使用 `RICCON-AUDIT-*`；模型配置使用 `RICCON-MODEL-400/409`；配额使用 `RICCON-QUOTA-429/503`；成本查询使用 `RICCON-COST-400/503`。
+    部门/空间成员关系冲突使用 `RICCON-DEPT-409`；跨租户/跨部门/不可见统一 `RICCON-TENANT-404`；OIDC 绑定冲突使用 `RICCON-OIDC-409`；审计查询/导出使用 `RICCON-AUDIT-*`；模型配置使用 `RICCON-MODEL-400/409`；配额使用 `RICCON-QUOTA-429/503`；成本查询使用 `RICCON-COST-400/503`；知识库文档 ACL/下载/重索引使用 `RICCON-KB-400/404/409/503`。
+    知识库下载在 ACL 通过后才发现无源文件时返回 `RICCON-KB-404`；该码不得替代不可见时的 `RICCON-TENANT-404`。
     路径存在但不支持该 HTTP 方法返回 405 `RICCON-METHOD-405`，并在 `Allow` 响应头列出受支持方法；路径不存在仍是 404 `RICCON-REQUEST-404`，已认证但无权限仍是 403。405 不产生审计写入，也不新增路由。
 
     ## 流式
@@ -55,9 +66,8 @@ info:
     事件载荷见 `contracts/events/sse/chat-event.v1.schema.json`；报告进度事件见
     `contracts/events/sse/run-progress.v1.schema.json`。审计导出下载返回 `text/csv`，不是流式事件。
 
-    ## 范围外（M04 后置）
-    MFA、审计哈希链/完整性证明、平台管理员跨租户审计明细、租户 BYO 模型凭据、模型价格编辑、多币种/汇率、账单对账、成本预聚合、文档级 ACL/OCR（M05）、MCP 注册/凭据托管（M07）。
-    知识库仍为租户级共享，界面必须明示；文档级权限不在本契约中定义。
+    ## 范围外（M05 后置）
+    MFA、审计哈希链/完整性证明、平台管理员跨租户审计明细、租户 BYO 模型凭据、模型价格编辑、多币种/汇率、账单对账、成本预聚合、外部知识库连接器（M05b）、MCP 注册/凭据托管（M07）、可视化编排（M06）、引用页图渲染/框选、物理对象与分块清理（M09）、知识库共享链接/匿名访问/跨租户共享。
   contact:
     name: Riccon 架构组
   license:
@@ -77,7 +87,7 @@ tags:
   - name: Conversations
     description: 会话、消息与流式回答
   - name: Knowledge
-    description: 租户知识库文档（M03 明示全租户共享）
+    description: 知识库文档、文档级 ACL、服务端下载与重索引（M05）
   - name: Research
     description: 市场调研报告任务与运行时间线
   - name: Approvals
@@ -129,9 +139,6 @@ x-riccon-deferred:
   - id: cost-rollup
     status: deferred (unplanned)
     reason: M04 实时聚合 180 天内调用；预聚合表在 M09 观测到性能问题后再评估。
-  - id: knowledge-acl-ocr
-    status: M05
-    reason: M10 知识库仍为租户级共享；文档级/部门级 ACL 在 M05。
   - id: mcp-registration-credentials
     status: M07
     reason: M10 仍只允许平台内置白名单，不提供注册 UI 与凭据托管。
@@ -535,7 +542,9 @@ paths:
       tags: [Files]
       operationId: listFiles
       summary: 列出工作空间文件
-      description: 部门空间成员可列出该空间文件；个人空间仅本人；跨部门统一 404。下载仍会再次校验空间归属。
+      description: |
+        部门空间成员可列出该空间文件；个人空间仅本人；跨部门统一 404。下载仍会再次校验空间归属。
+        原工作空间路径只按空间谓词判定，不因文档级 ACL 放宽而扩大；把文件加入知识库不改变本空间的可访问性，知识库列表/检索/下载另按文档 ACL 判定（M05）。
       x-riccon-permission: file.read
       parameters:
         - $ref: "#/components/parameters/WorkspaceId"
@@ -566,6 +575,7 @@ paths:
       description: |
         支持 PDF、DOCX、XLSX、PNG、JPEG；单文件 ≤ 200 MB；单会话 ≤ 5 个文件。
         同时校验扩展名、Content-Type 与 magic bytes；文件先写对象存储，再在同事务写元数据与 `file.uploaded` 审计。
+        上传只进入工作空间，不自动加入知识库；加入后的文档可见范围由知识库文档 ACL 决定，且不改变原空间路径的访问判定（M05）。
       x-riccon-permission: file.upload
       parameters:
         - $ref: "#/components/parameters/WorkspaceId"
@@ -960,9 +970,9 @@ paths:
       operationId: listKnowledgeDocuments
       summary: 列出知识库文档
       description: |
-        M03 知识库为**租户级共享**：同租户员工可看到并检索全部知识库文档，不按部门过滤。
-        界面必须显示“知识库为全租户共享，文档级权限在后续版本提供”，不得声称部门隔离或文档级权限已生效。
-        文档的源文件仍属于某个工作空间；打开/下载源文件必须通过空间访问判定，跨部门返回 404。
+        列表按文档级 ACL 过滤（M05）：`TENANT` 本租户全员可见；`DEPT` 仅同部门且部门 `ACTIVE`；`USERS` 仅显式名单与创建人。
+        创建人始终可见；`TENANT_ADMIN` 管理性读取全量文档，绕过 ACL 时写 `knowledge.document.admin_read` 审计。
+        不可见、跨租户、跨部门与已软删除文档不出现在列表，也不返回总数；原工作空间文件路径仍只按空间谓词判定，不因文档 ACL 放宽而扩大。
       x-riccon-permission: knowledge.read
       parameters:
         - $ref: "#/components/parameters/Page"
@@ -987,8 +997,9 @@ paths:
       operationId: createKnowledgeDocument
       summary: 将已上传文件加入知识库
       description: |
-        复用工作空间文件，异步解析并写入租户 OpenSearch 索引。
-        M03 知识库为租户级共享：加入后全租户员工可检索；UI 必须在提交前明示，加入动作不得被描述为部门内共享。
+        复用工作空间文件，异步解析并写入索引。`visibility` 缺省 `TENANT`；可选 `DEPT`（单个部门，须 `ACTIVE`）或 `USERS`（显式名单，最多 200 人）。
+        保存前必须提示可见范围影响；创建人始终可见。加入知识库不改变原工作空间路径的访问判定，知识库列表/检索/引用/下载按文档 ACL 判定（M05）。
+        `knowledge.manage` 当前仅 `TENANT_ADMIN` 持有；普通员工无登记权限。
       x-riccon-permission: knowledge.manage
       parameters:
         - $ref: "#/components/parameters/CsrfToken"
@@ -1007,20 +1018,24 @@ paths:
               schema:
                 $ref: "#/components/schemas/KnowledgeDocument"
         "400":
-          $ref: "#/components/responses/BadRequest"
+          $ref: "#/components/responses/KnowledgeBadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/KnowledgeForbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/KnowledgeNotFound"
         "409":
-          $ref: "#/components/responses/Conflict"
+          $ref: "#/components/responses/KnowledgeConflict"
   /api/v1/knowledge/documents/{documentId}:
     get:
       tags: [Knowledge]
       operationId: getKnowledgeDocument
       summary: 读取知识库文档
+      description: |
+        按文档 ACL 返回详情；不可见、跨租户、跨部门与已软删除统一 404。
+        详情包含可见范围、解析引擎/警告/结构摘要、保留策略与 `sourceFileAccessLimited`；
+        不返回对象 key、预签名 URL 或分块原文。`TENANT_ADMIN` 管理性读取绕过 ACL 时写 `knowledge.document.admin_read` 审计。
       x-riccon-permission: knowledge.read
       parameters:
         - $ref: "#/components/parameters/KnowledgeDocumentId"
@@ -1034,35 +1049,154 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/KnowledgeForbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/KnowledgeNotFound"
     delete:
       tags: [Knowledge]
       operationId: deleteKnowledgeDocument
       summary: 删除知识库文档
-      description: 软删除并异步清理索引；删除后不再出现在检索结果。
-      x-riccon-permission: knowledge.manage
+      description: |
+        软删除并投递索引 DELETE；审计 `knowledge.document.deleted` 的 `reason=USER`；不物理删除对象与分块（物理清理由 M09 承接）。
+        创建人或 `knowledge.acl.manage` 可删除；重复删除幂等，已软删除仍返回 204。文档不可见/跨租户统一 404；
+        文档已可见但非创建人且非 `TENANT_ADMIN` 返回 403。
+      x-riccon-permission: knowledge.acl.manage
       parameters:
         - $ref: "#/components/parameters/KnowledgeDocumentId"
         - $ref: "#/components/parameters/CsrfToken"
       responses:
         "204":
-          description: 已删除
+          description: 已软删除；重复删除幂等
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/KnowledgeForbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/KnowledgeNotFound"
+  /api/v1/knowledge/documents/{documentId}/acl:
+    get:
+      tags: [Knowledge]
+      operationId: getKnowledgeDocumentAcl
+      summary: 读取知识库文档 ACL
+      description: |
+        返回整体可见范围、`USERS` 名单（userId/displayName）与创建人；创建人条目带 `creator=true`，不可移除。
+        仅创建人或 `knowledge.acl.manage`（当前仅 `TENANT_ADMIN`）可读取；不可见/跨租户统一 404，已可见但无管理能力 403。
+      x-riccon-permission: knowledge.acl.manage
+      parameters:
+        - $ref: "#/components/parameters/KnowledgeDocumentId"
+      responses:
+        "200":
+          description: 文档 ACL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeDocumentAcl"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/KnowledgeForbidden"
+        "404":
+          $ref: "#/components/responses/KnowledgeNotFound"
+    put:
+      tags: [Knowledge]
+      operationId: putKnowledgeDocumentAcl
+      summary: 整体替换知识库文档 ACL
+      description: |
+        整体替换 `{visibility, departmentId?, userIds?}`，不是增量合并。`DEPT` 必须提供单个 `departmentId` 且部门 `ACTIVE`；
+        `USERS` 的 `userIds` 最多 200 人；`TENANT` 不允许携带部门或名单。创建人始终可见且不可移除。
+        变更下一次请求生效并写 `knowledge.acl.changed` 审计；审计失败则保存失败，不出现部分生效。
+        仅创建人或 `knowledge.acl.manage`；不可见/跨租户统一 404，已可见但无管理能力 403。
+      x-riccon-permission: knowledge.acl.manage
+      parameters:
+        - $ref: "#/components/parameters/KnowledgeDocumentId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgeDocumentAclUpdate"
+      responses:
+        "200":
+          description: 更新后的文档
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeDocument"
+        "400":
+          $ref: "#/components/responses/KnowledgeBadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/KnowledgeForbidden"
+        "404":
+          $ref: "#/components/responses/KnowledgeNotFound"
+  /api/v1/knowledge/documents/{documentId}/download:
+    get:
+      tags: [Knowledge]
+      operationId: downloadKnowledgeDocument
+      summary: 下载知识库文档源文件
+      description: |
+        服务端按 `(tenant_id, documentId)` 解析源文件并流式代理返回，每次请求重判文档 ACL；
+        `Content-Type` 取文档 `mimeType`，`Content-Disposition` 为附件。不返回对象 key、预签名 URL 或存储端点；
+        不因文档 ACL 放宽原工作空间路径。ACL 通过但文档无源文件（SEED 或已清理）返回 `RICCON-KB-404`；
+        文档不可见、跨租户或跨部门返回 `RICCON-TENANT-404`。
+      x-riccon-permission: knowledge.read
+      parameters:
+        - $ref: "#/components/parameters/KnowledgeDocumentId"
+      responses:
+        "200":
+          description: 源文件字节流（服务端代理）
+          headers:
+            Content-Type:
+              description: 文档 `mimeType`；不回显对象存储端点
+              schema:
+                type: string
+            Content-Disposition:
+              description: attachment; filename="<RFC 5987 编码的文档标题>"
+              schema:
+                type: string
+            Cache-Control:
+              description: 固定 private, no-store，禁止共享缓存
+              schema:
+                type: string
+            X-Content-Type-Options:
+              description: 固定 nosniff
+              schema:
+                type: string
+                const: nosniff
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/KnowledgeForbidden"
+        "404":
+          $ref: "#/components/responses/KnowledgeSourceNotFound"
+        "502":
+          $ref: "#/components/responses/BadGateway"
   /api/v1/knowledge/documents/{documentId}/reindex:
     post:
       tags: [Knowledge]
       operationId: reindexKnowledgeDocument
       summary: 重建知识库索引
+      description: |
+        缺省 `force=false` 只补缺失页/失败页，不重复已成功页；`force=true` 整本重做。重试幂等，不产生重复文档或重复引用。
+        `knowledge.manage`（当前仅 `TENANT_ADMIN`）；创建人例外不替代 RBAC 门。文档不可见/跨租户统一 404；
+        已可见但权限不足 403；已软删除或正在索引 409；索引队列或索引服务不可用 503。
       x-riccon-permission: knowledge.manage
       parameters:
         - $ref: "#/components/parameters/KnowledgeDocumentId"
+        - name: force
+          in: query
+          required: false
+          description: 缺省 `false` 只补缺失页；`true` 整本重做。
+          schema:
+            type: boolean
+            default: false
         - $ref: "#/components/parameters/CsrfToken"
         - $ref: "#/components/parameters/IdempotencyKey"
       responses:
@@ -1072,12 +1206,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/KnowledgeDocument"
+        "400":
+          $ref: "#/components/responses/KnowledgeBadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/KnowledgeForbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/KnowledgeNotFound"
+        "409":
+          $ref: "#/components/responses/KnowledgeConflict"
+        "503":
+          $ref: "#/components/responses/KnowledgeIndexUnavailable"
   /api/v1/workspaces/{workspaceId}/research-tasks:
     get:
       tags: [Research]
@@ -3672,6 +3812,42 @@ components:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
+    KnowledgeBadRequest:
+      description: 知识库请求不合法（`RICCON-KB-400`）：可见范围与 `departmentId`/`userIds` 组合非法、`DEPT` 部门不存在或未启用、`USERS` 超过 200 人、用户不属于本租户或重索引参数非法
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    KnowledgeForbidden:
+      description: 已认证但在该文档上无所需能力（`RICCON-AUTH-403`）：文档已按 ACL 可见，但非创建人且非 `knowledge.acl.manage`，或缺少端点权限；不可见/跨租户仍返回 404
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    KnowledgeNotFound:
+      description: 文档不存在、已软删除、跨租户/跨部门或未授权可见；统一 `RICCON-TENANT-404`，不泄露存在性
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    KnowledgeSourceNotFound:
+      description: 文档不可见、跨租户/跨部门或已软删除（`RICCON-TENANT-404`）；ACL 已通过但文档无源文件（`RICCON-KB-404`，含 SEED 语料或对象已清理）；不返回对象 key 或存储端点
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    KnowledgeConflict:
+      description: 知识库状态冲突（`RICCON-KB-409`）：文档已软删除、正在索引或当前状态不允许该操作
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    KnowledgeIndexUnavailable:
+      description: 知识库索引队列或索引服务不可用（`RICCON-KB-503`）；不返回部分受理结果
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
     InternalError:
       description: 未预期错误；响应不包含堆栈、SQL、内部主机或密钥
       content:
@@ -3917,6 +4093,24 @@ components:
     KnowledgeDocumentStatus:
       type: string
       enum: [PENDING, INDEXING, INDEXED, FAILED, DELETED]
+    KnowledgeVisibility:
+      type: string
+      enum: [TENANT, DEPT, USERS]
+      description: 文档可见范围；`TENANT` 本租户全员、`DEPT` 单个启用部门、`USERS` 显式名单（创建人始终可见）。
+    KnowledgeRetentionPolicy:
+      type: string
+      enum: [DEPLOYMENT_DEFAULT, TENANT_POLICY, EXPLICIT]
+      description: 保留策略来源；`DEPLOYMENT_DEFAULT` 部署默认（180 天）、`TENANT_POLICY` 租户策略覆盖、`EXPLICIT` 文档显式设置。
+    ParseEngine:
+      type: [string, "null"]
+      enum: [PDFBOX, POI, TESSERACT, RAPIDOCR, NONE, null]
+      description: 解析引擎；`NONE` 表示未进入解析，`null` 表示历史文档未记录。
+    CitationSourceStatus:
+      type: string
+      enum: [AVAILABLE, NO_ACCESS, DELETED, UPDATED]
+      description: |
+        引用可用性：`AVAILABLE` 可访问；`NO_ACCESS` ACL 撤销；`DELETED` 源文档软删除；`UPDATED` 源内容版本变化。
+        `NO_ACCESS`/`DELETED` 时 `title`/`snippet` 为空串、定位字段为 `null`；`UPDATED` 保留快照并标注源内容已更新。
     ResearchTaskStatus:
       type: string
       enum: [PENDING, RUNNING, WAITING_APPROVAL, SUCCEEDED, FAILED, CANCELLED]
@@ -4605,8 +4799,30 @@ components:
           minLength: 1
           maxLength: 200
       additionalProperties: false
+    BoundingBox:
+      type: object
+      required: [x, y, w, h]
+      description: 引用在渲染页/图片中的像素区域（左上角 `x`/`y`，宽高 `w`/`h`）；不是 PDF 点单位，也不暴露对象存储坐标。
+      properties:
+        x:
+          type: integer
+          minimum: 0
+        y:
+          type: integer
+          minimum: 0
+        w:
+          type: integer
+          minimum: 1
+        h:
+          type: integer
+          minimum: 1
+      additionalProperties: false
     Citation:
       type: object
+      description: |
+        回答引用。M05 起可选携带 `bbox`/`ocrConfidence`/`sourceStatus`；`sourceStatus=NO_ACCESS|DELETED` 时
+        `title`/`snippet` 返回空串、定位字段（`locatorType`/`pageNo`/`sheetName`/`cellRange`/`paragraphNo`/`bbox`）为 `null`，
+        不返回正文；`sourceStatus` 缺省按 `AVAILABLE` 处理。
       required: [ordinal, sourceType, title, snippet]
       properties:
         ordinal:
@@ -4624,7 +4840,9 @@ components:
           type: [string, "null"]
           format: uuid
         locatorType:
-          $ref: "#/components/schemas/LocatorType"
+          oneOf:
+            - $ref: "#/components/schemas/LocatorType"
+            - type: "null"
         pageNo:
           type: [integer, "null"]
           minimum: 1
@@ -4635,6 +4853,16 @@ components:
         paragraphNo:
           type: [integer, "null"]
           minimum: 1
+        bbox:
+          oneOf:
+            - $ref: "#/components/schemas/BoundingBox"
+            - type: "null"
+        ocrConfidence:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 1
+        sourceStatus:
+          $ref: "#/components/schemas/CitationSourceStatus"
         title:
           type: string
         snippet:
@@ -4914,6 +5142,96 @@ components:
         createdAt:
           type: string
           format: date-time
+        visibility:
+          $ref: "#/components/schemas/KnowledgeVisibility"
+        departmentId:
+          type: [string, "null"]
+          format: uuid
+          description: 仅 `visibility=DEPT` 时非空；部门须为 `ACTIVE`。
+        aclUserCount:
+          type: integer
+          minimum: 0
+          description: "`USERS` 显式授权人数；不含创建人隐式可见，最多 200。"
+        parseEngine:
+          $ref: "#/components/schemas/ParseEngine"
+        warnings:
+          type: array
+          description: 解析警告白名单数组（如 `SHEETS_TRUNCATED`、`LOW_CONFIDENCE`、`PAGES_WITHOUT_TEXT:<n>`）；不含原文。
+          items:
+            type: string
+        parseSummary:
+          oneOf:
+            - $ref: "#/components/schemas/KnowledgeParseSummary"
+            - type: "null"
+        sourceFileAccessLimited:
+          type: boolean
+          description: 文档可见集合宽于源文件所在空间的可见集合；UI 提示可用知识库下载，不放大原工作空间路径。
+        retentionExpiresAt:
+          type: [string, "null"]
+          format: date-time
+          description: 内容保留到期时间（ISO 8601 带偏移）；默认创建后 180 天，租户策略可覆盖。
+        retentionDays:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 3650
+          description: 生效的保留天数；缺省取部署默认或租户策略。
+        retentionPolicy:
+          $ref: "#/components/schemas/KnowledgeRetentionPolicy"
+      additionalProperties: false
+    KnowledgeParseSummary:
+      type: object
+      description: 解析结构摘要；只含工作表/范围/空表/OCR 置信度等元数据，不含单元格原文或正文。
+      properties:
+        sheets:
+          type: array
+          items:
+            $ref: "#/components/schemas/KnowledgeParseSheetSummary"
+        hiddenSheetCount:
+          type: integer
+          minimum: 0
+          description: 默认跳过并告警的隐藏工作表数量。
+        ocr:
+          oneOf:
+            - $ref: "#/components/schemas/KnowledgeParseOcrSummary"
+            - type: "null"
+      additionalProperties: false
+    KnowledgeParseSheetSummary:
+      type: object
+      required: [name, cellRange, empty]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        cellRange:
+          type: [string, "null"]
+          description: 实际有值范围（如 `A1:F20`）；空表可为 `null`。
+        empty:
+          type: boolean
+        indexed:
+          type: boolean
+          description: 是否已索引；截断工作表可能只索引部分范围。
+        indexedRange:
+          type: [string, "null"]
+          description: 已索引范围；与整表范围不同表示存在未索引部分。
+      additionalProperties: false
+    KnowledgeParseOcrSummary:
+      type: object
+      required: [averageConfidence]
+      properties:
+        averageConfidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        lowConfidencePages:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+        failedPages:
+          type: array
+          items:
+            type: integer
+            minimum: 1
       additionalProperties: false
     KnowledgeDocumentPage:
       allOf:
@@ -4936,6 +5254,73 @@ components:
         fileId:
           type: string
           format: uuid
+        visibility:
+          $ref: "#/components/schemas/KnowledgeVisibility"
+          default: TENANT
+          description: 缺省 `TENANT`；`DEPT` 必须同时给 `departmentId`，`USERS` 给 `userIds`；保存前必须提示影响。
+        departmentId:
+          type: [string, "null"]
+          format: uuid
+          description: 仅 `visibility=DEPT` 时有效且必填；部门须 `ACTIVE`。
+        userIds:
+          type: array
+          maxItems: 200
+          uniqueItems: true
+          description: 仅 `visibility=USERS` 时有效；显式授权账号，最多 200 人；创建人始终可见且无需列入。
+          items:
+            type: string
+            format: uuid
+      additionalProperties: false
+    KnowledgeDocumentAcl:
+      type: object
+      required: [visibility, users]
+      properties:
+        visibility:
+          $ref: "#/components/schemas/KnowledgeVisibility"
+        departmentId:
+          type: [string, "null"]
+          format: uuid
+        users:
+          type: array
+          description: "`USERS` 显式名单（含创建人条目）；`TENANT`/`DEPT` 为空数组。"
+          items:
+            $ref: "#/components/schemas/KnowledgeAclUser"
+        creatorUserId:
+          type: [string, "null"]
+          format: uuid
+          description: 创建人；为空表示历史 SEED 文档没有创建人。
+      additionalProperties: false
+    KnowledgeAclUser:
+      type: object
+      required: [userId, displayName]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        creator:
+          type: boolean
+          default: false
+          description: 创建人隐式可见标记；该类条目不可从名单移除。
+      additionalProperties: false
+    KnowledgeDocumentAclUpdate:
+      type: object
+      required: [visibility]
+      description: 整体替换文档 ACL；不是增量合并。`TENANT` 不允许携带部门或名单；`DEPT` 必须提供单个部门；`USERS` 最多 200 人。
+      properties:
+        visibility:
+          $ref: "#/components/schemas/KnowledgeVisibility"
+        departmentId:
+          type: [string, "null"]
+          format: uuid
+        userIds:
+          type: array
+          maxItems: 200
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
       additionalProperties: false
     ResearchTask:
       type: object
@@ -5147,6 +5532,10 @@ components:
       additionalProperties: false
     ArtifactCitation:
       type: object
+      description: |
+        产物引用。M05 起可选携带 `bbox`/`ocrConfidence`/`sourceStatus` 与 Excel `cellRange`；
+        `sourceStatus=NO_ACCESS|DELETED` 时 `title`/`snippet` 返回空串、定位字段为 `null`，不返回正文；
+        `sourceStatus` 缺省按 `AVAILABLE` 处理。
       required: [ordinal, sourceType, title, snippet]
       properties:
         ordinal:
@@ -5177,8 +5566,21 @@ components:
           type: [integer, "null"]
         sheetName:
           type: [string, "null"]
+        cellRange:
+          type: [string, "null"]
+          description: Excel 引用区域（如 `B2:D10`）；整表片段为整表范围，不伪造单元格。
         paragraphNo:
           type: [integer, "null"]
+        bbox:
+          oneOf:
+            - $ref: "#/components/schemas/BoundingBox"
+            - type: "null"
+        ocrConfidence:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 1
+        sourceStatus:
+          $ref: "#/components/schemas/CitationSourceStatus"
       additionalProperties: false
     ArtifactVersion:
       type: object

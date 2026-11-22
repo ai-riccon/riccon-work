@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 /**
  * M04 配额/成本契约（IT-MODEL-108b）。
  *
- * <p>与 108a 同一份 {@code 1.3.0-m04} 全量契约：断言配额/成本端点、权限、CSRF、schema 必填字段与可见性，
+ * <p>与 108a 同一份 {@code 1.4.0-m05} 全量契约（M04 配额/成本端点继续保持）：断言配额/成本端点、权限、CSRF、schema 必填字段与可见性，
  * 以及配额/成本端点没有 {@code x-riccon-deferred} 分段。B6/B7 实现不在本任务范围，因此这里只做契约校验，
  * 不调用业务端点。
  */
@@ -30,10 +30,10 @@ class ModelContract108bTest {
         assertCostSchemas();
     }
 
-    /** 配额/成本与模型端点同属 1.3.0-m04 全量契约，没有 deferred 分段。 */
+    /** 配额/成本与模型端点同属当前版本全量契约，没有 deferred 分段。 */
     private void assertSameFullContractVersion() {
         Map<String, Object> info = OpenApiContract.map(document.get("info"));
-        assertThat(info.get("version")).isEqualTo("1.3.0-m04");
+        assertThat(info.get("version")).isEqualTo("1.4.0-m05");
         for (String path : List.of(
                 "/api/v1/quotas",
                 "/api/v1/quotas/users",

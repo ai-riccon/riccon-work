@@ -106,11 +106,21 @@ final class OpenApiContract {
      * @param operation 操作
      * @return schema 名；没有引用时返回 {@code null}
      */
-    @SuppressWarnings("unchecked")
     static String responseSchemaName(Map<String, Object> operation) {
+        return responseSchemaName(operation, "200");
+    }
+
+    /**
+     * 读取指定状态码 JSON 响应 schema 的 {@code $ref} 名称。
+     *
+     * @param operation 操作
+     * @param status 状态码
+     * @return schema 名；没有引用时返回 {@code null}
+     */
+    static String responseSchemaName(Map<String, Object> operation, String status) {
         Map<String, Object> responses = map(operation.get("responses"));
-        Map<String, Object> ok = map(responses.get("200"));
-        Map<String, Object> content = map(ok.get("content"));
+        Map<String, Object> response = map(responses.get(status));
+        Map<String, Object> content = map(response.get("content"));
         Map<String, Object> json = map(content.get("application/json"));
         Map<String, Object> schema = map(json.get("schema"));
         Object ref = schema.get("$ref");
@@ -235,6 +245,97 @@ final class OpenApiContract {
             return List.of();
         }
         return list.stream().map(String::valueOf).toList();
+    }
+
+    /**
+     * 读取指定状态码的响应对象（不解析 {@code $ref}）。
+     *
+     * @param operation 操作
+     * @param status 状态码，如 {@code 400}
+     * @return 响应对象；不存在返回空映射
+     */
+    static Map<String, Object> response(Map<String, Object> operation, String status) {
+        return map(map(operation.get("responses")).get(status));
+    }
+
+    /**
+     * 读取指定状态码的响应对象，并解析 {@code #/components/responses/*} 引用。
+     *
+     * @param document 契约根
+     * @param operation 操作
+     * @param status 状态码
+     * @return 解析后的响应对象；不存在返回空映射
+     */
+    static Map<String, Object> resolvedResponse(
+            Map<String, Object> document, Map<String, Object> operation, String status) {
+        Map<String, Object> response = response(operation, status);
+        Object ref = response.get("$ref");
+        if (ref instanceof String value && value.startsWith("#/components/responses/")) {
+            Map<String, Object> responses = map(map(document.get("components")).get("responses"));
+            return map(responses.get(value.substring("#/components/responses/".length())));
+        }
+        return response;
+    }
+
+    /**
+     * 读取内联参数定义（按参数名）。
+     *
+     * @param operation 操作
+     * @param name 参数名
+     * @return 参数定义；不存在返回空映射
+     */
+    static Map<String, Object> parameter(Map<String, Object> operation, String name) {
+        Object parameters = operation.get("parameters");
+        if (!(parameters instanceof List<?> list)) {
+            return Map.of();
+        }
+        return list.stream()
+                .filter(Map.class::isInstance)
+                .map(Map.class::cast)
+                .filter(parameter -> name.equals(parameter.get("name")))
+                .findFirst()
+                .orElse(Map.of());
+    }
+
+    /**
+     * 判断 schema 的 {@code oneOf} 是否引用指定组件。
+     *
+     * @param schema schema
+     * @param component 组件名，如 {@code BoundingBox}
+     * @return 引用返回 true
+     */
+    static boolean oneOfReferences(Map<String, Object> schema, String component) {
+        Object oneOf = schema.get("oneOf");
+        if (!(oneOf instanceof List<?> list)) {
+            return false;
+        }
+        String expected = "#/components/schemas/" + component;
+        return list.stream()
+                .filter(Map.class::isInstance)
+                .map(Map.class::cast)
+                .anyMatch(part -> expected.equals(part.get("$ref")));
+    }
+
+    /**
+     * 判断 schema 的 {@code allOf} 或 {@code $ref} 是否引用指定组件。
+     *
+     * @param schema schema
+     * @param component 组件名，如 {@code PageMeta}
+     * @return 引用返回 true
+     */
+    static boolean referencesSchema(Map<String, Object> schema, String component) {
+        String expected = "#/components/schemas/" + component;
+        if (expected.equals(schema.get("$ref"))) {
+            return true;
+        }
+        Object allOf = schema.get("allOf");
+        if (!(allOf instanceof List<?> list)) {
+            return false;
+        }
+        return list.stream()
+                .filter(Map.class::isInstance)
+                .map(Map.class::cast)
+                .anyMatch(part -> expected.equals(part.get("$ref")));
     }
 
     /**
