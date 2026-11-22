@@ -271,6 +271,17 @@ platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
 - 迁移/Schema 测试禁止指向热栈（§10.2）；external 模式下 `SchemaVersionCheckerTest` 也自建一次性容器。
 - 与分片基线的关系：`scripts/test-shards.mjs` 以类名与 surefire 用例计数为基线，标签不参与分片；新增 tag 不改变基线类集合/用例数，仍以 `node scripts/test-shards.mjs --check` 校验。
 
+### 10.5 并行/多 fork 与首响应闸门约定（M22）
+
+- 当前 surefire 配置：仓库内各 `pom.xml` 没有显式 `forkCount`/`reuseForks`/`parallel`；Spring Boot 4.1.2 parent 提供的 `maven-surefire-plugin` 3.5.6 按默认值运行（`forkCount=1`、`reuseForks=true`、不并行）。默认单 fork 与默认执行顺序是当前测试可复现的前提，不是可以依赖的隔离保证。
+- 测试不得依赖类执行顺序或跨类全局状态：
+  - 业务数据用 `uniqueTenant()` 生成唯一租户隔离，测试只读写自己的租户；不得假设某个测试类先跑、后跑，或同一 namespace 只运行一次。
+  - `audit_event` 是 append-only 且按月分区，任何测试都不得清空；审计断言必须带本测试租户或唯一目标 ID。
+  - 全局目录/开关/outbox 无法按租户隔离：只有确实写这些表的测试类才在 `@BeforeEach` 调用 `resetModelGatewayState()`、`resetMcpCatalog()` 或 `clearOutbox()`，恢复各自文档化的基线；其他测试不得做全表清理。
+  - 清理必须精确补偿：`ModelCatalogApiTest` 只按本类 provider code 与 `m04-key-` 前缀删除，`CostAdminApiTest` 只按本次创建的 model ID 删除 `model_invocation`。`ModelRegistryIntegrationTest` 中的 `DELETE FROM provider_credential` 与无 `WHERE` 的 `UPDATE model_provider` 是已知的全局写例外，依赖单 fork、同类内顺序与 `resetModelGatewayState()`；任何并行化前必须先重新设计或逐项验证。
+- 改为多 fork/并行，或新增写全局目录的测试时：必须重新跑 API/Worker 全量（至少一次 `./mvnw -q -T1C verify jacoco:report`）和 `integration`/`security` 标签隔离套件，确认无跨 fork 冲突和顺序依赖后更新本节并记录证据；不得先在 CI 开启并行再补验证。
+- 首响应闸门（M21 F-001）：`TestModelStub.holdAfterFirstContent()` 与 `ModelFailoverIntegrationTest` 的“首字后失败”用例依赖“首个 `ChatResponse` 是首段内容”。当前 `OpenAiCompatibleChatModel.handlePayload` 只对 content/finish/usage 帧 `sink.next`，role-only 帧被抑制；`OpenAiCompatibleChatModelStreamingTest.stream_defaultTextPlan_firstResponseCarriesFirstTextChunk` 锁定该语义。若客户端将来逐帧输出空 role/finish 响应，必须改为显式 content 回调或同步更新该回归测试，不允许放宽“首响应必须带非空文本”的断言。
+
 ## 11. 数据库与迁移
 
 - 只使用 Flyway；迁移文件位于 `apps/api/src/main/resources/db/migration`。
