@@ -149,11 +149,12 @@ class InFlightCredentialRotationIntegrationTest extends WorkerIntegrationTestBas
         fixture = new ModelFailoverFixture(jdbcClient);
     }
 
-    /** 释放闸门并关闭模型桩，避免失败用例挂起桩线程。 */
+    /** 释放闸门、关闭模型桩，并恢复 M04 全局基线，避免影响后续测试类（不依赖执行顺序）。 */
     @AfterEach
     void tearDown() {
         stub.releaseContent();
         stub.close();
+        resetModelGatewayState();
     }
 
     /**
