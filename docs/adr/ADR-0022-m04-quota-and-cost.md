@@ -12,6 +12,8 @@ Scope: M04「模型网关纵深」的租户/用户配额与成本估算；路由
 > 状态口径：`accepted` 仅表示设计评审通过（DEC-0024=B + REV-M04-ARCH-005 + REV-M04-OPS-006）；M04 模块 gate、用户最终验收与生产发布仍需实现任务与全量合同证据，本 ADR 不构成对它们的声明。
 >
 > 修订（2026-11-21，REV-TASK-0107-001 F-001）：§1.3 补充租户行锁、实测锁序与 B10 验证归属。该修订只记录已实现并已定向验证的并发控制，不改变 DEC-0023/DEC-0024 已批准的配额语义、AC、错误码或契约；ADR 状态保持 `accepted`。
+>
+> 修订（2026-11-22，REV-TASK-0108-001 F-007/F-008/F-010，TASK-0143）：§2.4 补充平台成本 `tenantId` 过滤与 ADR-0009 的例外关系、AC-12 的 403/404 分工和查询参数错误码边界；§2.5 记录分页上限在契约中的组件位置。该修订只澄清已实现行为、契约落点与验收口径，不改变 DEC-0023/DEC-0024 已批准的配额语义、AC 结果或错误码种类；ADR 状态保持 `accepted`，ADR-0009 本身不修改（修订归 TASK-0142）。
 
 ## Context
 
@@ -229,9 +231,15 @@ cost = prompt_tokens * input_price_per_1m / 1_000_000
 | 平台管理员 | 明细                            | —                          | **不提供**按用户的调用明细；避免跨租户成本推断                       |
 
 - 时间范围：`from`/`to` 为 `YYYY-MM-DD`（`Asia/Shanghai` 自然日，含端点），默认最近 30 天，最大 180 天；`from <= to`。
+- **平台成本 `tenantId` 过滤是 ADR-0009 的记录例外**：ADR-0009 §1 规定查询参数 `tenantId` 一律忽略或拒绝；`GET /api/v1/admin/costs` 的 `tenantId` 只作为平台主体在授权范围内的跨租户聚合过滤。`TenantContextFilter.isPlatformCostFilter` 只放行 `GET + /api/v1/admin/costs + 主体租户 platform` 的请求，其他路径/方法/主体仍按 ADR-0009 处理；权限由 `platform.cost.read` 在 `PermissionInterceptor` 强制。过滤器内的角色校验与 `X-Tenant-Id` 负向用例归 M20/TASK-0142，ADR-0009 的例外条款修订也由该任务负责；本节只记录例外事实，不改变 ADR-0009 的默认拒绝规则。
+- **AC-12 的 403/404 口径**：
+  - **伪造租户标识 → 403**：查询参数 `tenantId` 或请求头 `X-Tenant-Id` 与主体租户不一致时，`TenantContextFilter` 返回 403 `RICCON-AUTH-403`，写审计 `tenant.access.denied`（`outcome=denied`，details `attemptedTenant`、`reason=tenant_mismatch`），不返回任何租户数据；审计写入失败返回 500。平台成本端点按上一条例外处理，不属于“伪造”。
+  - **租户内资源 ID 越权 → 404**：`/api/v1/costs/invocations` 的 `userId` 指向其他租户或不存在时返回统一 404 `RICCON-TENANT-404`，不区分“不存在”和“属于其他租户”（ADR-0009 §5）。`modelId` 是平台级模型目录 ID（`model` 为全局表），不按租户归属；未命中返回空结果而不是 404。
+  - 员工访问成本/配额入口 → 403 或无入口；平台端点不接受 `groupBy=USER`（400）。
+- **查询参数错误码边界**：`tenantId` 空串/纯空白或超过 64 字符 → 400 `RICCON-COST-400`（空串**不**按“未提供”处理，避免与契约 `minLength: 1` 漂移；当前 `PlatformCostService.normalizeTenantFilter` 仍把空白归一为“未提供”，实现修正与边界测试归 M20/TASK-0141）。`userId`/`modelId` 非 UUID 由 Spring 请求绑定失败 → 400 `RICCON-REQUEST-400`，不进入业务查询，不泄露租户信息。
 - 维度：平台 `TENANT/MODEL/DAY`、租户 `USER/MODEL/DAY` 均可作为**可选切换视图**；AC-11 的“按租户、模型、日聚合”由三个维度视图共同满足，AC-14 的“切换聚合维度”即此。M04 不做多维度同时分组的交叉表；若评审要求交叉表，另立契约增量。
 - **AC-11 的“明细可展开”只适用于租户管理员**：平台管理员只到租户/模型/日聚合，不提供按用户明细（AC-12/OQ-19）。契约使用独立 `TenantCostReport`/`TenantCostBucket`（含 user 字段）与 `PlatformCostReport`/`PlatformCostBucket`（不含 user 字段，groupBy 不含 USER）。
-- 分页：`page` 1..200、`size` 1..100；聚合结果按金额降序、再按维度键升序，固定排序。
+- 分页：`page` 1..200、`size` 1..100；聚合结果按金额降序、再按维度键升序，固定排序。契约使用 `components.parameters.CostPage`（`minimum: 1`、`maximum: 200`、`default: 1`），只被三个成本端点引用；全局 `components.parameters.Page` 不加上限，避免改变非成本端点的既有契约。
 - 响应：`currency`、`currencyMinorUnit`、`totals`（`amount`、`pricedCalls`、`unpricedCalls`、`usageUnknownCalls`、`currencyMismatchCalls`、`unbucketedCalls`）、`items[]`（维度键、金额、三类计数）。
 - 固定文案由前端展示：“成本为按调用时价格快照估算，不是供应商账单。”API 在响应 `disclaimer` 返回同一句，避免前端硬编码漂移。
 - 成本查看**不写审计**（M04 不要求，避免读放大）；记录指标 `riccon_cost_report_queries_total`。若未来需要“谁看过成本”，另立动作与授权模型。
@@ -241,7 +249,7 @@ cost = prompt_tokens * input_price_per_1m / 1_000_000
 - **不做预聚合表**：按 `model_invocation` 实时聚合，索引 `(tenant_id, started_at)`、`(tenant_id, user_id, started_at)`、`(tenant_id, cost_day)` 与显式 `(provider_id)` 覆盖范围过滤与分组；不再新增与既有 `(tenant_id, model_id, started_at)` 重叠的索引。
 - 理由：私有化规模（50 并发、单租户月调用量万级）下实时聚合足够；预聚合会引入回填、重算与一致性风险。若 M09 观测到 p95 > 2 s，再评估按日 rollup（另立 ADR）。
 - 保留：`model_invocation` 与 `model_invocation_attempt` 默认保留 ≥180 天，与成本可查范围一致；M09 维护任务按 `started_at`/`cost_day` 清理更早数据，先 attempt 再 invocation，`quota_usage` 历史窗口同批清理。清理不删除审计；成本历史不要求永久保留。
-- 查询保护：最大 180 天、page ≤200、size ≤100；DB 超时 3 s，超时返回 503 `RICCON-COST-503`（不返回部分结果）。
+- 查询保护：最大 180 天、page ≤200、size ≤100；DB 超时 3 s，超时返回 503 `RICCON-COST-503`（不返回部分结果）。page 上限在契约中由成本专用 `components.parameters.CostPage`（`maximum: 200`）承载，三个成本端点共用；全局 `Page` 不加上限。
 
 ### 3. 契约
 
@@ -274,15 +282,15 @@ cost = prompt_tokens * input_price_per_1m / 1_000_000
 
 #### 3.3 错误码
 
-| HTTP | code                                   | 场景                                                                       |
-| ---- | -------------------------------------- | -------------------------------------------------------------------------- |
-| 400  | `RICCON-QUOTA-400`                     | 限额非法（负数、缺键、窗口非法）；`RICCON-COST-400` 时间范围/维度/分页非法 |
-| 403  | `RICCON-AUTH-403`                      | 员工/租户管理员访问无权端点                                                |
-| 404  | `RICCON-TENANT-404`                    | 目标租户/用户不存在或跨租户；`/costs/invocations` 的 `userId` 不属于本租户 |
-| 409  | `RICCON-QUOTA-409`                     | 并发修改同一配额（版本冲突，若启用版本；M04 用整体替换，暂不需要）         |
-| 429  | `RICCON-QUOTA-429`                     | 配额超限（专用响应体）                                                     |
-| 500  | `RICCON-COMMON-500`                    | 拒绝审计写入失败（fail-closed，不返回 429）                                |
-| 503  | `RICCON-QUOTA-503` / `RICCON-COST-503` | 存储/查询不可用（fail-closed）                                             |
+| HTTP | code                                   | 场景                                                                                                                                             |
+| ---- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 400  | `RICCON-QUOTA-400`                     | 限额非法（负数、缺键、窗口非法）；`RICCON-COST-400` 时间范围/维度/分页/`tenantId` 非法；参数类型错误（如非 UUID）为 `RICCON-REQUEST-400`（§2.4） |
+| 403  | `RICCON-AUTH-403`                      | 员工/租户管理员访问无权端点；`tenantId`/`X-Tenant-Id` 与主体租户不一致（ADR-0009，平台成本过滤例外见 §2.4）                                      |
+| 404  | `RICCON-TENANT-404`                    | 目标租户/用户不存在或跨租户；`/costs/invocations` 的 `userId` 不属于本租户                                                                       |
+| 409  | `RICCON-QUOTA-409`                     | 并发修改同一配额（版本冲突，若启用版本；M04 用整体替换，暂不需要）                                                                               |
+| 429  | `RICCON-QUOTA-429`                     | 配额超限（专用响应体）                                                                                                                           |
+| 500  | `RICCON-COMMON-500`                    | 拒绝审计写入失败（fail-closed，不返回 429）                                                                                                      |
+| 503  | `RICCON-QUOTA-503` / `RICCON-COST-503` | 存储/查询不可用（fail-closed）                                                                                                                   |
 
 #### 3.4 审计
 

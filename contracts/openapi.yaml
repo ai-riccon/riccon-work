@@ -3235,7 +3235,7 @@ paths:
         - $ref: "#/components/parameters/CostFrom"
         - $ref: "#/components/parameters/CostTo"
         - $ref: "#/components/parameters/TenantCostGroupBy"
-        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/CostPage"
         - $ref: "#/components/parameters/PageSize"
       responses:
         "200":
@@ -3265,18 +3265,18 @@ paths:
         - name: userId
           in: query
           required: false
-          description: 只看某个用户的调用；必须属于本租户。
+          description: 只看某个用户的调用；必须属于本租户，指向其他租户或不存在的用户返回 404 `RICCON-TENANT-404`；非 UUID 由请求绑定返回 400 `RICCON-REQUEST-400`。
           schema:
             type: string
             format: uuid
         - name: modelId
           in: query
           required: false
-          description: 只看某个模型的调用。
+          description: 只看某个模型的调用；`modelId` 是平台级模型目录 ID，不属于某个租户，未命中返回空结果；非 UUID 由请求绑定返回 400 `RICCON-REQUEST-400`。
           schema:
             type: string
             format: uuid
-        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/CostPage"
         - $ref: "#/components/parameters/PageSize"
       responses:
         "200":
@@ -3311,12 +3311,16 @@ paths:
         - name: tenantId
           in: query
           required: false
-          description: 只看某个租户的聚合；仍不返回用户明细。
+          description: |
+            只看某个租户的聚合；仍不返回用户明细。值必须非空且不超过 64 字符；
+            空串/纯空白或超长返回 400 `RICCON-COST-400`（空串不按“未提供”处理，ADR-0022 §2.4）。
+            本端点只允许平台主体（`platform.cost.read`）；`tenantId` 是授权范围内的过滤参数，
+            属 ADR-0009「查询参数 tenantId 一律忽略/拒绝」的记录例外（ADR-0022 §2.4）。
           schema:
             type: string
             minLength: 1
             maxLength: 64
-        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/CostPage"
         - $ref: "#/components/parameters/PageSize"
       responses:
         "200":
@@ -3365,6 +3369,16 @@ components:
       schema:
         type: integer
         minimum: 1
+        default: 1
+    CostPage:
+      name: page
+      in: query
+      required: false
+      description: 成本报告页码；取值 1..200，超过 200 返回 400 `RICCON-COST-400`（ADR-0022 §2.4/§2.5）。仅用于三个成本端点，不影响通用 `Page`。
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
         default: 1
     PageSize:
       name: size
