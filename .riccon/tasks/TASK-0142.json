@@ -16,11 +16,13 @@
     "TenantContextFilter 的平台成本例外同时校验 platform.cost.read，或由 ADR-0009 记录例外并证明 defense-in-depth",
     "负向测试覆盖平台非管理员、X-Tenant-Id 伪造、其他路径/方法",
     "独立 Verifier 高风险安全评审通过并绑定证据",
-    "ADR-0022 记录 X-Tenant-Id 头在平台成本路径同样被 isPlatformCostFilter 放行且不参与过滤，并说明该例外的安全边界（TASK-0143 F-004）"
+    "ADR-0022 记录 X-Tenant-Id 头在平台成本路径同样被 isPlatformCostFilter 放行且不参与过滤，并说明该例外的安全边界（TASK-0143 F-004）",
+    "清理 ADR-0022 §2.4 中“当前 normalizeTenantFilter 仍把空白归一为未提供、修正归 TASK-0141”的过时句；TASK-0141 已实现空白 tenantId → 400",
+    "若选择 ADR-0009 例外路径，负向测试必须证明平台非管理员（platform 租户但无 platform.cost.read）在 filter/interceptor 任一路径都 403 且无数据；X-Tenant-Id 头不改变过滤结果"
   ],
   "evidence": [],
   "tools_used": [],
   "blocker": null,
   "created_at": "2026-11-21T17:33:29.918+08:00",
-  "updated_at": "2026-11-22T12:29:47.770+08:00"
+  "updated_at": "2026-11-22T14:05:23.469+08:00"
 }
