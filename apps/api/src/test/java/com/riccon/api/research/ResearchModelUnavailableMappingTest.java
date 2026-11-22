@@ -89,5 +89,8 @@ class ResearchModelUnavailableMappingTest extends ResearchApiTestSupport {
         JsonNode detail = client.json(response);
         assertThat(detail.path("failureCode").asText()).isEqualTo("RICCON-MCP-504");
         assertThat(detail.path("failureMessage").asText()).isEqualTo("mcp tool timed out");
+        // F-008：非 503 的 Worker 静态说明可以原样展示，但不得携带内部地址、凭据或堆栈特征。
+        assertThat(detail.path("failureMessage").asText())
+                .doesNotContain("://", "apiKey", "baseUrl", "password", "Exception", "Caused by");
     }
 }
