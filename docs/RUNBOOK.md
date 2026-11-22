@@ -107,23 +107,27 @@ pnpm test:affected -- --base HEAD~1 --dry-run
 
 CI 后端由四个 job 组成，替代 M19 P1 之前的单个 `backend` job：
 
-| job                | 作用                                                            | 失败时的含义                                     |
-| ------------------ | --------------------------------------------------------------- | ------------------------------------------------ |
-| `backend-shards`   | 4 片矩阵并行跑 surefire `test`（快速反馈）                      | 某片用例失败/编译失败；分片 namespace 或热栈异常 |
-| `backend-merge`    | 校验 4 片合集 = 基线（每类恰好一次、0 failure/error/skip）      | 有漏跑、重复跑、用例变少或报告缺失               |
-| `backend-smoke`    | 迁移冒烟（默认 `riccon` 库）+ `spotless:check`                  | 迁移/触发器/格式回归                             |
-| `backend-coverage` | canonical `./mvnw -q -T1C verify jacoco:report`（含覆盖率门槛） | 全量测试失败，或覆盖率跌破 line 80 / branch 70   |
+| job                | 作用                                                                                | 失败时的含义                                     |
+| ------------------ | ----------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `backend-shards`   | 4 片矩阵并行跑 surefire `test`（快速反馈）                                          | 某片用例失败/编译失败；分片 namespace 或热栈异常 |
+| `backend-merge`    | 校验 4 片合集 = 基线（每类恰好一次、0 failure/error/skip）                          | 有漏跑、重复跑、用例变少或报告缺失               |
+| `backend-smoke`    | 迁移冒烟（默认 `riccon` 库）+ `spotless:check`                                      | 迁移/触发器/格式回归                             |
+| `backend-coverage` | canonical `verify` + 全限定 `org.jacoco:jacoco-maven-plugin:report`（含覆盖率门槛） | 全量测试失败，或覆盖率跌破 line 80 / branch 70   |
 
 `commands.test`/`commands.coverage` 文本不变：模块 gate 仍跑 canonical `./mvnw -q -T1C verify jacoco:report`，由 verifier 取证；CI 的 `backend-coverage` 用同一条后端命令做自动兜底。4 个分片只用于快速反馈（单片墙钟仍按 ≤5 分钟预算），不采集覆盖率，也不替代 gate；coverage job 是 canonical 兜底，因此这里**不承诺**总 CI 墙钟 ≤5 分钟。
 
 `backend-coverage` 的细节（M22/F-001）：
 
 - 与分片相同的 external 热栈 + 唯一 namespace `ci-<github.run_id>-cov`（与 `ci-<run_id>-b<shard>` 隔离）；迁移/回滚/schema 测试仍自建一次性容器。
+- **CI 用全限定 goal**：`./mvnw -q -T1C verify org.jacoco:jacoco-maven-plugin:report`。fresh GitHub runner 上 `jacoco` prefix 的解析依赖 plugin group 元数据（`maven-metadata`），实测会报 `NoPluginFoundForPrefixException`（run 44974295661）；全限定坐标绕过 prefix 解析，只按插件坐标/版本解析。版本来自根 pom `pluginManagement` 的 `jacoco.version`（0.8.16），CI 不写死版本。
+- **与合同命令等价**：同一份 `verify` 生命周期（compiler/test/jar/jacoco:check 全跑），只是把尾部的显式 report goal 从 `jacoco:report` 写成全限定坐标，产物、报告路径与门槛判定完全相同。本地/verifier 仍用合同文本 `./mvnw -q -T1C verify jacoco:report`；CI 不改变覆盖率门槛、测试集合或 DoD。
 - `jacoco:check` 绑定在 `verify` 阶段，检查 `apps/api`、`apps/worker`、`platform-common`、`platform-domain` 的 line 80 / branch 70；覆盖率不足时该 job 直接红。
 - 报告作为 artifact `backend-coverage-<run_id>` 上传：`apps/*/target/site/jacoco/**`、`platform/*/target/site/jacoco/**`（always，保留 14 天）。
 - 本地复现/负向演练：先跑 canonical 命令，再用执行配置临时抬高阈值确认 `jacoco:check` 会失败，不要提交临时阈值：
   ```bash
   ./mvnw -q -T1C verify jacoco:report
+  # CI 同款（不依赖 prefix）
+  ./mvnw -q -T1C verify org.jacoco:jacoco-maven-plugin:report
   ./mvnw -q -pl apps/api jacoco:check@check-coverage \
     -Dcoverage.line.minimum=1.01   # 预期非 0 退出
   ```

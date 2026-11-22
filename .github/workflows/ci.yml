@@ -24,7 +24,8 @@ concurrency:
 
 jobs:
   # M19 P2：后端测试拆成 4 个分片并行，只做快速反馈；M22/F-001 起由独立的 backend-coverage
-  # job 在 CI 上跑 canonical `./mvnw -q -T1C verify jacoco:report`（commands.test/coverage 文本不变）。
+  # job 在 CI 上跑 canonical `verify` + 全限定 JaCoCo report goal（commands.test/coverage 文本不变，
+  # 详见该 job 的步骤注释与 docs/RUNBOOK.md）。
   # 分片集合来自 scripts/test-shards-baseline.json；每片跑“除其他 3 片之外的所有类”，
   # 未登记的新测试类会在所有分片执行，由 backend-merge 以重复类/额外类失败，不会静默漏跑。
   backend-shards:
@@ -314,8 +315,12 @@ jobs:
 
       # 与合同 commands.coverage 的后端命令一致：全量 test + verify 阶段 jacoco:check。
       # 不用 -DskipTests、不拼接分片覆盖率；分片命令不是 gate 证据。
+      # M22：显式 report goal 改用全限定坐标 `org.jacoco:jacoco-maven-plugin:report`，不依赖 `jacoco`
+      # prefix。fresh runner 上 prefix 元数据（plugin group 的 maven-metadata）可能解析失败，报
+      # NoPluginFoundForPrefixException；全限定坐标只按插件版本解析，等价的 report 目标不变。
+      # 版本取自根 pom pluginManagement 的 jacoco.version（0.8.16），不在此处写死。
       - name: 运行 canonical verify 并生成覆盖率报告
-        run: ./mvnw -q -T1C verify jacoco:report
+        run: ./mvnw -q -T1C verify org.jacoco:jacoco-maven-plugin:report
 
       - name: 上传 JaCoCo 报告
         if: always()
