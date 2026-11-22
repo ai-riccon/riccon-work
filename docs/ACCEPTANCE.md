@@ -9,16 +9,16 @@
 
 ## 范围
 
-- 模块：M03「权限纵深与组织模型」；M10「身份与审计纵深（M03b）」；M13 为 M03 验收补丁；M18 回溯复验（含 M02 回溯 Product 预验收）；M04「模型网关纵深」（2026-11-21 gate 后 Product 预验收）；M19「测试基础设施与全量测试提速」（2026-11-22 gate 后 Product 预验收，技术性 fix，无用户可见 AC）
+- 模块：M03「权限纵深与组织模型」；M10「身份与审计纵深（M03b）」；M13 为 M03 验收补丁；M18 回溯复验（含 M02 回溯 Product 预验收）；M04「模型网关纵深」（2026-11-21 gate 后 Product 预验收）；M19「测试基础设施与全量测试提速」（2026-11-22 gate 后 Product 预验收，技术性 fix，无用户可见 AC）；M21（fix M19，合并前 `ModelFailover` 时序 flake 修复，无用户可见 AC）
 - M18 回溯复验（2026-11-20）：TASK-0090 对 M01/M02/M03/M10/M12/M13/M15 用当前合同 `commands.test` 重录 test/coverage（EV-0490..EV-0496）、重写 `REV-*-002`、恢复 gate（EV-0498）；TASK-0092/0093 补 M02 AC-02 逐格式 UI 证据与 a11y P1 修复；TASK-0094 在最终代码 `ec6a650` 上执行全量合同证据（EV-0512 build、EV-0513 test/coverage、EV-0514 E2E 33 passed、EV-0515 a11y 13 passed、EV-0516 security、EV-0517 gate 循环）。真实栈 E2E/a11y 与迁移回滚未重跑。详见「M18 回溯复验（2026-11-20）」。
 - M03 原 gate：`bc97d1c`（REV-M03-001，EV-0342..EV-0349）
 - M03 验收补丁（M13）：代码 `410cddd`，gate pass（REV-M13-001，EV-0352..EV-0359、EV-0361）；完整合同证据 `6564879`，最终 E2E `650663f`。EV-0360 为中间失败，不引用
 - M10 gate：代码最终提交 `a88d003`，gate pass（REV-M10-001，29 条 reviewed_evidence；DEC-0018 将上限从 12h 提高到 20h）；V1 TASK-0083 done
 - M15 补丁（fixes M10）：后端 `08e0fc6`（EV-0449）、前端 `4538d8c`（EV-0450）、a11y `c4ebd3e`（EV-0478）；TASK-0084/0085/0087/0086 done，gate pass（REV-M15-001）；代码证据 EV-0482..0486、EV-0488 在 `864b0a7`，docs EV-0489 在 `de33ed8`（EV-0487 为中间失败，不引用）
 - M04：`feature`，gate pass（REV-M04-005，2026-11-21；18 条 AC 全 pass）；证据 EV-0675/0676/0677/0681/0682..0686/0687/0689、EV-0669、EV-0640；Product 预验收见「M04 模型网关纵深（gate pass 后 Product 预验收）」
-- 验收日期：2026-11-19（M10 初次）、2026-11-20（M15 后复验）、2026-11-20（M18 回溯与最终全量）、2026-11-21（M04 gate 后）、2026-11-22（M19 gate 后）
-- 验收人：Product（M03/M10/M15 预验收；M02 回溯预验收；M04 预验收；M19 预验收）；用户（M03/M10 accepted；M02/M18 回溯 accepted，DEC-0025；M04 最终验收 `accepted`，DEC-0027）
-- 参考：REV-M13-001、REV-M03-001、REV-M03-V1-002、REV-M10-001、REV-M15-001、REV-M10-ARCH-002、REV-M10-OPS-001、M10-OPS-DRILL、REV-TASK-0033-002、REV-TASK-0037/0039/0041/0043/0045、REV-TASK-0065-002/0068/0069/0071/0076；M18 回溯：REV-M01-002、REV-M02-004、REV-M03-002、REV-M10-002、REV-M12-002、REV-M13-002、REV-M15-002、REV-M18-REVALIDATION-001；M04：REV-M04-005、REV-TASK-0115-002、TASK-0116/TASK-0139；M19：REV-M19-001、EV-0716/0721/0723/0724
+- 验收日期：2026-11-19（M10 初次）、2026-11-20（M15 后复验）、2026-11-20（M18 回溯与最终全量）、2026-11-21（M04 gate 后）、2026-11-22（M19 gate 后）、2026-11-22（M21 合并后）
+- 验收人：Product（M03/M10/M15 预验收；M02 回溯预验收；M04 预验收；M19/M21 预验收）；用户（M03/M10 accepted；M02/M18 回溯 accepted，DEC-0025；M04 最终验收 `accepted`，DEC-0027；M19 合并批准，DEC-0030）
+- 参考：REV-M13-001、REV-M03-001、REV-M03-V1-002、REV-M10-001、REV-M15-001、REV-M10-ARCH-002、REV-M10-OPS-001、M10-OPS-DRILL、REV-TASK-0033-002、REV-TASK-0037/0039/0041/0043/0045、REV-TASK-0065-002/0068/0069/0071/0076；M18 回溯：REV-M01-002、REV-M02-004、REV-M03-002、REV-M10-002、REV-M12-002、REV-M13-002、REV-M15-002、REV-M18-REVALIDATION-001；M04：REV-M04-005、REV-TASK-0115-002、TASK-0116/TASK-0139；M19：REV-M19-001、EV-0716/0721/0723/0724；M21：EV-0725、CI run 44965051297、merge `1434733`
 
 ## 模块关系与验收状态
 
@@ -32,7 +32,8 @@
 - **M12**：维护模块，done；热栈/test-affected/文档无用户可见 AC，Product/用户验收为 `not-recorded`（N/A legacy），不伪造 pass。
 - **M14**：docs-only legacy，building；TASK-0053/0057/0061 已 done，但尚无模块 review/gate；Product/user 结论重置为 `pending`，待独立 closeout 后再验收。
 - **M04**：`feature`，done；gate pass（REV-M04-005，2026-11-21；18 条 AC 全 pass，F-001..F-005/F-011 fixed，P2/P3 残余登记）；Product 预验收 `pass`（with residual：R-M04-01 P2 员工侧配额 429 文案、R-M04-02/03 P3，以及 Verifier F-006/F-008/F-009/F-010/F-012/F-013），见「M04 模型网关纵深（gate pass 后 Product 预验收）」；用户最终验收 `accepted`（DEC-0027，A；with residual，R-M04-01/02/03 转 M05），见「用户最终验收（M04）」。
-- **M19**：`fix`，done；gate pass（REV-M19-001，2026-11-22；14.3h/16h）；9 个任务全部 done；Product 预验收 `pass`（with residual F-001..F-005，见「M19 测试基础设施与全量测试提速（gate pass 后 Product 预验收）」）；用户最终验收 `accepted`（DEC-0030=A，2026-11-22）；PR #1 已合并（merge commit `1434733`）；不改变产品 AC/API/DB/UX/部署行为。M21（fix M19）修复合并前最终 CI 暴露的 `ModelFailoverIntegrationTest` 时序 flake，属于同一交付。
+- **M19**：`fix`，done；gate pass（REV-M19-001，2026-11-22；14.3h/16h）；9 个任务全部 done；Product 预验收 `pass`（with residual F-001..F-005，见「M19 测试基础设施与全量测试提速（gate pass 后 Product 预验收）」）；用户最终验收 `accepted`（DEC-0030=A，2026-11-22）；PR #1 已合并（merge commit `1434733`）；不改变产品 AC/API/DB/UX/部署行为。M21（fix M19）修复合并前最终 CI 暴露的 `ModelFailoverIntegrationTest` 时序 flake，属于同一交付的稳定性修复，Product 预验收 `pass`（见「M21（fix M19）：ModelFailover 时序 flake 修复（合并后 Product 预验收）」）。
+- **M21**：`fix`，`fixes_module=M19`；TASK-0150（`2bee040`）只改 `ModelFailoverIntegrationTest`，复用 `holdAfterFirstContent` 闸门消除首字前 503/502 竞态；EV-0725（定向 10×17 + Worker 全量 356/0/0/0）、CI run 44965051297（shard2 17/0/0/0、merge 196/1115/0/0/0）、merge `1434733`；Product 预验收 `pass`（无用户可见 AC，无产品/UX/API/DB 变更）；用户验收引用 DEC-0030，无需额外验收。
 
 ## 验收标准（M03，M13 补丁后）
 
@@ -395,7 +396,16 @@ M02 是用户可见 MVC 模块，但 2026-11-18 关闭时没有 `product_accepta
 - **Product 结论**：`pass`（with residual）。9 个任务覆盖 P0–P4；196/1115/0/0/0、4 shard ≤213s、P2→P4 −56.9% 均可由评审/证据复核；无产品行为/UX/API/DB/部署变更；合同命令未改；无 P0/P1 open finding。F-001..F-005 均 accepted、有 owner/due，不改变 M19 技术验收；**F-001/F-003 需在 M20 gate 前由 Ops 处理**。
 - **明确不声称**：CI 已强制覆盖率（F-001）；P4 已减少 app 用例/墙钟（F-002）；Actions 升级已完成（F-003）；baseline 计时可独立重建（F-004）；surefire 并行隔离已验证（F-005）；用户已最终验收。
 - **用户最终验收**：`accepted`（DEC-0030=A，2026-11-22）。用户接受 M19 技术验收并批准合并 PR #1；合并提交 `1434733`。附条件：F-001/F-003 由 Ops 在 M20 gate 前关闭；F-002/F-004/F-005 作为维护性残余跟踪。
-- **M21（fix M19）**：合并前最终 CI 暴露 `ModelFailoverIntegrationTest` “首字后失败”时序 flake（低核 shard 2 偶发 503/502）；TASK-0150 用 `holdAfterFirstContent` 闸门修复，EV-0725（定向 10 次 + Worker 全量 356/0/0/0），最终 CI 44965051297 shard2 通过。M21 属 M19 同一交付的稳定性修复，不改变产品 AC/DoD。
+
+## M21（fix M19）：ModelFailover 时序 flake 修复（合并后 Product 预验收）
+
+- **范围与原因**：`fix` 模块，`fixes_module=M19`，技术性修复，无用户可见 AC。合并前最终 CI（run 44963600457 @ `5017e1d`）在低核 shard 2 偶发失败：`ModelFailoverIntegrationTest.stream_failureAfterFirstToken_keepsContentAndDoesNotReplay` 所用桩把内容帧与错误帧一次写出，Worker 可能先读到终止错误、尚未取走首段内容，从而按“首字前失败”走降级并返回 502/503。属测试时序不确定性，不是产品行为回归。
+- **修复方式与范围核对**：TASK-0150（`2bee040`）只改该测试类：复用 TASK-0149 已引入的 `TestModelStub.holdAfterFirstContent()` / `releaseContent()` 闸门，在测试 `doOnNext` 收到首个响应后释放，使错误帧确定在首段内容被消费之后到达。断言与用例集合未变（测试方法 17→17、`assertThat` 91→91；无 `@Disabled`/assume/sleep，无断言删除或放宽）；未改生产代码、迁移、`pom.xml`、CI、`TestModelStub` 或其他测试类。
+- **证据**：EV-0725（`2bee040`，dirty=false）：定向 10 次 × 17 用例全通过，Worker 全量 356/0/0/0。CI run 44965051297（@ `9508fc6`）success：shard 2 artifact 中 `ModelFailoverIntegrationTest` tests=17 errors=0 skipped=0 failures=0；merge 报告 196 类/1115 用例/0/0/0、verdict pass。修复随 PR #1 合入 `1434733`；失败历史 run 44963600457 与 EV-0711 保留，不删除。
+- **Product 结论**：`pass`。三项核对成立：① 改动严格限于该测试的时序；② 无断言放宽/删除/skip，闸门写法与 TASK-0149 一致；③ M19 已验收 AC（尤其 AC-1 用例集合不减少、零 skip）与 DoD 不受影响。产品 AC/API/DB/UX/部署行为零变更，non-goals 未触碰；本模块不新增界面或流程，UX 状态清单（空/错/加载/权限/移动端/文案）N/A。
+- **用户最终验收**：引用 `DEC-0030`（用户 2026-11-22 接受 M19 技术验收，并授权“先推最终评审/状态提交并重跑 CI，绿后合并 PR #1”）。M21 是该合并条件（CI 全绿）所需的测试稳定性修复：只改测试时序、断言与用例集合不变、产品行为零变更，因此**不需要额外用户验收**；Lead 在合并记录中已注明（`37a5be7`）。若 Lead 判断需用户书面确认，可追加，不阻塞模块 done。
+- **残余/未验证（仅测试层面，无产品影响）**：① 闸门在 CI 与本机 `RICCON_TEST_SERVICES=external` 路径验证，未在更低核数或 surefire 多 fork 下复跑（同 M19 F-005 前提）；② 修复仅消除本用例的首字前竞态，不等于 Worker 全量再无 flake；③ 未重跑 E2E/a11y/security/perf（代码未变，M19 的 EV-0717/0718/0719/0722 仍为权威）。**明确不声称**：全量套件已无任何 flake；M21 引入了产品行为变化。
+- **流程备注（非产品）**：TASK-0150 的 `write_scope` 把 `.riccon/**` 写成 `.ricon/**`（仓库无该目录），实际写入均在 `.riccon/**`；不影响本结论，建议 M20 前修正模板，避免严格 scope 校验误报。
 
 ## 历史模块
 
