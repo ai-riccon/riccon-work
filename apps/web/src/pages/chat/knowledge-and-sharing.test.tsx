@@ -219,8 +219,10 @@ describe('工作空间共享入口与知识库明示', () => {
 describe('员工端所属部门', () => {
   it('普通成员显示主部门，未分配时显示明确文案', async () => {
     const first = renderChat(DEMO_SESSION, makeManagementApi([makeDepartment()]));
-    expect(await screen.findByText('所属部门：')).toBeVisible();
-    expect(screen.getByText('销售部')).toBeVisible();
+    // `所属部门：` 标签在部门列表加载态就已渲染，先等它会命中“加载中…”；
+    // 必须先等待部门名出现，再断言标签，避免数据尚未返回的同步查询竞态。
+    expect(await screen.findByText('销售部')).toBeVisible();
+    expect(screen.getByText('所属部门：')).toBeVisible();
     first.unmount();
 
     authStore.reset();
