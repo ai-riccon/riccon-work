@@ -6,6 +6,7 @@ import com.riccon.api.audit.service.AuditService;
 import com.riccon.api.auth.service.AuthService;
 import com.riccon.api.error.ErrorCodes;
 import com.riccon.api.error.ForbiddenException;
+import com.riccon.api.error.UnauthenticatedException;
 import com.riccon.api.identity.domain.PlatformTenant;
 import com.riccon.api.identity.domain.RicconPrincipal;
 import com.riccon.api.web.ProblemWriter;
@@ -37,8 +38,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * 从已认证主体建立 {@link TenantContext}。
  *
  * <p>ADR-0009 规定租户只能从会话主体派生，禁止读取 Cookie、请求头或请求体。请求头 {@code X-Tenant-Id}
- * 与查询参数 {@code tenantId} 若与主体不一致，立即拒绝并写审计；一致时也忽略，不改变派生来源。
- * 每个请求结束时必须清理 ThreadLocal，避免线程池复用串租户。
+ * 与查询参数 {@code tenantId} 都不是租户来源：与主体不一致时默认拒绝并写审计；两者同时出现且不一致时
+ * 一律拒绝，任何一方都不能掩盖另一方。
+ *
+ * <p>唯一窄例外是 ADR-0022 §2.4 的平台成本过滤：仅 {@code platform} 租户、{@code GET
+ * /api/v1/admin/costs} 且具备 {@code platform.cost.read} 时，允许过滤值与主体不一致；过滤器先校验权限，
+ * controller 仍由 {@code PermissionInterceptor} 二次强制。该例外下 {@code X-Tenant-Id} 不参与过滤，
+ * 过滤值只来自查询参数。其他路径/方法/主体继续按默认拒绝处理。
+ *
+ * <p>每个请求结束时必须清理 ThreadLocal，避免线程池复用串租户。
  */
 @Component
 public class TenantContextFilter extends OncePerRequestFilter {
@@ -124,17 +132,25 @@ public class TenantContextFilter extends OncePerRequestFilter {
             return;
         }
 
-        String forgedTenant =
-                firstPresent(request.getHeader(FORGED_TENANT_HEADER), queryParameter(request, FORGED_TENANT_PARAMETER));
+        String headerTenant = nonBlank(request.getHeader(FORGED_TENANT_HEADER));
+        String queryTenant = nonBlank(queryParameter(request, FORGED_TENANT_PARAMETER));
+        // 两个来源同时存在且不一致时直接拒绝：任何一方都不能掩盖另一方（REV-TASK-0142-001 F-001）。
+        if (headerTenant != null && queryTenant != null && !headerTenant.equals(queryTenant)) {
+            denyMismatchedTenant(
+                    request, response, principal, tenantId, queryTenant, headerTenant, TENANT_MISMATCH_REASON);
+            return;
+        }
+
+        String forgedTenant = headerTenant != null ? headerTenant : queryTenant;
         if (forgedTenant != null && !forgedTenant.equals(tenantId.value())) {
             // 只有平台成本端点允许“主体租户与过滤值不一致”；命中候选后还必须具备平台成本权限。
             if (!isPlatformCostFilter(request, principal)) {
-                denyMismatchedTenant(request, response, principal, tenantId, forgedTenant, TENANT_MISMATCH_REASON);
+                denyMismatchedTenant(
+                        request, response, principal, tenantId, forgedTenant, null, TENANT_MISMATCH_REASON);
                 return;
             }
             // 若只依赖 PermissionInterceptor，安全过滤器会在角色校验前放行伪造 tenantId，形成纵深缺口。
-            if (!hasPlatformCostPermission(principal)) {
-                denyMismatchedTenant(request, response, principal, tenantId, forgedTenant, MISSING_PERMISSION_REASON);
+            if (!hasPlatformCostPermission(request, response, principal, tenantId, forgedTenant)) {
                 return;
             }
         }
@@ -168,18 +184,41 @@ public class TenantContextFilter extends OncePerRequestFilter {
      * 校验平台成本读取权限，作为过滤器例外的 defense-in-depth。
      *
      * <p>与 {@code PermissionInterceptor} 同源调用 {@link AuthService#requirePermission}，每次请求从数据库
-     * 重新加载权限，不信任会话中的旧权限。缺少权限或权限读取异常都返回 {@code false}，由调用方按租户不一致
-     * 拒绝（fail-closed），禁止在角色校验前放行伪造租户标识。
+     * 重新加载权限，不信任会话中的旧权限。失败时由本方法直接写响应并返回 {@code false}（fail-closed）：
+     * 缺少权限或权限读取异常写 403 并审计；会话失效/账号禁用写 401，与常规拦截器路径保持一致。
+     * 任何异常都不会逃逸出安全过滤器链，也不会降级为放行。
      *
+     * @param request HTTP 请求
+     * @param response HTTP 响应
      * @param principal 已认证主体
+     * @param tenantId 主体所属租户
+     * @param forgedTenant 触发例外的过滤值
      * @return 是否具备 {@code platform.cost.read}
+     * @throws IOException 写入失败
      */
-    private boolean hasPlatformCostPermission(RicconPrincipal principal) {
+    private boolean hasPlatformCostPermission(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            RicconPrincipal principal,
+            TenantId tenantId,
+            String forgedTenant)
+            throws IOException {
         try {
             authService.requirePermission(principal, PermissionCodes.PLATFORM_COST_READ);
             return true;
+        } catch (UnauthenticatedException exception) {
+            // 会话失效或账号禁用：返回 401，避免把“未认证”误报成“缺少权限”。
+            problemWriter.write(
+                    response,
+                    HttpStatus.UNAUTHORIZED,
+                    ErrorCodes.AUTH_UNAUTHENTICATED,
+                    "Authentication required",
+                    "session is missing or expired",
+                    RequestContext.traceId(request));
+            return false;
         } catch (ForbiddenException exception) {
-            // 预期内的无权限：交给统一的租户不一致拒绝路径写审计并返回 403。
+            // 预期内的无权限：与租户不一致一样拒绝，不泄露例外命中信息。
+            denyMismatchedTenant(request, response, principal, tenantId, forgedTenant, null, MISSING_PERMISSION_REASON);
             return false;
         } catch (RuntimeException exception) {
             // 权限读取失败同样按无权限处理；异常不能逃逸出安全过滤器链，也不能降级为放行。
@@ -188,6 +227,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
                     principal.userId(),
                     principal.tenantId(),
                     exception);
+            denyMismatchedTenant(request, response, principal, tenantId, forgedTenant, null, MISSING_PERMISSION_REASON);
             return false;
         }
     }
@@ -199,7 +239,8 @@ public class TenantContextFilter extends OncePerRequestFilter {
      * @param response HTTP 响应
      * @param principal 会话主体
      * @param tenantId 主体所属租户
-     * @param forgedTenant 客户端伪造的租户值
+     * @param forgedTenant 客户端伪造的租户值（冲突时为查询参数值）
+     * @param conflictingHeader 与查询参数冲突的请求头值，无冲突时为空
      * @param reason 审计中的拒绝原因
      * @throws IOException 写入失败
      */
@@ -209,10 +250,16 @@ public class TenantContextFilter extends OncePerRequestFilter {
             RicconPrincipal principal,
             TenantId tenantId,
             String forgedTenant,
+            String conflictingHeader,
             String reason)
             throws IOException {
-        String attempted = forgedTenant.length() > 200 ? forgedTenant.substring(0, 200) : forgedTenant;
+        // 审计 details 的键受 AuditDetailsPolicy 白名单约束，冲突时把两个值都写入 allowed key
+        // attemptedTenant（格式 header=<值>;query=<值>），不新增未批准的审计字段。
+        String attempted = conflictingHeader == null
+                ? truncate(forgedTenant, 200)
+                : truncate("header=" + conflictingHeader + ";query=" + forgedTenant, 200);
         String targetId = forgedTenant.length() <= 64 ? forgedTenant : null;
+        Map<String, Object> details = Map.of("attemptedTenant", attempted, "reason", reason);
         try {
             TenantContext.runWithTenant(
                     tenantId,
@@ -228,7 +275,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
                             RequestContext.traceId(request),
                             RequestContext.requestId(request),
                             request.getRemoteAddr(),
-                            Map.of("attemptedTenant", attempted, "reason", reason))));
+                            details)));
         } catch (RuntimeException exception) {
             LOG.error(
                     "tenant access denied audit failed traceId={} tenantId={}",
@@ -295,16 +342,23 @@ public class TenantContextFilter extends OncePerRequestFilter {
     }
 
     /**
-     * 返回第一个非空值。
+     * 把空白值归一为“未提供”，避免空白请求头/查询参数参与冲突判断。
      *
-     * @param first 请求头值
-     * @param second 查询参数值
-     * @return 非空值或 {@code null}
+     * @param value 原始值
+     * @return 非空白值或 {@code null}
      */
-    private String firstPresent(String first, String second) {
-        if (first != null && !first.isBlank()) {
-            return first;
-        }
-        return second != null && !second.isBlank() ? second : null;
+    private static String nonBlank(String value) {
+        return value != null && !value.isBlank() ? value : null;
+    }
+
+    /**
+     * 截断审计 details 中的外部输入，避免超长值放大审计记录。
+     *
+     * @param value 原始值
+     * @param maxLength 最大长度
+     * @return 截断后的值
+     */
+    private static String truncate(String value, int maxLength) {
+        return value.length() > maxLength ? value.substring(0, maxLength) : value;
     }
 }

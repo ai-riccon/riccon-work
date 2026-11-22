@@ -25,7 +25,8 @@ import tools.jackson.databind.JsonNode;
  * /api/v1/admin/costs} 且具备 {@code platform.cost.read} 的主体可以使用 {@code tenantId} 过滤。平台非管理员、
  * 租户端点的伪造查询参数/请求头、非 GET 方法与 trailing slash 全部返回 403 {@code RICCON-AUTH-403}，
  * 响应不包含租户、金额或明细；过滤器拒绝写 {@code tenant.access.denied} 审计（{@code attemptedTenant}、
- * {@code reason}）。
+ * {@code reason}）。{@code X-Tenant-Id} 与 {@code tenantId} 同时出现且不一致时一律拒绝，任何一方都不能
+ * 掩盖另一方；两者一致或只出现一个时按单值处理。
  */
 @Tag("security")
 class PlatformCostTenantFilterTest extends CostApiTestSupport {
@@ -103,19 +104,33 @@ class PlatformCostTenantFilterTest extends CostApiTestSupport {
                 client.get(path, platformUser.sessionCookie(), Map.of("X-Tenant-Id", other.tenant())),
                 fixture.tenant(),
                 other.tenant());
+        // header 匹配主体（platform）但 query 指向其他租户：冲突必须拒绝，header 不能掩盖 query（F-001）。
+        assertForbiddenWithoutCostData(
+                client.get(
+                        path + "&tenantId=" + other.tenant(),
+                        platformUser.sessionCookie(),
+                        Map.of("X-Tenant-Id", "platform")),
+                fixture.tenant(),
+                other.tenant());
 
         List<AuditRow> denied = auditRows("tenant.access.denied").stream()
                 .filter(row -> platformUserId.toString().equals(row.actorId()))
                 .toList();
-        assertThat(denied).as("查询参数与请求头各写一条拒绝审计").hasSize(2);
+        assertThat(denied).as("查询参数、请求头各一条 + 冲突一条拒绝审计").hasSize(3);
         assertThat(denied).allSatisfy(row -> {
             assertThat(row.tenantId()).isEqualTo("platform");
             assertThat(row.actorType()).isEqualTo("USER");
             assertThat(row.outcome()).isEqualTo("DENIED");
             assertThat(row.targetType()).isEqualTo("TENANT");
             assertThat(row.targetId()).isEqualTo(other.tenant());
-            assertThat(row.details()).contains(other.tenant(), "missing_permission");
         });
+        assertThat(denied.stream()
+                        .filter(row -> row.details().contains("missing_permission"))
+                        .count())
+                .as("单参数触发的两次缺权限拒绝")
+                .isEqualTo(2);
+        assertThat(denied)
+                .anySatisfy(row -> assertThat(row.details()).contains(other.tenant(), "platform", "tenant_mismatch"));
     }
 
     /**
@@ -136,12 +151,20 @@ class PlatformCostTenantFilterTest extends CostApiTestSupport {
                 client.get(path, fixture.admin().sessionCookie(), Map.of("X-Tenant-Id", other.tenant())),
                 fixture.tenant(),
                 other.tenant());
+        // F-001 绕过场景：header 匹配主体自身租户，query 指向其他租户；冲突必须拒绝并审计。
+        assertForbiddenWithoutCostData(
+                client.get(
+                        path + "&tenantId=" + other.tenant(),
+                        fixture.admin().sessionCookie(),
+                        Map.of("X-Tenant-Id", fixture.tenant())),
+                fixture.tenant(),
+                other.tenant());
 
         String adminId = userId(fixture.admin());
         List<AuditRow> denied = auditRows("tenant.access.denied").stream()
                 .filter(row -> adminId.equals(row.actorId()))
                 .toList();
-        assertThat(denied).as("查询参数与请求头各写一条拒绝审计").hasSize(2);
+        assertThat(denied).as("查询参数、请求头与冲突各写一条拒绝审计").hasSize(3);
         assertThat(denied).allSatisfy(row -> {
             assertThat(row.tenantId()).isEqualTo(fixture.tenant());
             assertThat(row.actorType()).isEqualTo("USER");
@@ -149,14 +172,15 @@ class PlatformCostTenantFilterTest extends CostApiTestSupport {
             assertThat(row.targetId()).isEqualTo(other.tenant());
             assertThat(row.details()).contains(other.tenant(), "tenant_mismatch");
         });
+        assertThat(denied).anySatisfy(row -> assertThat(row.details()).contains(fixture.tenant()));
     }
 
     /**
-     * 平台管理员的授权范围内过滤：查询参数决定聚合范围，请求头被忽略且不改变结果。
+     * 平台管理员的授权范围内过滤：query 决定聚合范围，header 不参与；两者冲突时拒绝。
      */
     @Test
-    @DisplayName("F-006：平台管理员 tenantId 过滤生效且 X-Tenant-Id 不参与过滤")
-    void platformCost_platformAdminFilterAndHeader_followQueryOnly() {
+    @DisplayName("F-006/F-001：平台管理员 query-only 过滤、header-only 全租户、header+query 冲突拒绝")
+    void platformCost_platformAdminFilterAndHeader_rules() {
         Fixture fixture = fixture();
         TenantOther other = seedTwoTenantCosts(fixture);
         String path = "/api/v1/admin/costs?" + WINDOW_QUERY + "&groupBy=TENANT";
@@ -166,12 +190,12 @@ class PlatformCostTenantFilterTest extends CostApiTestSupport {
         assertThat(filtered.path("items").get(0).path("tenantId").asString()).isEqualTo(other.tenant());
         assertThat(filtered.path("totals").path("amount").asString()).isEqualTo("0.006000");
 
-        // 同时携带请求头与查询参数时以查询参数为准；头不参与聚合。
-        JsonNode queryWins =
-                platformReport(fixture, path + "&tenantId=" + other.tenant(), Map.of("X-Tenant-Id", fixture.tenant()));
-        assertThat(queryWins.path("items")).hasSize(1);
-        assertThat(queryWins.path("items").get(0).path("tenantId").asString()).isEqualTo(other.tenant());
-        assertThat(queryWins.path("totals").path("amount").asString()).isEqualTo("0.006000");
+        // header 与 query 相同：按一个值处理，查询参数生效。
+        JsonNode sameValue =
+                platformReport(fixture, path + "&tenantId=" + other.tenant(), Map.of("X-Tenant-Id", other.tenant()));
+        assertThat(sameValue.path("items")).hasSize(1);
+        assertThat(sameValue.path("items").get(0).path("tenantId").asString()).isEqualTo(other.tenant());
+        assertThat(sameValue.path("totals").path("amount").asString()).isEqualTo("0.006000");
 
         // 只带请求头时不改变过滤结果：平台管理员仍看到授权范围内的全租户聚合。
         JsonNode headerOnly = platformReport(fixture, path, Map.of("X-Tenant-Id", other.tenant()));
@@ -182,6 +206,57 @@ class PlatformCostTenantFilterTest extends CostApiTestSupport {
                 .path("items")
                 .forEach(item -> tenants.add(item.path("tenantId").asString()));
         assertThat(tenants).containsExactlyInAnyOrder(fixture.tenant(), other.tenant());
+
+        // header 与 query 同时出现且不一致：即使平台管理员也拒绝，不进入平台成本例外（F-001）。
+        assertForbiddenWithoutCostData(
+                client.get(
+                        path + "&tenantId=" + other.tenant(),
+                        fixture.platform().sessionCookie(),
+                        Map.of("X-Tenant-Id", fixture.tenant())),
+                fixture.tenant(),
+                other.tenant());
+        String platformAdminId = userId(fixture.platform());
+        assertThat(auditRows("tenant.access.denied")).anySatisfy(row -> {
+            assertThat(row.actorId()).isEqualTo(platformAdminId);
+            assertThat(row.targetId()).isEqualTo(other.tenant());
+            assertThat(row.details()).contains(other.tenant(), fixture.tenant(), "tenant_mismatch");
+        });
+    }
+
+    /**
+     * F-004：平台成本例外内检测到会话失效/账号禁用时返回 401，而不是 403 missing_permission。
+     */
+    @Test
+    @DisplayName("F-004：例外内会话失效返回 401 RICCON-AUTH-401")
+    void platformCost_platformPrincipalDisabled_isUnauthenticated() {
+        Fixture fixture = fixture();
+        TenantOther other = seedTwoTenantCosts(fixture);
+        LoginSession platformUser = seedAndLoginLocalUser(
+                fixture.platform(),
+                "platform",
+                "platcost" + UUID.randomUUID().toString().replace("-", "").substring(0, 8),
+                "platform-user-password-12",
+                List.of());
+        UUID platformUserId = actorId(platformUser);
+        jdbcClient
+                .sql("UPDATE app_user SET status = 'DISABLED' WHERE tenant_id = 'platform' AND id = :id")
+                .param("id", BinaryUuids.toBytes(platformUserId))
+                .update();
+
+        ApiTestClient.ApiResponse response = client.get(
+                "/api/v1/admin/costs?" + WINDOW_QUERY + "&groupBy=TENANT&tenantId=" + other.tenant(),
+                platformUser.sessionCookie(),
+                Map.of());
+        assertThat(response.status()).as(response.body()).isEqualTo(401);
+        JsonNode problem = client.json(response);
+        assertThat(problem.path("code").asString()).isEqualTo("RICCON-AUTH-401");
+        assertThat(problem.has("items")).as(response.body()).isFalse();
+        assertThat(problem.has("totals")).as(response.body()).isFalse();
+        assertThat(response.body()).doesNotContain(other.tenant(), "0.003000", "0.006000", "0.009000");
+        assertThat(auditRows("tenant.access.denied").stream()
+                        .filter(row -> platformUserId.toString().equals(row.actorId())))
+                .as("401 不写 tenant_mismatch 拒绝审计")
+                .isEmpty();
     }
 
     /**
