@@ -4,7 +4,7 @@
   "module_id": "M20",
   "title": "平台成本租户过滤角色校验与负向测试（REV-TASK-0108 F-006）",
   "owner": "riccon/builder-core",
-  "status": "in_progress",
+  "status": "review",
   "write_scope": [
     "apps/api/src/main/java/com/riccon/api/auth/controller/TenantContextFilter.java",
     "apps/api/src/test/java/com/riccon/api/admin/cost/**",
@@ -20,10 +20,20 @@
     "清理 ADR-0022 §2.4 中“当前 normalizeTenantFilter 仍把空白归一为未提供、修正归 TASK-0141”的过时句；TASK-0141 已实现空白 tenantId → 400",
     "若选择 ADR-0009 例外路径，负向测试必须证明平台非管理员（platform 租户但无 platform.cost.read）在 filter/interceptor 任一路径都 403 且无数据；X-Tenant-Id 头不改变过滤结果"
   ],
-  "evidence": [],
-  "tools_used": [],
+  "evidence": [
+    "EV-0757",
+    "EV-0758"
+  ],
+  "tools_used": [
+    "serena",
+    "codegraph",
+    "maven",
+    "riccon",
+    "git"
+  ],
   "blocker": null,
   "created_at": "2026-11-21T17:33:29.918+08:00",
-  "updated_at": "2026-11-22T14:05:24.126+08:00",
-  "baseline_commit": "81b4101dbd531aed87d408a54bbbee9f3db62ace"
+  "updated_at": "2026-11-22T14:26:09.577+08:00",
+  "baseline_commit": "81b4101dbd531aed87d408a54bbbee9f3db62ace",
+  "end_commit": "22e1be9f5a504a9a231609e96ccfd12083f19d3a"
 }

@@ -1,0 +1,487 @@
+# command: ./mvnw -T1C -pl apps/api -am test -Dtest='PlatformCostTenantFilterTest,CostAdminApiTest,CostApiTest,TenantIsolationTest,TenantIsolationSecurityTest' -Dsurefire.failIfNoSpecifiedTests=false
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-22T14:16:16.843+08:00
+# finished_at: 2026-11-22T14:17:57.104+08:00
+# duration_ms: 100260
+# exit_code: 0
+
+# --- stdout ---
+[INFO] Scanning for projects...
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] riccon-parent                                                      [pom]
+[INFO] riccon-platform-common                                             [jar]
+[INFO] riccon-platform-domain                                             [jar]
+[INFO] riccon-api                                                         [jar]
+[INFO] 
+[INFO] Using the MultiThreadedBuilder implementation with a thread count of 12
+[INFO] 
+[INFO] ----------------------< com.riccon:riccon-parent >----------------------
+[INFO] Building riccon-parent 0.1.0-SNAPSHOT                              [1/4]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (enforce-toolchain) @ riccon-parent ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.version.RequireJavaVersion passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.version.RequireMavenVersion passed
+[INFO] 
+[INFO] --- jacoco:0.8.16:prepare-agent (prepare-agent) @ riccon-parent ---
+[INFO] Loaded 64 auto-discovered prefixes for remote repository apache.snapshots (prefixes-apache.snapshots.txt)
+[INFO] argLine set to -javaagent:/Users/ricky/.m2/repository/org/jacoco/org.jacoco.agent/0.8.16/org.jacoco.agent-0.8.16-runtime.jar=destfile=/Users/ricky/Documents/projects/riccon-work/target/jacoco.exec
+[INFO] 
+[INFO] 
+[INFO] -----------------< com.riccon:riccon-platform-common >------------------
+[INFO] -----------------< com.riccon:riccon-platform-domain >------------------
+[INFO] Building riccon-platform-common 0.1.0-SNAPSHOT                     [2/4]
+[INFO]   from platform/platform-common/pom.xml
+[INFO] Building riccon-platform-domain 0.1.0-SNAPSHOT                     [3/4]
+[INFO]   from platform/platform-domain/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (enforce-toolchain) @ riccon-platform-domain ---
+[INFO] --- enforcer:3.7.0:enforce (enforce-toolchain) @ riccon-platform-common ---
+[INFO] 
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (banned-agentscope) @ riccon-platform-common ---
+[INFO] --- enforcer:3.7.0:enforce (banned-platform-domain-dependencies) @ riccon-platform-domain ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] 
+[INFO] --- jacoco:0.8.16:prepare-agent (prepare-agent) @ riccon-platform-common ---
+[INFO] --- jacoco:0.8.16:prepare-agent (prepare-agent) @ riccon-platform-domain ---
+[INFO] argLine set to -javaagent:/Users/ricky/.m2/repository/org/jacoco/org.jacoco.agent/0.8.16/org.jacoco.agent-0.8.16-runtime.jar=destfile=/Users/ricky/Documents/projects/riccon-work/platform/platform-domain/target/jacoco.exec
+[INFO] argLine set to -javaagent:/Users/ricky/.m2/repository/org/jacoco/org.jacoco.agent/0.8.16/org.jacoco.agent-0.8.16-runtime.jar=destfile=/Users/ricky/Documents/projects/riccon-work/platform/platform-common/target/jacoco.exec
+[INFO] 
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ riccon-platform-domain ---
+[INFO] --- resources:3.5.0:resources (default-resources) @ riccon-platform-common ---
+[INFO] skip non existing resourceDirectory /Users/ricky/Documents/projects/riccon-work/platform/platform-common/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/ricky/Documents/projects/riccon-work/platform/platform-common/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/ricky/Documents/projects/riccon-work/platform/platform-domain/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/ricky/Documents/projects/riccon-work/platform/platform-domain/src/main/resources
+[INFO] 
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ riccon-platform-common ---
+[INFO] --- compiler:3.15.0:compile (default-compile) @ riccon-platform-domain ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ riccon-platform-domain ---
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ riccon-platform-common ---
+[INFO] skip non existing resourceDirectory /Users/ricky/Documents/projects/riccon-work/platform/platform-common/src/test/resources
+[INFO] skip non existing resourceDirectory /Users/ricky/Documents/projects/riccon-work/platform/platform-domain/src/test/resources
+[INFO] 
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ riccon-platform-common ---
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ riccon-platform-domain ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ riccon-platform-common ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ riccon-platform-domain ---
+[INFO] 
+[INFO] -----------------------< com.riccon:riccon-api >------------------------
+[INFO] Building riccon-api 0.1.0-SNAPSHOT                                 [4/4]
+[INFO]   from apps/api/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] Loaded 24569 auto-discovered prefixes for remote repository maven-central (prefixes-maven-central.txt)
+[WARNING] Could not transfer metadata /.meta/prefixes.txt from/to flyway-community-db-support (https://maven.pkg.github.com/flyway/flyway-community-db-support): HTTP Status: 401
+[WARNING] Could not transfer metadata /.meta/prefixes.txt from/to MavenFeed (https://red-gate.pkgs.visualstudio.com/MavenFeed/_packaging/MavenFeed/maven/v1/): HTTP Status: 401
+[INFO] Loaded 7 auto-discovered prefixes for remote repository shibboleth-repo (prefixes-shibboleth-repo.txt)
+[INFO] Loaded 24569 auto-discovered prefixes for remote repository maven_central (prefixes-maven_central.txt)
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (enforce-toolchain) @ riccon-api ---
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (banned-agentscope) @ riccon-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- jacoco:0.8.16:prepare-agent (prepare-agent) @ riccon-api ---
+[INFO] argLine set to -javaagent:/Users/ricky/.m2/repository/org/jacoco/org.jacoco.agent/0.8.16/org.jacoco.agent-0.8.16-runtime.jar=destfile=/Users/ricky/Documents/projects/riccon-work/apps/api/target/jacoco.exec
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ riccon-api ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 11 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ riccon-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ riccon-api ---
+[INFO] Copying 1 resource from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ riccon-api ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 139 source files with javac [debug parameters release 21] to target/test-classes
+[INFO] /Users/ricky/Documents/projects/riccon-work/apps/api/src/test/java/com/riccon/api/support/ApiIntegrationTestSupport.java: 某些输入文件使用或覆盖了已过时的 API。
+[INFO] /Users/ricky/Documents/projects/riccon-work/apps/api/src/test/java/com/riccon/api/support/ApiIntegrationTestSupport.java: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+[INFO] /Users/ricky/Documents/projects/riccon-work/apps/api/src/test/java/com/riccon/api/admin/model/routing/ModelRoutingServiceRaceTest.java: /Users/ricky/Documents/projects/riccon-work/apps/api/src/test/java/com/riccon/api/admin/model/routing/ModelRoutingServiceRaceTest.java使用了未经检查或不安全的操作。
+[INFO] /Users/ricky/Documents/projects/riccon-work/apps/api/src/test/java/com/riccon/api/admin/model/routing/ModelRoutingServiceRaceTest.java: 有关详细信息, 请使用 -Xlint:unchecked 重新编译。
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ riccon-api ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.riccon.api.TenantIsolationTest
+14:16:33.407 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.TenantIsolationTest]: TenantIsolationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+14:16:33.612 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.TenantIsolationTest
+14:16:33.754 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.TenantIsolationTest]: TenantIsolationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+14:16:33.755 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+14:16:33.757 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.TenantIsolationTest
+14:16:33.854 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+14:16:33.858 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+14:16:33.887 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+14:16:35.128 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+14:16:35.130 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+14:16:35.153 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+14:16:35.316 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+14:16:35.727 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: 748f33b98313e25df21fb729f80cf2fe8de7835478d58cd5b2b08755ead4f801
+14:16:36.125 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT0.809202S
+14:16:36.132 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+14:16:36.133 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+14:16:36.134 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+14:16:36.134 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+14:16:36.223 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: ac768f32e63f5e52e79a2f345210702e5aca37156b3853219f64340e04b69e4b
+14:16:36.496 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:61396/riccon using query 'SELECT 1'
+14:16:44.985 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT8.850734S
+14:16:44.985 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:61396/riccon)
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-22T14:16:45.474+08:00  INFO 37539 --- [riccon-api] [           main] com.riccon.api.TenantIsolationTest       : Starting TenantIsolationTest using Java 21.0.13 with PID 37539 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-22T14:16:45.475+08:00  INFO 37539 --- [riccon-api] [           main] com.riccon.api.TenantIsolationTest       : The following 1 profile is active: "test"
+2026-11-22T14:16:47.488+08:00  INFO 37539 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-22T14:16:47.513+08:00  INFO 37539 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-22T14:16:47.513+08:00  INFO 37539 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-22T14:16:47.578+08:00  INFO 37539 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2073 ms
+2026-11-22T14:16:47.855+08:00  INFO 37539 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-22T14:16:47.885+08:00  INFO 37539 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-22T14:16:47.923+08:00  INFO 37539 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:61396/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-22T14:16:48.069+08:00  INFO 37539 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon`.`flyway_schema_history` does not exist yet
+2026-11-22T14:16:48.074+08:00  INFO 37539 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 11 migrations (execution time 00:00.034s)
+2026-11-22T14:16:48.099+08:00  INFO 37539 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon`.`flyway_schema_history` ...
+2026-11-22T14:16:48.174+08:00  INFO 37539 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: << Empty Schema >>
+2026-11-22T14:16:48.184+08:00  INFO 37539 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "1 - baseline"
+2026-11-22T14:16:48.243+08:00  INFO 37539 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "2 - identity and workspace"
+2026-11-22T14:16:48.431+08:00  INFO 37539 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "3 - files knowledge and conversation"
+2026-11-22T14:16:48.662+08:00  INFO 37539 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "4 - research runs and artifacts"
+2026-11-22T14:16:48.925+08:00  INFO 37539 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "5 - model gateway and mcp"
+2026-11-22T14:16:49.157+08:00  INFO 37539 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "6 - audit event"
+2026-11-22T14:16:49.449+08:00  INFO 37539 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "7 - spring session"
+2026-11-22T14:16:49.524+08:00  INFO 37539 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "8 - approval params envelope"
+2026-11-22T14:16:49.606+08:00  INFO 37539 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "9 - organization and workspace scope"
+2026-11-22T14:16:49.947+08:00  INFO 37539 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "10 - audit query export"
+2026-11-22T14:16:50.166+08:00  INFO 37539 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "11 - model gateway depth"
+2026-11-22T14:16:50.503+08:00  INFO 37539 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 11 migrations to schema `riccon`, now at version v11 (execution time 00:02.043s)
+2026-11-22T14:16:51.102+08:00  INFO 37539 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-22T14:16:51.298+08:00  INFO 37539 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-22T14:16:51.298+08:00  INFO 37539 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-22T14:16:51.299+08:00  INFO 37539 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-22T14:16:51.299+08:00  INFO 37539 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-22T14:16:51.512+08:00  WARN 37539 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist is empty; mode=DEMO allowLegacyEndpoints=true
+2026-11-22T14:16:51.513+08:00  INFO 37539 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=0
+2026-11-22T14:16:51.568+08:00  INFO 37539 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-test, previousKey=true, fingerprintPepper=true
+2026-11-22T14:16:53.707+08:00  INFO 37539 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-22T14:16:53.809+08:00  INFO 37539 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 61556 (http) with context path '/'
+2026-11-22T14:16:53.819+08:00  INFO 37539 --- [riccon-api] [           main] com.riccon.api.TenantIsolationTest       : Started TenantIsolationTest in 8.793 seconds (process running for 22.06)
+2026-11-22T14:16:54.189+08:00  INFO 37539 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin created
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-22T14:16:55.178+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-22T14:16:55.178+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-22T14:16:55.180+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-11-22T14:16:56.432+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=8d95bf08-a649-4424-8db3-d3e4e04d1706 path=/api/v1/admin/tenants
+2026-11-22T14:16:57.122+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=1ef26572-7bcb-4f61-be39-b556552d4146 path=/api/v1/users
+2026-11-22T14:17:00.338+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=f9b24a3c-4852-4803-b6ac-0c82c3530aed path=/api/v1/users/01a201e6-9a96-7aa2-97a6-28a18914e4eb
+[INFO] Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 28.82 s -- in com.riccon.api.TenantIsolationTest
+[INFO] Running com.riccon.api.security.TenantIsolationSecurityTest
+2026-11-22T14:17:01.937+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.security.TenantIsolationSecurityTest]: TenantIsolationSecurityTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:01.978+08:00  INFO 37539 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.security.TenantIsolationSecurityTest
+2026-11-22T14:17:01.979+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.security.TenantIsolationSecurityTest]: TenantIsolationSecurityTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:01.979+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.security.SecurityTestSupport]: SecurityTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:01.979+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.FileApiTestSupport]: FileApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:01.979+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiStorageIntegrationTestSupport]: ApiStorageIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:01.979+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:01.980+08:00  INFO 37539 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.security.TenantIsolationSecurityTest
+2026-11-22T14:17:01.984+08:00  INFO 37539 --- [riccon-api] [           main] tc.rustfs/rustfs:1.0.6                   : Creating container for image: rustfs/rustfs:1.0.6
+2026-11-22T14:17:02.058+08:00  INFO 37539 --- [riccon-api] [           main] tc.rustfs/rustfs:1.0.6                   : Container rustfs/rustfs:1.0.6 is starting: 60b53b2d322e61cdd5018f20b6efb2af5a3a4d168148daf78641b7fc973efeb1
+2026-11-22T14:17:02.307+08:00  INFO 37539 --- [riccon-api] [           main] o.t.c.wait.strategy.HttpWaitStrategy     : /funny_wilson: Waiting for 60 seconds for URL: http://localhost:61588/health (where port 61588 maps to container port 9000)
+2026-11-22T14:17:02.317+08:00  INFO 37539 --- [riccon-api] [           main] tc.rustfs/rustfs:1.0.6                   : Container rustfs/rustfs:1.0.6 started in PT0.333111S
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-22T14:17:02.803+08:00  INFO 37539 --- [riccon-api] [           main] c.r.a.s.TenantIsolationSecurityTest      : Starting TenantIsolationSecurityTest using Java 21.0.13 with PID 37539 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-22T14:17:02.803+08:00  INFO 37539 --- [riccon-api] [           main] c.r.a.s.TenantIsolationSecurityTest      : The following 1 profile is active: "test"
+2026-11-22T14:17:03.273+08:00  INFO 37539 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-22T14:17:03.274+08:00  INFO 37539 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-22T14:17:03.274+08:00  INFO 37539 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-22T14:17:03.288+08:00  INFO 37539 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 483 ms
+2026-11-22T14:17:03.311+08:00  INFO 37539 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Starting...
+2026-11-22T14:17:03.318+08:00  INFO 37539 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Start completed.
+2026-11-22T14:17:03.325+08:00  INFO 37539 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:61396/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-22T14:17:03.355+08:00  INFO 37539 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 11 migrations (execution time 00:00.016s)
+2026-11-22T14:17:03.364+08:00  INFO 37539 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: 11
+2026-11-22T14:17:03.365+08:00  INFO 37539 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Schema `riccon` is up to date. No migration necessary.
+2026-11-22T14:17:03.642+08:00  INFO 37539 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-22T14:17:03.672+08:00  INFO 37539 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-22T14:17:03.672+08:00  INFO 37539 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-22T14:17:03.672+08:00  INFO 37539 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-22T14:17:03.672+08:00  INFO 37539 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-22T14:17:03.689+08:00  WARN 37539 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist is empty; mode=DEMO allowLegacyEndpoints=true
+2026-11-22T14:17:03.689+08:00  INFO 37539 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=0
+2026-11-22T14:17:03.694+08:00  INFO 37539 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-test, previousKey=true, fingerprintPepper=true
+2026-11-22T14:17:03.924+08:00  INFO 37539 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-22T14:17:03.939+08:00  INFO 37539 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 61605 (http) with context path '/'
+2026-11-22T14:17:03.942+08:00  INFO 37539 --- [riccon-api] [           main] c.r.a.s.TenantIsolationSecurityTest      : Started TenantIsolationSecurityTest in 1.191 seconds (process running for 32.184)
+2026-11-22T14:17:03.945+08:00  WARN 37539 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin skipped: platform admin already exists
+2026-11-22T14:17:03.953+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-1] o.a.c.c.C.[Tomcat-1].[localhost].[/]     : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-22T14:17:03.953+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-22T14:17:03.954+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-11-22T14:17:04.329+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=07f1bb49-a4a7-4748-bf9d-9e7d97f09bba path=/api/v1/admin/tenants
+2026-11-22T14:17:05.189+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=f3cfa009-94cf-4815-8083-9bc2281894bf path=/api/v1/audit-exports/01a201e6-af34-7a99-af5a-e03cd17ecebb/download
+2026-11-22T14:17:05.239+08:00  INFO 37539 --- [riccon-api] [-auto-2-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUDIT-403 traceId=92e46853-ac23-41c0-a420-204d2b7783b8 path=/api/v1/audit-exports/01a201e6-af34-7a99-af5a-e03cd17ecebb
+2026-11-22T14:17:06.400+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-6] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena4d5485baf650 conversationId=01a201e6-b45c-7d26-8f4e-19321f8cc8e9 workspaceId=01a201e6-b173-7cb2-a913-28438f80472c
+2026-11-22T14:17:06.424+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-7] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenb27b0394777a9 conversationId=01a201e6-b475-77a0-8d33-e8d411eb417d workspaceId=01a201e6-b442-7a67-82bc-4e55fa9c932d
+2026-11-22T14:17:06.566+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena4d5485baf650 fileId=01a201e6-b4aa-70c4-8dbd-d8c11d5e2c76 sizeBytes=48 format=PDF
+2026-11-22T14:17:06.616+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenb27b0394777a9 fileId=01a201e6-b525-7754-a52b-c274299535df sizeBytes=48 format=PDF
+2026-11-22T14:17:06.865+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=5d128583-022b-4872-b7bc-8981e114a829 path=/api/v1/workspaces
+2026-11-22T14:17:06.885+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=2246c0f7-df40-4db4-a120-749939b9b850 path=/api/v1/workspaces/01a201e6-b5e4-7fff-aa32-775d4a84bf0b
+2026-11-22T14:17:06.907+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=3b2aa089-e61f-45f6-931d-7aec4c1f9ea0 path=/api/v1/departments/01a201e6-b616-7351-a590-52f16c7d45c3/workspaces
+2026-11-22T14:17:08.004+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-4] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena59add6733536 conversationId=01a201e6-baa2-7f9b-a1da-912f50109514 workspaceId=01a201e6-b7f0-7821-b175-55252c55ae28
+2026-11-22T14:17:08.023+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-5] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenb92a445a8834a conversationId=01a201e6-bab5-7e9a-91c0-53541af8a985 workspaceId=01a201e6-ba8e-758d-9de4-66afec391cfd
+2026-11-22T14:17:08.059+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-6] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena59add6733536 fileId=01a201e6-bacc-7458-9985-126e72977dc0 sizeBytes=48 format=PDF
+2026-11-22T14:17:08.097+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-7] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenb92a445a8834a fileId=01a201e6-baf1-7934-abfa-cf6004c5ae8f sizeBytes=48 format=PDF
+2026-11-22T14:17:08.279+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=5351d998-5cd2-47a1-a6d6-c4f0137e746d path=/api/v1/admin/tenants/missing4bba0a3c61ae/departments
+2026-11-22T14:17:08.362+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=3352a7e0-e222-4732-92c8-5e004c48d3c1 path=/api/v1/admin/tenants/susp52119fd53110/departments
+2026-11-22T14:17:08.381+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=4794bca9-49b4-48d8-89f3-d5bf44007655 path=/api/v1/admin/tenants/xtenb92a445a8834a/departments/01a201e6-bb9d-7b70-8237-76ae787fc57f/members
+2026-11-22T14:17:08.396+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=a03c31c3-5dfa-4f3c-832d-7fc6f6031d03 path=/api/v1/admin/tenants/xtena59add6733536/departments
+2026-11-22T14:17:08.435+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=76ab724f-fc41-4068-9266-53d05deb28d1 path=/api/v1/workspaces/01a201e6-bb6a-7c0e-9e19-f66c48df6fb5
+2026-11-22T14:17:08.450+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=f571b288-1a32-4e4d-9705-39be59016b6b path=/api/v1/conversations/01a201e6-baa2-7f9b-a1da-912f50109514
+2026-11-22T14:17:09.532+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena8b619c2da6cf conversationId=01a201e6-c09a-776f-903f-f84217957d39 workspaceId=01a201e6-bde7-762c-a004-54dab9a19cc1
+2026-11-22T14:17:09.553+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-9] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenb6bc220224180 conversationId=01a201e6-c0af-7c55-be4c-69d4abaffd58 workspaceId=01a201e6-c087-71a1-9c5b-75f799ef58e8
+2026-11-22T14:17:09.592+08:00  INFO 37539 --- [riccon-api] [-auto-2-exec-10] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena8b619c2da6cf fileId=01a201e6-c0c9-742d-ada1-bacbcd422ebd sizeBytes=48 format=PDF
+2026-11-22T14:17:09.629+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenb6bc220224180 fileId=01a201e6-c0ef-72bb-a435-e8ba541b2530 sizeBytes=48 format=PDF
+2026-11-22T14:17:09.798+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=f8d879e2-1ca2-4860-bb44-53a8203bd7c4 path=/api/v1/artifacts/01a201e6-c107-7686-bc57-47cf32df190d
+2026-11-22T14:17:10.881+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-3] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena2d83d4014954 conversationId=01a201e6-c5df-7be9-837a-babc5d8638ac workspaceId=01a201e6-c33a-7e90-a68b-2f9fe873bd78
+2026-11-22T14:17:10.899+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-4] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenb289471d45c28 conversationId=01a201e6-c5f1-76e3-9a67-bd163fcae226 workspaceId=01a201e6-c5cd-703d-b059-d4825d096542
+2026-11-22T14:17:10.935+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-5] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena2d83d4014954 fileId=01a201e6-c608-790d-b79f-058678614420 sizeBytes=48 format=PDF
+2026-11-22T14:17:10.967+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-6] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenb289471d45c28 fileId=01a201e6-c62a-7cba-a999-25b7df8b125b sizeBytes=48 format=PDF
+2026-11-22T14:17:12.168+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena9916646892cf conversationId=01a201e6-cae4-7d79-92d3-4be5919c5da1 workspaceId=01a201e6-c847-7764-87cc-4d90bae6f77d
+2026-11-22T14:17:12.186+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-9] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenb6edc8294ebcd conversationId=01a201e6-caf7-782b-a5d0-c770c6f97bf3 workspaceId=01a201e6-cad1-71cf-af3e-32f5d9e7638c
+2026-11-22T14:17:12.223+08:00  INFO 37539 --- [riccon-api] [-auto-2-exec-10] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena9916646892cf fileId=01a201e6-cb0f-7211-86e9-b3737d705cf8 sizeBytes=48 format=PDF
+2026-11-22T14:17:12.257+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenb6edc8294ebcd fileId=01a201e6-cb33-7835-8574-843ecc53cc72 sizeBytes=48 format=PDF
+2026-11-22T14:17:13.483+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-5] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena8e3e5f1402f9 conversationId=01a201e6-d009-7b17-9745-c603a020eafd workspaceId=01a201e6-cd79-7d81-898e-f1c96423b8cf
+2026-11-22T14:17:13.500+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-6] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenb2a63157bbca8 conversationId=01a201e6-d01a-7675-b76c-6214471d75f2 workspaceId=01a201e6-cff8-7cc3-b4ed-806837401bf8
+2026-11-22T14:17:13.534+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-7] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena8e3e5f1402f9 fileId=01a201e6-d031-70a4-aaa7-d68f784adc2c sizeBytes=48 format=PDF
+2026-11-22T14:17:13.565+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenb2a63157bbca8 fileId=01a201e6-d051-7564-a895-9eaf388c393e sizeBytes=48 format=PDF
+2026-11-22T14:17:14.800+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-9] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena83c7e4c48dea conversationId=01a201e6-d52e-7362-bef1-7e29052dd984 workspaceId=01a201e6-d28b-73c0-8301-8131d839287e
+2026-11-22T14:17:14.820+08:00  INFO 37539 --- [riccon-api] [-auto-2-exec-10] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenb6068f8f34298 conversationId=01a201e6-d541-7f06-b551-e3a13503240d workspaceId=01a201e6-d51d-7e7c-a9ec-559046d29a2b
+2026-11-22T14:17:14.869+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena83c7e4c48dea fileId=01a201e6-d564-7fbc-a2df-1b17b21f3bb0 sizeBytes=48 format=PDF
+2026-11-22T14:17:14.913+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenb6068f8f34298 fileId=01a201e6-d58c-70da-952c-ed439aa53e24 sizeBytes=48 format=PDF
+2026-11-22T14:17:15.061+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=026bf368-fcc4-4efa-92d1-fd4357b48eff path=/api/v1/conversations/01a201e6-d541-7f06-b551-e3a13503240d
+2026-11-22T14:17:16.095+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-4] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena073d85dfe1a9 conversationId=01a201e6-da3d-7bd4-90b8-ecfa59e80adf workspaceId=01a201e6-d7b1-7b4e-b348-2195e3b37855
+2026-11-22T14:17:16.113+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-5] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenb0ef900f9c397 conversationId=01a201e6-da4f-75e2-b665-2f5d1f446ce4 workspaceId=01a201e6-da2c-790a-992d-f187e5786161
+2026-11-22T14:17:16.144+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-6] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena073d85dfe1a9 fileId=01a201e6-da64-7caa-8d71-086757d9ab13 sizeBytes=48 format=PDF
+2026-11-22T14:17:16.173+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-7] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenb0ef900f9c397 fileId=01a201e6-da81-71da-baf3-c1b1d11ce5c6 sizeBytes=48 format=PDF
+2026-11-22T14:17:16.353+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=df8a07db-8775-43ab-a4f8-2121ea882f58 path=/api/v1/admin/tenants/xtenb0ef900f9c397/departments/01a201e6-db30-7264-9b3d-eba8cdb7b32c/disable
+2026-11-22T14:17:16.371+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=363a0de5-885a-4029-993b-aa90c816bde3 path=/api/v1/admin/tenants/xtenb0ef900f9c397/departments/01a201e6-db1e-74bf-ae00-63c621a4b5e6/disable
+2026-11-22T14:17:17.434+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-2] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena494c5062c67c conversationId=01a201e6-df77-7ab4-b962-cb1ba50cbeeb workspaceId=01a201e6-dce7-7316-90bd-1c2924ba2fb3
+2026-11-22T14:17:17.452+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-3] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenb5ff754fdc5c3 conversationId=01a201e6-df8a-7991-b242-7cf882582b76 workspaceId=01a201e6-df63-7594-93ce-6d28ef8db8c3
+2026-11-22T14:17:17.488+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-4] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena494c5062c67c fileId=01a201e6-dfa3-75fa-b90f-b89b6f8ce26a sizeBytes=48 format=PDF
+2026-11-22T14:17:17.522+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-5] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenb5ff754fdc5c3 fileId=01a201e6-dfc4-725b-960c-b35ab017e91e sizeBytes=48 format=PDF
+2026-11-22T14:17:17.639+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=87c62282-a7bd-47b3-884d-34a669779879 path=/api/v1/workspaces/01a201e6-e033-7a88-b8b0-4f777e6e4dd4/members
+2026-11-22T14:17:17.658+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=c90afa5f-e257-4217-9aa7-cc9cca76b8a7 path=/api/v1/workspaces/01a201e6-e033-7a88-b8b0-4f777e6e4dd4/members
+2026-11-22T14:17:17.675+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=16b3e26d-d864-4f1a-b5cd-f92e33091d56 path=/api/v1/workspaces/01a201e6-e033-7a88-b8b0-4f777e6e4dd4/members/01a201e6-de4a-75c8-a6f8-b73b44342c2a
+2026-11-22T14:17:18.736+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-9] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenaeed94a220cf5 conversationId=01a201e6-e48d-778c-8dbe-7f38af45879c workspaceId=01a201e6-e1f2-7faa-af23-5956276113cf
+2026-11-22T14:17:18.757+08:00  INFO 37539 --- [riccon-api] [-auto-2-exec-10] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenb737757eae9ea conversationId=01a201e6-e4a3-7353-afa4-3fec9d9d20e1 workspaceId=01a201e6-e478-73a4-9506-a068c676d322
+2026-11-22T14:17:18.796+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenaeed94a220cf5 fileId=01a201e6-e4bd-78a1-b089-e188a6361332 sizeBytes=48 format=PDF
+2026-11-22T14:17:18.829+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenb737757eae9ea fileId=01a201e6-e4df-7b13-929a-38a4bc2b182d sizeBytes=48 format=PDF
+2026-11-22T14:17:18.947+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=01744930-2fb0-4e78-b919-820a082cb779 path=/api/v1/files/01a201e6-e4df-7b13-929a-38a4bc2b182d
+2026-11-22T14:17:21.364+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-9] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena1866e8cdf641 conversationId=01a201e6-eed2-7423-aa5a-231b212ab7a8 workspaceId=01a201e6-ec41-7344-bfc8-f98bbb7508ae
+2026-11-22T14:17:21.381+08:00  INFO 37539 --- [riccon-api] [-auto-2-exec-10] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenb00f7e718151a conversationId=01a201e6-eee3-7c31-80a1-892d516d1d65 workspaceId=01a201e6-eec2-7656-8957-ba0765cfcf63
+2026-11-22T14:17:21.417+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena1866e8cdf641 fileId=01a201e6-eefa-74b0-9e89-761f8447cc66 sizeBytes=48 format=PDF
+2026-11-22T14:17:21.446+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenb00f7e718151a fileId=01a201e6-ef1a-7a3d-9360-84656663889e sizeBytes=48 format=PDF
+2026-11-22T14:17:21.587+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenb00f7e718151a fileId=01a201e6-efa8-7c2d-8833-99a939311a12 sizeBytes=48 format=PDF
+2026-11-22T14:17:22.677+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-7] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena2a30dfc25a9e conversationId=01a201e6-f3f3-7e26-99a5-063041ee9b40 workspaceId=01a201e6-f173-7b9a-af66-bfb3b95df06d
+2026-11-22T14:17:22.702+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenbd3704f7c6e52 conversationId=01a201e6-f409-7982-b0ca-ddfd556966f7 workspaceId=01a201e6-f3e2-78ac-8bdb-bc0f01e1b5c9
+2026-11-22T14:17:22.752+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena2a30dfc25a9e fileId=01a201e6-f42a-7a79-8613-6e3d208ee465 sizeBytes=48 format=PDF
+2026-11-22T14:17:22.805+08:00  INFO 37539 --- [riccon-api] [-auto-2-exec-10] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenbd3704f7c6e52 fileId=01a201e6-f460-74d0-ab7a-5771d12af6f6 sizeBytes=48 format=PDF
+2026-11-22T14:17:22.932+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=943fdbef-a972-421e-aa4b-fe27d69b4128 path=/api/v1/conversations/01a201e6-f409-7982-b0ca-ddfd556966f7
+2026-11-22T14:17:22.948+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=1882b348-5c17-4500-a21a-e6dd03d01664 path=/api/v1/conversations/01a201e6-f409-7982-b0ca-ddfd556966f7
+2026-11-22T14:17:23.972+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-3] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena2090c740567a conversationId=01a201e6-f902-7465-bf34-917240dc6fe8 workspaceId=01a201e6-f672-79bc-a109-16432622e53a
+2026-11-22T14:17:23.989+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-4] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenbd9947ba1a30d conversationId=01a201e6-f913-78cf-80b3-89003b3e913d workspaceId=01a201e6-f8f1-7188-b2e1-8c588210b978
+2026-11-22T14:17:24.021+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-5] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena2090c740567a fileId=01a201e6-f928-72e0-bb50-e16a15391a30 sizeBytes=48 format=PDF
+2026-11-22T14:17:24.053+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-6] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenbd9947ba1a30d fileId=01a201e6-f947-7e71-984c-d378a2f3637f sizeBytes=48 format=PDF
+2026-11-22T14:17:24.163+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=72412182-2943-4c34-b483-9672ce8bc633 path=/api/v1/conversations/588c5bd1-e68e-4d53-a168-1260be7b47ef
+2026-11-22T14:17:24.178+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=606cb4a2-ea9d-4045-a0e3-24f00abd2e4e path=/api/v1/conversations/01a201e6-f913-78cf-80b3-89003b3e913d
+2026-11-22T14:17:24.195+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=3ab4d641-c4df-492b-81e3-8c3fd0a03507 path=/api/v1/conversations/588c5bd1-e68e-4d53-a168-1260be7b47ef
+2026-11-22T14:17:24.210+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=602fa39b-ec17-4e1e-b567-87b249df46db path=/api/v1/conversations/588c5bd1-e68e-4d53-a168-1260be7b47ef
+2026-11-22T14:17:24.225+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=d6bba5cb-8e1a-4493-9cdf-08a263bd7912 path=/api/v1/conversations/588c5bd1-e68e-4d53-a168-1260be7b47ef
+2026-11-22T14:17:24.240+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=8db668cb-1d28-4c4c-aedc-fcfb7e6c99f5 path=/api/v1/conversations/01a201e6-f913-78cf-80b3-89003b3e913d
+2026-11-22T14:17:24.255+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=3cb98b53-3aff-4891-8cd3-c8c81abd3b13 path=/api/v1/conversations/01a201e6-f913-78cf-80b3-89003b3e913d
+2026-11-22T14:17:24.271+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=f8cca935-f424-46fc-ab9c-c8dbca47f65c path=/api/v1/conversations/01a201e6-f913-78cf-80b3-89003b3e913d
+2026-11-22T14:17:25.379+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-5] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenae0dc5e785c00 conversationId=01a201e6-fe81-7537-b27e-066023597c4b workspaceId=01a201e6-fbb4-7e07-81a9-d198bb2905a0
+2026-11-22T14:17:25.399+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-6] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenb76ad47d44475 conversationId=01a201e6-fe95-70c2-b335-a1b6c8aefce0 workspaceId=01a201e6-fe6f-732c-be0d-cf751dbdccec
+2026-11-22T14:17:25.430+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-7] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenae0dc5e785c00 fileId=01a201e6-feaa-7b04-9f12-0ec7fdd8b4f4 sizeBytes=48 format=PDF
+2026-11-22T14:17:25.461+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenb76ad47d44475 fileId=01a201e6-fec7-7611-96f4-a8bffb8032bf sizeBytes=48 format=PDF
+2026-11-22T14:17:25.597+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=85cb72e7-d2a3-4e02-bd32-0980fd99f0ad path=/api/v1/workspaces/01a201e6-ff30-74f4-9c84-b6f3a0d8da49/artifacts
+2026-11-22T14:17:26.670+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-1] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena407868451fe0 conversationId=01a201e7-038c-7b39-a670-d7c2d4cfb60f workspaceId=01a201e7-00ff-7246-947e-2bbdcec95933
+2026-11-22T14:17:26.689+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-2] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenb6462e8483390 conversationId=01a201e7-039f-7f36-831b-3b5bb1efa32a workspaceId=01a201e7-037d-7eda-be3e-9a73c5f433e6
+2026-11-22T14:17:26.726+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-3] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena407868451fe0 fileId=01a201e7-03b7-71f3-8c54-055a4319fcb6 sizeBytes=48 format=PDF
+2026-11-22T14:17:26.762+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-4] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenb6462e8483390 fileId=01a201e7-03dd-76ef-813f-9fefffc5eb93 sizeBytes=48 format=PDF
+2026-11-22T14:17:26.883+08:00  INFO 37539 --- [riccon-api] [-auto-2-exec-10] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenb6462e8483390 fileId=01a201e7-0458-7f16-ae6b-f2750f7d4ffc sizeBytes=48 format=PDF
+2026-11-22T14:17:26.918+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=c39c8177-0c32-48b1-aea6-8e4b3621e5d6 path=/api/v1/knowledge/documents/01a201e7-0474-7f57-8356-22dc946d9d36
+2026-11-22T14:17:27.937+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenade5827b8ba32 conversationId=01a201e7-0880-7e8c-b73d-ef8e12877e38 workspaceId=01a201e7-05f6-7da2-af83-a91b8d4d2283
+2026-11-22T14:17:27.953+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-9] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenb90a20037d165 conversationId=01a201e7-0890-7050-b6a2-3db3b47809fb workspaceId=01a201e7-086f-7936-a620-4b637357af45
+2026-11-22T14:17:27.981+08:00  INFO 37539 --- [riccon-api] [-auto-2-exec-10] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenade5827b8ba32 fileId=01a201e7-08a2-760c-a947-0d3466dfdaaa sizeBytes=48 format=PDF
+2026-11-22T14:17:28.009+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenb90a20037d165 fileId=01a201e7-08bd-7272-85ac-8b66783accb7 sizeBytes=48 format=PDF
+2026-11-22T14:17:30.041+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-2] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenac0318774c1d8 conversationId=01a201e7-10b7-7040-8169-eea52968a6d7 workspaceId=01a201e7-0e10-7edf-a9ca-3309a509ff04
+2026-11-22T14:17:30.057+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-3] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenb24fb15fe6dcf conversationId=01a201e7-10c7-7507-b219-3be9e1cfd584 workspaceId=01a201e7-10a6-7504-82fd-d27c8113d981
+2026-11-22T14:17:30.088+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-4] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenac0318774c1d8 fileId=01a201e7-10db-74f6-8033-57fd4dbcc11c sizeBytes=48 format=PDF
+2026-11-22T14:17:30.116+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-5] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenb24fb15fe6dcf fileId=01a201e7-10f8-7fd4-9b6a-c09c53b54937 sizeBytes=48 format=PDF
+2026-11-22T14:17:30.235+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenac0318774c1d8 fileId=01a201e7-116f-7fc8-988b-e295f7cea0e8 sizeBytes=48 format=PDF
+2026-11-22T14:17:30.252+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=7a1d1c4d-aa28-44c8-a278-000da4976b26 path=/api/v1/files/01a201e7-10f8-7fd4-9b6a-c09c53b54937/download-url
+2026-11-22T14:17:31.331+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-9] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena39e4cbe7d0ee conversationId=01a201e7-15c1-79c8-a1ea-b315631fc965 workspaceId=01a201e7-1328-7346-8f76-112045e765d2
+2026-11-22T14:17:31.347+08:00  INFO 37539 --- [riccon-api] [-auto-2-exec-10] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenbdb45becc1a6f conversationId=01a201e7-15d1-720a-9335-ac94a867f0b9 workspaceId=01a201e7-15b1-7390-ace7-96bdfdd777dd
+2026-11-22T14:17:31.377+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena39e4cbe7d0ee fileId=01a201e7-15e6-7424-867e-a2bc42bff075 sizeBytes=48 format=PDF
+2026-11-22T14:17:31.408+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenbdb45becc1a6f fileId=01a201e7-1604-741f-8c86-68449f3b3b42 sizeBytes=48 format=PDF
+2026-11-22T14:17:32.218+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=f093c623-bef9-4822-bf23-efacfbed5022 path=/api/v1/audit-events
+2026-11-22T14:17:32.230+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=7d3dde8b-348a-4cf2-b6cb-c4a81cdab8fd path=/api/v1/audit-events/policy
+SUITE-MANIFEST TEN-001 TEN-002 TEN-003 TEN-004 TEN-005 TEN-006 TEN-007 TEN-008 TEN-009 TEN-010 TEN-011 TEN-012 TEN-013 TEN-014 TEN-015 TEN-016 TEN-017 TEN-018 TEN-019 TEN-020 TEN-021 TEN-022 TEN-023 TEN-024 TEN-025 TEN-026 TEN-027 TEN-028 TEN-029 TEN-030
+2026-11-22T14:17:32.909+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=3ac40086-41c8-45d7-89e5-039cc396fd2e path=/api/v1/audit-exports/01a201e7-1bda-7168-89fc-cd977cca23fe
+2026-11-22T14:17:32.922+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=46610faf-94a2-4744-84bd-8604e0c67167 path=/api/v1/audit-exports/01a201e7-1bda-7168-89fc-cd977cca23fe/download
+2026-11-22T14:17:32.937+08:00  INFO 37539 --- [riccon-api] [-auto-2-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=e93021a5-2082-49e3-b651-49ce0adfadfa path=/api/v1/audit-exports/01a201e7-1bda-7168-89fc-cd977cca23fe/decision
+2026-11-22T14:17:33.965+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-6] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena8a141d9e580b conversationId=01a201e7-200b-7eb1-847c-6abd7583ec6f workspaceId=01a201e7-1d7d-747b-a123-918a99cc2a70
+2026-11-22T14:17:33.982+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-7] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenb9474a7b22f45 conversationId=01a201e7-201c-7839-a1cc-ca6d2628a310 workspaceId=01a201e7-1ffc-73e4-8709-2dd7c62475bd
+2026-11-22T14:17:34.012+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena8a141d9e580b fileId=01a201e7-202e-729a-90cc-3b56290ef6fc sizeBytes=48 format=PDF
+2026-11-22T14:17:34.041+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenb9474a7b22f45 fileId=01a201e7-204d-71e0-bd28-fca06c45a4c9 sizeBytes=48 format=PDF
+2026-11-22T14:17:34.145+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-5] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena8a141d9e580b conversationId=01a201e7-20bf-70a3-a834-3c119ef04afe workspaceId=01a201e7-1d7d-747b-a123-918a99cc2a70
+2026-11-22T14:17:34.194+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-6] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=xtena8a141d9e580b conversationId=01a201e7-20bf-70a3-a834-3c119ef04afe runId=01a201e7-20e8-7834-b5d6-d2d089a7feb6 userMessageId=01a201e7-20e8-7a9e-8483-c1011e0dd888 assistantMessageId=01a201e7-20e8-79df-8b0e-971b5229f78a attachments=0
+2026-11-22T14:17:34.301+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenb9474a7b22f45 conversationId=01a201e7-215b-709f-ac7d-dc8a06ddd749 workspaceId=01a201e7-1ffc-73e4-8709-2dd7c62475bd
+2026-11-22T14:17:34.331+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-9] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=xtenb9474a7b22f45 conversationId=01a201e7-215b-709f-ac7d-dc8a06ddd749 runId=01a201e7-2177-7875-ba58-3c077a837c67 userMessageId=01a201e7-2177-7807-929a-53a130fa0e7a assistantMessageId=01a201e7-2177-7278-bc02-3a0a19757b95 attachments=0
+2026-11-22T14:17:35.430+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-6] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena1b5f9ad72209 conversationId=01a201e7-25c4-7fce-bbb0-e0aaf478ffca workspaceId=01a201e7-2330-776c-9d97-704d4b488eb1
+2026-11-22T14:17:35.446+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-7] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenb09357b2ab1c6 conversationId=01a201e7-25d4-7355-b382-3e9983cd1ac8 workspaceId=01a201e7-25b3-760a-9b10-9cd7969d3543
+2026-11-22T14:17:35.479+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena1b5f9ad72209 fileId=01a201e7-25ea-7445-bef3-2c7943e85df1 sizeBytes=48 format=PDF
+2026-11-22T14:17:35.509+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenb09357b2ab1c6 fileId=01a201e7-2607-7268-bcf2-9d8807a3f9d3 sizeBytes=48 format=PDF
+2026-11-22T14:17:35.633+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=c5d285e9-2e10-4aa1-b138-e8dfd83bc59c path=/api/v1/admin/tenants/xtena1b5f9ad72209/departments/01a201e7-267f-72e7-9d4a-65b70f4c4e73/members
+2026-11-22T14:17:35.651+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=18735fdb-ca96-4b61-8e57-b7407236fe7c path=/api/v1/workspaces/01a201e7-2365-79a4-b912-f69dd29bb90f/members
+2026-11-22T14:17:36.693+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-3] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena9bc4b237b1f3 conversationId=01a201e7-2ab2-7442-b7b9-e82074ae1195 workspaceId=01a201e7-2823-7475-95ef-8819cd98f1c0
+2026-11-22T14:17:36.713+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-4] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenbfa4a8c41054e conversationId=01a201e7-2ac7-738f-8b4f-526676c1b80d workspaceId=01a201e7-2a96-72ce-a661-90b8e2ec5382
+2026-11-22T14:17:36.753+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-5] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena9bc4b237b1f3 fileId=01a201e7-2ae1-7040-ad12-8a5b6623644d sizeBytes=48 format=PDF
+2026-11-22T14:17:36.785+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-6] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenbfa4a8c41054e fileId=01a201e7-2b04-77db-a472-20fc2cc60f50 sizeBytes=48 format=PDF
+2026-11-22T14:17:36.911+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=7e8ae827-afb0-46e6-baf5-8b75e1f88670 path=/api/v1/workspaces/01a201e7-2b5b-7aae-8be9-f3df53c753e2
+2026-11-22T14:17:36.926+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=5aa30da7-2d5a-4d8e-bd8d-d1115c88a70a path=/api/v1/workspaces/01a201e7-2b5b-7aae-8be9-f3df53c753e2
+2026-11-22T14:17:36.941+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=decc96ac-016d-4cd5-83e7-433fc55f85f2 path=/api/v1/workspaces/01a201e7-2b5b-7aae-8be9-f3df53c753e2
+2026-11-22T14:17:37.942+08:00  INFO 37539 --- [riccon-api] [-auto-2-exec-10] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena36aa5ba53721 conversationId=01a201e7-2f95-74be-a49f-0d0bd7dc3886 workspaceId=01a201e7-2d12-7876-8786-c8297f8ebd5a
+2026-11-22T14:17:37.957+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-1] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenbb17db79e0ed5 conversationId=01a201e7-2fa3-7f7a-8871-be2ec59ec77c workspaceId=01a201e7-2f84-70aa-93a9-3b5aeed8ac9c
+2026-11-22T14:17:37.985+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena36aa5ba53721 fileId=01a201e7-2fb5-7d51-954b-00987b421aef sizeBytes=48 format=PDF
+2026-11-22T14:17:38.012+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-3] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenbb17db79e0ed5 fileId=01a201e7-2fd1-7ed6-9365-7f006c1fcf3a sizeBytes=48 format=PDF
+2026-11-22T14:17:38.132+08:00  INFO 37539 --- [riccon-api] [-auto-2-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=21870508-94ec-4032-8aea-1897ae1510f4 path=/api/v1/departments/01a201e7-3044-7aef-ad92-93d8f19d0ca7/members
+2026-11-22T14:17:38.148+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=62402a45-20ff-4be7-9cc7-fba1babd227d path=/api/v1/departments/01a201e7-3044-7aef-ad92-93d8f19d0ca7/workspaces
+2026-11-22T14:17:38.163+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=edf3365d-1199-4e6f-bacc-34d83bb22f1f path=/api/v1/workspaces/01a201e7-3022-7cfb-88db-86b6a20658b0
+2026-11-22T14:17:39.197+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-9] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtena2507b6b7523d conversationId=01a201e7-347a-7c13-9ab0-d61495704911 workspaceId=01a201e7-31e8-72f2-8c9e-bbeae40a9bd1
+2026-11-22T14:17:39.214+08:00  INFO 37539 --- [riccon-api] [-auto-2-exec-10] c.r.a.chat.service.ConversationService   : conversation.created tenantId=xtenbe5b03f22467a conversationId=01a201e7-348c-7b08-aa36-2fca21b6bc6b workspaceId=01a201e7-3469-7d95-a870-40081c1a4caf
+2026-11-22T14:17:39.245+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena2507b6b7523d fileId=01a201e7-34a1-7cb8-b2da-f45d134bf0a2 sizeBytes=48 format=PDF
+2026-11-22T14:17:39.276+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtenbe5b03f22467a fileId=01a201e7-34c0-74b3-8c15-afafd6f38ccf sizeBytes=48 format=PDF
+2026-11-22T14:17:39.407+08:00  INFO 37539 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.file.service.FileService    : file.uploaded tenantId=xtena2507b6b7523d fileId=01a201e7-3543-710a-a2ec-fc43f3243d65 sizeBytes=48 format=PDF
+2026-11-22T14:17:39.440+08:00  INFO 37539 --- [riccon-api] [-auto-2-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=75697be1-a93e-4560-91be-1560ddf3a4a9 path=/api/v1/workspaces/01a201e7-351e-7ba3-8316-b8fc0c0af46a/conversations
+[INFO] Tests run: 31, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 37.51 s -- in com.riccon.api.security.TenantIsolationSecurityTest
+[INFO] Running com.riccon.api.cost.CostApiTest
+2026-11-22T14:17:39.454+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.cost.CostApiTest]: CostApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:39.493+08:00  INFO 37539 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.cost.CostApiTest
+2026-11-22T14:17:39.495+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.cost.CostApiTest]: CostApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:39.495+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.cost.CostApiTestSupport]: CostApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:39.495+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ResearchApiTestSupport]: ResearchApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:39.496+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:39.497+08:00  INFO 37539 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.cost.CostApiTest
+2026-11-22T14:17:41.530+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request parameter invalid traceId=e9f75339-5a34-40c3-b46f-875830bfe8c4 path=/api/v1/costs/invocations
+2026-11-22T14:17:41.543+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request parameter invalid traceId=83047f1b-186b-407f-898a-6e18abe6b4cb path=/api/v1/costs/invocations
+2026-11-22T14:17:42.245+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-COST-400 traceId=d9b327aa-dc7b-4f73-8f45-90beaa7fa4e3 path=/api/v1/costs
+2026-11-22T14:17:42.260+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-COST-400 traceId=00458b8a-656b-44a2-bd62-302e0e4c5f16 path=/api/v1/costs
+2026-11-22T14:17:42.274+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-COST-400 traceId=222d77c3-53dc-473b-8bbf-a6c9eabd6a4f path=/api/v1/costs
+2026-11-22T14:17:42.289+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-COST-400 traceId=51d7e441-f7b5-4e57-87ba-d6fae3d9ad09 path=/api/v1/costs
+2026-11-22T14:17:42.303+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-COST-400 traceId=0dcaad1a-136c-49c3-a234-eec5a4595fba path=/api/v1/costs
+2026-11-22T14:17:42.319+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-COST-400 traceId=92f8242e-ac11-4a04-9842-a4bfac78e912 path=/api/v1/costs
+2026-11-22T14:17:43.033+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=c722170c-9f8c-4d51-b267-c86a7a9262ad path=/api/v1/costs
+2026-11-22T14:17:43.045+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=4f608380-3072-4a2e-8074-48f0ac5c8edd path=/api/v1/admin/costs
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.601 s -- in com.riccon.api.cost.CostApiTest
+[INFO] Running com.riccon.api.admin.cost.PlatformCostTenantFilterTest
+2026-11-22T14:17:43.056+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.admin.cost.PlatformCostTenantFilterTest]: PlatformCostTenantFilterTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:43.084+08:00  INFO 37539 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.admin.cost.PlatformCostTenantFilterTest
+2026-11-22T14:17:43.085+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.admin.cost.PlatformCostTenantFilterTest]: PlatformCostTenantFilterTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:43.085+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.cost.CostApiTestSupport]: CostApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:43.085+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ResearchApiTestSupport]: ResearchApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:43.085+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:43.086+08:00  INFO 37539 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.admin.cost.PlatformCostTenantFilterTest
+2026-11-22T14:17:44.556+08:00  INFO 37539 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=9bffa7ca-ad3e-4981-8b1e-c5f1596932e7 path=/api/v1/admin/costs
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.470 s -- in com.riccon.api.admin.cost.PlatformCostTenantFilterTest
+[INFO] Running com.riccon.api.admin.cost.CostAdminApiTest
+2026-11-22T14:17:47.527+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.admin.cost.CostAdminApiTest]: CostAdminApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:47.528+08:00  INFO 37539 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.admin.cost.CostAdminApiTest
+2026-11-22T14:17:47.528+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.admin.cost.CostAdminApiTest]: CostAdminApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:47.529+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.cost.CostApiTestSupport]: CostApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:47.529+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ResearchApiTestSupport]: ResearchApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:47.529+08:00  INFO 37539 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T14:17:47.530+08:00  INFO 37539 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.admin.cost.CostAdminApiTest
+2026-11-22T14:17:48.153+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=6fd2068d-df3d-4e8c-9abc-460bb6ff6bd5 path=/api/v1/admin/costs
+2026-11-22T14:17:48.163+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=436c3064-1152-475e-ae5b-8dddb7333341 path=/api/v1/admin/costs
+2026-11-22T14:17:48.174+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=c91847d4-c507-4f13-85bc-421b0250ab57 path=/api/v1/costs
+2026-11-22T14:17:48.184+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=c139e141-f08c-495c-a549-06b98ba172e3 path=/api/v1/costs/invocations
+2026-11-22T14:17:48.205+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=3fd11b02-faee-4134-bfd0-35ca4c0bc88c path=/api/v1/costs
+2026-11-22T14:17:48.225+08:00  INFO 37539 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-COST-400 traceId=7e26e247-080f-4025-a220-0b98a8d4be30 path=/api/v1/admin/costs
+2026-11-22T14:17:50.192+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=5510af54-6577-4c50-ac82-86b958fb7c1c path=/api/v1/costs/invocations
+2026-11-22T14:17:50.830+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-COST-400 traceId=c4023b9a-092e-4d49-bd16-f5b7b810997c path=/api/v1/admin/costs
+2026-11-22T14:17:51.465+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-COST-400 traceId=0864ddc9-26c9-4326-915d-17c92567083f path=/api/v1/admin/costs
+2026-11-22T14:17:51.478+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-COST-400 traceId=d20d14c3-b59f-4d84-a33f-66d06b7fd9f3 path=/api/v1/admin/costs
+2026-11-22T14:17:51.494+08:00  INFO 37539 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-COST-400 traceId=9688abd5-d174-483f-8c0c-b441fd84fbb1 path=/api/v1/admin/costs
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.966 s -- in com.riccon.api.admin.cost.CostAdminApiTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 58, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for riccon-parent 0.1.0-SNAPSHOT:
+[INFO] 
+[INFO] riccon-parent ...................................... SUCCESS [  1.801 s]
+[INFO] riccon-platform-common ............................. SUCCESS [  0.413 s]
+[INFO] riccon-platform-domain ............................. SUCCESS [  0.413 s]
+[INFO] riccon-api ......................................... SUCCESS [01:36 min]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:38 min (Wall Clock)
+[INFO] Finished at: 2026-11-22T14:17:57+08:00
+[INFO] ------------------------------------------------------------------------
+
+# --- stderr ---
+
