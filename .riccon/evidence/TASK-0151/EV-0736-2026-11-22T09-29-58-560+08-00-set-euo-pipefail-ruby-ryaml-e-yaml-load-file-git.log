@@ -1,0 +1,13 @@
+# command: set -euo pipefail; ruby -ryaml -e 'YAML.load_file(".github/workflows/ci.yml"); puts "yaml ok"'; test "$(gh run view 44970852647 --json conclusion --jq .conclusion)" = success; test "$(gh run view 44970852647 --json headSha --jq .headSha)" = "$(git rev-parse HEAD)"; gh api repos/ai-riccon/riccon-work/actions/runs/44970852647/jobs --paginate --jq '.jobs[] | select(.name=="后端 canonical 覆盖率兜底") | .conclusion' | grep -qx success; gh run view 44970852647 --log > "$TMPDIR/riccon-ci-44970852647.log"; if grep -qiE 'node\.js 20|nodejs 20|node20' "$TMPDIR/riccon-ci-44970852647.log"; then echo NODE20_LOG_FOUND; exit 1; fi; : > "$TMPDIR/riccon-ci-annotations.txt"; gh api repos/ai-riccon/riccon-work/actions/runs/44970852647/jobs --paginate --jq '.jobs[].id' | while read -r id; do gh api "repos/ai-riccon/riccon-work/check-runs/$id/annotations" --jq '.[] | [.annotation_level,.message] | @tsv' >> "$TMPDIR/riccon-ci-annotations.txt"; done; if grep -qiE 'node\.js 20|nodejs 20|node20' "$TMPDIR/riccon-ci-annotations.txt"; then echo NODE20_ANNOTATION_FOUND; exit 1; fi; rm -rf "$TMPDIR/riccon-cov-artifact"; gh run download 44970852647 -n backend-coverage-44970852647 -D "$TMPDIR/riccon-cov-artifact"; test "$(find "$TMPDIR/riccon-cov-artifact" -name jacoco.csv | wc -l | tr -d ' ')" -eq 4; grep -q 'uses: actions/checkout@v7' .github/workflows/ci.yml; grep -q 'uses: actions/setup-java@v6' .github/workflows/ci.yml; grep -q 'uses: actions/setup-node@v7' .github/workflows/ci.yml; grep -q 'uses: actions/upload-artifact@v7' .github/workflows/ci.yml; grep -q 'uses: actions/download-artifact@v8' .github/workflows/ci.yml; grep -q 'uses: pnpm/action-setup@v6' .github/workflows/ci.yml; if grep -Eq 'checkout@v[0-6]|setup-java@v[0-5]|setup-node@v[0-6]|upload-artifact@v[0-6]|download-artifact@v[0-7]|action-setup@v[0-5]' .github/workflows/ci.yml; then echo OLD_ACTION_FOUND; exit 1; fi; git diff --check; echo CI_EVIDENCE_OK
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-22T09:29:31.788+08:00
+# finished_at: 2026-11-22T09:29:57.855+08:00
+# duration_ms: 26064
+# exit_code: 0
+
+# --- stdout ---
+yaml ok
+CI_EVIDENCE_OK
+
+# --- stderr ---
+
