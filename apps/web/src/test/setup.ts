@@ -1,6 +1,19 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { afterEach } from 'vitest';
+
+/**
+ * 统一放宽异步查询的等待上限。
+ *
+ * 背景（M24 / TASK-0160，承接 M04 F-012 与 M22 F-001）：web 全量 57 个测试文件并行时，
+ * jsdom 与 React 19 的异步状态更新（首屏数据请求、antd Form 异步校验）在 CPU 争抢下
+ * 可能明显慢于 Testing Library 默认的 1000ms，导致同一提交在不同负载下偶发失败
+ * （审计页用例超时、用户页校验文案未在 1s 内出现）。
+ *
+ * 这里只提高“等待上限”，不改变任何断言内容：元素始终不出现仍然失败，也不使用
+ * retry、skip 或降低文件并行度的方式掩盖问题；通过用例仍在数据就绪后立即返回。
+ */
+configure({ asyncUtilTimeout: 3_000 });
 
 /**
  * Vitest 全局测试环境准备。

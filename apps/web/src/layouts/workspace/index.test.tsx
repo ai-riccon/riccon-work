@@ -85,8 +85,10 @@ describe('报告任务工作空间布局', () => {
         />,
       ),
     );
-    expect(await screen.findByText('所属部门：')).toBeVisible();
-    expect(screen.getByText('销售部')).toBeVisible();
+    // `所属部门：` 标签在部门列表加载态就已渲染，先等它会命中“加载中…”；
+    // 必须先等待部门名出现，再断言标签与停用状态，避免数据尚未返回的竞态。
+    expect(await screen.findByText('销售部')).toBeVisible();
+    expect(screen.getByText('所属部门：')).toBeVisible();
     unmount();
 
     authStore.setAuthenticated(DEMO_SESSION);
