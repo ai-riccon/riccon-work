@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -432,13 +433,19 @@ class ModelFailoverIntegrationTest extends WorkerIntegrationTestBase {
     @Test
     @DisplayName("IT-MODEL-104：首字后断流不重试不重放")
     void stream_failureAfterFirstToken_keepsContentAndDoesNotReplay() {
+        // 桩若把内容帧与错误帧一次性写出，阻塞迭代器在低核 CI 上可能先收到终止错误、
+        // 尚未取走首个内容帧，Worker 便按“首字前失败”走降级并返回 503
+        // （CI run 44963600457 shard 2 的实际失败形态）。用内容闸门把错误帧推迟到
+        // 首段内容被消费之后再发送，使“首字后失败”不再依赖线程调度顺序。
         primary.errorAfterChunk();
+        primary.holdAfterFirstContent();
         UUID model = fixture.createModel(primary.url(), "primary-model");
         fixture.addPlatformKey(fixture.providerOf(model), "sk-primary", 10, "****mary");
         fixture.route(ModelPurpose.CHAT, model);
         TenantId tenant = tenant("tenant-a");
 
-        StreamRun run = run(tenant, ModelPurpose.CHAT);
+        // 首个响应即首段内容；收到后立即放开闸门，错误帧随后到达。
+        StreamRun run = run(tenant, ModelPurpose.CHAT, primary::releaseContent);
 
         assertThat(run.error()).isInstanceOf(ModelException.class);
         ModelException error = (ModelException) run.error();
@@ -568,6 +575,22 @@ class ModelFailoverIntegrationTest extends WorkerIntegrationTestBase {
      * @return 运行结果
      */
     private StreamRun run(TenantId tenant, ModelPurpose purpose) {
+        return run(tenant, purpose, null);
+    }
+
+    /**
+     * 解析链并在租户作用域内执行一次流式调用；首个响应被消费后执行一次钩子。
+     *
+     * <p>钩子用于释放模型桩的内容闸门：只有首个响应已被本方法消费，才允许上游继续
+     * 发送后续分片或错误帧。这样“首字后失败”不依赖生产线程与测试线程的调度顺序，
+     * 也不会把错误帧误判为首字前失败。
+     *
+     * @param tenant 租户
+     * @param purpose 用途
+     * @param afterFirstResponse 首个响应消费后执行一次的回调；可为 null
+     * @return 运行结果
+     */
+    private StreamRun run(TenantId tenant, ModelPurpose purpose, Runnable afterFirstResponse) {
         ModelRoute route =
                 TenantContext.callWithTenant(tenant, () -> modelRouter.resolve(tenant, purpose, "trace-b4", null));
         RoutedModel first = route.firstModel().orElseThrow();
@@ -586,10 +609,16 @@ class ModelFailoverIntegrationTest extends WorkerIntegrationTestBase {
                         null));
         FailoverChatModel model = modelRouter.createModel(route, tenant, handle, "trace-b4", null, purpose);
         List<io.agentscope.core.model.ChatResponse> responses = new ArrayList<>();
+        AtomicBoolean firstResponse = new AtomicBoolean();
         RuntimeException error = null;
         try {
             model.stream(List.of(new UserMessage("你好")), List.of(), null)
-                    .doOnNext(responses::add)
+                    .doOnNext(response -> {
+                        responses.add(response);
+                        if (afterFirstResponse != null && firstResponse.compareAndSet(false, true)) {
+                            afterFirstResponse.run();
+                        }
+                    })
                     .blockLast(Duration.ofSeconds(10));
         } catch (RuntimeException ex) {
             error = ex;
