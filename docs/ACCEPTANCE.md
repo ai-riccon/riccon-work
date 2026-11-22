@@ -409,7 +409,7 @@ M02 是用户可见 MVC 模块，但 2026-11-18 关闭时没有 `product_accepta
 
 ## M22（fix M19）：CI coverage、Actions、baseline 与首响应语义（gate 后 Product 预验收）
 
-- **范围与原因**：`fix` 模块，`fixes_module=M19`，技术性收口，无用户可见 AC。关闭 M19 accepted 残余：F-001（CI 只有 4-shard `test`，无 coverage 兜底）、F-003（Actions Node 20 弃用）、F-004（baseline 计时来自未录 EV 的全量）、F-005（并行/多 fork 隔离依赖单 fork 约定），并承接 M21 F-001（首响应闸门语义）；另由 TASK-0153 将 CI coverage job 的 JaCoCo goal 改为全限定坐标。TASK-0151/0152/0153 全部 done；gate PASS（REV-M22-001；`state.gate` 2026-11-22T11:26:52+08:00），模块状态 `review_pending`。
+- **范围与原因**：`fix` 模块，`fixes_module=M19`，技术性收口，无用户可见 AC。关闭 M19 accepted 残余：F-001（CI 只有 4-shard `test`，无 coverage 兜底）、F-003（Actions Node 20 弃用）、F-004（baseline 计时来自未录 EV 的全量）、F-005（并行/多 fork 隔离依赖单 fork 约定），并承接 M21 F-001（首响应闸门语义）；另由 TASK-0153 将 CI coverage job 的 JaCoCo goal 改为全限定坐标。TASK-0151/0152/0153 全部 done；gate PASS（REV-M22-001；`state.gate` 2026-11-22T11:26:52+08:00），模块状态 `done`（用户 accepted 后）。
 - **改动边界（零产品变更）**：本次复核 `git diff --name-only origin/main(e6dea34)...HEAD(fd297aa)` 仅有 `.github/workflows/ci.yml`、`docs/RUNBOOK.md`、`docs/CODING-STANDARDS.md`、`scripts/test-shards-baseline.json`、2 个 worker 测试文件与 `.riccon/**`；`apps/*/src/main`、`platform/*/src/main`、`apps/web/src`、`pom.xml`、`contracts/`、`deploy/`、`AGENTS.md` 零 diff（EV-0743 对其中多数路径亦有零 diff 断言，平台模块路径由本次复核补充确认）。产品 AC/API/DB/UX/部署行为不变，non-goals 未触碰；M22 不新增界面或流程，UX 状态清单（loading/empty/error/disabled/移动端/键盘/文案）N/A。
 - **AC 可观察性**：AC-1 的每个分句分别可由 CI run/job/artifact 与日志（coverage、Actions）、`scripts/test-shards-baseline.json` + `--check` 输出（baseline）、`docs/CODING-STANDARDS.md` §10.5 与新增回归用例（并行/首响应）观察；AC-2 可由 diff 路径、EV 的 `dirty`/`commit` 元数据与独立评审文件观察，无需读实现即可对账。
 
@@ -436,7 +436,7 @@ M02 是用户可见 MVC 模块，但 2026-11-18 关闭时没有 `product_accepta
 
 - **Product 结论**：`pass`（with residual）。挂在 M19 上的四项残余（F-001/F-003/F-004/F-005）与 M21 F-001 均有可观察的关闭证据；TASK-0153 的全限定 goal 有 CI 与 RUNBOOK 双重记录；两条模块 AC 均可由已录 EV、diff 与独立评审对账；零产品行为/UX/API/DB/部署变更；无 P0/P1 open finding。F-001/F-002 均 accepted、有 owner/due，不改变 M22 技术验收。本次预验收未新跑代码/CI/测试，未复核实现细节、安全、并发或测试充分性——这些由 REV-M22-001 负责。
 - **明确不声称**：CI 总墙钟 ≤5 分钟（coverage job 约 8.5 分钟，RUNBOOK 已写明不承诺）；前端覆盖率已由 CI 强制（CI frontend 仍只跑 `pnpm -w test`，前端覆盖率由 verifier gate 采集）；已消除所有 flake（F-001 仍在）；surefire 多 fork/并行隔离已验证（只给出约束与重验前置）；Actions 升级长期有效（仅本次 run 证明）；M22 改变产品行为或产品 AC/API/DB/UX。
-- **用户最终验收**：`pending`。M22 无用户可见 AC，但本预验收不代替用户 `accepted`；是否随 M19 的 DEC-0030 视为已覆盖，或需要用户单独确认，由 Lead 提请用户决定并记录，本文件不自行判定。
+- **用户最终验收**：`accepted`（DEC-0031，2026-11-22；用户接受 M22 技术验收并批准合并 PR #2）。M22 无用户可见 AC；本记录不改变 F-001/F-002 的 owner/due。
 
 ## 历史模块
 
