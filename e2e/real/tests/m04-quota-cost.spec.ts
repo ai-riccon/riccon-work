@@ -851,7 +851,7 @@ SELECT GROUP_CONCAT(LOWER(HEX(model_id)) ORDER BY position SEPARATOR ',')
         seed.passwords.alphaMember,
         'Alpha 员工',
       );
-      await createChatAndSend(page, 'R-M04-03 配额提额重试：请输出固定演示内容。');
+      await createChatAndSend(page, 'R-M04-03 配额提额：请输出固定演示内容。');
       await expect(page.getByText(REPORT_TAIL, { exact: false }).first()).toBeVisible({
         timeout: 60_000,
       });
@@ -868,7 +868,7 @@ SELECT GROUP_CONCAT(LOWER(HEX(model_id)) ORDER BY position SEPARATOR ',')
 
       // 第二次提问被配额拒绝：HTTP 429 + 稳定错误码，且不产生模型调用。
       const rejectedResponsePromise = page.waitForResponse(isSendMessageResponse);
-      await sendInActiveConversation(page, 'R-M04-03 配额提额重试：第二次请求。');
+      await sendInActiveConversation(page, 'R-M04-03 配额提额：第二次请求。');
       const rejectedResponse = await rejectedResponsePromise;
       const rejectedText = await rejectedResponse.text();
       expect(
