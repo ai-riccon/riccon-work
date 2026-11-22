@@ -141,6 +141,81 @@ async function readChatChainModelIds(page: Page): Promise<string[]> {
   return modelIds;
 }
 
+/**
+ * 读取 CHAT 与 REPORT 两条路由链的服务端快照。
+ *
+ * 路由是全局平台状态；修改用例必须在结束后还原，避免污染后续按种子顺序断言的用例。
+ *
+ * @param page Playwright 页面（平台管理员会话）
+ * @returns 两条链的版本与有序模型 ID
+ */
+async function readRoutingChains(page: Page): Promise<RoutingChainSnapshot[]> {
+  const response = await page.request.get('/api/v1/admin/model-routing');
+  expect(response.status(), '读取路由链失败').toBe(200);
+  const data = (await response.json()) as {
+    items: Array<{
+      purpose: 'CHAT' | 'REPORT';
+      version: number;
+      entries: Array<{ modelId: string }>;
+    }>;
+  };
+  return data.items.map((item) => ({
+    purpose: item.purpose,
+    version: item.version,
+    modelIds: item.entries.map((entry) => entry.modelId),
+  }));
+}
+
+/**
+ * 读取当前会话的 CSRF 令牌，供受支持的管理写接口使用。
+ *
+ * @param page Playwright 页面
+ * @returns CSRF 令牌
+ */
+async function readCsrfToken(page: Page): Promise<string> {
+  const response = await page.request.get('/api/v1/auth/csrf');
+  expect(response.status(), '读取 CSRF 令牌失败').toBe(200);
+  const body = (await response.json()) as { token?: string };
+  expect(body.token, 'CSRF 响应缺少 token').toBeTruthy();
+  return body.token!;
+}
+
+/**
+ * 通过受支持的管理 API 把路由链还原到进入用例时的顺序。
+ *
+ * 使用当前版本做乐观锁；只写入与快照不同的链，并在最后复核还原结果。
+ *
+ * @param page Playwright 页面（平台管理员会话）
+ * @param chains 进入用例时读取的快照
+ */
+async function restoreRoutingChains(page: Page, chains: RoutingChainSnapshot[]): Promise<void> {
+  const csrfToken = await readCsrfToken(page);
+  for (const chain of chains) {
+    const current = (await readRoutingChains(page)).find((item) => item.purpose === chain.purpose);
+    expect(current, `路由链 ${chain.purpose} 在还原前缺失`).toBeTruthy();
+    if (JSON.stringify(current!.modelIds) === JSON.stringify(chain.modelIds)) {
+      continue;
+    }
+    const response = await page.request.put(
+      `/api/v1/admin/model-routing/${encodeURIComponent(chain.purpose)}`,
+      {
+        headers: { 'X-CSRF-TOKEN': csrfToken },
+        data: { version: current!.version, modelIds: chain.modelIds },
+      },
+    );
+    const status = response.status();
+    const errorText = status === 200 ? '' : await response.text();
+    expect(status, `还原 ${chain.purpose} 路由链失败：${errorText}`).toBe(200);
+  }
+  const restored = await readRoutingChains(page);
+  for (const chain of chains) {
+    expect(
+      restored.find((item) => item.purpose === chain.purpose)?.modelIds,
+      `用例结束必须把 ${chain.purpose} 路由链还原为进入时的顺序`,
+    ).toEqual(chain.modelIds);
+  }
+}
+
 /** 真实栈 J1 fixture；与 J1 旅程使用同一份可解析 DOCX。 */
 const MARKET_DOCX = path.resolve(__dirname, '../fixtures/market.docx');
 
@@ -188,6 +263,13 @@ interface RunDetailSnapshot {
     | 'CANCELLED';
   finishedAt?: string | null;
   modelInvocations: RunInvocationSnapshot[];
+}
+
+/** 路由链快照；用于用例结束后按进入顺序还原全局路由状态。 */
+interface RoutingChainSnapshot {
+  purpose: 'CHAT' | 'REPORT';
+  version: number;
+  modelIds: string[];
 }
 
 /** 发送消息请求体最小字段。 */
@@ -453,13 +535,25 @@ async function waitForFakeModelLogSettled(
  *
  * 降级与全链失败用例会按产品语义累计失败并可能进入冷却；R-M04-03 需要从“主 key 可用”
  * 的干净状态开始，并在用例结束后恢复，避免污染同一次真实栈运行中的 J2/M03 阶段。
+ * 只重置 seed 写入的两把平台 key：key 生命周期用例会新增并停用自己的 key，
+ * 按租户全量重置会把它重新激活，额外增加主模型候选并改变降级尝试顺序。
  * 只作用于一次性测试栈，不改变任何生产行为。
  */
 function resetPlatformKeyHealth(): void {
+  const seed = readSeed() as unknown as {
+    catalog?: { credentials?: Record<string, Array<{ id: string }>> };
+  };
+  const seededIds = Object.values(seed.catalog?.credentials ?? {})
+    .flat()
+    .map((credential) => `UUID_TO_BIN('${credential.id}')`)
+    .join(', ');
+  expect(seededIds, 'seed 缺少平台 key ID，无法安全重置 key 健康状态').not.toBe('');
   runRealStackSql(`
 UPDATE provider_credential
    SET status = 'ACTIVE', consecutive_failures = 0, cooldown_until = NULL, invalidated_at = NULL
- WHERE tenant_id = 'platform' AND credential_type = 'API_KEY';
+ WHERE tenant_id = 'platform'
+   AND credential_type = 'API_KEY'
+   AND id IN (${seededIds});
 `);
 }
 
@@ -630,105 +724,115 @@ test.describe('M04-B11a 真实栈降级与审计', () => {
     await resetFakeModel();
     await loginPlatformAdminReal(page);
 
-    // 路由页：真实 API 保存后审计含 purpose/version/modelIds。
-    await page.goto('/admin/model-routing');
-    await expect(page.getByText('模型路由', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText(M04_FIXTURES.endpoints.demoOnly).first()).toBeVisible();
-    const chatCard = page.locator('.model-routing-card').filter({ hasText: '对话链' });
-    // 真实栈 seed 的模型展示名当前存在字符集乱码（B8 种子问题，已记录）；按稳定 modelKey 定位，
-    // 避免把乱码当成 E2E 断言基准。
-    const primaryRow = chatCard
-      .locator('.model-routing-item')
-      .filter({ hasText: 'fake-chat-primary' });
-    await expect(primaryRow.getByText('fake-chat-primary')).toBeVisible();
-    await primaryRow.getByRole('button', { name: /^下\s*移/ }).click();
-    await chatCard.getByRole('button', { name: '保存对话链' }).click();
-    await expect(page.getByText(/已保存对话链（版本 v/, { exact: false })).toBeVisible();
+    // 路由链是全局平台状态：记录进入顺序，并在用例结束（含失败）时还原，
+    // 避免“下移并保存”污染后续按种子顺序断言的用例（如 R-M04-03）。
+    const chainsBefore = await readRoutingChains(page);
+    try {
+      // 路由页：真实 API 保存后审计含 purpose/version/modelIds。
+      await page.goto('/admin/model-routing');
+      await expect(page.getByText('模型路由', { exact: true }).first()).toBeVisible();
+      await expect(page.getByText(M04_FIXTURES.endpoints.demoOnly).first()).toBeVisible();
+      const chatCard = page.locator('.model-routing-card').filter({ hasText: '对话链' });
+      // 真实栈 seed 的模型展示名当前存在字符集乱码（B8 种子问题，已记录）；按稳定 modelKey 定位，
+      // 避免把乱码当成 E2E 断言基准。
+      const primaryRow = chatCard
+        .locator('.model-routing-item')
+        .filter({ hasText: 'fake-chat-primary' });
+      await expect(primaryRow.getByText('fake-chat-primary')).toBeVisible();
+      await primaryRow.getByRole('button', { name: /^下\s*移/ }).click();
+      await chatCard.getByRole('button', { name: '保存对话链' }).click();
+      await expect(page.getByText(/已保存对话链（版本 v/, { exact: false })).toBeVisible();
 
-    const routingAudit = await page.request.get(
-      '/api/v1/audit-events?action=model.routing.updated&page=1&size=20',
-    );
-    expect(routingAudit.status()).toBe(200);
-    const routingData = (await routingAudit.json()) as {
-      total: number;
-      items: Array<{ details?: Record<string, unknown> | null }>;
-    };
-    expect(routingData.total).toBeGreaterThan(0);
-    expect(
-      routingData.items.some(
-        (item) =>
-          item.details?.purpose === 'CHAT' &&
-          Array.isArray(item.details?.modelIds) &&
-          (item.details?.modelIds as unknown[]).length === 3,
-      ),
-    ).toBe(true);
-
-    // key 页：新增/轮换/停用全部写入审计，响应与审计只保留掩码。
-    const label = 'E2E 真实栈 key';
-    const firstKey = 'e2e-real-stack-key-0001';
-    const rotatedKey = 'e2e-real-stack-key-0002';
-    await page.goto('/admin/model-keys');
-    await expect(page.getByText('模型 key', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('key 生命周期与在途影响')).toBeVisible();
-
-    await page.getByRole('button', { name: '新增 key' }).click();
-    const createDialog = page.getByRole('dialog');
-    await createDialog.getByLabel('key 名称').fill(label);
-    await createDialog.getByLabel('API key').fill(firstKey);
-    await createDialog.getByRole('button', { name: '新增 key' }).click();
-    await expect(page.getByText(/已新增 key「E2E 真实栈 key」（\*\*\*\*0001）/)).toBeVisible();
-
-    const createdRow = page
-      .locator('.model-key-item')
-      .filter({ hasText: label })
-      .filter({ hasText: '****0001' });
-    await createdRow.getByRole('button', { name: `轮换 key ${label}` }).click();
-    const rotateDialog = page.getByRole('dialog');
-    await expect(rotateDialog.getByText('轮换影响（保存前请确认）')).toBeVisible();
-    await expect(
-      rotateDialog.getByText(/进行中的流式请求不会被取消，可能以可重试错误结束，且不会重复输出/),
-    ).toBeVisible();
-    await rotateDialog.getByLabel('API key').fill(rotatedKey);
-    await rotateDialog.getByRole('button', { name: '确认轮换' }).click();
-    await expect(page.getByText(/已轮换 key「E2E 真实栈 key」（\*\*\*\*0002）/)).toBeVisible();
-
-    const rotatedRow = page
-      .locator('.model-key-item')
-      .filter({ hasText: label })
-      .filter({ hasText: '****0002' });
-    await rotatedRow.getByRole('button', { name: `停用 key ${label}` }).click();
-    const disableDialog = page.getByRole('dialog').filter({ hasText: `停用 key「${label}」` });
-    await expect(
-      disableDialog.getByText('停用后新请求不再使用该 key；在途流式请求继续，不会中断。'),
-    ).toBeVisible();
-    await disableDialog.getByRole('button', { name: /^停\s*用$/ }).click();
-    await expect(page.getByText(/已停用 key「E2E 真实栈 key」/)).toBeVisible();
-
-    const bodyText = await page.locator('body').innerText();
-    expect(bodyText).not.toContain(firstKey);
-    expect(bodyText).not.toContain(rotatedKey);
-
-    for (const action of [
-      'model.credential.created',
-      'model.credential.rotated',
-      'model.credential.disabled',
-    ]) {
-      const audit = await page.request.get(`/api/v1/audit-events?action=${action}&page=1&size=50`);
-      expect(audit.status(), `${action} 审计查询失败`).toBe(200);
-      const responseText = await audit.text();
-      expect(responseText).not.toContain(firstKey);
-      expect(responseText).not.toContain(rotatedKey);
-      const data = JSON.parse(responseText) as {
+      const routingAudit = await page.request.get(
+        '/api/v1/audit-events?action=model.routing.updated&page=1&size=20',
+      );
+      expect(routingAudit.status()).toBe(200);
+      const routingData = (await routingAudit.json()) as {
         total: number;
         items: Array<{ details?: Record<string, unknown> | null }>;
       };
-      expect(data.total, `${action} 未写入审计`).toBeGreaterThan(0);
-      const masks = data.items
-        .map((item) => item.details?.maskedHint)
-        .filter((value): value is string => typeof value === 'string');
-      expect(masks, `${action} 审计必须包含掩码`).toContain(
-        action === 'model.credential.created' ? '****0001' : '****0002',
-      );
+      expect(routingData.total).toBeGreaterThan(0);
+      expect(
+        routingData.items.some(
+          (item) =>
+            item.details?.purpose === 'CHAT' &&
+            Array.isArray(item.details?.modelIds) &&
+            (item.details?.modelIds as unknown[]).length === 3,
+        ),
+      ).toBe(true);
+
+      // key 页：新增/轮换/停用全部写入审计，响应与审计只保留掩码。
+      const label = 'E2E 真实栈 key';
+      const firstKey = 'e2e-real-stack-key-0001';
+      const rotatedKey = 'e2e-real-stack-key-0002';
+      await page.goto('/admin/model-keys');
+      await expect(page.getByText('模型 key', { exact: true }).first()).toBeVisible();
+      await expect(page.getByText('key 生命周期与在途影响')).toBeVisible();
+
+      await page.getByRole('button', { name: '新增 key' }).click();
+      const createDialog = page.getByRole('dialog');
+      await createDialog.getByLabel('key 名称').fill(label);
+      await createDialog.getByLabel('API key').fill(firstKey);
+      await createDialog.getByRole('button', { name: '新增 key' }).click();
+      await expect(page.getByText(/已新增 key「E2E 真实栈 key」（\*\*\*\*0001）/)).toBeVisible();
+
+      const createdRow = page
+        .locator('.model-key-item')
+        .filter({ hasText: label })
+        .filter({ hasText: '****0001' });
+      await createdRow.getByRole('button', { name: `轮换 key ${label}` }).click();
+      const rotateDialog = page.getByRole('dialog');
+      await expect(rotateDialog.getByText('轮换影响（保存前请确认）')).toBeVisible();
+      await expect(
+        rotateDialog.getByText(/进行中的流式请求不会被取消，可能以可重试错误结束，且不会重复输出/),
+      ).toBeVisible();
+      await rotateDialog.getByLabel('API key').fill(rotatedKey);
+      await rotateDialog.getByRole('button', { name: '确认轮换' }).click();
+      await expect(page.getByText(/已轮换 key「E2E 真实栈 key」（\*\*\*\*0002）/)).toBeVisible();
+
+      const rotatedRow = page
+        .locator('.model-key-item')
+        .filter({ hasText: label })
+        .filter({ hasText: '****0002' });
+      await rotatedRow.getByRole('button', { name: `停用 key ${label}` }).click();
+      const disableDialog = page.getByRole('dialog').filter({ hasText: `停用 key「${label}」` });
+      await expect(
+        disableDialog.getByText('停用后新请求不再使用该 key；在途流式请求继续，不会中断。'),
+      ).toBeVisible();
+      await disableDialog.getByRole('button', { name: /^停\s*用$/ }).click();
+      await expect(page.getByText(/已停用 key「E2E 真实栈 key」/)).toBeVisible();
+
+      const bodyText = await page.locator('body').innerText();
+      expect(bodyText).not.toContain(firstKey);
+      expect(bodyText).not.toContain(rotatedKey);
+
+      for (const action of [
+        'model.credential.created',
+        'model.credential.rotated',
+        'model.credential.disabled',
+      ]) {
+        const audit = await page.request.get(
+          `/api/v1/audit-events?action=${action}&page=1&size=50`,
+        );
+        expect(audit.status(), `${action} 审计查询失败`).toBe(200);
+        const responseText = await audit.text();
+        expect(responseText).not.toContain(firstKey);
+        expect(responseText).not.toContain(rotatedKey);
+        const data = JSON.parse(responseText) as {
+          total: number;
+          items: Array<{ details?: Record<string, unknown> | null }>;
+        };
+        expect(data.total, `${action} 未写入审计`).toBeGreaterThan(0);
+        const masks = data.items
+          .map((item) => item.details?.maskedHint)
+          .filter((value): value is string => typeof value === 'string');
+        expect(masks, `${action} 审计必须包含掩码`).toContain(
+          action === 'model.credential.created' ? '****0001' : '****0002',
+        );
+      }
+    } finally {
+      // 即使路由/ key 断言失败也执行还原；还原失败本身会让用例失败，避免污染静默通过。
+      await restoreRoutingChains(page, chainsBefore);
     }
   });
 
