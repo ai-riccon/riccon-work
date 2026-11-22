@@ -56,9 +56,10 @@ class RunFailureMessageSanitizationTest {
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-11-22T12:00:00Z"), ZoneOffset.UTC);
 
     /** 含内部地址、密钥与堆栈的原始 detail canary。 */
-    private static final String RAW_DETAIL = "provider=mock-openai baseUrl=http://198.51.100.7:8080/v1 apiKey=CANARY-KEY-0158\n"
-            + "java.lang.IllegalStateException: boom\n"
-            + "\tat com.riccon.worker.chat.service.ChatStreamService.open(ChatStreamService.java:42)";
+    private static final String RAW_DETAIL =
+            "provider=mock-openai baseUrl=http://198.51.100.7:8080/v1 apiKey=CANARY-KEY-0158\n"
+                    + "java.lang.IllegalStateException: boom\n"
+                    + "\tat com.riccon.worker.chat.service.ChatStreamService.open(ChatStreamService.java:42)";
 
     /**
      * F-008 负向用例：异常原文含内部地址/密钥/堆栈时，重试等待落库只保留静态说明。
@@ -189,7 +190,12 @@ class RunFailureMessageSanitizationTest {
     private static void assertNoRawDetail(String value) {
         assertThat(value)
                 .doesNotContain(
-                        "provider=", "baseUrl", "198.51.100.7", "CANARY-KEY-0158", "IllegalStateException", "ChatStreamService.java");
+                        "provider=",
+                        "baseUrl",
+                        "198.51.100.7",
+                        "CANARY-KEY-0158",
+                        "IllegalStateException",
+                        "ChatStreamService.java");
     }
 
     /**
