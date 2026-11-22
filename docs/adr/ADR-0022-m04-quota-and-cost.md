@@ -18,6 +18,8 @@ Scope: M04「模型网关纵深」的租户/用户配额与成本估算；路由
 > 修订（2026-11-22，REV-TASK-0108-001 F-001/F-003/F-004/F-012，TASK-0140）：§2.1 把价格快照时点如实修订为“成功终态读取一次”，并记录它与 V11/ADR-0021 历史列注释的差异、影响边界和未来重访条件（正确的“最终成功尝试开始时”快照需要改 `FailoverChatModel` 的尝试生命周期，超出 TASK-0140 写范围）；§2.3 增加负 usage 归一规则；新增 §2.6 记录报表 TOOL/GENERATION 的 `first_token_ms` 来源与 TOOL 阶段“没有文本首字”的边界。该修订不改变 DEC-0023/DEC-0024 已批准的成本公式、6 位小数、日桶、未定价/用量未知与单币种语义，也不改变 M04-AC-11 的用户可见结果；ADR 状态保持 `accepted`。
 >
 > 修订（2026-11-22，REV-TASK-0140-001 F-001/F-002，TASK-0155）：§2.1 明确价格维护渠道为部署种子/`update-model-price.mjs`/运维 SQL，并保留“成功终态读取一次”的权威口径、在途改价影响边界与 M05+ 价格写入能力重访条件；§2.6 把报表首字口径统一为实现与单测一致的“首个非空且非纯空白 `TextBlockDeltaEvent`，以产生该增量的那次 `ModelCallStartEvent` 为起点，首字记录后不被后续 Start 覆盖”，并明确 TOOL 仅 `tool_calls` 时为 NULL。该修订不改变成本公式、AC、错误码或契约；ADR 状态保持 `accepted`。
+>
+> 修订（2026-11-22，REV-TASK-0142-002 剩余风险 4，TASK-0156）：§2.4 补充平台成本例外的 401/403 分工——例外候选主体会话失效或账号禁用返回 401 `RICCON-AUTH-401`，不写 `tenant.access.denied`；缺少 `platform.cost.read` 或权限读取失败仍返回 403 `RICCON-AUTH-403` + 审计（`reason=missing_permission`）。与 ADR-0009「平台成本端点例外」同口径，不改变 AC、错误码种类或契约；ADR 状态保持 `accepted`。
 
 ## Context
 
@@ -240,7 +242,7 @@ cost = prompt_tokens * input_price_per_1m / 1_000_000
 | 平台管理员 | 明细                            | —                          | **不提供**按用户的调用明细；避免跨租户成本推断                       |
 
 - 时间范围：`from`/`to` 为 `YYYY-MM-DD`（`Asia/Shanghai` 自然日，含端点），默认最近 30 天，最大 180 天；`from <= to`。
-- **平台成本 `tenantId` 过滤是 ADR-0009 的窄例外（TASK-0142 已完成过滤内角色校验）**：ADR-0009 §1 规定查询参数 `tenantId` 一律忽略或拒绝；`GET /api/v1/admin/costs` 的 `tenantId` 只作为平台主体在授权范围内的跨租户聚合过滤。`TenantContextFilter.isPlatformCostFilter` 只命中 `GET + /api/v1/admin/costs + 主体租户 platform`，且命中后必须在过滤器内调用 `AuthService.requirePermission(platform.cost.read)`：缺少权限或权限读取失败时按租户不一致返回 403 `RICCON-AUTH-403`，写审计 `tenant.access.denied`（`attemptedTenant`、`reason=missing_permission`），不会放行到 controller。`PermissionInterceptor` 在 controller 前再次强制同一权限（每次请求从数据库加载，双保险）。其他路径/方法/主体（含 trailing slash、非 GET、租户端点）继续按 ADR-0009 拒绝并写 `reason=tenant_mismatch`。完整例外边界与负向测试见 ADR-0009「平台成本端点例外」。
+- **平台成本 `tenantId` 过滤是 ADR-0009 的窄例外（TASK-0142 已完成过滤内角色校验）**：ADR-0009 §1 规定查询参数 `tenantId` 一律忽略或拒绝；`GET /api/v1/admin/costs` 的 `tenantId` 只作为平台主体在授权范围内的跨租户聚合过滤。`TenantContextFilter.isPlatformCostFilter` 只命中 `GET + /api/v1/admin/costs + 主体租户 platform`，且命中后必须在过滤器内调用 `AuthService.requirePermission(platform.cost.read)`：缺少权限或权限读取失败时按租户不一致返回 403 `RICCON-AUTH-403`，写审计 `tenant.access.denied`（`attemptedTenant`、`reason=missing_permission`），不会放行到 controller；例外候选主体会话失效或账号禁用则返回 401 `RICCON-AUTH-401`，不写 `tenant.access.denied`（TASK-0156）。`PermissionInterceptor` 在 controller 前再次强制同一权限（每次请求从数据库加载，双保险）。其他路径/方法/主体（含 trailing slash、非 GET、租户端点）继续按 ADR-0009 拒绝并写 `reason=tenant_mismatch`。完整例外边界与负向测试见 ADR-0009「平台成本端点例外」。
 - **`X-Tenant-Id` 头在平台成本路径不参与过滤**：该头与查询参数一样会被 `TenantContextFilter` 识别；对已授权的平台管理员，头与主体租户不一致时按上一条例外放行，但 controller 只读取查询参数 `tenantId`，头**不会**改变聚合范围——只带头时仍返回授权范围内的全租户聚合；同时提供查询参数时以查询参数为准。安全边界：头不能作为跨租户过滤或授权依据，前端/调用方必须使用查询参数；平台非管理员携带该头仍会在过滤器内因缺少 `platform.cost.read` 被拒绝并写审计。**`X-Tenant-Id` 与查询参数 `tenantId` 同时出现且不一致时，过滤器直接按 `tenant_mismatch` 拒绝并写审计（details 的 `attemptedTenant` 记录为 `header=<头值>;query=<查询值>`），不进入平台成本例外**；两者一致时按一个值处理（TASK-0142 F-001）。
 - **AC-12 的 403/404 口径**：
   - **伪造租户标识 → 403**：查询参数 `tenantId` 或请求头 `X-Tenant-Id` 与主体租户不一致时，`TenantContextFilter` 返回 403 `RICCON-AUTH-403`，写审计 `tenant.access.denied`（`outcome=denied`，details `attemptedTenant`、`reason=tenant_mismatch`），不返回任何租户数据；审计写入失败返回 500。平台成本端点且主体具备 `platform.cost.read` 时按上一条例外处理，不属于“伪造”；缺少该权限时仍 403（`reason=missing_permission`）。

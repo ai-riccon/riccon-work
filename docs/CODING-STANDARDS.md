@@ -239,7 +239,7 @@ platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
 
 - 当前映射（M19 P4a）：
   - `integration`：API 全部 `@SpringBootTest` 基类子类（含文件、研究、配额、成本、审计与安全套件），以及 Worker `WorkerIntegrationTestBase` 子类。
-  - `security`：`DepartmentIsolationTest`、`TenantIsolationSecurityTest`（继承 `SecurityTestSupport`），`TenantIsolationTest`，`ChatScopeApiTest`、`ContentScopeApiTest`，`M04VerifierGatewaySecurityTest`、`M04VerifierProductionEndpointTest`、`M04VerifierSwitchDeltaTest`、`M04V2VerifierBoundaryTest`，`ModelCredentialSecurityTest`、`ModelRoutingAuditSecurityTest`；原有 `dept-isolation`/`tenant-isolation` 标签保留。认证/会话功能流（`AuthFlowTest`、`OidcLoginFlowTest`）仍归 `integration`，不强行并入 `security`。
+  - `security`：`DepartmentIsolationTest`、`TenantIsolationSecurityTest`（继承 `SecurityTestSupport`），`TenantIsolationTest`，`ChatScopeApiTest`、`ContentScopeApiTest`，`M04VerifierGatewaySecurityTest`、`M04VerifierProductionEndpointTest`、`M04VerifierSwitchDeltaTest`、`M04V2VerifierBoundaryTest`，`ModelCredentialSecurityTest`、`ModelRoutingAuditSecurityTest`、`PlatformCostTenantFilterTest`；原有 `dept-isolation`/`tenant-isolation` 标签保留。认证/会话功能流（`AuthFlowTest`、`OidcLoginFlowTest`）仍归 `integration`，不强行并入 `security`。
   - `migration`：上表四个类；它们不继承集成基类，因此只带 `migration`。
   - 其余测试类（含 `platform/**` 的纯单测与 ArchUnit）视为 unit。
 - 继承规则：

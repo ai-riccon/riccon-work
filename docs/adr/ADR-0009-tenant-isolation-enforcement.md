@@ -182,3 +182,8 @@ grep -E 'skipped="[1-9]|failures="[1-9]|errors="[1-9]' apps/api/target/surefire-
 | 拒绝行为   | 平台非管理员命中例外候选 → 403 `RICCON-AUTH-403` + 审计 `tenant.access.denied`（`attemptedTenant`、`reason=missing_permission`）；其他路径/方法/主体的不一致值 → `reason=tenant_mismatch`；header/query 冲突 → 403 + `reason=tenant_mismatch`（details 的 `attemptedTenant` 记录为 `header=<头值>;query=<查询值>`）；响应均不含租户、金额或明细。                                       |
 | 负向测试   | `apps/api/src/test/java/com/riccon/api/admin/cost/PlatformCostTenantFilterTest.java`（TASK-0142）：平台非管理员带查询参数/请求头均 403 且无数据并写审计；租户端点伪造查询参数/请求头 403 并审计；平台管理员 POST 与 trailing slash 403；平台管理员查询参数过滤生效、请求头不改变结果；header 与 query 冲突 403 并审计（平台管理员与租户管理员各一例）；平台成本例外内会话失效返回 401。 |
 | 残余       | 例外仍信任 `platform` 租户代码与精确 URI；新增平台成本路径或修改路由必须同步更新过滤器、ADR-0022 §2.4 与本测试。过滤器与拦截器各加载一次权限，每请求多一次只读查询，属可接受成本。                                                                                                                                                                                                      |
+
+**401 与 403 的分工（TASK-0156）**：
+
+- 例外候选主体（`platform` 租户账号）会话缺失/过期或账号已禁用时，`AuthService.requirePermission` 抛 `UnauthenticatedException`，过滤器返回 401 `RICCON-AUTH-401`，不写 `tenant.access.denied`、不放行到 controller，响应不含租户、金额或明细；与常规 `PermissionInterceptor` 的未认证语义一致。
+- 缺少 `platform.cost.read`（`ForbiddenException`）或权限读取失败（`RuntimeException`，记录 ERROR 后）仍 fail-closed，返回 403 `RICCON-AUTH-403` 并写审计 `tenant.access.denied`（`attemptedTenant`、`reason=missing_permission`）。401 与 403 两条路径互斥：认证失败返回 401 且不写拒绝审计，授权失败才返回 403 并写审计。
