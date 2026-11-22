@@ -222,7 +222,9 @@ public class AuthController {
                 user.authSource(),
                 identityProviderResolver.resolve(user),
                 user.lastLoginAt(),
-                user.createdAt());
+                user.createdAt(),
+                user.departmentId(),
+                user.departmentName());
         TenantSummaryResponse tenantSummary = new TenantSummaryResponse(
                 tenant.id(), tenant.name(), tenant.status(), tenant.plan(), tenant.retentionDays(), tenant.createdAt());
         HttpSession session = request.getSession(false);

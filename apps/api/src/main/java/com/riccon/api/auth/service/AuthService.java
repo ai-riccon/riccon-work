@@ -295,7 +295,9 @@ public class AuthService {
                 user.authSource(),
                 user.externalIssuer(),
                 now,
-                user.createdAt());
+                user.createdAt(),
+                user.departmentId(),
+                user.departmentName());
         return new CurrentUser(refreshed, tenant, roles, permissions);
     }
 

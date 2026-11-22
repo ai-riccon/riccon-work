@@ -11,6 +11,9 @@ import java.util.UUID;
  *
  * <p>密码哈希不在这里：它与账号分离存放在 {@code user_credential}，避免账号查询意外带出凭据。
  *
+ * <p>主部门只保留展示所需的 ID 与名称：名称在查询时 join {@code department} 得到，停用部门仍保留名称；未分配
+ * 部门时两者均为 {@code null}。部门状态与数据范围判断不依赖本模型，仍由组织/空间模块负责。
+ *
  * @param id 账号 ID（UUIDv7）
  * @param tenantId 所属租户
  * @param username 登录名
@@ -21,6 +24,8 @@ import java.util.UUID;
  * @param externalIssuer OIDC issuer；只用于生成脱敏展示名，绝不进入响应原文。LOCAL 为 {@code null}
  * @param lastLoginAt 最近登录成功时间
  * @param createdAt 创建时间
+ * @param departmentId 主部门 ID；未分配时为 {@code null}
+ * @param departmentName 主部门名；停用部门仍返回名称，未分配时为 {@code null}
  */
 public record UserAccount(
         UUID id,
@@ -32,7 +37,9 @@ public record UserAccount(
         AuthSource authSource,
         String externalIssuer,
         Instant lastLoginAt,
-        Instant createdAt) {
+        Instant createdAt,
+        UUID departmentId,
+        String departmentName) {
 
     /** 保证关键字段存在。 */
     public UserAccount {
@@ -45,7 +52,50 @@ public record UserAccount(
     }
 
     /**
-     * 兼容旧调用方的构造器：未携带 issuer 时按“未知外部身份”处理。
+     * 兼容旧调用方的构造器：未知来源 IdP 且未携带部门时按“外部身份未知、未分配部门”处理。
+     *
+     * <p>用于不关心来源 IdP 与部门的路径（如 OIDC 登录身份命中校验、OIDC 账号创建）；响应 DTO 必须使用规范
+     * 构造器并显式传入 issuer 与部门字段，否则来源 IdP 或部门会缺失。
+     *
+     * @param id 账号 ID
+     * @param tenantId 所属租户
+     * @param username 登录名
+     * @param displayName 展示名
+     * @param email 联系方式，可为空
+     * @param status 账号状态
+     * @param authSource 认证来源
+     * @param externalIssuer OIDC issuer，可为空
+     * @param lastLoginAt 最近登录成功时间
+     * @param createdAt 创建时间
+     */
+    public UserAccount(
+            UUID id,
+            String tenantId,
+            String username,
+            String displayName,
+            String email,
+            UserStatus status,
+            AuthSource authSource,
+            String externalIssuer,
+            Instant lastLoginAt,
+            Instant createdAt) {
+        this(
+                id,
+                tenantId,
+                username,
+                displayName,
+                email,
+                status,
+                authSource,
+                externalIssuer,
+                lastLoginAt,
+                createdAt,
+                null,
+                null);
+    }
+
+    /**
+     * 兼容旧调用方的构造器：未携带 issuer 时按“未知外部身份”处理，部门按未分配处理。
      *
      * <p>仅用于不关心来源 IdP 的路径（如 OIDC 登录身份命中校验）；响应 DTO 必须使用规范构造器并显式传入
      * issuer，否则来源 IdP 会缺失。
@@ -70,7 +120,7 @@ public record UserAccount(
             AuthSource authSource,
             Instant lastLoginAt,
             Instant createdAt) {
-        this(id, tenantId, username, displayName, email, status, authSource, null, lastLoginAt, createdAt);
+        this(id, tenantId, username, displayName, email, status, authSource, null, lastLoginAt, createdAt, null, null);
     }
 
     /**

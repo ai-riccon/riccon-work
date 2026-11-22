@@ -34,10 +34,14 @@ public class AdminJdbc {
     /** 租户字段。 */
     private static final String TENANT_COLUMNS = "id, name, status, plan, retention_days, created_at";
 
-    /** 账号字段。 */
+    /** 账号字段；部门名来自同租户 {@code department} 左连接，未分配时为 NULL。 */
     private static final String USER_COLUMNS =
-            "tenant_id, id, username, display_name, email, status, auth_source, external_issuer,"
-                    + " last_login_at, created_at";
+            "u.tenant_id, u.id, u.username, u.display_name, u.email, u.status, u.auth_source, u.external_issuer,"
+                    + " u.last_login_at, u.created_at, u.department_id, d.name AS department_name";
+
+    /** 账号查询的数据源；左连接保证未分配部门的账号仍可列出。 */
+    private static final String USER_SOURCE =
+            " FROM app_user u LEFT JOIN department d" + " ON d.tenant_id = u.tenant_id AND d.id = u.department_id";
 
     /** 查询租户。 */
     private static final String FIND_TENANT = "SELECT " + TENANT_COLUMNS + " FROM tenant WHERE id = :id";
@@ -81,15 +85,15 @@ public class AdminJdbc {
 
     /** 按账号 ID 查询。 */
     private static final String FIND_USER =
-            "SELECT " + USER_COLUMNS + " FROM app_user WHERE tenant_id = :tenantId AND id = :userId";
+            "SELECT " + USER_COLUMNS + USER_SOURCE + " WHERE u.tenant_id = :tenantId AND u.id = :userId";
 
     /** 按登录名查询。 */
     private static final String FIND_USER_BY_USERNAME =
-            "SELECT " + USER_COLUMNS + " FROM app_user WHERE tenant_id = :tenantId AND username = :username";
+            "SELECT " + USER_COLUMNS + USER_SOURCE + " WHERE u.tenant_id = :tenantId AND u.username = :username";
 
     /** 账号列表。 */
-    private static final String LIST_USERS = "SELECT " + USER_COLUMNS
-            + " FROM app_user WHERE tenant_id = :tenantId ORDER BY created_at ASC, id ASC LIMIT :limit OFFSET :offset";
+    private static final String LIST_USERS = "SELECT " + USER_COLUMNS + USER_SOURCE
+            + " WHERE u.tenant_id = :tenantId ORDER BY u.created_at ASC, u.id ASC LIMIT :limit OFFSET :offset";
 
     /** 账号总数。 */
     private static final String COUNT_USERS = "SELECT COUNT(*) FROM app_user WHERE tenant_id = :tenantId";
@@ -483,7 +487,9 @@ public class AdminJdbc {
                 AuthSource.valueOf(rs.getString("auth_source")),
                 rs.getString("external_issuer"),
                 SqlTimestamps.toInstant(lastLoginAt),
-                SqlTimestamps.toInstant(rs.getObject("created_at", LocalDateTime.class)));
+                SqlTimestamps.toInstant(rs.getObject("created_at", LocalDateTime.class)),
+                BinaryUuids.fromBytes(rs.getBytes("department_id")),
+                rs.getString("department_name"));
     }
 
     /**

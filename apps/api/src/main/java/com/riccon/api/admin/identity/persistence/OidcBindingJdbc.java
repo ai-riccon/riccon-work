@@ -31,15 +31,16 @@ import org.springframework.stereotype.Component;
 @Component
 public class OidcBindingJdbc {
 
-    /** 账号字段；与 {@code AdminJdbc} 保持一致，避免管理端出现两套字段集合。 */
+    /** 账号字段；与 {@code AdminJdbc} 保持一致，部门名来自同租户 {@code department} 左连接。 */
     private static final String USER_COLUMNS =
-            "tenant_id, id, username, display_name, email, status, auth_source, external_issuer,"
-                    + " last_login_at, created_at";
+            "u.tenant_id, u.id, u.username, u.display_name, u.email, u.status, u.auth_source, u.external_issuer,"
+                    + " u.last_login_at, u.created_at, u.department_id, d.name AS department_name";
 
     /** 按租户 + issuer + subject 查询已绑定账号。 */
-    private static final String FIND_BOUND_USER = "SELECT " + USER_COLUMNS + " FROM app_user"
-            + " WHERE tenant_id = :tenantId AND auth_source = 'OIDC'"
-            + " AND external_issuer = :issuer AND external_subject = :subject";
+    private static final String FIND_BOUND_USER = "SELECT " + USER_COLUMNS + " FROM app_user u"
+            + " LEFT JOIN department d ON d.tenant_id = u.tenant_id AND d.id = u.department_id"
+            + " WHERE u.tenant_id = :tenantId AND u.auth_source = 'OIDC'"
+            + " AND u.external_issuer = :issuer AND u.external_subject = :subject";
 
     /** 查询账号当前认证来源与外部身份。 */
     private static final String FIND_IDENTITY = "SELECT auth_source, external_issuer, external_subject FROM app_user"
@@ -242,6 +243,8 @@ public class OidcBindingJdbc {
                 AuthSource.valueOf(rs.getString("auth_source")),
                 rs.getString("external_issuer"),
                 SqlTimestamps.toInstant(lastLoginAt),
-                SqlTimestamps.toInstant(rs.getObject("created_at", LocalDateTime.class)));
+                SqlTimestamps.toInstant(rs.getObject("created_at", LocalDateTime.class)),
+                BinaryUuids.fromBytes(rs.getBytes("department_id")),
+                rs.getString("department_name"));
     }
 }

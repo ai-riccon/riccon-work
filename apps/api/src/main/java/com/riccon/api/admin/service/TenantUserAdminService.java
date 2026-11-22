@@ -463,7 +463,9 @@ public class TenantUserAdminService {
                 user.authSource(),
                 user.externalIssuer(),
                 user.lastLoginAt(),
-                user.createdAt());
+                user.createdAt(),
+                user.departmentId(),
+                user.departmentName());
         return toSummary(updated, roles);
     }
 
@@ -754,7 +756,9 @@ public class TenantUserAdminService {
                 authSource,
                 externalIssuer,
                 user.lastLoginAt(),
-                user.createdAt());
+                user.createdAt(),
+                user.departmentId(),
+                user.departmentName());
     }
 
     /**
@@ -777,7 +781,9 @@ public class TenantUserAdminService {
                 user.authSource(),
                 identityProviderResolver.resolve(user),
                 user.lastLoginAt(),
-                user.createdAt());
+                user.createdAt(),
+                user.departmentId(),
+                user.departmentName());
     }
 
     /**
