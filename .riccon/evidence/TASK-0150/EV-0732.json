@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0732",
+  "task_id": "TASK-0150",
+  "command": "set -euo pipefail; export D=\"${TMPDIR:-/tmp}/m21-ci-recheck\"; rm -rf \"$D\"; mkdir -p \"$D\"; gh run download 44965051297 --repo ai-riccon/riccon-work -D \"$D\"; export X=\"$D/backend-shard-2/apps/worker/target/surefire-reports/TEST-com.riccon.worker.model.ModelFailoverIntegrationTest.xml\"; grep -q 'tests=\"17\" errors=\"0\" skipped=\"0\" failures=\"0\"' \"$X\"; grep -q \"stream_failureAfterFirstToken_keepsContentAndDoesNotReplay\" \"$X\"; jq -e '.totals.suites == 196 and .totals.tests == 1115 and .totals.failures == 0 and .totals.errors == 0 and .totals.skipped == 0 and .verdict == \"pass\"' \"$D/test-shards-merged/test-shards-merged.json\" >/dev/null; jq -e '[.classes[] | select(.class == \"com.riccon.worker.model.ModelFailoverIntegrationTest\")] | length == 1 and .[0].tests == 17 and .[0].failures == 0 and .[0].errors == 0 and .[0].skipped == 0 and .[0].runs == 1 and .[0].shard == 2' \"$D/test-shards-merged/test-shards-merged.json\" >/dev/null; gh run view 44965051297 --repo ai-riccon/riccon-work --json conclusion,headSha --jq '.conclusion + \" \" + .headSha'; echo \"CI run 44965051297 OK: shard2 ModelFailover 17/0/0/0; merge 196/1115/0/0/0\"",
+  "manual": false,
+  "commit": "40e969aadd4e5c2237b397e8f425024e8b5562cc",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0150/EV-0732-2026-11-22T08-41-13-542+08-00-set-euo-pipefail-export-d-tmpdir-tmp-m21-ci-rech.log",
+  "output_sha256": "ee537c63db847da6dc56bb31692c0701be168dded17557d1f6555ace370d18c2",
+  "output_bytes": 1479,
+  "agent": "riccon/verifier",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-22T08:41:01.869+08:00",
+  "finished_at": "2026-11-22T08:41:13.052+08:00",
+  "duration_ms": 11182,
+  "note": "M21 CI 证据复核：重新下载 run 44965051297（@9508fc6）artifact，断言 shard2 ModelFailoverIntegrationTest 17/0/0/0 且 fixed 用例存在；merge 报告 196 类/1115 用例/0 failure/0 error/0 skip、verdict=pass、每类 runs=1。不重跑 CI。",
+  "recorded_at": "2026-11-22T08:41:13.543+08:00"
+}

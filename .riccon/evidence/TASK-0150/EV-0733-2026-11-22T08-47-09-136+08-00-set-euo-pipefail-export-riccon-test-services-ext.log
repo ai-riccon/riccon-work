@@ -1,0 +1,22 @@
+# command: set -euo pipefail; export RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=m19v21; export ROOT="${TMPDIR:-/tmp}/m21-verifier-evidence-safe"; rm -rf "$ROOT"; mkdir -p "$ROOT"; node scripts/test-services.mjs reset --namespace m19v21 > "$ROOT/reset.log"; for i in $(seq 1 10); do ./mvnw -q -T1C -pl apps/worker -am test -Dtest=ModelFailoverIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false > "$ROOT/targeted-$i.log" 2>&1; grep -o 'tests="17" errors="0" skipped="0" failures="0"' apps/worker/target/surefire-reports/TEST-com.riccon.worker.model.ModelFailoverIntegrationTest.xml; done; rm -rf apps/*/target/surefire-reports platform/*/target/surefire-reports; ./mvnw -q -T1C -pl apps/worker -am test > "$ROOT/worker-full.log" 2>&1; node scripts/test-timings.mjs --out-dir "$ROOT/test-timings" > "$ROOT/test-timings.out"; grep -q "apps/worker: tests=356 failures=0 errors=0 skipped=0" "$ROOT/test-timings.out"; grep "apps/worker: tests=" "$ROOT/test-timings.out"; ./mvnw -q spotless:check; git diff --check
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-22T08:43:16.131+08:00
+# finished_at: 2026-11-22T08:47:08.084+08:00
+# duration_ms: 231952
+# exit_code: 0
+
+# --- stdout ---
+tests="17" errors="0" skipped="0" failures="0"
+tests="17" errors="0" skipped="0" failures="0"
+tests="17" errors="0" skipped="0" failures="0"
+tests="17" errors="0" skipped="0" failures="0"
+tests="17" errors="0" skipped="0" failures="0"
+tests="17" errors="0" skipped="0" failures="0"
+tests="17" errors="0" skipped="0" failures="0"
+tests="17" errors="0" skipped="0" failures="0"
+tests="17" errors="0" skipped="0" failures="0"
+tests="17" errors="0" skipped="0" failures="0"
+  apps/worker: tests=356 failures=0 errors=0 skipped=0 time=56.330s
+
+# --- stderr ---
+

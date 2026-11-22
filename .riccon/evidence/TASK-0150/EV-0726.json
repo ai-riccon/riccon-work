@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0726",
+  "task_id": "TASK-0150",
+  "command": "set -euo pipefail; export RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=m19v21; export ROOT=\"${TMPDIR:-/tmp}/m21-verifier-evidence\"; rm -rf \"$ROOT\"; mkdir -p \"$ROOT\"; node scripts/test-services.mjs reset --namespace m19v21 > \"$ROOT/reset.log\"; for i in $(seq 1 10); do ./mvnw -q -T1C -pl apps/worker -am test -Dtest=ModelFailoverIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false > \"$ROOT/targeted-$i.log\" 2>&1; grep -q 'tests=\"17\" errors=\"0\" skipped=\"0\" failures=\"0\"' apps/worker/target/surefire-reports/TEST-com.riccon.worker.model.ModelFailoverIntegrationTest.xml; echo \"targeted_run=$i tests=17 failures=0 errors=0 skipped=0\"; done; rm -rf apps/*/target/surefire-reports platform/*/target/surefire-reports; ./mvnw -q -T1C -pl apps/worker -am test > \"$ROOT/worker-full.log\" 2>&1; node scripts/test-timings.mjs --out-dir \"$ROOT/test-timings\" > \"$ROOT/test-timings.out\"; grep -q \"apps/worker: tests=356 failures=0 errors=0 skipped=0\" \"$ROOT/test-timings.out\"; grep \"apps/worker: tests=\" \"$ROOT/test-timings.out\"; ./mvnw -q spotless:check; git diff --check; echo \"verifier-evidence-ok targeted=10x17 worker_full=356/0/0/0 spotless=ok diff-check=ok\"",
+  "manual": false,
+  "commit": "40e969aadd4e5c2237b397e8f425024e8b5562cc",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0150/EV-0726-2026-11-22T08-24-56-792+08-00-set-euo-pipefail-export-riccon-test-services-ext.log",
+  "output_sha256": "11f3338e65107cf469ed0234d85ca0e797091566752a24ceb2f53c1623d8db21",
+  "output_bytes": 2087,
+  "agent": "riccon/verifier",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-22T08:20:57.215+08:00",
+  "finished_at": "2026-11-22T08:24:56.206+08:00",
+  "duration_ms": 238990,
+  "note": "M21 独立验证：external namespace=m19v21；ModelFailoverIntegrationTest 连续 10 次，每次 17/0/0/0；Worker 全量 356 用例 0 failure/error/skip；spotless:check 与 git diff --check 通过。验证 holdAfterFirstContent/releaseContent 闸门与 afterFirstResponse 钩子确实把错误帧推迟到首段内容被消费后。",
+  "recorded_at": "2026-11-22T08:24:56.794+08:00"
+}

@@ -1,0 +1,13 @@
+# command: set -euo pipefail; export D="${TMPDIR:-/tmp}/m21-ci-recheck"; rm -rf "$D"; mkdir -p "$D"; gh run download 44965051297 --repo ai-riccon/riccon-work -D "$D"; export X="$D/backend-shard-2/apps/worker/target/surefire-reports/TEST-com.riccon.worker.model.ModelFailoverIntegrationTest.xml"; grep -q 'tests="17" errors="0" skipped="0" failures="0"' "$X"; grep -q "stream_failureAfterFirstToken_keepsContentAndDoesNotReplay" "$X"; jq -e '.totals.suites == 196 and .totals.tests == 1115 and .totals.failures == 0 and .totals.errors == 0 and .totals.skipped == 0 and .verdict == "pass"' "$D/test-shards-merged/test-shards-merged.json" >/dev/null; jq -e '[.classes[] | select(.class == "com.riccon.worker.model.ModelFailoverIntegrationTest")] | length == 1 and .[0].tests == 17 and .[0].failures == 0 and .[0].errors == 0 and .[0].skipped == 0 and .[0].runs == 1 and .[0].shard == 2' "$D/test-shards-merged/test-shards-merged.json" >/dev/null; gh run view 44965051297 --repo ai-riccon/riccon-work --json conclusion,headSha --jq '.conclusion + " " + .headSha'; echo "CI run 44965051297 OK: shard2 ModelFailover 17/0/0/0; merge 196/1115/0/0/0"
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-22T08:41:01.869+08:00
+# finished_at: 2026-11-22T08:41:13.052+08:00
+# duration_ms: 11182
+# exit_code: 0
+
+# --- stdout ---
+success 9508fc6ff63e15dd9925eb74393991d0350b3a40
+CI run 44965051297 OK: shard2 ModelFailover 17/0/0/0; merge 196/1115/0/0/0
+
+# --- stderr ---
+
