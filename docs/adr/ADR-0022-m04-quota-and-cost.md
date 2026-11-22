@@ -20,6 +20,8 @@ Scope: M04「模型网关纵深」的租户/用户配额与成本估算；路由
 > 修订（2026-11-22，REV-TASK-0140-001 F-001/F-002，TASK-0155）：§2.1 明确价格维护渠道为部署种子/`update-model-price.mjs`/运维 SQL，并保留“成功终态读取一次”的权威口径、在途改价影响边界与 M05+ 价格写入能力重访条件；§2.6 把报表首字口径统一为实现与单测一致的“首个非空且非纯空白 `TextBlockDeltaEvent`，以产生该增量的那次 `ModelCallStartEvent` 为起点，首字记录后不被后续 Start 覆盖”，并明确 TOOL 仅 `tool_calls` 时为 NULL。该修订不改变成本公式、AC、错误码或契约；ADR 状态保持 `accepted`。
 >
 > 修订（2026-11-22，REV-TASK-0142-002 剩余风险 4，TASK-0156）：§2.4 补充平台成本例外的 401/403 分工——例外候选主体会话失效或账号禁用返回 401 `RICCON-AUTH-401`，不写 `tenant.access.denied`；缺少 `platform.cost.read` 或权限读取失败仍返回 403 `RICCON-AUTH-403` + 审计（`reason=missing_permission`）。与 ADR-0009「平台成本端点例外」同口径，不改变 AC、错误码种类或契约；ADR 状态保持 `accepted`。
+>
+> 修订（2026-11-22，M05-gate 文档债务）：Context 摘要原写“跨租户统一 404”，与 §2.4 和 ADR-0009 的既有分工不一致；现澄清为“伪造 `tenantId`/`X-Tenant-Id` 与主体租户不一致 → 403 `RICCON-AUTH-403`；资源 ID（如 `userId`）指向其他租户 → 404 `RICCON-TENANT-404`”。只改摘要措辞，不改变 §2.4 的决策条文、AC-12 结果、错误码种类或契约；ADR 状态保持 `accepted`。
 
 ## Context
 
@@ -30,7 +32,7 @@ M04 的产品范围（DEC-0023=A，OQ-18..20/25 推荐默认值）要求：
 - 限额边界 50 并发零超卖（AC-09）。
 - 成本 = `prompt_tokens × input_price_snapshot + completion_tokens × output_price_snapshot`；6 位小数计算，展示按币种最小单位四舍五入，合计按未舍入值汇总；未定价/ token 缺失单列；价格快照不可被后续价格更新改写。
 - 单一币种由部署配置；价格由部署种子/运维维护，M04 只读；成本是估算不是账单。
-- 平台管理员看租户聚合（无用户明细）；租户管理员看本租户用户/模型/日明细；员工无入口；跨租户统一 404。
+- 平台管理员看租户聚合（无用户明细）；租户管理员看本租户用户/模型/日明细；员工无入口；跨租户边界沿用 ADR-0009 的既有分工——伪造 `tenantId`/`X-Tenant-Id` 与主体租户不一致返回 403 `RICCON-AUTH-403`，资源 ID（如 `userId`）指向其他租户返回 404 `RICCON-TENANT-404`（详见 §2.4 与 ADR-0009；原摘要“跨租户统一 404”为过度概括，2026-11-22 修订）。
 - 日/月窗口与成本日桶统一 `Asia/Shanghai`；审计保留 ≥180 天不变。
 
 M02 的 `model_invocation` 只有 token 与状态，没有价格/币种/成本/日桶；`agent_run` 在 API 创建（`ChatSubmissionService`、`ResearchTaskService`）时入队，Worker 领取执行。M02 没有配额或成本查询端点。M04 必须在不破坏 M02/M03/M10 契约与 E2E 的前提下补齐。
