@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0739",
+  "task_id": "TASK-0153",
+  "command": "set -euo pipefail; REPO=ai-riccon/riccon-work; RUN=44975826579; SHA=$(git rev-parse HEAD); test \"$SHA\" = \"$(gh run view $RUN --repo $REPO --json headSha --jq .headSha)\"; test \"$(gh run view $RUN --repo $REPO --json conclusion --jq .conclusion)\" = success; test \"$(gh run view $RUN --repo $REPO --json jobs --jq '.jobs[]|select(.databaseId==137065389788)|.conclusion')\" = success; C=$(gh run view $RUN --repo $REPO --json jobs --jq '[.jobs[]|.conclusion]|unique|join(\",\")'); case \"$C\" in *failure*) exit 1;; *cancelled*) exit 1;; esac; test \"$(gh api repos/$REPO/commits/$SHA/check-runs --jq '[.check_runs[].output.annotations_count]|add // 0')\" = 0; D=\"$TMPDIR/riccon-t153-cov\"; rm -rf \"$D\"; mkdir -p \"$D\"; gh run download $RUN --repo $REPO -n backend-coverage-$RUN -D \"$D\"; set -- $(find \"$D\" -name jacoco.csv); test $# -eq 4; gh run view $RUN --repo $REPO --log > \"$D/run.log\"; if grep -q \"Node.js 20\" \"$D/run.log\"; then exit 1; fi; git diff --check; python3 -c \"print('M22_T153_FINAL_RUN_OK run=44975826579 head=2250d0e coverage=success jacoco_csv=4 annotations=0')\"",
+  "manual": false,
+  "commit": "2250d0eae70578edecab62fb46173940a2f37f4a",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0153/EV-0739-2026-11-22T10-33-51-930+08-00-set-euo-pipefail-repo-ai-riccon-riccon-work-run-.log",
+  "output_sha256": "3bd5314e964db2a88dec175e9f0f12b096ed5fa98a51db763e6060129d16d658",
+  "output_bytes": 1389,
+  "agent": "riccon/ops",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-22T10:33:30.536+08:00",
+  "finished_at": "2026-11-22T10:33:51.240+08:00",
+  "duration_ms": 20702,
+  "note": "M22/TASK-0153 在最终 HEAD 2250d0e 绑定 CI run 44975826579：run 与 coverage job success、4 份 jacoco.csv、annotations=0、无 Node.js 20 告警、git diff --check",
+  "recorded_at": "2026-11-22T10:33:51.933+08:00"
+}

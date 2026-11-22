@@ -4,7 +4,7 @@
   "module_id": "M22",
   "title": "CI coverage job 改用全限定 JaCoCo goal",
   "owner": "riccon/ops",
-  "status": "in_progress",
+  "status": "review",
   "write_scope": [
     ".github/workflows/ci.yml",
     "docs/RUNBOOK.md",
@@ -15,10 +15,19 @@
     "同一 PR 分支最终 CI run success，backend-coverage success 且 jacoco artifact 4 份；无 Node20 告警；不改产品代码/测试/pom/合同",
     "docs/RUNBOOK.md 同步全限定 goal 与原因；先提交再取证；证据单行"
   ],
-  "evidence": [],
-  "tools_used": [],
+  "evidence": [
+    "EV-0739"
+  ],
+  "tools_used": [
+    "gh：读取 run 44974295661/44975099326/44975826579 的 run/job/artifact/check-run annotations，下载 JaCoCo artifact 与日志，push 更新 PR #2",
+    "git：分支确认、提交、diff --check、HEAD 与 run headSha 绑定；未合并 PR、未切 main",
+    "mvnw/JDK 21：本地 -N 解析全限定 org.jacoco:jacoco-maven-plugin:report 确认版本由根 pom 属性提供",
+    "read/grep：定位 ci.yml backend-coverage、RUNBOOK 该小节与根 pom jacoco 声明；本任务为 CI YAML/文档，无产品符号可查，按降级改用文本检索（未用 Serena/CodeGraph）",
+    "ruby yaml：校验修改后的 ci.yml 仍可解析且 job/步骤结构不变"
+  ],
   "blocker": null,
   "created_at": "2026-11-22T10:12:01.442+08:00",
-  "updated_at": "2026-11-22T10:12:06.308+08:00",
-  "baseline_commit": "106655b68691bfcbc8a562f365095115aa5c41d1"
+  "updated_at": "2026-11-22T10:34:25.894+08:00",
+  "baseline_commit": "106655b68691bfcbc8a562f365095115aa5c41d1",
+  "end_commit": "2250d0eae70578edecab62fb46173940a2f37f4a"
 }
