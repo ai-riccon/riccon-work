@@ -34,6 +34,24 @@ const REPORT_HEADING = '市场规模与增长';
 /** 真实栈固定报告正文中的末段标记。 */
 const REPORT_TAIL = '结论与建议';
 
+/** 真实栈假模型控制端点；与 `e2e/support/m04-routing` 的默认值保持一致。 */
+const FAKE_MODEL_BASE = process.env.REAL_MODEL_BASE ?? 'http://127.0.0.1:18990';
+
+/** 真实栈两个 ACTIVE 假模型；路由链前两位必须来自该集合才能完成跨组件断言。 */
+const ACTIVE_MODEL_KEYS = ['fake-chat-primary', 'fake-chat-secondary'] as const;
+/** 可路由的 ACTIVE 假模型 key。 */
+type ActiveModelKey = (typeof ACTIVE_MODEL_KEYS)[number];
+
+/** 假模型请求日志条目；只声明断言需要的字段。 */
+interface FakeModelRequestLog {
+  sequence: number;
+  scenario: string;
+  path: string;
+  model: string | null;
+  status: number | null;
+  errorCode?: string | null;
+}
+
 /**
  * 读取平台管理员账号。
  *
@@ -51,6 +69,72 @@ function platformAdminUsername(): string {
  */
 async function loginPlatformAdminReal(page: Page): Promise<void> {
   await loginRealLocal(page, 'platform', platformAdminUsername(), PLATFORM_ADMIN_PASSWORD);
+}
+
+/**
+ * 从路由行文本中提取唯一的 ACTIVE 假模型 key。
+ *
+ * 路由行同时渲染展示名、modelKey、状态与端点标签；只接受真实栈的两个 ACTIVE 假模型，
+ * 避免把停用模型或乱码展示名当成断言基准。
+ *
+ * @param text 行文本
+ * @param context 失败信息中的位置说明
+ * @returns 命中的 ACTIVE 模型 key
+ */
+function activeModelKeyIn(text: string, context: string): ActiveModelKey {
+  const matched = ACTIVE_MODEL_KEYS.filter((key) => text.includes(key));
+  expect(matched, `${context} 必须恰好包含一个 ACTIVE 假模型 key；实际文本：${text}`).toHaveLength(
+    1,
+  );
+  return matched[0];
+}
+
+/**
+ * 返回假模型 key 对应的 provider 端点路径。
+ *
+ * seed 中主供应商 baseUrl 为 `<fake>/v1`、备用供应商为 `<fake>/v1-secondary`；
+ * 路径来自假模型请求日志，能同时证明“用了哪个模型”和“走了哪个供应商端点”。
+ *
+ * @param modelKey ACTIVE 假模型 key
+ * @returns chat/completions 路径
+ */
+function providerPathFor(modelKey: ActiveModelKey): string {
+  return modelKey === 'fake-chat-secondary'
+    ? '/v1-secondary/chat/completions'
+    : '/v1/chat/completions';
+}
+
+/**
+ * 读取假模型请求日志；日志只保留掩码与模型标识，不含 Authorization 明文。
+ *
+ * @returns 请求时间线
+ */
+async function readFakeModelRequests(): Promise<FakeModelRequestLog[]> {
+  const response = await fetch(`${FAKE_MODEL_BASE}/__log__`);
+  expect(response.status, '读取假模型请求日志失败').toBe(200);
+  const data = (await response.json()) as { requests: FakeModelRequestLog[] };
+  return data.requests;
+}
+
+/**
+ * 通过只读管理 API 读取当前 CHAT 链的模型 ID 顺序。
+ *
+ * 只用于确认 UI 保存已持久化到服务端（不是直接调用写接口）；
+ * 运行时是否真正使用新链仍以假模型请求日志为准。
+ *
+ * @param page Playwright 页面（复用平台管理员会话）
+ * @returns 有序模型 ID
+ */
+async function readChatChainModelIds(page: Page): Promise<string[]> {
+  const response = await page.request.get('/api/v1/admin/model-routing');
+  expect(response.status(), '读取路由链失败').toBe(200);
+  const data = (await response.json()) as {
+    items: Array<{ purpose: string; entries: Array<{ modelId: string }> }>;
+  };
+  const chat = data.items.find((item) => item.purpose === 'CHAT');
+  const modelIds = chat?.entries.map((entry) => entry.modelId) ?? [];
+  expect(modelIds.length, 'CHAT 路由链缺失或为空').toBeGreaterThanOrEqual(3);
+  return modelIds;
 }
 
 test.describe('M04-B11a 真实栈降级与审计', () => {
@@ -359,5 +443,108 @@ test.describe('M04-B11a 真实栈降级与审计', () => {
     await expect(page.getByRole('button', { name: /重\s*试/ })).toBeVisible();
     await expectNoHorizontalScroll(page);
     await expectNoProviderModelKeyLeak(page);
+  });
+
+  test('M04-AC-01 UI 保存对话链后下一次 CHAT 实际使用新链', async ({ page }) => {
+    const seed = readSeed();
+    await resetFakeModel();
+    await loginPlatformAdminReal(page);
+
+    // 1. 管理员通过真实 UI 调整 CHAT 链：把当前链首下移一位（前两位互换）。
+    await page.goto('/admin/model-routing');
+    await expect(page.getByText('模型路由', { exact: true }).first()).toBeVisible();
+    const chatCard = page.locator('.model-routing-card').filter({ hasText: '对话链' });
+    const chatRows = chatCard.locator('.model-routing-item');
+    await expect(chatRows).toHaveCount(3);
+
+    // 保存前先记录服务端顺序，用于证明保存确实落库而非只改本地草稿。
+    const beforeIds = await readChatChainModelIds(page);
+    await chatRows
+      .nth(0)
+      .getByRole('button', { name: /^下\s*移/ })
+      .click();
+    const promotedKey = activeModelKeyIn(await chatRows.nth(0).innerText(), '下移后的链首');
+    await expect(chatRows.nth(0)).toContainText(promotedKey);
+    await chatCard.getByRole('button', { name: '保存对话链' }).click();
+    await expect(page.getByText(/已保存对话链（版本 v/)).toBeVisible();
+    await expect(page.getByText(/下一次模型请求生效/).first()).toBeVisible();
+
+    const afterIds = await readChatChainModelIds(page);
+    expect(
+      afterIds,
+      `保存后 CHAT 链顺序应与 UI 草稿一致（前两位互换）：before=${JSON.stringify(beforeIds)} after=${JSON.stringify(afterIds)}`,
+    ).toEqual([beforeIds[1], beforeIds[0], ...beforeIds.slice(2)]);
+
+    // 2. 清空假模型日志：随后只观察“保存之后”的模型请求。
+    await resetFakeModel();
+
+    // 3. 同一条用例内，员工通过真实 UI 发起下一次 CHAT（不直接调用路由写接口）。
+    await logout(page);
+    await loginRealLocal(
+      page,
+      seed.tenants.alpha,
+      seed.users.alphaMember,
+      seed.passwords.alphaMember,
+      'Alpha 员工',
+    );
+    await createChatAndSend(page, '请总结 2026 年企业协同办公市场规模');
+    await expect(page.getByText(REPORT_TAIL, { exact: false }).first()).toBeVisible({
+      timeout: 60_000,
+    });
+    // “运行详情”只在流结束后出现，代表本次 CHAT 已到终态；等到它再读假模型日志，
+    // 避免在最后一个增量之后、finish/usage 之前读到 status=null 的中间态。
+    const detailButton = page.getByRole('button', { name: '运行详情' }).last();
+    await expect(detailButton).toBeVisible({ timeout: 60_000 });
+
+    // 4. 新链生效的可观测证据：假模型收到的 model 与 provider 端点。
+    const requests = await readFakeModelRequests();
+    await test.info().attach('fake-model-log.json', {
+      contentType: 'application/json',
+      body: JSON.stringify(
+        { promotedKey, expectedPath: providerPathFor(promotedKey), beforeIds, afterIds, requests },
+        null,
+        2,
+      ),
+    });
+    expect(
+      requests.length,
+      `保存路由后的下一次 CHAT 未产生任何模型请求：${JSON.stringify(requests)}`,
+    ).toBeGreaterThan(0);
+    const expectedPath = providerPathFor(promotedKey);
+    for (const request of requests) {
+      expect(
+        request.model,
+        `CHAT 未使用新链首 ${promotedKey}（期望 model=${promotedKey} path=${expectedPath}）：${JSON.stringify(request)}`,
+      ).toBe(promotedKey);
+      expect(
+        request.path,
+        `CHAT 未命中 ${promotedKey} 的供应商端点 ${expectedPath}：${JSON.stringify(request)}`,
+      ).toBe(expectedPath);
+      expect(request.status, `模型请求未成功：${JSON.stringify(request)}`).toBe(200);
+    }
+
+    // 5. 运行详情（产品界面）显示实际使用的模型，作为跨组件第二信号。
+    await detailButton.click();
+    const runDrawer = page.getByRole('dialog').filter({ hasText: '运行详情' });
+    await expect(runDrawer.getByText(promotedKey).first()).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    // 6. 还原链顺序，避免影响同文件后续用例或其他真实栈阶段。
+    await logout(page);
+    await loginPlatformAdminReal(page);
+    await page.goto('/admin/model-routing');
+    const restoreCard = page.locator('.model-routing-card').filter({ hasText: '对话链' });
+    const restoreRows = restoreCard.locator('.model-routing-item');
+    await expect(restoreRows).toHaveCount(3);
+    await expect(restoreRows.nth(0)).toContainText(promotedKey);
+    await restoreRows
+      .nth(0)
+      .getByRole('button', { name: /^下\s*移/ })
+      .click();
+    await restoreCard.getByRole('button', { name: '保存对话链' }).click();
+    await expect(page.getByText(/已保存对话链（版本 v/)).toBeVisible();
+    expect(await readChatChainModelIds(page), '用例结束必须把 CHAT 链还原为进入时的顺序').toEqual(
+      beforeIds,
+    );
   });
 });
