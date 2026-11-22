@@ -140,6 +140,14 @@ public final class TestModelStub implements AutoCloseable {
      *
      * <p>用于验证 SSE 增量在模型结束前就被下游读到；若链路缓冲到流结束，测试会在读取
      * 首个 delta 时超时，而不是靠“最终 body 完整”误判为通过。
+     *
+     * <p><b>首响应闸门语义（M22/TASK-0152，承接 M21 F-001）</b>：调用方用“首个
+     * {@code ChatResponse}”作为首段内容的信号，前提是客户端抑制 role-only/空帧。
+     * {@code OpenAiCompatibleChatModel.handlePayload} 当前只在 content/finish/usage 存在时
+     * {@code sink.next}，因此 role-only 帧不会成为首个响应。若客户端将来改为逐帧输出空
+     * role/finish 响应，闸门会提前释放，“首字后失败”用例将失去确定性；此时必须改成显式
+     * content 回调或同步更新 {@code OpenAiCompatibleChatModelStreamingTest} 的首响应断言，
+     * 不允许放宽闸门断言。
      */
     public void holdAfterFirstContent() {
         holdAfterFirstContent = true;

@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0741",
+  "task_id": "TASK-0153",
+  "command": "set -euo pipefail; REPO=ai-riccon/riccon-work; RUN=44976746616; SHA=2d3000dc6701583bace43b315a0bf790d48850eb; test \"$(gh run view $RUN --repo $REPO --json conclusion --jq .conclusion)\" = success; test \"$(gh run view $RUN --repo $REPO --json headSha --jq .headSha)\" = \"$SHA\"; test \"$(gh run view $RUN --repo $REPO --json jobs --jq '.jobs[] | select(.name == \"后端 canonical 覆盖率兜底\") | .conclusion')\" = success; test \"$(gh run view $RUN --repo $REPO --json jobs --jq '[.jobs[] | select(.conclusion == \"failure\" or .conclusion == \"cancelled\")] | length')\" = 0; test \"$(gh api repos/$REPO/commits/$SHA/check-runs --jq '[.check_runs[].output.annotations_count] | add // 0')\" = 0; test -z \"$(git diff --name-only 2d3000dc6701583bace43b315a0bf790d48850eb..HEAD -- . ':!.riccon')\"; test \"$(gh run view 44974295661 --repo $REPO --json conclusion --jq .conclusion)\" = failure; D=\"$TMPDIR/m22-verify-ci-final\"; rm -rf \"$D\"; mkdir -p \"$D\"; gh run download $RUN --repo $REPO -n backend-coverage-$RUN -D \"$D\"; set -- $(find \"$D\" -name jacoco.csv); test $# -eq 4; python3 -c \"import csv,glob,sys; fs=glob.glob(sys.argv[1]+'/**/jacoco.csv',recursive=True); rows=[]; [rows.append((f,sum(int(r['LINE_COVERED']) for r in csv.DictReader(open(f))),sum(int(r['LINE_MISSED']) for r in csv.DictReader(open(f))),sum(int(r['BRANCH_COVERED']) for r in csv.DictReader(open(f))),sum(int(r['BRANCH_MISSED']) for r in csv.DictReader(open(f))))) for f in fs]; assert all(lc/(lc+lm)>=0.80 and (bc+bm==0 or bc/(bc+bm)>=0.70) for _,lc,lm,bc,bm in rows), rows; [print(f.split('/target/')[0], f'line={lc/(lc+lm)*100:.2f}% branch={(bc/(bc+bm)*100 if bc+bm else 100):.2f}%') for f,lc,lm,bc,bm in sorted(rows)]\" \"$D\"; gh run view $RUN --repo $REPO --log > \"$D/run.log\"; if grep -qi 'node\\.js 20\\|nodejs 20\\|node20' \"$D/run.log\"; then exit 1; fi; grep -q 'verify org.jacoco:jacoco-maven-plugin:report' \"$D/run.log\"; gh run view 44974295661 --repo $REPO --log-failed > \"$D/fail.log\"; grep -q \"No plugin found for prefix 'jacoco'\" \"$D/fail.log\"; git diff --check",
+  "manual": false,
+  "commit": "2c690e54241eadb2df4a7cc6378bfecbd01fed7f",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0153/EV-0741-2026-11-22T10-50-20-956+08-00-set-euo-pipefail-repo-ai-riccon-riccon-work-run-.log",
+  "output_sha256": "b4ac8d6cbe0e38b489d1b15e4480036809a028fc784e7466587b431b7a76b1a7",
+  "output_bytes": 2711,
+  "agent": "riccon/verifier",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-22T10:49:57.573+08:00",
+  "finished_at": "2026-11-22T10:50:20.343+08:00",
+  "duration_ms": 22769,
+  "note": "M22 verifier 独立复核最终 CI run 44976746616 @ 2d3000d：coverage job success、4 份 jacoco.csv 均过门槛、annotations=0、无 Node.js 20；失败历史 44974295661 保留 NoPluginFoundForPrefix",
+  "recorded_at": "2026-11-22T10:50:20.959+08:00"
+}

@@ -10,6 +10,7 @@ import com.riccon.worker.model.domain.ResolvedModel;
 import com.riccon.worker.model.service.OpenAiCompatibleChatModel;
 import com.riccon.worker.support.TestModelStub;
 import io.agentscope.core.message.Msg;
+import io.agentscope.core.message.TextBlock;
 import io.agentscope.core.message.UserMessage;
 import io.agentscope.core.model.ChatResponse;
 import java.net.URI;
@@ -88,6 +89,33 @@ class OpenAiCompatibleChatModelStreamingTest {
                 .as("增量应分散到达，而不是集中在末尾")
                 .isGreaterThanOrEqualTo((long) (SLICES - 2) * FRAME_INTERVAL_MS);
         assertThat(finishedMs).as("整段流应覆盖分片间隔").isGreaterThan((long) (SLICES - 1) * FRAME_INTERVAL_MS);
+    }
+
+    /**
+     * M22/TASK-0152（承接 M21 F-001）：首个 {@link ChatResponse} 必须携带首段文本内容。
+     *
+     * <p>默认文本计划先发 role-only 帧，再发内容帧；客户端必须抑制 role/finish/usage 空响应，
+     * 否则“首响应闸门”（{@code TestModelStub.holdAfterFirstContent()} 与
+     * {@code ModelFailoverIntegrationTest} 的首字后失败用例）会把空响应当成首字。
+     *
+     * <p>该断言不依赖线程调度顺序：若 {@code handlePayload} 将来把 role-only 帧也 sink 成响应，
+     * 首个响应就没有文本内容，本用例会确定性失败，而不是让降级用例重新 flake。
+     */
+    @Test
+    void stream_defaultTextPlan_firstResponseCarriesFirstTextChunk() {
+        // 恢复默认文本计划（role 帧 + 两段内容 + finish + usage），避免时间分片延迟影响本用例。
+        stub.reset();
+        Msg question = new UserMessage("你好");
+
+        ChatResponse first = model.stream(List.of(question), List.of(), null).blockFirst(Duration.ofSeconds(10));
+
+        assertThat(first).as("首个响应不能为空").isNotNull();
+        assertThat(first.getContent()).as("首个响应不能没有 content").isNotNull().isNotEmpty();
+        List<String> texts = first.getContent().stream()
+                .filter(TextBlock.class::isInstance)
+                .map(block -> ((TextBlock) block).getText())
+                .toList();
+        assertThat(texts).as("首个响应必须是首段文本内容，而不是 role/finish/usage 空响应").containsExactly("根据资料，");
     }
 
     /**

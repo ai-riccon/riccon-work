@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0151",
+  "module_id": "M22",
+  "title": "CI coverage/verify 兜底与 Actions 升级",
+  "owner": "riccon/ops",
+  "status": "done",
+  "write_scope": [
+    ".github/workflows/ci.yml",
+    "docs/RUNBOOK.md",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "CI 恢复后端 coverage/verify 兜底（或经决策明确合同口径），不替代 4-shard 快速反馈",
+    "升级 actions/setup-java/setup-node/upload-artifact 等弃用版本，CI 全绿且无 Node 20 弃用告警",
+    "不改产品代码/测试断言；先提交再取证；证据单行"
+  ],
+  "evidence": [
+    "EV-0735",
+    "EV-0736"
+  ],
+  "tools_used": [
+    "read/grep：CI/YAML/运行手册任务，Serena/CodeGraph 无可查符号，按项目规则降级为文本读取与检索",
+    "ruby yaml：校验 .github/workflows/ci.yml 可解析",
+    "gh：创建 PR #2，读取 run/job/artifact/check-run annotations 取证",
+    "docker compose + scripts/test-services.mjs：external 热栈与 namespace ops0151 准备",
+    "mvnw/JDK 21：canonical verify jacoco:report；jacoco:check 1.01 负向演练",
+    "git：分支、提交、推送、diff --check 与 HEAD/run SHA 绑定"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-22T08:52:03.335+08:00",
+  "updated_at": "2026-11-22T09:42:50.389+08:00",
+  "baseline_commit": "bd39cd6638591d8b8c0d4cdde47950d29f6147d3",
+  "end_commit": "ed7cf21e3b0a2d3fa50e32019fc1048fd8595461"
+}

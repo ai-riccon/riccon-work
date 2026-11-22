@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0152",
+  "module_id": "M22",
+  "title": "baseline 计时重建与并行/首响应语义加固",
+  "owner": "riccon/builder-m19",
+  "status": "done",
+  "write_scope": [
+    "scripts/test-shards-baseline.json",
+    "apps/worker/src/test/**",
+    "docs/CODING-STANDARDS.md",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "分片 baseline 的 time 值来自已录 EV 的干净全量报告；node scripts/test-shards.mjs --check 通过",
+    "surefire 并行/多 fork 下的全局状态约定与首响应闸门语义有测试或书面约束；不弱化断言",
+    "不改生产代码/迁移/pom；先提交再取证；证据单行；独立 Verifier 评审"
+  ],
+  "evidence": [
+    "EV-0737",
+    "EV-0738",
+    "EV-0740",
+    "EV-0744",
+    "EV-0745",
+    "EV-0746",
+    "EV-0747"
+  ],
+  "tools_used": [
+    "codegraph_explore：定位 OpenAiCompatibleChatModel.handlePayload、TestModelStub、ModelFailoverIntegrationTest、WorkerIntegrationTestBase 的调用面与影响面",
+    "read/grep：完整读取测试源码、CODING-STANDARDS、surefire 报告与 shard 脚本；未激活 Serena JDT LS，避免全量 Maven 期间 target/ 并发污染（项目规则），Java 编辑按已读源码精确修改",
+    "docker compose + scripts/test-services.mjs：启动 compose 测试栈并准备 external namespace m22t152",
+    "mvnw/JDK 21：定向 OpenAiCompatibleChatModelStreamingTest 3/0/0/0、spotless:check；EV-0737 clean verify jacoco:report（1800s 显式超时）",
+    "node scripts/test-shards.mjs / test-merge-shards.mjs：--update-baseline、--check、--simulate 与合并校验",
+    "git：分支确认、diff --check、提交与 HEAD/EV 绑定；未合并 PR #2"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-22T08:52:03.530+08:00",
+  "updated_at": "2026-11-22T11:18:29.960+08:00",
+  "baseline_commit": "294e164fa8ccdfa6ff9426eacd9ade404072bd90",
+  "end_commit": "30215d2edeac88c06aca9c59c3b721d50ad6c174"
+}

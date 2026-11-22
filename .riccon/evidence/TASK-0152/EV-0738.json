@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0738",
+  "task_id": "TASK-0152",
+  "command": "set -euo pipefail; node scripts/test-shards.mjs --check; rm -rf \"$TMPDIR/riccon-t152-sim-shards\" \"$TMPDIR/riccon-t152-merged\"; node scripts/test-shards.mjs --simulate \"$TMPDIR/riccon-t152-sim-shards\" --reports-root .; node scripts/test-merge-shards.mjs --shards-root \"$TMPDIR/riccon-t152-sim-shards\" --out-dir \"$TMPDIR/riccon-t152-merged\"; echo SHARDS_CHECK_AND_MERGE_OK",
+  "manual": false,
+  "commit": "6dad1a076747ea96aaeb23e415330434793cee4f",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0152/EV-0738-2026-11-22T10-03-09-616+08-00-set-euo-pipefail-node-scripts-test-shards-mjs-ch.log",
+  "output_sha256": "fa3efd61043288c5588193ab5349a5e3a37ba1569957619637ea06753b5b1c90",
+  "output_bytes": 1615,
+  "agent": "riccon/builder-m19",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-22T10:03:08.620+08:00",
+  "finished_at": "2026-11-22T10:03:09.342+08:00",
+  "duration_ms": 719,
+  "note": "M22/TASK-0152 在最终 baseline 提交 6dad1a0 上校验 --check，并用同一份全量 surefire 报告模拟 4 片后跑 test-merge-shards，确认基线/分片/合并一致",
+  "recorded_at": "2026-11-22T10:03:09.619+08:00"
+}

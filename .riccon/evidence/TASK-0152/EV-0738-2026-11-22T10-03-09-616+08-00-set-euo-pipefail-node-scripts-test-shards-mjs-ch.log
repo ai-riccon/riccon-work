@@ -1,0 +1,24 @@
+# command: set -euo pipefail; node scripts/test-shards.mjs --check; rm -rf "$TMPDIR/riccon-t152-sim-shards" "$TMPDIR/riccon-t152-merged"; node scripts/test-shards.mjs --simulate "$TMPDIR/riccon-t152-sim-shards" --reports-root .; node scripts/test-merge-shards.mjs --shards-root "$TMPDIR/riccon-t152-sim-shards" --out-dir "$TMPDIR/riccon-t152-merged"; echo SHARDS_CHECK_AND_MERGE_OK
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-22T10:03:08.620+08:00
+# finished_at: 2026-11-22T10:03:09.342+08:00
+# duration_ms: 719
+# exit_code: 0
+
+# --- stdout ---
+分片自检通过：196 类 / 1116 用例，4 片互斥完整，源码测试类均已登记
+已模拟 4 片 / 196 份报告: /var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-t152-sim-shards（仅本地演练，不参与 CI）
+后端分片合并校验
+  分片 0（shard-0）: 类 45 / 用例 259 / failures=0 errors=0 skipped=0 suite=220.999s
+  分片 1（shard-1）: 类 48 / 用例 282 / failures=0 errors=0 skipped=0 suite=204.394s
+  分片 2（shard-2）: 类 49 / 用例 273 / failures=0 errors=0 skipped=0 suite=204.355s
+  分片 3（shard-3）: 类 54 / 用例 302 / failures=0 errors=0 skipped=0 suite=204.432s
+  总计: 类 196 / 用例 1116 / failures=0 errors=0 skipped=0
+  基线: 类 196 / 用例 1116
+结论: pass（4 片互斥完整，每个用例恰好执行一次）
+已写入: /var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-t152-merged/test-shards-merged.json
+已写入: /var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-t152-merged/test-shards-merged.md
+SHARDS_CHECK_AND_MERGE_OK
+
+# --- stderr ---
+

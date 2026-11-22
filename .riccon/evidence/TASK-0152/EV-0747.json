@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0747",
+  "task_id": "TASK-0152",
+  "command": "set -euo pipefail; docker compose -f deploy/compose/docker-compose.test.yml up -d --wait; export RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=m22verif2; node scripts/test-services.mjs prepare --namespace \"$RICCON_TEST_SERVICES_NAMESPACE\"; find apps platform -type d -name surefire-reports -prune -exec rm -rf {} +; perl -e 'alarm shift; exec @ARGV' 2400 ./mvnw -q -T1C verify jacoco:report && pnpm -w test -- --coverage",
+  "manual": false,
+  "commit": "2c690e54241eadb2df4a7cc6378bfecbd01fed7f",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0152/EV-0747-2026-11-22T11-18-29-951+08-00-set-euo-pipefail-docker-compose-f-deploy-compose.log",
+  "output_sha256": "fcc2601e189306a9524948093b929f330d736a2ed6ef63eb4dcab0e4c8fdb4f2",
+  "output_bytes": 1446934,
+  "agent": "riccon/verifier",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-22T11:09:16.986+08:00",
+  "finished_at": "2026-11-22T11:18:28.613+08:00",
+  "duration_ms": 551625,
+  "note": "M22 verifier 合同 commands.test+coverage 复跑（DEC-0022 共用一 EV）：external namespace m22verif2；EV-0746 首次运行后端 196/1116/0/0/0 但前端 workspace 布局出现一次 '销售部' 异步竞态失败，同命令原样复跑；2400s 显式超时",
+  "recorded_at": "2026-11-22T11:18:29.959+08:00"
+}
