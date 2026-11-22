@@ -114,12 +114,12 @@ CI 后端由四个 job 组成，替代 M19 P1 之前的单个 `backend` job：
 | `backend-smoke`    | 迁移冒烟（默认 `riccon` 库）+ `spotless:check`                                      | 迁移/触发器/格式回归                             |
 | `backend-coverage` | canonical `verify` + 全限定 `org.jacoco:jacoco-maven-plugin:report`（含覆盖率门槛） | 全量测试失败，或覆盖率跌破 line 80 / branch 70   |
 
-`commands.test`/`commands.coverage` 文本不变：模块 gate 仍跑 canonical `./mvnw -q -T1C verify jacoco:report`，由 verifier 取证；CI 的 `backend-coverage` 用同一条后端命令做自动兜底。4 个分片只用于快速反馈（单片墙钟仍按 ≤5 分钟预算），不采集覆盖率，也不替代 gate；coverage job 是 canonical 兜底，因此这里**不承诺**总 CI 墙钟 ≤5 分钟。
+`commands.test`/`commands.coverage` 文本不变：模块 gate 仍跑 canonical `./mvnw -q -T1C verify jacoco:report`，由 verifier 取证；CI 的 `backend-coverage` 用**等价**的 `verify` + 全限定 `org.jacoco:jacoco-maven-plugin:report` 做自动兜底——同一份 `verify` 生命周期，只是显式 report goal 的写法不同（原因见下条）。4 个分片只用于快速反馈（单片墙钟仍按 ≤5 分钟预算），不采集覆盖率，也不替代 gate；coverage job 是 canonical 兜底，因此这里**不承诺**总 CI 墙钟 ≤5 分钟。
 
 `backend-coverage` 的细节（M22/F-001）：
 
 - 与分片相同的 external 热栈 + 唯一 namespace `ci-<github.run_id>-cov`（与 `ci-<run_id>-b<shard>` 隔离）；迁移/回滚/schema 测试仍自建一次性容器。
-- **CI 用全限定 goal**：`./mvnw -q -T1C verify org.jacoco:jacoco-maven-plugin:report`。fresh GitHub runner 上 `jacoco` prefix 的解析依赖 plugin group 元数据（`maven-metadata`），实测会报 `NoPluginFoundForPrefixException`（run 44974295661）；全限定坐标绕过 prefix 解析，只按插件坐标/版本解析。版本来自根 pom `pluginManagement` 的 `jacoco.version`（0.8.16），CI 不写死版本。
+- **CI 用全限定 goal**：`./mvnw -q -T1C verify org.jacoco:jacoco-maven-plugin:report`。fresh GitHub runner 上 `jacoco` prefix 的解析依赖 plugin group 元数据（`maven-metadata`），实测会报 `NoPluginFoundForPrefixException`（run 44974295661）；全限定坐标绕过 prefix 解析，只按插件坐标/版本解析。版本来自根 pom 的 `jacoco.version` 属性（0.8.16，插件声明在 `build/plugins`），CI 不写死版本。
 - **与合同命令等价**：同一份 `verify` 生命周期（compiler/test/jar/jacoco:check 全跑），只是把尾部的显式 report goal 从 `jacoco:report` 写成全限定坐标，产物、报告路径与门槛判定完全相同。本地/verifier 仍用合同文本 `./mvnw -q -T1C verify jacoco:report`；CI 不改变覆盖率门槛、测试集合或 DoD。
 - `jacoco:check` 绑定在 `verify` 阶段，检查 `apps/api`、`apps/worker`、`platform-common`、`platform-domain` 的 line 80 / branch 70；覆盖率不足时该 job 直接红。
 - 报告作为 artifact `backend-coverage-<run_id>` 上传：`apps/*/target/site/jacoco/**`、`platform/*/target/site/jacoco/**`（always，保留 14 天）。

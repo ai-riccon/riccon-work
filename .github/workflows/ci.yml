@@ -318,7 +318,7 @@ jobs:
       # M22：显式 report goal 改用全限定坐标 `org.jacoco:jacoco-maven-plugin:report`，不依赖 `jacoco`
       # prefix。fresh runner 上 prefix 元数据（plugin group 的 maven-metadata）可能解析失败，报
       # NoPluginFoundForPrefixException；全限定坐标只按插件版本解析，等价的 report 目标不变。
-      # 版本取自根 pom pluginManagement 的 jacoco.version（0.8.16），不在此处写死。
+      # 版本取自根 pom 的 jacoco.version 属性（0.8.16，插件声明在 build/plugins），不在此处写死。
       - name: 运行 canonical verify 并生成覆盖率报告
         run: ./mvnw -q -T1C verify org.jacoco:jacoco-maven-plugin:report
 
