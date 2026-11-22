@@ -14,7 +14,8 @@
     "ACL TENANT/DEPT/USERS、创建人隐式可见、403/404 矩阵、U8 admin_read 审计",
     "DELETE/reindex 真实实现；流式下载每请求 ACL、不暴露 key；保留任务覆盖 INDEXED/INDEXING/FAILED/PENDING",
     "越权/审计/保留测试通过；无缓存残留",
-    "审计必填与可空边界按 ADR-0023 §5.6：knowledge.document.deleted.reason、document.added.sourceType/visibility、acl.changed.previousVisibility 必填；admin_read.documentId/visibility 仅 scope=LIST 可空（F-009/F-014）"
+    "审计必填与可空边界按 ADR-0023 §5.6：knowledge.document.deleted.reason、document.added.sourceType/visibility、acl.changed.previousVisibility 必填；admin_read.documentId/visibility 仅 scope=LIST 可空（F-009/F-014）",
+    "ACL 判定顺序按 ADR §5.4：先按租户+ACL 谓词取文档，不可见统一 404；可见但非创建人/非 knowledge.acl.manage 才 403（REV-TASK-0165-001 F-001）"
   ],
   "evidence": [],
   "tools_used": [],
