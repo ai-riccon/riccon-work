@@ -262,6 +262,28 @@ class CostApiTest extends CostApiTestSupport {
     }
 
     /**
+     * F-010：明细过滤的 {@code userId}/{@code modelId} 必须是 UUID。
+     *
+     * <p>非 UUID 由 Spring 参数绑定失败映射为 400 {@code RICCON-REQUEST-400}，在进入业务查询前拒绝；
+     * 响应只有稳定错误码与通用说明，不包含租户代码、明细或用户信息。
+     */
+    @Test
+    @DisplayName("成本查询边界：明细过滤非 UUID 返回 400 且不泄露租户")
+    void invocations_rejectNonUuidFiltersWithoutTenantInfo() {
+        Fixture fixture = fixture();
+        for (String filter : new String[] {"userId=not-a-uuid", "modelId=not-a-uuid"}) {
+            ApiTestClient.ApiResponse response = client.get(
+                    "/api/v1/costs/invocations?" + filter, fixture.admin().sessionCookie(), Map.of());
+            assertThat(response.status()).as(response.body()).isEqualTo(400);
+            JsonNode problem = client.json(response);
+            assertThat(problem.path("code").asText()).isEqualTo("RICCON-REQUEST-400");
+            assertThat(problem.has("tenantId")).isFalse();
+            assertThat(problem.has("items")).isFalse();
+            assertThat(response.body()).doesNotContain(fixture.tenant());
+        }
+    }
+
+    /**
      * 查询租户报告并断言 200。
      *
      * @param fixture 租户夹具

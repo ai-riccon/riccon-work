@@ -114,16 +114,24 @@ public class PlatformCostService {
     }
 
     /**
-     * 校验租户过滤；长度与 OpenAPI {@code tenantId} 一致。
+     * 校验平台租户过滤；口径与 OpenAPI {@code tenantId} 一致。
      *
-     * @param tenantId 原始值
-     * @return 规范化后的值或 null
+     * <p>{@code null} 表示未提供过滤（返回全租户聚合）；空串/纯空白或超过 64 字符均返回 400
+     * {@code RICCON-COST-400}，不再把空白归一为“未提供”，避免与契约 {@code minLength: 1} 漂移
+     * （ADR-0022 §2.4，TASK-0143 契约）。
+     *
+     * @param tenantId 原始查询参数
+     * @return 去除首尾空白后的租户代码；{@code null} 表示未提供
+     * @throws CostInvalidRequestException 值为空白或超过 64 字符
      */
     private static String normalizeTenantFilter(String tenantId) {
-        if (tenantId == null || tenantId.isBlank()) {
+        if (tenantId == null) {
             return null;
         }
         String normalized = tenantId.strip();
+        if (normalized.isEmpty()) {
+            throw new CostInvalidRequestException("tenantId must not be blank");
+        }
         if (normalized.length() > 64) {
             throw new CostInvalidRequestException("tenantId must not exceed 64 characters");
         }
