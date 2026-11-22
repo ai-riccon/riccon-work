@@ -303,7 +303,7 @@ ALTER TABLE artifact_citation
 | `USERS`      | `knowledge_document_acl` 中的账号 + 创建人（若有）                                | 创建人隐式可见，不可被移除；避免“自锁”          |
 
 - **管理员边界（DEC-0034 U8）**：`TENANT_ADMIN` 可以管理任意文档的 ACL（`knowledge.acl.manage`），并对本租户知识文档有管理性读取（列表/检索/详情/下载全量，不做 ACL 过滤）。**绕过文档 ACL 的读取必须写审计** `knowledge.document.admin_read`（详见 §5.6）；按 ACL 本来可见的读取不写审计，避免读放大。`PLATFORM_ADMIN` 不读取租户知识内容（沿用 ADR-0009）；平台管理员持有租户文档 ID 直接访问时按跨租户统一 404，不返回 403，避免存在性探测。
-- **创建人**：`created_by` 非空时隐式 `USERS` 授权；ACL 列表接口返回 `creator` 标记，不允许移除。
+- **创建人**：`created_by` 非空时隐式 `USERS` 授权；ACL 列表接口返回 `creator` 标记，不允许移除。创建人是资源关系而不是角色：M05 只有租户管理员能登记文档（§5.6），该例外不改变 `knowledge.manage` 的角色归属，也不代表 `MEMBER` 可以创建文档。
 - **源文件空间与文档可见性相互独立**：把文件加入知识库**不扩大**文件所在空间的可访问性；把文档设为 `DEPT`/`USERS` 也**不缩小**源文件的空间访问。知识库下载只按文档 ACL，原空间路径只按空间谓词；两条路径独立，不要求同时满足（§5.3）。
 
 ### 5.3 与 M03 空间 ACL 的关系与优先级
@@ -370,29 +370,33 @@ ALTER TABLE artifact_citation
 
 ### 5.6 权限与审计
 
-| 权限                                      | 角色           | 说明                                                                                           |
-| ----------------------------------------- | -------------- | ---------------------------------------------------------------------------------------------- |
-| `knowledge.read`                          | 全部启用员工   | 列表/详情按 ACL 过滤                                                                           |
-| `knowledge.manage`                        | `MEMBER`       | 添加文档；删除/重索引仅限创建人或 `knowledge.acl.manage`（M05 收紧，M02 时代为同租户任意成员） |
-| `knowledge.acl.manage`（新增）            | `TENANT_ADMIN` | 任意文档 ACL；创建人由服务层例外授权                                                           |
-| `knowledge.connector.read/manage`（新增） | `TENANT_ADMIN` | 连接器列表/配置/同步                                                                           |
+| 权限                                      | 角色           | 说明                                                                                                                                         |
+| ----------------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `knowledge.read`                          | 全部启用员工   | 列表/详情按 ACL 过滤；`MEMBER` 的知识库权限只有这一条（`RoleDefinitions`）                                                                   |
+| `knowledge.manage`                        | `TENANT_ADMIN` | 登记/添加知识库文档（`POST /knowledge/documents`）与重索引；**不授予 `MEMBER`**，M02/M03 已验收的“发布仅租户管理员”语义不变（ADR-0018 §3.4） |
+| `knowledge.acl.manage`（新增）            | `TENANT_ADMIN` | 任意文档 ACL 与软删除；创建人对本人文档的同组操作由服务层按 `created_by` 做资源级例外，不是角色授权                                          |
+| `knowledge.connector.read/manage`（新增） | `TENANT_ADMIN` | 连接器列表/配置/同步                                                                                                                         |
+
+- **权限口径（REV-TASK-0164-001 F-001）**：文档登记/添加的 RBAC 门仍是 `knowledge.manage`，当前只有 `TENANT_ADMIN` 持有（`RoleDefinitions`、V12 角色回填、`KnowledgeApiTest#createDocument_member_isForbidden` 锁定普通员工 403）。因此“创建人”在 M05 语义下就是租户管理员；创建人例外是服务层资源边界，不替代端点自身的 RBAC 门，也不能用来放宽 `POST /knowledge/documents` 或给 `MEMBER` 新增权限。
+- 若 Product 未来允许普通员工登记文档，必须作为独立决策同时修改 `RoleDefinitions`、M02 越权测试、OpenAPI `x-riccon-permission` 与本表；M05 不做该扩权。
 
 审计动作（新增，均需同步 `AuditDetailsPolicy` 白名单）：
 
-| 动作                                                               | target                | details 白名单                                                                                                                                                                                     |
-| ------------------------------------------------------------------ | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `knowledge.document.added`                                         | `KNOWLEDGE_DOCUMENT`  | `sourceType`、`fileId`、`visibility`、`departmentId`、`connectorId`                                                                                                                                |
-| `knowledge.document.deleted`                                       | `KNOWLEDGE_DOCUMENT`  | `sourceType`、`visibility`、`reason`（`USER`/`RETENTION`/`CONNECTOR`）                                                                                                                             |
-| `knowledge.acl.changed`                                            | `KNOWLEDGE_DOCUMENT`  | `visibility`、`previousVisibility`、`departmentId`、`addedUserCount`、`removedUserCount`、`addedUserIds`、`removedUserIds`（UUID 数组，最多 50，超出置 `truncated=true` 只留计数）、`aclUserCount` |
-| `knowledge.document.admin_read`                                    | `KNOWLEDGE_DOCUMENT`  | `scope`（`LIST`/`DETAIL`/`SEARCH`/`DOWNLOAD`）、`documentId`（LIST 可空）、`visibility`、`aclUserCount`、`resultCount`（LIST/SEARCH）、`reason=MANAGEMENT_READ`；不含标题/片段/正文                |
-| `knowledge.connector.created`/`updated`/`deleted`/`status.changed` | `KNOWLEDGE_CONNECTOR` | `connectorId`、`type`、`endpointId`、`bucket`、`prefix`（≤200）、`status`、`previousStatus`、`reason`                                                                                              |
-| `knowledge.connector.credential.changed`                           | `KNOWLEDGE_CONNECTOR` | `connectorId`、`type`、`credentialKeyId`、`maskedHint`                                                                                                                                             |
-| `knowledge.connector.sync.started`                                 | `KNOWLEDGE_CONNECTOR` | `connectorId`、`syncId`、`trigger`（`MANUAL`/`SCHEDULE`/`RETRY`）                                                                                                                                  |
-| `knowledge.connector.sync.completed`                               | `KNOWLEDGE_CONNECTOR` | `connectorId`、`syncId`、`scanned`、`created`、`updated`、`skipped`、`failed`、`deleted`、`durationMs`、`complete`                                                                                 |
-| `knowledge.connector.sync.failed`                                  | `KNOWLEDGE_CONNECTOR` | `connectorId`、`syncId`、`errorCode`、`retryable`、`complete`、`durationMs`                                                                                                                        |
-| `knowledge.connector.sync.retried`                                 | `KNOWLEDGE_CONNECTOR` | `connectorId`、`syncId`、`attempt`、`reason`                                                                                                                                                       |
+| 动作                                                               | target                | details 白名单                                                                                                                                                                                                                             |
+| ------------------------------------------------------------------ | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `knowledge.document.added`                                         | `KNOWLEDGE_DOCUMENT`  | `sourceType`、`fileId`、`visibility`、`departmentId`、`connectorId`                                                                                                                                                                        |
+| `knowledge.document.deleted`                                       | `KNOWLEDGE_DOCUMENT`  | `sourceType`、`visibility`、`reason`（`USER`/`RETENTION`/`CONNECTOR`）                                                                                                                                                                     |
+| `knowledge.acl.changed`                                            | `KNOWLEDGE_DOCUMENT`  | `visibility`、`previousVisibility`、`departmentId`、`addedUserCount`、`removedUserCount`、`addedUserIds`、`removedUserIds`（UUID 数组，最多 50，超出置 `truncated=true` 只留计数）、`aclUserCount`                                         |
+| `knowledge.document.admin_read`                                    | `KNOWLEDGE_DOCUMENT`  | `scope`（`LIST`/`DETAIL`/`SEARCH`/`DOWNLOAD`）、`documentId`（LIST 可空，其他 scope 必填）、`visibility`（`scope=LIST` 可空，其他 scope 必填）、`aclUserCount`、`resultCount`（LIST/SEARCH）、`reason=MANAGEMENT_READ`；不含标题/片段/正文 |
+| `knowledge.connector.created`/`updated`/`deleted`/`status.changed` | `KNOWLEDGE_CONNECTOR` | `connectorId`、`type`、`endpointId`、`bucket`、`prefix`（≤200）、`status`、`previousStatus`、`reason`                                                                                                                                      |
+| `knowledge.connector.credential.changed`                           | `KNOWLEDGE_CONNECTOR` | `connectorId`、`type`、`credentialKeyId`、`maskedHint`                                                                                                                                                                                     |
+| `knowledge.connector.sync.started`                                 | `KNOWLEDGE_CONNECTOR` | `connectorId`、`syncId`、`trigger`（`MANUAL`/`SCHEDULE`/`RETRY`）                                                                                                                                                                          |
+| `knowledge.connector.sync.completed`                               | `KNOWLEDGE_CONNECTOR` | `connectorId`、`syncId`、`scanned`、`created`、`updated`、`skipped`、`failed`、`deleted`、`durationMs`、`complete`                                                                                                                         |
+| `knowledge.connector.sync.failed`                                  | `KNOWLEDGE_CONNECTOR` | `connectorId`、`syncId`、`errorCode`、`retryable`、`complete`、`durationMs`                                                                                                                                                                |
+| `knowledge.connector.sync.retried`                                 | `KNOWLEDGE_CONNECTOR` | `connectorId`、`syncId`、`attempt`、`reason`                                                                                                                                                                                               |
 
-- `AuditDetailsPolicy`（B1 义务）必须 action-specific 校验：`knowledge.acl.changed` 的 `addedUserIds`/`removedUserIds` 为 UUID 数组、各自最多 50、允许空数组；`knowledge.document.admin_read` 的 `documentId` 在 `scope=LIST` 时可为空，`resultCount` 必填；`reason` 只允许 `MANAGEMENT_READ`/`RETENTION`/`USER`/`CONNECTOR`；未知键/超限/类型错误 fail-closed。`IT-KB-110` 覆盖。
+- `AuditDetailsPolicy`（B1 义务）必须 action-specific 校验：`knowledge.acl.changed` 的 `addedUserIds`/`removedUserIds` 为 UUID 数组、各自最多 50、允许空数组；`knowledge.document.admin_read` 的 `documentId` 在 `scope=LIST` 时可为空、其他 scope 必填，`visibility` 在 `scope=LIST` 时可为空（管理列表跨多个可见范围，没有单一值）、其他 scope 必填，`resultCount` 在 LIST/SEARCH 必填；`reason` 只允许 `MANAGEMENT_READ`/`RETENTION`/`USER`/`CONNECTOR`；未知键/超限/类型错误 fail-closed。`IT-KB-110` 覆盖。
+- **`admin_read.visibility` 可空规则（REV-TASK-0164-001 F-014）**：可空仅限 `scope=LIST`。`DETAIL`/`SEARCH`/`DOWNLOAD` 的目标是单个文档，`visibility` 是该文档当时的可见范围，必须写入；`LIST` 一次覆盖多个文档，用 `resultCount` 表达规模，不强行填某一个文档的范围。实现若放宽到其他 scope，按审计完整性缺陷处理。
 - 不含姓名、邮箱、文档标题、分块原文、`externalId`、对象 key、凭据；`knowledge.acl.changed`/`admin_read`/连接器动作审计写失败 → 对应操作失败（fail-closed）。
 - `admin_read` 与普通审计同保留 ≥180 天，可按租户/动作/操作者/时间查询；不写文档标题、片段或名单，只写对象 ID/范围与计数。
 - 读取/检索默认不写审计（避免读放大）；例外是 U8 管理员绕过 ACL 的读取（`admin_read`）与连接器同步生命周期。
@@ -580,7 +584,7 @@ CREATE TABLE kb_connector_item (
 - 端点只来自部署允许列表 `RICCON_CONNECTOR_ENDPOINTS`（JSON：`id`、`url`、`label`、`allowHttp`、`production`）；连接器只存 `endpoint_id`，不能存任意 URL。
 - URL 校验复用 M04 端点规则：HTTPS（`allowHttp=true` 的显式内部端点除外）、无用户信息、无查询串、无重定向；解析后的 IP 永不允许 `169.254.0.0/16`（云元数据）、`::1` 与 `fe80::/10` 链路本地；RFC1918 仅在端点显式允许时放行（内部 S3 的常态）。
 - S3 客户端禁用区域/跨域自动重定向（或对每个 Location 重新做同一校验）；不允许 SDK 自行切换到未允许的主机。
-- 对象限制：单对象 ≤ 100 MB（`RICCON_CONNECTOR_MAX_OBJECT_BYTES`）、单次同步 ≤ 5 000 对象、≤ 2 GB 总量、单项下载超时 60 s、同步总超时 60 min。
+- 对象限制：单对象 ≤ 100 MB（`RICCON_CONNECTOR_MAX_OBJECT_BYTES`）、单次同步 ≤ 5 000 对象、≤ 2 GB 总量、单项下载超时 60 s、同步总超时 60 min。同步总超时是连接器自身的收尾上限，必须小于 worker `heavy` 通道的看门狗（默认 65 min，§7.3），确保同步先按 `KB_CONNECTOR_TIMEOUT` 收尾，而不是被租约心跳看门狗提前中断。
 - 类型白名单：`pdf,docx,xlsx,png,jpg,jpeg,txt,md`；其他类型记为 `SKIPPED` + `KB_CONNECTOR_TYPE_UNSUPPORTED`，不下载。
 - 日志只记 `connectorId`/`documentId`/计数，不记 `externalId`、对象 key、bucket 全名或凭据；审计 details 的 `prefix` 截断 ≤200。`externalId` 在 API/UI 只显示末段（最后 2 个路径段或 32 字符）或 `externalIdHash` 前 12 位，完整值只在库内用于比对。
 - 解压/解析沿用 POI/PDFBox 的 ZIP 与页数限制（§3.1、§4.4）；连接器不额外解包归档文件（`.zip` 不在白名单）。
@@ -637,42 +641,59 @@ CREATE TABLE kb_connector_item (
 ### 7.2 Flyway V12 与回滚
 
 - `V12__knowledge_depth.sql`，接 V11；worker schema 期望 11 → 12。
-- 内容：§5.1、§6.2 的 DDL；`message_citation`/`artifact_citation` 各加可空 `source_version`；新增权限 `knowledge.acl.manage`、`knowledge.connector.read`、`knowledge.connector.manage` 及 `TENANT_ADMIN` 角色回填（沿用 V9 的 `INSERT ... SELECT` 模式）；`biz_*` 无。
-- 兼容性：新增列可空或带默认；`source_type` 与 `visibility` 的 CHECK 变更在 `knowledge_document`（小表）上执行，`ALGORITHM=INPLACE, LOCK=NONE`；若 MySQL 拒绝，记录实际锁等待并改维护窗口。`file_chunk`/`knowledge_chunk` **不加新 CHECK**（bbox/置信度列可空）。
-- 回滚 SQL（仅应急、需备份与用户批准）：
+- 内容（以 V12 实际对象为准）：§5.1、§6.2 的 DDL；`message_citation`/`artifact_citation` 各加可空 `source_version`；`file_chunk`/`knowledge_chunk` 各加 `bbox_x`/`bbox_y`/`bbox_w`/`bbox_h` 与 `ocr_confidence`（可空、**不加 CHECK**，合法范围由 Worker 校验）；`agent_run_outbox` 加 `idx_outbox_lane (status, event_type, available_at, lease_until)` 支撑 §7.3 双通道领取；新增权限 `knowledge.acl.manage`、`knowledge.connector.read`、`knowledge.connector.manage` 及 `TENANT_ADMIN` 角色回填（沿用 V9 的 `INSERT ... SELECT` 模式）；`biz_*` 无。
+- 执行算法与锁（REV-TASK-0164-001 F-006）：
+  - 加列用 `ALGORITHM=INSTANT`；`idx_kd_retention`/`idx_kd_visibility`/`idx_outbox_lane` 用 `ALGORITHM=INPLACE, LOCK=NONE`。列与索引分开执行，避免一个 `ALTER` 同时加列与索引退化为 COPY。
+  - MySQL 8.4 在未关闭 `foreign_key_checks` 时**不支持** `ALGORITHM=INPLACE` 加外键，也不支持 `ADD/DROP CHECK`（错误 1845/1846）。V12 因此对 `knowledge_document`（单租户千级小表）使用两次 `ALGORITHM=COPY, LOCK=SHARED`：一次加 `fk_kd_department`，一次合并可见范围 CHECK 与 `source_type` CHECK 替换。COPY 期间允许读、阻塞写；单条 ALTER 在 MySQL 8.0+ 是原子 DDL，不会留下“无 FK/无 CHECK”的中间态。
+  - 不关闭 `foreign_key_checks`：那会让历史行绕过外键一致性校验，并把会话状态带进迁移。也不拆成“先无约束、后补约束”的弱结构。
+- 锁等待与维护窗口：**当前证据只有 Testcontainers MySQL 8.4.13 的迁移测试**（`V12MigrationTest`；EV-0769/EV-0772 覆盖空库、V11 历史数据与回滚），**没有生产数据量下的锁等待量测**。实际 COPY 时长、MDL 等待与复制延迟由 **M09 迁移演练**在真实备份/恢复链上测量，并写入 `docs/RUNBOOK.md` 与 release 证据；若客户库 `knowledge_document` 行数显著超出预算，M09 安排维护窗口，不静默降级为无 FK/无 CHECK。M05 不得声称已量测生产锁等待。
+- 回滚 SQL（仅应急、需备份与用户批准；可执行版本以 `V12MigrationTest#rollbackV12Objects` 的演练顺序为准）：
 
 ```sql
 -- 顺序：先删子表，再删列/约束。回滚前必须确认没有 CONNECTOR 文档或已归档。
 DROP TABLE IF EXISTS kb_connector_item;
 DROP TABLE IF EXISTS kb_connector;
 DROP TABLE IF EXISTS knowledge_document_acl;
+
 ALTER TABLE knowledge_document
-    DROP FOREIGN KEY fk_kd_department,
     DROP CHECK chk_kd_visibility_department,
     DROP CHECK chk_kd_visibility,
-    DROP CHECK chk_knowledge_document_source,
-    ADD CONSTRAINT chk_knowledge_document_source CHECK (source_type IN ('UPLOAD','SEED')),
+    DROP FOREIGN KEY fk_kd_department;
+ALTER TABLE knowledge_document DROP CHECK chk_knowledge_document_source;
+ALTER TABLE knowledge_document
+    ADD CONSTRAINT chk_knowledge_document_source CHECK (source_type IN ('UPLOAD','SEED'));
+ALTER TABLE knowledge_document
     DROP KEY idx_kd_retention,
-    DROP KEY idx_kd_visibility,
+    DROP KEY idx_kd_visibility;
+ALTER TABLE knowledge_document
     DROP COLUMN retention_expires_at,
     DROP COLUMN acl_version,
-    DROP COLUMN parse_warnings,
     DROP COLUMN parse_summary,
+    DROP COLUMN parse_warnings,
     DROP COLUMN parse_engine,
     DROP COLUMN external_id,
     DROP COLUMN connector_id,
     DROP COLUMN department_id,
     DROP COLUMN visibility;
+
+ALTER TABLE file_chunk
+    DROP COLUMN bbox_x, DROP COLUMN bbox_y, DROP COLUMN bbox_w,
+    DROP COLUMN bbox_h, DROP COLUMN ocr_confidence;
+ALTER TABLE knowledge_chunk
+    DROP COLUMN bbox_x, DROP COLUMN bbox_y, DROP COLUMN bbox_w,
+    DROP COLUMN bbox_h, DROP COLUMN ocr_confidence;
+
+ALTER TABLE message_citation DROP COLUMN source_version;
+ALTER TABLE artifact_citation DROP COLUMN source_version;
+ALTER TABLE agent_run_outbox DROP KEY idx_outbox_lane;
+
 DELETE FROM role_permission WHERE permission_code IN
     ('knowledge.acl.manage','knowledge.connector.read','knowledge.connector.manage');
 DELETE FROM permission WHERE code IN
     ('knowledge.acl.manage','knowledge.connector.read','knowledge.connector.manage');
-
-ALTER TABLE message_citation DROP COLUMN source_version;
-ALTER TABLE artifact_citation DROP COLUMN source_version;
 ```
 
-> 该脚本只在“没有任何 CONNECTOR 文档/ACL 使用”时可执行；否则先归档或回退到 `TENANT`。生产禁止直接执行，必须走 M09 备份/演练与用户批准。
+> 该脚本只在“没有任何 CONNECTOR 文档/ACL 使用”时可执行；否则先归档或回退到 `TENANT`。生产禁止直接执行，必须走 M09 备份/演练与用户批准。执行后由维护账号删除 `flyway_schema_history` 的 V12 行并校验 `MAX(version)=11`，不使用在线 `flyway repair`。
 
 ### 7.3 outbox、异步任务与双通道
 
@@ -681,9 +702,19 @@ ALTER TABLE artifact_citation DROP COLUMN source_version;
 | `riccon.knowledge.index.requested.v1`（扩展）          | API → Worker | payload 新增可选 `mode`（`FULL` / `ACL_ONLY` / `DELETE`）、`reason`；旧消费者默认 `FULL`，向后兼容 |
 | `riccon.knowledge.connector.sync.requested.v1`（新增） | API → Worker | payload：`connectorId`、`syncId`、`startedAt`；幂等键 `connector:{id}:sync:{syncId}`               |
 
-- **双通道**：`RICCON_WORKER_OUTBOX_LANES=default,heavy`；`heavy` 通道包含 `FILE_PARSE`、`KNOWLEDGE_INDEX`、`KNOWLEDGE_CONNECTOR_SYNC`，默认并发 2；`default` 保持 chat/report 事件顺序处理。领取 SQL 增加 `event_type IN (...)` 过滤；需要时新增索引 `(status, event_type, available_at)`。
+- **双通道**：`RICCON_WORKER_OUTBOX_LANES=default,heavy`；`heavy` 通道包含 `FILE_PARSE`、`KNOWLEDGE_INDEX`、`KNOWLEDGE_CONNECTOR_SYNC`，默认并发 2；`default` 保持 chat/report 事件顺序处理。领取 SQL 增加 `event_type IN (...)` 过滤；V12 已建 `idx_outbox_lane (status, event_type, available_at, lease_until)`（§7.2）支撑按通道领取，不要求每个通道全表扫描。起始 `lease_owner` 必须可区分同实例不同处理线程（如 `instance#lane#thread`），否则无法安全续期。
 - **索引模式**：`FULL` 允许重解析并原子替换分块；`ACL_ONLY` 只读现有分块、不替换（保 `chunk_id`）；`DELETE` 删除该文档索引与分块（软删除后清理）。`FULL` 的“缺失页补齐”只对 OCR 文档生效（§4.5）。
-- **租约续期**：新增 `OutboxLeaseHeartbeat`，在 handler 执行期间每 `leaseDuration/3` 续期一次，续期失败则中断 handler 并放弃结果（避免双执行）。最大处理时长 `RICCON_WORKER_OUTBOX_MAX_PROCESSING=30m`，超时按可重试失败处理。心跳必须绑定单个 `eventId` 与 `leaseOwner`，不得用共享定时器批量续期；`lease_owner` 需能区分同实例的不同处理线程（如 `instance#lane#thread`）。
+- **租约续期**：新增 `OutboxLeaseHeartbeat`，在 handler 执行期间每 `leaseDuration/3` 续期一次，续期失败则中断 handler 并放弃结果（避免双执行）。心跳必须绑定单个 `eventId` 与 `leaseOwner`，不得用共享定时器批量续期。
+
+**按通道的看门狗上限（REV-TASK-0164-001 F-004）**：
+
+| 通道      | 配置键（环境变量）                          | 默认  | 覆盖任务                                                      | 理由                                                                                                                       |
+| --------- | ------------------------------------------- | ----- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `default` | `RICCON_WORKER_OUTBOX_MAX_PROCESSING`       | `30m` | `AGENT_RUN_REQUESTED`、`AGENT_RUN_RESUME`、`AGENT_RUN_CANCEL` | 沿用既有键；短任务不应占用处理线程超过 30 min                                                                              |
+| `heavy`   | `RICCON_WORKER_OUTBOX_HEAVY_MAX_PROCESSING` | `65m` | `FILE_PARSE`、`KNOWLEDGE_INDEX`、`KNOWLEDGE_CONNECTOR_SYNC`   | 必须大于连接器同步总超时 60 min（§6.5），留 5 min 让同步按 `KB_CONNECTOR_TIMEOUT` 自行收尾；OCR 600 s、解析 180 s 远低于此 |
+
+- 既有 `RICCON_WORKER_OUTBOX_MAX_PROCESSING` 保留为 **default 通道**键（语义从“全局”收窄为“default”），新增 `RICCON_WORKER_OUTBOX_HEAVY_MAX_PROCESSING` 专用于 heavy；Spring 键分别为 `riccon.worker.outbox.max-processing` 与 `riccon.worker.outbox.heavy-max-processing`。不引入第三把全局键，也不允许把 30 min 同时套到连接器同步上。超时按可重试失败处理（`RICCON-WORKER-504`），不静默成功。
+- 启动校验：两把键都必须为正（M05-B1 已按此实现）；M05b 起，连接器启用（`RICCON_CONNECTOR_ENABLED=true`）时 heavy 上限必须 ≥ 60 min，否则 worker 启动失败并给出中文原因；连接器关闭时允许把 heavy 覆盖为更小值（测试/小部署）。
 - 长任务不放在 HTTP 请求线程；API 只写事件并返回 202。
 - 幂等：索引事件 `doc:{id}:index:{attempt}`；ACL 刷新 `doc:{id}:acl:{acl_version}`；删除 `doc:{id}:delete:{acl_version}`；连接器按 `syncId`。
 
@@ -691,13 +722,13 @@ ALTER TABLE artifact_citation DROP COLUMN source_version;
 
 **M05 `1.4.0-m05`（B2 唯一 writer）**：
 
-| 方法   | 路径                                                           | 权限                                | 说明                                                                                |
-| ------ | -------------------------------------------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------- |
-| PUT    | `/api/v1/knowledge/documents/{documentId}/acl`                 | 创建人 或 `knowledge.acl.manage`    | 整体替换 `{visibility, departmentId?, userIds?}`；200 返回文档                      |
-| GET    | `/api/v1/knowledge/documents/{documentId}/acl`                 | 同上                                | 返回 `visibility`、`departmentId`、`users[]`（userId/displayName）、`creatorUserId` |
-| DELETE | `/api/v1/knowledge/documents/{documentId}`                     | 创建人或 `knowledge.acl.manage`     | 软删除、审计 `reason=USER`；不物理删除                                              |
-| GET    | `/api/v1/knowledge/documents/{documentId}/download`            | `knowledge.read` + 文档 ACL         | 服务端流式代理（每请求 ACL）；无源文件 → `RICCON-KB-404`；不返回对象 key/预签名 URL |
-| POST   | `/api/v1/knowledge/documents/{documentId}/reindex?force=false` | `knowledge.manage`（创建人/管理员） | 默认只补缺失页；`force=true` 整本重做                                               |
+| 方法   | 路径                                                           | 权限                                                                  | 说明                                                                                |
+| ------ | -------------------------------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| PUT    | `/api/v1/knowledge/documents/{documentId}/acl`                 | 创建人 或 `knowledge.acl.manage`                                      | 整体替换 `{visibility, departmentId?, userIds?}`；200 返回文档                      |
+| GET    | `/api/v1/knowledge/documents/{documentId}/acl`                 | 同上                                                                  | 返回 `visibility`、`departmentId`、`users[]`（userId/displayName）、`creatorUserId` |
+| DELETE | `/api/v1/knowledge/documents/{documentId}`                     | 创建人（服务层资源例外）或 `knowledge.acl.manage`                     | 软删除、审计 `reason=USER`；不物理删除                                              |
+| GET    | `/api/v1/knowledge/documents/{documentId}/download`            | `knowledge.read` + 文档 ACL                                           | 服务端流式代理（每请求 ACL）；无源文件 → `RICCON-KB-404`；不返回对象 key/预签名 URL |
+| POST   | `/api/v1/knowledge/documents/{documentId}/reindex?force=false` | `knowledge.manage`（当前仅 `TENANT_ADMIN`；创建人例外不替代 RBAC 门） | 默认只补缺失页；`force=true` 整本重做                                               |
 
 **M05b `1.5.0-m05b`（B2b 唯一 writer）**：
 
@@ -1005,7 +1036,7 @@ Schema 增量（additive；M05 字段与 M05b 连接器类型分属两个版本�
 - 流式 XLSX、行带定位、公式只读缓存、隐藏表默认跳过。
 - 不新增 `locator_type` 枚举；bbox/置信度用可空列表达。
 - MySQL 为 ACL 权威、OpenSearch 字段只做诊断；不切换检索后端。
-- outbox 双通道 + 租约续期；heavy 并发 2。
+- outbox 双通道 + 租约续期；heavy 并发 2；看门狗按通道 `default` 30 min / `heavy` 65 min（§7.3）。
 - 索引 v2 + 别名切换；v1 保留 7 天。
 - 审计动作命名与 details 白名单；错误码分工（400/403/404/409/503 + 异步 `KB_*`）。
 
@@ -1072,8 +1103,8 @@ Schema 增量（additive；M05 字段与 M05b 连接器类型分属两个版本�
 
 ### 14.2 迁移可执行性
 
-- V12 顺序：加列（INSTANT）→ 加索引（INPLACE）→ 加复合外键（需 `department` 存在）→ DROP/ADD `source_type` CHECK（小表）→ 新表 → 引用表加列 → 权限回填。§5.1 的 DDL 为了可读性合并在一个 `ALTER`；Builder 必须按上述顺序拆成多条语句，并在 MySQL 8.4 实测 `INSTANT`/`INPLACE`、记录锁等待（不能把合并语句当成已验证）。
-- 回滚 SQL 先删子表再删列/约束，且明确“仅在无 CONNECTOR/ACL 数据时可执行”；生产回滚走备份/演练。
+- V12 顺序：加列（INSTANT）→ 加索引（INPLACE, LOCK=NONE）→ 加复合外键（COPY, LOCK=SHARED；MySQL 8.4 不支持 INPLACE 加 FK）→ 可见范围 CHECK 与 `source_type` CHECK 合并替换（COPY, LOCK=SHARED）→ 新表 → 引用/分块加列（INSTANT）→ `idx_outbox_lane`（INPLACE, LOCK=NONE）→ 权限回填。已由 `V12MigrationTest` 在 MySQL 8.4.13 上验证；**实际生产锁等待与维护窗口由 M09 迁移演练测量**，M05 只有容器测试证据。
+- 回滚 SQL 对象以 §7.2 为准（含 `bbox_*`/`ocr_confidence`、`idx_outbox_lane`、三条权限行），先删子表再删列/约束；仅在无 CONNECTOR/ACL 数据时可执行，生产回滚走 M09 备份/演练。
 - worker schema 11 → 12；只有 API 执行迁移（ADR-0010）。
 
 ### 14.3 Gate 项拆分
@@ -1144,8 +1175,9 @@ Schema 增量（additive；M05 字段与 M05b 连接器类型分属两个版本�
 
 ## 修订记录
 
-| 日期       | 变更                                                                                                                                                                                                                                                  | 依据                            |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| 2026-11-22 | 初稿（proposed）：Excel/OCR/ACL/连接器设计、V12、契约增量、威胁模型、性能与任务边界                                                                                                                                                                   | M05 规划任务；Product AC 待定   |
-| 2026-11-22 | 第二轮 AC 对账：P7 统一 404、P6 推荐 A（文本块/坐标）、AC-21 推荐 A（物理清理归 M09）、连接器调度改为部署固定周期、TM-70/71、U8                                                                                                                       | Lead 计划评审；Product §11 草案 |
-| 2026-11-22 | REV-M05-AC-001/002 架构 P1/P2 修复：F-003..F-028/F-030、F-101..F-120 架构项、DEC-0034 落地、契约/UI 按 M05/M05b 分段、delete/reindex、下载流式代理、admin_read、tombstone/list guard/sync 时间、注入/OCR/perf harness、Ops O1a/O1b/O2a/O2b、预算 157h | Verifier pre-review；DEC-0034   |
+| 日期       | 变更                                                                                                                                                                                                                                                            | 依据                            |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| 2026-11-22 | 初稿（proposed）：Excel/OCR/ACL/连接器设计、V12、契约增量、威胁模型、性能与任务边界                                                                                                                                                                             | M05 规划任务；Product AC 待定   |
+| 2026-11-22 | 第二轮 AC 对账：P7 统一 404、P6 推荐 A（文本块/坐标）、AC-21 推荐 A（物理清理归 M09）、连接器调度改为部署固定周期、TM-70/71、U8                                                                                                                                 | Lead 计划评审；Product §11 草案 |
+| 2026-11-22 | REV-M05-AC-001/002 架构 P1/P2 修复：F-003..F-028/F-030、F-101..F-120 架构项、DEC-0034 落地、契约/UI 按 M05/M05b 分段、delete/reindex、下载流式代理、admin_read、tombstone/list guard/sync 时间、注入/OCR/perf harness、Ops O1a/O1b/O2a/O2b、预算 157h           | Verifier pre-review；DEC-0034   |
+| 2026-11-22 | REV-TASK-0164-001 P2 承接：§5.6 `knowledge.manage` 收回 `TENANT_ADMIN`（F-001）、§7.2 记录 COPY+LOCK=SHARED 与真实回滚对象/锁等待归 M09（F-006）、§7.3 per-lane 看门狗 30m/65m（F-004）、§5.6 `admin_read.visibility` 仅 LIST 可空（F-014）、§14.2 迁移顺序同步 | REV-TASK-0164-001               |

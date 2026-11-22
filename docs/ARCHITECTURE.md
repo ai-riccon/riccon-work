@@ -127,7 +127,7 @@ API 不执行 Agent；Worker 不面向浏览器。任务契约、SSE 事件与�
 
 ## 数据模型
 
-M02 数据模型由 ADR-0012 定稿，M03 组织与数据范围由 ADR-0018（proposed）设计，M10 身份与审计由 ADR-0019/0020（proposed）设计，M04 模型网关由 ADR-0021/0022（accepted，设计评审口径）设计，M05 知识库纵深由 ADR-0023（proposed）设计；迁移位于 `apps/api/src/main/resources/db/migration`（V2–V12；V1 不修改；V9 已在 M03 发布后冻结；V10 为 M10 只增不减的 additive 迁移；V11 为 M04 的 additive 迁移加 `provider_credential` 唯一键替换；V12 为 M05 的 additive 迁移加 `knowledge_document` 可见性约束）。ADR-0012 §4 的“M04 租户级路由/可写租户级记录”由 ADR-0021 明确覆盖为“平台全局路由、平台托管 key、BYO 后移”；ADR-0012 的全局表清单由 ADR-0021 §3 显式扩展（`model_routing`、`model_routing_entry`、`model_gateway_switch`），旧 ADR 正文不改。M05 不新增全局表。
+M02 数据模型由 ADR-0012 定稿，M03 组织与数据范围由 ADR-0018（proposed）设计，M10 身份与审计由 ADR-0019/0020（proposed）设计，M04 模型网关由 ADR-0021/0022（accepted，设计评审口径）设计，M05 知识库纵深由 ADR-0023（proposed）设计；迁移位于 `apps/api/src/main/resources/db/migration`（V2–V12；V1 不修改；V9 已在 M03 发布后冻结；V10 为 M10 只增不减的 additive 迁移；V11 为 M04 的 additive 迁移加 `provider_credential` 唯一键替换；V12 为 M05 的 additive 迁移加 `knowledge_document` 可见性约束与 COPY 重建、分块 bbox/OCR 列、outbox 双通道索引）。ADR-0012 §4 的“M04 租户级路由/可写租户级记录”由 ADR-0021 明确覆盖为“平台全局路由、平台托管 key、BYO 后移”；ADR-0012 的全局表清单由 ADR-0021 §3 显式扩展（`model_routing`、`model_routing_entry`、`model_gateway_switch`），旧 ADR 正文不改。M05 不新增全局表。
 
 ### 标识与租户键
 
@@ -376,6 +376,7 @@ M05 的完整决策见 `docs/adr/ADR-0023-m05-knowledge-depth.md`（`proposed`�
 ### 文档级 ACL
 
 - `knowledge_document.visibility ∈ {TENANT, DEPT, USERS}` + `knowledge_document_acl`（USERS，上限 200 人）；`DEPT` 必填 `department_id` 并复用 M03 单主部门与启用状态；创建人隐式可见且不可移除。
+- 权限：`knowledge.manage`/`knowledge.acl.manage` 只授予 `TENANT_ADMIN`，`MEMBER` 只有 `knowledge.read`；登记/添加文档是管理员操作，“创建人”是资源关系而不是角色（ADR-0023 §5.6、ADR-0018 §3.4）。
 - 单一谓词集中在知识库访问层，列表/详情/检索/引用/下载/删除/重索引共用；不可见统一 `RICCON-TENANT-404`；可见但非创建人/非 `TENANT_ADMIN` 改 ACL → 403。平台管理员持有租户文档 ID 直接访问按跨租户统一 404，不返回 403（避免存在性探测，ADR-0023 §5.2）。
 - 租户管理员对本租户知识文档有管理性读取（列表/检索/详情/下载全量、不做 ACL 过滤）；**绕过 ACL 的读取写 `knowledge.document.admin_read` 审计**（LIST 每次一条；DETAIL/SEARCH/DOWNLOAD 仅在 ACL 本不可见时写），按 ACL 可见的读取不写；ACL 变更必须审计（DEC-0034 U8）。
 - 403/404：不可见/跨租户/跨部门/平台管理员 → 404 `RICCON-TENANT-404`；已可见但非创建人/非 `TENANT_ADMIN` 做 ACL/delete/reindex → 403 `RICCON-AUTH-403`；连接器跨租户 → 404，同租户非管理员 → 403（ADR-0023 §5.4）。
@@ -406,6 +407,7 @@ M05 的完整决策见 `docs/adr/ADR-0023-m05-knowledge-depth.md`（`proposed`�
 | `kb_connector`                              | 类型、状态、端点 ID、配置 JSON、默认可见范围、凭据密文/掩码、调度开关、同步 start/finish/status/complete、同步摘要                                                                           |
 | `kb_connector_item`                         | 源对象哈希唯一键、版本/校验和、文档引用、同步状态、tombstone、`generation`（删除-重现代数）                                                                                                  |
 | `file_chunk`/`knowledge_chunk` 扩展         | `bbox_x/y/w/h`、`ocr_confidence`（可空，不加 CHECK）                                                                                                                                         |
+| `agent_run_outbox` 扩展                     | `idx_outbox_lane (status, event_type, available_at, lease_until)` 支撑 default/heavy 双通道领取                                                                                              |
 
 - 新增权限 `knowledge.acl.manage`、`knowledge.connector.read/manage`（`TENANT_ADMIN`），按 V9 模式回填既有租户角色；新租户由 `RoleDefinitions` 写入。
 - worker schema 11 → 12；回滚 SQL 见 ADR-0023 §7.2，只在无 `CONNECTOR`/ACL 数据时可执行。
@@ -413,7 +415,7 @@ M05 的完整决策见 `docs/adr/ADR-0023-m05-knowledge-depth.md`（`proposed`�
 
 ### 异步与索引
 
-- outbox 拆 `default`（chat/report）与 `heavy`（`FILE_PARSE`、`KNOWLEDGE_INDEX`、`KNOWLEDGE_CONNECTOR_SYNC`，默认并发 2），避免 OCR/大文件阻塞 J2；新增 `OutboxLeaseHeartbeat` 续期，最大处理时长 30 min。
+- outbox 拆 `default`（chat/report）与 `heavy`（`FILE_PARSE`、`KNOWLEDGE_INDEX`、`KNOWLEDGE_CONNECTOR_SYNC`，默认并发 2），避免 OCR/大文件阻塞 J2；新增 `OutboxLeaseHeartbeat` 续期；看门狗按通道配置：`default` 30 min（`RICCON_WORKER_OUTBOX_MAX_PROCESSING`）、`heavy` 65 min（`RICCON_WORKER_OUTBOX_HEAVY_MAX_PROCESSING`，覆盖连接器同步 60 min 总超时）。
 - `KNOWLEDGE_INDEX_REQUESTED` payload 增加可选 `mode`（`FULL` / `ACL_ONLY` / `DELETE`）与 `reason`；新增 `riccon.knowledge.connector.sync.requested.v1`。
 - OpenSearch v2：新增 `visibility`/`department_id`/`acl_version`/`source_type`/`connector_id`/`ocr_confidence`/`bbox_*`；`scripts/ops/reindex-knowledge.mjs` 重灌并逐租户切别名，v1 保留 7 天可切回。运行期检索不依赖索引，切换无用户影响。
 
@@ -429,9 +431,9 @@ M05 的完整决策见 `docs/adr/ADR-0023-m05-knowledge-depth.md`（`proposed`�
 
 ### 迁移与回滚
 
-- V12 单迁移：加列/索引/复合外键 → `source_type` CHECK → 两张新表 → `message_citation`/`artifact_citation` 加 `source_version` → 权限回填；`knowledge_document` 的 CHECK 变更用 `ALGORITHM=INPLACE, LOCK=NONE`，被拒时改维护窗口。
+- V12 单迁移：加列（INSTANT）/索引（INPLACE, LOCK=NONE）→ 复合外键与可见范围/`source_type` CHECK（MySQL 8.4 不支持 INPLACE，两次 `ALGORITHM=COPY, LOCK=SHARED`，允许读、阻塞写）→ 两张新表 → `message_citation`/`artifact_citation` 加 `source_version` → 分块加 `bbox_x/y/w/h`/`ocr_confidence` → `agent_run_outbox` 加 `idx_outbox_lane` → 权限回填。生产锁等待/维护窗口由 M09 迁移演练测量，M05 只有 Testcontainers 证据。
 - 发布：V12 + 代码（ACL/OCR/连接器开关全 false）→ 重灌索引 v2 并切别名 → 打开 ACL → 建 `DEPT`/`USERS` 文档核对 → 打开 OCR/连接器 → gate。
-- 回滚：先关开关；ACL 打开后不做应用回滚（前向修复）；索引别名可切回 v1；数据库不做 down migration。
+- 回滚：先关开关；ACL 打开后不做应用回滚（前向修复）；索引别名可切回 v1；数据库不做 down migration，应急回滚清单见 ADR-0023 §7.2（含 `bbox_*`/`ocr_confidence`、`idx_outbox_lane` 与三条权限行，生产走 M09 备份/演练）。
 
 ### 交付计划与预算
 
