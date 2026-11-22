@@ -4,7 +4,7 @@
   "module_id": "M24",
   "title": "M04 F-008：非 503 Worker detail 脱敏断言",
   "owner": "riccon/builder-route",
-  "status": "blocked",
+  "status": "review",
   "write_scope": [
     "apps/api/src/test/java/com/riccon/api/chat/**",
     "apps/api/src/test/java/com/riccon/api/research/**",
@@ -14,14 +14,17 @@
     "非 503 Worker detail 写入 run.error_message 时只允许静态脱敏文本；无内部地址/key/堆栈",
     "负向用例在出现原始 detail 时失败"
   ],
-  "evidence": [],
+  "evidence": [
+    "EV-0771"
+  ],
   "tools_used": [
     "serena",
     "codegraph",
     "riccon"
   ],
-  "blocker": "并发行未提交改动使工作树 dirty（TASK-0163/TASK-0164 共 50 项），且未提交的 V12__knowledge_depth.sql 在 MySQL 8.4 应用失败（ADD FOREIGN KEY 配 ALGORITHM=INPLACE 需 foreign_key_checks=OFF 或 COPY），API/Worker 集成测试上下文无法启动，无法录 dirty=false 的最终 EV。测试代码已提交 02dbc6d：ChatModelUnavailableApiTest 在 V12 出现前 12/12 通过，RunFailureMessageSanitizationTest 2/2 通过。下一步：待 TASK-0163/0164 提交并修复 V12 后，在干净树重跑 ChatModelUnavailableApiTest、ResearchModelUnavailableMappingTest、RunFailureMessageSanitizationTest 并录 EV。",
+  "blocker": null,
   "created_at": "2026-11-22T19:24:30.081+08:00",
-  "updated_at": "2026-11-22T20:51:44.504+08:00",
-  "baseline_commit": "da9b459156f0752d5cc8f704e66522026790e2cb"
+  "updated_at": "2026-11-22T21:59:49.348+08:00",
+  "baseline_commit": "979248c",
+  "end_commit": "02dbc6d"
 }
