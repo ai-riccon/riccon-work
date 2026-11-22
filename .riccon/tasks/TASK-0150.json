@@ -4,7 +4,7 @@
   "module_id": "M21",
   "title": "修复 ModelFailoverIntegrationTest 首字后失败时序 flake",
   "owner": "riccon/builder-m19",
-  "status": "in_progress",
+  "status": "review",
   "write_scope": [
     "apps/worker/src/test/java/com/riccon/worker/model/ModelFailoverIntegrationTest.java",
     ".ricon/**"
@@ -14,10 +14,19 @@
     "定向连续 ≥10 次全绿；Worker 全量 external 356+/0/0/0；CI shard2 复跑通过",
     "不改生产代码/迁移/pom/其他测试；先提交再取证；证据单行"
   ],
-  "evidence": [],
-  "tools_used": [],
+  "evidence": [
+    "EV-0725"
+  ],
+  "tools_used": [
+    "codegraph",
+    "git",
+    "maven",
+    "docker",
+    "node26"
+  ],
   "blocker": null,
   "created_at": "2026-11-22T07:57:18.895+08:00",
-  "updated_at": "2026-11-22T07:57:23.896+08:00",
-  "baseline_commit": "5017e1dceda03d5a79be4429e3cf1f7fb87b8860"
+  "updated_at": "2026-11-22T08:06:30.182+08:00",
+  "baseline_commit": "5017e1dceda03d5a79be4429e3cf1f7fb87b8860",
+  "end_commit": "2bee040ae00f8a3c0712108c2821d23ecc46c1e2"
 }
