@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0740",
+  "task_id": "TASK-0152",
+  "command": "set -euo pipefail; rm -rf \"$TMPDIR/m22-verify-sim-shards\" \"$TMPDIR/m22-verify-merged\"; python3 -c \"import glob,json,xml.etree.ElementTree as ET; b=json.load(open('scripts/test-shards-baseline.json')); rs=[ET.parse(p).getroot() for p in glob.glob('apps/*/target/surefire-reports/TEST-*.xml')+glob.glob('platform/*/target/surefire-reports/TEST-*.xml')]; agg=(len(rs),sum(int(r.get('tests')) for r in rs),sum(int(r.get('failures')) for r in rs),sum(int(r.get('errors')) for r in rs),sum(int(r.get('skipped')) for r in rs),round(sum(float(r.get('time')) for r in rs),3),{r.get('name'):int(r.get('tests')) for r in rs}); base=(b['suite_count'],b['test_count'],b['failure_count'],b['error_count'],b['skip_count'],b['time_total_seconds'],{c['class']:c['tests'] for c in b['classes']}); assert agg==base, (agg[:6],base[:6]); print('BASELINE_MATCH', agg[:6])\"; node scripts/test-shards.mjs --check; node scripts/test-shards.mjs --simulate \"$TMPDIR/m22-verify-sim-shards\" --reports-root .; node scripts/test-merge-shards.mjs --shards-root \"$TMPDIR/m22-verify-sim-shards\" --out-dir \"$TMPDIR/m22-verify-merged\"",
+  "manual": false,
+  "commit": "2c690e54241eadb2df4a7cc6378bfecbd01fed7f",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0152/EV-0740-2026-11-22T10-49-30-200+08-00-set-euo-pipefail-rm-rf-tmpdir-m22-verify-sim-sha.log",
+  "output_sha256": "23873046bb18a28e65e5ee21a925bd852db381af43c9941a0690af36b6122b47",
+  "output_bytes": 2358,
+  "agent": "riccon/verifier",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-22T10:49:28.995+08:00",
+  "finished_at": "2026-11-22T10:49:29.726+08:00",
+  "duration_ms": 730,
+  "note": "M22 verifier 独立复算：当前 surefire 报告与 baseline 完全一致（196/1116/0/0/0/834.18）；--check/--simulate/merge 通过，4 片每类一次",
+  "recorded_at": "2026-11-22T10:49:30.203+08:00"
+}

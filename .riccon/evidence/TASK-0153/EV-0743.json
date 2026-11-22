@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0743",
+  "task_id": "TASK-0153",
+  "command": "set -euo pipefail; ruby -ryaml -e 'YAML.load_file(\".github/workflows/ci.yml\"); puts \"yaml ok\"'; grep -q 'run: ./mvnw -q -T1C verify org.jacoco:jacoco-maven-plugin:report' .github/workflows/ci.yml; grep -q '<jacoco.version>0.8.16</jacoco.version>' pom.xml; grep -q 'org.jacoco:jacoco-maven-plugin:report' docs/RUNBOOK.md; grep -q 'NoPluginFoundForPrefixException' docs/RUNBOOK.md; grep -q 'jacoco.version' docs/RUNBOOK.md; grep -q '### 10.5 并行/多 fork 与首响应闸门约定' docs/CODING-STANDARDS.md; grep -q 'stream_defaultTextPlan_firstResponseCarriesFirstTextChunk' docs/CODING-STANDARDS.md; grep -q 'forkCount=1' docs/CODING-STANDARDS.md; grep -q 'ModelRegistryIntegrationTest' docs/CODING-STANDARDS.md; grep -q 'holdAfterFirstContent' docs/CODING-STANDARDS.md; grep -q 'test: \"./mvnw -q -T1C verify jacoco:report && pnpm -w test -- --coverage\"' AGENTS.md; grep -q 'coverage: \"./mvnw -q -T1C verify jacoco:report && pnpm -w test -- --coverage\"' AGENTS.md; ./mvnw -q -pl apps/worker help:effective-pom -Doutput=\"$TMPDIR/m22-verify-eff.xml\"; grep -q '<version>3.5.6</version>' \"$TMPDIR/m22-verify-eff.xml\"; test \"$(grep -c 'uses: actions/checkout@v7' .github/workflows/ci.yml)\" -eq 6; test \"$(grep -c 'uses: actions/setup-java@v6' .github/workflows/ci.yml)\" -eq 4; test \"$(grep -c 'uses: actions/setup-node@v7' .github/workflows/ci.yml)\" -eq 4; test \"$(grep -c 'uses: actions/upload-artifact@v7' .github/workflows/ci.yml)\" -eq 5; test \"$(grep -c 'uses: actions/download-artifact@v8' .github/workflows/ci.yml)\" -eq 1; test \"$(grep -c 'uses: pnpm/action-setup@v6' .github/workflows/ci.yml)\" -eq 1; test \"$(awk '/uses: pnpm\\/action-setup@v6/{n=NR} /uses: actions\\/setup-node@v7/ && n && !done {print NR-n; done=1}' .github/workflows/ci.yml)\" -eq 5; if grep -Eq 'checkout@v[0-6]|setup-java@v[0-5]|setup-node@v[0-6]|upload-artifact@v[0-6]|download-artifact@v[0-7]|action-setup@v[0-5]' .github/workflows/ci.yml; then exit 1; fi; test -z \"$(git diff --name-only bd39cd6638591d8b8c0d4cdde47950d29f6147d3..HEAD -- AGENTS.md apps/api/src/main apps/worker/src/main apps/web/src pom.xml contracts deploy)\"; git diff --check",
+  "manual": false,
+  "commit": "2c690e54241eadb2df4a7cc6378bfecbd01fed7f",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0153/EV-0743-2026-11-22T10-51-52-665+08-00-set-euo-pipefail-ruby-ryaml-e-yaml-load-file-git.log",
+  "output_sha256": "33d0122cc10e4a22ee1f9e2c0feefde3fe9d3c9505e79a1edc96a9149fee4cf1",
+  "output_bytes": 2352,
+  "agent": "riccon/verifier",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-22T10:51:47.960+08:00",
+  "finished_at": "2026-11-22T10:51:51.993+08:00",
+  "duration_ms": 4032,
+  "note": "M22 verifier 文档/合同一致性：CI 全限定 goal 与 RUNBOOK 一致、根 pom jacoco 0.8.16、Actions 主版本与 pnpm 顺序、CODING-STANDARDS §10.5、AGENTS 合同文本未改、产品源码零 diff（EV-0742 为 verifier 检查脚本 awk 误判的探索性失败，不用于 DoD）",
+  "recorded_at": "2026-11-22T10:51:52.668+08:00"
+}
