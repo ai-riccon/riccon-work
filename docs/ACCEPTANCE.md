@@ -32,7 +32,7 @@
 - **M12**：维护模块，done；热栈/test-affected/文档无用户可见 AC，Product/用户验收为 `not-recorded`（N/A legacy），不伪造 pass。
 - **M14**：docs-only legacy，building；TASK-0053/0057/0061 已 done，但尚无模块 review/gate；Product/user 结论重置为 `pending`，待独立 closeout 后再验收。
 - **M04**：`feature`，done；gate pass（REV-M04-005，2026-11-21；18 条 AC 全 pass，F-001..F-005/F-011 fixed，P2/P3 残余登记）；Product 预验收 `pass`（with residual：R-M04-01 P2 员工侧配额 429 文案、R-M04-02/03 P3，以及 Verifier F-006/F-008/F-009/F-010/F-012/F-013），见「M04 模型网关纵深（gate pass 后 Product 预验收）」；用户最终验收 `accepted`（DEC-0027，A；with residual，R-M04-01/02/03 转 M05），见「用户最终验收（M04）」。
-- **M19**：`fix`，review_pending（未 done）；gate pass（REV-M19-001，2026-11-22；14.3h/16h）；9 个任务全部 done；Product 预验收 `pass`（with residual F-001..F-005，见「M19 测试基础设施与全量测试提速（gate pass 后 Product 预验收）」）；用户最终验收 `pending`；不改变产品 AC/API/DB/UX/部署行为。
+- **M19**：`fix`，done；gate pass（REV-M19-001，2026-11-22；14.3h/16h）；9 个任务全部 done；Product 预验收 `pass`（with residual F-001..F-005，见「M19 测试基础设施与全量测试提速（gate pass 后 Product 预验收）」）；用户最终验收 `accepted`（DEC-0030=A，2026-11-22）；PR #1 已合并（merge commit `1434733`）；不改变产品 AC/API/DB/UX/部署行为。M21（fix M19）修复合并前最终 CI 暴露的 `ModelFailoverIntegrationTest` 时序 flake，属于同一交付。
 
 ## 验收标准（M03，M13 补丁后）
 
@@ -370,7 +370,7 @@ M02 是用户可见 MVC 模块，但 2026-11-18 关闭时没有 `product_accepta
 
 - **范围**：`fix` 模块，技术性交付，无用户可见 AC。9 个任务全部 done：P0 计时与预算（TASK-0117）、P1 CI 热栈（TASK-0118）、P2 四分片（TASK-0119，含 TASK-0149 竞态修复）、P3 Worker 租户隔离与 API fixture（TASK-0144/0145/0146）、P4 tag 分层与 platform 词汇测试（TASK-0147/0148）。改动限于测试代码、CI、测试脚本与文档；`apps/*/src/main`、`apps/web/src`、`contracts/`、`deploy/` 零 diff，产品 AC/API/DB/UX/部署行为不变。
 - **合同与 gate**：`AGENTS.md` 零 diff，`commands.test`/`commands.coverage`/E2E 文本未改；CI 只新增 4-shard 快速反馈，canonical gate 仍由 Verifier 用合同命令执行。gate PASS（REV-M19-001，verdict `pass`，14.3h/16h）；代码 `b69f019`（PR #1 head），模块评审基于 `254e2a8`（与代码无源码/CI 差异）。
-- **证据**：CI run 44955035025（PR #1 `m19-ci-proof` @ `b69f019`，conclusion success）；EV-0716（合同 test+coverage：196 类/1115 用例/0 fail/0 error/0 skip；前端 493 用例通过）、EV-0721（4 shard + merge：196/1115/0/0/0，每类 runs=1，problems=0）、EV-0723（计时报告 531.132s）、EV-0724（文档/合同一致性）、EV-0717/0718/0719/0722（build/E2E/a11y/security）。EV-0711 为 shard 2 竞态失败证据，EV-0714/0715 为辅助证据，均不作为 DoD 依据。
+- **证据**：最终 CI run 44965051297（PR #1 `m19-ci-proof` @ `9508fc6`，conclusion success；合并提交 `1434733`）；4 shard job 墙钟 172/202/204/206s（≤300s）；merge 196/1115/0/0/0、每类 runs=1、problems=0；EV-0716（合同 test+coverage：196 类/1115 用例/0 fail/0 error/0 skip；前端 493 用例通过）、EV-0721（4 shard + merge）、EV-0723（计时报告 531.132s）、EV-0724（文档/合同一致性）、EV-0717/0718/0719/0722（build/E2E/a11y/security）；TASK-0150/EV-0725 为合并前 `ModelFailoverIntegrationTest` 时序 flake 修复（10 次定向 + Worker 全量 356/0/0/0，CI shard2 通过）。EV-0711 为 shard 2 竞态失败历史证据，EV-0714/0715 为辅助证据，均不作为 DoD 依据。
 
 | 验收项                            | 结果                   | 证据                                         | 核对要点                                                                                                                                                                                                                                     |
 | --------------------------------- | ---------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -394,7 +394,8 @@ M02 是用户可见 MVC 模块，但 2026-11-18 关闭时没有 `product_accepta
 
 - **Product 结论**：`pass`（with residual）。9 个任务覆盖 P0–P4；196/1115/0/0/0、4 shard ≤213s、P2→P4 −56.9% 均可由评审/证据复核；无产品行为/UX/API/DB/部署变更；合同命令未改；无 P0/P1 open finding。F-001..F-005 均 accepted、有 owner/due，不改变 M19 技术验收；**F-001/F-003 需在 M20 gate 前由 Ops 处理**。
 - **明确不声称**：CI 已强制覆盖率（F-001）；P4 已减少 app 用例/墙钟（F-002）；Actions 升级已完成（F-003）；baseline 计时可独立重建（F-004）；surefire 并行隔离已验证（F-005）；用户已最终验收。
-- **用户最终验收建议**：建议接受 M19 技术验收（附 F-001/F-003 的 M20 gate 前关闭条件；F-002/F-004/F-005 作为维护性残余跟踪）。本结论不是用户最终验收；不标记模块 done、不合并 PR；PR #1 仍 OPEN，合并与模块 done 由 Lead 处理。
+- **用户最终验收**：`accepted`（DEC-0030=A，2026-11-22）。用户接受 M19 技术验收并批准合并 PR #1；合并提交 `1434733`。附条件：F-001/F-003 由 Ops 在 M20 gate 前关闭；F-002/F-004/F-005 作为维护性残余跟踪。
+- **M21（fix M19）**：合并前最终 CI 暴露 `ModelFailoverIntegrationTest` “首字后失败”时序 flake（低核 shard 2 偶发 503/502）；TASK-0150 用 `holdAfterFirstContent` 闸门修复，EV-0725（定向 10 次 + Worker 全量 356/0/0/0），最终 CI 44965051297 shard2 通过。M21 属 M19 同一交付的稳定性修复，不改变产品 AC/DoD。
 
 ## 历史模块
 
