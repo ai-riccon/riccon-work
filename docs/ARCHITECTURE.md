@@ -29,11 +29,11 @@
 
 | 检查                        | 状态    | 记录                                                                                                                                                                                                                                                              |
 | --------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Architect 草案              | draft   | ADR-0023 `proposed`（2026-11-22，REV-M05-AC-001 架构 P1 修复）：Excel 流式、Tesseract OCR + SPI、文档级 ACL、S3 连接器、V12、索引 v2、outbox 双通道、TM-55..TM-71；DEC-0034：Product 拆分、P6=A、P8=A、U8=管理性读取+绕过 ACL 审计；预算 144h（M05 97 + M05b 47） |
-| Lead 完整性/合同一致性      | pending | 待 Lead 复核：M05 范围与路线图一致；DEC-0034 拆分已批准，预算 144h（M05 97 + M05b 47）待确认；M05 `1.4.0-m05` / M05b `1.5.0-m05b` 分段契约；`connector` 对象 key 类别需 ADR-0009 增量修订                                                                         |
+| Architect 草案              | draft   | ADR-0023 `proposed`（2026-11-22，REV-M05-AC-001 架构 P1 修复）：Excel 流式、Tesseract OCR + SPI、文档级 ACL、S3 连接器、V12、索引 v2、outbox 双通道、TM-55..TM-71；DEC-0034：Product 拆分、P6=A、P8=A、U8=管理性读取+绕过 ACL 审计；预算 148h（M05 97 + M05b 51） |
+| Lead 完整性/合同一致性      | pending | 待 Lead 复核：M05 范围与路线图一致；DEC-0034 拆分已批准，预算 148h（M05 97 + M05b 51）待确认；M05 `1.4.0-m05` / M05b `1.5.0-m05b` 分段契约；`connector` 对象 key 类别需 ADR-0009 增量修订                                                                         |
 | 用户批准（不可逆/高成本项） | pass    | DEC-0034（2026-11-22）：Product 拆分、P6=A、P8=A（物理清理 M09 release blocker）、U8=管理性读取+绕过 ACL 审计、M03-AC-06 由 M05 取代；S3、Tesseract+SPI、权重随镜像、连接器原文可下载受 ACL、新文档默认 TENANT、ACL 后禁止应用回滚、429 并入 M05                  |
 | Verifier 可测试性/安全边界  | pending | 待独立评审：403/404 矩阵与 `SEC-KB-002/003`、`SEC-CONN-004`、delete/reindex、下载流式代理、`admin_read`、完整 list guard、tombstone 复用、同步 start/finish、OCR 测试 profile/零出网、注入 harness、性能场景、套件 manifest 30→37/10→14                           |
-| Ops 可运维/可回滚           | pending | 待 Ops 评审：M05-O1（镜像/权重/SBOM/CI/`ocr-check`）与 M05-O2（网络策略/凭据置空/RUNBOOK），V12 回滚演练，索引 v2 重灌/别名切换                                                                                                                                   |
+| Ops 可运维/可回滚           | pending | 待 Ops 评审：M05-O1a/O1b（镜像/权重/SBOM/CI/`ocr-check`）与 M05-O2a/O2b（网络策略/凭据置空/RUNBOOK），V12 回滚演练，索引 v2 重灌/别名切换                                                                                                                         |
 | 安全/合规评审（如适用）     | pending | 待安全评审：提示注入新建 harness、SSRF、凭据、跨租户/跨部门、`admin_read` 审计、TM-55..TM-71（70/71 仅在 P6=B/AC-21=B 时适用，选 A 登记不适用）                                                                                                                   |
 
 > 状态值：`draft`、`pending`、`pass`、`changes-requested`。ADR-0023 未评审前不进入 M05 实现；本表不声称 M05 已批准或已交付。
@@ -370,7 +370,7 @@ M05 的完整决策见 `docs/adr/ADR-0023-m05-knowledge-depth.md`（`proposed`�
 - 资源：每实例并发 2、单页 30 s、单文档 100 页/600 s、逐页释放；OCR 关闭或引擎/原生库缺失时 worker 启动失败（生产 `RICCON_OCR_ENABLED=true`），语言包缺失为启动 WARN + 文档 `KB_OCR_LANG_UNAVAILABLE`，运行期失败落 `KB_OCR_*` 稳定码。
 - 测试 profile 默认 `RICCON_OCR_ENABLED=false`/懒加载，无 Tesseract 的宿主/CI 全量不失败；OCR 用例走 `@Tag("ocr")` 专用 job；`scripts/ops/ocr-check` 在 `--network none` 容器只跑 `OcrEngine` + fixture，不启动 MySQL/OpenSearch（ADR-0023 §4.7，F-011）。
 - 精度门槛：固定 20 张印刷体夹具，中文 CER ≤ 10%、英文 ≤ 5%；未达标切换替代引擎（需用户批准）。
-- 不可信内容：Excel/OCR/连接器文本统一走 `UntrustedData`；仓库当前无 `INJ-001..012`，M05-B10 新建注入 harness（假模型 + 工具 stub + canary 凭据/内网地址），由 `SEC-KB-004`/`SEC-CONN-002` 执行、V2 复核。
+- 不可信内容：Excel/OCR/连接器文本统一走 `UntrustedData`；仓库当前无 `INJ-001..012`，M05-B10 新建 Excel/OCR 注入 harness（假模型 + 工具 stub + canary 凭据/内网地址），M05b-B10b 补连接器样本；`SEC-KB-004`/`SEC-CONN-002` 执行、V2 复核。
 - 区域高亮（P6 推荐 A）：M05 返回 `bbox`/`sheetName`/`cellRange` 与命中文本块，引用详情用表格/文本块高亮；不新增页图端点、不引入 PDF.js/SheetJS。若 Product 坚持“页图叠加框选”选 B，需页图渲染端点 +12–16h（ADR-0023 §11.1/§13.3）。
 
 ### 文档级 ACL
@@ -435,8 +435,9 @@ M05 的完整决策见 `docs/adr/ADR-0023-m05-knowledge-depth.md`（`proposed`�
 
 ### 交付计划与预算
 
-- 任务边界见 ADR-0023 §12：M05 = B1/B2/B3/B4/B5/B7/B8/B9/B10/B11/O1/V1/V2（97h）；M05b = B2b/B6/B7b/B8b/B9b/O2/V1b/V2b（47h）；合计 144h。P1 修复新增项包括 delete/reindex、下载流式代理、`admin_read`、同步时间/tombstone/list guard、注入 harness、perf 场景、OCR 镜像/零出网与连接器 Ops。
-- DEC-0034 已批准 Product 拆分（M05=Excel+OCR+ACL+M04 429；M05b=S3 连接器），不再保留风险拆分/单模块选项；B1/B2/B2b/B3/B6/B7/B7b/B9/B9b 为高风险任务，done 前必须有独立 Verifier 任务级评审；M05 gate 前完成 O1，M05b gate 前完成 O2。
+- 任务边界见 ADR-0023 §12：M05 = B1/B2/B3/B4/B5/B7/B8/B9/B10/B11/O1a/O1b/V1/V2（97h）；M05b = B2b/B6/B7b/B8b/B9b/B10b/B11b/O2a/O2b/V1b/V2b（51h）；合计 148h。P1 修复新增项包括 delete/reindex、下载流式代理、`admin_read`、同步时间/tombstone/list guard、注入/OCR/perf harness、OCR 镜像/零出网与连接器 Ops。
+- DEC-0034 已批准 Product 拆分（M05=Excel+OCR+ACL+M04 429；M05b=S3 连接器），不再保留风险拆分/单模块选项；B1/B2/B2b/B3/B6/B7/B7b/B9/B9b/B10/B10b 为高风险任务，done 前必须有独立 Verifier 任务级评审；M05 gate 前完成 O1a/O1b，M05b gate 前完成 O2a/O2b。
+- **AC-20/22 分段 gate**：M05 gate 判本段（首字/列表/详情/ACL 写、50 并发、OCR/索引不阻塞、检索量测；J1/J2/M03/M10/M04 回归 + M05 契约）；M05b gate 判整条（加连接器同步/契约并整条复验）。M05 不得把性能/回归全部留到 M05b。
 
 ### 风险
 
