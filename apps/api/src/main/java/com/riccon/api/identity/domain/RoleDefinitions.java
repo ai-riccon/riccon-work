@@ -24,6 +24,11 @@ import java.util.Set;
  * 回填，本类负责 V11 之后新建租户与空库引导；员工（MEMBER）不获得配额/成本入口（ADR-0021 §7.1、
  * ADR-0022 §1.5/§3.1）。
  *
+ * <p>M05 说明：{@code knowledge.acl.manage}/{@code knowledge.connector.read}/
+ * {@code knowledge.connector.manage} 只授予租户管理员；V12 负责既有租户回填，本类负责 V12 之后
+ * 新建租户与空库引导。创建人对本人文档的 ACL 修改由服务层例外授权，不新增角色码；普通员工仍只有
+ * {@code knowledge.read}（ADR-0023 §5.6）。
+ *
  * <p>为什么必须同时改迁移与本类：V10 的 {@code INSERT ... SELECT FROM role} 只覆盖迁移前已存在的角色，
  * 覆盖不到 fresh install、空库引导和 V10 之后新建的租户；缺少这两条映射会直接断裂 AC-17 的审批链。
  */
@@ -57,6 +62,10 @@ public final class RoleDefinitions {
             PermissionCodes.CONVERSATION_WRITE,
             PermissionCodes.KNOWLEDGE_READ,
             PermissionCodes.KNOWLEDGE_MANAGE,
+            // M05：任意文档 ACL 管理、管理性读取与连接器管理只属于租户管理员。
+            PermissionCodes.KNOWLEDGE_ACL_MANAGE,
+            PermissionCodes.KNOWLEDGE_CONNECTOR_READ,
+            PermissionCodes.KNOWLEDGE_CONNECTOR_MANAGE,
             PermissionCodes.REPORT_READ,
             PermissionCodes.REPORT_CREATE,
             PermissionCodes.REPORT_APPROVE,

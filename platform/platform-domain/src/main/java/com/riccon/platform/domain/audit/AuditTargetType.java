@@ -18,6 +18,8 @@ public enum AuditTargetType {
     CONVERSATION,
     /** 知识库文档。 */
     KNOWLEDGE_DOCUMENT,
+    /** 知识库外部连接器（M05b，target_id 为连接器 ID）。 */
+    KNOWLEDGE_CONNECTOR,
     /** 报告任务。 */
     RESEARCH_TASK,
     /** 执行运行。 */

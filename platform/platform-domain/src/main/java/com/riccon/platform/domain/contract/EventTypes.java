@@ -16,8 +16,10 @@ public interface EventTypes {
     String AGENT_RUN_CANCEL = "riccon.agent.run.cancel.v1";
     /** API → Worker：解析已上传文件。 */
     String FILE_PARSE_REQUESTED = "riccon.file.parse.requested.v1";
-    /** API → Worker：构建/重建知识库索引。 */
+    /** API → Worker：构建/重建知识库索引；payload 可选 {@code mode}（FULL/ACL_ONLY/DELETE）。 */
     String KNOWLEDGE_INDEX_REQUESTED = "riccon.knowledge.index.requested.v1";
+    /** API → Worker：触发一次连接器同步（M05b；幂等键 {@code connector:{id}:sync:{syncId}}）。 */
+    String KNOWLEDGE_CONNECTOR_SYNC_REQUESTED = "riccon.knowledge.connector.sync.requested.v1";
 
     /** Worker → API/浏览器：回答开始。 */
     String CHAT_STARTED = "riccon.chat.started.v1";

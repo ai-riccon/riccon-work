@@ -37,7 +37,12 @@ class AuditVocabularyTest {
         return Arrays.stream(values).map(Enum::name).toList();
     }
 
-    /** 审计动作非空且符合 {@code <domain>.<event>} 小写点分格式，禁止空格与大写片段。 */
+    /**
+     * 审计动作非空且符合 {@code <domain>.<event>} 小写点分格式，禁止空格与大写片段。
+     *
+     * <p>段内允许下划线：ADR-0023 §5.6 的 {@code knowledge.document.admin_read} 是已批准动作名；
+     * 其余动作继续保持纯小写点分。
+     */
     @Test
     void auditActions_followLowercaseDotSeparatedFormat() throws IllegalAccessException {
         assertThat(actions())
@@ -45,7 +50,7 @@ class AuditVocabularyTest {
                 .allSatisfy((name, value) -> assertThat(value)
                         .as("审计动作 %s", name)
                         .isNotBlank()
-                        .matches("^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$"));
+                        .matches("^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"));
     }
 
     /** 审计动作不得重复；常量名必须等于动作名的大写下划线形式（如 USER_CREATED -> user.created）。 */
@@ -121,7 +126,8 @@ class AuditVocabularyTest {
                         "ROLE",
                         "TENANT",
                         "AUDIT",
-                        "AUDIT_EXPORT")
+                        "AUDIT_EXPORT",
+                        "KNOWLEDGE_CONNECTOR")
                 .allSatisfy(name -> assertThat(name).matches("^[A-Z][A-Z0-9_]*$"));
     }
 }

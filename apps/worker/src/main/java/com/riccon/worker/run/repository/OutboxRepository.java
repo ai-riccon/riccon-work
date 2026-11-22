@@ -2,12 +2,16 @@ package com.riccon.worker.run.repository;
 
 import com.riccon.worker.config.OutboxProperties;
 import com.riccon.worker.run.domain.ClaimedOutboxEvent;
+import com.riccon.worker.run.domain.OutboxLane;
+import com.riccon.worker.run.domain.OutboxLeaseRenewer;
 import com.riccon.worker.run.persistence.OutboxClaimer;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
@@ -15,9 +19,12 @@ import org.springframework.stereotype.Component;
  *
  * <p>服务层只依赖本仓库，不直接接触 {@code JdbcClient}；领取参数来自配置，调用方不能
  * 传入批量或租约，避免无界查询。跨租户读取仍由 {@link OutboxClaimer} 承担。
+ *
+ * <p>M05 起支持通道领取与租约续期：按通道领取时 {@code lease_owner} 追加
+ * {@code #lane#threadId}，保证同一实例的不同处理线程互不覆盖续期；无通道调用保持旧行为。
  */
 @Component
-public class OutboxRepository {
+public class OutboxRepository implements OutboxLeaseRenewer {
 
     /** 跨租户领取器。 */
     private final OutboxClaimer outboxClaimer;
@@ -50,6 +57,48 @@ public class OutboxRepository {
     }
 
     /**
+     * 按通道领取一批事件。
+     *
+     * @param lane 通道；非空时租约标识包含通道与线程
+     * @return 已领取事件
+     */
+    public List<ClaimedOutboxEvent> claim(OutboxLane lane) {
+        Objects.requireNonNull(lane, "lane must not be null");
+        return outboxClaimer.claim(
+                leaseOwner(lane), properties.batchSize(), properties.leaseDuration(), lane.eventTypes());
+    }
+
+    /**
+     * 返回本次调用的租约标识。
+     *
+     * <p>无通道调用返回实例级标识；按通道调用返回 {@code instance#lane#threadId}，满足 ADR-0023
+     * §7.3 对“同实例不同处理线程可区分”的要求。领取与完成必须由同一线程调用，否则租约不匹配。
+     *
+     * @param lane 通道；null 表示旧的全事件领取
+     * @return 租约标识
+     */
+    public String leaseOwner(OutboxLane lane) {
+        if (lane == null) {
+            return leaseOwner;
+        }
+        return leaseOwner + "#" + lane.code() + "#" + Thread.currentThread().threadId();
+    }
+
+    /**
+     * 续期单条事件租约。
+     *
+     * @param tenantId 事件租户
+     * @param eventId 事件 ID
+     * @param leaseOwner 当前租约持有者
+     * @param leaseDuration 新的租约时长
+     * @return 受影响行数；0 表示租约已丢失
+     */
+    @Override
+    public int renew(String tenantId, UUID eventId, String leaseOwner, Duration leaseDuration) {
+        return outboxClaimer.renew(tenantId, eventId, leaseOwner, leaseDuration);
+    }
+
+    /**
      * 标记事件成功。
      *
      * @param event 已领取事件
@@ -57,6 +106,17 @@ public class OutboxRepository {
      */
     public int markDone(ClaimedOutboxEvent event) {
         return outboxClaimer.markDone(event.tenantId(), event.id(), leaseOwner);
+    }
+
+    /**
+     * 按通道标记事件成功。
+     *
+     * @param event 已领取事件
+     * @param lane 通道
+     * @return 受影响行数
+     */
+    public int markDone(ClaimedOutboxEvent event, OutboxLane lane) {
+        return outboxClaimer.markDone(event.tenantId(), event.id(), leaseOwner(lane));
     }
 
     /**
@@ -72,6 +132,19 @@ public class OutboxRepository {
     }
 
     /**
+     * 按通道标记可重试失败。
+     *
+     * @param event 已领取事件
+     * @param availableAt 下次可领取时间
+     * @param reason 脱敏失败原因
+     * @param lane 通道
+     * @return 受影响行数
+     */
+    public int markRetry(ClaimedOutboxEvent event, Instant availableAt, String reason, OutboxLane lane) {
+        return outboxClaimer.markRetry(event.tenantId(), event.id(), leaseOwner(lane), availableAt, reason);
+    }
+
+    /**
      * 标记不可重试失败。
      *
      * @param event 已领取事件
@@ -80,6 +153,18 @@ public class OutboxRepository {
      */
     public int markDead(ClaimedOutboxEvent event, String reason) {
         return outboxClaimer.markDead(event.tenantId(), event.id(), leaseOwner, reason);
+    }
+
+    /**
+     * 按通道标记不可重试失败。
+     *
+     * @param event 已领取事件
+     * @param reason 脱敏失败原因
+     * @param lane 通道
+     * @return 受影响行数
+     */
+    public int markDead(ClaimedOutboxEvent event, String reason, OutboxLane lane) {
+        return outboxClaimer.markDead(event.tenantId(), event.id(), leaseOwner(lane), reason);
     }
 
     /**

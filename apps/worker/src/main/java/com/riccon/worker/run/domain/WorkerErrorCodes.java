@@ -21,6 +21,12 @@ public final class WorkerErrorCodes {
     /** 未预期异常；有界重试后进入 DEAD。 */
     public static final String UNEXPECTED = "RICCON-WORKER-500";
 
+    /** 租约续期失败或已被其他 Worker 接管；放弃本次结果，等待新租约重放。 */
+    public static final String LEASE_LOST = "RICCON-WORKER-409";
+
+    /** 单事件处理超过 {@code riccon.worker.outbox.max-processing}；按可重试失败处理。 */
+    public static final String PROCESSING_TIMEOUT = "RICCON-WORKER-504";
+
     /** 文件内容不可解析或没有可抽取文本。 */
     public static final String FILE_UNPROCESSABLE = "RICCON-FILE-422";
 

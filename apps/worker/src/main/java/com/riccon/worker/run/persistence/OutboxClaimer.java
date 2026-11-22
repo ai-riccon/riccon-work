@@ -29,12 +29,19 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class OutboxClaimer {
 
     /** 允许跨租户读取的列，顺序与 {@link #mapRow(ResultSet, int)} 一致。 */
-    private static final String CLAIM_SQL = """
+    private static final String CLAIM_SQL_PREFIX = """
             SELECT id, tenant_id, run_id, event_type, event_version, idempotency_key,
                    payload, attempts, available_at, lease_until
               FROM agent_run_outbox
-             WHERE (status = 'PENDING' AND available_at <= NOW(6))
-                OR (status = 'DISPATCHED' AND lease_until <= NOW(6))
+             WHERE ((status = 'PENDING' AND available_at <= NOW(6))
+                OR (status = 'DISPATCHED' AND lease_until <= NOW(6)))
+            """;
+
+    /** 通道过滤片段；只在按 lane 领取时追加，保持旧调用者“领取全部事件”的语义。 */
+    private static final String CLAIM_LANE_FILTER = "   AND event_type IN (:eventTypes)\n";
+
+    /** 领取语句尾部；通道过滤必须插在 WHERE 之后、ORDER BY 之前。 */
+    private static final String CLAIM_SQL_SUFFIX = """
              ORDER BY id
              LIMIT :batchSize
              FOR UPDATE SKIP LOCKED
@@ -88,6 +95,21 @@ public class OutboxClaimer {
                AND lease_owner = :leaseOwner
             """;
 
+    /**
+     * 租约续期：只允许当前租约持有者且仍为 DISPATCHED 的行。
+     *
+     * <p>与领取/完成使用同一 {@code lease_owner}；续期失败（0 行）表示租约已丢失，调用方必须中断
+     * handler 并放弃结果，避免与新租约持有者双执行。
+     */
+    private static final String RENEW_LEASE_SQL = """
+            UPDATE agent_run_outbox
+               SET lease_until = DATE_ADD(NOW(6), INTERVAL :leaseSeconds SECOND)
+             WHERE tenant_id = :tenantId
+               AND id = :id
+               AND status = 'DISPATCHED'
+               AND lease_owner = :leaseOwner
+            """;
+
     /** last_error 列长度。 */
     private static final int MAX_ERROR_LENGTH = 500;
 
@@ -118,18 +140,42 @@ public class OutboxClaimer {
      * @return 已置为 DISPATCHED 的事件；没有可领取行时返回空列表
      */
     public List<ClaimedOutboxEvent> claim(String leaseOwner, int batchSize, Duration leaseDuration) {
+        return claim(leaseOwner, batchSize, leaseDuration, null);
+    }
+
+    /**
+     * 按通道领取一批可执行事件。
+     *
+     * <p>通道只影响 {@code event_type IN (...)} 过滤，不改变租约与批量语义；事件类型集合来自
+     * 封闭的 {@link com.riccon.worker.run.domain.OutboxLane}，不接受用户输入。
+     *
+     * @param leaseOwner 领取者实例标识（含通道与线程，便于排障）
+     * @param batchSize 批量上限
+     * @param leaseDuration 租约时长
+     * @param eventTypes 通道事件类型；null 表示领取全部事件（旧行为）
+     * @return 已置为 DISPATCHED 的事件；没有可领取行时返回空列表
+     */
+    public List<ClaimedOutboxEvent> claim(
+            String leaseOwner, int batchSize, Duration leaseDuration, List<String> eventTypes) {
         Objects.requireNonNull(leaseOwner, "leaseOwner must not be null");
         Objects.requireNonNull(leaseDuration, "leaseDuration must not be null");
         if (batchSize < 1) {
             throw new IllegalArgumentException("batchSize must be positive");
         }
+        boolean laneFiltered = eventTypes != null && !eventTypes.isEmpty();
+        if (eventTypes != null && eventTypes.isEmpty()) {
+            // 空通道不应退化为“领取全部”，否则重通道可能吞掉 chat/report 事件。
+            return List.of();
+        }
+        List<String> safeEventTypes = laneFiltered ? List.copyOf(eventTypes) : null;
         long leaseSeconds = Math.max(1, leaseDuration.toSeconds());
+        String sql = CLAIM_SQL_PREFIX + (laneFiltered ? CLAIM_LANE_FILTER : "") + CLAIM_SQL_SUFFIX;
         List<ClaimedOutboxEvent> claimed = transactionTemplate.execute(status -> {
-            List<ClaimedOutboxEvent> rows = jdbcClient
-                    .sql(CLAIM_SQL)
-                    .param("batchSize", batchSize)
-                    .query(this::mapRow)
-                    .list();
+            JdbcClient.StatementSpec spec = jdbcClient.sql(sql).param("batchSize", batchSize);
+            if (laneFiltered) {
+                spec = spec.param("eventTypes", safeEventTypes);
+            }
+            List<ClaimedOutboxEvent> rows = spec.query(this::mapRow).list();
             Instant newLeaseUntil = Instant.now().plus(leaseDuration);
             for (ClaimedOutboxEvent row : rows) {
                 jdbcClient
@@ -156,6 +202,30 @@ public class OutboxClaimer {
                     .toList();
         });
         return claimed == null ? List.of() : claimed;
+    }
+
+    /**
+     * 续期单条事件租约（ADR-0023 第 7.3 节）。
+     *
+     * @param tenantId 事件租户
+     * @param eventId 事件 ID
+     * @param leaseOwner 当前租约持有者
+     * @param leaseDuration 新的租约时长
+     * @return 受影响行数；0 表示租约已丢失
+     */
+    public int renew(String tenantId, UUID eventId, String leaseOwner, Duration leaseDuration) {
+        Objects.requireNonNull(tenantId, "tenantId must not be null");
+        Objects.requireNonNull(eventId, "eventId must not be null");
+        Objects.requireNonNull(leaseOwner, "leaseOwner must not be null");
+        Objects.requireNonNull(leaseDuration, "leaseDuration must not be null");
+        long leaseSeconds = Math.max(1, leaseDuration.toSeconds());
+        return jdbcClient
+                .sql(RENEW_LEASE_SQL)
+                .param("tenantId", tenantId)
+                .param("id", UuidBinary.toBytes(eventId))
+                .param("leaseOwner", leaseOwner)
+                .param("leaseSeconds", leaseSeconds)
+                .update();
     }
 
     /**

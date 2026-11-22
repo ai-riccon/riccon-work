@@ -1,6 +1,12 @@
 spring:
   application:
     name: riccon-worker
+  task:
+    scheduling:
+      # M05：分通道调度需要 default(1) + heavy(默认并发 2) 同时运行；单线程会把重任务饿死。
+      pool:
+        size: ${RICCON_WORKER_SCHEDULER_POOL_SIZE:4}
+      thread-name-prefix: riccon-sched-
   datasource:
     # 本地默认值对应 deploy/compose/docker-compose.test.yml 的非默认端口；生产必须由环境变量注入。
     url: ${RICCON_DB_URL:jdbc:mysql://127.0.0.1:13306/riccon?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8}
@@ -90,6 +96,14 @@ riccon:
     outbox:
       # 单队列跨租户领取；批量、租约与退避见 ADR-0008/ADR-0016。
       scheduling-enabled: true
+      # M05：默认由 OutboxLaneScheduler 按 default/heavy 通道领取；旧“领取全部事件”调度器
+      # 只在回滚窗口显式设为 true，避免与分通道调度抢事件。
+      legacy-all-lane-scheduling: ${RICCON_WORKER_OUTBOX_LEGACY_ALL_LANE_SCHEDULING:false}
+      # M05：default 保持 chat/report 顺序；heavy 承载 FILE_PARSE/KNOWLEDGE_INDEX/CONNECTOR_SYNC。
+      lanes: ${RICCON_WORKER_OUTBOX_LANES:default,heavy}
+      heavy-concurrency: ${RICCON_WORKER_OUTBOX_HEAVY_CONCURRENCY:2}
+      # 单事件最大处理时长；超时中断 handler 并按可重试失败退避。
+      max-processing: ${RICCON_WORKER_OUTBOX_MAX_PROCESSING:30m}
       poll-interval: 500ms
       poll-initial-delay: 5s
       batch-size: 10

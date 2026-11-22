@@ -192,8 +192,9 @@ class V11MigrationTest {
         seedMultiKeyCredentials(rollback);
         rollbackV11Objects(rollback);
 
-        // fresh install：空库直接应用 V1–V11，验证权限字典覆盖与种子可用。
-        migrate(freshUrl, "root", "11");
+        // fresh install：空库直接应用 V1–V12，验证当前最新 schema 的权限字典覆盖与种子可用。
+        // 空库始终代表“新装系统”，必须跑最新迁移；V11 自身的增量仍由 forward/rollback 两个 schema 覆盖。
+        migrate(freshUrl, "root", "12");
         fresh = jdbcClient(freshUrl, "root");
     }
 
@@ -809,12 +810,12 @@ class V11MigrationTest {
                 .isZero();
     }
 
-    /** fresh install：V1–V11 后 RoleDefinitions 的每条权限都能在字典中找到并用于角色创建。 */
+    /** fresh install：V1–V12 后 RoleDefinitions 的每条权限都能在字典中找到并用于角色创建。 */
     @Test
-    @DisplayName("空库 V1–V11 后 RoleDefinitions 覆盖 M04 权限")
+    @DisplayName("空库 V1–V12 后 RoleDefinitions 覆盖 M04 权限")
     void freshDatabase_roleDefinitionsCoverM04Permissions() {
         assertThat(flyway(freshUrl, "root").info().current().getVersion().getVersion())
-                .isEqualTo("11");
+                .isEqualTo("12");
         assertThat(fresh.sql("SELECT purpose FROM model_routing ORDER BY purpose")
                         .query(String.class)
                         .list())
@@ -849,7 +850,7 @@ class V11MigrationTest {
 
     /** fresh install 的权限字典必须覆盖 PermissionCodes 的全部常量，且无多余/重复行。 */
     @Test
-    @DisplayName("空库 V1–V11 的 permission 字典与 PermissionCodes 全集一一对应")
+    @DisplayName("空库 V1–V12 的 permission 字典与 PermissionCodes 全集一一对应")
     void freshDatabase_permissionDictionaryCoversAllPermissionCodes() {
         List<String> seeded = fresh.sql("SELECT code FROM permission ORDER BY code")
                 .query(String.class)

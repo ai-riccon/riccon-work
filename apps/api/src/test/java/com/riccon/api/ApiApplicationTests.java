@@ -24,7 +24,7 @@ class ApiApplicationTests extends ApiIntegrationTestSupport {
         assertThat(client.json(response).path("status").asText()).isEqualTo("UP");
     }
 
-    /** Flyway 在干净 MySQL 上应用 V1–V11，结构与表数量可核对。 */
+    /** Flyway 在干净 MySQL 上应用 V1–V12，结构与表数量可核对。 */
     @Test
     void flywayAppliesAllMigrationsOnCleanDatabase() {
         Long migrations = jdbcClient
@@ -39,9 +39,9 @@ class ApiApplicationTests extends ApiIntegrationTestSupport {
                 .sql("SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema = DATABASE()")
                 .query(Long.class)
                 .single();
-        assertThat(migrations).isEqualTo(11L);
-        // 45 张业务/基础设施表 + flyway_schema_history；V11 新增路由/开关/尝试/配额共 6 张表。
-        assertThat(tables).isEqualTo(46L);
+        assertThat(migrations).isEqualTo(12L);
+        // 48 张业务/基础设施表 + flyway_schema_history；V12 新增 ACL/连接器共 3 张表。
+        assertThat(tables).isEqualTo(49L);
         assertThat(triggers).isEqualTo(2L);
     }
 

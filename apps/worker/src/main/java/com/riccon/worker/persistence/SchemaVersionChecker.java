@@ -43,8 +43,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class SchemaVersionChecker implements ApplicationRunner {
 
-    /** 期望的 schema 最大版本，对应 {@code apps/api/src/main/resources/db/migration/V1..V11}。 */
-    public static final int EXPECTED_SCHEMA_VERSION = 11;
+    /** 期望的 schema 最大版本，对应 {@code apps/api/src/main/resources/db/migration/V1..V12}。 */
+    public static final int EXPECTED_SCHEMA_VERSION = 12;
 
     /** 稳定错误码前缀，启动失败日志只输出版本与错误码，不输出连接串。 */
     public static final String ERROR_CODE = "RICCON-WORKER-001";

@@ -9,6 +9,9 @@ package com.riccon.platform.domain.identity;
  * {@value #PLATFORM_DEPARTMENT_MANAGE}，部门数据范围由空间谓词执行，既有码值语义不变。
  * M04 新增 {@value #PLATFORM_MODEL_MANAGE}、{@value #QUOTA_READ}、{@value #PLATFORM_QUOTA_MANAGE}、
  * {@value #COST_READ}、{@value #PLATFORM_COST_READ}；员工无配额/成本入口。
+ * M05 新增 {@value #KNOWLEDGE_ACL_MANAGE}、{@value #KNOWLEDGE_CONNECTOR_READ} 与
+ * {@value #KNOWLEDGE_CONNECTOR_MANAGE}，只授予 {@code TENANT_ADMIN}；创建人对本人文档的 ACL 修改
+ * 由服务层例外授权，不新增角色（ADR-0023 第 5.6 节）。
  */
 public interface PermissionCodes {
 
@@ -33,6 +36,12 @@ public interface PermissionCodes {
     String KNOWLEDGE_READ = "knowledge.read";
     /** 添加、删除、重建知识库文档。 */
     String KNOWLEDGE_MANAGE = "knowledge.manage";
+    /** 管理任意知识库文档的 ACL 并做管理性读取（M05，仅 TENANT_ADMIN；ADR-0023 第 5.6 节）。 */
+    String KNOWLEDGE_ACL_MANAGE = "knowledge.acl.manage";
+    /** 查看知识库连接器配置与同步状态（M05b，仅 TENANT_ADMIN；ADR-0023 第 5.6 节）。 */
+    String KNOWLEDGE_CONNECTOR_READ = "knowledge.connector.read";
+    /** 创建、修改、删除连接器与触发同步（M05b，仅 TENANT_ADMIN；ADR-0023 第 5.6 节）。 */
+    String KNOWLEDGE_CONNECTOR_MANAGE = "knowledge.connector.manage";
 
     /** 读取报告任务与产物。 */
     String REPORT_READ = "report.read";

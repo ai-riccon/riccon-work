@@ -107,6 +107,34 @@ public interface AuditActions {
     /** 管理员解除 OIDC 绑定并恢复本地密码（M10-B2 写入，B1 定义词汇）。 */
     String USER_OIDC_UNBOUND = "user.oidc.unbound";
 
+    /** 添加知识库文档（M05；details 只写来源、可见范围与对象 ID，不写标题/原文）。 */
+    String KNOWLEDGE_DOCUMENT_ADDED = "knowledge.document.added";
+    /** 软删除知识库文档（M05；reason 只允许 USER/RETENTION/CONNECTOR）。 */
+    String KNOWLEDGE_DOCUMENT_DELETED = "knowledge.document.deleted";
+    /** 修改文档级 ACL（M05；数组最多 50 个 UUID，超出置 truncated）。 */
+    String KNOWLEDGE_ACL_CHANGED = "knowledge.acl.changed";
+    /** 管理员绕过文档 ACL 的管理性读取（M05 U8；不含标题、片段与正文）。 */
+    String KNOWLEDGE_DOCUMENT_ADMIN_READ = "knowledge.document.admin_read";
+
+    /** 创建知识库连接器（M05b）。 */
+    String KNOWLEDGE_CONNECTOR_CREATED = "knowledge.connector.created";
+    /** 修改连接器配置或可见范围（M05b）。 */
+    String KNOWLEDGE_CONNECTOR_UPDATED = "knowledge.connector.updated";
+    /** 软删除连接器（M05b）。 */
+    String KNOWLEDGE_CONNECTOR_DELETED = "knowledge.connector.deleted";
+    /** 连接器状态变化（M05b；ACTIVE/PAUSED/ERROR）。 */
+    String KNOWLEDGE_CONNECTOR_STATUS_CHANGED = "knowledge.connector.status.changed";
+    /** 连接器凭据写入或轮换（M05b；只写 key ID 与掩码）。 */
+    String KNOWLEDGE_CONNECTOR_CREDENTIAL_CHANGED = "knowledge.connector.credential.changed";
+    /** 连接器同步开始（M05b）。 */
+    String KNOWLEDGE_CONNECTOR_SYNC_STARTED = "knowledge.connector.sync.started";
+    /** 连接器同步完成（M05b；只写计数、耗时与 complete）。 */
+    String KNOWLEDGE_CONNECTOR_SYNC_COMPLETED = "knowledge.connector.sync.completed";
+    /** 连接器同步失败（M05b；只写稳定错误码与可重试标记）。 */
+    String KNOWLEDGE_CONNECTOR_SYNC_FAILED = "knowledge.connector.sync.failed";
+    /** 连接器同步重试（M05b；attempt 从 1 开始）。 */
+    String KNOWLEDGE_CONNECTOR_SYNC_RETRIED = "knowledge.connector.sync.retried";
+
     /** 平台管理员创建租户部门（M03，ADR-0018 第 5 节）。 */
     String DEPARTMENT_CREATED = "department.created";
     /** 重命名部门；停用部门不可改名（M03）。 */
