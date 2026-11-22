@@ -211,7 +211,7 @@ M03 不引入跨请求共享缓存；成员移出、部门停用、负责人移�
 | CUSTOM 成员      | `GET` / `POST /workspaces/{id}/members`、`DELETE /workspaces/{id}/members/{userId}`                                                 |
 | 平台部门管理     | `GET` / `POST /api/v1/admin/tenants/{tenantId}/departments`、`PATCH /.../departments/{id}`、`POST /.../disable`、`POST /.../enable` |
 | 平台成员/负责人  | `GET` / `POST /.../departments/{id}/members`、`DELETE /.../members/{userId}`、`PUT /.../manager`                                    |
-| 知识库口径       | 知识库端点不变；界面固定明示“全租户共享，文档级权限在后续版本”；引用打开源文件仍走空间判定                                          |
+| 知识库口径       | 列表/详情/检索/引用/知识库下载按文档 ACL（`TENANT`/`DEPT`/`USERS`，创建人始终可见）；原工作空间文件路径仍只走空间谓词、不放大；界面不再声明“全租户共享”或文档级权限后续提供的过期文案（ADR-0023 §5） |
 
 ### 迁移与回滚
 
@@ -538,7 +538,7 @@ M05 的完整决策见 `docs/adr/ADR-0023-m05-knowledge-depth.md`（`proposed`�
 | 会话表成为登录关键路径                          | 低     | 中（无法登录）          | MySQL 健康检查、会话过期清理、备份包含 `SPRING_SESSION*`                                                                                     |
 | 部门成员关系陈旧或缓存导致移出后仍可访问        | 中     | 高（跨部门泄露）        | 每请求查库；无跨请求缓存；成员移出/部门停用/负责人移交下一次请求生效；`DEPT-007`                                                             |
 | M02 遗留 `TENANT` 空间在 M03 仍全租户可见       | 中     | 中（租户内越权）        | M03 不提供转换；评审列遗留清单；转换按 DEC-0023 归 M09 专用迁移；新空间禁止 `TENANT`（R-11）                                                 |
-| 知识库租户级共享被误读为部门隔离                | 中     | 中（预期错位）          | 界面固定明示；源文件打开/下载仍走空间 404；M05 文档 ACL                                                                                      |
+| 知识库租户级共享被误读为部门隔离                | 中     | 中（预期错位）          | M05 以文档 ACL（`TENANT`/`DEPT`/`USERS` + 创建人）取代租户级共享；界面按文档可见范围显示，不再声明“全租户共享”；源文件原工作空间路径仍走空间 404 |
 | IdP 配置漂移/密钥轮换失败导致企业登录不可用     | 中     | 高（无法登录）          | 配置启动校验；内置账号兜底；滚动重启；`oidc-binding/remove` 恢复本地密码；M09 运行手册                                                       |
 | OIDC token 或 IdP 原始错误泄漏到浏览器/日志     | 低     | 高（账号接管）          | 不存 token；no-op authorized client；失败只映射原因码；`SEC-OIDC-001`；日志脱敏                                                              |
 | 审计导出被审批绕过或跨租户读取                  | 低     | 高（批量泄露）          | 申请人≠审批人；只有申请人下载；平台审批仅元数据；`TEN-028..030`、`SEC-AUDIT-001`                                                             |
