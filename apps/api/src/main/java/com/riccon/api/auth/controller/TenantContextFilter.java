@@ -3,7 +3,9 @@ package com.riccon.api.auth.controller;
 import com.riccon.api.audit.domain.AdditionalAuditActions;
 import com.riccon.api.audit.domain.AuditEvent;
 import com.riccon.api.audit.service.AuditService;
+import com.riccon.api.auth.service.AuthService;
 import com.riccon.api.error.ErrorCodes;
+import com.riccon.api.error.ForbiddenException;
 import com.riccon.api.identity.domain.PlatformTenant;
 import com.riccon.api.identity.domain.RicconPrincipal;
 import com.riccon.api.web.ProblemWriter;
@@ -13,6 +15,7 @@ import com.riccon.platform.common.tenant.TenantId;
 import com.riccon.platform.domain.audit.AuditActorType;
 import com.riccon.platform.domain.audit.AuditOutcome;
 import com.riccon.platform.domain.audit.AuditTargetType;
+import com.riccon.platform.domain.identity.PermissionCodes;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -49,8 +52,17 @@ public class TenantContextFilter extends OncePerRequestFilter {
     /** 查询参数名；与契约一致，仅用于识别伪造。 */
     private static final String FORGED_TENANT_PARAMETER = "tenantId";
 
+    /** 审计拒绝原因：租户标识与主体不一致。 */
+    private static final String TENANT_MISMATCH_REASON = "tenant_mismatch";
+
+    /** 审计拒绝原因：平台成本例外候选主体缺少 platform.cost.read。 */
+    private static final String MISSING_PERMISSION_REASON = "missing_permission";
+
     /** 审计写入。 */
     private final AuditService auditService;
+
+    /** 认证服务；平台成本例外在过滤器内也要校验角色，不能只依赖 controller 拦截器。 */
+    private final AuthService authService;
 
     /** 可注入时钟。 */
     private final Clock clock;
@@ -62,11 +74,14 @@ public class TenantContextFilter extends OncePerRequestFilter {
      * 创建租户上下文过滤器。
      *
      * @param auditService 审计写入
+     * @param authService 认证服务（平台成本例外权限校验）
      * @param clock 可注入时钟
      * @param problemWriter 错误响应写入器
      */
-    public TenantContextFilter(AuditService auditService, Clock clock, ProblemWriter problemWriter) {
+    public TenantContextFilter(
+            AuditService auditService, AuthService authService, Clock clock, ProblemWriter problemWriter) {
         this.auditService = auditService;
+        this.authService = authService;
         this.clock = clock;
         this.problemWriter = problemWriter;
     }
@@ -111,11 +126,17 @@ public class TenantContextFilter extends OncePerRequestFilter {
 
         String forgedTenant =
                 firstPresent(request.getHeader(FORGED_TENANT_HEADER), queryParameter(request, FORGED_TENANT_PARAMETER));
-        if (forgedTenant != null
-                && !forgedTenant.equals(tenantId.value())
-                && !isPlatformCostFilter(request, principal)) {
-            denyMismatchedTenant(request, response, principal, tenantId, forgedTenant);
-            return;
+        if (forgedTenant != null && !forgedTenant.equals(tenantId.value())) {
+            // 只有平台成本端点允许“主体租户与过滤值不一致”；命中候选后还必须具备平台成本权限。
+            if (!isPlatformCostFilter(request, principal)) {
+                denyMismatchedTenant(request, response, principal, tenantId, forgedTenant, TENANT_MISMATCH_REASON);
+                return;
+            }
+            // 若只依赖 PermissionInterceptor，安全过滤器会在角色校验前放行伪造 tenantId，形成纵深缺口。
+            if (!hasPlatformCostPermission(principal)) {
+                denyMismatchedTenant(request, response, principal, tenantId, forgedTenant, MISSING_PERMISSION_REASON);
+                return;
+            }
         }
 
         try (TenantContext.TenantScope ignored = TenantContext.open(tenantId)) {
@@ -129,17 +150,46 @@ public class TenantContextFilter extends OncePerRequestFilter {
      * 平台成本端点的租户过滤参数例外。
      *
      * <p>ADR-0009 §1 把查询参数 {@code tenantId} 视为伪造入口；但 ADR-0022 §2.4 的
-     * {@code GET /api/v1/admin/costs} 明确使用 {@code tenantId} 作为跨租户聚合过滤。这里只对
-     * 平台保留租户的该只读端点放行，权限仍由 {@code platform.cost.read} 强制；租户端点不享受例外。
+     * {@code GET /api/v1/admin/costs} 明确使用 {@code tenantId} 作为跨租户聚合过滤。这里只识别
+     * 平台保留租户的该只读端点；调用方还必须通过 {@link #hasPlatformCostPermission} 校验
+     * {@code platform.cost.read}，租户端点与其他方法不享受例外。
      *
      * @param request HTTP 请求
      * @param principal 已认证主体
-     * @return 是否允许平台成本过滤
+     * @return 是否命中平台成本过滤例外（不代表已授权）
      */
     private static boolean isPlatformCostFilter(HttpServletRequest request, RicconPrincipal principal) {
         return "GET".equals(request.getMethod())
                 && "/api/v1/admin/costs".equals(request.getRequestURI())
                 && PlatformTenant.ID.equals(principal.tenantId());
+    }
+
+    /**
+     * 校验平台成本读取权限，作为过滤器例外的 defense-in-depth。
+     *
+     * <p>与 {@code PermissionInterceptor} 同源调用 {@link AuthService#requirePermission}，每次请求从数据库
+     * 重新加载权限，不信任会话中的旧权限。缺少权限或权限读取异常都返回 {@code false}，由调用方按租户不一致
+     * 拒绝（fail-closed），禁止在角色校验前放行伪造租户标识。
+     *
+     * @param principal 已认证主体
+     * @return 是否具备 {@code platform.cost.read}
+     */
+    private boolean hasPlatformCostPermission(RicconPrincipal principal) {
+        try {
+            authService.requirePermission(principal, PermissionCodes.PLATFORM_COST_READ);
+            return true;
+        } catch (ForbiddenException exception) {
+            // 预期内的无权限：交给统一的租户不一致拒绝路径写审计并返回 403。
+            return false;
+        } catch (RuntimeException exception) {
+            // 权限读取失败同样按无权限处理；异常不能逃逸出安全过滤器链，也不能降级为放行。
+            LOG.error(
+                    "platform cost permission check failed userId={} tenantId={}",
+                    principal.userId(),
+                    principal.tenantId(),
+                    exception);
+            return false;
+        }
     }
 
     /**
@@ -150,6 +200,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
      * @param principal 会话主体
      * @param tenantId 主体所属租户
      * @param forgedTenant 客户端伪造的租户值
+     * @param reason 审计中的拒绝原因
      * @throws IOException 写入失败
      */
     private void denyMismatchedTenant(
@@ -157,7 +208,8 @@ public class TenantContextFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             RicconPrincipal principal,
             TenantId tenantId,
-            String forgedTenant)
+            String forgedTenant,
+            String reason)
             throws IOException {
         String attempted = forgedTenant.length() > 200 ? forgedTenant.substring(0, 200) : forgedTenant;
         String targetId = forgedTenant.length() <= 64 ? forgedTenant : null;
@@ -176,7 +228,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
                             RequestContext.traceId(request),
                             RequestContext.requestId(request),
                             request.getRemoteAddr(),
-                            Map.of("attemptedTenant", attempted, "reason", "tenant_mismatch"))));
+                            Map.of("attemptedTenant", attempted, "reason", reason))));
         } catch (RuntimeException exception) {
             LOG.error(
                     "tenant access denied audit failed traceId={} tenantId={}",

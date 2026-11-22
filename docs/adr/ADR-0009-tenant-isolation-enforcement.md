@@ -168,3 +168,17 @@ grep -E 'skipped="[1-9]|failures="[1-9]|errors="[1-9]' apps/api/target/surefire-
 - 2026-11-18：M03 在租户边界内增加部门数据范围，强制点仍是本 ADR 第 3 节的 `TenantJdbc` 与第 4 节的复合键；新增空间访问谓词见 ADR-0018。
 - `TEN` 套件在 M03 扩展到 `TEN-021..027`（部门/空间/成员跨租户，027 为平台部门端点），编号连续、不重排；新增 `DEPT-001..010`，使用 `@Tag("dept-isolation")`，与 `tenant-isolation` 同套件运行。
 - 平台管理员跨租户查看租户业务/审计明细仍不在 M03 范围（DEC-0013）；本 ADR 第 1 节的平台/租户角色分离不变。
+
+## 平台成本端点例外（M20/TASK-0142）
+
+本小节记录 ADR-0022 §2.4 平台成本过滤的**唯一窄例外**，不改变第 1 节的默认拒绝原则：除下表规则外，`X-Tenant-Id` 与查询参数 `tenantId` 与主体不一致时仍一律拒绝并写审计。
+
+| 项         | 规则                                                                                                                                                                                                                                                                                                  |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 路径与方法 | 仅 `GET /api/v1/admin/costs`；按 request URI 精确匹配，trailing slash、子路径与其他方法不享受例外。                                                                                                                                                                                                   |
+| 主体       | 仅 `platform` 保留租户中具备 `platform.cost.read` 的账号。                                                                                                                                                                                                                                            |
+| 权限强制点 | `TenantContextFilter` 在放行“主体租户 ≠ 过滤值”前调用 `AuthService.requirePermission(platform.cost.read)`；`PermissionInterceptor` 在 controller 前再次强制同一权限（每次请求从数据库加载，双保险）。缺少权限或权限读取失败都 fail-closed，返回 403 `RICCON-AUTH-403` 并写审计，不放行到 controller。 |
+| 头处理     | `X-Tenant-Id` 只用于触发例外判断，**不参与过滤**；过滤值只来自查询参数 `tenantId`，头不会改变聚合结果，也不能作为授权依据。                                                                                                                                                                           |
+| 拒绝行为   | 平台非管理员命中例外候选 → 403 `RICCON-AUTH-403` + 审计 `tenant.access.denied`（`attemptedTenant`、`reason=missing_permission`）；其他路径/方法/主体的不一致值 → `reason=tenant_mismatch`；响应均不含租户、金额或明细。                                                                               |
+| 负向测试   | `apps/api/src/test/java/com/riccon/api/admin/cost/PlatformCostTenantFilterTest.java`（TASK-0142）：平台非管理员带查询参数/请求头均 403 且无数据并写审计；租户端点伪造查询参数/请求头 403 并审计；平台管理员 POST 与 trailing slash 403；平台管理员查询参数过滤生效、请求头不改变结果。                |
+| 残余       | 例外仍信任 `platform` 租户代码与精确 URI；新增平台成本路径或修改路由必须同步更新过滤器、ADR-0022 §2.4 与本测试。过滤器与拦截器各加载一次权限，每请求多一次只读查询，属可接受成本。                                                                                                                    |
