@@ -7,11 +7,13 @@
   "status": "planned",
   "write_scope": [
     "scripts/ops/ocr-check",
-    "docs/RUNBOOK.md"
+    "docs/RUNBOOK.md",
+    "scripts/ops/restore-drill.mjs"
   ],
   "acceptance": [
     "scripts/ops/ocr-check 在 --network none 只跑 OcrCli+fixture，非空文本+置信度，不启 MySQL/OpenSearch",
-    "RUNBOOK 记录 OCR 启停/语言/回滚与 gate 证据命令"
+    "RUNBOOK 记录 OCR 启停/语言/回滚与 gate 证据命令",
+    "scripts/ops/restore-drill.mjs 以 schema 12（或参数化）判断源/恢复库，RUNBOOK 迁移与演练步骤更新到 V12；脚本在一次性容器可执行"
   ],
   "evidence": [],
   "tools_used": [],

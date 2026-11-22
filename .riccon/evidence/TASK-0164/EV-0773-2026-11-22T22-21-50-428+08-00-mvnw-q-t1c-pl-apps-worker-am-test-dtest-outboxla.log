@@ -1,0 +1,80 @@
+# command: ./mvnw -q -T1C -pl apps/worker -am test -Dtest='OutboxLane*Test,OutboxLeaseHeartbeatTest,ParseDomainModelTest,SchemaVersionCheckerTest' -Dsurefire.failIfNoSpecifiedTests=false
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-22T22:20:54.532+08:00
+# finished_at: 2026-11-22T22:21:49.513+08:00
+# duration_ms: 54980
+# exit_code: 0
+
+# --- stdout ---
+22:21:02.085 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.outbox.OutboxLaneClaimIntegrationTest]: OutboxLaneClaimIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+22:21:02.286 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.outbox.OutboxLaneClaimIntegrationTest
+22:21:02.445 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.outbox.OutboxLaneClaimIntegrationTest]: OutboxLaneClaimIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+22:21:02.445 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+22:21:02.449 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.outbox.OutboxLaneClaimIntegrationTest
+22:21:02.584 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+22:21:02.589 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+22:21:02.627 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+22:21:03.912 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+22:21:03.913 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+22:21:03.935 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+22:21:04.120 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+22:21:04.516 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: 8af845c657295a7faf2161f4992503c24e81e8752eef8b040e630f24496b9c1f
+22:21:04.944 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT0.824652S
+22:21:04.954 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+22:21:04.954 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+22:21:04.955 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+22:21:04.956 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+22:21:05.042 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: 5a6393d54424fda7cb77efe42db33d219b5f1c6d0cb6e9eb3551eb71fb5dcd8a
+22:21:05.317 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:59136/riccon using query 'SELECT 1'
+22:21:13.586 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT8.630045S
+22:21:13.586 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:59136/riccon)
+22:21:13.588 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Creating container for image: opensearchproject/opensearch:3.9.0
+22:21:13.645 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 is starting: 70a397e86c6562171fc40f11ac79838c56f974bfb66927ea6fd655694c1d56b4
+22:21:13.875 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /kind_jackson: Waiting for 180 seconds for URL: http://localhost:59252/_cluster/health?wait_for_status=yellow&timeout=120s (where port 59252 maps to container port 9200)
+22:21:37.290 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 started in PT23.701801S
+22:21:37.291 [main] INFO tc.rustfs/rustfs:1.0.6 -- Creating container for image: rustfs/rustfs:1.0.6
+22:21:37.424 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 is starting: 565be6f5f2e926d9f1bd1a61fb39afa68556228e232d1bcb9d1c5256213569f4
+22:21:37.794 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /epic_margulis: Waiting for 60 seconds for URL: http://localhost:59386/health (where port 59386 maps to container port 9000)
+22:21:38.300 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 started in PT1.009215S
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-22T22:21:42.479+08:00  INFO 3485 --- [riccon-worker] [           main] c.r.w.o.OutboxLaneClaimIntegrationTest   : Starting OutboxLaneClaimIntegrationTest using Java 21.0.13 with PID 3485 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/worker)
+2026-11-22T22:21:42.481+08:00  INFO 3485 --- [riccon-worker] [           main] c.r.w.o.OutboxLaneClaimIntegrationTest   : The following 1 profile is active: "test"
+2026-11-22T22:21:44.625+08:00  INFO 3485 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-22T22:21:46.029+08:00  INFO 3485 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-22T22:21:46.030+08:00  INFO 3485 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-22T22:21:46.047+08:00  INFO 3485 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-22T22:21:46.060+08:00  INFO 3485 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 29 ms
+2026-11-22T22:21:46.218+08:00  INFO 3485 --- [riccon-worker] [           main] c.r.w.o.OutboxLaneClaimIntegrationTest   : Started OutboxLaneClaimIntegrationTest in 4.24 seconds (process running for 45.716)
+2026-11-22T22:21:46.311+08:00  INFO 3485 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-22T22:21:46.342+08:00  INFO 3485 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-22T22:21:46.407+08:00  INFO 3485 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=12 actual=12
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-22T22:21:48.344+08:00  WARN 3485 --- [riccon-worker] [lease-heartbeat] c.r.w.run.service.OutboxLeaseHeartbeat   : outbox.processing_timeout eventId=00000000-0000-7000-8000-000000000001 tenantId=tenant-heartbeat leaseOwner=owner maxProcessing=PT0.1S
+2026-11-22T22:21:48.406+08:00  WARN 3485 --- [riccon-worker] [lease-heartbeat] c.r.w.run.service.OutboxLeaseHeartbeat   : outbox.lease_lost eventId=00000000-0000-7000-8000-000000000001 tenantId=tenant-heartbeat leaseOwner=owner action=renew error=IllegalStateException
+2026-11-22T22:21:48.466+08:00  WARN 3485 --- [riccon-worker] [lease-heartbeat] c.r.w.run.service.OutboxLeaseHeartbeat   : outbox.lease_lost eventId=00000000-0000-7000-8000-000000000001 tenantId=tenant-heartbeat leaseOwner=owner action=renew
+2026-11-22T22:21:48.722+08:00  WARN 3485 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : RICCON-WORKER-002 schema validation disabled; worker is running in rollback window, expected schema version=12
+2026-11-22T22:21:48.868+08:00  INFO 3485 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=12 actual=12
+2026-11-22T22:21:48.873+08:00  INFO 3485 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=12 actual=12
+2026-11-22T22:21:49.001+08:00  INFO 3485 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=12 actual=12
+
+# --- stderr ---
+
