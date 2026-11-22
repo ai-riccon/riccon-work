@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0166",
+  "module_id": "M05",
+  "title": "M05-B3 ACL/delete/reindex/流式下载/admin_read/保留",
+  "owner": "riccon/builder-kb-acl",
+  "status": "planned",
+  "write_scope": [
+    "apps/api/src/main/java/com/riccon/api/knowledge/**",
+    "apps/api/src/main/java/com/riccon/api/file/storage/**",
+    "apps/worker/src/main/java/com/riccon/worker/agent/persistence/AgentContextJdbc.java"
+  ],
+  "acceptance": [
+    "ACL TENANT/DEPT/USERS、创建人隐式可见、403/404 矩阵、U8 admin_read 审计",
+    "DELETE/reindex 真实实现；流式下载每请求 ACL、不暴露 key；保留任务覆盖 INDEXED/INDEXING/FAILED/PENDING",
+    "越权/审计/保留测试通过；无缓存残留"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-22T19:25:24.308+08:00",
+  "updated_at": "2026-11-22T19:25:24.308+08:00"
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0168",
+  "module_id": "M05",
+  "title": "M05-B5 OCR/扫描 PDF/OcrCli/资源控制",
+  "owner": "riccon/builder-kb-ocr",
+  "status": "planned",
+  "write_scope": [
+    "apps/worker/src/main/java/com/riccon/worker/ocr/**",
+    "apps/worker/src/main/java/com/riccon/worker/parse/service/ImageDocumentParser.java",
+    "apps/worker/src/main/java/com/riccon/worker/parse/service/JpegDocumentParser.java",
+    "apps/worker/src/main/java/com/riccon/worker/parse/service/PdfDocumentParser.java",
+    "apps/worker/src/main/java/com/riccon/worker/parse/service/FileContentExtractor.java",
+    "apps/worker/src/main/java/com/riccon/worker/parse/service/TextChunker.java"
+  ],
+  "acceptance": [
+    "Tesseract SPI + OcrCli；bbox/置信度/EXIF/扫描 PDF；像素/页/超时上限",
+    "测试 profile 默认关闭；仅生产启用且原生库缺失才启动失败；IT-KB-104/105/114/116",
+    "低置信/部分失败/重试幂等；零出网由 O1b 复核"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-22T19:25:24.836+08:00",
+  "updated_at": "2026-11-22T19:25:24.836+08:00"
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0164",
+  "module_id": "M05",
+  "title": "M05-B1 基础模型/V12/outbox 双通道/审计白名单",
+  "owner": "riccon/builder-kb-core",
+  "status": "planned",
+  "write_scope": [
+    "platform/platform-domain/**",
+    "apps/api/src/main/resources/db/migration/V12*",
+    "apps/worker/src/main/java/com/riccon/worker/run/**",
+    "apps/worker/src/main/java/com/riccon/worker/parse/domain/**",
+    "apps/worker/src/main/resources/application.yml",
+    "apps/api/src/main/java/com/riccon/api/identity/domain/RoleDefinitions.java",
+    "apps/api/src/main/java/com/riccon/api/audit/domain/AuditDetailsPolicy.java",
+    "apps/api/src/main/java/com/riccon/api/config/**"
+  ],
+  "acceptance": [
+    "V12 additive 迁移与回滚 SQL；worker schema 期望 12",
+    "outbox default/heavy 双通道、租约续期、配置键、ACL 灰度 WARN/指标",
+    "审计 details action-specific 数组/可空键/枚举；迁移与单测通过"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-22T19:25:23.786+08:00",
+  "updated_at": "2026-11-22T19:25:23.786+08:00"
+}
