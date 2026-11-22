@@ -1,0 +1,403 @@
+# command: ./mvnw -T1C -pl apps/worker -am test -Dtest='ModelFirstTokenTest,ModelFirstTokenHandlerTest,ModelCostSnapshotIntegrationTest,ReportArtifactIntegrationTest,ChatStreamIntegrationTest' -Dsurefire.failIfNoSpecifiedTests=false
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-22T13:19:46.228+08:00
+# finished_at: 2026-11-22T13:20:45.394+08:00
+# duration_ms: 59165
+# exit_code: 0
+
+# --- stdout ---
+[INFO] Scanning for projects...
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] riccon-parent                                                      [pom]
+[INFO] riccon-platform-common                                             [jar]
+[INFO] riccon-platform-domain                                             [jar]
+[INFO] riccon-worker                                                      [jar]
+[INFO] 
+[INFO] Using the MultiThreadedBuilder implementation with a thread count of 12
+[INFO] 
+[INFO] ----------------------< com.riccon:riccon-parent >----------------------
+[INFO] Building riccon-parent 0.1.0-SNAPSHOT                              [1/4]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (enforce-toolchain) @ riccon-parent ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.version.RequireJavaVersion passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.version.RequireMavenVersion passed
+[INFO] 
+[INFO] --- jacoco:0.8.16:prepare-agent (prepare-agent) @ riccon-parent ---
+[INFO] Loaded 64 auto-discovered prefixes for remote repository apache.snapshots (prefixes-apache.snapshots.txt)
+[INFO] argLine set to -javaagent:/Users/ricky/.m2/repository/org/jacoco/org.jacoco.agent/0.8.16/org.jacoco.agent-0.8.16-runtime.jar=destfile=/Users/ricky/Documents/projects/riccon-work/target/jacoco.exec
+[INFO] 
+[INFO] 
+[INFO] -----------------< com.riccon:riccon-platform-common >------------------
+[INFO] -----------------< com.riccon:riccon-platform-domain >------------------
+[INFO] Building riccon-platform-domain 0.1.0-SNAPSHOT                     [3/4]
+[INFO]   from platform/platform-domain/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] Building riccon-platform-common 0.1.0-SNAPSHOT                     [2/4]
+[INFO]   from platform/platform-common/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (enforce-toolchain) @ riccon-platform-domain ---
+[INFO] --- enforcer:3.7.0:enforce (enforce-toolchain) @ riccon-platform-common ---
+[INFO] 
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (banned-platform-domain-dependencies) @ riccon-platform-domain ---
+[INFO] --- enforcer:3.7.0:enforce (banned-agentscope) @ riccon-platform-common ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] 
+[INFO] --- jacoco:0.8.16:prepare-agent (prepare-agent) @ riccon-platform-common ---
+[INFO] --- jacoco:0.8.16:prepare-agent (prepare-agent) @ riccon-platform-domain ---
+[INFO] argLine set to -javaagent:/Users/ricky/.m2/repository/org/jacoco/org.jacoco.agent/0.8.16/org.jacoco.agent-0.8.16-runtime.jar=destfile=/Users/ricky/Documents/projects/riccon-work/platform/platform-domain/target/jacoco.exec
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ riccon-platform-domain ---
+[INFO] argLine set to -javaagent:/Users/ricky/.m2/repository/org/jacoco/org.jacoco.agent/0.8.16/org.jacoco.agent-0.8.16-runtime.jar=destfile=/Users/ricky/Documents/projects/riccon-work/platform/platform-common/target/jacoco.exec
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ riccon-platform-common ---
+[INFO] skip non existing resourceDirectory /Users/ricky/Documents/projects/riccon-work/platform/platform-domain/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/ricky/Documents/projects/riccon-work/platform/platform-domain/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/ricky/Documents/projects/riccon-work/platform/platform-common/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/ricky/Documents/projects/riccon-work/platform/platform-common/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ riccon-platform-domain ---
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ riccon-platform-common ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ riccon-platform-common ---
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ riccon-platform-domain ---
+[INFO] skip non existing resourceDirectory /Users/ricky/Documents/projects/riccon-work/platform/platform-common/src/test/resources
+[INFO] skip non existing resourceDirectory /Users/ricky/Documents/projects/riccon-work/platform/platform-domain/src/test/resources
+[INFO] 
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ riccon-platform-common ---
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ riccon-platform-domain ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ riccon-platform-common ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ riccon-platform-domain ---
+[INFO] 
+[INFO] ----------------------< com.riccon:riccon-worker >----------------------
+[INFO] Building riccon-worker 0.1.0-SNAPSHOT                              [4/4]
+[INFO]   from apps/worker/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (enforce-toolchain) @ riccon-worker ---
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (banned-worker-orm) @ riccon-worker ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- jacoco:0.8.16:prepare-agent (prepare-agent) @ riccon-worker ---
+[INFO] argLine set to -javaagent:/Users/ricky/.m2/repository/org/jacoco/org.jacoco.agent/0.8.16/org.jacoco.agent-0.8.16-runtime.jar=destfile=/Users/ricky/Documents/projects/riccon-work/apps/worker/target/jacoco.exec
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ riccon-worker ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ riccon-worker ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ riccon-worker ---
+[INFO] Copying 1 resource from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ riccon-worker ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ riccon-worker ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.riccon.worker.research.ReportArtifactIntegrationTest
+13:19:53.346 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.research.ReportArtifactIntegrationTest]: ReportArtifactIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+13:19:53.625 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.research.ReportArtifactIntegrationTest
+13:19:53.797 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.research.ReportArtifactIntegrationTest]: ReportArtifactIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+13:19:53.798 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+13:19:53.802 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.research.ReportArtifactIntegrationTest
+13:19:53.928 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+13:19:53.933 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+13:19:53.966 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+13:19:55.133 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+13:19:55.135 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+13:19:55.162 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+13:19:55.355 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+13:19:55.724 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: acd51cd545c458a33daed1dd10a122b0ba7d4d02c27a563795e14fb203d84f71
+13:19:56.081 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT0.725661S
+13:19:56.088 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+13:19:56.088 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+13:19:56.089 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+13:19:56.089 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+13:19:56.163 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: 62ca5a25bdf754a7c829d284f1bf5e3d8034f85911c597a4646158d393ac96f3
+13:19:56.394 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:58921/riccon using query 'SELECT 1'
+13:20:04.843 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT8.753147S
+13:20:04.843 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:58921/riccon)
+13:20:04.846 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Creating container for image: opensearchproject/opensearch:3.9.0
+13:20:04.900 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 is starting: d934df04ce15d2e37f1502c0c4cfee3b202986059e87824483b342c0bb73da83
+13:20:05.126 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /great_gates: Waiting for 180 seconds for URL: http://localhost:59026/_cluster/health?wait_for_status=yellow&timeout=120s (where port 59026 maps to container port 9200)
+13:20:24.416 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 started in PT19.569699S
+13:20:24.416 [main] INFO tc.rustfs/rustfs:1.0.6 -- Creating container for image: rustfs/rustfs:1.0.6
+13:20:24.545 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 is starting: 0f9b74920b590bcf95cc0122e70c6430e28fac8487a639545aa7b17ba5244ac3
+13:20:24.860 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /elastic_aryabhata: Waiting for 60 seconds for URL: http://localhost:59156/health (where port 59156 maps to container port 9000)
+13:20:25.418 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 started in PT1.002105S
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-22T13:20:29.562+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.ReportArtifactIntegrationTest    : Starting ReportArtifactIntegrationTest using Java 21.0.13 with PID 28758 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/worker)
+2026-11-22T13:20:29.563+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.ReportArtifactIntegrationTest    : The following 1 profile is active: "test"
+2026-11-22T13:20:31.385+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-22T13:20:32.691+08:00  INFO 28758 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-22T13:20:32.691+08:00  INFO 28758 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-22T13:20:32.706+08:00  INFO 28758 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-22T13:20:32.720+08:00  INFO 28758 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 29 ms
+2026-11-22T13:20:32.873+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.ReportArtifactIntegrationTest    : Started ReportArtifactIntegrationTest in 3.782 seconds (process running for 41.145)
+2026-11-22T13:20:32.941+08:00  INFO 28758 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-22T13:20:32.972+08:00  INFO 28758 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-22T13:20:33.007+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=11 actual=11
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-22T13:20:34.134+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:34.136+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-22T13:20:34.579+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-a-f25e109fd3 runId=01a201b2-f0a1-7745-b049-8bd62f413119 approvalId=01a201b2-f2d9-704f-a10e-8bb2f7701220 toolId=01a201b2-f080-7760-aff8-daa744ee0f98
+2026-11-22T13:20:34.585+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b2-f0ba-739b-8d7b-76f4f13d2bd9 tenantId=tenant-a-f25e109fd3 runId=01a201b2-f0a1-7745-b049-8bd62f413119 attempts=1
+2026-11-22T13:20:34.585+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a201b2-f0ba-739b-8d7b-76f4f13d2bd9 tenantId=tenant-a-f25e109fd3 runId=01a201b2-f0a1-7745-b049-8bd62f413119 reason=WAITING_APPROVAL
+2026-11-22T13:20:34.762+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.service.AgentRunResumeHandler    : research.run.approval_rejected tenantId=tenant-a-f25e109fd3 runId=01a201b2-f0a1-7745-b049-8bd62f413119 approvalId=01a201b2-f2d9-704f-a10e-8bb2f7701220 decision=REJECTED
+2026-11-22T13:20:34.768+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b2-f38c-7f8f-a2b8-705035792eb1 tenantId=tenant-a-f25e109fd3 runId=01a201b2-f0a1-7745-b049-8bd62f413119 attempts=1
+2026-11-22T13:20:34.946+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:34.946+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-22T13:20:35.013+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-a-2631642a36 runId=01a201b2-f43e-726f-b25e-3fe3e0af7a01 approvalId=01a201b2-f4a4-7ba8-bbe9-42d17b472d51 toolId=01a201b2-f422-7b31-bbcc-06f2e78b8c4f
+2026-11-22T13:20:35.018+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b2-f442-7f31-919e-e03727871e70 tenantId=tenant-a-2631642a36 runId=01a201b2-f43e-726f-b25e-3fe3e0af7a01 attempts=1
+2026-11-22T13:20:35.019+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a201b2-f442-7f31-919e-e03727871e70 tenantId=tenant-a-2631642a36 runId=01a201b2-f43e-726f-b25e-3fe3e0af7a01 reason=WAITING_APPROVAL
+2026-11-22T13:20:35.180+08:00  INFO 28758 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Initializing MCP sync client: riccon-builtin
+2026-11-22T13:20:35.184+08:00  INFO 28758 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server starting.
+2026-11-22T13:20:35.193+08:00  INFO 28758 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server started
+2026-11-22T13:20:35.557+08:00  INFO 28758 --- [riccon-worker] [ool-10-thread-1] i.m.client.LifecycleInitializer          : Server response with Protocol: 2024-11-05, Capabilities: ServerCapabilities[completions=null, experimental=null, logging=null, prompts=null, resources=null, tools=ToolCapabilities[listChanged=null]], Info: Implementation[name=riccon-mcp-mock, title=null, version=1.0.0] and Instructions null
+2026-11-22T13:20:35.618+08:00  INFO 28758 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Closing MCP sync client: riccon-builtin
+2026-11-22T13:20:35.735+08:00  INFO 28758 --- [riccon-worker] [onPool-worker-1] i.m.c.transport.StdioClientTransport     : MCP server process stopped
+2026-11-22T13:20:35.753+08:00  INFO 28758 --- [riccon-worker] [           main] c.riccon.worker.mcp.service.McpGateway   : mcp.tool.completed tenantId=tenant-a-2631642a36 runId=01a201b2-f43e-726f-b25e-3fe3e0af7a01 toolId=01a201b2-f422-7b31-bbcc-06f2e78b8c4f durationMs=681 resultBytes=17
+2026-11-22T13:20:35.785+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:35.795+08:00  WARN 28758 --- [riccon-worker] [oundedElastic-2] c.r.w.m.s.OpenAiCompatibleChatModel      : model.request.failed modelId=01a201b2-f429-7972-978a-e0e9cccd5fba status=500 errorCode=RICCON-MODEL-503
+2026-11-22T13:20:35.803+08:00  WARN 28758 --- [riccon-worker] [oundedElastic-1] c.r.w.model.service.FailoverChatModel    : model.attempt.failed purpose=REPORT modelId=01a201b2-f429-7972-978a-e0e9cccd5fba providerCode=openai-compatible-01a201b2f4297992abc530df20bb4970 attempt=1 errorCode=RICCON-MODEL-503 emitted=false
+2026-11-22T13:20:35.999+08:00  WARN 28758 --- [riccon-worker] [oundedElastic-2] c.r.w.m.s.OpenAiCompatibleChatModel      : model.request.failed modelId=01a201b2-f429-7972-978a-e0e9cccd5fba status=500 errorCode=RICCON-MODEL-503
+2026-11-22T13:20:36.004+08:00  WARN 28758 --- [riccon-worker] [oundedElastic-1] c.r.w.model.service.FailoverChatModel    : model.attempt.failed purpose=REPORT modelId=01a201b2-f429-7972-978a-e0e9cccd5fba providerCode=openai-compatible-01a201b2f4297992abc530df20bb4970 attempt=2 errorCode=RICCON-MODEL-503 emitted=false
+2026-11-22T13:20:36.035+08:00  WARN 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a201b2-f4cf-7bcd-b9a9-d781369cecbd tenantId=tenant-a-2631642a36 runId=01a201b2-f43e-726f-b25e-3fe3e0af7a01 attempts=1 reason=RICCON-MODEL-503: 模型服务暂不可用，请稍后重试。
+2026-11-22T13:20:36.090+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:36.090+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-22T13:20:36.143+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-a-2631642a36 runId=01a201b2-f43e-726f-b25e-3fe3e0af7a01 approvalId=01a201b2-f917-7d2b-b206-8b983e50f62f toolId=01a201b2-f422-7b31-bbcc-06f2e78b8c4f
+2026-11-22T13:20:36.148+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b2-f8cb-7021-bdad-26fc2973d4a9 tenantId=tenant-a-2631642a36 runId=01a201b2-f43e-726f-b25e-3fe3e0af7a01 attempts=1
+2026-11-22T13:20:36.148+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a201b2-f8cb-7021-bdad-26fc2973d4a9 tenantId=tenant-a-2631642a36 runId=01a201b2-f43e-726f-b25e-3fe3e0af7a01 reason=WAITING_APPROVAL
+2026-11-22T13:20:36.190+08:00  INFO 28758 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Initializing MCP sync client: riccon-builtin
+2026-11-22T13:20:36.190+08:00  INFO 28758 --- [riccon-worker] [oundedElastic-1] i.m.c.transport.StdioClientTransport     : MCP server starting.
+2026-11-22T13:20:36.194+08:00  INFO 28758 --- [riccon-worker] [oundedElastic-1] i.m.c.transport.StdioClientTransport     : MCP server started
+2026-11-22T13:20:36.465+08:00  INFO 28758 --- [riccon-worker] [ool-14-thread-1] i.m.client.LifecycleInitializer          : Server response with Protocol: 2024-11-05, Capabilities: ServerCapabilities[completions=null, experimental=null, logging=null, prompts=null, resources=null, tools=ToolCapabilities[listChanged=null]], Info: Implementation[name=riccon-mcp-mock, title=null, version=1.0.0] and Instructions null
+2026-11-22T13:20:36.469+08:00  INFO 28758 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Closing MCP sync client: riccon-builtin
+2026-11-22T13:20:36.582+08:00  INFO 28758 --- [riccon-worker] [onPool-worker-1] i.m.c.transport.StdioClientTransport     : MCP server process stopped
+2026-11-22T13:20:36.590+08:00  INFO 28758 --- [riccon-worker] [           main] c.riccon.worker.mcp.service.McpGateway   : mcp.tool.completed tenantId=tenant-a-2631642a36 runId=01a201b2-f43e-726f-b25e-3fe3e0af7a01 toolId=01a201b2-f422-7b31-bbcc-06f2e78b8c4f durationMs=396 resultBytes=17
+2026-11-22T13:20:36.622+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:36.745+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.service.ReportArtifactService    : research.artifact.saved tenantId=tenant-a-2631642a36 taskId=01a201b2-f43b-7d54-bc7f-7800e35d7fb6 artifactId=01a201b2-fb78-712f-806f-9f53abc50cfe version=1 citations=2
+2026-11-22T13:20:36.758+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.service.AgentRunResumeHandler    : research.run.generation_completed tenantId=tenant-a-2631642a36 runId=01a201b2-f43e-726f-b25e-3fe3e0af7a01 chars=14 artifactId=01a201b2-fb78-712f-806f-9f53abc50cfe version=1
+2026-11-22T13:20:36.768+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b2-f93d-78a5-8bac-9ac546740eac tenantId=tenant-a-2631642a36 runId=01a201b2-f43e-726f-b25e-3fe3e0af7a01 attempts=1
+2026-11-22T13:20:36.903+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:36.903+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-22T13:20:36.956+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-a-714d2e2503 runId=01a201b2-fbf1-7f19-a9cd-0eb6b6c2d5dd approvalId=01a201b2-fc42-76b9-98bc-5ab9570d72f8 toolId=01a201b2-fbda-7d63-b7c1-e50661781bac
+2026-11-22T13:20:36.960+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b2-fbf4-7d6e-850e-03d5f37aa359 tenantId=tenant-a-714d2e2503 runId=01a201b2-fbf1-7f19-a9cd-0eb6b6c2d5dd attempts=1
+2026-11-22T13:20:36.960+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a201b2-fbf4-7d6e-850e-03d5f37aa359 tenantId=tenant-a-714d2e2503 runId=01a201b2-fbf1-7f19-a9cd-0eb6b6c2d5dd reason=WAITING_APPROVAL
+2026-11-22T13:20:36.996+08:00  INFO 28758 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Initializing MCP sync client: riccon-builtin
+2026-11-22T13:20:36.996+08:00  INFO 28758 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server starting.
+2026-11-22T13:20:37.001+08:00  INFO 28758 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server started
+2026-11-22T13:20:37.276+08:00  INFO 28758 --- [riccon-worker] [ool-18-thread-1] i.m.client.LifecycleInitializer          : Server response with Protocol: 2024-11-05, Capabilities: ServerCapabilities[completions=null, experimental=null, logging=null, prompts=null, resources=null, tools=ToolCapabilities[listChanged=null]], Info: Implementation[name=riccon-mcp-mock, title=null, version=1.0.0] and Instructions null
+2026-11-22T13:20:37.281+08:00  INFO 28758 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Closing MCP sync client: riccon-builtin
+2026-11-22T13:20:37.394+08:00  INFO 28758 --- [riccon-worker] [onPool-worker-1] i.m.c.transport.StdioClientTransport     : MCP server process stopped
+2026-11-22T13:20:37.403+08:00  INFO 28758 --- [riccon-worker] [           main] c.riccon.worker.mcp.service.McpGateway   : mcp.tool.completed tenantId=tenant-a-714d2e2503 runId=01a201b2-fbf1-7f19-a9cd-0eb6b6c2d5dd toolId=01a201b2-fbda-7d63-b7c1-e50661781bac durationMs=402 resultBytes=17
+2026-11-22T13:20:37.432+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:37.485+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.service.ReportArtifactService    : research.artifact.saved tenantId=tenant-a-714d2e2503 taskId=01a201b2-fbef-7a88-abb3-234f2c624689 artifactId=01a201b2-fe62-769f-a0ac-48353569dfb5 version=1 citations=2
+2026-11-22T13:20:37.496+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.service.AgentRunResumeHandler    : research.run.generation_completed tenantId=tenant-a-714d2e2503 runId=01a201b2-fbf1-7f19-a9cd-0eb6b6c2d5dd chars=14 artifactId=01a201b2-fe62-769f-a0ac-48353569dfb5 version=1
+2026-11-22T13:20:37.505+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b2-fc64-7aba-a8b2-58b3a42baf34 tenantId=tenant-a-714d2e2503 runId=01a201b2-fbf1-7f19-a9cd-0eb6b6c2d5dd attempts=1
+2026-11-22T13:20:37.725+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:37.725+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-22T13:20:37.782+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-a-5633a548f2 runId=01a201b2-ff25-7893-bcca-852ec4afa8d9 approvalId=01a201b2-ff79-77a1-83a4-f9f51574be40 toolId=01a201b2-ff0d-7d2e-958c-b296a9e06b09
+2026-11-22T13:20:37.786+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b2-ff28-7079-b004-0f22e94008f9 tenantId=tenant-a-5633a548f2 runId=01a201b2-ff25-7893-bcca-852ec4afa8d9 attempts=1
+2026-11-22T13:20:37.786+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a201b2-ff28-7079-b004-0f22e94008f9 tenantId=tenant-a-5633a548f2 runId=01a201b2-ff25-7893-bcca-852ec4afa8d9 reason=WAITING_APPROVAL
+2026-11-22T13:20:37.822+08:00  INFO 28758 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Initializing MCP sync client: riccon-builtin
+2026-11-22T13:20:37.823+08:00  INFO 28758 --- [riccon-worker] [oundedElastic-1] i.m.c.transport.StdioClientTransport     : MCP server starting.
+2026-11-22T13:20:37.829+08:00  INFO 28758 --- [riccon-worker] [oundedElastic-1] i.m.c.transport.StdioClientTransport     : MCP server started
+2026-11-22T13:20:38.117+08:00  INFO 28758 --- [riccon-worker] [ool-22-thread-1] i.m.client.LifecycleInitializer          : Server response with Protocol: 2024-11-05, Capabilities: ServerCapabilities[completions=null, experimental=null, logging=null, prompts=null, resources=null, tools=ToolCapabilities[listChanged=null]], Info: Implementation[name=riccon-mcp-mock, title=null, version=1.0.0] and Instructions null
+2026-11-22T13:20:38.123+08:00  INFO 28758 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Closing MCP sync client: riccon-builtin
+2026-11-22T13:20:38.241+08:00  INFO 28758 --- [riccon-worker] [onPool-worker-1] i.m.c.transport.StdioClientTransport     : MCP server process stopped
+2026-11-22T13:20:38.252+08:00  INFO 28758 --- [riccon-worker] [           main] c.riccon.worker.mcp.service.McpGateway   : mcp.tool.completed tenantId=tenant-a-5633a548f2 runId=01a201b2-ff25-7893-bcca-852ec4afa8d9 toolId=01a201b2-ff0d-7d2e-958c-b296a9e06b09 durationMs=422 resultBytes=17
+2026-11-22T13:20:38.283+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:38.330+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.service.ReportArtifactService    : research.artifact.saved tenantId=tenant-a-5633a548f2 taskId=01a201b2-ff22-7aa5-bebc-6bea9d8276b8 artifactId=01a201b3-01af-7760-95af-6b8ecdd872da version=1 citations=2
+2026-11-22T13:20:38.339+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.service.AgentRunResumeHandler    : research.run.generation_completed tenantId=tenant-a-5633a548f2 runId=01a201b2-ff25-7893-bcca-852ec4afa8d9 chars=14 artifactId=01a201b3-01af-7760-95af-6b8ecdd872da version=1
+2026-11-22T13:20:38.346+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b2-ff9f-7b2f-bdd4-c535a7ddff0a tenantId=tenant-a-5633a548f2 runId=01a201b2-ff25-7893-bcca-852ec4afa8d9 attempts=1
+2026-11-22T13:20:38.369+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b2-ff9f-7b2f-bdd4-c535a7ddff0a tenantId=tenant-a-5633a548f2 runId=01a201b2-ff25-7893-bcca-852ec4afa8d9 attempts=1
+2026-11-22T13:20:38.518+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:38.519+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-22T13:20:38.573+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-a-e44aa547a2 runId=01a201b3-023f-75ea-91bd-2c4105d50f68 approvalId=01a201b3-0291-7ae2-a6b8-22dcb1fb062b toolId=01a201b3-0220-7401-a358-510ecab3f668
+2026-11-22T13:20:38.578+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b3-0242-7e78-8a86-7f5b1d364243 tenantId=tenant-a-e44aa547a2 runId=01a201b3-023f-75ea-91bd-2c4105d50f68 attempts=1
+2026-11-22T13:20:38.578+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a201b3-0242-7e78-8a86-7f5b1d364243 tenantId=tenant-a-e44aa547a2 runId=01a201b3-023f-75ea-91bd-2c4105d50f68 reason=WAITING_APPROVAL
+2026-11-22T13:20:38.621+08:00  INFO 28758 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Initializing MCP sync client: riccon-builtin
+2026-11-22T13:20:38.621+08:00  INFO 28758 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server starting.
+2026-11-22T13:20:38.626+08:00  INFO 28758 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server started
+2026-11-22T13:20:38.923+08:00  INFO 28758 --- [riccon-worker] [ool-26-thread-1] i.m.client.LifecycleInitializer          : Server response with Protocol: 2024-11-05, Capabilities: ServerCapabilities[completions=null, experimental=null, logging=null, prompts=null, resources=null, tools=ToolCapabilities[listChanged=null]], Info: Implementation[name=riccon-mcp-mock, title=null, version=1.0.0] and Instructions null
+2026-11-22T13:20:38.929+08:00  INFO 28758 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Closing MCP sync client: riccon-builtin
+2026-11-22T13:20:39.042+08:00  INFO 28758 --- [riccon-worker] [onPool-worker-1] i.m.c.transport.StdioClientTransport     : MCP server process stopped
+2026-11-22T13:20:39.056+08:00  INFO 28758 --- [riccon-worker] [           main] c.riccon.worker.mcp.service.McpGateway   : mcp.tool.completed tenantId=tenant-a-e44aa547a2 runId=01a201b3-023f-75ea-91bd-2c4105d50f68 toolId=01a201b3-0220-7401-a358-510ecab3f668 durationMs=427 resultBytes=17
+2026-11-22T13:20:39.111+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:39.159+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.service.ReportArtifactService    : research.artifact.saved tenantId=tenant-a-e44aa547a2 taskId=01a201b3-023c-74d6-b20b-8a40fde65d91 artifactId=01a201b3-04ed-741f-8bd7-9818b926d146 version=1 citations=2
+2026-11-22T13:20:39.168+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.service.AgentRunResumeHandler    : research.run.generation_completed tenantId=tenant-a-e44aa547a2 runId=01a201b3-023f-75ea-91bd-2c4105d50f68 chars=14 artifactId=01a201b3-04ed-741f-8bd7-9818b926d146 version=1
+2026-11-22T13:20:39.176+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b3-02b7-7155-9133-24d29fed7f73 tenantId=tenant-a-e44aa547a2 runId=01a201b3-023f-75ea-91bd-2c4105d50f68 attempts=1
+2026-11-22T13:20:39.305+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:39.305+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-22T13:20:39.354+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-a-795121d2db runId=01a201b3-055a-770c-ab67-528be75ae0d5 approvalId=01a201b3-05a1-70bd-9216-655b556aab4d toolId=01a201b3-053d-7ccf-8f3c-dc234748b84e
+2026-11-22T13:20:39.358+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b3-055c-76a4-b1f7-125bbb0c8465 tenantId=tenant-a-795121d2db runId=01a201b3-055a-770c-ab67-528be75ae0d5 attempts=1
+2026-11-22T13:20:39.358+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a201b3-055c-76a4-b1f7-125bbb0c8465 tenantId=tenant-a-795121d2db runId=01a201b3-055a-770c-ab67-528be75ae0d5 reason=WAITING_APPROVAL
+2026-11-22T13:20:39.389+08:00  INFO 28758 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Initializing MCP sync client: riccon-builtin
+2026-11-22T13:20:39.389+08:00  INFO 28758 --- [riccon-worker] [oundedElastic-1] i.m.c.transport.StdioClientTransport     : MCP server starting.
+2026-11-22T13:20:39.393+08:00  INFO 28758 --- [riccon-worker] [oundedElastic-1] i.m.c.transport.StdioClientTransport     : MCP server started
+2026-11-22T13:20:39.674+08:00  INFO 28758 --- [riccon-worker] [ool-30-thread-1] i.m.client.LifecycleInitializer          : Server response with Protocol: 2024-11-05, Capabilities: ServerCapabilities[completions=null, experimental=null, logging=null, prompts=null, resources=null, tools=ToolCapabilities[listChanged=null]], Info: Implementation[name=riccon-mcp-mock, title=null, version=1.0.0] and Instructions null
+2026-11-22T13:20:39.680+08:00  INFO 28758 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Closing MCP sync client: riccon-builtin
+2026-11-22T13:20:39.800+08:00  INFO 28758 --- [riccon-worker] [onPool-worker-1] i.m.c.transport.StdioClientTransport     : MCP server process stopped
+2026-11-22T13:20:39.813+08:00  INFO 28758 --- [riccon-worker] [           main] c.riccon.worker.mcp.service.McpGateway   : mcp.tool.completed tenantId=tenant-a-795121d2db runId=01a201b3-055a-770c-ab67-528be75ae0d5 toolId=01a201b3-053d-7ccf-8f3c-dc234748b84e durationMs=415 resultBytes=17
+2026-11-22T13:20:39.843+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:39.851+08:00  WARN 28758 --- [riccon-worker] [oundedElastic-1] c.r.w.m.s.OpenAiCompatibleChatModel      : model.request.failed modelId=01a201b3-0541-7ea8-83fb-cd3b99470405 status=500 errorCode=RICCON-MODEL-503
+2026-11-22T13:20:39.855+08:00  WARN 28758 --- [riccon-worker] [oundedElastic-2] c.r.w.model.service.FailoverChatModel    : model.attempt.failed purpose=REPORT modelId=01a201b3-0541-7ea8-83fb-cd3b99470405 providerCode=openai-compatible-01a201b305417b6eb9b92a4dd02501ba attempt=1 errorCode=RICCON-MODEL-503 emitted=false
+2026-11-22T13:20:40.046+08:00  WARN 28758 --- [riccon-worker] [oundedElastic-1] c.r.w.m.s.OpenAiCompatibleChatModel      : model.request.failed modelId=01a201b3-0541-7ea8-83fb-cd3b99470405 status=500 errorCode=RICCON-MODEL-503
+2026-11-22T13:20:40.050+08:00  WARN 28758 --- [riccon-worker] [oundedElastic-2] c.r.w.model.service.FailoverChatModel    : model.attempt.failed purpose=REPORT modelId=01a201b3-0541-7ea8-83fb-cd3b99470405 providerCode=openai-compatible-01a201b305417b6eb9b92a4dd02501ba attempt=2 errorCode=RICCON-MODEL-503 emitted=false
+2026-11-22T13:20:40.074+08:00  WARN 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a201b3-05c2-7197-9422-7f5d45055b40 tenantId=tenant-a-795121d2db runId=01a201b3-055a-770c-ab67-528be75ae0d5 attempts=1 reason=RICCON-MODEL-503: 模型服务暂不可用，请稍后重试。
+2026-11-22T13:20:40.184+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:40.184+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-22T13:20:40.192+08:00  WARN 28758 --- [riccon-worker] [oundedElastic-2] c.r.w.m.s.OpenAiCompatibleChatModel      : model.request.failed modelId=01a201b3-08be-7a4c-bd8f-f3b5627b7002 status=400 errorCode=RICCON-MODEL-502
+2026-11-22T13:20:40.196+08:00  WARN 28758 --- [riccon-worker] [oundedElastic-1] c.r.w.model.service.FailoverChatModel    : model.attempt.failed purpose=REPORT modelId=01a201b3-08be-7a4c-bd8f-f3b5627b7002 providerCode=openai-compatible-01a201b308be7619a9c54adc0f70a4c0 attempt=1 errorCode=RICCON-MODEL-502 emitted=false
+2026-11-22T13:20:40.216+08:00  WARN 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.retry_scheduled eventId=01a201b3-08cf-7e6c-9f90-5d3b95b79080 tenantId=tenant-a-44ae25a190 runId=01a201b3-08cd-7421-bcd3-aa9b6e128185 attempts=1 errorCode=RICCON-MODEL-503 availableAt=2026-11-22T05:20:40.219969Z
+2026-11-22T13:20:40.263+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:40.263+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-22T13:20:40.322+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-a-44ae25a190 runId=01a201b3-08cd-7421-bcd3-aa9b6e128185 approvalId=01a201b3-0963-7396-b6c0-879071b1a50a toolId=01a201b3-08b9-7057-be14-46171916b0c2
+2026-11-22T13:20:40.327+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b3-08cf-7e6c-9f90-5d3b95b79080 tenantId=tenant-a-44ae25a190 runId=01a201b3-08cd-7421-bcd3-aa9b6e128185 attempts=2
+2026-11-22T13:20:40.327+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a201b3-08cf-7e6c-9f90-5d3b95b79080 tenantId=tenant-a-44ae25a190 runId=01a201b3-08cd-7421-bcd3-aa9b6e128185 reason=WAITING_APPROVAL
+2026-11-22T13:20:40.364+08:00  INFO 28758 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Initializing MCP sync client: riccon-builtin
+2026-11-22T13:20:40.364+08:00  INFO 28758 --- [riccon-worker] [oundedElastic-1] i.m.c.transport.StdioClientTransport     : MCP server starting.
+2026-11-22T13:20:40.368+08:00  INFO 28758 --- [riccon-worker] [oundedElastic-1] i.m.c.transport.StdioClientTransport     : MCP server started
+2026-11-22T13:20:40.651+08:00  INFO 28758 --- [riccon-worker] [ool-34-thread-1] i.m.client.LifecycleInitializer          : Server response with Protocol: 2024-11-05, Capabilities: ServerCapabilities[completions=null, experimental=null, logging=null, prompts=null, resources=null, tools=ToolCapabilities[listChanged=null]], Info: Implementation[name=riccon-mcp-mock, title=null, version=1.0.0] and Instructions null
+2026-11-22T13:20:40.656+08:00  INFO 28758 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Closing MCP sync client: riccon-builtin
+2026-11-22T13:20:40.773+08:00  INFO 28758 --- [riccon-worker] [onPool-worker-1] i.m.c.transport.StdioClientTransport     : MCP server process stopped
+2026-11-22T13:20:40.782+08:00  INFO 28758 --- [riccon-worker] [           main] c.riccon.worker.mcp.service.McpGateway   : mcp.tool.completed tenantId=tenant-a-44ae25a190 runId=01a201b3-08cd-7421-bcd3-aa9b6e128185 toolId=01a201b3-08b9-7057-be14-46171916b0c2 durationMs=412 resultBytes=17
+2026-11-22T13:20:40.809+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:40.854+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.service.ReportArtifactService    : research.artifact.saved tenantId=tenant-a-44ae25a190 taskId=01a201b3-08cb-7dee-b685-f3f8a48ee26d artifactId=01a201b3-0b8d-759f-bcb1-b31745d6e3ec version=1 citations=2
+2026-11-22T13:20:40.865+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.service.AgentRunResumeHandler    : research.run.generation_completed tenantId=tenant-a-44ae25a190 runId=01a201b3-08cd-7421-bcd3-aa9b6e128185 chars=14 artifactId=01a201b3-0b8d-759f-bcb1-b31745d6e3ec version=1
+2026-11-22T13:20:40.871+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b3-098e-7e2e-b74d-b253e776cbf3 tenantId=tenant-a-44ae25a190 runId=01a201b3-08cd-7421-bcd3-aa9b6e128185 attempts=1
+2026-11-22T13:20:40.991+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:40.991+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-22T13:20:41.040+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-a-763c75dc3c runId=01a201b3-0beb-73ef-8a15-4fc3b03731ac approvalId=01a201b3-0c38-78a0-b7da-db20fb3ac892 toolId=01a201b3-0bd6-7f6a-be04-d3b9c3fab275
+2026-11-22T13:20:41.043+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b3-0bee-7d98-99a2-70a729b4c0cb tenantId=tenant-a-763c75dc3c runId=01a201b3-0beb-73ef-8a15-4fc3b03731ac attempts=1
+2026-11-22T13:20:41.043+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a201b3-0bee-7d98-99a2-70a729b4c0cb tenantId=tenant-a-763c75dc3c runId=01a201b3-0beb-73ef-8a15-4fc3b03731ac reason=WAITING_APPROVAL
+2026-11-22T13:20:41.157+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:41.157+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-22T13:20:41.203+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-a-8e2d9997d7 runId=01a201b3-0c94-78a8-a2da-b63f837ee9dd approvalId=01a201b3-0cdc-7c1b-98e6-f836e28011a0 toolId=01a201b3-0c7f-71d7-b52b-9136b86d7944
+2026-11-22T13:20:41.207+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b3-0c97-712b-ad51-4b8d715bd571 tenantId=tenant-a-8e2d9997d7 runId=01a201b3-0c94-78a8-a2da-b63f837ee9dd attempts=1
+2026-11-22T13:20:41.207+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a201b3-0c97-712b-ad51-4b8d715bd571 tenantId=tenant-a-8e2d9997d7 runId=01a201b3-0c94-78a8-a2da-b63f837ee9dd reason=WAITING_APPROVAL
+2026-11-22T13:20:41.238+08:00  INFO 28758 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Initializing MCP sync client: riccon-builtin
+2026-11-22T13:20:41.238+08:00  INFO 28758 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server starting.
+2026-11-22T13:20:41.242+08:00  INFO 28758 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server started
+2026-11-22T13:20:41.526+08:00  INFO 28758 --- [riccon-worker] [ool-39-thread-1] i.m.client.LifecycleInitializer          : Server response with Protocol: 2024-11-05, Capabilities: ServerCapabilities[completions=null, experimental=null, logging=null, prompts=null, resources=null, tools=ToolCapabilities[listChanged=null]], Info: Implementation[name=riccon-mcp-mock, title=null, version=1.0.0] and Instructions null
+2026-11-22T13:20:41.531+08:00  INFO 28758 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Closing MCP sync client: riccon-builtin
+2026-11-22T13:20:41.648+08:00  INFO 28758 --- [riccon-worker] [onPool-worker-1] i.m.c.transport.StdioClientTransport     : MCP server process stopped
+2026-11-22T13:20:41.660+08:00  INFO 28758 --- [riccon-worker] [           main] c.riccon.worker.mcp.service.McpGateway   : mcp.tool.completed tenantId=tenant-a-8e2d9997d7 runId=01a201b3-0c94-78a8-a2da-b63f837ee9dd toolId=01a201b3-0c7f-71d7-b52b-9136b86d7944 durationMs=414 resultBytes=17
+2026-11-22T13:20:41.686+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:41.732+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.service.ReportArtifactService    : research.artifact.saved tenantId=tenant-a-8e2d9997d7 taskId=01a201b3-0c91-7c50-b27b-7bf10c03c235 artifactId=01a201b3-0efb-7fbf-b6f6-53b45065fc5e version=1 citations=2
+2026-11-22T13:20:41.740+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.service.AgentRunResumeHandler    : research.run.generation_completed tenantId=tenant-a-8e2d9997d7 runId=01a201b3-0c94-78a8-a2da-b63f837ee9dd chars=14 artifactId=01a201b3-0efb-7fbf-b6f6-53b45065fc5e version=1
+2026-11-22T13:20:41.746+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b3-0cfb-7d77-a3e9-8db96ec90efd tenantId=tenant-a-8e2d9997d7 runId=01a201b3-0c94-78a8-a2da-b63f837ee9dd attempts=1
+2026-11-22T13:20:41.863+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:41.863+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-22T13:20:41.910+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-a-4f76d95aa1 runId=01a201b3-0f55-7fc7-ac76-ae0d7c7cbb05 approvalId=01a201b3-0f9e-7e09-a85c-4dcb3eb68699 toolId=01a201b3-0f40-7ba7-b47e-83cbbec2002d
+2026-11-22T13:20:41.914+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b3-0f57-70dd-9b0c-68f802ee3b79 tenantId=tenant-a-4f76d95aa1 runId=01a201b3-0f55-7fc7-ac76-ae0d7c7cbb05 attempts=1
+2026-11-22T13:20:41.914+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a201b3-0f57-70dd-9b0c-68f802ee3b79 tenantId=tenant-a-4f76d95aa1 runId=01a201b3-0f55-7fc7-ac76-ae0d7c7cbb05 reason=WAITING_APPROVAL
+2026-11-22T13:20:41.944+08:00  INFO 28758 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Initializing MCP sync client: riccon-builtin
+2026-11-22T13:20:41.945+08:00  INFO 28758 --- [riccon-worker] [oundedElastic-1] i.m.c.transport.StdioClientTransport     : MCP server starting.
+2026-11-22T13:20:41.949+08:00  INFO 28758 --- [riccon-worker] [oundedElastic-1] i.m.c.transport.StdioClientTransport     : MCP server started
+2026-11-22T13:20:42.220+08:00  INFO 28758 --- [riccon-worker] [ool-43-thread-1] i.m.client.LifecycleInitializer          : Server response with Protocol: 2024-11-05, Capabilities: ServerCapabilities[completions=null, experimental=null, logging=null, prompts=null, resources=null, tools=ToolCapabilities[listChanged=null]], Info: Implementation[name=riccon-mcp-mock, title=null, version=1.0.0] and Instructions null
+2026-11-22T13:20:42.224+08:00  INFO 28758 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Closing MCP sync client: riccon-builtin
+2026-11-22T13:20:42.337+08:00  INFO 28758 --- [riccon-worker] [onPool-worker-1] i.m.c.transport.StdioClientTransport     : MCP server process stopped
+2026-11-22T13:20:42.349+08:00  INFO 28758 --- [riccon-worker] [           main] c.riccon.worker.mcp.service.McpGateway   : mcp.tool.completed tenantId=tenant-a-4f76d95aa1 runId=01a201b3-0f55-7fc7-ac76-ae0d7c7cbb05 toolId=01a201b3-0f40-7ba7-b47e-83cbbec2002d durationMs=396 resultBytes=17
+2026-11-22T13:20:42.384+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:42.434+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.service.ReportArtifactService    : research.artifact.saved tenantId=tenant-a-4f76d95aa1 taskId=01a201b3-0f53-742f-b954-9b452316c469 artifactId=01a201b3-11ba-73a9-9aed-a7efcd36c581 version=1 citations=2
+2026-11-22T13:20:42.443+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.service.AgentRunResumeHandler    : research.run.generation_completed tenantId=tenant-a-4f76d95aa1 runId=01a201b3-0f55-7fc7-ac76-ae0d7c7cbb05 chars=14 artifactId=01a201b3-11ba-73a9-9aed-a7efcd36c581 version=1
+2026-11-22T13:20:42.450+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a201b3-0fbe-754a-a2dc-d87f46a103aa tenantId=tenant-a-4f76d95aa1 runId=01a201b3-0f55-7fc7-ac76-ae0d7c7cbb05 attempts=1
+2026-11-22T13:20:42.468+08:00  INFO 28758 --- [riccon-worker] [           main] c.r.w.r.service.ReportArtifactService    : research.artifact.saved tenantId=tenant-a-4f76d95aa1 taskId=01a201b3-0f53-742f-b954-9b452316c469 artifactId=01a201b3-11ba-73a9-9aed-a7efcd36c581 version=2 citations=1
+2026-11-22T13:20:42.596+08:00  WARN 28758 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a201b3-1234-76e3-b010-8fa9b5bc6520 tenantId=tenant-a-5d4422f4aa runId=01a201b3-1230-7c0d-b858-2f729c8141c9 attempts=1 reason=RICCON-RESEARCH-404: no knowledge sources matched the topic
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 49.64 s -- in com.riccon.worker.research.ReportArtifactIntegrationTest
+[INFO] Running com.riccon.worker.research.service.ModelFirstTokenHandlerTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.018 s -- in com.riccon.worker.research.service.ModelFirstTokenHandlerTest
+[INFO] Running com.riccon.worker.research.service.ModelFirstTokenTest
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.011 s -- in com.riccon.worker.research.service.ModelFirstTokenTest
+[INFO] Running com.riccon.worker.chat.ChatStreamIntegrationTest
+2026-11-22T13:20:42.651+08:00  INFO 28758 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.chat.ChatStreamIntegrationTest]: ChatStreamIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T13:20:42.682+08:00  INFO 28758 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.chat.ChatStreamIntegrationTest
+2026-11-22T13:20:42.684+08:00  INFO 28758 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.chat.ChatStreamIntegrationTest]: ChatStreamIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T13:20:42.684+08:00  INFO 28758 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T13:20:42.686+08:00  INFO 28758 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.chat.ChatStreamIntegrationTest
+2026-11-22T13:20:42.908+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:42.916+08:00  WARN 28758 --- [riccon-worker] [oundedElastic-2] c.r.w.m.s.OpenAiCompatibleChatModel      : model.request.failed modelId=01a201b3-12f0-75ec-893d-1f735096d84c status=500 errorCode=RICCON-MODEL-503
+2026-11-22T13:20:42.919+08:00  WARN 28758 --- [riccon-worker] [oundedElastic-1] c.r.w.model.service.FailoverChatModel    : model.attempt.failed purpose=CHAT modelId=01a201b3-12f0-75ec-893d-1f735096d84c providerCode=openai-compatible-01a201b312f07b4ab2cb636b5ef0bc4f attempt=1 errorCode=RICCON-MODEL-503 emitted=false
+2026-11-22T13:20:43.086+08:00  WARN 28758 --- [riccon-worker] [oundedElastic-2] c.r.w.m.s.OpenAiCompatibleChatModel      : model.request.failed modelId=01a201b3-12f0-75ec-893d-1f735096d84c status=500 errorCode=RICCON-MODEL-503
+2026-11-22T13:20:43.091+08:00  WARN 28758 --- [riccon-worker] [oundedElastic-1] c.r.w.model.service.FailoverChatModel    : model.attempt.failed purpose=CHAT modelId=01a201b3-12f0-75ec-893d-1f735096d84c providerCode=openai-compatible-01a201b312f07b4ab2cb636b5ef0bc4f attempt=2 errorCode=RICCON-MODEL-503 emitted=false
+2026-11-22T13:20:43.217+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:43.291+08:00  WARN 28758 --- [riccon-worker] [           main] c.r.w.model.service.ModelRouteResolver   : model.routing.chain_empty purpose=CHAT
+2026-11-22T13:20:43.443+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:43.996+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:44.323+08:00  INFO 28758 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-22T13:20:44.337+08:00  WARN 28758 --- [riccon-worker] [oundedElastic-1] c.r.w.model.service.FailoverChatModel    : model.attempt.failed purpose=CHAT modelId=01a201b3-1900-7fd2-bc77-42d63a511eb9 providerCode=openai-compatible-01a201b319007f24ad7271593dfe9bf4 attempt=1 errorCode=RICCON-MODEL-502 emitted=true
+2026-11-22T13:20:44.350+08:00  WARN 28758 --- [riccon-worker] [t-stream-writer] c.r.w.chat.service.ChatStreamService     : chat.stream.failed runId=01a201b3-18f5-7bc9-9260-31458774ff75 tenantId=tenant-a-b84a4a931a errorCode=RICCON-MODEL-502
+[INFO] Tests run: 18, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.878 s -- in com.riccon.worker.chat.ChatStreamIntegrationTest
+[INFO] Running com.riccon.worker.model.ModelCostSnapshotIntegrationTest
+2026-11-22T13:20:44.531+08:00  INFO 28758 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.model.ModelCostSnapshotIntegrationTest]: ModelCostSnapshotIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T13:20:44.552+08:00  INFO 28758 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.model.ModelCostSnapshotIntegrationTest
+2026-11-22T13:20:44.553+08:00  INFO 28758 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.model.ModelCostSnapshotIntegrationTest]: ModelCostSnapshotIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T13:20:44.554+08:00  INFO 28758 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-22T13:20:44.555+08:00  INFO 28758 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.model.ModelCostSnapshotIntegrationTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.312 s -- in com.riccon.worker.model.ModelCostSnapshotIntegrationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 52, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for riccon-parent 0.1.0-SNAPSHOT:
+[INFO] 
+[INFO] riccon-parent ...................................... SUCCESS [  2.175 s]
+[INFO] riccon-platform-common ............................. SUCCESS [  0.470 s]
+[INFO] riccon-platform-domain ............................. SUCCESS [  0.470 s]
+[INFO] riccon-worker ...................................... SUCCESS [ 54.170 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  57.218 s (Wall Clock)
+[INFO] Finished at: 2026-11-22T13:20:45+08:00
+[INFO] ------------------------------------------------------------------------
+
+# --- stderr ---
+
