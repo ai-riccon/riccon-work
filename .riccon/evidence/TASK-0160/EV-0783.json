@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0783",
+  "task_id": "TASK-0160",
+  "command": "set -uo pipefail; fail=0; for i in 1 2 3 4 5; do if pnpm -w test > /tmp/m24-web-clean-$i.log 2>&1; then echo \"RUN $i PASS\"; grep -E \"Test Files|Tests \" /tmp/m24-web-clean-$i.log; else echo \"RUN $i FAIL\"; tail -100 /tmp/m24-web-clean-$i.log; fail=1; break; fi; done; if [ \"$fail\" -ne 0 ]; then exit 1; fi; pnpm -w typecheck || exit 1; pnpm --filter @riccon/web run lint || exit 1; echo web-5x-clean-ok",
+  "manual": false,
+  "commit": "74b7c8681d9ad49fabc920cf0d889dda7b926d34",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0160/EV-0783-2026-11-22T23-21-37-477+08-00-set-uo-pipefail-fail-0-for-i-in-1-2-3-4-5-do-if-.log",
+  "output_sha256": "de4d5ae947fe553471e598034655f20da3b9a8e1b9b874bf423827a4c7f41b2e",
+  "output_bytes": 1779,
+  "agent": "riccon/builder-web",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-22T23:14:57.084+08:00",
+  "finished_at": "2026-11-22T23:21:36.841+08:00",
+  "duration_ms": 399756,
+  "note": "M04 F-012/M22 F-001：workspace 先等部门名；web 全量 5 次无 flake；typecheck+lint（干净树重录）",
+  "recorded_at": "2026-11-22T23:21:37.480+08:00"
+}
