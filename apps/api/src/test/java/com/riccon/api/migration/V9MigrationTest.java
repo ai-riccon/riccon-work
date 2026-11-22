@@ -16,6 +16,7 @@ import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -41,6 +42,7 @@ import org.testcontainers.mysql.MySQLContainer;
  * 写入、排空旧 API 实例并做全量备份；{@code flyway_schema_history} 的 V9 行由维护账号按
  * ADR-0010 处理，应用账号不得删除，生产回滚演练在 M09 完成（B-13）。
  */
+@Tag("migration")
 class V9MigrationTest {
 
     /** 与合同 stack.versions.mysql 一致的测试镜像；命令参数与 API 集成测试保持一致。 */

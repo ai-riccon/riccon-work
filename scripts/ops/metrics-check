@@ -1,0 +1,369 @@
+#!/usr/bin/env bash
+# M04 观测基线：Worker 7 个路由/降级/key 指标的抓取断言
+# （ADR-0021 §10.6、THREAT-MODEL TM-54/B-20、OPS-M04-02a）。
+#
+# 用法：
+#   scripts/ops/metrics-check --base-url http://127.0.0.1:8081
+#   scripts/ops/metrics-check --help
+#   scripts/ops/metrics-check --self-test
+#
+# 行为：
+#   1. 抓取 `<base-url>/actuator/prometheus`（只读 GET，不改动任何状态）；
+#   2. 只断言下面 7 个 Worker 指标的“存在 + 标签符合约定”，不检查 API 的配额/成本指标
+#      （那是 V2 的 2 个主指标 + 3 个辅助指标，B-20 的 OPS-M04-02b）；
+#   3. 任一断言失败即退出非 0，不做重试、不吞错误。
+#
+# 指标约定（唯一清单：改动必须先改 ADR-0021 §10.6，再同步本脚本与 Worker 测试）：
+#   riccon_model_requests_total{provider,model,outcome}       counter
+#   riccon_model_failover_total{from,to,reason}               counter
+#   riccon_model_attempt_duration_seconds                     histogram
+#   riccon_model_credential_invalid_total{provider}           counter
+#   riccon_model_credential_cooldown_total{provider}          counter
+#   riccon_model_chain_empty_total{purpose}                   counter
+#   riccon_agent_runs_inflight                                gauge
+#   —— 标签名与顺序以 ADR 为准；除上表列出的标签外，禁止 tenant/tenantId/userId/runId 等
+#      高基数标签（ADR-0008/ADR-0021 §10.6）；按租户排查走日志/审计/DB 查询。
+#
+# 前置条件：B4（TASK-0105）注册指标时必须预置 0 值（Micrometer 计数器无流量时也应暴露），
+# 否则本脚本会判失败——这是有意的，缺失序列说明注册点漏了。
+#
+# 退出码：0 = 7 个指标全部通过；1 = 抓取失败或有断言失败；2 = 用法/环境错误。
+set -euo pipefail
+set -o errtrace
+
+readonly DEFAULT_TIMEOUT_SECONDS=15
+
+# 7 个 M04 Worker 指标的冻结约定：`名称|类型|必需标签（逗号分隔，空表示无标签约束）`。
+readonly METRIC_SPECS=(
+  'riccon_model_requests_total|counter|provider,model,outcome'
+  'riccon_model_failover_total|counter|from,to,reason'
+  'riccon_model_attempt_duration_seconds|histogram|'
+  'riccon_model_credential_invalid_total|counter|provider'
+  'riccon_model_credential_cooldown_total|counter|provider'
+  'riccon_model_chain_empty_total|counter|purpose'
+  'riccon_agent_runs_inflight|gauge|'
+)
+
+# 禁止出现在 M04 指标上的高基数标签（ADR-0008、ADR-0021 §10.6）。
+readonly FORBIDDEN_LABEL_PATTERN='(^|,)(tenant|tenantId|tenant_id|userId|user_id|runId|run_id)='
+
+WORKDIR=""
+
+usage() {
+  cat <<'USAGE'
+用法：scripts/ops/metrics-check --base-url <URL> [--timeout <秒>]
+
+选项：
+  --base-url <URL>    Worker 基地址，例如 http://127.0.0.1:8081（必填）
+  --timeout <秒>      curl 抓取超时，默认 15 秒
+  --self-test         用内置样本自检解析与断言逻辑（不访问网络）
+  -h, --help          显示本帮助
+
+断言范围：仅 Worker 的 7 个 M04 指标（riccon_model_* / riccon_agent_runs_inflight）。
+USAGE
+}
+
+cleanup() {
+  if [[ -n "${WORKDIR}" && -d "${WORKDIR}" ]]; then
+    rm -rf "${WORKDIR}"
+  fi
+}
+
+fail() {
+  echo "metrics-check FAIL：$*" >&2
+  exit 1
+}
+
+# 把 Prometheus 文本格式归一化为 `族名<TAB>原始样本行`。
+# histogram 的 _bucket/_sum/_count 序列归一到一个族名，便于按族断言。
+normalize() {
+  local payload="$1"
+  local out="$2"
+  awk '
+    /^[[:space:]]*#/ { next }
+    /^[[:space:]]*$/ { next }
+    {
+      name = $0
+      sub(/[{ ].*/, "", name)
+      if (name == "") next
+      family = name
+      sub(/_(bucket|sum|count)$/, "", family)
+      printf "%s\t%s\n", family, $0
+    }
+  ' "${payload}" >"${out}"
+}
+
+# 校验归一化样本是否覆盖 7 个指标且标签符合约定；成功打印 PASS 并返回 0。
+check_metrics() {
+  local samples="$1"
+  local failures=0
+  local spec name type labels
+
+  if [[ ! -s "${samples}" ]]; then
+    echo "metrics-check FAIL：抓取结果里没有任何指标样本（响应可能不是 Prometheus 文本格式）" >&2
+    return 1
+  fi
+
+  local families=""
+  for spec in "${METRIC_SPECS[@]}"; do
+    families+="${spec%%|*} "
+  done
+
+  for spec in "${METRIC_SPECS[@]}"; do
+    IFS='|' read -r name type labels <<<"${spec}"
+
+    local sample_count
+    sample_count="$(awk -F'\t' -v fam="${name}" '$1 == fam { n++ } END { print n + 0 }' "${samples}")"
+    if [[ "${sample_count}" -eq 0 ]]; then
+      echo "FAIL ${name}：未找到样本（B4 是否已注册并预置 0 值？）" >&2
+      failures=$((failures + 1))
+      continue
+    fi
+
+    if [[ "${type}" == "histogram" ]]; then
+      local bucket_count
+      bucket_count="$(awk -F'\t' -v fam="${name}" '
+        $1 == fam {
+          series = $2
+          sub(/[{ ].*/, "", series)
+          if (series == fam "_bucket") n++
+        }
+        END { print n + 0 }
+      ' "${samples}")"
+      if [[ "${bucket_count}" -eq 0 ]]; then
+        echo "FAIL ${name}：缺少 _bucket 序列（约定为 histogram）" >&2
+        failures=$((failures + 1))
+        continue
+      fi
+    fi
+
+    if [[ -n "${labels}" ]]; then
+      local missing="" rc=0
+      missing="$(awk -F'\t' -v fam="${name}" -v req="${labels}" '
+        function label_block(line,   start, rest) {
+          start = index(line, "{")
+          if (start == 0) return ""
+          rest = substr(line, start + 1)
+          sub(/}[^}]*$/, "", rest)
+          return rest
+        }
+        BEGIN { n = split(req, keys, ",") }
+        $1 != fam { next }
+        {
+          seen = 1
+          lab = label_block($2)
+          for (i = 1; i <= n; i++) {
+            if (keys[i] == "") continue
+            if (lab !~ ("(^|,)" keys[i] "=")) missing[keys[i]] = 1
+          }
+        }
+        END {
+          if (!seen) exit 3
+          if (length(missing) > 0) {
+            for (key in missing) printf "%s ", key
+            exit 4
+          }
+        }
+      ' "${samples}")" || rc=$?
+
+      if [[ "${rc}" -eq 3 ]]; then
+        echo "FAIL ${name}：标签检查阶段样本消失" >&2
+        failures=$((failures + 1))
+        continue
+      fi
+      if [[ "${rc}" -eq 4 ]]; then
+        echo "FAIL ${name}：缺少必需标签 {${missing}}" >&2
+        failures=$((failures + 1))
+        continue
+      fi
+    fi
+
+    echo "OK   ${name}（${type}，样本 ${sample_count} 条）"
+  done
+
+  local leaks="" rc_leak=0
+  leaks="$(awk -F'\t' -v fams="${families}" -v pat="${FORBIDDEN_LABEL_PATTERN}" '
+    BEGIN { n = split(fams, f, " "); for (i = 1; i <= n; i++) wanted[f[i]] = 1 }
+    wanted[$1] && match($2, pat) { print "  " $2; bad = 1 }
+    END { exit bad ? 1 : 0 }
+  ' "${samples}")" || rc_leak=$?
+  if [[ "${rc_leak}" -ne 0 ]]; then
+    echo "FAIL M04 指标出现禁止的高基数标签（tenant/userId/runId）：" >&2
+    printf '%s\n' "${leaks}" >&2
+    failures=$((failures + 1))
+  fi
+
+  if [[ "${failures}" -gt 0 ]]; then
+    echo "metrics-check FAIL：${failures} 项断言失败" >&2
+    return 1
+  fi
+
+  echo "metrics-check PASS：7 个 M04 Worker 指标均存在且标签符合约定"
+  return 0
+}
+
+# 内置样本自检：不依赖运行中的 Worker，验证解析/断言逻辑本身没有坏掉。
+run_self_test() {
+  local dir="${WORKDIR}/selftest"
+  mkdir -p "${dir}"
+
+  local good="${dir}/good.txt"
+  cat >"${good}" <<'FIXTURE'
+# HELP riccon_model_requests_total 模型请求计数
+# TYPE riccon_model_requests_total counter
+riccon_model_requests_total{provider="openai",model="gpt-x",outcome="success"} 3
+# TYPE riccon_model_failover_total counter
+riccon_model_failover_total{from="a",to="b",reason="TIMEOUT"} 1
+# TYPE riccon_model_attempt_duration_seconds histogram
+riccon_model_attempt_duration_seconds_bucket{provider="openai",model="gpt-x",le="0.1"} 2
+riccon_model_attempt_duration_seconds_bucket{provider="openai",model="gpt-x",le="+Inf"} 3
+riccon_model_attempt_duration_seconds_count{provider="openai",model="gpt-x"} 3
+riccon_model_attempt_duration_seconds_sum{provider="openai",model="gpt-x"} 0.42
+# TYPE riccon_model_credential_invalid_total counter
+riccon_model_credential_invalid_total{provider="openai"} 1
+# TYPE riccon_model_credential_cooldown_total counter
+riccon_model_credential_cooldown_total{provider="openai"} 2
+# TYPE riccon_model_chain_empty_total counter
+riccon_model_chain_empty_total{purpose="CHAT"} 1
+# TYPE riccon_agent_runs_inflight gauge
+riccon_agent_runs_inflight 2
+# TYPE http_server_requests_seconds histogram
+http_server_requests_seconds_count{uri="/actuator/health"} 7
+FIXTURE
+
+  local good_tsv="${dir}/good.tsv"
+  normalize "${good}" "${good_tsv}"
+  if ! check_metrics "${good_tsv}" >/dev/null; then
+    echo "metrics-check 自检 FAIL：合法样本被判定失败" >&2
+    return 1
+  fi
+
+  # 缺指标：删掉 chain_empty 的全部样本，应失败。
+  local missing="${dir}/missing.txt" missing_tsv="${dir}/missing.tsv"
+  awk '!/^riccon_model_chain_empty_total/ && !/^# TYPE riccon_model_chain_empty_total/' "${good}" >"${missing}"
+  normalize "${missing}" "${missing_tsv}"
+  if check_metrics "${missing_tsv}" >/dev/null 2>&1; then
+    echo "metrics-check 自检 FAIL：缺少 riccon_model_chain_empty_total 却判定通过" >&2
+    return 1
+  fi
+
+  # 缺标签：failover 缺 to，应失败。
+  local nolabel="${dir}/nolabel.txt" nolabel_tsv="${dir}/nolabel.tsv"
+  awk '!/^riccon_model_failover_total/ && !/^# TYPE riccon_model_failover_total/' "${good}" >"${nolabel}"
+  printf '%s\n' 'riccon_model_failover_total{from="a",reason="TIMEOUT"} 1' >>"${nolabel}"
+  normalize "${nolabel}" "${nolabel_tsv}"
+  if check_metrics "${nolabel_tsv}" >/dev/null 2>&1; then
+    echo "metrics-check 自检 FAIL：failover 缺少 to 标签却判定通过" >&2
+    return 1
+  fi
+
+  # 高基数标签：tenant 出现在 M04 指标上，应失败。
+  local tenant="${dir}/tenant.txt" tenant_tsv="${dir}/tenant.tsv"
+  cat "${good}" >"${tenant}"
+  printf '%s\n' 'riccon_model_requests_total{provider="openai",model="gpt-x",outcome="success",tenant="t1"} 4' >>"${tenant}"
+  normalize "${tenant}" "${tenant_tsv}"
+  if check_metrics "${tenant_tsv}" >/dev/null 2>&1; then
+    echo "metrics-check 自检 FAIL：出现 tenant 标签却判定通过" >&2
+    return 1
+  fi
+
+  echo "metrics-check 自检 PASS：合法样本通过，缺指标/缺标签/高基数标签均被拒绝"
+  return 0
+}
+
+main() {
+  local base_url=""
+  local timeout="${DEFAULT_TIMEOUT_SECONDS}"
+  local self_test="false"
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --base-url)
+        if [[ $# -lt 2 ]]; then
+          echo "--base-url 缺少取值" >&2
+          exit 2
+        fi
+        base_url="$2"
+        shift 2
+        ;;
+      --base-url=*)
+        base_url="${1#*=}"
+        shift
+        ;;
+      --timeout)
+        if [[ $# -lt 2 ]]; then
+          echo "--timeout 缺少取值" >&2
+          exit 2
+        fi
+        timeout="$2"
+        shift 2
+        ;;
+      --timeout=*)
+        timeout="${1#*=}"
+        shift
+        ;;
+      --self-test)
+        self_test="true"
+        shift
+        ;;
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      *)
+        echo "未知参数：$1" >&2
+        usage >&2
+        exit 2
+        ;;
+    esac
+  done
+
+  WORKDIR="$(mktemp -d)"
+  trap cleanup EXIT
+
+  if [[ "${self_test}" == "true" ]]; then
+    run_self_test
+    return 0
+  fi
+
+  if [[ -z "${base_url}" ]]; then
+    echo "--base-url 必填（例如 http://127.0.0.1:8081）" >&2
+    usage >&2
+    exit 2
+  fi
+  if ! command -v curl >/dev/null 2>&1; then
+    echo "缺少 curl，无法抓取 Worker 指标端点" >&2
+    exit 2
+  fi
+  base_url="${base_url%/}"
+  case "${base_url}" in
+    http://* | https://*) ;;
+    *)
+      echo "--base-url 必须是 http(s) 地址：${base_url}" >&2
+      exit 2
+      ;;
+  esac
+
+  local payload="${WORKDIR}/prometheus.txt"
+  local http_code
+  http_code="$(curl --silent --show-error --max-time "${timeout}" \
+    --output "${payload}" --write-out '%{http_code}' \
+    "${base_url}/actuator/prometheus")" || fail "抓取 ${base_url}/actuator/prometheus 失败（连接被拒或超时；确认 Worker 已启动且来源在 RICCON_OPS_ALLOWED_CIDRS 内）"
+
+  if [[ "${http_code}" != "200" ]]; then
+    case "${http_code}" in
+      403 | 404)
+        fail "抓取返回 ${http_code}：端点可能未暴露（B2）或来源不在 RICCON_OPS_ALLOWED_CIDRS 内（ADR-0021 §10.6）"
+        ;;
+      *)
+        fail "抓取返回 ${http_code}"
+        ;;
+    esac
+  fi
+
+  local samples="${WORKDIR}/samples.tsv"
+  normalize "${payload}" "${samples}"
+  check_metrics "${samples}"
+}
+
+main "$@"

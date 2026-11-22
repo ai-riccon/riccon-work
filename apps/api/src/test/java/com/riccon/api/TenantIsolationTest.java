@@ -8,6 +8,7 @@ import com.riccon.api.support.ApiTestClient;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessException;
 import tools.jackson.databind.JsonNode;
@@ -17,7 +18,10 @@ import tools.jackson.databind.JsonNode;
  *
  * <p>覆盖 ADR-0009 的 TEN-002/003/004/011/012/019：伪造租户标识被拒绝、跨租户对象统一 404、
  * 租户管理员不能访问平台接口、普通员工不能管理账号、审计租户与 actor 一致，以及数据库层拒绝修改/删除审计。
+ *
+ * <p>M19 P4a：这是 M02 跨租户回归套件，标注 {@code security}（同时从基类继承 {@code integration}）。
  */
+@Tag("security")
 class TenantIsolationTest extends ApiIntegrationTestSupport {
 
     /** TEN-001：租户账号列表只包含本租户。 */

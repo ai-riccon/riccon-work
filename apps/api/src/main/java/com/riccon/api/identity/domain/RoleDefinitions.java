@@ -17,7 +17,12 @@ import java.util.Set;
  * <p>M10 说明：{@code audit.read} 已在 V2 权限字典中，B1 直接授予租户管理员与平台管理员；两条导出审批权限
  * （{@code audit.export.approve}/{@code platform.audit.export.approve}）的字典行由 V10 写入并回填既有角色，
  * 本类在 V10 之后补齐新租户开通与空库引导路径。这是 ADR-0020 §8.1 记录的 B3a 窄例外：本类仍由 B1 维护，
- * B3a 只新增这两条审批权限及其测试，不改变其他角色/权限语义；B3b 与后续任务不得再修改本文件。
+ * B3a 只新增这两条审批权限及其测试，不改变其他角色/权限语义；M10-B3b 不得再修改本文件。
+ *
+ * <p>M04 说明：{@code quota.read}/{@code cost.read} 授予租户管理员；{@code platform.model.manage}/
+ * {@code platform.quota.manage}/{@code platform.cost.read} 只授予平台管理员。V11 负责既有租户/平台角色的
+ * 回填，本类负责 V11 之后新建租户与空库引导；员工（MEMBER）不获得配额/成本入口（ADR-0021 §7.1、
+ * ADR-0022 §1.5/§3.1）。
  *
  * <p>为什么必须同时改迁移与本类：V10 的 {@code INSERT ... SELECT FROM role} 只覆盖迁移前已存在的角色，
  * 覆盖不到 fresh install、空库引导和 V10 之后新建的租户；缺少这两条映射会直接断裂 AC-17 的审批链。
@@ -64,13 +69,21 @@ public final class RoleDefinitions {
             // M10：租户管理员可查询本租户审计（audit.read 自 M02 已在权限字典）。
             PermissionCodes.AUDIT_READ,
             // M10：同租户审计导出审批；申请人不得自批，平台审批权限只属于 PLATFORM_ADMIN。
-            PermissionCodes.AUDIT_EXPORT_APPROVE);
+            PermissionCodes.AUDIT_EXPORT_APPROVE,
+            // M04：租户管理员只读本租户配额与成本；写权限只属于平台管理员。
+            PermissionCodes.QUOTA_READ,
+            PermissionCodes.COST_READ);
 
     /** 平台管理员只管理平台目录与租户元数据（含部门元数据），不读取租户业务内容。 */
     private static final Set<String> PLATFORM_ADMIN_PERMISSIONS = Set.of(
             PermissionCodes.PLATFORM_TENANT_MANAGE,
             PermissionCodes.PLATFORM_DEPARTMENT_MANAGE,
             PermissionCodes.PLATFORM_MODEL_READ,
+            // M04：路由/模型启停/key 池/网关开关写权限，只属于平台管理员。
+            PermissionCodes.PLATFORM_MODEL_MANAGE,
+            // M04：跨租户配额查看与整体替换；平台成本只返回聚合，不返回用户明细。
+            PermissionCodes.PLATFORM_QUOTA_MANAGE,
+            PermissionCodes.PLATFORM_COST_READ,
             PermissionCodes.PLATFORM_MCP_READ,
             // M10：平台管理员只能查询平台租户自身审计（跨租户明细 defer）。
             PermissionCodes.AUDIT_READ,

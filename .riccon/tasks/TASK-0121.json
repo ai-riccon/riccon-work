@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0121",
+  "module_id": "M04",
+  "title": "M04 测试基础设施收口：连接池上限与 worker 覆盖率",
+  "owner": "riccon/builder-core",
+  "status": "done",
+  "write_scope": [
+    "apps/api/src/test/resources/application-test.yml",
+    "apps/worker/src/test/resources/application-test.yml",
+    "apps/api/src/test/java/com/riccon/api/support/**",
+    "apps/worker/src/test/java/com/riccon/worker/WorkerIntegrationTestBase.java",
+    "apps/worker/src/test/java/com/riccon/worker/**",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "test profile 的 Hikari 池上限 ≤3、min-idle 0（API/Worker），全量套件不再出现 Too many connections；不降低隔离/断言",
+    "所有 API/Worker Spring 上下文可加载；CryptoStartupValidationTest 的预期启动失败仍保留，不掩盖",
+    "worker JaCoCo line ≥80/branch ≥70；若 B4 新代码缺口，补真实测试（不得 exclude/反射私有 helper）",
+    "在干净提交上跑 ./mvnw -q -T1C verify 通过并录 EV；不改生产代码/契约/迁移"
+  ],
+  "evidence": [
+    "EV-0552"
+  ],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-21T04:43:01.399+08:00",
+  "updated_at": "2026-11-21T05:01:50.551+08:00",
+  "baseline_commit": "e5279905a87ef5229f5516090841a2e20a5b76c4",
+  "end_commit": "ef02ff485dd52243bba0aba3ff4461ff6e6694c1"
+}

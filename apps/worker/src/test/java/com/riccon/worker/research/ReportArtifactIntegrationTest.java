@@ -63,9 +63,12 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
     /** 模型桩。 */
     private TestModelStub stub;
 
-    /** 启动模型桩。 */
+    /** 启动模型桩；恢复全局模型/MCP 目录基线，并清空跨租户 outbox 残留。 */
     @BeforeEach
     void setUp() {
+        resetModelGatewayState();
+        resetMcpCatalog();
+        clearOutbox();
         stub = new TestModelStub();
     }
 
@@ -83,7 +86,7 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(poller.pollOnce()).isEqualTo(1);
         UUID approvalId = approvalId(fixture.runId());
         approve(fixture.userId(), approvalId);
-        data.publishResearchResume("tenant-a", fixture.runId(), fixture.taskId(), approvalId);
+        data.publishResearchResume(fixture.tenant(), fixture.runId(), fixture.taskId(), approvalId);
 
         assertThat(poller.pollOnce()).isEqualTo(1);
 
@@ -93,26 +96,26 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(stageStatus(fixture.runId(), "TOOL")).isEqualTo("SUCCEEDED");
         assertThat(stageStatus(fixture.runId(), "APPROVAL")).isEqualTo("SUCCEEDED");
         assertThat(stageStatus(fixture.runId(), "GENERATION")).isEqualTo("SUCCEEDED");
-        assertThat(auditCount("artifact.saved")).isEqualTo(1);
+        assertThat(auditCount("artifact.saved", fixture.tenant())).isEqualTo(1);
 
         ArtifactRecord artifact = tenantCall(
-                "tenant-a",
+                fixture.tenant(),
                 () -> artifactRepository
-                        .findByTask(TenantId.of("tenant-a"), fixture.taskId())
+                        .findByTask(TenantId.of(fixture.tenant()), fixture.taskId())
                         .orElseThrow());
         assertThat(artifact.currentVersion()).isEqualTo(1);
         ArtifactVersionRecord version = tenantCall(
-                "tenant-a",
+                fixture.tenant(),
                 () -> artifactRepository
-                        .findVersion(TenantId.of("tenant-a"), artifact.id(), 1)
+                        .findVersion(TenantId.of(fixture.tenant()), artifact.id(), 1)
                         .orElseThrow());
         assertThat(version.contentType()).isEqualTo("text/markdown");
-        assertThat(version.storageKey()).startsWith("tenants/tenant-a/artifact/");
+        assertThat(version.storageKey()).startsWith("tenants/" + fixture.tenant() + "/artifact/");
         assertThat(version.sha256()).hasSize(64);
         assertThat(version.sizeBytes()).isPositive();
 
-        List<ArtifactCitationRecord> citations =
-                tenantCall("tenant-a", () -> artifactRepository.findCitations(TenantId.of("tenant-a"), version.id()));
+        List<ArtifactCitationRecord> citations = tenantCall(
+                fixture.tenant(), () -> artifactRepository.findCitations(TenantId.of(fixture.tenant()), version.id()));
         assertThat(citations).hasSize(2);
         ArtifactCitationRecord knowledge = citations.get(0);
         assertThat(knowledge.ordinal()).isEqualTo(1);
@@ -166,7 +169,7 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(generation.path("generatedSha256").asText()).hasSize(64);
         assertThat(generation.path("generatedChars").asInt()).isPositive();
 
-        String auditDetails = auditDetails("artifact.saved");
+        String auditDetails = auditDetails("artifact.saved", fixture.tenant());
         assertThat(auditDetails)
                 .contains(artifact.id().toString())
                 .contains(fixture.runId().toString())
@@ -181,7 +184,7 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(poller.pollOnce()).isEqualTo(1);
         UUID approvalId = approvalId(fixture.runId());
         reject(fixture.userId(), approvalId);
-        UUID resumeEvent = data.publishResearchResume("tenant-a", fixture.runId(), fixture.taskId(), approvalId);
+        UUID resumeEvent = data.publishResearchResume(fixture.tenant(), fixture.runId(), fixture.taskId(), approvalId);
 
         assertThat(poller.pollOnce()).isEqualTo(1);
 
@@ -189,8 +192,8 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(runStatus(fixture.runId())).isEqualTo("CANCELLED");
         assertThat(taskStatus(fixture.taskId())).isEqualTo("CANCELLED");
         assertThat(taskFailureCode(fixture.taskId())).isEqualTo("APPROVAL_REJECTED");
-        assertThat(artifactCount()).isZero();
-        assertThat(auditCount("artifact.saved")).isZero();
+        assertThat(artifactCount(fixture.tenant())).isZero();
+        assertThat(auditCount("artifact.saved", fixture.tenant())).isZero();
         assertThat(mcpInvocationCount(fixture.runId())).isZero();
         assertThat(stageStatus(fixture.runId(), "APPROVAL")).isEqualTo("SKIPPED");
         assertThat(stageStatus(fixture.runId(), "TOOL")).isEqualTo("SKIPPED");
@@ -206,7 +209,10 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
     @Test
     void toolStageFailure_isRetriedAndCompletesOnce() {
         Fixture fixture = fixture("tenant-a", true);
-        stub.rateLimitNext(3);
+        // M04：429/5xx 由 FailoverChatModel 在同一调用内退避重试；本用例验证 outbox 级重试，
+        // 因此注入不可重试的协议错误（400），单模型链耗尽后按 ADR-0021 §5.3 返回统一 503，
+        // 避免同一次调用内自动恢复。
+        stub.forceStatus(400);
 
         assertThat(poller.pollOnce()).isEqualTo(1);
 
@@ -214,8 +220,9 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(outboxStatus(fixture.eventId())).isEqualTo("PENDING");
         assertThat(stageStatus(fixture.runId(), "RETRIEVAL")).isEqualTo("SUCCEEDED");
         assertThat(stageStatus(fixture.runId(), "TOOL")).isEqualTo("FAILED");
-        assertThat(stageErrorCode(fixture.runId(), "TOOL")).isEqualTo("RICCON-MODEL-429");
+        assertThat(stageErrorCode(fixture.runId(), "TOOL")).isEqualTo("RICCON-MODEL-503");
         assertThat(taskStatus(fixture.taskId())).isEqualTo("FAILED");
+        stub.reset();
         makeOutboxAvailable(fixture.eventId());
 
         assertThat(poller.pollOnce()).isEqualTo(1);
@@ -228,16 +235,16 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
 
         UUID approvalId = approvalId(fixture.runId());
         approve(fixture.userId(), approvalId);
-        data.publishResearchResume("tenant-a", fixture.runId(), fixture.taskId(), approvalId);
+        data.publishResearchResume(fixture.tenant(), fixture.runId(), fixture.taskId(), approvalId);
         assertThat(poller.pollOnce()).isEqualTo(1);
 
         assertThat(runStatus(fixture.runId())).isEqualTo("SUCCEEDED");
         assertThat(taskStatus(fixture.taskId())).isEqualTo("SUCCEEDED");
         assertThat(approvalCount(fixture.runId(), "PENDING")).isZero();
         assertThat(approvalCount(fixture.runId(), "APPROVED")).isEqualTo(1);
-        assertThat(artifactCount()).isEqualTo(1);
-        assertThat(versionCount()).isEqualTo(1);
-        assertThat(citationCount()).isEqualTo(2);
+        assertThat(artifactCount(fixture.tenant())).isEqualTo(1);
+        assertThat(versionCount(fixture.tenant())).isEqualTo(1);
+        assertThat(citationCount(fixture.tenant())).isEqualTo(2);
     }
 
     /** 报告生成失败：任务失败、保留已成功阶段、不产生产物且不再自动重试已消费的审批。 */
@@ -247,7 +254,7 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(poller.pollOnce()).isEqualTo(1);
         UUID approvalId = approvalId(fixture.runId());
         approve(fixture.userId(), approvalId);
-        UUID resumeEvent = data.publishResearchResume("tenant-a", fixture.runId(), fixture.taskId(), approvalId);
+        UUID resumeEvent = data.publishResearchResume(fixture.tenant(), fixture.runId(), fixture.taskId(), approvalId);
         stub.forceStatus(500);
 
         assertThat(poller.pollOnce()).isEqualTo(1);
@@ -261,7 +268,7 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(stageErrorCode(fixture.runId(), "GENERATION")).isEqualTo("RICCON-MODEL-503");
         assertThat(taskFailureCode(fixture.taskId())).isEqualTo("RICCON-MODEL-503");
         assertThat(mcpInvocationCount(fixture.runId())).isEqualTo(1);
-        assertThat(artifactCount()).isZero();
+        assertThat(artifactCount(fixture.tenant())).isZero();
     }
 
     /** 生成失败后从 TOOL 阶段重试：新审批、新阶段尝试，最终只产生一个产物。 */
@@ -271,7 +278,7 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(poller.pollOnce()).isEqualTo(1);
         UUID firstApproval = approvalId(fixture.runId());
         approve(fixture.userId(), firstApproval);
-        data.publishResearchResume("tenant-a", fixture.runId(), fixture.taskId(), firstApproval);
+        data.publishResearchResume(fixture.tenant(), fixture.runId(), fixture.taskId(), firstApproval);
         stub.forceStatus(500);
         assertThat(poller.pollOnce()).isEqualTo(1);
         assertThat(runStatus(fixture.runId())).isEqualTo("FAILED");
@@ -296,14 +303,14 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         UUID secondApproval = approvalId(fixture.runId());
         assertThat(secondApproval).isNotEqualTo(firstApproval);
         approve(fixture.userId(), secondApproval);
-        data.publishResearchResume("tenant-a", fixture.runId(), fixture.taskId(), secondApproval);
+        data.publishResearchResume(fixture.tenant(), fixture.runId(), fixture.taskId(), secondApproval);
         assertThat(poller.pollOnce()).isEqualTo(1);
 
         assertThat(runStatus(fixture.runId())).isEqualTo("SUCCEEDED");
         assertThat(taskStatus(fixture.taskId())).isEqualTo("SUCCEEDED");
-        assertThat(artifactCount()).isEqualTo(1);
-        assertThat(versionCount()).isEqualTo(1);
-        assertThat(citationCount()).isEqualTo(2);
+        assertThat(artifactCount(fixture.tenant())).isEqualTo(1);
+        assertThat(versionCount(fixture.tenant())).isEqualTo(1);
+        assertThat(citationCount(fixture.tenant())).isEqualTo(2);
         assertThat(stageCount(fixture.runId(), "GENERATION")).isEqualTo(1);
     }
 
@@ -322,7 +329,7 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(outboxStatus(fixture.eventId())).isEqualTo("DEAD");
         assertThat(approvalCount(fixture.runId(), "PENDING")).isZero();
         assertThat(stub.requestCount()).isZero();
-        assertThat(artifactCount()).isZero();
+        assertThat(artifactCount(fixture.tenant())).isZero();
     }
 
     /** 检索来源写入截断片段：审批前可见、单行、不超过 200 字符且不落全文。 */
@@ -361,10 +368,11 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(poller.pollOnce()).isEqualTo(1);
         UUID approvalId = approvalId(fixture.runId());
         approve(fixture.userId(), approvalId);
-        UUID resumeEvent = data.publishResearchResume("tenant-a", fixture.runId(), fixture.taskId(), approvalId);
+        UUID resumeEvent = data.publishResearchResume(fixture.tenant(), fixture.runId(), fixture.taskId(), approvalId);
         assertThat(poller.pollOnce()).isEqualTo(1);
         int requestsAfterSuccess = stub.requestCount();
-        String bodyBefore = readObject(currentVersion().storageKey());
+        String bodyBefore =
+                readObject(currentVersion(fixture.tenant(), fixture.taskId()).storageKey());
         String approvalDetailsBefore = stageDetails(fixture.runId(), "APPROVAL");
         String decidedAtBefore = objectMapper
                 .readTree(approvalDetailsBefore)
@@ -383,10 +391,11 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
 
         assertThat(outboxStatus(resumeEvent)).isEqualTo("DONE");
         assertThat(stub.requestCount()).isEqualTo(requestsAfterSuccess);
-        assertThat(artifactCount()).isEqualTo(1);
-        assertThat(versionCount()).isEqualTo(1);
-        assertThat(citationCount()).isEqualTo(2);
-        assertThat(readObject(currentVersion().storageKey())).isEqualTo(bodyBefore);
+        assertThat(artifactCount(fixture.tenant())).isEqualTo(1);
+        assertThat(versionCount(fixture.tenant())).isEqualTo(1);
+        assertThat(citationCount(fixture.tenant())).isEqualTo(2);
+        assertThat(readObject(currentVersion(fixture.tenant(), fixture.taskId()).storageKey()))
+                .isEqualTo(bodyBefore);
         // 重复 resume 不重写审批详情，首次写入的审批时间保持不变。
         assertThat(stageDetails(fixture.runId(), "APPROVAL")).isEqualTo(approvalDetailsBefore);
         assertThat(objectMapper
@@ -403,13 +412,13 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(poller.pollOnce()).isEqualTo(1);
         UUID approvalId = approvalId(fixture.runId());
         approve(fixture.userId(), approvalId);
-        data.publishResearchResume("tenant-a", fixture.runId(), fixture.taskId(), approvalId);
+        data.publishResearchResume(fixture.tenant(), fixture.runId(), fixture.taskId(), approvalId);
         assertThat(poller.pollOnce()).isEqualTo(1);
 
         ResearchTaskRecord task = tenantCall(
-                "tenant-a",
+                fixture.tenant(),
                 () -> researchRepository
-                        .findTask(TenantId.of("tenant-a"), fixture.taskId())
+                        .findTask(TenantId.of(fixture.tenant()), fixture.taskId())
                         .orElseThrow());
         ReportDocument document = new ReportDocument(
                 "市场调研 · 市场调研报告",
@@ -430,15 +439,20 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
                         null,
                         1)));
         SavedArtifact saved = tenantCall(
-                "tenant-a",
+                fixture.tenant(),
                 () -> artifactWriter.write(
-                        TenantId.of("tenant-a"), task, fixture.runId(), fixture.userId(), document, "trace-version"));
+                        TenantId.of(fixture.tenant()),
+                        task,
+                        fixture.runId(),
+                        fixture.userId(),
+                        document,
+                        "trace-version"));
 
         assertThat(saved.created()).isTrue();
         assertThat(saved.version().version()).isEqualTo(2);
-        assertThat(artifactCount()).isEqualTo(1);
-        assertThat(versionCount()).isEqualTo(2);
-        assertThat(citationCount()).isEqualTo(3);
+        assertThat(artifactCount(fixture.tenant())).isEqualTo(1);
+        assertThat(versionCount(fixture.tenant())).isEqualTo(2);
+        assertThat(citationCount(fixture.tenant())).isEqualTo(3);
     }
 
     /** 产物、版本与引用查询严格按租户隔离，跨租户不可见。 */
@@ -448,11 +462,11 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(poller.pollOnce()).isEqualTo(1);
         UUID approvalId = approvalId(fixture.runId());
         approve(fixture.userId(), approvalId);
-        data.publishResearchResume("tenant-a", fixture.runId(), fixture.taskId(), approvalId);
+        data.publishResearchResume(fixture.tenant(), fixture.runId(), fixture.taskId(), approvalId);
         assertThat(poller.pollOnce()).isEqualTo(1);
 
-        ArtifactRecord artifact = currentArtifact();
-        ArtifactVersionRecord version = currentVersion();
+        ArtifactRecord artifact = currentArtifact(fixture.tenant(), fixture.taskId());
+        ArtifactVersionRecord version = currentVersion(fixture.tenant(), fixture.taskId());
         TenantId other = TenantId.of("tenant-b");
         assertThat(TenantContext.callWithTenant(other, () -> artifactRepository.findByTask(other, fixture.taskId())))
                 .isEmpty();
@@ -464,14 +478,9 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
                 .isEmpty();
     }
 
-    /**
-     * 构造租户、知识库、MCP 与报告任务。
-     *
-     * @param tenant 租户
-     * @param withKnowledge 是否写入可命中的知识库分块
-     * @return 夹具
-     */
-    private Fixture fixture(String tenant, boolean withKnowledge) {
+    /** 构造租户、知识库、MCP 与报告任务；每个测试生成唯一租户。 */
+    private Fixture fixture(String tenantPrefix, boolean withKnowledge) {
+        String tenant = uniqueTenant(tenantPrefix);
         data.createTenant(tenant);
         UUID user = data.createUser(tenant);
         UUID workspace = data.createWorkspace(tenant, user);
@@ -493,7 +502,8 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         data.createModelCatalog(stub.url(), TestCredentials.API_KEY);
         TestDataFactory.ResearchPublished published =
                 data.publishResearchRequested(tenant, workspace, user, "市场调研", tool);
-        return new Fixture(published.runId(), published.taskId(), published.eventId(), user, document, workspace);
+        return new Fixture(
+                tenant, published.runId(), published.taskId(), published.eventId(), user, document, workspace);
     }
 
     /**
@@ -508,7 +518,7 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         String payload = "{\"runId\":\"" + fixture.runId() + "\",\"researchTaskId\":\"" + fixture.taskId()
                 + "\",\"stage\":\"" + stage + "\",\"attempt\":" + attempt + "}";
         return data.createOutbox(
-                "tenant-a",
+                fixture.tenant(),
                 fixture.runId(),
                 EventTypes.AGENT_RUN_REQUESTED,
                 payload,
@@ -668,75 +678,73 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
                 .orElseThrow();
     }
 
-    /** 审计数量。 */
-    private int auditCount(String action) {
+    /** 审计数量；按本测试唯一租户过滤，audit_event 只追加不删除。 */
+    private int auditCount(String action, String tenant) {
         return jdbcClient
-                .sql("SELECT COUNT(*) FROM audit_event WHERE action = :action")
+                .sql("SELECT COUNT(*) FROM audit_event WHERE action = :action AND tenant_id = :tenantId")
                 .param("action", action)
+                .param("tenantId", tenant)
                 .query(Integer.class)
                 .single();
     }
 
-    /** 审计 JSON 详情。 */
-    private String auditDetails(String action) {
+    /** 审计 JSON 详情；按本测试唯一租户过滤。 */
+    private String auditDetails(String action, String tenant) {
         return jdbcClient
-                .sql("SELECT details FROM audit_event WHERE action = :action ORDER BY occurred_at DESC LIMIT 1")
+                .sql("""
+                        SELECT details FROM audit_event
+                         WHERE action = :action AND tenant_id = :tenantId
+                         ORDER BY occurred_at DESC
+                         LIMIT 1
+                        """)
                 .param("action", action)
+                .param("tenantId", tenant)
                 .query(String.class)
                 .single();
     }
 
-    /** 产物总数。 */
-    private int artifactCount() {
+    /** 产物数量；按本测试唯一租户过滤。 */
+    private int artifactCount(String tenant) {
         return jdbcClient
-                .sql("SELECT COUNT(*) FROM artifact")
+                .sql("SELECT COUNT(*) FROM artifact WHERE tenant_id = :tenantId")
+                .param("tenantId", tenant)
                 .query(Integer.class)
                 .single();
     }
 
-    /** 版本总数。 */
-    private int versionCount() {
+    /** 版本数量；按本测试唯一租户过滤。 */
+    private int versionCount(String tenant) {
         return jdbcClient
-                .sql("SELECT COUNT(*) FROM artifact_version")
+                .sql("SELECT COUNT(*) FROM artifact_version WHERE tenant_id = :tenantId")
+                .param("tenantId", tenant)
                 .query(Integer.class)
                 .single();
     }
 
-    /** 引用总数。 */
-    private int citationCount() {
+    /** 引用数量；按本测试唯一租户过滤。 */
+    private int citationCount(String tenant) {
         return jdbcClient
-                .sql("SELECT COUNT(*) FROM artifact_citation")
+                .sql("SELECT COUNT(*) FROM artifact_citation WHERE tenant_id = :tenantId")
+                .param("tenantId", tenant)
                 .query(Integer.class)
                 .single();
     }
 
-    /** 当前产物。 */
-    private ArtifactRecord currentArtifact() {
+    /** 当前产物；任务 ID 来自夹具，不跨租户或跨任务取值。 */
+    private ArtifactRecord currentArtifact(String tenant, UUID taskId) {
         return tenantCall(
-                "tenant-a",
-                () -> artifactRepository
-                        .findByTask(TenantId.of("tenant-a"), taskIdFromSingleArtifact())
-                        .orElseThrow());
+                tenant,
+                () -> artifactRepository.findByTask(TenantId.of(tenant), taskId).orElseThrow());
     }
 
     /** 当前版本。 */
-    private ArtifactVersionRecord currentVersion() {
-        ArtifactRecord artifact = currentArtifact();
+    private ArtifactVersionRecord currentVersion(String tenant, UUID taskId) {
+        ArtifactRecord artifact = currentArtifact(tenant, taskId);
         return tenantCall(
-                "tenant-a",
+                tenant,
                 () -> artifactRepository
-                        .findVersion(TenantId.of("tenant-a"), artifact.id(), artifact.currentVersion())
+                        .findVersion(TenantId.of(tenant), artifact.id(), artifact.currentVersion())
                         .orElseThrow());
-    }
-
-    /** 单产物测试中读取任务 ID。 */
-    private UUID taskIdFromSingleArtifact() {
-        return jdbcClient
-                .sql("SELECT research_task_id FROM artifact LIMIT 1")
-                .query(byte[].class)
-                .optional()
-                .map(UuidBinary::fromBytes)
-                .orElseThrow();
     }
 
     /** 读取对象存储正文。 */
@@ -768,6 +776,7 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
     /**
      * 夹具。
      *
+     * @param tenant 租户
      * @param runId 运行
      * @param taskId 任务
      * @param eventId requested 事件
@@ -775,5 +784,6 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
      * @param documentId 知识库文档
      * @param workspaceId 工作空间
      */
-    private record Fixture(UUID runId, UUID taskId, UUID eventId, UUID userId, UUID documentId, UUID workspaceId) {}
+    private record Fixture(
+            String tenant, UUID runId, UUID taskId, UUID eventId, UUID userId, UUID documentId, UUID workspaceId) {}
 }

@@ -32,6 +32,7 @@ import tools.jackson.databind.JsonNode;
  * </ul>
  */
 @Tag("dept-isolation")
+@Tag("security")
 class ChatScopeApiTest extends ApiIntegrationTestSupport {
 
     /** 测试共享密钥。 */

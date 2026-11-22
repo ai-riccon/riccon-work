@@ -8,13 +8,19 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.Tag;
 import tools.jackson.databind.JsonNode;
 
 /**
  * 文件与知识库 API 测试的租户、工作空间与上传辅助。
  *
  * <p>所有 fixture 通过公开接口创建，不使用测试专用后门；会话、CSRF 与租户隔离仍走真实 HTTP 与数据库。
+ *
+ * <p>M19 P4a：{@code @Tag("integration")} 本已通过 {@link ApiIntegrationTestSupport} 继承；这里显式重复
+ * 声明，让“需要真实对象存储的文件测试层”自描述，并避免将来调整继承链时静默丢失标签。JUnit 会合并
+ * 去重重复标签，选择语义不变。
  */
+@Tag("integration")
 public abstract class FileApiTestSupport extends ApiStorageIntegrationTestSupport {
 
     /**

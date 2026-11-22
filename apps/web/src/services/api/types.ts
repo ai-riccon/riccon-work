@@ -387,6 +387,10 @@ export interface ProblemDetail {
   code: string;
   traceId: string;
   tenantId?: string | null;
+  /** 字段级错误定位；模型端点只读字段、非法状态或 URL 校验使用（ADR-0021 §2.4/§7.3）。 */
+  field?: string | null;
+  /** 稳定原因码；只在字段级错误出现，例如 `ENDPOINT_NOT_ALLOWED`、`DUPLICATE_CREDENTIAL`。 */
+  reason?: string | null;
 }
 
 /** SSE 事件名。 */

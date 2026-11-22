@@ -22,6 +22,8 @@ describe('路由表', () => {
       '/admin/overview',
       '/admin/tenants',
       '/admin/users',
+      '/admin/model-routing',
+      '/admin/model-keys',
       '/admin/audit',
       '/admin/audit-exports',
       '/admin/settings',
@@ -93,6 +95,8 @@ describe('管理端导航权限过滤', () => {
     const byPath = new Map(adminNavigation.map((item) => [item.path, item]));
 
     expect(byPath.get('/admin/users')?.permissions).toEqual(['tenant.user.manage']);
+    expect(byPath.get('/admin/model-routing')?.permissions).toEqual(['platform.model.read']);
+    expect(byPath.get('/admin/model-keys')?.permissions).toEqual(['platform.model.read']);
     expect(byPath.get('/admin/audit')?.permissions).toEqual(['audit.read']);
     expect(byPath.get('/admin/audit-exports')?.permissions).toEqual(['audit.export.approve']);
     expect(byPath.get('/admin/overview')?.permissions).toBeUndefined();
@@ -112,7 +116,7 @@ describe('管理端导航权限过滤', () => {
     ]);
   });
 
-  it('租户管理员看到用户管理、审计查询与租户审计导出', () => {
+  it('租户管理员看到用户管理、审计查询与租户审计导出，但看不到平台模型入口', () => {
     expect(visiblePaths(['tenant.user.manage', 'audit.read', 'audit.export.approve'])).toEqual([
       '/admin/overview',
       '/admin/tenants',
@@ -121,6 +125,18 @@ describe('管理端导航权限过滤', () => {
       '/admin/audit-exports',
       '/admin/settings',
     ]);
+  });
+
+  it('平台管理员看到模型路由与模型 key，菜单不落到 404', () => {
+    const paths = visiblePaths([
+      'platform.tenant.manage',
+      'platform.model.read',
+      'platform.model.manage',
+    ]);
+    expect(paths).toContain('/admin/model-routing');
+    expect(paths).toContain('/admin/model-keys');
+    expect(findRouteByPath('/admin/model-routing')?.title).toBe('模型路由');
+    expect(findRouteByPath('/admin/model-keys')?.title).toBe('模型 key');
   });
 
   it('平台管理员只看到平台范围内可用的审计查询', () => {

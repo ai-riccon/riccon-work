@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0105",
+  "module_id": "M04",
+  "title": "M04 B4：Worker 路由/降级/尝试记录/首字后语义/开关/移除 BYO 回退 + 注册 7 个指标",
+  "owner": "riccon/builder-failover",
+  "status": "done",
+  "write_scope": [
+    "apps/worker/src/main/java/com/riccon/worker/model/**",
+    "apps/worker/src/main/java/com/riccon/worker/chat/**",
+    "apps/worker/src/main/java/com/riccon/worker/research/service/AgentRunRequestedHandler.java",
+    "apps/worker/src/main/java/com/riccon/worker/research/service/AgentRunResumeHandler.java",
+    "apps/worker/src/main/java/com/riccon/worker/agent/**",
+    "apps/worker/src/main/java/com/riccon/worker/audit/service/AuditService.java",
+    "apps/worker/src/test/java/com/riccon/worker/model/**",
+    "apps/worker/src/test/java/com/riccon/worker/chat/**",
+    ".riccon/**",
+    "apps/worker/src/test/java/com/riccon/worker/research/ReportArtifactIntegrationTest.java",
+    "apps/worker/src/main/java/com/riccon/worker/audit/domain/AuditDetailsPolicy.java",
+    "apps/worker/src/test/java/com/riccon/worker/support/TestDataFactory.java"
+  ],
+  "acceptance": [
+    "链路解析 + 内层 `maxAttempts=1` + 尝试顺序/上限/预算",
+    "8 类失败矩阵、首字后不重试不重放",
+    "尝试表/审计（`emitted`、SYSTEM/platform）",
+    "开关回退 BASELINE 且仍走 allowlist、无链外回退",
+    "BYO 回退移除（租户级凭据被忽略）+ 注册 7 个路由/降级/key 指标",
+    "J1/J2 回归"
+  ],
+  "evidence": [
+    "EV-0550",
+    "EV-0557"
+  ],
+  "tools_used": [
+    "codegraph — 路由/降级影响面与既有调用点（ModelRegistry/ChatStreamService/两个 Handler）",
+    "git — 提交范围与 dirty 核对",
+    "maven:jdk21 — ./mvnw 定向集成测试（降级矩阵/J1/J2 回归/ArchUnit）",
+    "serena:未使用 — Maven 测试期间不引导 JDT LS；新增类为主，符号影响面由 CodeGraph 覆盖"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-20T21:05:31.144+08:00",
+  "updated_at": "2026-11-21T06:09:40.775+08:00",
+  "baseline_commit": "f97674e85e10585c691acb6631e90628ba5ce27b",
+  "end_commit": "e9c57ee80d6760c0bd92eba4547d7c874b525a43"
+}

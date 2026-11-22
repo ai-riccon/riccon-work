@@ -1,0 +1,147 @@
+{
+  "apiBase": "http://127.0.0.1:18080",
+  "generatedAt": "2026-11-21T00:15:13.350Z",
+  "mode": "full",
+  "tenants": {
+    "alpha": "tenant-alpha",
+    "beta": "tenant-beta"
+  },
+  "users": {
+    "platformAdmin": "platform-admin",
+    "alphaAdmin": "alpha-admin",
+    "alphaAdmin2": "alpha-admin-2",
+    "alphaMember": "alpha-member",
+    "betaMember": "beta-member"
+  },
+  "userIds": {
+    "alphaAdmin": "01a1fb74-ef6b-78cd-b11a-69c9b5313982",
+    "alphaAdmin2": "01a1fb74-f1aa-7008-9f44-34fe089ab259",
+    "alphaMember": "01a1fb74-f090-76cc-a29c-7bb52c40f954",
+    "betaMember": "01a1fb74-f2ba-7279-b069-9a5bb5ec7695"
+  },
+  "passwords": {
+    "platformAdmin": "test-bootstrap-password-12",
+    "alphaAdmin": "alpha-admin-password-12",
+    "alphaAdmin2": "alpha-admin-2-password-12",
+    "alphaMember": "alpha-member-password-12",
+    "betaMember": "beta-member-password-12"
+  },
+  "tenantIds": {
+    "alpha": "tenant-alpha",
+    "beta": "tenant-beta"
+  },
+  "workspaces": {
+    "alpha": {
+      "id": "01a1fb74-f510-7ad1-952f-f26febf1e600",
+      "kind": "PERSONAL",
+      "name": "Alpha 员工 的个人空间",
+      "description": null,
+      "ownerUserId": "01a1fb74-f090-76cc-a29c-7bb52c40f954",
+      "departmentId": null,
+      "departmentName": null,
+      "visibility": "PRIVATE",
+      "status": "ACTIVE",
+      "createdAt": "2026-11-21T00:15:08.560777Z",
+      "updatedAt": "2026-11-21T00:15:08.560777Z"
+    },
+    "beta": {
+      "id": "01a1fb74-f655-7a1e-b52c-a7e2edfd55ec",
+      "kind": "PERSONAL",
+      "name": "Beta 员工 的个人空间",
+      "description": null,
+      "ownerUserId": "01a1fb74-f2ba-7279-b069-9a5bb5ec7695",
+      "departmentId": null,
+      "departmentName": null,
+      "visibility": "PRIVATE",
+      "status": "ACTIVE",
+      "createdAt": "2026-11-21T00:15:08.885875Z",
+      "updatedAt": "2026-11-21T00:15:08.885875Z"
+    }
+  },
+  "catalog": {
+    "providerId": "0192f0a0-0000-7000-8000-000000000101",
+    "modelId": "0192f0a0-0000-7000-8000-000000000111",
+    "mcpServerId": "0192f0a0-0000-7000-8000-000000000003",
+    "mcpToolId": "0192f0a0-0000-7000-8000-000000000004",
+    "providers": [
+      {
+        "id": "0192f0a0-0000-7000-8000-000000000101",
+        "code": "fake-primary",
+        "name": "假模型主供应商（真实栈）",
+        "environmentLabel": "DEMO_ONLY",
+        "modelIds": [
+          "0192f0a0-0000-7000-8000-000000000111",
+          "0192f0a0-0000-7000-8000-000000000113"
+        ]
+      },
+      {
+        "id": "0192f0a0-0000-7000-8000-000000000102",
+        "code": "fake-secondary",
+        "name": "假模型备用供应商（真实栈）",
+        "environmentLabel": "DEMO_ONLY",
+        "modelIds": [
+          "0192f0a0-0000-7000-8000-000000000112"
+        ]
+      }
+    ],
+    "models": [
+      {
+        "id": "0192f0a0-0000-7000-8000-000000000111",
+        "modelKey": "fake-chat-primary",
+        "displayName": "假模型-主（真实栈）",
+        "status": "ACTIVE",
+        "pricing": "PRICED"
+      },
+      {
+        "id": "0192f0a0-0000-7000-8000-000000000112",
+        "modelKey": "fake-chat-secondary",
+        "displayName": "假模型-备用（真实栈）",
+        "status": "ACTIVE",
+        "pricing": "PRICED"
+      },
+      {
+        "id": "0192f0a0-0000-7000-8000-000000000113",
+        "modelKey": "fake-chat-disabled",
+        "displayName": "假模型-停用示例（真实栈）",
+        "status": "DISABLED",
+        "pricing": "UNPRICED"
+      }
+    ],
+    "routing": {
+      "CHAT": [
+        "0192f0a0-0000-7000-8000-000000000111",
+        "0192f0a0-0000-7000-8000-000000000112",
+        "0192f0a0-0000-7000-8000-000000000113"
+      ],
+      "REPORT": [
+        "0192f0a0-0000-7000-8000-000000000111",
+        "0192f0a0-0000-7000-8000-000000000112"
+      ]
+    },
+    "credentials": {
+      "fake-primary": [
+        {
+          "id": "0192f0a0-0000-7000-8000-000000000121",
+          "label": "主 key（真实栈）",
+          "priority": 10,
+          "maskedHint": "****84ec"
+        }
+      ],
+      "fake-secondary": [
+        {
+          "id": "0192f0a0-0000-7000-8000-000000000122",
+          "label": "备用 key（真实栈）",
+          "priority": 10,
+          "maskedHint": "****2e97"
+        }
+      ]
+    }
+  },
+  "knowledge": {
+    "documentId": "01a1fb74-ff6c-7eb7-81f8-71c6c0f079a5",
+    "status": "INDEXED",
+    "sourceFileId": "01a1fb74-f7c8-7b6c-adc7-8a037e57bc15",
+    "title": "2025 中国企业协同办公市场研究"
+  },
+  "dbCounts": "item\ttotal\nproviders\t2\nmodels_active\t2\nmodels_priced\t2\nrouting_chat\t3\nrouting_report\t2\ncredentials_active\t2\nquota_limits\t8"
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0585",
+  "task_id": "TASK-0112",
+  "command": "for f in seed-model-catalog update-model-price rewrap-credentials restore-drill backfill-cost-day quota-drill cost-reconcile; do node scripts/ops/$f.mjs --self-test || exit 1; done && docker compose -f deploy/compose/docker-compose.test.yml config -q && node scripts/real-stack/run.mjs --self-test",
+  "manual": false,
+  "commit": "1890c672f88b3a9a3584368cd9fc361535cbfdb4",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0112/EV-0585-2026-11-21T07-48-14-364+08-00-for-f-in-seed-model-catalog-update-model-price-r.log",
+  "output_sha256": "8f117ab482717d43628bd430c470672c485118c438d9c87346ecdd7090d7d425",
+  "output_bytes": 3218,
+  "agent": "riccon/ops",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-21T07:48:09.797+08:00",
+  "finished_at": "2026-11-21T07:48:13.210+08:00",
+  "duration_ms": 3412,
+  "note": "B10 最终自检（脚本 --self-test、compose config、real-stack --self-test；干净树）",
+  "recorded_at": "2026-11-21T07:48:14.366+08:00"
+}

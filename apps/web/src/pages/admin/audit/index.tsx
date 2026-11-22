@@ -43,6 +43,7 @@ import { authStore, useAuth } from '@/services/auth/auth-store';
 import { AuditEventDrawer } from './event-drawer';
 import { ExportRequestModal } from './export-request-modal';
 import { AuditFilterFields } from './filter-fields';
+import { FAILOVER_PRESET_LABEL, buildFailoverPreset } from './presets';
 import './audit.css';
 
 /** 审计查询页参数。 */
@@ -104,6 +105,11 @@ export default function AuditPage({ api = defaultAuditApi }: AuditPageProps) {
   const [appliedFilter, setAppliedFilter] = useState<AuditFilter>({});
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [presetNotice, setPresetNotice] = useState<{
+    label: string;
+    from: string;
+    to: string;
+  } | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const policyRef = useRef<AuditPolicy | null>(null);
@@ -177,8 +183,32 @@ export default function AuditPage({ api = defaultAuditApi }: AuditPageProps) {
       setPhase('error');
       return;
     }
+    setPresetNotice(null);
     setAppliedFilter(toAuditFilter(values));
     setPage(1);
+  };
+
+  /**
+   * 应用“降级事件（最近 7 天）”前端预设。
+   *
+   * 直接写入查询条件而不依赖 DatePicker 的 dayjs 值：预设是只读查询语义，
+   * 时间窗口与动作由前端生成；用户仍可用筛选条件覆盖，重置会清除预设。
+   */
+  const handleFailoverPreset = (): void => {
+    const preset = buildFailoverPreset(new Date());
+    form.resetFields();
+    setPresetNotice({
+      label: FAILOVER_PRESET_LABEL,
+      from: preset.occurredFrom,
+      to: preset.occurredTo,
+    });
+    setAppliedFilter({
+      action: preset.action,
+      occurredFrom: preset.occurredFrom,
+      occurredTo: preset.occurredTo,
+    });
+    setPage(1);
+    setError(null);
   };
 
   /**
@@ -189,6 +219,7 @@ export default function AuditPage({ api = defaultAuditApi }: AuditPageProps) {
     setAppliedFilter({});
     setPage(1);
     setError(null);
+    setPresetNotice(null);
   };
 
   /**
@@ -360,6 +391,23 @@ export default function AuditPage({ api = defaultAuditApi }: AuditPageProps) {
         />
       )}
 
+      {presetNotice && (
+        <Alert
+          aria-live="polite"
+          closable
+          description={`已应用 ${presetNotice.label}：${formatAuditTime(
+            presetNotice.from,
+          )} 至 ${formatAuditTime(
+            presetNotice.to,
+          )}。可继续在筛选条件中调整时间范围（最大 180 天）；该预设仅在前端生成，不改变服务端默认窗口。`}
+          onClose={() => setPresetNotice(null)}
+          showIcon
+          style={{ marginBottom: 16 }}
+          title="已应用降级事件预设"
+          type="info"
+        />
+      )}
+
       <Card className="audit-filter-card" title="筛选条件">
         <Form<AuditFilterFormValues>
           className="audit-filter-grid"
@@ -375,13 +423,14 @@ export default function AuditPage({ api = defaultAuditApi }: AuditPageProps) {
                 查询
               </Button>
               <Button onClick={handleReset}>重置</Button>
+              <Button onClick={handleFailoverPreset}>{FAILOVER_PRESET_LABEL}</Button>
               <Button disabled={!policy} onClick={() => setExportOpen(true)} type="default">
                 申请导出
               </Button>
             </Space>
             <Typography.Text type="secondary">
               时间按浏览器本地时区选择，提交时转换为 Asia/Shanghai（+08:00）；未选时间时按最近 24
-              小时。
+              小时，降级事件预设为最近 7 天。
             </Typography.Text>
           </div>
         </Form>

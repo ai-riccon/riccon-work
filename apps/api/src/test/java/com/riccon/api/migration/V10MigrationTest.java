@@ -22,6 +22,7 @@ import org.flywaydb.core.api.FlywayException;
 import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -34,16 +35,17 @@ import org.testcontainers.mysql.MySQLContainer;
  * <p>不使用热栈或应用上下文：在一次性 Testcontainers MySQL 8.4.13 上先用 Flyway 只应用到 V9，
  * 种入 M02/M03 形态的租户、账号、角色、权限、空间、部门与跨分区审计事件，再应用 V10，验证
  * {@code audit_export_request}、两个审计查询索引、权限字典/角色回填、CHECK/外键与 M02/M03 数据兼容。
- * 空库直接应用 V10 通过不算本测试的替代；空库路径另行验证 RoleDefinitions 全量权限字典覆盖。
+ * 空库直接应用最新迁移（当前 V11）通过不算本测试的替代；空库路径另行验证 RoleDefinitions 全量权限字典覆盖。
  *
  * <p>演练 schema：{@code riccon_rollback} 执行 ADR-0020 §5.4 回滚并验证回到 V9；{@code riccon_fresh}
- * 验证 fresh install 的权限字典覆盖；{@code riccon_failure} 用重名索引注入索引 DDL 失败，验证
- * OPS-005 的单语句原子性与 OPS-006 的 repair 恢复路径。所有 schema 都在同一个一次性容器内，
- * 容器销毁即清理，不连接生产或共享热栈。
+ * 应用最新迁移（当前 V11）验证 RoleDefinitions 的权限字典覆盖；{@code riccon_failure} 用重名索引注入
+ * 索引 DDL 失败，验证 OPS-005 的单语句原子性与 OPS-006 的 repair 恢复路径。所有 schema 都在同一个
+ * 一次性容器内，容器销毁即清理，不连接生产或共享热栈。
  *
  * <p>生产执行前提：V10 生产执行与 M10 gate 仍需 Ops 评审结论（OPS-004/005/006/007 的操作细节在
  * ops 运行手册）与用户 T4 生产批准；本测试只证明迁移与回滚在非生产副本上可执行。
  */
+@Tag("migration")
 class V10MigrationTest {
 
     /** 与合同 stack.versions.mysql 一致的测试镜像；命令参数与 API 集成测试保持一致。 */
@@ -217,8 +219,8 @@ class V10MigrationTest {
         migrate(rollbackUrl, "root", "10");
         rollbackV10Objects();
 
-        // fresh install：空库直接应用 V1–V10，验证权限字典覆盖与引导路径可用。
-        migrate(freshUrl, "root", "10");
+        // fresh install：空库直接应用最新迁移（含 V11），验证当前 RoleDefinitions 的权限字典覆盖与引导路径可用。
+        migrateLatest(freshUrl, "root");
         fresh = jdbcClient(freshUrl, "root");
 
         // 失败注入：先占用第二条索引名，让 V10 的单语句索引 ALTER 以重名失败。
@@ -234,7 +236,11 @@ class V10MigrationTest {
     @Test
     @DisplayName("V10 在 V9 种子数据上应用成功")
     void migration_appliesOnV9SeedData() {
-        assertThat(flyway(forwardUrl, USERNAME).info().current().getVersion().getVersion())
+        assertThat(flyway(forwardUrl, USERNAME, "10")
+                        .info()
+                        .current()
+                        .getVersion()
+                        .getVersion())
                 .isEqualTo("10");
         assertThat(forward.sql("""
                         SELECT COUNT(*) FROM flyway_schema_history
@@ -576,12 +582,12 @@ class V10MigrationTest {
                 .hasMessageContaining("append-only");
     }
 
-    /** fresh install：V1–V10 后 RoleDefinitions 的每条权限都能在字典中找到并用于角色创建。 */
+    /** fresh install：V1–V11 后 RoleDefinitions 的每条权限都能在字典中找到并用于角色创建。 */
     @Test
-    @DisplayName("空库 V1–V10 后 RoleDefinitions 权限字典完整")
+    @DisplayName("空库 V1–V11 后 RoleDefinitions 权限字典完整")
     void freshDatabase_bootstrapCoversRoleDefinitions() {
-        assertThat(flyway(freshUrl, "root").info().current().getVersion().getVersion())
-                .isEqualTo("10");
+        assertThat(flywayLatest(freshUrl, "root").info().current().getVersion().getVersion())
+                .isEqualTo("11");
         assertThat(count(fresh, """
                         SELECT COUNT(*) FROM information_schema.TABLES
                          WHERE TABLE_SCHEMA = :schema AND TABLE_NAME = 'audit_export_request'
@@ -665,7 +671,7 @@ class V10MigrationTest {
         rollback.sql("DELETE FROM flyway_schema_history WHERE version = '10'").update();
         assertThat(count(rollback, "SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history"))
                 .isEqualTo(9L);
-        Flyway latest = flyway(rollbackUrl, "root");
+        Flyway latest = flyway(rollbackUrl, "root", "10");
         assertThat(latest.info().current().getVersion().getVersion()).isEqualTo("9");
         assertThat(latest.info().pending())
                 .extracting(info -> info.getVersion().getVersion())
@@ -710,7 +716,7 @@ class V10MigrationTest {
         failure.sql("ALTER TABLE audit_event DROP INDEX idx_audit_tenant_actor_time")
                 .update();
         failure.sql("DROP TABLE audit_export_request").update();
-        Flyway flyway = flyway(failureUrl, "root");
+        Flyway flyway = flyway(failureUrl, "root", "10");
         flyway.repair();
         flyway.migrate();
 
@@ -852,6 +858,11 @@ class V10MigrationTest {
         flyway(url, user, target).migrate();
     }
 
+    /** 应用当前代码库的最新迁移（不钉历史 target）；仅 fresh install 用例使用。 */
+    private static void migrateLatest(String url, String user) {
+        flywayLatest(url, user).migrate();
+    }
+
     /** 构造指定目标版本的 Flyway 实例。 */
     private static Flyway flyway(String url, String user, String target) {
         return Flyway.configure()
@@ -861,8 +872,8 @@ class V10MigrationTest {
                 .load();
     }
 
-    /** 构造不限制目标的 Flyway 实例。 */
-    private static Flyway flyway(String url, String user) {
+    /** 构造不限制目标的 Flyway 实例；只用于验证当前最新 schema 的 fresh install 用例。 */
+    private static Flyway flywayLatest(String url, String user) {
         return Flyway.configure()
                 .dataSource(url, user, PASSWORD)
                 .locations("filesystem:" + migrationDirectory())

@@ -22,7 +22,7 @@ class TenantJdbcTest extends WorkerIntegrationTestBase {
     /** 带租户条件的查询返回本租户数据。 */
     @Test
     void query_withTenantPredicate_returnsScopedRow() {
-        String tenant = "tenant-a";
+        String tenant = uniqueTenant("tenant-a");
         data.createTenant(tenant);
         UUID userId = data.createUser(tenant);
 
@@ -39,7 +39,7 @@ class TenantJdbcTest extends WorkerIntegrationTestBase {
     /** 缺少 tenant_id 条件的 SQL 必须被拒绝，不能执行全租户查询。 */
     @Test
     void query_withoutTenantPredicate_throws() {
-        String tenant = "tenant-a";
+        String tenant = uniqueTenant("tenant-a");
         data.createTenant(tenant);
 
         try (TenantContext.TenantScope ignored = TenantContext.open(TenantId.of(tenant))) {
@@ -56,8 +56,8 @@ class TenantJdbcTest extends WorkerIntegrationTestBase {
     /** 调用方声明租户与线程上下文不一致必须快速失败。 */
     @Test
     void query_contextMismatch_throws() {
-        String tenantA = "tenant-a";
-        String tenantB = "tenant-b";
+        String tenantA = uniqueTenant("tenant-a");
+        String tenantB = uniqueTenant("tenant-b");
         data.createTenant(tenantA);
         data.createTenant(tenantB);
 
@@ -75,7 +75,7 @@ class TenantJdbcTest extends WorkerIntegrationTestBase {
     /** INSERT 缺少 tenant_id 列必须被拒绝。 */
     @Test
     void insert_withoutTenantColumn_throws() {
-        String tenant = "tenant-a";
+        String tenant = uniqueTenant("tenant-a");
         data.createTenant(tenant);
 
         try (TenantContext.TenantScope ignored = TenantContext.open(TenantId.of(tenant))) {
@@ -94,7 +94,7 @@ class TenantJdbcTest extends WorkerIntegrationTestBase {
     /** 带租户列的 INSERT 正常执行。 */
     @Test
     void insert_withTenantColumn_succeeds() {
-        String tenant = "tenant-a";
+        String tenant = uniqueTenant("tenant-a");
         data.createTenant(tenant);
         UUID userId = UuidBinary.newV7();
 
@@ -122,7 +122,7 @@ class TenantJdbcTest extends WorkerIntegrationTestBase {
     /** 带租户条件的更新只影响本租户。 */
     @Test
     void update_withTenantPredicate_updatesRow() {
-        String tenant = "tenant-a";
+        String tenant = uniqueTenant("tenant-a");
         data.createTenant(tenant);
         UUID userId = data.createUser(tenant);
 
@@ -138,7 +138,7 @@ class TenantJdbcTest extends WorkerIntegrationTestBase {
     /** 更新缺少租户条件必须被拒绝。 */
     @Test
     void update_withoutTenantPredicate_throws() {
-        String tenant = "tenant-a";
+        String tenant = uniqueTenant("tenant-a");
         data.createTenant(tenant);
 
         try (TenantContext.TenantScope ignored = TenantContext.open(TenantId.of(tenant))) {

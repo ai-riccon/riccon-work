@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0702",
+  "task_id": "TASK-0145",
+  "command": "set -euo pipefail; NS=m19p3b5; echo \"external=external namespace=$NS P3b-api-reverse-fresh\"; node scripts/test-services.mjs reset --namespace \"$NS\"; rm -rf apps/api/target/surefire-reports platform/*/target/surefire-reports; START=$(date +%s); RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=\"$NS\" perl -e 'alarm shift; exec @ARGV' 1800 ./mvnw -q -T1C -pl apps/api -am test -Dsurefire.runOrder=reversealphabetical; END=$(date +%s); echo \"wall_seconds=$((END-START))\"; node scripts/test-timings.mjs --out-dir \"$TMPDIR/m19p3b5/timings\"; TESTS=$(grep -ho 'tests=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); SKIPPED=$(grep -ho 'skipped=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); FAILURES=$(grep -ho 'failures=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); ERRORS=$(grep -ho 'errors=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); echo \"api_tests=$TESTS failures=$FAILURES errors=$ERRORS skipped=$SKIPPED\"; test \"$TESTS\" = \"642\"; test \"$FAILURES\" = \"0\"; test \"$ERRORS\" = \"0\"; test \"$SKIPPED\" = \"0\"; ./mvnw -q spotless:check; git diff --check; echo \"all_checks_ok\"",
+  "manual": false,
+  "commit": "d4047458f142a20ec493e79232c391feacf9c70b",
+  "dirty": false,
+  "exit_code": 1,
+  "output_path": ".riccon/evidence/TASK-0145/EV-0702-2026-11-21T23-11-49-801+08-00-set-euo-pipefail-ns-m19p3b5-echo-external-extern.log",
+  "output_sha256": "e6a7acbe0bdbc47a995ed8f9063cb29c0c88bb6505f1dc176f69739851a5dbfd",
+  "output_bytes": 1384562,
+  "agent": "riccon/builder-m19",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-21T23:01:51.939+08:00",
+  "finished_at": "2026-11-21T23:11:49.092+08:00",
+  "duration_ms": 597152,
+  "note": "M19 P3b API 反转类顺序全量（fresh namespace m19p3b5 reset 后 -Dsurefire.runOrder=reversealphabetical，验证缓存不引入类顺序依赖）：第一次 EV-0700 正向为 642/0/0/0、API suite 467.249s（基线 m19p3b0 902.821s，-435.572s/-48.2%）；本次结果见日志 api_tests/test-timings；EV-0701（同 namespace 不 reset）的 10 个失败为既有平台级 DEK/全局成本残留，与本 diff 无关（EnvelopeException + CostAdmin 全局汇总）；P3 合计 Worker EV-0696 约 92s（P2 445.214s）+ API 467.249s + platform ≈553s，对 P2 全量 1236.717s 降幅约 55.3%（≥30%）",
+  "recorded_at": "2026-11-21T23:11:49.813+08:00"
+}

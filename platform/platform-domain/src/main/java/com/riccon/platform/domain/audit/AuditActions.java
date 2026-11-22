@@ -77,6 +77,31 @@ public interface AuditActions {
     /** Worker 运行发起人已禁用，运行被拒绝（M10 提升为共享词汇，API 读取策略同样识别）。 */
     String USER_ACCESS_DENIED = "user.access.denied";
 
+    /** 平台管理员保存某个用途的完整模型路由链（M04，ADR-0021 §4.4）。 */
+    String MODEL_ROUTING_UPDATED = "model.routing.updated";
+    /** 平台管理员启停模型或修改模型目录字段（M04，ADR-0021 §7.4）。 */
+    String MODEL_UPDATED = "model.updated";
+    /** 首字前失败后切换到下一个 key/模型；成功降级对员工不可见（M04，ADR-0021 §5.2）。 */
+    String MODEL_FAILOVER_TRIGGERED = "model.failover.triggered";
+    /** 平台管理员新增模型凭据；details 只允许掩码，不含明文（M04，ADR-0021 §6.3）。 */
+    String MODEL_CREDENTIAL_CREATED = "model.credential.created";
+    /** 平台管理员轮换模型凭据；单事务插入新 key 并停用旧 key（M04）。 */
+    String MODEL_CREDENTIAL_ROTATED = "model.credential.rotated";
+    /** 平台管理员停用模型凭据（M04）。 */
+    String MODEL_CREDENTIAL_DISABLED = "model.credential.disabled";
+    /** 平台管理员恢复模型凭据（来自 DISABLED，M04）。 */
+    String MODEL_CREDENTIAL_ENABLED = "model.credential.enabled";
+    /** Worker 收到 401/403 后自动使凭据失效；actor=SYSTEM（M04，ADR-0021 §6.3）。 */
+    String MODEL_CREDENTIAL_INVALIDATED = "model.credential.invalidated";
+    /** 平台管理员恢复自动失效的凭据（来自 INVALID，M04）。 */
+    String MODEL_CREDENTIAL_RECOVERED = "model.credential.recovered";
+    /** 平台管理员修改网关运行时开关（routingMode/failoverEnabled/quotaEnforcementEnabled，M04）。 */
+    String MODEL_GATEWAY_SWITCH_CHANGED = "model.gateway.switch.changed";
+    /** 平台管理员整体替换配额上限；首次设置时 previousLimit 允许 JSON null（M04，ADR-0022 §3.4）。 */
+    String QUOTA_LIMIT_CHANGED = "quota.limit.changed";
+    /** 新 run 因配额超限被拒绝；独立事务写入，失败则返回 500 而不是 429（M04，ADR-0022 §1.3）。 */
+    String QUOTA_EXCEEDED = "quota.exceeded";
+
     /** 管理员把账号绑定到 OIDC 身份（M10-B2 写入，B1 定义词汇）。 */
     String USER_OIDC_BOUND = "user.oidc.bound";
     /** 管理员解除 OIDC 绑定并恢复本地密码（M10-B2 写入，B1 定义词汇）。 */

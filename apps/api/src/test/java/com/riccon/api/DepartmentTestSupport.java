@@ -38,19 +38,20 @@ abstract class DepartmentTestSupport extends ApiIntegrationTestSupport {
         String suffix = randomSuffix();
         String adminUsername = "adm" + suffix;
         String memberUsername = "mem" + suffix;
-        JsonNode admin =
-                createUser(platform, tenantId, adminUsername, "tenant-admin-password-12", List.of("TENANT_ADMIN"));
-        JsonNode member = createUser(platform, tenantId, memberUsername, "member-password-12", List.of("MEMBER"));
-        UUID platformUserId =
-                UUID.fromString(platform.body().path("user").path("id").asText());
+        // 部门/空间范围套件的目标是部门边界，不是账号创建端点：账号行用 fixture 种子写入，
+        // 登录仍走真实 HTTP；账号创建真实链路由 AuthFlowTest/TenantIsolationTest 覆盖。
+        LoginSession tenantAdmin = seedAndLoginLocalUser(
+                platform, tenantId, adminUsername, "tenant-admin-password-12", List.of("TENANT_ADMIN"));
+        LoginSession member =
+                seedAndLoginLocalUser(platform, tenantId, memberUsername, "member-password-12", List.of("MEMBER"));
         return new TenantFixture(
                 tenantId,
                 platform,
-                platformUserId,
-                login(tenantId, adminUsername, "tenant-admin-password-12"),
-                UUID.fromString(admin.path("id").asText()),
-                login(tenantId, memberUsername, "member-password-12"),
-                UUID.fromString(member.path("id").asText()),
+                actorId(platform),
+                tenantAdmin,
+                actorId(tenantAdmin),
+                member,
+                actorId(member),
                 memberUsername);
     }
 
@@ -63,8 +64,9 @@ abstract class DepartmentTestSupport extends ApiIntegrationTestSupport {
      */
     protected CreatedMember createExtraMember(LoginSession platform, String tenantId) {
         String username = "mem" + randomSuffix();
-        JsonNode user = createUser(platform, tenantId, username, "member-password-12", List.of("MEMBER"));
-        return new CreatedMember(UUID.fromString(user.path("id").asText()), username);
+        // 额外成员只用于部门/空间 fixture，不验证账号创建端点；直接种子避免重复 bcrypt 编码。
+        UUID userId = seedLocalUser(tenantId, username, "member-password-12", List.of("MEMBER"), actorId(platform));
+        return new CreatedMember(userId, username);
     }
 
     /**

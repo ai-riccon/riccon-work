@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0102",
+  "module_id": "M04",
+  "title": "M04 B1c：Micrometer/Prometheus 依赖、7 个路由/降级/key 指标约定、metrics-check、默认拒绝回归测试",
+  "owner": "riccon/ops",
+  "status": "done",
+  "write_scope": [
+    "apps/api/pom.xml",
+    "apps/worker/pom.xml",
+    "scripts/ops/metrics-check*",
+    "apps/api/src/test/java/com/riccon/api/actuator/**",
+    "apps/worker/src/test/java/com/riccon/worker/actuator/**",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "Prometheus registry 依赖（API/Worker）",
+    "7 个路由/降级/key 指标名与标签约定（Worker 注册，B4 落地）",
+    "`scripts/ops/metrics-check` 以 `--base-url` 指向 Worker，只断言这 7 个",
+    "暴露实现归 B2，B1c 只做 registry 依赖与负向测试",
+    "不改变默认拒绝基线"
+  ],
+  "evidence": [
+    "EV-0534"
+  ],
+  "tools_used": [
+    "maven:jdk21 — ./mvnw 定向测试与 spotless:check",
+    "docker:Testcontainers — 定向集成测试使用的 MySQL 8.4.13/OpenSearch/RustFS",
+    "bash — scripts/ops/metrics-check 自检与本地 fixture 抓取验证",
+    "git — 提交 e554b13，diff/状态核对",
+    "read/grep — 定位测试基类、SecurityConfig、application.yml 与 pom 结构（非符号级操作）",
+    "serena:未使用 — 本次只新增测试类与脚本，无既有符号需定位/重命名；且 AGENTS.md 要求 Maven 测试期间不引导 JDT LS（会碰 target/），故记录降级",
+    "codegraph:未使用 — 仓库有索引，但改动面为新增测试/脚本与 pom 依赖，无调用链需要检索"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-20T21:05:30.389+08:00",
+  "updated_at": "2026-11-21T00:58:39.255+08:00",
+  "baseline_commit": "3ef774bf7c725f11e6c0efdc6bd65215c6111ba0",
+  "end_commit": "62a9e0c"
+}

@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import tools.jackson.databind.JsonNode;
@@ -45,6 +46,12 @@ class KnowledgeIndexServiceIntegrationTest extends WorkerIntegrationTestBase {
     /** 测试用 JSON 解析器。 */
     @Autowired
     private ObjectMapper objectMapper;
+
+    /** pollOnce 跨租户领取事件；每个测试先清空残留 outbox，保证精确计数。 */
+    @BeforeEach
+    void clearStaleOutbox() {
+        clearOutbox();
+    }
 
     /** OpenSearch HTTP 客户端。 */
     private final HttpClient httpClient = HttpClient.newHttpClient();
@@ -105,7 +112,7 @@ class KnowledgeIndexServiceIntegrationTest extends WorkerIntegrationTestBase {
     /** 无来源文件的演示语料从 MySQL 既有分块重建。 */
     @Test
     void pollOnce_seedDocument_reindexesExistingChunks() {
-        String tenant = "tenant-a";
+        String tenant = uniqueTenant("tenant-a");
         data.createTenant(tenant);
         UUID userId = data.createUser(tenant);
         UUID documentId = data.createKnowledgeDocument(tenant, "seed-corpus", null, userId);
@@ -126,7 +133,7 @@ class KnowledgeIndexServiceIntegrationTest extends WorkerIntegrationTestBase {
     /** 缺少来源文件且无既有分块时保留失败原因。 */
     @Test
     void pollOnce_missingSource_marksFailed() {
-        String tenant = "tenant-a";
+        String tenant = uniqueTenant("tenant-a");
         data.createTenant(tenant);
         UUID userId = data.createUser(tenant);
         UUID documentId = data.createKnowledgeDocument(tenant, "empty-doc", null, userId);
@@ -143,7 +150,7 @@ class KnowledgeIndexServiceIntegrationTest extends WorkerIntegrationTestBase {
     /** 已软删除文档跳过索引，事件正常完成。 */
     @Test
     void pollOnce_deletedDocument_skips() {
-        String tenant = "tenant-a";
+        String tenant = uniqueTenant("tenant-a");
         data.createTenant(tenant);
         UUID userId = data.createUser(tenant);
         UUID documentId = data.createKnowledgeDocument(tenant, "deleted-doc", null, userId);
@@ -169,7 +176,7 @@ class KnowledgeIndexServiceIntegrationTest extends WorkerIntegrationTestBase {
     @Test
     void pollOnce_crossTenantFile_doesNotLeak() {
         Seed tenantB = seedFileDocument("tenant-b", "other-report", false);
-        String tenantA = "tenant-a";
+        String tenantA = uniqueTenant("tenant-a");
         data.createTenant(tenantA);
         UUID userA = data.createUser(tenantA);
         UUID workspaceA = data.createWorkspace(tenantA, userA);
@@ -214,25 +221,26 @@ class KnowledgeIndexServiceIntegrationTest extends WorkerIntegrationTestBase {
     }
 
     /**
-     * 创建带来源文件的文档与索引事件。
+     * 创建带来源文件的文档与索引事件；每次生成唯一租户。
      *
-     * @param tenant 租户
+     * @param tenantPrefix 可读租户前缀
      * @param title 标题
      * @return 种子
      */
-    private Seed seedFileDocument(String tenant, String title) {
-        return seedFileDocument(tenant, title, true);
+    private Seed seedFileDocument(String tenantPrefix, String title) {
+        return seedFileDocument(tenantPrefix, title, true);
     }
 
     /**
      * 创建带来源文件的文档与可选索引事件。
      *
-     * @param tenant 租户
+     * @param tenantPrefix 可读租户前缀
      * @param title 标题
      * @param publish 是否发布索引事件
      * @return 种子
      */
-    private Seed seedFileDocument(String tenant, String title, boolean publish) {
+    private Seed seedFileDocument(String tenantPrefix, String title, boolean publish) {
+        String tenant = uniqueTenant(tenantPrefix);
         data.createTenant(tenant);
         UUID userId = data.createUser(tenant);
         UUID workspaceId = data.createWorkspace(tenant, userId);

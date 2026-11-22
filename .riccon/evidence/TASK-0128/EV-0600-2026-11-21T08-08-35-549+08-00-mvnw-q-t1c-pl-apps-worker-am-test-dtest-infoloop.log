@@ -1,0 +1,102 @@
+# command: ./mvnw -q -T1C -pl apps/worker -am test -Dtest='InfoLoopbackAccessTest,InfoCidrAccessTest,PrometheusExposureDenyTest' -DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-21T08:07:31.741+08:00
+# finished_at: 2026-11-21T08:08:34.740+08:00
+# duration_ms: 62997
+# exit_code: 0
+
+# --- stdout ---
+08:07:38.477 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.actuator.PrometheusExposureDenyTest]: PrometheusExposureDenyTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+08:07:38.693 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.actuator.PrometheusExposureDenyTest
+08:07:38.852 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.actuator.PrometheusExposureDenyTest]: PrometheusExposureDenyTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+08:07:38.852 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+08:07:38.856 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.actuator.PrometheusExposureDenyTest
+08:07:38.956 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+08:07:38.959 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+08:07:38.989 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+08:07:40.414 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+08:07:40.415 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+08:07:40.440 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+08:07:40.716 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+08:07:41.208 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: b50e66686f2c5d645bb26fe3a2d07e70e53068fb994b4c9dc2945d919d2f534e
+08:07:41.608 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT0.892294S
+08:07:41.616 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+08:07:41.616 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+08:07:41.617 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+08:07:41.617 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+08:07:41.706 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: b6ae7a0be73e93d17ce90a2c50e98977f8903f0ba1c8beb80cf78925fce2aea3
+08:07:41.933 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:58585/riccon using query 'SELECT 1'
+08:07:50.292 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT8.675017S
+08:07:50.292 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:58585/riccon)
+08:07:50.295 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Creating container for image: opensearchproject/opensearch:3.9.0
+08:07:50.357 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 is starting: 6b196b73a6520a7c072a09337630131bbd0c939874c932ff58fe1a03b57227bc
+08:07:50.617 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /elastic_shannon: Waiting for 180 seconds for URL: http://localhost:58692/_cluster/health?wait_for_status=yellow&timeout=120s (where port 58692 maps to container port 9200)
+08:08:09.928 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 started in PT19.632471S
+08:08:09.929 [main] INFO tc.rustfs/rustfs:1.0.6 -- Creating container for image: rustfs/rustfs:1.0.6
+08:08:10.027 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 is starting: 79f16bd4ce8c7315e4710467c65f31c0836cbf4e9de89f16d2d3c79b24597543
+08:08:10.319 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /stoic_mestorf: Waiting for 60 seconds for URL: http://localhost:58836/health (where port 58836 maps to container port 9000)
+08:08:10.938 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 started in PT1.009234S
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-21T08:08:15.187+08:00  INFO 56169 --- [riccon-worker] [           main] c.r.w.a.PrometheusExposureDenyTest       : Starting PrometheusExposureDenyTest using Java 21.0.13 with PID 56169 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/worker)
+2026-11-21T08:08:15.188+08:00  INFO 56169 --- [riccon-worker] [           main] c.r.w.a.PrometheusExposureDenyTest       : The following 1 profile is active: "test"
+2026-11-21T08:08:17.063+08:00  INFO 56169 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-21T08:08:18.375+08:00  INFO 56169 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-21T08:08:18.375+08:00  INFO 56169 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-21T08:08:18.398+08:00  INFO 56169 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-21T08:08:18.415+08:00  INFO 56169 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 39 ms
+2026-11-21T08:08:18.579+08:00  INFO 56169 --- [riccon-worker] [           main] c.r.w.a.PrometheusExposureDenyTest       : Started PrometheusExposureDenyTest in 3.833 seconds (process running for 42.017)
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-21T08:08:19.490+08:00  INFO 56169 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-21T08:08:19.520+08:00  INFO 56169 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-21T08:08:24.436+08:00  INFO 56169 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.actuator.InfoLoopbackAccessTest]: InfoLoopbackAccessTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T08:08:24.446+08:00  INFO 56169 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.actuator.InfoLoopbackAccessTest
+2026-11-21T08:08:24.447+08:00  INFO 56169 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.actuator.InfoLoopbackAccessTest]: InfoLoopbackAccessTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T08:08:24.447+08:00  INFO 56169 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T08:08:24.449+08:00  INFO 56169 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.actuator.InfoLoopbackAccessTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-21T08:08:24.483+08:00  INFO 56169 --- [riccon-worker] [           main] c.r.w.actuator.InfoLoopbackAccessTest    : Starting InfoLoopbackAccessTest using Java 21.0.13 with PID 56169 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/worker)
+2026-11-21T08:08:24.484+08:00  INFO 56169 --- [riccon-worker] [           main] c.r.w.actuator.InfoLoopbackAccessTest    : The following 1 profile is active: "test"
+2026-11-21T08:08:24.835+08:00  INFO 56169 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-21T08:08:25.040+08:00  INFO 56169 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-21T08:08:25.040+08:00  INFO 56169 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-21T08:08:25.044+08:00  INFO 56169 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 4 endpoints beneath base path '/actuator'
+2026-11-21T08:08:25.048+08:00  INFO 56169 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 8 ms
+2026-11-21T08:08:25.086+08:00  INFO 56169 --- [riccon-worker] [           main] c.r.w.actuator.InfoLoopbackAccessTest    : Started InfoLoopbackAccessTest in 0.633 seconds (process running for 48.524)
+2026-11-21T08:08:25.090+08:00  INFO 56169 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Starting...
+2026-11-21T08:08:25.106+08:00  INFO 56169 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Start completed.
+2026-11-21T08:08:28.148+08:00  INFO 56169 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.actuator.InfoCidrAccessTest]: InfoCidrAccessTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T08:08:28.151+08:00  INFO 56169 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.actuator.InfoCidrAccessTest
+2026-11-21T08:08:28.152+08:00  INFO 56169 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.actuator.InfoCidrAccessTest]: InfoCidrAccessTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T08:08:28.152+08:00  INFO 56169 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T08:08:28.154+08:00  INFO 56169 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.actuator.InfoCidrAccessTest
+
+# --- stderr ---
+

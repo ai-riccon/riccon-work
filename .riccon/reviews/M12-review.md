@@ -1,13 +1,15 @@
 ---
-review_id: REV-M12-001
+review_id: REV-M12-002
+previous_review: REV-M12-001
 module_id: M12
 verifier: riccon/verifier
 reviewer:
   agent: riccon/verifier
-  session: ses_verifier_M12_TASK-0060_20261119
+  session: ses_e08d1b473ffezoltlVNmpba9tZ
   model: deepseek-v4.1-flash
   independent: true
 review_kind: module
+head_commit: cb977f98a493bfb7db9f9d4b02731ac62e195053
 verdict: pass
 reviewed_evidence:
   - EV-0363
@@ -27,6 +29,7 @@ reviewed_evidence:
   - EV-0382
   - EV-0383
   - EV-0384
+  - EV-0494
 dod:
   acceptance: true
   build: true
@@ -46,9 +49,9 @@ dod_evidence:
   build:
     - EV-0376
   tests:
-    - EV-0377
+    - EV-0494
   coverage:
-    - EV-0378
+    - EV-0494
   e2e:
     - EV-0379
   docs:
@@ -89,10 +92,25 @@ findings:
     severity: P3
     status: accepted
     evidence: "e2e/real/playwright.real.config.ts 的 json reporter；执行 real --list 后出现未跟踪文件，探针已删除。承接 M12 后续/RUNBOOK 说明。"
-created_at: "2026-11-19T04:38:03+08:00"
+  - id: REVALIDATION
+    severity: P3
+    status: fixed
+    title: "2026-11-20 用当前内核按合同 commands.test 重录 test/coverage；旧 review 归档为历史"
+    evidence: "EV-0494；旧 review REV-M12-001 归档于 .riccon/archive/reviews/M12-review-REV-M12-001.md"
+created_at: "2026-11-20T13:38:00+08:00"
 ---
 
 # M12 模块评审：测试效率与文档
+
+## 0. 回溯说明（2026-11-20）
+
+- **回溯原因**：DEC-0022 合并后合同 `commands.test` 改为 `./mvnw -q -T1C verify jacoco:report && pnpm -w test -- --coverage`；本模块旧 test EV（EV-0377）命令文本不再匹配，`gate check` 在 2026-11-20 以 `EV-0377 command does not match commands.test` 失败。代码未回归，属于证据/流程漂移。
+- **本次动作**：在当前 HEAD `cb977f9`（工作树干净）上用合同 `commands.test` 全量重跑一次，并按项目规则同时作为 `test` 与 `coverage` 证据：**EV-0494**（挂 TASK-0054），exit 0，`commit=cb977f98a493bfb7db9f9d4b02731ac62e195053`，`dirty=false`。
+- **本次实测**：Java 765 tests（api 453 / worker 263 / platform-common 33 / arch 12 / domain 4），failures 0、errors 0、skipped 0；前端 46 文件 384 tests passed、0 skipped；前端覆盖率 statements 87.8% / branches 80.75% / functions 84.63% / lines 87.71%；Maven `verify` 含 `jacoco:check` 通过。
+- **评审边界**：本次只重录 test/coverage；build/e2e/a11y/security 与 test-affected 定向基准未重跑，仍绑定旧 EV（见正文 §3–§8），原结论不扩大。旧 review `REV-M12-001` 原样归档在 `.riccon/archive/reviews/M12-review-REV-M12-001.md`。
+- **legacy/N-A**：M12 是维护/效率模块（`kind: fix`），无新的用户可见 AC，Product 预验收/用户验收按 N/A 处理（延续旧评审 §9 口径），不作为本模块 gate 前置。
+- **findings 处理**：旧 findings 全部保留，状态未改（F-001/F-006 fixed，其余 accepted P3）；正文为旧评审原文，当前状态以 front matter 为准。
+
 
 ## 1. 结论
 

@@ -1,0 +1,94 @@
+[WebServer] (node:79297) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 3 tests using 1 worker
+
+[1/3] [chromium] › e2e/tests/m04-quota-cost.spec.ts:94:3 › M04 配额页 › E2E-M04-05 平台/租户配额视图、重置时间、限额保存、只读与五态
+[2/3] [chromium] › e2e/tests/m04-quota-cost.spec.ts:248:3 › M04 成本页 › E2E-M04-06 平台/租户聚合、金额精度、边界单列、免责文案与明细快照展开
+  1) [chromium] › e2e/tests/m04-quota-cost.spec.ts:248:3 › M04 成本页 › E2E-M04-06 平台/租户聚合、金额精度、边界单列、免责文案与明细快照展开 
+
+    Error: 页面出现未处理的运行时错误：
+    console.error: Warning: [antd: Table] `expandable.expandIcon` is deprecated. Please use `components.ExpandIcon` instead.
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "console.error: Warning: [antd: Table] `expandable.expandIcon` is deprecated. Please use `components.ExpandIcon` instead.",
+    + ]
+
+       at fixtures.ts:166
+
+      164 |       });
+      165 |
+    > 166 |       expect(errors, `页面出现未处理的运行时错误：\n${errors.join('\n')}`).toEqual([]);
+          |                                                              ^
+      167 |     },
+      168 |     { auto: true },
+      169 |   ],
+        at Object.exports.test._test.test.extend.consoleGuard.auto (/Users/ricky/Documents/projects/riccon-work/e2e/tests/fixtures.ts:166:62)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/m04-quota-cost-M04-成本页-E2E-52268--租户聚合、金额精度、边界单列、免责文案与明细快照展开-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/m04-quota-cost-M04-成本页-E2E-52268--租户聚合、金额精度、边界单列、免责文案与明细快照展开-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/m04-quota-cost-M04-成本页-E2E-52268--租户聚合、金额精度、边界单列、免责文案与明细快照展开-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/m04-quota-cost-M04-成本页-E2E-52268--租户聚合、金额精度、边界单列、免责文案与明细快照展开-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[3/3] [chromium] › e2e/tests/m04-quota-cost.spec.ts:486:3 › M04 四页可访问性与入口 › E2E-M04-07b 四页五态、375px、键盘路径、axe 与按角色入口 @a11y
+  2) [chromium] › e2e/tests/m04-quota-cost.spec.ts:486:3 › M04 四页可访问性与入口 › E2E-M04-07b 四页五态、375px、键盘路径、axe 与按角色入口 @a11y 
+
+    Error: 发现 serious/critical 可访问性问题：
+    scrollable-region-focusable (serious): Scrollable region must have keyboard access -> .ant-table-content
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 0
+    Received length: 1
+    Received array:  [{"description": "Ensure elements that have scrollable content are accessible by keyboard in Safari", "help": "Scrollable region must have keyboard access", "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/scrollable-region-focusable?application=playwright", "id": "scrollable-region-focusable", "impact": "serious", "nodes": [{"all": [], "any": [{"data": null, "id": "focusable-content", "impact": "serious", "message": "Element should have focusable content", "relatedNodes": []}, {"data": null, "id": "focusable-element", "impact": "serious", "message": "Element should be focusable", "relatedNodes": []}], "failureSummary": "Fix any of the following:
+      Element should have focusable content
+      Element should be focusable", "html": "<div class=\"ant-table-content\" style=\"overflow: auto hidden;\">", "impact": "serious", "none": [], "target": [".ant-table-content"]}], "tags": ["cat.keyboard", "wcag2a", "wcag211", "wcag213", "TTv5", "TT4.a", "EN-301-549", "EN-9.2.1.1", "EN-9.2.1.3", "RGAAv4", …]}]
+
+       at a11y.ts:28
+
+      26 |     .join('\n');
+      27 |
+    > 28 |   expect(blocking, `发现 serious/critical 可访问性问题：\n${detail}`).toHaveLength(0);
+         |                                                              ^
+      29 | }
+      30 |
+        at expectNoSeriousA11yViolations (/Users/ricky/Documents/projects/riccon-work/e2e/tests/a11y.ts:28:62)
+        at expectPageA11y (/Users/ricky/Documents/projects/riccon-work/e2e/tests/m04-quota-cost.spec.ts:460:5)
+        at /Users/ricky/Documents/projects/riccon-work/e2e/tests/m04-quota-cost.spec.ts:580:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/m04-quota-cost-M04-四页可访问性与-baaa6-、375px、键盘路径、axe-与按角色入口-a11y-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/m04-quota-cost-M04-四页可访问性与-baaa6-、375px、键盘路径、axe-与按角色入口-a11y-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/m04-quota-cost-M04-四页可访问性与-baaa6-、375px、键盘路径、axe-与按角色入口-a11y-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/m04-quota-cost-M04-四页可访问性与-baaa6-、375px、键盘路径、axe-与按角色入口-a11y-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+  2 failed
+    [chromium] › e2e/tests/m04-quota-cost.spec.ts:248:3 › M04 成本页 › E2E-M04-06 平台/租户聚合、金额精度、边界单列、免责文案与明细快照展开 
+    [chromium] › e2e/tests/m04-quota-cost.spec.ts:486:3 › M04 四页可访问性与入口 › E2E-M04-07b 四页五态、375px、键盘路径、axe 与按角色入口 @a11y 
+  1 passed (56.4s)

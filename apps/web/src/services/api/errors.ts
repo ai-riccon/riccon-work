@@ -138,7 +138,8 @@ export async function toApiError(response: Response): Promise<ApiError> {
  * 把任意异常转换为适合界面展示的短消息。
  *
  * 业务 401/403/404 使用固定文案，避免服务端错误细节泄露账号或对象是否存在；
- * 413/415 使用文件场景的明确说明。
+ * 413/415 使用文件场景的明确说明；模型链全不可用（M04-AC-05）优先透传 ProblemDetail 的固定中文 detail，
+ * 其余 5xx 保持通用文案。
  *
  * @param error 任意异常
  * @param fallback 未识别异常的兜底文案
@@ -170,7 +171,11 @@ export function describeApiError(error: unknown, fallback = '操作失败，请�
       return '请求过于频繁，请稍后重试。';
     default:
       if (error.status >= 500) {
-        return '服务暂时不可用，请稍后重试。';
+        // M04-AC-05：模型链所有模型与 key 均不可用时 API 返回稳定 503，
+        // 并把固定中文文案放在 ProblemDetail.detail；这里优先透传该文案。
+        // 其余 5xx 继续使用通用文案，避免把 provider、key、堆栈等内部细节带进界面。
+        const modelUnavailable = error.status === 503 && error.code === 'RICCON-MODEL-503';
+        return (modelUnavailable && error.problem?.detail) || '服务暂时不可用，请稍后重试。';
       }
       return error.message || fallback;
   }

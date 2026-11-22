@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0108",
+  "module_id": "M04",
+  "title": "M04 B7：成本快照写入 + 平台/租户聚合/明细 API + 边界测试 + 成本查询指标",
+  "owner": "riccon/builder-cost",
+  "status": "done",
+  "write_scope": [
+    "apps/worker/src/main/java/com/riccon/worker/model/service/ModelInvocationService.java",
+    "apps/worker/src/main/java/com/riccon/worker/model/persistence/ModelInvocationJdbc.java",
+    "apps/worker/src/main/java/com/riccon/worker/model/repository/ModelInvocationRepository.java",
+    "apps/worker/src/main/java/com/riccon/worker/chat/service/ChatStreamService.java",
+    "apps/worker/src/main/java/com/riccon/worker/research/service/AgentRunRequestedHandler.java",
+    "apps/worker/src/main/java/com/riccon/worker/research/service/AgentRunResumeHandler.java",
+    "apps/api/src/main/java/com/riccon/api/cost/**",
+    "apps/api/src/main/java/com/riccon/api/admin/cost/**",
+    "apps/api/src/test/java/com/riccon/api/cost/**",
+    "apps/api/src/test/java/com/riccon/api/admin/cost/**",
+    "apps/worker/src/test/java/com/riccon/worker/model/**",
+    ".riccon/**",
+    "apps/api/src/main/java/com/riccon/api/auth/controller/TenantContextFilter.java"
+  ],
+  "acceptance": [
+    "价格快照 + 6 位小数 + 未定价/用量未知/unbucketed 分桶",
+    "历史不改写（价格更新后金额不变）",
+    "日桶 `Asia/Shanghai` 边界",
+    "平台无用户字段、租户明细、跨租户 404",
+    "注册 `riccon_cost_report_queries_total{group_by}` + 查询保护（180 天/page/size/3s 超时 → 503）"
+  ],
+  "evidence": [
+    "EV-0561",
+    "EV-0562",
+    "EV-0564"
+  ],
+  "tools_used": [
+    "codegraph",
+    "git"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-20T21:05:31.891+08:00",
+  "updated_at": "2026-11-21T07:17:48.191+08:00",
+  "baseline_commit": "98fbcc3",
+  "end_commit": "096f585"
+}

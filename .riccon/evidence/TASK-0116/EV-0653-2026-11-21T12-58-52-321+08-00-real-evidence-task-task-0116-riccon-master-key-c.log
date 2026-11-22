@@ -1,0 +1,98 @@
+# command: REAL_EVIDENCE_TASK=TASK-0116 RICCON_MASTER_KEY=$(cat /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/opencode/riccon-m04-v2/master.key) RICCON_CREDENTIAL_FINGERPRINT_PEPPER=$(cat /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/opencode/riccon-m04-v2/pepper.key) node scripts/ops/restore-drill.mjs --apply --keep --allow-partial
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-21T12:58:46.431+08:00
+# finished_at: 2026-11-21T12:58:52.050+08:00
+# duration_ms: 5618
+# exit_code: 0
+
+# --- stdout ---
+{
+  "mode": "apply",
+  "source": "riccon",
+  "target": "riccon_restore_drill",
+  "via": "compose",
+  "apiBase": null,
+  "keep": true,
+  "criteria": {
+    "tables": "与源库一致",
+    "triggers": 2,
+    "schemaVersion": 11,
+    "credentials": "一行可解密 + fingerprint 匹配",
+    "j1": "partial",
+    "rtoHours": 4,
+    "rpoHours": 24
+  }
+}
+{
+  "status": "partial",
+  "partialReasons": [
+    "J1 冒烟未执行: 未提供 --api-base"
+  ],
+  "rto": {
+    "limitHours": 4,
+    "actualHours": 0.0009
+  },
+  "rpo": {
+    "declaredHours": 24,
+    "note": "每 24h 全量备份 + binlog；客户生产可由 SOW 覆盖"
+  },
+  "failures": [],
+  "options": {
+    "source": "riccon",
+    "target": "riccon_restore_drill",
+    "via": "compose"
+  },
+  "source": {
+    "tables": 46,
+    "triggers": 2,
+    "schemaVersion": 11,
+    "dataKeys": 2,
+    "credentials": 4
+  },
+  "restored": {
+    "tables": 46,
+    "triggers": 2,
+    "schemaVersion": 11,
+    "dataKeys": 2,
+    "credentials": 4
+  },
+  "dump": {
+    "bytes": 686252,
+    "path": null
+  },
+  "restoreMs": 2683,
+  "rtoMs": 3111,
+  "credentialCheck": {
+    "status": "passed",
+    "detail": {
+      "mode": "read-only",
+      "targetKeyId": "mk-1",
+      "dekRows": 2,
+      "credentialsChecked": 2,
+      "rewrapped": [],
+      "verified": [
+        {
+          "tenant": "platform",
+          "provider": "0192f0a0-0000-7000-8000-000000000101",
+          "credentialType": "API_KEY"
+        },
+        {
+          "tenant": "platform",
+          "provider": "0192f0a0-0000-7000-8000-000000000102",
+          "credentialType": "API_KEY"
+        }
+      ],
+      "failures": [],
+      "status": "passed"
+    }
+  },
+  "j1": {
+    "status": "skipped",
+    "reason": "未提供 --api-base"
+  },
+  "cleanup": "kept",
+  "reportPath": ".riccon/evidence/TASK-0116/restore-drill.json"
+}
+
+# --- stderr ---
+

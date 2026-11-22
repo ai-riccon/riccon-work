@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0097",
+  "module_id": "M04",
+  "title": "M04 设计修复：REV-M04-ARCH-004 / REV-M04-OPS-005 findings",
+  "owner": "riccon/architect",
+  "status": "done",
+  "write_scope": [
+    "docs/adr/ADR-0021-m04-model-routing-failover-multi-key.md",
+    "docs/adr/ADR-0022-m04-quota-and-cost.md",
+    "docs/ARCHITECTURE.md",
+    "docs/security/THREAT-MODEL.md",
+    "contracts/README.md",
+    ".riccon/evidence/**",
+    ".riccon/tasks/**",
+    ".riccon/state.json",
+    ".riccon/modules/M04.json",
+    "docs/adr/README.md"
+  ],
+  "acceptance": [
+    "F-001：AC-02 整条由 V2 判定（模型/key/开关写越权 + 配额写越权 + 界面无写入口 + 审计 fail-closed）；V1 只判 AC-01、AC-03..16 并为 AC-02 提供 003a/TEN-031/IT-MODEL-102 证据；§8.4 增 AC→V1/V2 映射表，无时序矛盾",
+    "F-002/F-003：AC-13/14 用 07a+07b 五态与键盘路径（调整顺序→保存、修改限额→保存、切换聚合维度）；V2 在最终提交独立跑全量合同 test/coverage/E2E/a11y/security 并抽样重跑 AC-01/03/05/08/09/11/12/16，引用 V1 但不替代",
+    "F-004/F-005：THREAT 新增 B-21（PERF-M04-001 + OPS-M04-01 + RPO/RTO/回滚演练），M04 gate 要求 B-18/B-19/B-20/B-21；§10.4 把 AC-01..18 写入 M04 gate acceptance",
+    "OPS-042/047/048/049/050/052：回滚断言统一为“每组 1 行、有 ACTIVE 则 ACTIVE 否则 RETIRED、不写死总行数”；OPS-M04-02 拆 02a（Worker7）/02b（API2+3）；ADR-0022 命名 4 个默认配额配置键并进 B1a/B10；B10 回滚绑定 schema 校验关闭/WARN/工单、RPO≤24h/RTO≤4h、成本对账金额差 0.00/调用量差≤0.1%、真实超限 429/审计/指标/开关回退；V2 独立重放回滚",
+    "F-007/F-008/F-012/OPS-051/053/054：ARCH 记录本轮 REV-005 pass/ARCH-004 fail 与后续 ARCH-005 待办；B10 依赖补 B3/B4/B5 并给 ≈6h；发布改“preflight+六步”并给 drain 5min 判据；CI perf 强制 nightly+发布前、manual 仅本地；B1a write_scope 补 apps/worker/src/test/resources/**",
+    "ADR-0021/0022 仍 proposed；不修改 PRODUCT.md/ACCEPTANCE.md/openapi.yaml 内容/源码；不改用户已批准的 18 AC 与 DEC-0024=B 范围"
+  ],
+  "evidence": [
+    "EV-0525"
+  ],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-20T20:01:26.366+08:00",
+  "updated_at": "2026-11-20T20:28:38.926+08:00",
+  "baseline_commit": "18226e3",
+  "end_commit": "ffb570e"
+}

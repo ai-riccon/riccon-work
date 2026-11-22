@@ -12,6 +12,7 @@ import com.riccon.worker.persistence.UuidBinary;
 import com.riccon.worker.support.TestMcpCommands;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -22,13 +23,19 @@ class McpGatewayIntegrationTest extends WorkerIntegrationTestBase {
     @Autowired
     private McpGateway gateway;
 
+    /** 每个测试恢复全局 MCP 目录，避免固定 server code 与工具名冲突。 */
+    @BeforeEach
+    void resetCatalog() {
+        resetMcpCatalog();
+    }
+
     /** 未授权工具拒绝且不写调用记录（工具外键存在但调用前置拒绝不插入）。 */
     @Test
     void invoke_unauthorized_deniedAndAudited() {
         Fixture fixture = fixture("riccon-builtin", true);
         jdbcClient
                 .sql("DELETE FROM mcp_tool_grant WHERE tenant_id = :tenantId")
-                .param("tenantId", "tenant-a")
+                .param("tenantId", fixture.tenant())
                 .update();
 
         assertThatThrownBy(() -> invoke(fixture, null))
@@ -36,7 +43,7 @@ class McpGatewayIntegrationTest extends WorkerIntegrationTestBase {
                 .satisfies(
                         error -> assertThat(((McpException) error).errorCode()).isEqualTo(McpException.DENIED));
         assertThat(invocationCount(fixture.runId())).isZero();
-        assertThat(auditCount("mcp.tool.invoked")).isEqualTo(1);
+        assertThat(auditCount("mcp.tool.invoked", fixture.tenant())).isEqualTo(1);
     }
 
     /** server 不在平台白名单时拒绝并写 DENIED 调用记录。 */
@@ -49,7 +56,7 @@ class McpGatewayIntegrationTest extends WorkerIntegrationTestBase {
                 .satisfies(
                         error -> assertThat(((McpException) error).errorCode()).isEqualTo(McpException.DENIED));
         assertThat(invocationStatus(fixture.runId())).isEqualTo("DENIED");
-        assertThat(auditCount("mcp.tool.invoked")).isEqualTo(1);
+        assertThat(auditCount("mcp.tool.invoked", fixture.tenant())).isEqualTo(1);
     }
 
     /** 缺少审批 ID 时拒绝，防止绕过 HITL。 */
@@ -80,9 +87,9 @@ class McpGatewayIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(invocationStatus(fixture.runId())).isEqualTo("DENIED");
     }
 
-    /** 构造夹具。 */
+    /** 构造夹具；每个测试生成唯一租户。 */
     private Fixture fixture(String serverCode, boolean grant) {
-        String tenant = "tenant-a";
+        String tenant = uniqueTenant("tenant-a");
         data.createTenant(tenant);
         UUID user = data.createUser(tenant);
         UUID workspace = data.createWorkspace(tenant, user);
@@ -130,11 +137,12 @@ class McpGatewayIntegrationTest extends WorkerIntegrationTestBase {
                 .single();
     }
 
-    /** 审计数量。 */
-    private int auditCount(String action) {
+    /** 审计数量；按本测试唯一租户过滤，audit_event 只追加不删除。 */
+    private int auditCount(String action, String tenant) {
         return jdbcClient
-                .sql("SELECT COUNT(*) FROM audit_event WHERE action = :action")
+                .sql("SELECT COUNT(*) FROM audit_event WHERE action = :action AND tenant_id = :tenantId")
                 .param("action", action)
+                .param("tenantId", tenant)
                 .query(Integer.class)
                 .single();
     }

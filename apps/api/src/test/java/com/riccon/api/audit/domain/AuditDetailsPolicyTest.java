@@ -23,6 +23,34 @@ class AuditDetailsPolicyTest {
                 .doesNotThrowAnyException();
     }
 
+    /** Worker 链空失败写 reason=CHAIN_EMPTY；API 读取策略必须与 Worker 对称允许。 */
+    @Test
+    void modelInvocationFailedAllowsReason() {
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AuditActions.MODEL_INVOCATION_FAILED,
+                        Map.of(
+                                "durationMs",
+                                0L,
+                                "errorCode",
+                                "RICCON-MODEL-503",
+                                "retryable",
+                                true,
+                                "emitted",
+                                false,
+                                "reason",
+                                "CHAIN_EMPTY")))
+                .doesNotThrowAnyException();
+        // reason 只属于 failed；其他模型动作仍 fail-closed。
+        assertThatThrownBy(() -> AuditDetailsPolicy.validate(
+                        AuditActions.MODEL_INVOCATION_COMPLETED, Map.of("modelId", "m", "reason", "CHAIN_EMPTY")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not allowed");
+        assertThatThrownBy(() -> AuditDetailsPolicy.validate(
+                        AuditActions.MODEL_INVOCATION_STARTED, Map.of("modelId", "m", "reason", "CHAIN_EMPTY")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not allowed");
+    }
+
     /** 未授权键必须拒绝。 */
     @Test
     void unknownKeyIsRejected() {

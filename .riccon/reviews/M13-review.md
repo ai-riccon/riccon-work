@@ -1,13 +1,15 @@
 ---
-review_id: REV-M13-001
+review_id: REV-M13-002
+previous_review: REV-M13-001
 module_id: M13
 verifier: riccon/verifier
 reviewer:
   agent: riccon/verifier
-  session: ses_verifier_M13_TASK-0052_20261119
+  session: ses_e08d1b473ffezoltlVNmpba9tZ
   model: deepseek-v4.1-flash
   independent: true
 review_kind: module
+head_commit: cb977f98a493bfb7db9f9d4b02731ac62e195053
 verdict: pass
 reviewed_evidence:
   - EV-0350
@@ -21,6 +23,7 @@ reviewed_evidence:
   - EV-0358
   - EV-0359
   - EV-0361
+  - EV-0495
 dod:
   acceptance: true
   build: true
@@ -37,9 +40,9 @@ dod_evidence:
   build:
     - EV-0352
   tests:
-    - EV-0354
+    - EV-0495
   coverage:
-    - EV-0355
+    - EV-0495
   e2e:
     - EV-0361
   docs:
@@ -75,10 +78,24 @@ findings:
     status: accepted
     title: "AntD Select 键盘关闭后隐藏 listbox 缺少 accessible name"
     evidence: "仅在扫描前先打开/关闭工作空间 Select 时触发 aria-input-field-name；合同 a11y 8/8 在初始态通过。后续设计系统或 AntD 升级统一处理，不阻塞 M13。"
-created_at: 2026-11-19T01:55:00+08:00
+  - id: REVALIDATION
+    severity: P3
+    status: fixed
+    title: "2026-11-20 用当前内核按合同 commands.test 重录 test/coverage；旧 review 归档为历史"
+    evidence: "EV-0495；旧 review REV-M13-001 归档于 .riccon/archive/reviews/M13-review-REV-M13-001.md"
+created_at: "2026-11-20T13:50:00+08:00"
 ---
 
 # M13 模块评审：M03 验收补丁
+
+## 0. 回溯说明（2026-11-20）
+
+- **回溯原因**：DEC-0022 合并后合同 `commands.test` 改为 `./mvnw -q -T1C verify jacoco:report && pnpm -w test -- --coverage`；本模块旧 test EV（EV-0354）命令文本不再匹配，`gate check` 在 2026-11-20 以 `EV-0354 command does not match commands.test` 失败。代码未回归，属于证据/流程漂移。
+- **本次动作**：在当前 HEAD `cb977f9`（工作树干净）上用合同 `commands.test` 全量重跑一次，并按项目规则同时作为 `test` 与 `coverage` 证据：**EV-0495**（挂 TASK-0051），exit 0，`commit=cb977f98a493bfb7db9f9d4b02731ac62e195053`，`dirty=false`。
+- **本次实测**：Java 765 tests（api 453 / worker 263 / platform-common 33 / arch 12 / domain 4），failures 0、errors 0、skipped 0；前端 46 文件 384 tests passed、0 skipped；前端覆盖率 statements 87.8% / branches 80.75% / functions 84.63% / lines 87.71%；Maven `verify` 含 `jacoco:check` 通过。
+- **评审边界**：本次只重录 test/coverage；M13 E2E、a11y、security 与真实栈未重跑，仍绑定旧 EV（见正文“合同命令证据”表），原结论不扩大。旧 review `REV-M13-001` 原样归档在 `.riccon/archive/reviews/M13-review-REV-M13-001.md`。
+- **findings 处理**：旧 findings 全部保留，状态未改（P2/P3，均为 accepted）；正文为旧评审原文，当前状态以 front matter 为准。
+
 
 ## 结论
 

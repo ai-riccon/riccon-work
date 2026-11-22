@@ -209,7 +209,67 @@ platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
 - 本地热栈必须显式 opt-in：`RICCON_TEST_SERVICES=external` + 每个 agent 唯一的 `RICCON_TEST_SERVICES_NAMESPACE`；同一 namespace 同时只允许一个测试 JVM，命名锁失败时不得强行复用。
 - `node scripts/test-affected.mjs` / `pnpm test:affected` 只根据 git 变更给出 L1 定向命令，不录 EV，不能替代 L2/L3 的合同全量测试与 verifier 证据。
 - 迁移、回滚与 schema 版本测试始终使用一次性容器，不得指向热栈。
-- 默认、CI 与模块 gate 不设置 `RICCON_TEST_SERVICES`，仍使用 Testcontainers；启动/停止/重置、namespace 规则与故障处理见 `docs/RUNBOOK.md` 的“热测试栈与受影响测试”。
+- 默认与模块 gate 不设置 `RICCON_TEST_SERVICES`，仍使用 Testcontainers；CI backend job 是唯一例外（M19 P1）：显式 `RICCON_TEST_SERVICES=external` + 每个 job 唯一 namespace 复用 compose 热栈，命令与测试集合不变，迁移/回滚/schema 测试仍用一次性容器。启动/停止/重置、namespace 规则、CI 热栈流程与故障处理见 `docs/RUNBOOK.md` 的“热测试栈与受影响测试”和“CI 热栈（external + namespace，M19 P1）”。
+
+### 10.3 测试时间预算（M19）
+
+- 依据 DEC-0026（P0–P4 已批准）：先测量、后提速；本小节只定义预算与超预算处理，不改变 §10.1/§10.2 的分层、取证与 gate 结论。
+- 预算口径：
+  - **L2 ≤ 5 分钟**：专指任务级**定向受影响测试回路**，范围由 `node scripts/test-affected.mjs` 给出的建议命令界定。它不是 §10.1 的 L2（任务收尾受影响模块全量），后者仍按 §10.1 执行。
+  - **后端全量 ≤ 10 分钟**：CI `构建与测试`（`./mvnw -q -T1C verify`）在 4-shard 分片（P2）落地前的墙钟上限。
+  - **后端全量 ≤ 5 分钟**：4-shard 分片落地后的墙钟上限。
+- 测量来源：`node scripts/test-timings.mjs` 的 surefire 汇总（用例数、失败/错误/跳过、累计 suite 时间、top-20 慢类）与 CI backend job 的步骤墙钟；两者同时看，不以单次本地数字替代 CI 口径。
+- 超预算处理：
+  - 先看报告 top-20，确认是 setup 摊销（容器/迁移/夹具）还是单类真实耗时；
+  - 建 P2 任务并写明 `owner` 与 `due`（例如归入 M19 的 P1/P3/P4 任务），在任务卡和评审中留痕；
+  - **禁止**用删除用例、加 `@Disabled`/`skip`、放宽断言或 `-DskipTests` 来达标；用例集合与 `commands.test` 不变。
+  - 分片（P2）落地后若要让分片命令成为 gate 证据，必须另提合同决策，不得默认替换 `commands.test`。
+
+### 10.4 测试 tag 分层（M19 P4a）
+
+- 目的与边界：JUnit 5/6 类级标签只用于**按层选择执行**与报告归类，不改变默认执行集合、用例数量、断言或执行顺序。`commands.test`/`commands.coverage` 与模块 gate 仍是全量命令（§10.1）；标签过滤结果不能冒充全量或 gate 证据。
+- 标签定义：
+
+| 标签           | 含义                                                                 | 声明位置                                                                                 |
+| -------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `integration`  | 需要 Spring 上下文、真实 MySQL/RustFS/OpenSearch 或 HTTP 端口        | `ApiIntegrationTestSupport`、`FileApiTestSupport`、`WorkerIntegrationTestBase`；子类继承 |
+| `security`     | 越权、租户/部门隔离、凭据泄露、安全审计边界                          | `SecurityTestSupport`；未继承它的独立套件逐类标注                                        |
+| `migration`    | Flyway 迁移、回滚、schema 版本校验；始终使用一次性容器               | `V9MigrationTest`、`V10MigrationTest`、`V11MigrationTest`、`SchemaVersionCheckerTest`    |
+| `unit`（约定） | 未带上述标签即 unit：纯 JUnit/AssertJ/ArchUnit，不启动 Spring 与容器 | 不逐类标注                                                                               |
+
+- 当前映射（M19 P4a）：
+  - `integration`：API 全部 `@SpringBootTest` 基类子类（含文件、研究、配额、成本、审计与安全套件），以及 Worker `WorkerIntegrationTestBase` 子类。
+  - `security`：`DepartmentIsolationTest`、`TenantIsolationSecurityTest`（继承 `SecurityTestSupport`），`TenantIsolationTest`，`ChatScopeApiTest`、`ContentScopeApiTest`，`M04VerifierGatewaySecurityTest`、`M04VerifierProductionEndpointTest`、`M04VerifierSwitchDeltaTest`、`M04V2VerifierBoundaryTest`，`ModelCredentialSecurityTest`、`ModelRoutingAuditSecurityTest`；原有 `dept-isolation`/`tenant-isolation` 标签保留。认证/会话功能流（`AuthFlowTest`、`OidcLoginFlowTest`）仍归 `integration`，不强行并入 `security`。
+  - `migration`：上表四个类；它们不继承集成基类，因此只带 `migration`。
+  - 其余测试类（含 `platform/**` 的纯单测与 ArchUnit）视为 unit。
+- 继承规则：
+  - JUnit 5/6 的 `@Tag` 是可继承注解：类级标签沿抽象基类多级传递到子类；`@Nested` 继承外层类标签；接口上的标签不继承。新增测试优先继承现有基类，不复制标签。
+  - `security` 是叠加标签：安全套件同时具备 `integration`；`-Dgroups=integration` 会包含安全套件。
+- Surefire 选择示例（JUnit Platform provider；均为 L1 排障/定向命令）：
+
+```bash
+# API 集成层（含安全套件）
+./mvnw -q -pl apps/api -am test -Dgroups=integration -Dsurefire.failIfNoSpecifiedTests=false
+
+# 安全套件（继承的 security 标签与类上原有 dept/tenant 标签共同生效）
+./mvnw -q -pl apps/api -am test -Dgroups=security -Dsurefire.failIfNoSpecifiedTests=false
+
+# 迁移/回滚/schema 版本（一次性容器）
+./mvnw -q -pl apps/api -am test -Dgroups=migration -Dsurefire.failIfNoSpecifiedTests=false
+./mvnw -q -pl apps/worker -am test -Dgroups=migration -Dsurefire.failIfNoSpecifiedTests=false
+
+# 类名与标签同时过滤：冒烟确认继承标签生效
+./mvnw -q -pl apps/api -am test -Dtest=DepartmentIsolationTest#deptSuiteIntegrityManifest \
+  -Dgroups=security -Dsurefire.failIfNoSpecifiedTests=false
+
+# unit（未打标签）：排除慢层；示例只跑 platform-common
+./mvnw -q -pl platform/platform-common test -DexcludedGroups=integration,security,migration
+```
+
+- `-pl <module> -am` 会一并构建 platform 模块；这些模块没有匹配标签的测试，必须加 `-Dsurefire.failIfNoSpecifiedTests=false`，否则 Maven 以“没有执行测试”失败。该参数只避免无关模块阻断，不能把空选择当作通过：每次选择冒烟都必须看到预期的非零用例数。
+- `-Dgroups=unit` **不会**选中未打标签的测试；untagged=unit 是分类约定，不是可过滤标签。只跑 unit 用 `-DexcludedGroups=integration,security,migration`，可再配合 `-Dtest` 或模块选择。
+- 迁移/Schema 测试禁止指向热栈（§10.2）；external 模式下 `SchemaVersionCheckerTest` 也自建一次性容器。
+- 与分片基线的关系：`scripts/test-shards.mjs` 以类名与 surefire 用例计数为基线，标签不参与分片；新增 tag 不改变基线类集合/用例数，仍以 `node scripts/test-shards.mjs --check` 校验。
 
 ## 11. 数据库与迁移
 

@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0696",
+  "task_id": "TASK-0144",
+  "command": "set -euo pipefail; echo namespace=m19p3w task=TASK-0144 baseline_ev=EV-0695; node scripts/test-services.mjs reset --namespace m19p3w; rm -rf apps/worker/target/surefire-reports platform/*/target/surefire-reports; START=$(date +%s); RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=m19p3w perl -e 'alarm shift; exec @ARGV' 1500 ./mvnw -q -T1C -pl apps/worker -am test 2>&1 | tee \"$TMPDIR/m19p3w-evidence-run1.log\"; END=$(date +%s); echo run1_wall_seconds=$((END-START)); node scripts/test-timings.mjs --out-dir \"$TMPDIR/m19p3w-evidence-run1\"; START=$(date +%s); RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=m19p3w perl -e 'alarm shift; exec @ARGV' 1500 ./mvnw -q -T1C -pl apps/worker -am test 2>&1 | tee \"$TMPDIR/m19p3w-evidence-run2.log\"; END=$(date +%s); echo run2_wall_seconds=$((END-START)); node scripts/test-timings.mjs --out-dir \"$TMPDIR/m19p3w-evidence-run2\"; git diff --check; echo diff_check_ok",
+  "manual": false,
+  "commit": "c56f71ff99c2ff513cf45cd540ebe44192f3d5c5",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0144/EV-0696-2026-11-21T21-13-34-873+08-00-set-euo-pipefail-echo-namespace-m19p3w-task-task.log",
+  "output_sha256": "a4c09fc62c14e9496b907f574a03e36acc0da2eec320ed2abdb135aa82167ddf",
+  "output_bytes": 358857,
+  "agent": "riccon/builder-m19",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-21T21:09:48.067+08:00",
+  "finished_at": "2026-11-21T21:13:33.969+08:00",
+  "duration_ms": 225901,
+  "note": "M19 P3a: external namespace m19p3w；连续两次全量 Worker 套件（第二次不清库）；356 tests/0 failures/0 errors/0 skipped（基线 EV-0695 worker=356；任务卡 358 与证据不符，以 EV-0695 为准且未删除用例）；累计 suite time 对比 P2 基线 445.214s（91.760+105.214+134.432+113.808）降幅约 80%；首次 reset、第二次复用残留数据；git diff --check",
+  "recorded_at": "2026-11-21T21:13:34.878+08:00"
+}

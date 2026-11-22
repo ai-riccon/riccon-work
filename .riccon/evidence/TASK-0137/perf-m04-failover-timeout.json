@@ -1,0 +1,135 @@
+{
+  "scenario": "failover",
+  "failureMode": "timeout",
+  "generatedAt": "2026-11-21T06:30:52.875Z",
+  "baseUrl": "http://127.0.0.1:18080",
+  "env": {
+    "generatedAt": "2026-11-21T06:26:24.157Z",
+    "mode": "perf",
+    "host": {
+      "platform": "darwin 24.6.0",
+      "arch": "x64",
+      "cpus": 12,
+      "cpuModel": "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz",
+      "memoryBytes": 17179869184,
+      "memoryGiB": 16,
+      "node": "v26.13.0"
+    },
+    "images": {
+      "compose": [
+        "rustfs/rustfs:1.0.6",
+        "mysql:8.4.13",
+        "opensearchproject/opensearch:3.9.0"
+      ],
+      "started": [
+        "mysql:8.4.13"
+      ]
+    },
+    "k6Version": "k6 v2.4.0 (commit/dd9395906d, go1.26.11, darwin/amd64)",
+    "scriptSha256": "ed36cb1f9beac7eaecd9d763f9475c59bea99dd4418298a135d516ca5e4e31da",
+    "chatMaxStreams": 50,
+    "dbPoolSize": 50,
+    "fakeModel": 1,
+    "deploymentMode": "DEMO",
+    "startCommand": "node scripts/real-stack/run.mjs --mode=perf",
+    "startupCommands": [
+      "java -jar apps/api/target/riccon-api-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/MASTER_KEY_ID/FINGERPRINT_PEPPER/BILLING_CURRENCY/QUOTA_DEFAULT_*/DB_POOL)",
+      "java -jar apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/CHAT_MAX_STREAMS/DB_POOL_SIZE/MODEL_FIRST_TOKEN_TIMEOUT/PRE_FIRST_TOKEN_BUDGET)",
+      "node scripts/real-stack/fake-model.mjs --scenario ok --chunk-count 6"
+    ],
+    "perfProfile": {
+      "chatMaxStreams": 50,
+      "dbPoolSize": 50,
+      "dbPoolFloor": 25,
+      "fakeModel": 1,
+      "connectTimeout": "500ms",
+      "firstTokenTimeout": "1000ms",
+      "preFirstTokenBudget": "2500ms",
+      "maxAttempts": 3,
+      "retryDelays": "50ms,100ms",
+      "duration": "45s"
+    },
+    "openSearch": "excluded (perf mode; 2C4Gi sandbox 不足，主机规格见 host)"
+  },
+  "thresholds": {
+    "m04_first_token_ms": [
+      "p(95)<3000"
+    ],
+    "m04_api_ms": [
+      "p(95)<500"
+    ],
+    "m04_degraded_success": [
+      "rate>0.99"
+    ]
+  },
+  "metrics": {
+    "m04_api_ms": {
+      "min": 17.944,
+      "med": 36.409,
+      "p(90)": 54.24560000000001,
+      "p(95)": 63.8446,
+      "max": 122.53,
+      "count": 1059,
+      "avg": 39.91154863078378
+    },
+    "iterations": {
+      "count": 1059,
+      "rate": 22.55423735018763
+    },
+    "m04_first_token_ms": {
+      "avg": 93.42870632672333,
+      "min": 16,
+      "med": 20,
+      "p(90)": 28,
+      "p(95)": 1063.1,
+      "max": 1122,
+      "count": 1059
+    },
+    "http_req_failed": {
+      "passes": 0,
+      "fails": 2268,
+      "rate": 0
+    },
+    "m04_chat_submit_ttfb_ms": {
+      "avg": 1938.09653068933,
+      "min": 442.381,
+      "med": 2005.098,
+      "p(90)": 2115.7046,
+      "p(95)": 2223.2769999999996,
+      "max": 3008.581,
+      "count": 1059
+    },
+    "m04_run_detail_ms": {
+      "count": 1059,
+      "avg": 40.13031161473088,
+      "min": 18,
+      "med": 37,
+      "p(90)": 55,
+      "p(95)": 64,
+      "max": 123
+    },
+    "m04_degraded_success": {
+      "fails": 0,
+      "rate": 1,
+      "passes": 1059
+    },
+    "http_req_duration": {
+      "med": 70.788,
+      "p(90)": 2160.1071,
+      "p(95)": 2210.0802,
+      "max": 3194.522,
+      "count": 2268,
+      "avg": 1013.8453130511443,
+      "min": 17.944
+    },
+    "m04_chat_stream_ms": {
+      "p(90)": 2207.2,
+      "p(95)": 2315.2,
+      "max": 3194,
+      "count": 1059,
+      "avg": 2034.2813975448537,
+      "min": 603,
+      "med": 2094
+    }
+  }
+}

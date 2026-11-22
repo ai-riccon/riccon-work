@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0705",
+  "task_id": "TASK-0145",
+  "command": "set -euo pipefail; NS=m19p3vord; node scripts/test-services.mjs reset --namespace \"$NS\"; rm -rf apps/api/target/surefire-reports apps/worker/target/surefire-reports platform/*/target/surefire-reports; START=$(date +%s); RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=\"$NS\" perl -e 'alarm shift; exec @ARGV' 900 ./mvnw -q -T1C -pl apps/api -am test -Dtest='AuthFlowTest,TenantIsolationTest,TenantIsolationSecurityTest,DepartmentIsolationTest,WorkspaceScopeTest,AuditQueryApiTest,OidcLoginFlowTest,DepartmentAdminApiTest,OidcIdentityBindingApiTest,QuotaAdminApiTest' -Dsurefire.runOrder=reversealphabetical -Dsurefire.failIfNoSpecifiedTests=false; END=$(date +%s); WALL=$((END-START)); node scripts/test-timings.mjs --out-dir \"$TMPDIR/m19p3vord/timings\"; TESTS=$(grep -ho 'tests=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); SKIPPED=$(grep -ho 'skipped=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); FAILURES=$(grep -ho 'failures=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); ERRORS=$(grep -ho 'errors=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); test \"$TESTS\" = \"135\"; test \"$FAILURES\" = \"0\"; test \"$ERRORS\" = \"0\"; test \"$SKIPPED\" = \"0\"; test \"$WALL\" -lt 900; ./mvnw -q spotless:check; git diff --check; node -e 'const [t,f,e,s,w]=process.argv.slice(1); console.log(\"verifier_api_reverse_targeted namespace=m19p3vord tests=\"+t+\" failures=\"+f+\" errors=\"+e+\" skipped=\"+s+\" wall_seconds=\"+w)' \"$TESTS\" \"$FAILURES\" \"$ERRORS\" \"$SKIPPED\" \"$WALL\"",
+  "manual": false,
+  "commit": "0af22002c8ef32f958171b99a2c0247defe2fc41",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0145/EV-0705-2026-11-22T00-18-22-419+08-00-set-euo-pipefail-ns-m19p3vord-node-scripts-test-.log",
+  "output_sha256": "2098d6426ccbb88ee5612481e41ac3712291074c75d8e79457f0c52248703570",
+  "output_bytes": 195329,
+  "agent": "riccon/verifier",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-22T00:14:42.869+08:00",
+  "finished_at": "2026-11-22T00:18:21.697+08:00",
+  "duration_ms": 218827,
+  "note": "TASK-0145 独立 Verifier 关键认证/安全类反转顺序定向：fresh namespace m19p3vord，reversealphabetical，覆盖 AuthFlow/TenantIsolation/TenantIsolationSecurity/DepartmentIsolation/WorkspaceScope/AuditQuery/OidcLoginFlow/DepartmentAdmin/OidcIdentityBinding/QuotaAdmin 共 135 用例，验证平台会话缓存与种子 fixture 不引入类顺序依赖",
+  "recorded_at": "2026-11-22T00:18:22.422+08:00"
+}

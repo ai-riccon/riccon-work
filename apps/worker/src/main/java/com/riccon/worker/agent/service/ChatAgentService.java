@@ -7,13 +7,13 @@ import com.riccon.worker.agent.domain.AgentSession;
 import com.riccon.worker.agent.domain.ConversationMessage;
 import com.riccon.worker.agent.domain.RetrievedChunk;
 import com.riccon.worker.config.AgentProperties;
-import com.riccon.worker.model.domain.ResolvedModel;
-import com.riccon.worker.model.service.ModelRegistry;
+import com.riccon.worker.model.domain.ModelTarget;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.agent.RuntimeContext;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.message.UserMessage;
+import io.agentscope.core.model.Model;
 import io.agentscope.core.permission.PermissionBehavior;
 import io.agentscope.core.permission.PermissionContextState;
 import io.agentscope.core.permission.PermissionRule;
@@ -37,9 +37,6 @@ public class ChatAgentService {
     /** 检索服务。 */
     private final KnowledgeRetriever retriever;
 
-    /** 模型解析。 */
-    private final ModelRegistry modelRegistry;
-
     /** Agent 配置。 */
     private final AgentProperties properties;
 
@@ -47,12 +44,10 @@ public class ChatAgentService {
      * 创建对话 Agent 服务。
      *
      * @param retriever 检索服务
-     * @param modelRegistry 模型解析
      * @param properties Agent 配置
      */
-    public ChatAgentService(KnowledgeRetriever retriever, ModelRegistry modelRegistry, AgentProperties properties) {
+    public ChatAgentService(KnowledgeRetriever retriever, AgentProperties properties) {
         this.retriever = Objects.requireNonNull(retriever, "retriever must not be null");
-        this.modelRegistry = Objects.requireNonNull(modelRegistry, "modelRegistry must not be null");
         this.properties = Objects.requireNonNull(properties, "properties must not be null");
     }
 
@@ -66,7 +61,8 @@ public class ChatAgentService {
      * @param query 当前问题
      * @param fileIds 会话指定文件
      * @param history 历史消息（包含当前用户消息）
-     * @param resolvedModel 已解析模型
+     * @param model 带降级的 ChatModel
+     * @param target 链首模型快照（只用于展示与报告快照，不含明文）
      * @return Agent 会话
      */
     public AgentSession prepare(
@@ -77,7 +73,8 @@ public class ChatAgentService {
             String query,
             List<UUID> fileIds,
             List<ConversationMessage> history,
-            ResolvedModel resolvedModel) {
+            Model model,
+            ModelTarget target) {
         if (history.isEmpty()) {
             throw new AgentException(AgentException.INVALID, false, "conversation history is empty");
         }
@@ -116,7 +113,7 @@ public class ChatAgentService {
         ReActAgent agent = ReActAgent.builder()
                 .name("riccon-chat")
                 .sysPrompt(AgentPrompts.CHAT_SYSTEM)
-                .model(modelRegistry.createClient(resolvedModel))
+                .model(model)
                 .toolkit(toolkit)
                 .maxIters(properties.maxIterations())
                 .stateStore(new InMemoryAgentStateStore())
@@ -126,7 +123,6 @@ public class ChatAgentService {
                 .userId(userId.toString())
                 .sessionId(runId.toString())
                 .build();
-        return new AgentSession(
-                agent, agent.streamEvents(messages, runtimeContext), runtimeContext, resolvedModel, citations);
+        return new AgentSession(agent, agent.streamEvents(messages, runtimeContext), runtimeContext, target, citations);
     }
 }

@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -25,6 +26,12 @@ class OutboxClaimerTest extends WorkerIntegrationTestBase {
     @Autowired
     private OutboxClaimer outboxClaimer;
 
+    /** claim 跨租户领取事件；每个测试先清空残留 outbox，保证批量断言可重复。 */
+    @BeforeEach
+    void clearStaleOutbox() {
+        clearOutbox();
+    }
+
     /** 领取 PENDING 事件后置为 DISPATCHED 并递增 attempts。 */
     @Test
     void claim_pendingEvent_marksDispatched() {
@@ -35,7 +42,7 @@ class OutboxClaimerTest extends WorkerIntegrationTestBase {
         assertThat(claimed).hasSize(1);
         ClaimedOutboxEvent event = claimed.get(0);
         assertThat(event.id()).isEqualTo(published.event().eventId());
-        assertThat(event.tenantId()).isEqualTo("tenant-a");
+        assertThat(event.tenantId()).isEqualTo(published.tenant());
         assertThat(event.runId()).isEqualTo(published.event().runId());
         assertThat(event.attempts()).isEqualTo(1);
         assertThat(outboxRow(event.id()))
@@ -65,7 +72,7 @@ class OutboxClaimerTest extends WorkerIntegrationTestBase {
                                lease_owner = 'dead-worker'
                          WHERE tenant_id = :tenantId AND id = :id
                         """)
-                .param("tenantId", "tenant-a")
+                .param("tenantId", published.tenant())
                 .param("id", UuidBinary.toBytes(published.event().eventId()))
                 .update();
 
@@ -90,7 +97,7 @@ class OutboxClaimerTest extends WorkerIntegrationTestBase {
                                lease_owner = 'busy-worker'
                          WHERE tenant_id = :tenantId AND id = :id
                         """)
-                .param("tenantId", "tenant-a")
+                .param("tenantId", published.tenant())
                 .param("id", UuidBinary.toBytes(published.event().eventId()))
                 .update();
 
@@ -107,7 +114,7 @@ class OutboxClaimerTest extends WorkerIntegrationTestBase {
                            SET available_at = DATE_ADD(NOW(6), INTERVAL 60 SECOND)
                          WHERE tenant_id = :tenantId AND id = :id
                         """)
-                .param("tenantId", "tenant-a")
+                .param("tenantId", published.tenant())
                 .param("id", UuidBinary.toBytes(published.event().eventId()))
                 .update();
 
@@ -130,8 +137,10 @@ class OutboxClaimerTest extends WorkerIntegrationTestBase {
         ClaimedOutboxEvent event =
                 outboxClaimer.claim("owner-1", 10, Duration.ofSeconds(30)).get(0);
 
-        assertThat(outboxClaimer.markDone("tenant-a", event.id(), "owner-2")).isZero();
-        assertThat(outboxClaimer.markDone("tenant-a", event.id(), "owner-1")).isEqualTo(1);
+        assertThat(outboxClaimer.markDone(published.tenant(), event.id(), "owner-2"))
+                .isZero();
+        assertThat(outboxClaimer.markDone(published.tenant(), event.id(), "owner-1"))
+                .isEqualTo(1);
         assertThat(outboxRow(event.id())).containsEntry("status", "DONE");
     }
 
@@ -144,7 +153,7 @@ class OutboxClaimerTest extends WorkerIntegrationTestBase {
         Instant availableAt = Instant.now().plusSeconds(30);
 
         assertThat(outboxClaimer.markRetry(
-                        "tenant-a", event.id(), "owner-1", availableAt, "RICCON-FILE-503: storage down"))
+                        published.tenant(), event.id(), "owner-1", availableAt, "RICCON-FILE-503: storage down"))
                 .isEqualTo(1);
 
         Map<String, Object> row = outboxRow(event.id());
@@ -160,7 +169,7 @@ class OutboxClaimerTest extends WorkerIntegrationTestBase {
         ClaimedOutboxEvent event =
                 outboxClaimer.claim("owner-1", 10, Duration.ofSeconds(30)).get(0);
 
-        assertThat(outboxClaimer.markDead("tenant-a", event.id(), "owner-1", "unsupported"))
+        assertThat(outboxClaimer.markDead(published.tenant(), event.id(), "owner-1", "unsupported"))
                 .isEqualTo(1);
         assertThat(outboxRow(event.id())).containsEntry("status", "DEAD");
     }
@@ -170,7 +179,7 @@ class OutboxClaimerTest extends WorkerIntegrationTestBase {
     void createOutbox_duplicateIdempotencyKey_fails() {
         Published published = publishFileParse("tenant-a");
         assertThatThrownBy(() -> data.createOutbox(
-                        "tenant-a",
+                        published.tenant(),
                         published.event().runId(),
                         com.riccon.platform.domain.contract.EventTypes.FILE_PARSE_REQUESTED,
                         published.event().payload(),
@@ -186,19 +195,20 @@ class OutboxClaimerTest extends WorkerIntegrationTestBase {
     }
 
     /**
-     * 创建文件解析事件。
+     * 创建文件解析事件；每次生成唯一租户，避免与历史事件/运行冲突。
      *
-     * @param tenant 租户
+     * @param tenantPrefix 可读租户前缀
      * @return 事件与文件信息
      */
-    private Published publishFileParse(String tenant) {
+    private Published publishFileParse(String tenantPrefix) {
+        String tenant = uniqueTenant(tenantPrefix);
         data.createTenant(tenant);
         UUID userId = data.createUser(tenant);
         UUID workspaceId = data.createWorkspace(tenant, userId);
         UUID fileId = data.createFile(tenant, workspaceId, userId, FileFormat.PDF, TestDocuments.pdf(1));
         UUID parseId = data.createParse(tenant, fileId, 1);
         TestDataFactory.PublishedEvent event = data.publishFileParse(tenant, fileId, parseId, userId, 1);
-        return new Published(fileId, event);
+        return new Published(tenant, fileId, event);
     }
 
     /**
@@ -233,8 +243,9 @@ class OutboxClaimerTest extends WorkerIntegrationTestBase {
     /**
      * 测试内部事件包装。
      *
+     * @param tenant 租户
      * @param fileId 文件 ID
      * @param event 已发布事件
      */
-    private record Published(UUID fileId, TestDataFactory.PublishedEvent event) {}
+    private record Published(String tenant, UUID fileId, TestDataFactory.PublishedEvent event) {}
 }

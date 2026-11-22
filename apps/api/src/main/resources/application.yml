@@ -52,7 +52,9 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # M04：prometheus 端点由 SecurityConfig 按 RICCON_OPS_ALLOWED_CIDRS 限制来源；
+        # 依赖由 B1c 引入，暴露实现在 B2，这里只声明端点（ADR-0021 §2.2）。
+        include: health,info,prometheus
   endpoint:
     health:
       probes:
@@ -61,6 +63,29 @@ management:
   health:
     db:
       enabled: true
+  info:
+    env:
+      # B10 preflight 通过 /actuator/info 比对 API 与 Worker 的 M04 指纹（非密钥）。
+      enabled: true
+
+# M04 /actuator/info 指纹：deploymentMode、routingMode、failoverEnabled、quotaEnforcementEnabled、
+# masterKeyId、currency 与 4 个默认配额键必须与 Worker 一致；不暴露 endpoint URL、key 或密文。
+info:
+  riccon:
+    model:
+      deploymentMode: ${RICCON_MODEL_DEPLOYMENT_MODE:PRODUCTION}
+      endpointSetHash: ${RICCON_MODEL_ENDPOINT_SET_HASH:}
+      routingMode: ${RICCON_MODEL_ROUTING_MODE:}
+      failoverEnabled: ${RICCON_MODEL_FAILOVER_ENABLED:}
+      quotaEnforcementEnabled: ${RICCON_QUOTA_ENFORCEMENT_ENABLED:}
+    masterKeyId: ${RICCON_MASTER_KEY_ID:mk-1}
+    billing:
+      currency: ${RICCON_BILLING_CURRENCY:CNY}
+    quota:
+      tenantDaily: ${RICCON_QUOTA_DEFAULT_TENANT_DAILY:10000}
+      tenantMonthly: ${RICCON_QUOTA_DEFAULT_TENANT_MONTHLY:200000}
+      userDaily: ${RICCON_QUOTA_DEFAULT_USER_DAILY:1000}
+      userMonthly: ${RICCON_QUOTA_DEFAULT_USER_MONTHLY:20000}
 
 springdoc:
   api-docs:
@@ -70,6 +95,42 @@ springdoc:
     enabled: false
 
 riccon:
+  # M04：API 首次具备信封加密能力（ADR-0006/ADR-0021 §6.5）。
+  # 主密钥、上一把主密钥、canary 与 fingerprint pepper 只由部署环境注入；空值由启动校验 fail-closed，
+  # 仓库/镜像/证据中不得出现真实值。pepper 不随主密钥轮换。
+  crypto:
+    master-key: ${RICCON_MASTER_KEY:}
+    previous-master-key: ${RICCON_MASTER_KEY_PREVIOUS:}
+    master-key-id: ${RICCON_MASTER_KEY_ID:mk-1}
+    canary: ${RICCON_MASTER_KEY_CANARY:}
+    fingerprint-pepper: ${RICCON_CREDENTIAL_FINGERPRINT_PEPPER:}
+  # M04 受管模型端点：唯一可新增端点的来源是部署配置 RICCON_MODEL_ENDPOINTS（JSON 数组，非密钥）。
+  # DB 只保存目录元数据；PRODUCTION 未配置端点时启动失败（除非显式 allow-legacy-endpoints）。
+  model:
+    deployment-mode: ${RICCON_MODEL_DEPLOYMENT_MODE:PRODUCTION}
+    endpoints: ${RICCON_MODEL_ENDPOINTS:}
+    allow-legacy-endpoints: ${RICCON_MODEL_ALLOW_LEGACY_ENDPOINTS:false}
+    allow-http: ${RICCON_MODEL_ALLOW_HTTP:false}
+    gateway:
+      # 环境变量优先级高于 DB 开关；留空表示使用 model_gateway_switch。
+      # 设置后管理端 PUT 返回 409 ENV_OVERRIDE_ACTIVE，避免 UI 显示与实际不一致。
+      routing-mode: ${RICCON_MODEL_ROUTING_MODE:}
+      failover-enabled: ${RICCON_MODEL_FAILOVER_ENABLED:}
+      quota-enforcement-enabled: ${RICCON_QUOTA_ENFORCEMENT_ENABLED:}
+  # M04 单币种；部署后不可在线变更（ADR-0022 §2.1）。
+  billing:
+    currency: ${RICCON_BILLING_CURRENCY:CNY}
+  # M04 默认配额：无显式 quota_limit 行时生效；0 或空表示不限。
+  # 四个键必须与 Worker /actuator/info 指纹一致，B6 不得在代码内硬编码第二套默认值。
+  quota:
+    defaults:
+      tenant-daily: ${RICCON_QUOTA_DEFAULT_TENANT_DAILY:10000}
+      tenant-monthly: ${RICCON_QUOTA_DEFAULT_TENANT_MONTHLY:200000}
+      user-daily: ${RICCON_QUOTA_DEFAULT_USER_DAILY:1000}
+      user-monthly: ${RICCON_QUOTA_DEFAULT_USER_MONTHLY:20000}
+  # M04：/actuator/prometheus 来源允许列表（逗号分隔 CIDR）；空值仅允许 loopback。
+  ops:
+    allowed-cidrs: ${RICCON_OPS_ALLOWED_CIDRS:}
   # API → Worker 内部对话流客户端；共享密钥与端点只由部署环境注入（ADR-0014 第 5 节）。
   worker:
     client:

@@ -1,0 +1,128 @@
+# command: REAL_EVIDENCE_TASK=TASK-0138 RICCON_MASTER_KEY=$(cat /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/opencode/riccon-m04-v2/master.key) RICCON_CREDENTIAL_FINGERPRINT_PEPPER=$(cat /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/opencode/riccon-m04-v2/pepper.key) node scripts/ops/restore-drill.mjs --apply --allow-partial
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-21T13:33:24.771+08:00
+# finished_at: 2026-11-21T13:33:33.942+08:00
+# duration_ms: 9170
+# exit_code: 0
+
+# --- stdout ---
+{
+  "mode": "apply",
+  "source": "riccon",
+  "target": "riccon_restore_drill",
+  "via": "compose",
+  "apiBase": null,
+  "keep": false,
+  "grants": {
+    "applied": "on-import",
+    "user": "riccon",
+    "host": "auto（从 mysql.user 发现已有主机）",
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ],
+    "scope": "riccon_restore_drill.*",
+    "revokeOnCleanup": true
+  },
+  "criteria": {
+    "tables": "与源库一致",
+    "triggers": 2,
+    "schemaVersion": 11,
+    "credentials": "一行可解密 + fingerprint 匹配",
+    "j1": "partial",
+    "rtoHours": 4,
+    "rpoHours": 24
+  }
+}
+{
+  "status": "partial",
+  "partialReasons": [
+    "J1 冒烟未执行: 未提供 --api-base"
+  ],
+  "rto": {
+    "limitHours": 4,
+    "actualHours": 0.0016
+  },
+  "rpo": {
+    "declaredHours": 24,
+    "note": "每 24h 全量备份 + binlog；客户生产可由 SOW 覆盖"
+  },
+  "failures": [],
+  "options": {
+    "source": "riccon",
+    "target": "riccon_restore_drill",
+    "via": "compose"
+  },
+  "source": {
+    "tables": 46,
+    "triggers": 2,
+    "schemaVersion": 11,
+    "dataKeys": 1,
+    "credentials": 2
+  },
+  "restored": {
+    "tables": 46,
+    "triggers": 2,
+    "schemaVersion": 11,
+    "dataKeys": 1,
+    "credentials": 2
+  },
+  "dump": {
+    "bytes": 16589772,
+    "path": null
+  },
+  "restoreMs": 4997,
+  "rtoMs": 5802,
+  "grants": {
+    "applied": true,
+    "user": "riccon",
+    "hosts": [
+      "%"
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ],
+    "scope": "riccon_restore_drill.*"
+  },
+  "credentialCheck": {
+    "status": "passed",
+    "detail": {
+      "mode": "read-only",
+      "targetKeyId": "mk-1",
+      "dekRows": 1,
+      "credentialsChecked": 2,
+      "rewrapped": [],
+      "verified": [
+        {
+          "tenant": "platform",
+          "provider": "0192f0a0-0000-7000-8000-000000000101",
+          "credentialType": "API_KEY"
+        },
+        {
+          "tenant": "platform",
+          "provider": "0192f0a0-0000-7000-8000-000000000102",
+          "credentialType": "API_KEY"
+        }
+      ],
+      "failures": [],
+      "status": "passed"
+    }
+  },
+  "j1": {
+    "status": "skipped",
+    "reason": "未提供 --api-base"
+  },
+  "cleanup": "dropped",
+  "revokedGrants": [
+    "riccon@%"
+  ],
+  "reportPath": ".riccon/evidence/TASK-0138/restore-drill.json"
+}
+
+# --- stderr ---
+

@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0148",
+  "module_id": "M19",
+  "title": "P4b 3 个纯逻辑测试下沉 platform 并更新分片基线",
+  "owner": "riccon/builder-m19",
+  "status": "done",
+  "write_scope": [
+    "apps/api/src/test/**",
+    "apps/worker/src/test/**",
+    "platform/*/src/test/**",
+    "scripts/test-shards-baseline.json",
+    ".ricon/**"
+  ],
+  "acceptance": [
+    "把至少 3 个纯逻辑类/断言组下沉到 platform-common/platform-domain 测试（如 RoleCodes、PermissionCodes、Audit Vocabulary 等），断言与 app 侧等价；不移除/弱化原有 app 断言，除非确属纯平台常数重复",
+    "不改生产代码/迁移/pom/CI；不新增对 app 模块的反向依赖；测试类命名/包与 platform 一致",
+    "新增测试类后重建 scripts/test-shards-baseline.json（从一次干净全量 surefire 报告），node scripts/test-shards.mjs --check 与合并校验通过；后端用例数 ≥1101 且零 skip",
+    "跑 platform 测试 + 一次全量后端（或 CI 同款 shard 合并）证明新测试执行；证据单行；由 Verifier 评审等价断言"
+  ],
+  "evidence": [
+    "EV-0709",
+    "EV-0710"
+  ],
+  "tools_used": [
+    "serena",
+    "maven",
+    "docker-compose",
+    "riccon"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-22T01:37:22.639+08:00",
+  "updated_at": "2026-11-22T02:39:36.321+08:00",
+  "baseline_commit": "f5922239c5c91c7086807ac026053e1276823733",
+  "end_commit": "81db3f05179aef09f926ff784b60d962106f3edd"
+}

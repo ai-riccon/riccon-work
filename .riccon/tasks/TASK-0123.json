@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0123",
+  "module_id": "M04",
+  "title": "M04 修复：API 将 Worker 503 映射为 AC-05 稳定错误",
+  "owner": "riccon/builder-route",
+  "status": "done",
+  "write_scope": [
+    "apps/api/src/main/java/com/riccon/api/chat/**",
+    "apps/api/src/main/java/com/riccon/api/research/**",
+    "apps/api/src/test/java/com/riccon/api/chat/**",
+    "apps/api/src/test/java/com/riccon/api/research/**",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "Worker RICCON-MODEL-503 代理为 HTTP 503 + code RICCON-MODEL-503 + 文案“模型服务暂不可用，请稍后重试。”；其他 Worker 错误不变",
+    "J1 聊天与 J2 报告全链失败走同一稳定文案；不得泄露 provider/key/堆栈",
+    "补 API 单测/集成测试；E2E-M04-AC-05 可移除 test.fail 并通过（由 B11a 复跑）",
+    "不改 Worker/契约/迁移；定向测试 + EV"
+  ],
+  "evidence": [
+    "EV-0601"
+  ],
+  "tools_used": [
+    "riccon",
+    "git",
+    "jdk21",
+    "maven",
+    "docker",
+    "codegraph",
+    "serena"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-21T07:13:23.844+08:00",
+  "updated_at": "2026-11-21T08:11:02.437+08:00",
+  "baseline_commit": "491864f496e4a0e55e7f65f286149b01d020f2d5",
+  "end_commit": "f0cf37b9f76db29222ff0d88ee0fc42ed08d185e"
+}

@@ -735,6 +735,7 @@ export default function ChatPage({
                     <div className="chat-composer-status">
                       <Typography.Text type="secondary">正在生成回答…</Typography.Text>
                       <Button
+                        className="chat-stop-button"
                         danger
                         onClick={() => {
                           void controller.stop();

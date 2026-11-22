@@ -1,0 +1,20 @@
+# command: set -euo pipefail
+NS=m19p1local
+echo "external=$RICCON_TEST_SERVICES namespace=$NS compose=$(docker compose version --short)"
+node scripts/test-services.mjs prepare --namespace "$NS"
+RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE="$NS" perl -e 'alarm shift; exec @ARGV' 1500 ./mvnw -q -T1C verify
+node scripts/test-timings.mjs --out-dir "${TMPDIR:-/tmp}/m19p1-timings"
+node --check scripts/test-services.mjs
+ruby -ryaml -e 'YAML.load_file(".github/workflows/ci.yml"); puts "yaml ok"'
+git diff --check
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-21T18:02:01.289+08:00
+# finished_at: 2026-11-21T18:02:01.302+08:00
+# duration_ms: 10
+# exit_code: 1
+
+# --- stdout ---
+
+
+# --- stderr ---
+/bin/sh: line 2: RICCON_TEST_SERVICES: unbound variable

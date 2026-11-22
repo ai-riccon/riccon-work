@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0118",
+  "module_id": "M19",
+  "title": "P1 CI 复用 compose 热栈（external + namespace）",
+  "owner": "riccon/ops",
+  "status": "done",
+  "write_scope": [
+    ".github/workflows/ci.yml",
+    "scripts/test-services.mjs",
+    "docs/RUNBOOK.md",
+    "deploy/compose/docker-compose.test.yml",
+    ".riccon/**",
+    "docs/CODING-STANDARDS.md"
+  ],
+  "acceptance": [
+    "CI 在 compose 栈就绪后设置 RICCON_TEST_SERVICES=external 与每个 job 唯一 namespace；Maven 复用 MySQL/OpenSearch/RustFS",
+    "迁移/回滚/schema 测试仍使用一次性容器；不把热栈用于迁移测试",
+    "commands.test 命令不变；证据 note 记录 external/namespace/compose 版本",
+    "失败时输出 compose 日志并清理 namespace；不改变测试断言"
+  ],
+  "evidence": [
+    "EV-0694"
+  ],
+  "tools_used": [
+    "read/grep：定位 CI job、RUNBOOK 与 compose/test-services；本任务是 CI/YAML/Node 脚本，Serena/CodeGraph 无可查符号，按任务说明降级",
+    "node 26：test-services prepare、test-timings 与 node --check",
+    "ruby yaml：CI 工作流语法校验",
+    "docker compose：测试栈、namespace 数据库核对与版本",
+    "mvnw/JDK 21：external 全量 verify",
+    "git：diff/commit 与证据绑定",
+    "docs 收口：同步 CODING-STANDARDS §10.2 与 RUNBOOK CI 热栈小节（脚本写入，避免 Markdown 表格自动对齐产生无关 diff）"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-20T23:46:05.891+08:00",
+  "updated_at": "2026-11-21T18:40:39.975+08:00",
+  "baseline_commit": "4805a4a5aaa71604ed3529f49ee4060640d5e720",
+  "end_commit": "a35f913c519a6d5155d7c61efbf70a8dc350b1eb"
+}

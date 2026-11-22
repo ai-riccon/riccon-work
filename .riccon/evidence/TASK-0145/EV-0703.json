@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0703",
+  "task_id": "TASK-0145",
+  "command": "set -euo pipefail; NS=m19p3b6; echo \"external=external namespace=$NS P3b-api-reverse-targeted\"; node scripts/test-services.mjs reset --namespace \"$NS\"; rm -rf apps/api/target/surefire-reports platform/*/target/surefire-reports; START=$(date +%s); RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=\"$NS\" perl -e 'alarm shift; exec @ARGV' 900 ./mvnw -q -T1C -pl apps/api -am test -Dtest='AuthFlowTest,TenantIsolationTest,TenantIsolationSecurityTest,DepartmentIsolationTest,WorkspaceScopeTest,AuditQueryApiTest,OidcLoginFlowTest,DepartmentAdminApiTest' -Dsurefire.runOrder=reversealphabetical -Dsurefire.failIfNoSpecifiedTests=false; END=$(date +%s); echo \"wall_seconds=$((END-START))\"; node scripts/test-timings.mjs --out-dir \"$TMPDIR/m19p3b6/timings\"; TESTS=$(grep -ho 'tests=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); SKIPPED=$(grep -ho 'skipped=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); FAILURES=$(grep -ho 'failures=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); ERRORS=$(grep -ho 'errors=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); echo \"api_tests=$TESTS failures=$FAILURES errors=$ERRORS skipped=$SKIPPED\"; test \"$TESTS\" = \"114\"; test \"$FAILURES\" = \"0\"; test \"$ERRORS\" = \"0\"; test \"$SKIPPED\" = \"0\"; ./mvnw -q spotless:check; git diff --check; echo \"all_checks_ok\"",
+  "manual": false,
+  "commit": "b9abb856689ab1069d37ed6a6cf4154043a159e4",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0145/EV-0703-2026-11-21T23-18-20-384+08-00-set-euo-pipefail-ns-m19p3b6-echo-external-extern.log",
+  "output_sha256": "a142c9bf15c0d7d04f2ec470b45a580ba5c5d941cfe1be740326763c886a4331",
+  "output_bytes": 172731,
+  "agent": "riccon/builder-m19",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-21T23:14:08.274+08:00",
+  "finished_at": "2026-11-21T23:18:19.762+08:00",
+  "duration_ms": 251487,
+  "note": "M19 P3b 关键认证/安全类反转顺序定向：fresh namespace m19p3b6，-Dsurefire.runOrder=reversealphabetical，覆盖 AuthFlow/TenantIsolation/TenantIsolationSecurity/DepartmentIsolation/WorkspaceScope/AuditQuery/OidcLoginFlow/DepartmentAdmin 共 114 用例，验证平台会话缓存与种子 fixture 不引入类顺序依赖；全量反转顺序被既有 ModelCatalog 平台 DEK 顺序依赖阻断（EV-0702），与本次 diff 无关",
+  "recorded_at": "2026-11-21T23:18:20.388+08:00"
+}

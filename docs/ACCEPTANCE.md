@@ -9,22 +9,30 @@
 
 ## 范围
 
-- 模块：M03「权限纵深与组织模型」；M10「身份与审计纵深（M03b）」；M13 为 M03 验收补丁
+- 模块：M03「权限纵深与组织模型」；M10「身份与审计纵深（M03b）」；M13 为 M03 验收补丁；M18 回溯复验（含 M02 回溯 Product 预验收）；M04「模型网关纵深」（2026-11-21 gate 后 Product 预验收）；M19「测试基础设施与全量测试提速」（2026-11-22 gate 后 Product 预验收，技术性 fix，无用户可见 AC）
+- M18 回溯复验（2026-11-20）：TASK-0090 对 M01/M02/M03/M10/M12/M13/M15 用当前合同 `commands.test` 重录 test/coverage（EV-0490..EV-0496）、重写 `REV-*-002`、恢复 gate（EV-0498）；TASK-0092/0093 补 M02 AC-02 逐格式 UI 证据与 a11y P1 修复；TASK-0094 在最终代码 `ec6a650` 上执行全量合同证据（EV-0512 build、EV-0513 test/coverage、EV-0514 E2E 33 passed、EV-0515 a11y 13 passed、EV-0516 security、EV-0517 gate 循环）。真实栈 E2E/a11y 与迁移回滚未重跑。详见「M18 回溯复验（2026-11-20）」。
 - M03 原 gate：`bc97d1c`（REV-M03-001，EV-0342..EV-0349）
 - M03 验收补丁（M13）：代码 `410cddd`，gate pass（REV-M13-001，EV-0352..EV-0359、EV-0361）；完整合同证据 `6564879`，最终 E2E `650663f`。EV-0360 为中间失败，不引用
 - M10 gate：代码最终提交 `a88d003`，gate pass（REV-M10-001，29 条 reviewed_evidence；DEC-0018 将上限从 12h 提高到 20h）；V1 TASK-0083 done
 - M15 补丁（fixes M10）：后端 `08e0fc6`（EV-0449）、前端 `4538d8c`（EV-0450）、a11y `c4ebd3e`（EV-0478）；TASK-0084/0085/0087/0086 done，gate pass（REV-M15-001）；代码证据 EV-0482..0486、EV-0488 在 `864b0a7`，docs EV-0489 在 `de33ed8`（EV-0487 为中间失败，不引用）
-- 验收日期：2026-11-19（M10 初次）、2026-11-20（M15 后复验）
-- 验收人：Product、用户
-- 参考：REV-M13-001、REV-M03-001、REV-M03-V1-002、REV-M10-001、REV-M15-001、REV-M10-ARCH-002、REV-M10-OPS-001、M10-ops-drill、REV-TASK-0033-002、REV-TASK-0037/0039/0041/0043/0045、REV-TASK-0065-002/0068/0069/0071/0076
+- M04：`feature`，gate pass（REV-M04-005，2026-11-21；18 条 AC 全 pass）；证据 EV-0675/0676/0677/0681/0682..0686/0687/0689、EV-0669、EV-0640；Product 预验收见「M04 模型网关纵深（gate pass 后 Product 预验收）」
+- 验收日期：2026-11-19（M10 初次）、2026-11-20（M15 后复验）、2026-11-20（M18 回溯与最终全量）、2026-11-21（M04 gate 后）、2026-11-22（M19 gate 后）
+- 验收人：Product（M03/M10/M15 预验收；M02 回溯预验收；M04 预验收；M19 预验收）；用户（M03/M10 accepted；M02/M18 回溯 accepted，DEC-0025；M04 最终验收 `accepted`，DEC-0027）
+- 参考：REV-M13-001、REV-M03-001、REV-M03-V1-002、REV-M10-001、REV-M15-001、REV-M10-ARCH-002、REV-M10-OPS-001、M10-OPS-DRILL、REV-TASK-0033-002、REV-TASK-0037/0039/0041/0043/0045、REV-TASK-0065-002/0068/0069/0071/0076；M18 回溯：REV-M01-002、REV-M02-004、REV-M03-002、REV-M10-002、REV-M12-002、REV-M13-002、REV-M15-002、REV-M18-REVALIDATION-001；M04：REV-M04-005、REV-TASK-0115-002、TASK-0116/TASK-0139；M19：REV-M19-001、EV-0716/0721/0723/0724
 
 ## 模块关系与验收状态
 
-- **M03**：`feature`，done；原 gate `bc97d1c` + M13 补丁 gate pass；Product `pass`，用户 `accepted`（DEC-0016）。
+- **M02**：`mvc`，done（2026-11-18）；关闭时无 `product_acceptance` 记录（Product/用户均为 `not-recorded`）。M18 回溯补做 Product 预验收：`pass`（with residual：M18 a11y F-003 P2，见「Product 预验收（M02，M18 回溯）」）；用户最终验收 `accepted`（DEC-0025，A；F-003 P2 residual、M01 F-007 release blocker 保留）。
+- **M18**：`fix`，`fixes_module=M02`，gate pass（REV-M18-001，`state.gate` 2026-11-20 17:45；3 个外部/legacy warnings）；TASK-0090 完成 7 模块证据回溯（EV-0490..EV-0498），TASK-0092/0093 补 M02 AC-02 与 a11y，TASK-0094 在 `ec6a650` 执行全量合同证据（EV-0512..EV-0517）。Product 预验收 `pass`（with residual，见「M18 Product 预验收（gate 后）」）；用户最终验收 `accepted`（DEC-0025，A；F-003/F-008 残余保留）。
+- **M03**：`feature`，done；原 gate `bc97d1c` + M13 补丁 gate pass；Product `pass`，用户 `accepted`（DEC-0016）。M18 在 `ec6a650` 全量复验（EV-0512..0515），不改写原结论。
 - **M13**：`fix`，`fixes_module=M03`；代码 `410cddd`，gate pass（REV-M13-001，EV-0352..EV-0359、EV-0361）；Product 复查 R-M03-01..03 `pass`；用户随 M03 `accepted`（DEC-0016）。
-- **M10**：`feature`，`split_from=M03`，alias `M03b`；V1 TASK-0083 done，gate pass（REV-M10-001，29 条 reviewed_evidence；DEC-0018 上限 20h）；M15 修复后 Product 预验收 `pass`，用户最终验收 `pending`；模块 review 记录与 done 由 Lead 更新。
+- **M10**：`feature`，`split_from=M03`，alias `M03b`；V1 TASK-0083 done，gate pass（REV-M10-001，29 条 reviewed_evidence；DEC-0018 上限 20h）；M15 修复后 Product 预验收 `pass`，用户最终验收 `accepted`（DEC-0021）。
 - **M15**：`fix`，`fixes_module=M10`；TASK-0084/0085/0087/0086 done，gate pass（REV-M15-001）；R-M10-01 `fixed`；无独立用户 AC，随 M10 复验；B2 F-001 collation 仍为 residual。
 - **M11**：legacy docs-only 模块，TASK-0035/0036 done；无模块 gate；状态保持 planned 并保留 `state validate` warning，后续单独 docs-only closeout 或 handoff 注记，不增加任务、不使用 `--force`。
+- **M12**：维护模块，done；热栈/test-affected/文档无用户可见 AC，Product/用户验收为 `not-recorded`（N/A legacy），不伪造 pass。
+- **M14**：docs-only legacy，building；TASK-0053/0057/0061 已 done，但尚无模块 review/gate；Product/user 结论重置为 `pending`，待独立 closeout 后再验收。
+- **M04**：`feature`，done；gate pass（REV-M04-005，2026-11-21；18 条 AC 全 pass，F-001..F-005/F-011 fixed，P2/P3 残余登记）；Product 预验收 `pass`（with residual：R-M04-01 P2 员工侧配额 429 文案、R-M04-02/03 P3，以及 Verifier F-006/F-008/F-009/F-010/F-012/F-013），见「M04 模型网关纵深（gate pass 后 Product 预验收）」；用户最终验收 `accepted`（DEC-0027，A；with residual，R-M04-01/02/03 转 M05），见「用户最终验收（M04）」。
+- **M19**：`fix`，review_pending（未 done）；gate pass（REV-M19-001，2026-11-22；14.3h/16h）；9 个任务全部 done；Product 预验收 `pass`（with residual F-001..F-005，见「M19 测试基础设施与全量测试提速（gate pass 后 Product 预验收）」）；用户最终验收 `pending`；不改变产品 AC/API/DB/UX/部署行为。
 
 ## 验收标准（M03，M13 补丁后）
 
@@ -47,18 +55,18 @@ M10 的 OIDC、审计查询/导出与对应 a11y 段落在本文件随 M10 另�
 
 ### 已接受/残余项（不改变本次结论，但不得声称已解决）
 
-| 来源 | ID    | 级别 | 状态                | 说明                                                                                                                                                                                       |
-| ---- | ----- | ---- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| M03  | F-006 | P3   | accepted            | J2 产物正文与引用区重复“引用清单”标题；真实栈测试已定位 `#artifact-citations-title`，产品语义后续收敛                                                                                      |
-| M03  | F-007 | P2   | accepted / residual | PRODUCT 文本漂移：AC-07 演员（平台管理员执行）、AC-21 分段（M03 只验部门管理页）、AC-03 历史数据口径（E2E 用无历史 TEAM 空间租户）；ADR-0018 §8 与 REV-M03-001 已登记，PRODUCT AC 正文未改 |
-| M03  | F-008 | P2   | accepted / residual | 历史 TENANT 空间保持 M02 全租户可见面（R-11）；M03/M13 不提供转换，M04/M09 设计专用迁移                                                                                                    |
-| M03  | F-009 | P2   | accepted / residual | 平台来源部门审计事件只写 platform 租户 + `details.targetTenantId`，目标租户不可见；M10 需显式授权查询模型承接                                                                              |
-| M13  | F-001 | P2   | accepted            | 后端 `SessionInfo`/`UserSummary` 未下发 `departmentId`/`departmentName`；前端以 `/departments` 与可选字段兜底，成员/未分配/停用/租户管理员四态 E2E 通过；契约对齐由 M04/M10 承接           |
-| M13  | F-002 | P3   | accepted            | 没有跨空间的独立产物列表；产物从报告任务详情进入；“部门报告可见可打开”已满足，独立产物列表留待后续模块                                                                                     |
-| M13  | F-003 | P3   | accepted            | 重命名 409/403/404 的 UI 文案由 stub 场景覆盖；真实服务端空间授权边界由 M03 DEPT 套件覆盖，真实栈不跑该 UI 错误分支                                                                        |
-| M13  | F-004 | P2   | accepted            | 历史 TENANT 空间保持全租户可见，M03/M13 不提供转换；与 M03 F-008 同一风险（R-11）                                                                                                          |
-| M13  | F-005 | P3   | accepted            | PRODUCT 的 AC-07 演员、AC-21 分段、AC-03 历史数据口径仍为原始文本；与 M03 F-007 同一漂移，本补丁不修改 PRODUCT                                                                             |
-| M13  | F-006 | P3   | accepted            | 键盘打开/关闭 AntD 工作空间 Select 后，隐藏 listbox 缺 accessible name；键盘路径本身已验证，合同 a11y 初始态 8/8，后续设计系统/AntD 升级统一处理                                           |
+| 来源 | ID    | 级别 | 状态                | 说明                                                                                                                                                                                                                                                                                     |
+| ---- | ----- | ---- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M03  | F-006 | P3   | accepted            | J2 产物正文与引用区重复“引用清单”标题；真实栈测试已定位 `#artifact-citations-title`，产品语义后续收敛                                                                                                                                                                                    |
+| M03  | F-007 | P2   | accepted / residual | PRODUCT 文本漂移：AC-07 演员（平台管理员执行）、AC-21 分段（M03 只验部门管理页）、AC-03 历史数据口径（E2E 用无历史 TEAM 空间租户）；ADR-0018 §8 与 REV-M03-001 已登记，PRODUCT AC 正文未改                                                                                               |
+| M03  | F-008 | P2   | accepted / residual | 历史 TENANT 空间保持 M02 全租户可见面（R-11）；M03/M13 不提供转换；R-11 不承接，归 M09 专用迁移（DEC-0023）                                                                                                                                                                              |
+| M03  | F-009 | P2   | accepted / residual | 平台来源部门审计事件只写 platform 租户 + `details.targetTenantId`，目标租户不可见；M10 需显式授权查询模型承接                                                                                                                                                                            |
+| M13  | F-001 | P2   | accepted            | 后端 `SessionInfo`/`UserSummary` 未下发 `departmentId`/`departmentName`；前端以 `/departments` 与可选字段兜底，成员/未分配/停用/租户管理员四态 E2E 通过；R-11、M13 F-001 不承接，归 M09/M10（R-11→M09 专用迁移；M13 F-001 由 Lead 在 M04 后按 `kind: fix` 建维护模块，最迟 M05 gate 前） |
+| M13  | F-002 | P3   | accepted            | 没有跨空间的独立产物列表；产物从报告任务详情进入；“部门报告可见可打开”已满足，独立产物列表留待后续模块                                                                                                                                                                                   |
+| M13  | F-003 | P3   | accepted            | 重命名 409/403/404 的 UI 文案由 stub 场景覆盖；真实服务端空间授权边界由 M03 DEPT 套件覆盖，真实栈不跑该 UI 错误分支                                                                                                                                                                      |
+| M13  | F-004 | P2   | accepted            | 历史 TENANT 空间保持全租户可见，M03/M13 不提供转换；与 M03 F-008 同一风险（R-11）                                                                                                                                                                                                        |
+| M13  | F-005 | P3   | accepted            | PRODUCT 的 AC-07 演员、AC-21 分段、AC-03 历史数据口径仍为原始文本；与 M03 F-007 同一漂移，本补丁不修改 PRODUCT                                                                                                                                                                           |
+| M13  | F-006 | P3   | accepted            | 键盘打开/关闭 AntD 工作空间 Select 后，隐藏 listbox 缺 accessible name；键盘路径本身已验证，合同 a11y 初始态 8/8，后续设计系统/AntD 升级统一处理                                                                                                                                         |
 
 ## Product 预验收（M03）
 
@@ -155,17 +163,245 @@ Product 预验收不检查实现细节、安全边界、并发或测试充分性
 
 ## 用户最终验收（M10）
 
-- 结论：`pending`
-- 决策 ID：未产生
-- 条件/剩余项：R-M10-01 已 `fixed`；Product 预验收 `pass`（M15 后）；由 Lead 提交用户最终验收。用户 `accepted` 前不进入下一个用户可见模块。B2 F-001 collation P2、M15 F-003 P2、B4/B5 P3、OPS 生产未演练、ADR proposed 仍按残余/待办记录。
-- 下一步：Lead 提交用户最终验收（`accepted`/`rejected`/`conditional`）；无需新的修复任务。用户未 `accepted` 前不进入下一个用户可见模块。
+- 结论：`accepted`
+- 决策 ID：`DEC-0021`
+- 条件/剩余项：R-M10-01 已 `fixed`；Product 预验收 `pass`（M15 后）；M15（fixes M10）随本次验收一并接受。B2 F-001 collation P2、M15 F-003 P2、B4/B5 P3、OPS 生产未演练、ADR proposed 仍按残余/待办记录，不声称解决。
+- 下一步：M04「模型网关纵深」；生产迁移/OPS-004/OPS-010/T4 批准仍为后续发布前置。
+
+## M18 回溯复验（2026-11-20）
+
+### 回溯范围与限制
+
+- **触发**：DEC-0022 合并后合同 `commands.test` 变为 `./mvnw -q -T1C verify jacoco:report && pnpm -w test -- --coverage`，7 个模块旧 test EV 的命令文本不再匹配合同；2026-11-20 `gate check` 逐模块失败。属证据/流程漂移，不是代码回归（`.riccon/reviews/M18-revalidation-report.md`）。
+- **第一阶段（TASK-0090，`cb977f9`）**：为 M01/M02/M03/M10/M12/M13/M15 各重录一条 test/coverage 证据（EV-0490..EV-0496），重写 7 份 module review（`REV-*-002`，真实会话 `ses_e08d1b473ffezoltlVNmpba9tZ`，`previous_review` 指向归档旧评审），逐个 `gate check` 通过；最终循环 EV-0498，exit 0。EV-0497 为 superseded，不引用。该阶段只重录 test/coverage，E2E/a11y/security/真实栈未重跑。
+- **第二阶段（TASK-0092/0093）**：补 M02 AC-02 逐格式浏览器证据（XLSX/PNG/JPEG 上传→解析成功→提问/引用，EV-0500/EV-0506/EV-0509；解析器仍由集成测试覆盖）；修复 M02-AC-16 的 a11y P1（引用链接 hover、上传按钮 hover、失败态 danger/重试），F-001/F-002 fixed，M18 a11y F-003（primary 实心按钮 hover 4.16:1）P2 accepted/residual。
+- **第三阶段（TASK-0094，最终代码 `ec6a650`）**：全量合同证据 EV-0512 build、EV-0513 test/coverage、EV-0514 合同 E2E 33 passed、EV-0515 a11y 13 passed、EV-0516 security exit 0、EV-0517 7 模块 gate 循环 + state validate（0 error/1 M11 warning）+ doctor OK。
+- **最终实测**（`ec6a650`）：Java 764 tests（api 453 / worker 262 / platform-common 33 / arch 12 / domain 4），0 fail / 0 error / 0 skip；前端 46 文件 384 tests passed、0 skip；覆盖率 API lines 91.53% / branches 73.79%，worker lines 87.58% / branches 70.34%，前端 lines 87.71% / branches 80.75%（合同 80/70），`jacoco:check` 通过。
+- **仍未重跑**：真实栈 E2E/a11y（EV-0299/EV-0488 为旧证据，且 M02 页面样式在 TASK-0093 后已变化）与迁移回滚演练（M10 V10 drill 为旧证据）。375px、键盘路径已包含在 EV-0514 合同 E2E 中重跑；真实栈 a11y 不能由 stub E2E 代替。
+- **口径**：「证据未重跑」「历史 open finding」「代码回归」三者分开记录。本次未发现代码回归；最终全量执行后无新增 P0/P1。F-003 为 accepted P2，不因 gate PASS 视为修复。
+
+### 总表
+
+| 模块 | 旧 review   | 新 review   | TASK-0090 test/coverage EV | gate | Product 结论               | 残余                                                                                                                                                                             |
+| ---- | ----------- | ----------- | -------------------------- | ---- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M01  | REV-M01-001 | REV-M01-002 | EV-0490                    | PASS | N/A（工程基线，无用户 AC） | 5 条 open P2（F-002/F-004/F-005/F-006/F-007）+ 2 条 open P3（F-008/F-009）+ 11 条 legacy 无 commit attestation；F-007 为发布阻断项                                               |
+| M02  | REV-M02-003 | REV-M02-004 | EV-0491                    | PASS | `pass`（with residual）    | M18 a11y F-003 P2 accepted（primary hover 4.16:1，窄 allowlist，owner builder-web，到期 2026-12-04）；F-009/F-014 open P3；F-007/F-011/F-015 accepted P2；真实栈 E2E/a11y 未重跑 |
+| M03  | REV-M03-001 | REV-M03-002 | EV-0492                    | PASS | `pass`（沿用 DEC-0016）    | F-006..F-010 accepted/residual                                                                                                                                                   |
+| M10  | REV-M10-001 | REV-M10-002 | EV-0493                    | PASS | `pass`（沿用 DEC-0021）    | B2 F-001 collation、B4/B5 P3、OPS 生产未演练、ADR-0019/0020 proposed                                                                                                             |
+| M12  | REV-M12-001 | REV-M12-002 | EV-0494                    | PASS | N/A（无用户可见 AC）       | F-002..F-005、F-007 accepted P3                                                                                                                                                  |
+| M13  | REV-M13-001 | REV-M13-002 | EV-0495                    | PASS | `pass`（随 M03 DEC-0016）  | F-001..F-006 accepted                                                                                                                                                            |
+| M15  | REV-M15-001 | REV-M15-002 | EV-0496                    | PASS | `pass`（随 M10 DEC-0021）  | F-003/F-005/F-006 accepted                                                                                                                                                       |
+| M18  | —           | REV-M18-001 | EV-0517（gate 循环）       | PASS | `pass`（gate 后预验收）    | 用户最终验收 accepted（DEC-0025）；F-003 P2 accepted；F-008 P3 accepted；M01 open P2（F-007 发布阻断）；M02 F-009/F-014 P3；M11/M14 legacy；真实栈/迁移/k6 未重跑                |
+
+gate warnings：M01 8 条、M02 2 条，其余 0；M01/M02 的 warning 内容与上表残余一致，不因 gate PASS 视为已解决。
+
+最终全量证据（TASK-0094，`ec6a650`）：EV-0512 build、EV-0513 test/coverage（Java 764/前端 384）、EV-0514 合同 E2E 33 passed、EV-0515 a11y 13 passed、EV-0516 security exit 0、EV-0517 7 模块 gate PASS；EV-0518 docs/ACCEPTANCE 检查。M18 module review `REV-M18-001` verdict pass；M18 gate exit 0（2026-11-20 17:45，`state.gate`），3 个外部/legacy warnings。第一阶段的 EV-0490..EV-0498 保留为证据漂移修复记录，不覆盖最终全量。
+
+### M02 预验收明细（M02-AC-01..16）
+
+**限制**：本节以最终全量证据为准（EV-0512..EV-0517，`ec6a650`）；AC-02 额外引用定向 EV-0509，真实栈维度仍引用旧 EV-0299/EV-0488 并已标注。真实栈 E2E/a11y 与迁移回滚未重跑，不能当作本轮执行。
+
+| AC        | AC 原文的用户可见结果（Then 摘要）                                                                         | 结果                  | 证据                                                                                                                                                                                                                                                                                                                       | 限制 / 缺口                                                                                                                                                                                                                                                                              |
+| --------- | ---------------------------------------------------------------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M02-AC-01 | 进入租户 A 工作空间并显示租户名；错误凭据只显示统一失败提示，不泄露账号是否存在                            | pass                  | EV-0514（合同 E2E 登录成功/失败 2 条）；EV-0299 真实栈（旧证据，未重跑）                                                                                                                                                                                                                                                   | 真实栈部分为旧证据                                                                                                                                                                                                                                                                       |
+| M02-AC-02 | PDF/DOCX/XLSX/PNG/JPEG 各一个均显示解析状态并可用于提问；不支持格式或超限被拒绝并提示原因                  | pass                  | EV-0509（j1 定向 6/6：XLSX/PNG/JPEG 上传→“解析成功”→提问→引用；含 PDF 原有与失败态）；EV-0500/EV-0506（前两轮 5/5）；EV-0514（合同 E2E 33 passed 含三条格式用例）；解析器集成测试 pdf/docx/xlsx/PNG/JPEG（`DocumentParserTest`、`FileParseServiceIntegrationTest`）；超限 413（`FileUploadLimitTest`）；不支持格式组件测试 | XLSX/PNG/JPEG 浏览器用例使用 stub 解析（验证 UI 路径），真实解析由集成测试覆盖；真实栈未逐格式验证。无阻塞缺口                                                                                                                                                                           |
+| M02-AC-03 | 3 秒内出现首字，回答逐步增长；中途停止后已生成内容保留                                                     | pass                  | EV-0514（J1 流式、停止、重开 6/6）；EV-0299 真实栈首字 337ms、增长采样 `[10,30,39,60,70,80,100,110,130]`、DB 73ms vs 3167ms（旧证据，未重跑）                                                                                                                                                                              | 337ms 为单次实测，非 p95；`commands.perf`/k6 未执行（M02 F-007 accepted）。不声称 p95 达标                                                                                                                                                                                               |
+| M02-AC-04 | 每条引用显示文件名与定位（页码/工作表/段落）且可打开；无命中提示未检索到资料，不出现伪造引用               | pass                  | EV-0514（J1 引用抽屉“第 3 页”+ 无命中“当前知识库未检索到相关资料”）；EV-0299 真实 J1 DOCX 引用抽屉（段落定位）与快速发送 fileIds（旧证据，未重跑）；无结果分支另有组件/worker 集成证据                                                                                                                                     | 真实栈为旧证据；引用打开为抽屉内定位信息，不打开原文件                                                                                                                                                                                                                                   |
+| M02-AC-05 | 失败原因与重试入口；已上传文件与已有消息不丢失                                                             | pass                  | EV-0514（失败态 danger/重试：解析失败、模型失败、重试入口）；组件测试：SSE 断线保留内容；API 集成：`RICCON-MODEL-500`、`FileLifecycleApiTest` 解析失败重试                                                                                                                                                                 | 真实栈未注入解析/模型故障；E2E 为 stub 后端，组件/集成证据仍保留                                                                                                                                                                                                                         |
+| M02-AC-06 | 任务进入运行中并显示当前阶段（检索/工具/审批/生成）                                                        | pass                  | EV-0514（J2 创建任务与阶段显示）；EV-0299 真实 UI 加载 `market_data · 只读 · 需审批` 并创建任务（旧证据，未重跑）                                                                                                                                                                                                          | 真实栈部分为旧证据                                                                                                                                                                                                                                                                       |
+| M02-AC-07 | 展示 ≥1 条来源、标题与片段并带引用；无结果时提示调整主题且任务不进入生成                                   | pass                  | EV-0514（J2 审批前 4 条来源/片段/定位）；EV-0299 真实栈 4 条来源（旧证据，未重跑）；无结果：worker 集成 `ReportArtifactIntegrationTest`（RETRIEVAL FAILED、不产生工具/审批/生成）+ 组件测试“调整主题重新创建”                                                                                                              | 无结果分支未在 E2E 走通；正向路径为 stub E2E，真实栈为旧证据                                                                                                                                                                                                                             |
+| M02-AC-08 | 工具名、入参摘要、结果摘要、耗时与状态；失败显示原因且可重试该阶段                                         | pass                  | EV-0514（J2 工具阶段 + 超时 `RICCON-MCP-504` + “重试工具阶段”）；EV-0299 审批预览工具名 + 脱敏参数、MCP 调用记录（旧证据，未重跑）                                                                                                                                                                                         | 真实栈未注入超时                                                                                                                                                                                                                                                                         |
+| M02-AC-09 | 未审批不生成；批准后继续，拒绝后终止并记录审批人、时间与决定                                               | pass                  | EV-0514（J2 批准→产物、拒绝→终止无产物、审批人/时间/决定）；EV-0299 真实栈批准/拒绝（旧证据，未重跑）                                                                                                                                                                                                                      | 真实栈部分为旧证据                                                                                                                                                                                                                                                                       |
+| M02-AC-10 | 产物含标题、摘要、分节正文、引用清单与数据来源；可再次打开；引用每条能在任务时间线找到                     | pass                  | EV-0514（J2 产物正文/引用/数据来源，刷新后重开任务与产物）；EV-0299 同源 content 渲染“摘要/分析”、下载 2156 字节、citationCount=5（旧证据，未重跑）                                                                                                                                                                        | >2 MiB 产物下载返回 413（M02 F-015 accepted），不声称大产物可下载                                                                                                                                                                                                                        |
+| M02-AC-11 | 任务标记失败、保留已完成阶段记录、可重试且重试不产生重复产物                                               | pass                  | EV-0514（MCP 超时→任务失败、旧调用留时间线、重试后仅 1 份报告）                                                                                                                                                                                                                                                            | 真实栈未注入超时/生成失败                                                                                                                                                                                                                                                                |
+| M02-AC-12 | 统一拒绝响应、不返回任何 B 的内容、不泄露对象是否存在                                                      | pass                  | EV-0513（TEN-001..030 重跑）；EV-0299 真实栈 8 类对象 404（含 content）、J1/J2 run 404/404、beta 工具 total=0（旧证据，未重跑）                                                                                                                                                                                            | 真实栈部分为旧证据                                                                                                                                                                                                                                                                       |
+| M02-AC-13 | 跨租户列表、检索、对象读取与管理接口全部通过；零 skip、零 xfail                                            | pass                  | EV-0513（Java 764 + 前端 384，0 skip；`TenantIsolationSecurityTest` TEN-001..030 + 完整性清单）；EV-0299 真实栈 8 类 404（旧证据，未重跑）                                                                                                                                                                                 | 真实栈部分为旧证据                                                                                                                                                                                                                                                                       |
+| M02-AC-14 | 登录、文件上传/删除、会话创建、模型调用、MCP、审批与权限变更均产生审计；审计写入失败则业务失败             | pass                  | EV-0513（fail-closed：`AuditFailClosedTest` 登录、`ResearchAuditFailClosedTest` 创建任务/审批、`FileAuditFailClosedTest` 上传回滚并清理对象）；EV-0299 16 类动作、tenant_id 非空（旧证据，未重跑）                                                                                                                         | 真实栈审计为旧证据                                                                                                                                                                                                                                                                       |
+| M02-AC-15 | 界面与接口均无删除/修改能力；普通员工无法访问审计接口                                                      | pass                  | EV-0299 UPDATE/DELETE 均 ERROR 1644 `audit_event is append-only`（旧证据，未重跑）；EV-0129/0130 负向证据；EV-0513 TEN-012 普通员工 403                                                                                                                                                                                    | 负向证据保留，不重跑                                                                                                                                                                                                                                                                     |
+| M02-AC-16 | 四界面加载/空/错误/成功/无权限均有文案与下一步；375px 无横向滚动；键盘完成登录、上传、提问、审批，焦点可见 | pass（with residual） | EV-0509（J1 定向 6/6，含失败态与流式/引用/完成态 axe；F-001/F-002 fixed）；EV-0514（合同 E2E 33 passed，含 3 条 375px、键盘上传/审批、空态/403/409）；EV-0515（全量 a11y 13 passed）                                                                                                                                       | M18 a11y F-003 P2 accepted：primary 实心按钮 hover 白字 #2e7ae6 仅 4.16:1；窄 allowlist 只放行 `.ant-btn-primary` color-contrast，其余 serious/critical 仍失败；owner `builder-web`，到期 2026-12-04，修复后删除 allowlist。不声称全局零 serious；真实栈 a11y 未重跑（EV-0488 为旧证据） |
+
+**小结**：16 条均为 `pass`；AC-02 与 AC-16 带残余（stub 解析、M18 a11y F-003 P2 accepted）。AC-05、AC-07 无结果分支、AC-11 仍依赖组件/集成或 stub 证据，已逐条标注，不当作真实栈全链路通过。
+
+模块级证据（最终全量，`ec6a650`）：EV-0512 build；EV-0513 test/coverage（Java 764 + 前端 384，0 skip；API 91.53/73.79、worker 87.58/70.34、web 87.71/80.75）；EV-0514 合同 E2E 33 passed；EV-0515 a11y 13 passed；EV-0516 security exit 0；EV-0517 7 模块 gate PASS。补充：EV-0509（AC-02 定向 6/6）；EV-0299/EV-0488 真实栈为旧证据，本轮未重跑。
+
+### Product 预验收（M02，M18 回溯）
+
+- 结论：`pass`（with residual：M18 a11y F-003 P2 accepted）
+- 需求一致性：AC-01..16 的用户可见结果均有最终证据；AC-02 由 EV-0509 补齐 XLSX/PNG/JPEG 浏览器上传→“解析成功”→提问→引用（stub 解析，解析器由集成测试覆盖）；AC-16 的四界面状态、375px 与键盘路径由 EV-0514（33 passed）重跑，a11y 由 EV-0515（13 passed）覆盖。未发现代码回归或新的用户可见缺陷；最终全量执行无新增 P0/P1。
+- UX/文案：登录统一失败提示、解析状态与“重试解析”、停止生成与内容保留、引用抽屉定位、“未检索到相关资料”、J2 阶段名与失败码 `RICCON-MCP-504` + “重试工具阶段”、审批人/时间/决定、产物“摘要/分析/引用清单/数据来源”、403/409/空态、375px 与键盘路径均在 EV-0514/EV-0509/EV-0515 中复跑；引用链接 hover 与上传按钮 hover 的对比度已修复（M18 a11y F-001/F-002 fixed）。
+- 残余与去向：
+  - M18 a11y F-003（P2 accepted）：primary 实心按钮 hover 白字 `#2e7ae6` 对比度 4.16:1，低于 WCAG AA 4.5:1；窄 allowlist 仅放行 `.ant-btn-primary` color-contrast，其他 serious/critical 仍失败；owner `builder-web`，到期 2026-12-04，修复后删除 allowlist。不声称全局零 serious/critical。
+  - M02 F-009（P3 open，J1 原始 Markdown 展示）、F-014（P3 open，首条检索片段信息量低）仍 open，不声称解决。
+  - M02 F-007（P2 accepted，`commands.perf` 缺失、无 p95）、F-011（P2 accepted，`/models` 与 admin 目录契约漂移）、F-015（P2 accepted，>2 MiB 产物不可下载）仍按 accepted 记录，不阻塞本次结论。
+  - 真实栈 E2E/a11y（EV-0299/EV-0488 为旧证据）与迁移回滚演练未重跑；375px/键盘已由 stub 合同 E2E 覆盖，真实栈 a11y 不能由 stub 代替。
+- 备注：M02 已于 2026-11-18 标 done（历史事实），本次回溯预验收不重开模块；`pass`（with residual）作为用户决策输入，用户最终验收仍 `pending`，不能写成 accepted。
+
+### M03 / M10 / M13 / M15 最终全量复验
+
+- 第一阶段（TASK-0090）的新 review 只做证据重绑：`reviewed_evidence` 追加 EV-0492/0493/0495/0496，`dod_evidence.tests` 与 `dod_evidence.coverage` 指向新 EV，`dod` 其余项与 findings 状态未改；旧 review 原样归档在 `.riccon/archive/reviews/`。
+- **最终全量（`ec6a650`，TASK-0094）**：EV-0512 build、EV-0513 test/coverage、EV-0514 合同 E2E 33 passed、EV-0515 a11y 13 passed、EV-0516 security exit 0、EV-0517 gate 循环；上述四个模块 gate 全部 PASS，无新增 P0/P1。
+- **M03**（REV-M03-002）：AC-01..07、AC-19 部门段、AC-20、AC-21 部门管理页段原结论不变；F-006..F-010 仍 accepted/residual。DEC-0016 用户 accepted 仍有效，本文件 M03 章节不改写。
+- **M10**（REV-M10-002）：AC-08..18 与 AC-19/20/21 的 M10 段原结论不变；B2 F-001 collation、B4/B5 P3、OPS 生产未演练（迁移回滚本轮未重跑）、ADR-0019/0020 proposed 仍按残余记录。DEC-0021 用户 accepted 仍有效，本文件 M10 章节不改写。
+- **M13**（REV-M13-002）：R-M03-01..03 仍 `fixed`，F-001..F-006 仍 accepted；随 M03 DEC-0016 accepted 不变。
+- **M15**（REV-M15-002）：R-M10-01 仍 `fixed`，F-003/F-005/F-006 仍 accepted；随 M10 DEC-0021 accepted 不变。
+- 边界：最终全量覆盖 build/test/coverage/E2E/a11y/security，但真实栈与迁移回滚仍为旧证据；四份 review 的历史 AC 表不重写。
+
+### M01 / M12 登记（legacy / no-impact）
+
+- **M01**（REV-M01-002，gate pass，8 warnings）：工程基线模块，无用户可见 AC，Product 预验收/用户验收按 N/A legacy 处理，不作为 gate 前置。F-001（前端覆盖率）与 F-003（生成代码计入分母）已由 EV-0490/EV-0513 与当前 `apps/web/vitest.config.ts` 证明修复；其余仍 open：P2 F-002（M01 时 `commands.security` 失败；最终 EV-0516 security exit 0，2 个已批准 CVE 由 `.trivyignore` 抑制，但 M01 review 的证据仍是 EV-0077，不声称该 finding 已解决）、F-004（Umi overlay console TypeError / antd Alert 废弃警告）、F-005（ProLayout beta 折叠按钮 a11y）、F-006（11 条工具安装 EV 无 commit attestation）、F-007（MySQL Connector/J GPLv2+FOSS exception，发布阻断项未关闭）；P3 F-008（RUNBOOK 旧口径）、F-009（E2E 覆盖历史限制）。最终全量执行不改变这些状态。
+- **M12**（REV-M12-002，gate pass，0 warnings）：维护/效率模块，无新的用户可见 AC，Product/用户验收为 `not-recorded`（N/A）；F-002..F-005、F-007 仍 accepted P3。no-impact。
+
+### M02 Product/用户验收缺口
+
+M02 是用户可见 MVC 模块，但 2026-11-18 关闭时没有 `product_acceptance` 记录（Product 预验收/用户最终验收均为 `not-recorded`），`REV-M02-003` 只是独立技术评审。本次在 M18 回溯中补做 **Product 预验收**（最终结论 `pass`，with residual：M18 a11y F-003 P2），不补造用户验收；用户最终验收见下一节，结论 `pending`，由 Lead 提交决策包。
+
+### M18 Product 预验收（gate 后）
+
+- **范围**：7 模块证据回溯（M01/M02/M03/M10/M12/M13/M15）+ M02 AC-02 逐格式 UI 证据 + M02 AC-16 a11y P1 修复；不含新的用户可见产品功能。
+- **gate**：M18 gate exit 0（`state.gate` checked_at `2026-11-20T17:45:38+08:00`；REV-M18-001 verdict `pass`）；3 个外部/legacy warnings（REV-M18-001 F-005/F-006/F-007：M01 open P2、M02 F-009/F-014、M11/M14 legacy），无 P0/P1。
+- **结论**：`pass`（with residual）。Product 预验收通过，M18 可由 Lead 按流程标 done；本结论不是用户最终验收，不得写成 accepted。
+- 逐项：
+  - **7 模块 gate**：EV-0498/EV-0517 全部 PASS；M01 8 warnings、M02 2 warnings，其余 0。warning 均对应已登记 open/accepted finding，不因 gate PASS 视为解决。
+  - **M02 AC-02**：`pass`；EV-0509（j1 6/6，XLSX/PNG/JPEG 上传→“解析成功”→提问→引用）、EV-0500/EV-0506（前两轮 5/5）、EV-0514（33 passed 含三格式）。真实解析由 `DocumentParserTest`/`FileParseServiceIntegrationTest` 覆盖；浏览器用例为 stub 解析，残余已标注。
+  - **M02 AC-16**：`pass（with residual）`；EV-0514（四界面状态、375px、键盘）、EV-0515（a11y 13 passed）、EV-0509（失败态与流式/引用/完成态 axe）。
+  - **a11y P1**：F-001（完成态引用链接与停止生成对比度）与 F-002（上传/default 按钮 hover、失败态 danger/重试）fixed；EV-0507/EV-0508/EV-0509/EV-0515，修复面为 `apps/web/src/pages/chat/chat.css` 与 `index.tsx`。
+  - **F-003**：P2 accepted，未修。primary 实心按钮 hover 白字 `#2e7ae6` 仅 4.16:1；窄 allowlist 只放行 `.ant-btn-primary` 的 color-contrast，其他 serious/critical 仍失败；owner `builder-web`，到期 2026-12-04，修复后删除 helper。不声称全局零 serious/critical。
+  - **F-008**：P3 accepted。EV-0511 负向日志仍在 `.riccon/evidence/TASK-0094/`，已从 `TASK-0094.evidence` 移除、不绑定任何 DoD；归档/丢弃口径由 Lead 在 2026-11-21 前处理。不影响 DoD。
+  - **M01/M12**：M01 为工程基线、M12 为维护模块，均无用户可见 AC，Product 验收 N/A legacy；M01 5 条 open P2（含 F-007 MySQL 驱动发布阻断）与 2 条 P3、M12 F-002..F-005/F-007 accepted P3 均不声称解决。
+  - **全量证据**：EV-0512 build、EV-0513 test/coverage（Java 764 / 前端 384，0 fail/error/skip；覆盖率达标）、EV-0514 E2E 33 passed、EV-0515 a11y 13 passed、EV-0516 security exit 0、EV-0517 7 模块 gate + state/doctor、EV-0518 docs/ACCEPTANCE 检查。
+- **残余/未验证**：
+  - 真实栈 E2E/a11y（EV-0299/EV-0488 为旧证据）、迁移回滚（M10 V10 drill 旧证据）与 k6/p95 未重跑；不因 final gate pass 视为已覆盖。
+  - F-003 未修；M01 open P2（F-007 发布阻断）；M02 F-009/F-014 open P3；M02 F-007/F-011/F-015 accepted P2；M11 planned/M14 docs-only legacy。
+- **边界**：M18 不是用户可见产品模块；Product 预验收只核对范围、验收记录、UX 残余与文案，不替代 Verifier 的实现/安全/测试充分性结论，也不替代 gate/release 批准。M18 标 done 后，用户最终验收随 M02/M18 决策包处理；用户未接受前不记通过。
+
+## 用户最终验收（M02/M18 回溯）
+
+- 结论：`accepted`
+- 决策 ID：`DEC-0025`
+- 条件/剩余项：接受 M02/M18 回溯结果与 F-003 P2 residual；F-003 仍 open（owner `builder-web`，到期 2026-12-04，窄 allowlist 修复后删除）；M01 F-007 仍为 release blocker；M11/M14 legacy 保留；真实栈 E2E/a11y、迁移回滚、k6 未重跑；M02 F-009/F-014 P3 与 F-007/F-011/F-015 accepted P2 不声称解决。
+- 说明：M02 回溯 Product 预验收 `pass`（with residual）；M18 Product 预验收 `pass`（with residual）；用户按 A 接受，M18 `product_acceptance.user_status=accepted`（DEC-0025）。不声称 F-003 已修复或 M01 F-007 关闭。
+- 下一步：M04「模型网关纵深」单模块 48h，新会话启动；F-003/M01 F-007/M11/M14 按残余和 release blocker 跟踪。
+
+## M04 模型网关纵深（gate pass 后 Product 预验收）
+
+- 范围：`docs/PRODUCT.md` §10 已批准的 M04-AC-01..18（DEC-0023=A；DEC-0024=B 单模块 48h）；四个管理页面（模型路由、模型 key、租户配额、成本看板）、路由/降级/多 key/配额/成本、开关与审计，以及 §10.1 明确范围外项未承接。
+- 证据基线：REV-M04-005（verdict pass；18 条 AC 全 pass；F-001..F-005、F-011 fixed）；EV-0675（test/coverage）、EV-0687（build）、EV-0676（合同 E2E 40 passed）、EV-0677（a11y 15 passed）、EV-0689（全量真实栈 browser 25 passed，migration/checks/security/m04/m03/m10/j2 全 passed）、EV-0669（perf）、EV-0681（开关/指标）、EV-0682..0686（回滚/恢复/rewrap/backfill）、EV-0640（V2 独立安全/集成）。
+- 说明：本节只核对用户可见结果、入口、五态、角色可见性与文案；不替代 Verifier 对实现细节、安全边界、并发和测试充分性的结论。
+
+### 验收标准（M04-AC-01..18）
+
+| AC        | 结果                              | 用户可见结果核对                                                                                                                                                                                                                                                                                             | 证据                                                                                                                    | 残余/限制                                                                                                                                                                                                   |
+| --------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M04-AC-01 | pass（with residual F-010）       | 模型路由页显示“对话链/报告链”、顺序、启用/停用标签与版本；调整顺序后出现“未保存”，保存后显示“已保存对话链（版本 vN）”；端点标签可见，界面无自由输入地址。IT-MODEL-101 断言保存后读取到新链/版本，停用/启用后下一次 GET 立即生效。                                                                            | EV-0676（E2E-M04-01）；EV-0640（IT-MODEL-101）；EV-0689 真实栈路由保存                                                  | F-010 P3：没有单条 UI 保存→下一次 CHAT 请求的跨组件 E2E；下一次请求读新链由 API 读取与 worker 路由解析间接覆盖。                                                                                            |
+| M04-AC-02 | pass                              | 租户管理员/员工直达 `/admin/model-routing`、`/admin/model-keys` 显示“没有访问权限”与角色说明，页面无保存/新增/轮换/停用按钮；租户管理员配额页只读；写接口 403、跨租户 404、审计写失败保存失败；路由变更审计含操作者、变更摘要、时间与结果。                                                                  | EV-0676/0677（E2E-M04-07a/07b）；EV-0640（M04V2VerifierBoundaryTest、IT-MODEL-102、TEN-031）                            | 无。                                                                                                                                                                                                        |
+| M04-AC-03 | pass                              | 真实栈注入主模型 5xx：员工仍拿到完整回答，页面不出现 provider/model/key 或“已切换/已降级”；运行详情保留实际模型标识；审计页“降级事件（最近 7 天）”可按对象=模型筛选，详情含 fromModelId/toModelId/reason/attempt/追踪 ID，不含地址/key。                                                                     | EV-0689（E2E-M04-02）；EV-0669（4 模式降级 100%）；EV-0640（IT-MODEL-103）                                              | 降级 E2E 未携带文件，“引用正常”由 J1 引用回归间接覆盖，未在同一降级 run 直接断言（R-M04-03 P3）。                                                                                                           |
+| M04-AC-04 | pass                              | 真实栈首字后断流：已输出正文保留，显示“回答已中断，已保留已生成内容，可重试。”、错误码 `RICCON-MODEL-502` 与重试；重试后两条独立回答，无重复段落；审计 `emitted=true`。                                                                                                                                      | EV-0689（E2E-M04-03）；EV-0676                                                                                          | 无。                                                                                                                                                                                                        |
+| M04-AC-05 | pass                              | 真实栈全链失败：HTTP 503、`RICCON-MODEL-503`、固定文案“模型服务暂不可用，请稍后重试。”、重试入口；页面无 provider 地址/key/堆栈；报告路径由 ResearchFailureText 映射同一文案。                                                                                                                               | EV-0689（M04-AC-05）；EV-0640（ChatModelUnavailableApiTest、ResearchModelUnavailableMappingTest）                       | 真实栈未断言已上传文件保留；前端失败后保留文件列表与重试入口，未在同一用例断言（R-M04-03 P3）。                                                                                                             |
+| M04-AC-06 | pass                              | 同一 provider 多 key：停用其一或返回 401/403 后其余 key 继续服务，员工侧无感；key 新增/轮换/停用/失效/恢复审计含操作者、掩码、时间、结果；全部 key 失效时按 AC-05 处理并尝试下一模型。                                                                                                                       | EV-0640（IT-MODEL-105、ModelFailoverIntegrationTest）；EV-0689 真实栈 key 生命周期                                      | 无（真实并发在途轮换见 AC-07 F-006）。                                                                                                                                                                      |
+| M04-AC-07 | pass（with residual F-006）       | 轮换弹窗保存前显示“轮换影响（保存前请确认）”与在途流式请求说明；保存后旧 key 停用、新 key 仅显示掩码；页面/审计响应无旧 key 明文；停用弹窗说明在途请求继续。                                                                                                                                                 | EV-0676（E2E-M04-04）；EV-0689（M04-B11a key 生命周期）；EV-0640（IT-MODEL-106）                                        | F-006 P2：真实并发在途流式请求未覆盖，现有证据只证明旧密文可解密与影响文案；owner builder-key/gateway-e2e，到期 M05 gate 前。                                                                               |
+| M04-AC-08 | pass（with residual R-M04-01/02） | 平台/租户配额页显示日/月限额、已用、剩余、重置时间（+08:00）与来源（显式设置/明确不限/部署默认）；超限 429 返回 `RICCON-QUOTA-429`，detail 为“已达日/月限额，{重置时间}后恢复。”；拒绝审计、在途 run 不受影响、租户管理员只读。                                                                              | EV-0676/0689（E2E-M04-05）；EV-0640（IT-QUOTA-101/105、TEN-032）                                                        | R-M04-01 P2：员工聊天气泡把任意 429 归一为“请求过于频繁，请稍后重试。”，未展示限额类型与重置时间（API 响应与配额页已具备）；R-M04-02 P3：重置时间只显示绝对 +08:00，未显示 §10.4/OQ-25 的“还有 X 小时/天”。 |
+| M04-AC-09 | pass                              | 50 并发争用剩余 1 次：恰好 1 个 run 成功、49 个 429，用量=1，无负数/重复计数；PERF 脚本同样 1/49。                                                                                                                                                                                                           | EV-0640（IT-QUOTA-102）；EV-0669（PERF-M04-002）                                                                        | “提高限额后重试”没有单独断言，属于运行期自然重试路径；R-M04-03 P3 建议 M05 前补一条。                                                                                                                       |
+| M04-AC-10 | pass                              | 租户管理员配额页只含本租户与用户用量，无其他租户；平台页只含租户聚合，不显示用户明细；配额变更/拒绝审计含对象、前后值、时间与结果；员工无入口、无配额请求。                                                                                                                                                  | EV-0676/0689（E2E-M04-05）；EV-0640（IT-QUOTA-103、TEN-032）                                                            | 无。                                                                                                                                                                                                        |
+| M04-AC-11 | pass                              | 平台按租户/模型/日、租户按用户/模型/日聚合；金额按 6 位小数展示精确值、按币种最小单位（CNY 2 位）展示；明细展开显示调用时输入/输出价格快照；未定价显示“未定价”并单列，用量未知显示“用量未知”并单列，均不计入金额合计；固定文案“成本为按调用时价格快照估算，不是供应商账单。”；单一币种；日桶 Asia/Shanghai。 | EV-0676/0689（E2E-M04-06）；EV-0640（IT-COST-101..103）                                                                 | 无。                                                                                                                                                                                                        |
+| M04-AC-12 | pass                              | 租户 A 管理员只看本租户用户/模型/日金额与明细，不出现租户 B 名称/金额/调用量；平台只到租户聚合，无用户列/明细；员工无入口且不请求金额；直接用租户 B 标识请求成本/配额统一 404。                                                                                                                              | EV-0640（TEN-033、IT-COST-104）；EV-0676/0689（E2E-M04-06）                                                             | 无。                                                                                                                                                                                                        |
+| M04-AC-13 | pass（with residual P3）          | 平台管理员四入口（模型路由/模型 key/租户配额/成本看板），租户管理员只看到配额/成本；四页均覆盖加载、空、错误、403、成功态，空态有中文引导（先配目录/路由/建租户/扩大时间范围），错误态有重试；密钥列只显示掩码。                                                                                             | EV-0676/0677（E2E-M04-07a/07b）；EV-0689 真实栈四页                                                                     | 路由/key 的 403 态只有原因说明，没有“返回工作空间/联系管理员”类操作按钮；P3 文案/下一步改进，不阻塞。                                                                                                       |
+| M04-AC-14 | pass                              | 四页在 375px 无横向滚动；键盘可完成路由调序→保存、配额改限额→保存、成本切换聚合维度，key 页可打开/关闭弹窗；焦点样式 2px 可见；axe 无 serious/critical；页面文案中文且不含 key。                                                                                                                             | EV-0677（15 passed）；EV-0676（E2E-M04-07a/07b）；EV-0689 真实栈四页 @a11y                                              | 焦点可见性由 CSS 与 `toBeFocused` 断言，未做像素级截图比对（V1 P3）。                                                                                                                                       |
+| M04-AC-15 | pass（with residual F-008）       | 端点目录/路由选择器显示“生产可用”或“仅演示（非生产）”标签；界面无自由输入 base URL；生产模式选择演示端点时显示“该端点仅用于演示，生产模式仅允许客户内网网关…”；保存被拒原因可读；页面/审计/错误响应/日志无 key 明文、Authorization、内部地址或堆栈。                                                         | EV-0640（SEC-M04-001/002/009、IT-MODEL-107）；EV-0689 真实栈；EV-0676/0677                                              | F-008 P2：非 503 Worker detail 仍写入 `run.error_message`，当前为静态脱敏文本；owner builder-route，到期 M05 gate 前。                                                                                      |
+| M04-AC-16 | pass                              | 真实栈 J1 流式/停止/引用、J2 审批/产物、M03/M10 套件均无回归；历史模型调用记录在运行详情可读；`/api/v1/models`、`/api/v1/admin/model-providers`、`/api/v1/admin/models` 已实现并通过契约测试；MCP 目录与 workspace-archive 仍按 M07/M09 deferred，不冒充实现。                                               | EV-0689（browser 25 passed + J1/J2/M03/M10）；EV-0676（E2E-M04-08）；EV-0640（IT-MODEL-108a）；`contracts/openapi.yaml` | 无。                                                                                                                                                                                                        |
+| M04-AC-17 | pass（with residual F-013）       | 合同 perf 脚本 50 并发、故障注入：首字 p95 32ms、JSON API p95 61.777ms、降级 4 模式 100%、配额 1/49、无重复输出；指标可观察；报告可由脚本/参数/退出码复现。                                                                                                                                                  | EV-0669；EV-0681 指标；REV-M04-005                                                                                      | F-013 P2：API p95 口径收窄为稳态 JSON API（排除登录/setup，SSE TTFB 单列），阈值未变；需 Architect 对齐 PRODUCT/ADR 措辞，到期 M05 gate 前。                                                                |
+| M04-AC-18 | pass（with residual F-009）       | 关闭路由/降级/配额执行后 J1/J2 仍可用，变更写审计；应用回滚到 M04 前版本后历史调用与成本快照仍可读，不做 down migration；restore/rewrap/backfill 有记录；RUNBOOK M04-7 与威胁模型 TB-04/§7 已更新。                                                                                                          | EV-0681、EV-0682..0686、EV-0688；EV-0689                                                                                | F-009 P3：restore-drill 报告仍 partial（J1 skipped），已用独立 API/Worker 补 J1/历史；owner ops，M09 前。                                                                                                   |
+
+### 范围与 non-goals 核对
+
+- 范围内 8 项均有页面/接口/证据：路由、降级、多 key、配额、成本、管理界面、审计与权限、T4 证据。
+- 未发现未批准范围扩张：新增的开关 GET/PUT 属 AC-18；指标属 AC-17/18；没有价格编辑、汇率、账单/发票、BYO、部门/空间配额、MCP 目录、workspace-archive、R-11 转换、F-015 下载、M13 F-001 字段或配置双人审批 UI。
+- `contracts/openapi.yaml` 中 `mcp-catalog-admin`、`/api/v1/admin/mcp-servers`、`/api/v1/admin/mcp-tools` 标 M07 deferred，`workspace-archive` 标 M09；`byo-model-credentials`、`model-price-editing` 仍在 deferred，与 PRODUCT §10.1 一致。
+- 三个模型端点已实现（非 404）；MCP 目录与归档端点仍 404/deferred，符合 OQ-23/OQ-26。未发现范围缩水。
+
+### UX / 文案核对
+
+- 语言与角色：四页中文；平台/租户/员工入口按 AC-13；员工对路由/key/配额/成本均无入口或 403，且不发起配额/成本数据请求。
+- 固定文案：AC-05“模型服务暂不可用，请稍后重试。”、AC-04“回答已中断，已保留已生成内容，可重试。”、AC-11“成本为按调用时价格快照估算，不是供应商账单。”逐字命中；AC-08 的 429 detail 命中，但员工聊天气泡未展示（R-M04-01）。
+- 五态：四页加载/空/错误/403/成功均有中文说明与重试/引导；路由/key 的 403 无操作按钮（P3）。
+- 移动端与键盘：375px 无横向滚动；键盘路径与焦点样式通过；axe M04 两 spec 通过（EV-0677），真实栈四页 `@a11y` 通过（EV-0689）。
+- 错误态不泄露 key/地址/堆栈；密钥列只显示掩码。
+
+### 残余风险与 Product 结论
+
+| 来源     | ID       | 级别 | 状态     | Product 结论                                                                                                                                                                                                                                                                                                                                                                                             |
+| -------- | -------- | ---- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Verifier | F-006    | P2   | accepted | AC-07 真实并发在途轮换未覆盖；影响说明与旧密文可解密已证据，风险有界，可接受；到期 M05 gate 前。                                                                                                                                                                                                                                                                                                         |
+| Verifier | F-008    | P2   | accepted | 非 503 Worker detail 仍写入 `run.error_message`；当前为静态脱敏文本，未发现 key/地址；可接受，M05 前持续确认脱敏。                                                                                                                                                                                                                                                                                       |
+| Verifier | F-009    | P3   | accepted | restore-drill 报告 partial；已用独立 API/Worker 补 J1/历史，M09 前完成完整演练；可接受。                                                                                                                                                                                                                                                                                                                 |
+| Verifier | F-010    | P3   | accepted | AC-01 缺单条 UI 保存→下一次 CHAT 请求的跨组件 E2E；API 读取与 worker 解析已覆盖，风险低；M05 前补。                                                                                                                                                                                                                                                                                                      |
+| Verifier | F-012    | P2   | accepted | web 套件在 EV-0673/0674 两次 flake，EV-0675 通过；失败 EV 保留、未用参数掩盖；不改变用户可见结论，M05 前消除 flake。                                                                                                                                                                                                                                                                                     |
+| Verifier | F-013    | P2   | accepted | perf API p95 口径收窄为稳态 JSON API，阈值未变、结果充裕；需 Architect 对齐 PRODUCT/ADR 措辞，M05 gate 前。                                                                                                                                                                                                                                                                                              |
+| Product  | R-M04-01 | P2   | new      | 员工聊天/报告入口对 `RICCON-QUOTA-429` 显示通用“请求过于频繁，请稍后重试。”，未展示限额类型与重置时间；API 429 detail 与配额页已具备。证据：`apps/web/src/services/api/errors.ts`（429 分支固定文案）、`apps/web/src/pages/research/use-research-workspace.ts`（创建任务复用 `describeApiError`）、EV-0676/0689 E2E-M04-05 仅断言 429 API。建议 M05 gate 前对 `RICCON-QUOTA-429` 透传 `problem.detail`。 |
+| Product  | R-M04-02 | P3   | new      | 配额重置时间只显示绝对 `+08:00`，未显示 §10.4/OQ-25 的“还有 X 小时/天”。证据：`apps/web/src/pages/admin/quotas/index.tsx` 仅渲染 `formatQuotaTime(resetsAt)`；EV-0676 只断言 `+08:00`。建议 M05 前补相对时间提示。                                                                                                                                                                                       |
+| Product  | R-M04-03 | P3   | new      | AC-03 降级 run 的引用、AC-05 已上传文件保留、AC-09 提额后重试没有直接断言；功能路径存在但证据为间接。证据：EV-0689 E2E-M04-02 无文件、M04-AC-05 未上传文件、EV-0640 IT-QUOTA-102 未提额重试。建议 M05 前补定向用例。                                                                                                                                                                                     |
+
+- **结论**：`pass`（with residual）。18 条 AC 的验收口径均成立（AC-08 的配额文案以 API 429 detail 与配额页为口径，员工聊天气泡的展示缺口见 R-M04-01）；未发现 P0/P1 产品缺陷，未发现未批准的范围扩张/缩水，non-goals 仍成立。
+- 上述残余均有 owner/到期或建议去向；F-006/F-008/F-009/F-010/F-012/F-013 按 Verifier accepted 保留，R-M04-01/02/03 作为 Product 观察项转 M05 跟踪，不阻塞模块 done。
+- **明确不声称**：员工已看到配额限额类型/重置时间（R-M04-01）；真实并发在途轮换已验证（F-006）；生产 K8s/Helm、真实供应商端点、跨区域容灾已验证；M10 的 MFA/审计哈希链/跨租户审计明细已解决。生产迁移/OPS-004/OPS-010/T4 发布批准仍未完成。
+- **边界**：本结论不是用户最终验收。Lead 可按流程记录 `product_status=pass` 并标 done；用户 `accepted` 前不进入下一个用户可见模块。
+
+## 用户最终验收（M04）
+
+- 结论：`accepted`（with residual）
+- 决策 ID：`DEC-0027`（A）
+- 条件/剩余项：接受 M04 gate pass、Product 预验收 `pass`（with residual）与 18 条 AC 结论；**R-M04-01（P2，员工聊天/报告 429 文案未透传）、R-M04-02（P3，相对重置时间）、R-M04-03（P3，三处定向证据）转 M05 跟踪**；F-006/F-008/F-009/F-010/F-012/F-013 按 Verifier accepted 保留。R-M04-01 仍 open，不声称已解决；生产发布仍需 release gate。
+- 说明：用户按 A 接受 M04（DEC-0027）。本结论不改写 Product 预验收 `pass`、18 条 AC 表，也不改写 M02/M03/M10/M18 的历史结论。
+- 下一步：M05 承接 R-M04-01/02/03 与 F-006/F-008/F-010/F-013 相关测试/口径补齐；生产发布按 release gate 与用户批准另行处理。
+
+## M04 遗留评审收口（2026-11-21 内核升级）
+
+- 背景：团队内核 0.1.9 → 0.1.11 后，`state validate` 对旧评审的 open/accepted finding 只告警；本次只做书面收口，不追溯改写历史评审与证据。
+- `REV-TASK-0108-001` 的 8 条 open P2（F-001..F-008）已在 `REV-TASK-0108-002` 标记为 accepted，并逐条绑定修复任务；M04 已用户验收（DEC-0027），残余不改变已验收 AC 结论，但 M20 gate 前必须关闭：
+  - TASK-0140：F-001 价格快照时点、F-003 报表成本断言、F-004 first_token_ms、F-012 负 token。
+  - TASK-0141：F-002 真实 MySQL 3 秒查询保护、F-005 平台五类计数。
+  - TASK-0142：F-006 `TenantContextFilter` 平台成本例外角色校验与负向测试（高风险，独立 Verifier）。
+  - TASK-0143：F-007 OpenAPI Page 上限、F-008 AC-12 403/404 口径、F-010 tenantId/userId 边界。
+- `REV-TASK-0108-001` 的 P3 F-009/F-011 由 Lead accepted：历史 EV/任务卡不追溯改写；M20 起新 EV 保留测试汇总并标注 superseded，高风险任务 `tools_used` 必须记录 Serena/CodeGraph 或降级理由。
+- `REV-M04-005` 的 accepted P2/P3（F-006/F-008/F-009/F-010/F-012/F-013）缺少 `accepted_reason` 与 `reviewed_task_reviews`；由 `REV-M04-006`（`M04-review-supplement-001.md`）补充，明确不替代 M04-005、不参与 gate。旧文件 warning 保留，不追溯改写。
+- `REV-M04-004`/`REV-M04-003` 已从 git history 恢复到 `.riccon/archive/reviews/M04-review-REV-M04-004.md` 与 `...-003.md`，修复 `previous_review` 断链。
+- 边界：本次未改业务源码、未新跑测试、未新录 EV；M20 任务均为 planned，未启动。剩余 legacy warning 属于历史评审清理范围，不是新的 gate 失败。
+
+## M19 测试基础设施与全量测试提速（gate pass 后 Product 预验收）
+
+- **范围**：`fix` 模块，技术性交付，无用户可见 AC。9 个任务全部 done：P0 计时与预算（TASK-0117）、P1 CI 热栈（TASK-0118）、P2 四分片（TASK-0119，含 TASK-0149 竞态修复）、P3 Worker 租户隔离与 API fixture（TASK-0144/0145/0146）、P4 tag 分层与 platform 词汇测试（TASK-0147/0148）。改动限于测试代码、CI、测试脚本与文档；`apps/*/src/main`、`apps/web/src`、`contracts/`、`deploy/` 零 diff，产品 AC/API/DB/UX/部署行为不变。
+- **合同与 gate**：`AGENTS.md` 零 diff，`commands.test`/`commands.coverage`/E2E 文本未改；CI 只新增 4-shard 快速反馈，canonical gate 仍由 Verifier 用合同命令执行。gate PASS（REV-M19-001，verdict `pass`，14.3h/16h）；代码 `b69f019`（PR #1 head），模块评审基于 `254e2a8`（与代码无源码/CI 差异）。
+- **证据**：CI run 44955035025（PR #1 `m19-ci-proof` @ `b69f019`，conclusion success）；EV-0716（合同 test+coverage：196 类/1115 用例/0 fail/0 error/0 skip；前端 493 用例通过）、EV-0721（4 shard + merge：196/1115/0/0/0，每类 runs=1，problems=0）、EV-0723（计时报告 531.132s）、EV-0724（文档/合同一致性）、EV-0717/0718/0719/0722（build/E2E/a11y/security）。EV-0711 为 shard 2 竞态失败证据，EV-0714/0715 为辅助证据，均不作为 DoD 依据。
+
+| 验收项                            | 结果                   | 证据                                         | 核对要点                                                                                                                                                                                                                                     |
+| --------------------------------- | ---------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 用例集合不减少、零 skip/@Disabled | pass                   | EV-0716、EV-0721、EV-0724                    | 196 类/1115 用例（P2 基线 193/1101，P4 +3 类/+14 用例；模块基线 771）；0 fail/0 error/0 skip；`@Disabled`/assume/`@Enabled*` 源码计数 0；测试注解（`@Test`/`@ParameterizedTest`/`@RepeatedTest`）新增 14、删除 0；合并报告每类恰好执行一次。 |
+| P0 计时与预算                     | pass                   | EV-0690、EV-0723、EV-0724；CI artifact       | `test-timings.mjs` 输出 top-20/总计并上传每 shard artifact；空/坏报告负向退出；§10.3 写入 L2 定向回路 ≤5min、后端全量（L3 测试段）≤10min（分片前）/≤5min（分片后）及超预算处理。                                                             |
+| P1 热栈与合同命令                 | pass                   | EV-0694、EV-0724、`.github/workflows/ci.yml` | CI 使用 `RICCON_TEST_SERVICES=external` + 每 job 唯一 namespace；迁移/回滚/schema 测试仍用一次性容器；`commands.test` 文本未改，失败导出 compose 日志并 `down -v`。                                                                          |
+| P2 四分片                         | pass                   | EV-0721                                      | 4 shard 均 success；job 墙钟 213/204/209/198s（≤300s）；merge 196/1115/0/0/0、每类 runs=1、problems=0；分片只跑 test，不替代 canonical gate。                                                                                                |
+| P3 提速与独立复跑                 | pass（附 F-004/F-005） | EV-0697/0698/0704/0705/0707/0716/0723        | Worker 租户级隔离替代每测试 39 表 TRUNCATE；API fixture 缓存；独立全量 531.132s 对 P2 baseline 1231.995s 下降 56.9%（≥30%）；Verifier 独立复跑一致。                                                                                         |
+| P4 tag 分层与平台下沉             | pass（附 F-002）       | EV-0708、EV-0710、EV-0716                    | integration/security/migration/untagged=unit 约定与 `-Dgroups` 选择冒烟通过；platform-domain 新增 3 个词汇测试类 14 用例，由独立 Verifier 评审（REV-TASK-0148）；app 断言零删除、全量不减；P4b 为增量守卫、不降 app 墙钟（F-002）。          |
+| CI ≤5min、零 skip、产品零变更     | pass                   | EV-0721、EV-0724、REV-M19-001                | 4 shard 墙钟 198–213s；merge skipped=0；无产品行为/UX/API/DB/部署变更；无 P0/P1 open finding。                                                                                                                                               |
+
+### 残余风险（M19）
+
+| 来源     | ID    | 级别 | 状态     | owner / due                        | 说明 / 对验收的影响                                                                                                                                                                                                          |
+| -------- | ----- | ---- | -------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Verifier | F-001 | P2   | accepted | `riccon/ops` / M20 gate 前         | M19 后 CI 只跑分片 test，不再运行 canonical `verify`/coverage；覆盖率门槛仍由 Verifier 本机 gate 用合同命令取证。**不改变 M19 技术验收**，但 M20 gate 前必须由 Ops 补 coverage/verify job 或在合同中明确 CI 不做覆盖率门禁。 |
+| Verifier | F-002 | P3   | accepted | `riccon/builder-m19` / M20 gate 前 | P4b 是新增 platform 词汇守卫，不是把 app 测试迁出；P4 不降低 app 用例数与墙钟，提速由 P2/P3 承担；app 断言零删除，接受。                                                                                                     |
+| Verifier | F-003 | P3   | accepted | `riccon/ops` / M20 gate 前         | GitHub Actions Node 20、setup-java v4 弃用告警；本次 CI 全绿，但 M20 gate 前需升级 action 主版本并复跑。                                                                                                                     |
+| Verifier | F-004 | P3   | accepted | `riccon/builder-m19` / M20 gate 前 | 分片 baseline 计时值来自一次未单独录 EV 的全量；仅用于分片负载估算，不参与 gate；重建 baseline 必须用已录 EV 的全量报告。                                                                                                    |
+| Verifier | F-005 | P3   | accepted | `riccon/builder-m19` / M20 gate 前 | 隔离依赖“唯一租户 + 全局状态 helper”约定；改多 fork/并行需重新验证；当前 surefire `forkCount=1/reuseForks=true`。                                                                                                            |
+
+- **Product 结论**：`pass`（with residual）。9 个任务覆盖 P0–P4；196/1115/0/0/0、4 shard ≤213s、P2→P4 −56.9% 均可由评审/证据复核；无产品行为/UX/API/DB/部署变更；合同命令未改；无 P0/P1 open finding。F-001..F-005 均 accepted、有 owner/due，不改变 M19 技术验收；**F-001/F-003 需在 M20 gate 前由 Ops 处理**。
+- **明确不声称**：CI 已强制覆盖率（F-001）；P4 已减少 app 用例/墙钟（F-002）；Actions 升级已完成（F-003）；baseline 计时可独立重建（F-004）；surefire 并行隔离已验证（F-005）；用户已最终验收。
+- **用户最终验收建议**：建议接受 M19 技术验收（附 F-001/F-003 的 M20 gate 前关闭条件；F-002/F-004/F-005 作为维护性残余跟踪）。本结论不是用户最终验收；不标记模块 done、不合并 PR；PR #1 仍 OPEN，合并与模块 done 由 Lead 处理。
 
 ## 历史模块
 
-| 模块 | Product 预验收 | 用户最终验收 | 记录                                                                           |
-| ---- | -------------- | ------------ | ------------------------------------------------------------------------------ |
-| M01  | not-recorded   | not-recorded | REV-M01-001 gate pass；当时无 Product 预验收/用户最终验收流程                  |
-| M02  | not-recorded   | not-recorded | REV-M02-003 gate pass；当时无 Product 预验收/用户最终验收记录，不补假 accepted |
+| 模块 | Product 预验收                                                     | 用户最终验收               | 记录                                                                                                                 |
+| ---- | ------------------------------------------------------------------ | -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| M01  | not-recorded（N/A legacy）                                         | not-recorded（N/A legacy） | REV-M01-001/REV-M01-002 gate pass；工程基线无用户可见 AC；open P2/P3 见「M18 回溯复验」                              |
+| M02  | pass（with residual，回溯，见「Product 预验收（M02，M18 回溯）」） | pending（回溯决策包）      | REV-M02-004 gate pass；2026-11-18 关闭时无记录，2026-11-20 补做回溯预验收（最终全量 EV-0512..0517），不补假 accepted |
 
 ## 规则
 

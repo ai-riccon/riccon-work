@@ -177,6 +177,15 @@
   margin-bottom: 4px;
 }
 
+/* 停止生成对比度：danger link 默认 #ff4d4f 在白底仅 3.27:1，hover #ff7875
+   更低；覆盖为 red-7/8/9（5.57:1 / 7.75:1 / 10.72:1），在保持危险语义的同时
+   满足 WCAG AA normal text。与引用链接一样通过覆盖 Button 内部变量实现。 */
+.chat-page .chat-stop-button.ant-btn {
+  --ant-btn-text-color: #cf1322;
+  --ant-btn-text-color-hover: #a8071a;
+  --ant-btn-text-color-active: #820014;
+}
+
 .chat-composer-hint {
   display: block;
   margin-top: 8px;
@@ -221,6 +230,34 @@
   padding: 0;
   text-align: left;
   white-space: normal;
+}
+
+/* chat 页 link 按钮对比度（引用、运行详情、重试解析）：antd 默认 hover 色
+   colorLinkHover #579df2 在 #f0f0f0 气泡上只有 2.45:1、#fafafa 文件面板上
+   2.68:1；默认色 #0958d9 已达标（#f0f0f0 上 5.39:1）。antd 6 的组件样式选择器
+   带 :where() 哈希（不增加特异性），这里覆盖 Button 内部颜色变量，把 hover
+   调深到 #003eb3（7.85:1）、active 到 #002c8c（10.6:1），无需 !important。
+   排除 danger link，避免把“停止生成”覆盖成蓝色（见其专属规则）。 */
+.chat-page .ant-btn.ant-btn-variant-link:not(.ant-btn-color-dangerous) {
+  --ant-btn-text-color: #0958d9;
+  --ant-btn-text-color-hover: #003eb3;
+  --ant-btn-text-color-active: #002c8c;
+}
+
+/* chat 页 default 按钮对比度（上传文件、重试、新建会话等）：antd 6 的 hover
+   文本色为 colorPrimaryHover #2e7ae6，outlined 按钮自带白色背景，白底仅
+   4.16:1（“上传文件”被 axe 判 serious）；改为 blue-7 #0958d9（6.16:1）。
+   默认 #000000e0 与 active #003eb3 已达标，不覆盖。 */
+.chat-page .ant-btn.ant-btn-variant-outlined {
+  --ant-btn-text-color-hover: #0958d9;
+}
+
+/* danger 文本（消息失败、文件解析失败）：Typography type="danger" 使用
+   colorErrorText #ff4d4f，白底 3.27:1、#f0f0f0 气泡上 2.87:1；改用 red-8
+   #cf1322（白底 5.57:1、#f0f0f0 4.88:1、#fafafa 5.34:1）。选择器需高于
+   antd 的 .ant-typography.ant-typography-danger，未修改全局 colorError。 */
+.chat-page .ant-typography.ant-typography-danger {
+  color: #cf1322;
 }
 
 .no-citation-note {

@@ -1,0 +1,51 @@
+# command: node scripts/real-stack/charset-check.mjs
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-21T07:22:01.010+08:00
+# finished_at: 2026-11-21T07:22:03.146+08:00
+# duration_ms: 2135
+# exit_code: 0
+
+# --- stdout ---
+{
+  "status": "passed",
+  "checks": [
+    {
+      "name": "client args include --default-character-set=utf8mb4",
+      "status": "passed",
+      "detail": "--user=riccon --database=riccon --batch --raw --default-character-set=utf8mb4"
+    },
+    {
+      "name": "round-trip stores exact UTF-8 bytes",
+      "status": "passed",
+      "detail": "expected=E58187E6A8A1E59E8B2DE4B8BBEFBC88E79C9FE5AE9EE6A088EFBC89 actual=e58187e6a8a1e59e8b2de4b8bbefbc88e79c9fe5ae9ee6a088efbc89"
+    },
+    {
+      "name": "session charset is utf8mb4",
+      "status": "passed",
+      "detail": "utf8mb4\tutf8mb4"
+    },
+    {
+      "name": "seed catalog textIntegrity passed twice",
+      "status": "passed",
+      "detail": "first=passed second=passed"
+    },
+    {
+      "name": "seed catalog is idempotent",
+      "status": "passed",
+      "detail": "first=\"item\\ttotal\\nproviders\\t2\\nmodels_active\\t2\\nmodels_priced\\t2\\nrouting_chat\\t3\\nrouting_report\\t2\\ncredentials_active\\t2\\nquota_limits\\t8\" second=\"item\\ttotal\\nproviders\\t2\\nmodels_active\\t2\\nmodels_priced\\t2\\nrouting_chat\\t3\\nrouting_report\\t2\\ncredentials_active\\t2\\nquota_limits\\t8\""
+    },
+    {
+      "name": "stored display names match expected Chinese",
+      "status": "passed",
+      "detail": "3 models"
+    }
+  ],
+  "sample": {
+    "0192f0a0-0000-7000-8000-000000000111": "假模型-主（真实栈）",
+    "0192f0a0-0000-7000-8000-000000000112": "假模型-备用（真实栈）",
+    "0192f0a0-0000-7000-8000-000000000113": "假模型-停用示例（真实栈）"
+  }
+}
+
+# --- stderr ---
+

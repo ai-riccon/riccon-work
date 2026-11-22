@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0111",
+  "module_id": "M04",
+  "title": "M04 B9b：配额/成本两页 + 菜单增量 + 四页联动",
+  "owner": "riccon/builder-web",
+  "status": "done",
+  "write_scope": [
+    "apps/web/src/pages/admin/quotas/**",
+    "apps/web/src/pages/admin/costs/**",
+    "apps/web/src/services/quota/**",
+    "apps/web/src/services/cost/**",
+    "apps/web/config/routes.ts",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "配额/成本两页",
+    "平台/租户可见性",
+    "AC-11 租户明细展开",
+    "AC-13 四页空态/403",
+    "与 B9a 菜单联动"
+  ],
+  "evidence": [
+    "EV-0581",
+    "EV-0583"
+  ],
+  "tools_used": [
+    "antd MCP：antd_doc 核对 Table/Alert/Segmented/InputNumber/DatePicker/Descriptions/Modal/Button v6 属性",
+    "Serena/CodeGraph 降级：本任务以新建页面/服务为主，无既有符号可定位；并行 real-stack 与全量测试期间不启动 Serena Java LSP，改用 grep/read 对照 B9a 页面与 OpenAPI"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-20T21:05:32.644+08:00",
+  "updated_at": "2026-11-21T07:51:22.315+08:00",
+  "baseline_commit": "d2f4bbf",
+  "end_commit": "cc46504"
+}

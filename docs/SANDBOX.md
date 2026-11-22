@@ -10,8 +10,10 @@ T4 或处理敏感数据的项目必须在一个隔离运行时中执行构建�
 
 ## 网络
 
-- 构建/测试容器默认 `none`；需要依赖安装时使用一次性网络，安装后立即断开。
-- Compose 测试栈只使用私有 Docker 网络，不暴露到宿主机以外的网络。
+- **Agent/沙箱探针默认 `network: none`**，不访问外部网络；需要依赖安装时使用一次性网络，安装后立即断开。
+- **Compose 测试栈（MySQL/OpenSearch/RustFS）是依赖服务，不是 agent 沙箱**：只使用私有 Docker bridge 网络，端口仅绑定 `127.0.0.1`，不暴露到宿主机以外的网络。
+- 合同 `sandbox.network: none` 时不使用 `sandbox.allowlist`；若未来沙箱需要访问模型或 MCP，必须改为 `allowlist` 并列出真实端点，走用户决策，不在本阶段静默放开。
+- 模型/MCP 调用发生在 worker 进程，不在沙箱容器内；外部模型端点只处理合成数据，PII 必须走客户内网网关。
 - 不访问生产数据库、生产 API 或内部管理面。
 - 需要外部服务时使用本地 mock 或一次性测试账号。
 
@@ -32,8 +34,15 @@ T4 或处理敏感数据的项目必须在一个隔离运行时中执行构建�
 - 临时卷、数据库副本和测试数据在演练后删除。
 - 失败时保留日志和证据，不保留密钥和 PII。
 
+## 证明
+
+- `commands.sandbox` = `bash scripts/sandbox.sh`：脚本先用一次性容器 `docker run --rm --network none --read-only --cap-drop ALL --user 10001:10001` 打印 attestation 标记，再启动 Compose 测试栈。
+- `sandbox.attestation_terms` 必须与脚本日志中的标记一致：`sandbox.network=none`、`sandbox.uid=10001:10001`、`sandbox.read_only=true`、`sandbox.image=mysql:8.4.13`。
+- `sandbox.evidence` 必须指向在该脚本上执行、`dirty=false`、exit 0 的 passing EV；release evidence 引用同一 EV。
+- 证据缺失、命令不匹配、非 passing 或缺少任一 attestation 标记时，`sandbox check` 失败，不得 done/release。
+
 ## 限制
 
-- CPU、内存、磁盘和墙钟上限。
+- `sandbox.limits` 的 CPU（`cpus`）、内存、磁盘和墙钟上限。
 - 禁止宿主机 Docker socket、特权模式和宿主网络。
 - 记录沙箱命令和结果到证据；没有通过证据不 done。

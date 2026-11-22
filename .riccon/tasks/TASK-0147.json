@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0147",
+  "module_id": "M19",
+  "title": "P4a 测试 tag 分层：unit/integration/migration/security",
+  "owner": "riccon/builder-m19",
+  "status": "done",
+  "write_scope": [
+    "apps/api/src/test/**",
+    "apps/worker/src/test/**",
+    "docs/CODING-STANDARDS.md",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "为 ApiIntegrationTestSupport/WorkerIntegrationTestBase/FileApiTestSupport 增加 @Tag(\"integration\")（继承），V9/V10/V11MigrationTest 与 SchemaVersionCheckerTest 增加 @Tag(\"migration\")，安全套件在原 dept/tenant 标签外增加 @Tag(\"security\")；纯单测统一 @Tag(\"unit\") 或明确约定 untagged=unit",
+    "文档写明 tag 约定、Surefire -Dgroups 选择示例与 untagged 含义；不改变测试集合/断言/执行顺序",
+    "用 -Dgroups 做一次选择冒烟（如 platform 单测 unit、migration 定向），不要求全量重跑；node scripts/test-shards.mjs --check 仍通过（类集合/计数不变）",
+    "不改生产代码/迁移/pom/CI；先提交再取证；证据命令单行；任务 review 前由 Verifier 或模块评审确认"
+  ],
+  "evidence": [
+    "EV-0708"
+  ],
+  "tools_used": [
+    "codegraph",
+    "maven",
+    "riccon"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-22T01:37:22.386+08:00",
+  "updated_at": "2026-11-22T01:59:51.194+08:00",
+  "baseline_commit": "06e4d85d52acde566822ff2a8b8b011799d51258",
+  "end_commit": "f5922239c5c91c7086807ac026053e1276823733"
+}

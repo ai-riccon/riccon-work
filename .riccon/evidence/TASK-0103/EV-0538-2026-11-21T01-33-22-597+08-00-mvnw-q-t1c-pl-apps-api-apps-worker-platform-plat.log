@@ -1,0 +1,291 @@
+# command: ./mvnw -q -T1C -pl apps/api,apps/worker,platform/platform-architecture-tests -am test -Dtest='ModelContract108aTest,ModelContract108bTest,ManagedEndpointPolicyTest,OpsAllowedCidrsTest,ModelCatalogApiTest,ProductionEndpointPolicyApiTest,PrometheusLoopbackAccessTest,PrometheusExposureDenyTest,ModelEndpointPropertiesTest,InnerModelRetryConfigTest,ModuleBoundaryTest' -Dsurefire.failIfNoSpecifiedTests=false
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-21T01:32:16.360+08:00
+# finished_at: 2026-11-21T01:33:21.847+08:00
+# duration_ms: 65484
+# exit_code: 0
+
+# --- stdout ---
+01:32:22.461 [main] INFO com.riccon.worker.config.ModelEndpointProperties -- model endpoint allowlist loaded; mode=PRODUCTION endpoints=1
+01:32:22.472 [main] INFO com.riccon.worker.config.ModelEndpointProperties -- model endpoint allowlist loaded; mode=DEMO endpoints=1
+01:32:22.475 [main] INFO com.riccon.worker.config.ModelEndpointProperties -- model endpoint allowlist loaded; mode=PRODUCTION endpoints=1
+01:32:22.835 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.actuator.PrometheusExposureDenyTest]: PrometheusExposureDenyTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:32:23.021 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.actuator.PrometheusExposureDenyTest
+01:32:23.171 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.actuator.PrometheusExposureDenyTest]: PrometheusExposureDenyTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:32:23.172 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:32:23.176 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.actuator.PrometheusExposureDenyTest
+01:32:23.268 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+01:32:23.271 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+01:32:23.297 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+01:32:24.557 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+01:32:24.559 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+01:32:24.588 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+01:32:24.795 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+01:32:25.200 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: 08034e39bc670e2ccb3e3fd61bd198fc08fc5d175f4d9523bf33cd04298c506b
+01:32:25.687 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT0.892261S
+01:32:25.696 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+01:32:25.697 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+01:32:25.698 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+01:32:25.698 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+01:32:25.789 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: 75238f3a8680a1b600a6316d2096b24539e1901444183732f5f5bf7adae9f5c6
+01:32:26.061 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:53012/riccon using query 'SELECT 1'
+01:32:26.096 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.config.PrometheusLoopbackAccessTest]: PrometheusLoopbackAccessTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:32:26.377 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.config.PrometheusLoopbackAccessTest
+01:32:26.508 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.config.PrometheusLoopbackAccessTest]: PrometheusLoopbackAccessTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:32:26.509 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:32:26.511 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.config.PrometheusLoopbackAccessTest
+01:32:26.588 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+01:32:26.592 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+01:32:26.621 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+01:32:27.762 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+01:32:27.763 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+01:32:27.787 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+01:32:27.991 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+01:32:28.300 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: 14bc0dda95d24edb0663879166aafdd5ed7cb26c826fcdf8a96ba0fd48bd73ce
+01:32:28.753 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT0.762327S
+01:32:28.763 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+01:32:28.763 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+01:32:28.764 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+01:32:28.764 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+01:32:28.848 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: b523203134d9066c965fbe9e2f60629c1cdbad8e4d5acabf965684b15cdcd0ce
+01:32:29.100 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:53048/riccon using query 'SELECT 1'
+01:32:35.726 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT10.027758S
+01:32:35.726 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:53012/riccon)
+01:32:35.728 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Creating container for image: opensearchproject/opensearch:3.9.0
+01:32:35.798 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 is starting: 9570bdf758d7c29f4d504e81b41d1b7eb10d6dae5a1da15b17583df7064168a5
+01:32:36.066 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /peaceful_allen: Waiting for 180 seconds for URL: http://localhost:53190/_cluster/health?wait_for_status=yellow&timeout=120s (where port 53190 maps to container port 9200)
+01:32:37.661 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT8.896388S
+01:32:37.661 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:53048/riccon)
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-21T01:32:38.203+08:00  INFO 79058 --- [riccon-api] [           main] c.r.a.c.PrometheusLoopbackAccessTest     : Starting PrometheusLoopbackAccessTest using Java 21.0.13 with PID 79058 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-21T01:32:38.205+08:00  INFO 79058 --- [riccon-api] [           main] c.r.a.c.PrometheusLoopbackAccessTest     : The following 1 profile is active: "test"
+2026-11-21T01:32:40.778+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-21T01:32:40.803+08:00  INFO 79058 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-21T01:32:40.804+08:00  INFO 79058 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-21T01:32:40.867+08:00  INFO 79058 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2620 ms
+2026-11-21T01:32:41.166+08:00  INFO 79058 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-21T01:32:41.188+08:00  INFO 79058 --- [riccon-api] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@7781d5cc
+2026-11-21T01:32:41.190+08:00  INFO 79058 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-21T01:32:41.215+08:00  INFO 79058 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:53048/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-21T01:32:41.384+08:00  INFO 79058 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon`.`flyway_schema_history` does not exist yet
+2026-11-21T01:32:41.390+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 11 migrations (execution time 00:00.045s)
+2026-11-21T01:32:41.423+08:00  INFO 79058 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon`.`flyway_schema_history` ...
+2026-11-21T01:32:41.534+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: << Empty Schema >>
+2026-11-21T01:32:41.546+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "1 - baseline"
+2026-11-21T01:32:41.623+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "2 - identity and workspace"
+2026-11-21T01:32:41.922+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "3 - files knowledge and conversation"
+2026-11-21T01:32:42.302+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "4 - research runs and artifacts"
+2026-11-21T01:32:42.684+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "5 - model gateway and mcp"
+2026-11-21T01:32:43.021+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "6 - audit event"
+2026-11-21T01:32:43.398+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "7 - spring session"
+2026-11-21T01:32:43.507+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "8 - approval params envelope"
+2026-11-21T01:32:43.618+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "9 - organization and workspace scope"
+2026-11-21T01:32:44.029+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "10 - audit query export"
+2026-11-21T01:32:44.318+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "11 - model gateway depth"
+2026-11-21T01:32:44.718+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 11 migrations to schema `riccon`, now at version v11 (execution time 00:02.761s)
+2026-11-21T01:32:45.012+08:00  INFO 79058 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-21T01:32:45.295+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-21T01:32:45.296+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-21T01:32:45.296+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-21T01:32:45.296+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-21T01:32:46.001+08:00  WARN 79058 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist is empty; mode=DEMO allowLegacyEndpoints=true
+2026-11-21T01:32:46.002+08:00  INFO 79058 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=0
+2026-11-21T01:32:47.429+08:00  INFO 79058 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-test, previousKey=true, fingerprintPepper=true
+2026-11-21T01:32:48.359+08:00  INFO 79058 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-21T01:32:48.472+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 53311 (http) with context path '/'
+2026-11-21T01:32:48.484+08:00  INFO 79058 --- [riccon-api] [           main] c.r.a.c.PrometheusLoopbackAccessTest     : Started PrometheusLoopbackAccessTest in 10.783 seconds (process running for 24.982)
+2026-11-21T01:32:48.931+08:00  INFO 79058 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin created
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-21T01:32:49.984+08:00  INFO 79058 --- [riccon-api] [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-21T01:32:49.984+08:00  INFO 79058 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-21T01:32:49.986+08:00  INFO 79058 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-11-21T01:32:50.205+08:00  INFO 79058 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.model.catalog.ModelCatalogApiTest]: ModelCatalogApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T01:32:50.249+08:00  INFO 79058 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.model.catalog.ModelCatalogApiTest
+2026-11-21T01:32:50.250+08:00  INFO 79058 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.model.catalog.ModelCatalogApiTest]: ModelCatalogApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T01:32:50.251+08:00  INFO 79058 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T01:32:50.252+08:00  INFO 79058 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.model.catalog.ModelCatalogApiTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-21T01:32:50.287+08:00  INFO 79058 --- [riccon-api] [           main] c.r.a.model.catalog.ModelCatalogApiTest  : Starting ModelCatalogApiTest using Java 21.0.13 with PID 79058 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-21T01:32:50.287+08:00  INFO 79058 --- [riccon-api] [           main] c.r.a.model.catalog.ModelCatalogApiTest  : The following 1 profile is active: "test"
+2026-11-21T01:32:50.878+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-21T01:32:50.879+08:00  INFO 79058 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-21T01:32:50.879+08:00  INFO 79058 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-21T01:32:50.899+08:00  INFO 79058 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 610 ms
+2026-11-21T01:32:50.938+08:00  INFO 79058 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Starting...
+2026-11-21T01:32:50.949+08:00  INFO 79058 --- [riccon-api] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-2 - Added connection com.mysql.cj.jdbc.ConnectionImpl@5055278f
+2026-11-21T01:32:50.949+08:00  INFO 79058 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Start completed.
+2026-11-21T01:32:50.951+08:00  INFO 79058 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:53048/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-21T01:32:50.997+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 11 migrations (execution time 00:00.017s)
+2026-11-21T01:32:51.014+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: 11
+2026-11-21T01:32:51.016+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Schema `riccon` is up to date. No migration necessary.
+2026-11-21T01:32:51.099+08:00  INFO 79058 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-21T01:32:51.171+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-21T01:32:51.171+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-21T01:32:51.172+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-21T01:32:51.172+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-21T01:32:51.505+08:00  INFO 79058 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-21T01:32:51.623+08:00  INFO 79058 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-test, previousKey=true, fingerprintPepper=true
+2026-11-21T01:32:51.789+08:00  INFO 79058 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-21T01:32:51.810+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 53339 (http) with context path '/'
+2026-11-21T01:32:51.814+08:00  INFO 79058 --- [riccon-api] [           main] c.r.a.model.catalog.ModelCatalogApiTest  : Started ModelCatalogApiTest in 1.557 seconds (process running for 28.313)
+2026-11-21T01:32:51.819+08:00  WARN 79058 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin skipped: platform admin already exists
+2026-11-21T01:32:51.850+08:00  INFO 79058 --- [riccon-api] [o-auto-2-exec-1] o.a.c.c.C.[Tomcat-1].[localhost].[/]     : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-21T01:32:51.851+08:00  INFO 79058 --- [riccon-api] [o-auto-2-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-21T01:32:51.852+08:00  INFO 79058 --- [riccon-api] [o-auto-2-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-11-21T01:32:52.384+08:00  INFO 79058 --- [riccon-api] [o-auto-2-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request method not supported traceId=7549f6b8-6ac5-44f1-bf2b-e35f4bf86fc3 path=/api/v1/admin/model-providers method=POST
+2026-11-21T01:32:55.264+08:00  INFO 79058 --- [riccon-api] [o-auto-2-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=f3ca6ee2-cf5a-44d1-a1a5-aa9f03c0584a path=/api/v1/admin/model-providers
+2026-11-21T01:32:55.289+08:00  INFO 79058 --- [riccon-api] [o-auto-2-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=c244b4b3-ea42-4726-b5a4-122fb9c93e75 path=/api/v1/admin/models
+2026-11-21T01:32:57.776+08:00  INFO 79058 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.model.catalog.ProductionEndpointPolicyApiTest]: ProductionEndpointPolicyApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T01:32:57.779+08:00  INFO 79058 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.model.catalog.ProductionEndpointPolicyApiTest
+2026-11-21T01:32:57.781+08:00  INFO 79058 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.model.catalog.ProductionEndpointPolicyApiTest]: ProductionEndpointPolicyApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T01:32:57.782+08:00  INFO 79058 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T01:32:57.784+08:00  INFO 79058 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.model.catalog.ProductionEndpointPolicyApiTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-21T01:32:57.836+08:00  INFO 79058 --- [riccon-api] [           main] .r.a.m.c.ProductionEndpointPolicyApiTest : Starting ProductionEndpointPolicyApiTest using Java 21.0.13 with PID 79058 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-21T01:32:57.836+08:00  INFO 79058 --- [riccon-api] [           main] .r.a.m.c.ProductionEndpointPolicyApiTest : The following 1 profile is active: "test"
+2026-11-21T01:32:58.302+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-21T01:32:58.303+08:00  INFO 79058 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-21T01:32:58.303+08:00  INFO 79058 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-21T01:32:58.319+08:00  INFO 79058 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 479 ms
+2026-11-21T01:32:58.348+08:00  INFO 79058 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-3 - Starting...
+2026-11-21T01:32:58.357+08:00  INFO 79058 --- [riccon-api] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-3 - Added connection com.mysql.cj.jdbc.ConnectionImpl@54ae6f17
+2026-11-21T01:32:58.358+08:00  INFO 79058 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-3 - Start completed.
+2026-11-21T01:32:58.359+08:00  INFO 79058 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:53048/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-21T01:32:58.394+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 11 migrations (execution time 00:00.012s)
+2026-11-21T01:32:58.404+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: 11
+2026-11-21T01:32:58.405+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Schema `riccon` is up to date. No migration necessary.
+2026-11-21T01:32:58.445+08:00  INFO 79058 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-21T01:32:58.479+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-21T01:32:58.479+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-21T01:32:58.479+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-21T01:32:58.479+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-21T01:32:58.740+08:00  INFO 79058 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=PRODUCTION endpoints=2
+2026-11-21T01:32:58.862+08:00  INFO 79058 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-test, previousKey=true, fingerprintPepper=true
+2026-11-21T01:32:59.027+08:00  INFO 79058 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-21T01:32:59.050+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 53398 (http) with context path '/'
+2026-11-21T01:32:59.056+08:00  INFO 79058 --- [riccon-api] [           main] .r.a.m.c.ProductionEndpointPolicyApiTest : Started ProductionEndpointPolicyApiTest in 1.266 seconds (process running for 35.555)
+2026-11-21T01:32:59.062+08:00  WARN 79058 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin skipped: platform admin already exists
+2026-11-21T01:32:59.096+08:00  INFO 79058 --- [riccon-api] [o-auto-3-exec-1] o.a.c.c.C.[Tomcat-2].[localhost].[/]     : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-21T01:32:59.096+08:00  INFO 79058 --- [riccon-api] [o-auto-3-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-21T01:32:59.098+08:00  INFO 79058 --- [riccon-api] [o-auto-3-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+01:33:00.435 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 started in PT24.706778S
+01:33:00.436 [main] INFO tc.rustfs/rustfs:1.0.6 -- Creating container for image: rustfs/rustfs:1.0.6
+01:33:00.563 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 is starting: a622bce97ddc65beb8d44fd2f272b200836ebcfccf299f200a685f91a2d71c10
+2026-11-21T01:33:00.665+08:00  INFO 79058 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.actuator.PrometheusExposureDenyTest]: PrometheusExposureDenyTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T01:33:00.714+08:00  INFO 79058 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.actuator.PrometheusExposureDenyTest
+2026-11-21T01:33:00.716+08:00  INFO 79058 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.actuator.PrometheusExposureDenyTest]: PrometheusExposureDenyTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T01:33:00.717+08:00  INFO 79058 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T01:33:00.718+08:00  INFO 79058 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.actuator.PrometheusExposureDenyTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-21T01:33:00.770+08:00  INFO 79058 --- [riccon-api] [           main] c.r.a.a.PrometheusExposureDenyTest       : Starting PrometheusExposureDenyTest using Java 21.0.13 with PID 79058 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-21T01:33:00.771+08:00  INFO 79058 --- [riccon-api] [           main] c.r.a.a.PrometheusExposureDenyTest       : The following 1 profile is active: "test"
+01:33:01.095 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /recursing_villani: Waiting for 60 seconds for URL: http://localhost:53415/health (where port 53415 maps to container port 9000)
+01:33:01.444 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 started in PT1.008134S
+2026-11-21T01:33:01.552+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-21T01:33:01.553+08:00  INFO 79058 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-21T01:33:01.554+08:00  INFO 79058 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-21T01:33:01.577+08:00  INFO 79058 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 802 ms
+2026-11-21T01:33:01.614+08:00  INFO 79058 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-4 - Starting...
+2026-11-21T01:33:01.629+08:00  INFO 79058 --- [riccon-api] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-4 - Added connection com.mysql.cj.jdbc.ConnectionImpl@2675a876
+2026-11-21T01:33:01.630+08:00  INFO 79058 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-4 - Start completed.
+2026-11-21T01:33:01.631+08:00  INFO 79058 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:53048/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-21T01:33:01.671+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 11 migrations (execution time 00:00.012s)
+2026-11-21T01:33:01.684+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: 11
+2026-11-21T01:33:01.686+08:00  INFO 79058 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Schema `riccon` is up to date. No migration necessary.
+2026-11-21T01:33:01.745+08:00  INFO 79058 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-21T01:33:01.813+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-21T01:33:01.813+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-21T01:33:01.814+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-21T01:33:01.814+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-21T01:33:02.212+08:00  WARN 79058 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist is empty; mode=DEMO allowLegacyEndpoints=true
+2026-11-21T01:33:02.212+08:00  INFO 79058 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=0
+2026-11-21T01:33:02.394+08:00  INFO 79058 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-test, previousKey=true, fingerprintPepper=true
+2026-11-21T01:33:02.598+08:00  INFO 79058 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-21T01:33:02.624+08:00  INFO 79058 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 53440 (http) with context path '/'
+2026-11-21T01:33:02.629+08:00  INFO 79058 --- [riccon-api] [           main] c.r.a.a.PrometheusExposureDenyTest       : Started PrometheusExposureDenyTest in 1.905 seconds (process running for 39.128)
+2026-11-21T01:33:02.634+08:00  WARN 79058 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin skipped: platform admin already exists
+2026-11-21T01:33:02.644+08:00  INFO 79058 --- [riccon-api] [o-auto-4-exec-1] o.a.c.c.C.[Tomcat-3].[localhost].[/]     : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-21T01:33:02.644+08:00  INFO 79058 --- [riccon-api] [o-auto-4-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-21T01:33:02.647+08:00  INFO 79058 --- [riccon-api] [o-auto-4-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-21T01:33:05.674+08:00  INFO 79054 --- [riccon-worker] [           main] c.r.w.a.PrometheusExposureDenyTest       : Starting PrometheusExposureDenyTest using Java 21.0.13 with PID 79054 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/worker)
+2026-11-21T01:33:05.677+08:00  INFO 79054 --- [riccon-worker] [           main] c.r.w.a.PrometheusExposureDenyTest       : The following 1 profile is active: "test"
+2026-11-21T01:33:07.300+08:00  INFO 79054 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-21T01:33:08.414+08:00  INFO 79054 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-21T01:33:08.415+08:00  INFO 79054 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-21T01:33:08.430+08:00  INFO 79054 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-21T01:33:08.441+08:00  INFO 79054 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 26 ms
+2026-11-21T01:33:08.591+08:00  INFO 79054 --- [riccon-worker] [           main] c.r.w.a.PrometheusExposureDenyTest       : Started PrometheusExposureDenyTest in 3.256 seconds (process running for 47.899)
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-21T01:33:09.518+08:00  INFO 79054 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-21T01:33:09.543+08:00  INFO 79054 --- [riccon-worker] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@2792c3a6
+2026-11-21T01:33:09.546+08:00  INFO 79054 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+01:33:15.933 [main] INFO com.tngtech.archunit.core.PluginLoader -- Detected Java version 21.0.13
+
+# --- stderr ---
+

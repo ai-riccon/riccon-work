@@ -14,21 +14,33 @@ import java.util.Map;
 import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import org.junit.jupiter.api.Tag;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
  * M03 独立安全测试基座。
  *
- * <p>由 verifier 维护，不复用 Builder 的部门夹具；所有租户、部门、空间、账号均通过公开 HTTP 接口在真实
- * MySQL 上创建。测试目标是从攻击者视角验证部门/租户边界，而不是重复 Builder 的功能断言。
+ * <p>本基座由 verifier 所有；fixture 性能改造后由 builder 在 verifier 评审下共同维护。租户、部门、空间与
+ * 业务对象仍通过公开 HTTP 接口在真实 MySQL 上创建；fixture 账号（负责人、成员等）可由
+ * {@code seedAndLoginLocalUser} 直接写入账号/凭据/角色表以摊销 bcrypt 编码，但登录、CSRF、会话与后续
+ * 权限判定全部走真实 HTTP 与生产代码。账号创建成功路径与创建审计由真实 {@code createUser} 用例
+ * （AuthFlowTest、TenantIsolationTest、OidcIdentityBindingApiTest、QuotaAdminApiTest、AuditTestSupport 等）
+ * 覆盖；账号创建路径目前没有短密码/密码策略拒绝断言（既有缺口），种子路径未取代任何策略测试。
+ *
+ * <p>测试目标是从攻击者视角验证部门/租户边界，而不是重复 Builder 的功能断言。
  *
  * <ul>
  *   <li>租户 A：部门 A（租户管理员、负责人、同部门成员）、部门 B（其他部门成员）、未分配成员；
  *   <li>租户 B：独立成员，用于跨租户用例；
  *   <li>个人空间由首次访问自动创建，部门空间通过租户管理员创建。
  * </ul>
+ *
+ * <p>M19 P4a：类级 {@code @Tag("security")} 由所有子类继承，并叠加在从
+ * {@link FileApiTestSupport} 继承的 {@code integration} 之上；子类保留自己的
+ * {@code dept-isolation}/{@code tenant-isolation} 标签。标签只用于选择，不改变默认执行集合。
  */
+@Tag("security")
 abstract class SecurityTestSupport extends FileApiTestSupport {
 
     /** 普通成员统一密码。 */
@@ -53,10 +65,12 @@ abstract class SecurityTestSupport extends FileApiTestSupport {
         LoginSession tenantAdmin = createAndLoginTenantAdmin(platform, tenant);
         UUID tenantAdminId = UUID.fromString(userId(tenantAdmin));
 
+        // 部门/租户边界套件的目标是越权判定，不是账号创建端点：账号行用 fixture 种子写入，
+        // 登录仍走真实 HTTP；账号创建真实链路由 AuthFlowTest/TenantIsolationTest 覆盖。
         String managerUsername = "mgr" + randomSuffix();
-        JsonNode managerUser = createUser(platform, tenant, managerUsername, MEMBER_PASSWORD, List.of("MEMBER"));
-        LoginSession manager = login(tenant, managerUsername, MEMBER_PASSWORD);
-        UUID managerId = UUID.fromString(managerUser.path("id").asText());
+        LoginSession manager =
+                seedAndLoginLocalUser(platform, tenant, managerUsername, MEMBER_PASSWORD, List.of("MEMBER"));
+        UUID managerId = actorId(manager);
 
         CreatedMember sibling = createMember(platform, tenant);
         CreatedMember outsider = createMember(platform, tenant);
@@ -133,9 +147,9 @@ abstract class SecurityTestSupport extends FileApiTestSupport {
      */
     protected CreatedMember createMember(LoginSession platform, String tenant) {
         String username = "mem" + randomSuffix();
-        JsonNode user = createUser(platform, tenant, username, MEMBER_PASSWORD, List.of("MEMBER"));
-        return new CreatedMember(
-                UUID.fromString(user.path("id").asText()), username, login(tenant, username, MEMBER_PASSWORD));
+        // 同 fixture()：隔离套件只需要“可用账号”，账号创建端点由真实 HTTP 用例覆盖。
+        LoginSession session = seedAndLoginLocalUser(platform, tenant, username, MEMBER_PASSWORD, List.of("MEMBER"));
+        return new CreatedMember(actorId(session), username, session);
     }
 
     /**

@@ -68,10 +68,14 @@ class EnvelopeDecryptorTest {
                 1);
 
         assertThatThrownBy(() -> fixture.decryptor().decrypt(wrong, fixture.dataKey()))
-                .isInstanceOf(CredentialException.class);
+                .isInstanceOf(CredentialException.class)
+                .hasMessageContaining("credential and data key id mismatch")
+                .hasMessageNotContaining(TestCredentials.API_KEY)
+                .extracting(ex -> ((CredentialException) ex).errorCode())
+                .isEqualTo("RICCON-CRYPTO-500");
     }
 
-    /** 篡改密文触发 GCM 认证失败。 */
+    /** 篡改密文触发 GCM 认证失败，错误码稳定且不回显明文。 */
     @Test
     void decrypt_tamperedCiphertext_fails() {
         Fixture fixture = fixture(TENANT, TestCredentials.API_KEY);
@@ -91,7 +95,10 @@ class EnvelopeDecryptorTest {
                 1);
 
         assertThatThrownBy(() -> fixture.decryptor().decrypt(credential, fixture.dataKey()))
-                .isInstanceOf(CredentialException.class);
+                .isInstanceOf(CredentialException.class)
+                .hasMessageNotContaining(TestCredentials.API_KEY)
+                .extracting(ex -> ((CredentialException) ex).errorCode())
+                .isEqualTo("RICCON-CRYPTO-500");
     }
 
     /** 凭据与 DEK 租户不一致失败。 */
@@ -178,6 +185,92 @@ class EnvelopeDecryptorTest {
                 .isInstanceOf(CredentialException.class);
     }
 
+    /** 密文为 null 时按格式非法稳定失败，错误码固定且不回显明文。 */
+    @Test
+    void decrypt_nullCiphertext_failsWithStableCode() {
+        Fixture fixture = fixture(TENANT, TestCredentials.API_KEY);
+        CredentialRecord credential = withCiphertext(fixture, null);
+
+        assertThatThrownBy(() -> fixture.decryptor().decrypt(credential, fixture.dataKey()))
+                .isInstanceOf(CredentialException.class)
+                .hasMessage("credential ciphertext has unsupported format")
+                .hasMessageNotContaining(TestCredentials.API_KEY)
+                .extracting(ex -> ((CredentialException) ex).errorCode())
+                .isEqualTo("RICCON-CRYPTO-500");
+    }
+
+    /** 缺少 key id 段或缺少载荷（空 key id、尾随分隔符）时稳定失败。 */
+    @Test
+    void decrypt_missingKeyIdOrPayload_fails() {
+        Fixture fixture = fixture(TENANT, TestCredentials.API_KEY);
+        CredentialRecord emptyKeyId = withCiphertext(fixture, "enc:v1::AAAA");
+        CredentialRecord missingPayload = withCiphertext(fixture, "enc:v1:" + KEY_ID + ":");
+
+        for (CredentialRecord credential : java.util.List.of(emptyKeyId, missingPayload)) {
+            assertThatThrownBy(() -> fixture.decryptor().decrypt(credential, fixture.dataKey()))
+                    .isInstanceOf(CredentialException.class)
+                    .hasMessage("credential ciphertext is missing key id or payload")
+                    .hasMessageNotContaining(TestCredentials.API_KEY)
+                    .extracting(ex -> ((CredentialException) ex).errorCode())
+                    .isEqualTo("RICCON-CRYPTO-500");
+        }
+    }
+
+    /** 密文内嵌 key id 与 DEK 不一致时失败（租户/keyId 记录本身一致，强制进入 parser）。 */
+    @Test
+    void decrypt_embeddedKeyIdMismatch_fails() {
+        Fixture fixture = fixture(TENANT, TestCredentials.API_KEY);
+        CredentialRecord credential = withCiphertext(fixture, "enc:v1:other:AAAA");
+
+        assertThatThrownBy(() -> fixture.decryptor().decrypt(credential, fixture.dataKey()))
+                .isInstanceOf(CredentialException.class)
+                .hasMessage("credential ciphertext key id does not match data key")
+                .hasMessageNotContaining(TestCredentials.API_KEY)
+                .extracting(ex -> ((CredentialException) ex).errorCode())
+                .isEqualTo("RICCON-CRYPTO-500");
+    }
+
+    /** DEK 的 AAD 与记录租户不一致时解包失败；记录字段一致，只破坏 AAD 绑定。 */
+    @Test
+    void decrypt_wrappedDekAadMismatch_fails() {
+        Fixture fixture = fixture(TENANT, TestCredentials.API_KEY);
+        Fixture otherTenant = fixture("tenant-a", "other-secret");
+        TenantDataKeyRecord dataKey = new TenantDataKeyRecord(
+                TENANT,
+                KEY_ID,
+                TestCredentials.PURPOSE,
+                otherTenant.dataKey().wrappedDek(),
+                otherTenant.dataKey().wrapNonce(),
+                "AES-256-GCM",
+                TestCredentials.MASTER_KEY_ID);
+
+        assertThatThrownBy(() -> fixture.decryptor().decrypt(fixture.credential(), dataKey))
+                .isInstanceOf(CredentialException.class)
+                .hasMessageContaining("cannot be unwrapped")
+                .hasMessageNotContaining(TestCredentials.API_KEY)
+                .extracting(ex -> ((CredentialException) ex).errorCode())
+                .isEqualTo("RICCON-CRYPTO-500");
+    }
+
+    /**
+     * 用给定密文替换夹具密文，保留租户、provider 与 keyId 一致性，用于只攻击格式分支的负向用例。
+     *
+     * @param fixture 夹具
+     * @param ciphertext 替换后的密文
+     * @return 新凭据记录
+     */
+    private static CredentialRecord withCiphertext(Fixture fixture, String ciphertext) {
+        return new CredentialRecord(
+                fixture.credential().id(),
+                TENANT,
+                fixture.credential().providerId(),
+                "API_KEY",
+                ciphertext,
+                KEY_ID,
+                TestCredentials.MASTER_KEY_ID,
+                1);
+    }
+
     /** 构造测试夹具。 */
     private static Fixture fixture(String tenant, String apiKey) {
         byte[] dek = TestCredentials.newDek();
@@ -201,7 +294,7 @@ class EnvelopeDecryptorTest {
                 TestCredentials.MASTER_KEY_ID,
                 1);
         MasterKeyProvider provider =
-                new MasterKeyProvider(new CryptoProperties(TestCredentials.MASTER_KEY_BASE64, "", "mk-test", true));
+                new MasterKeyProvider(new CryptoProperties(TestCredentials.MASTER_KEY_BASE64, "", "mk-test", false));
         return new Fixture(new EnvelopeDecryptor(provider), credential, dataKey);
     }
 

@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
@@ -31,6 +32,12 @@ class FileParseServiceIntegrationTest extends WorkerIntegrationTestBase {
     /** 文件解析处理器，用于重复投递测试。 */
     @Autowired
     private FileParseService fileParseService;
+
+    /** pollOnce 跨租户领取事件；每个测试先清空残留 outbox，保证精确计数。 */
+    @BeforeEach
+    void clearStaleOutbox() {
+        clearOutbox();
+    }
 
     /** PDF 两页解析成功并写页码定位。 */
     @Test
@@ -162,7 +169,7 @@ class FileParseServiceIntegrationTest extends WorkerIntegrationTestBase {
     @Test
     void pollOnce_crossTenantFile_doesNotLeak() {
         Seed tenantB = seed("tenant-b", FileFormat.PDF, TestDocuments.pdf(1), "other.pdf", false);
-        String tenantA = "tenant-a";
+        String tenantA = uniqueTenant("tenant-a");
         data.createTenant(tenantA);
         UUID userA = data.createUser(tenantA);
         UUID workspaceA = data.createWorkspace(tenantA, userA);
@@ -190,7 +197,7 @@ class FileParseServiceIntegrationTest extends WorkerIntegrationTestBase {
         Seed seed = seed("tenant-a", FileFormat.PDF, TestDocuments.pdf(1), "missing.pdf");
         s3Client.deleteObject(DeleteObjectRequest.builder()
                 .bucket(BUCKET)
-                .key("tenants/tenant-a/file/2026/" + seed.fileId())
+                .key("tenants/" + seed.tenant() + "/file/2026/" + seed.fileId())
                 .build());
 
         assertThat(poller.pollOnce()).isEqualTo(1);
@@ -202,29 +209,30 @@ class FileParseServiceIntegrationTest extends WorkerIntegrationTestBase {
     }
 
     /**
-     * 创建文件、解析尝试、运行与 outbox。
+     * 创建文件、解析尝试、运行与 outbox；每次生成唯一租户。
      *
-     * @param tenant 租户
+     * @param tenantPrefix 可读租户前缀
      * @param format 格式
      * @param content 内容
      * @param name 文件名（仅用于测试可读性）
      * @return 种子
      */
-    private Seed seed(String tenant, FileFormat format, byte[] content, String name) {
-        return seed(tenant, format, content, name, true);
+    private Seed seed(String tenantPrefix, FileFormat format, byte[] content, String name) {
+        return seed(tenantPrefix, format, content, name, true);
     }
 
     /**
      * 创建文件、解析尝试、运行与可选 outbox。
      *
-     * @param tenant 租户
+     * @param tenantPrefix 可读租户前缀
      * @param format 格式
      * @param content 内容
      * @param name 文件名
      * @param publish 是否发布解析事件
      * @return 种子
      */
-    private Seed seed(String tenant, FileFormat format, byte[] content, String name, boolean publish) {
+    private Seed seed(String tenantPrefix, FileFormat format, byte[] content, String name, boolean publish) {
+        String tenant = uniqueTenant(tenantPrefix);
         data.createTenant(tenant);
         UUID userId = data.createUser(tenant);
         UUID workspaceId = data.createWorkspace(tenant, userId);

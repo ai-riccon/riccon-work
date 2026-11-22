@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0149",
+  "module_id": "M19",
+  "title": "修复 ChatStreamIntegrationTest performStream asyncStarted 竞态",
+  "owner": "riccon/builder-m19",
+  "status": "done",
+  "write_scope": [
+    "apps/worker/src/test/java/com/riccon/worker/chat/ChatStreamIntegrationTest.java",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "不再依赖 mockMvc.perform 后立即 request().asyncStarted() 的瞬时状态；改为等待异步结果/SSE 完成或等价的确定性机制，禁止 Thread.sleep/放宽断言/跳过用例",
+    "ChatStreamIntegrationTest 定向连续运行 ≥10 次全绿；Worker 全量 external 套件通过（356+，零 skip）",
+    "在 CI 2 vCPU 环境可复现的失败点被覆盖；不修改生产代码/迁移/pom/其他测试",
+    "先提交再取证；证据命令单行；任务 review 后由 Verifier/模块 gate 复核"
+  ],
+  "evidence": [
+    "EV-0712"
+  ],
+  "tools_used": [
+    "git",
+    "maven",
+    "docker",
+    "node26",
+    "codegraph"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-22T05:42:38.473+08:00",
+  "updated_at": "2026-11-22T06:16:07.134+08:00",
+  "baseline_commit": "9a15e4e4ecdd545572e448804713796694644049",
+  "end_commit": "13f14858f401c26d4a5cb8daee0319b469033401"
+}

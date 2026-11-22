@@ -1,0 +1,436 @@
+# command: rm -f apps/api/target/surefire-reports/TEST-com.riccon.api.security.DepartmentIsolationTest.xml apps/api/target/surefire-reports/TEST-com.riccon.api.ChatStreamApiTest.xml apps/api/target/surefire-reports/TEST-com.riccon.api.migration.V9MigrationTest.xml apps/api/target/surefire-reports/TEST-com.riccon.api.migration.V11VocabularyTest.xml apps/worker/target/surefire-reports/TEST-com.riccon.worker.persistence.TenantJdbcTest.xml apps/worker/target/surefire-reports/TEST-com.riccon.worker.persistence.SchemaVersionCheckerTest.xml apps/worker/target/surefire-reports/TEST-com.riccon.worker.agent.UntrustedDataAndToolTest.xml && ./mvnw -q -pl apps/api -am test -Dtest="DepartmentIsolationTest#deptSuiteIntegrityManifest,ChatStreamApiTest#sendMessage_persistsContentCitationsAndRun" -Dgroups=security -Dsurefire.failIfNoSpecifiedTests=false && test -f apps/api/target/surefire-reports/TEST-com.riccon.api.security.DepartmentIsolationTest.xml && grep -q "tests=\"1\"" apps/api/target/surefire-reports/TEST-com.riccon.api.security.DepartmentIsolationTest.xml && test ! -f apps/api/target/surefire-reports/TEST-com.riccon.api.ChatStreamApiTest.xml && echo "P4a security: DepartmentIsolationTest tests=1; ChatStreamApiTest tag-excluded" && ./mvnw -q -pl apps/api -am test -Dtest="ChatStreamApiTest#sendMessage_persistsContentCitationsAndRun" -Dgroups=integration -Dsurefire.failIfNoSpecifiedTests=false && grep -q "tests=\"1\"" apps/api/target/surefire-reports/TEST-com.riccon.api.ChatStreamApiTest.xml && echo "P4a integration: ChatStreamApiTest inherited tag tests=1" && ./mvnw -q -pl apps/api -am test -Dtest="V9MigrationTest#migration_backfillsLegacyWorkspaceVisibility,V11VocabularyTest" -Dgroups=migration -Dsurefire.failIfNoSpecifiedTests=false && test -f apps/api/target/surefire-reports/TEST-com.riccon.api.migration.V9MigrationTest.xml && grep -q "tests=\"1\"" apps/api/target/surefire-reports/TEST-com.riccon.api.migration.V9MigrationTest.xml && test ! -f apps/api/target/surefire-reports/TEST-com.riccon.api.migration.V11VocabularyTest.xml && echo "P4a migration: V9MigrationTest tests=1; V11VocabularyTest tag-excluded" && ./mvnw -q -pl apps/worker -am test -Dtest="TenantJdbcTest#query_withTenantPredicate_returnsScopedRow,UntrustedDataAndToolTest" -Dgroups=integration -Dsurefire.failIfNoSpecifiedTests=false && grep -q "tests=\"1\"" apps/worker/target/surefire-reports/TEST-com.riccon.worker.persistence.TenantJdbcTest.xml && test ! -f apps/worker/target/surefire-reports/TEST-com.riccon.worker.agent.UntrustedDataAndToolTest.xml && echo "P4a worker integration: TenantJdbcTest tests=1; UntrustedDataAndToolTest tag-excluded" && rm -f apps/worker/target/surefire-reports/TEST-com.riccon.worker.persistence.TenantJdbcTest.xml && ./mvnw -q -pl apps/worker -am test -Dtest="SchemaVersionCheckerTest#check_matchingVersion_passes,TenantJdbcTest" -Dgroups=migration -Dsurefire.failIfNoSpecifiedTests=false && grep -q "tests=\"1\"" apps/worker/target/surefire-reports/TEST-com.riccon.worker.persistence.SchemaVersionCheckerTest.xml && test ! -f apps/worker/target/surefire-reports/TEST-com.riccon.worker.persistence.TenantJdbcTest.xml && echo "P4a worker migration: SchemaVersionCheckerTest tests=1; TenantJdbcTest tag-excluded" && rm -f platform/platform-common/target/surefire-reports/TEST-com.riccon.platform.common.tenant.TenantContextTest.xml && ./mvnw -q -pl platform/platform-common test -DexcludedGroups=integration,security,migration && test -f platform/platform-common/target/surefire-reports/TEST-com.riccon.platform.common.tenant.TenantContextTest.xml && grep -q "tests=\"[1-9]" platform/platform-common/target/surefire-reports/TEST-com.riccon.platform.common.tenant.TenantContextTest.xml && echo "P4a unit: platform-common untagged tests executed" && rm -f apps/api/target/surefire-reports/TEST-com.riccon.api.security.DepartmentIsolationTest.xml && ./mvnw -q -pl apps/api -am test -Dtest="DepartmentIsolationTest#deptSuiteIntegrityManifest" -Dsurefire.failIfNoSpecifiedTests=false && grep -q "tests=\"1\"" apps/api/target/surefire-reports/TEST-com.riccon.api.security.DepartmentIsolationTest.xml && echo "P4a default: tagged class still runs without groups filter" && node scripts/test-shards.mjs --check && ./mvnw -q spotless:check && git diff --check && echo "P4a evidence: all checks passed"
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-22T01:52:38.513+08:00
+# finished_at: 2026-11-22T01:57:46.300+08:00
+# duration_ms: 307785
+# exit_code: 0
+
+# --- stdout ---
+01:52:49.333 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.security.DepartmentIsolationTest]: DepartmentIsolationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:52:49.630 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.security.DepartmentIsolationTest
+01:52:49.813 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.security.DepartmentIsolationTest]: DepartmentIsolationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:52:49.814 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.security.SecurityTestSupport]: SecurityTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:52:49.815 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.FileApiTestSupport]: FileApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:52:49.815 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiStorageIntegrationTestSupport]: ApiStorageIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:52:49.816 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:52:49.819 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.security.DepartmentIsolationTest
+01:52:49.948 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+01:52:49.953 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+01:52:49.989 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+01:52:51.796 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+01:52:51.798 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+01:52:51.829 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+01:52:52.060 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+01:52:52.549 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: 960fb32b9f9a3f01927033389a27576cfe22d4801ca2ca79b1650e1c4e461ae9
+01:52:53.129 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT1.068774S
+01:52:53.137 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+01:52:53.137 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+01:52:53.138 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+01:52:53.139 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+01:52:53.236 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: 4b5437355b541fe1f4e3d5b0974c6a68656231f75c13cd4c5f4a9af2b62a5c84
+01:52:53.574 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:64325/riccon using query 'SELECT 1'
+01:53:04.948 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT11.80928S
+01:53:04.948 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:64325/riccon)
+01:53:04.952 [main] INFO tc.rustfs/rustfs:1.0.6 -- Creating container for image: rustfs/rustfs:1.0.6
+01:53:05.052 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 is starting: 3837ee610246d43f70acf186001ca63b762ebf156f7917b9465f40a2359ee66d
+01:53:05.384 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /pedantic_jones: Waiting for 60 seconds for URL: http://localhost:64425/health (where port 64425 maps to container port 9000)
+01:53:05.404 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 started in PT0.451538S
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-22T01:53:07.586+08:00  INFO 33313 --- [riccon-api] [           main] c.r.a.security.DepartmentIsolationTest   : Starting DepartmentIsolationTest using Java 21.0.13 with PID 33313 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-22T01:53:07.589+08:00  INFO 33313 --- [riccon-api] [           main] c.r.a.security.DepartmentIsolationTest   : The following 1 profile is active: "test"
+2026-11-22T01:53:10.405+08:00  INFO 33313 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-22T01:53:10.435+08:00  INFO 33313 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-22T01:53:10.435+08:00  INFO 33313 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-22T01:53:10.531+08:00  INFO 33313 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2899 ms
+2026-11-22T01:53:10.899+08:00  INFO 33313 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-22T01:53:10.934+08:00  INFO 33313 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-22T01:53:10.985+08:00  INFO 33313 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:64325/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-22T01:53:11.182+08:00  INFO 33313 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon`.`flyway_schema_history` does not exist yet
+2026-11-22T01:53:11.189+08:00  INFO 33313 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 11 migrations (execution time 00:00.047s)
+2026-11-22T01:53:11.224+08:00  INFO 33313 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon`.`flyway_schema_history` ...
+2026-11-22T01:53:11.314+08:00  INFO 33313 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: << Empty Schema >>
+2026-11-22T01:53:11.327+08:00  INFO 33313 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "1 - baseline"
+2026-11-22T01:53:11.409+08:00  INFO 33313 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "2 - identity and workspace"
+2026-11-22T01:53:11.687+08:00  INFO 33313 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "3 - files knowledge and conversation"
+2026-11-22T01:53:11.984+08:00  INFO 33313 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "4 - research runs and artifacts"
+2026-11-22T01:53:12.309+08:00  INFO 33313 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "5 - model gateway and mcp"
+2026-11-22T01:53:12.627+08:00  INFO 33313 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "6 - audit event"
+2026-11-22T01:53:12.983+08:00  INFO 33313 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "7 - spring session"
+2026-11-22T01:53:13.102+08:00  INFO 33313 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "8 - approval params envelope"
+2026-11-22T01:53:13.220+08:00  INFO 33313 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "9 - organization and workspace scope"
+2026-11-22T01:53:13.668+08:00  INFO 33313 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "10 - audit query export"
+2026-11-22T01:53:13.951+08:00  INFO 33313 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "11 - model gateway depth"
+2026-11-22T01:53:14.599+08:00  INFO 33313 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 11 migrations to schema `riccon`, now at version v11 (execution time 00:02.855s)
+2026-11-22T01:53:15.227+08:00  INFO 33313 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-22T01:53:15.533+08:00  INFO 33313 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-22T01:53:15.533+08:00  INFO 33313 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-22T01:53:15.533+08:00  INFO 33313 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-22T01:53:15.533+08:00  INFO 33313 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-22T01:53:16.190+08:00  WARN 33313 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist is empty; mode=DEMO allowLegacyEndpoints=true
+2026-11-22T01:53:16.192+08:00  INFO 33313 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=0
+2026-11-22T01:53:16.246+08:00  INFO 33313 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-test, previousKey=true, fingerprintPepper=true
+2026-11-22T01:53:18.113+08:00  INFO 33313 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-22T01:53:18.222+08:00  INFO 33313 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 64441 (http) with context path '/'
+2026-11-22T01:53:18.233+08:00  INFO 33313 --- [riccon-api] [           main] c.r.a.security.DepartmentIsolationTest   : Started DepartmentIsolationTest in 11.271 seconds (process running for 31.036)
+2026-11-22T01:53:18.738+08:00  INFO 33313 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin created
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+SUITE-MANIFEST DEPT-001 DEPT-002 DEPT-003 DEPT-004 DEPT-005 DEPT-006 DEPT-007 DEPT-008 DEPT-009 DEPT-010
+P4a security: DepartmentIsolationTest tests=1; ChatStreamApiTest tag-excluded
+01:53:34.502 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.ChatStreamApiTest]: ChatStreamApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:53:34.822 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.ChatStreamApiTest
+01:53:35.015 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.ChatStreamApiTest]: ChatStreamApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:53:35.016 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:53:35.019 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.ChatStreamApiTest
+01:53:35.165 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+01:53:35.170 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+01:53:35.213 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+01:53:36.733 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+01:53:36.735 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+01:53:36.764 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+01:53:36.946 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+01:53:37.380 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: 43d47b0626059f57f6f49c20cda18430a118b8e82dbcfda50705ef445142df92
+01:53:37.879 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT0.932545S
+01:53:37.888 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+01:53:37.888 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+01:53:37.890 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+01:53:37.890 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+01:53:37.998 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: bd6817ec5cf5930dc07d0564bcd778357d6bea177eebb8b416a17f580b9d851c
+01:53:38.327 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:64463/riccon using query 'SELECT 1'
+01:53:49.837 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT11.946294S
+01:53:49.837 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:64463/riccon)
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-22T01:53:50.820+08:00  INFO 33465 --- [riccon-api] [           main] com.riccon.api.ChatStreamApiTest         : Starting ChatStreamApiTest using Java 21.0.13 with PID 33465 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-22T01:53:50.823+08:00  INFO 33465 --- [riccon-api] [           main] com.riccon.api.ChatStreamApiTest         : The following 1 profile is active: "test"
+2026-11-22T01:53:53.399+08:00  INFO 33465 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-22T01:53:53.433+08:00  INFO 33465 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-22T01:53:53.434+08:00  INFO 33465 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-22T01:53:53.526+08:00  INFO 33465 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2656 ms
+2026-11-22T01:53:53.862+08:00  INFO 33465 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-22T01:53:53.900+08:00  INFO 33465 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-22T01:53:53.947+08:00  INFO 33465 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:64463/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-22T01:53:54.146+08:00  INFO 33465 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon`.`flyway_schema_history` does not exist yet
+2026-11-22T01:53:54.152+08:00  INFO 33465 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 11 migrations (execution time 00:00.048s)
+2026-11-22T01:53:54.185+08:00  INFO 33465 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon`.`flyway_schema_history` ...
+2026-11-22T01:53:54.284+08:00  INFO 33465 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: << Empty Schema >>
+2026-11-22T01:53:54.297+08:00  INFO 33465 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "1 - baseline"
+2026-11-22T01:53:54.373+08:00  INFO 33465 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "2 - identity and workspace"
+2026-11-22T01:53:54.647+08:00  INFO 33465 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "3 - files knowledge and conversation"
+2026-11-22T01:53:55.006+08:00  INFO 33465 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "4 - research runs and artifacts"
+2026-11-22T01:53:55.411+08:00  INFO 33465 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "5 - model gateway and mcp"
+2026-11-22T01:53:55.749+08:00  INFO 33465 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "6 - audit event"
+2026-11-22T01:53:56.111+08:00  INFO 33465 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "7 - spring session"
+2026-11-22T01:53:56.227+08:00  INFO 33465 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "8 - approval params envelope"
+2026-11-22T01:53:56.344+08:00  INFO 33465 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "9 - organization and workspace scope"
+2026-11-22T01:53:56.783+08:00  INFO 33465 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "10 - audit query export"
+2026-11-22T01:53:57.064+08:00  INFO 33465 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "11 - model gateway depth"
+2026-11-22T01:53:57.587+08:00  INFO 33465 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 11 migrations to schema `riccon`, now at version v11 (execution time 00:02.886s)
+2026-11-22T01:53:57.967+08:00  INFO 33465 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-22T01:53:58.271+08:00  INFO 33465 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-22T01:53:58.271+08:00  INFO 33465 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-22T01:53:58.271+08:00  INFO 33465 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-22T01:53:58.271+08:00  INFO 33465 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-22T01:53:59.031+08:00  WARN 33465 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist is empty; mode=DEMO allowLegacyEndpoints=true
+2026-11-22T01:53:59.033+08:00  INFO 33465 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=0
+2026-11-22T01:53:59.085+08:00  INFO 33465 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-test, previousKey=true, fingerprintPepper=true
+2026-11-22T01:54:01.855+08:00  INFO 33465 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-22T01:54:01.955+08:00  INFO 33465 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 64608 (http) with context path '/'
+2026-11-22T01:54:01.966+08:00  INFO 33465 --- [riccon-api] [           main] com.riccon.api.ChatStreamApiTest         : Started ChatStreamApiTest in 11.715 seconds (process running for 29.881)
+2026-11-22T01:54:02.490+08:00  INFO 33465 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin created
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-22T01:54:03.907+08:00  INFO 33465 --- [riccon-api] [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-22T01:54:03.908+08:00  INFO 33465 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-22T01:54:03.910+08:00  INFO 33465 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-11-22T01:54:05.538+08:00  INFO 33465 --- [riccon-api] [o-auto-1-exec-7] c.r.a.chat.service.ConversationService   : conversation.created tenantId=chatc13538ec9882 conversationId=01a1ff3e-745a-7dd2-bc72-acb0c60d6198 workspaceId=01a1ff3e-741f-7f06-b981-694403d1a874
+2026-11-22T01:54:05.652+08:00  INFO 33465 --- [riccon-api] [o-auto-1-exec-8] c.r.a.c.service.ChatSubmissionService    : chat.message.sent tenantId=chatc13538ec9882 conversationId=01a1ff3e-745a-7dd2-bc72-acb0c60d6198 runId=01a1ff3e-74c1-7688-96ea-e3c97ee7b0d6 userMessageId=01a1ff3e-74c1-77e6-bea2-63f1c00b6988 assistantMessageId=01a1ff3e-74c1-7bc3-80bb-ec7803d5da22 attachments=0
+P4a integration: ChatStreamApiTest inherited tag tests=1
+01:54:19.665 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+01:54:19.675 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+01:54:19.719 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+01:54:21.359 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+01:54:21.361 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+01:54:21.391 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+01:54:21.645 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+01:54:22.165 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: af266d6b674390f8a54c7065f2ee6bcd7c44ed0f9a554d945dd085c447225e11
+01:54:22.756 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT1.110783S
+01:54:22.764 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+01:54:22.765 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+01:54:22.766 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+01:54:22.766 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+01:54:22.882 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: 59a6d1cb8e9dfd09730c822550723f1662898f55a01f267cfff87b25e76af892
+01:54:23.250 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:64658/riccon using query 'SELECT 1'
+01:54:34.897 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT12.130565S
+01:54:34.897 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:64658/riccon)
+01:54:35.656 [main] INFO org.flywaydb.core.FlywayExecutor -- Database: jdbc:mysql://localhost:64658/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+01:54:35.872 [main] INFO org.flywaydb.core.internal.schemahistory.JdbcTableSchemaHistory -- Schema history table `riccon`.`flyway_schema_history` does not exist yet
+01:54:35.883 [main] INFO org.flywaydb.core.internal.command.DbValidate -- Successfully validated 11 migrations (execution time 00:00.057s)
+01:54:35.920 [main] INFO org.flywaydb.core.internal.schemahistory.JdbcTableSchemaHistory -- Creating Schema History table `riccon`.`flyway_schema_history` ...
+01:54:36.020 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Current version of schema `riccon`: << Empty Schema >>
+01:54:36.034 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "1 - baseline"
+01:54:36.116 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "2 - identity and workspace"
+01:54:36.410 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "3 - files knowledge and conversation"
+01:54:36.752 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "4 - research runs and artifacts"
+01:54:37.113 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "5 - model gateway and mcp"
+01:54:37.565 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "6 - audit event"
+01:54:37.937 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "7 - spring session"
+01:54:38.075 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "8 - approval params envelope"
+01:54:38.208 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Successfully applied 8 migrations to schema `riccon`, now at version v8 (execution time 00:01.781s)
+01:54:38.713 [main] INFO org.flywaydb.core.FlywayExecutor -- Database: jdbc:mysql://localhost:64658/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+01:54:38.754 [main] INFO org.flywaydb.core.internal.command.DbValidate -- Successfully validated 11 migrations (execution time 00:00.017s)
+01:54:38.769 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Current version of schema `riccon`: 8
+01:54:38.779 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon` to version "9 - organization and workspace scope"
+01:54:39.319 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Successfully applied 1 migration to schema `riccon`, now at version v9 (execution time 00:00.511s)
+01:54:39.457 [main] INFO org.flywaydb.core.FlywayExecutor -- Database: jdbc:mysql://localhost:64658/riccon_rollback?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+01:54:39.495 [main] INFO org.flywaydb.core.internal.schemahistory.JdbcTableSchemaHistory -- Schema history table `riccon_rollback`.`flyway_schema_history` does not exist yet
+01:54:39.497 [main] INFO org.flywaydb.core.internal.command.DbValidate -- Successfully validated 11 migrations (execution time 00:00.016s)
+01:54:39.522 [main] INFO org.flywaydb.core.internal.schemahistory.JdbcTableSchemaHistory -- Creating Schema History table `riccon_rollback`.`flyway_schema_history` ...
+01:54:39.590 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Current version of schema `riccon_rollback`: << Empty Schema >>
+01:54:39.602 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "1 - baseline"
+01:54:39.671 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "2 - identity and workspace"
+01:54:40.058 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "3 - files knowledge and conversation"
+01:54:40.408 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "4 - research runs and artifacts"
+01:54:40.745 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "5 - model gateway and mcp"
+01:54:41.063 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "6 - audit event"
+01:54:41.573 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "7 - spring session"
+01:54:41.692 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "8 - approval params envelope"
+01:54:41.816 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Successfully applied 8 migrations to schema `riccon_rollback`, now at version v8 (execution time 00:01.913s)
+01:54:42.079 [main] INFO org.flywaydb.core.FlywayExecutor -- Database: jdbc:mysql://localhost:64658/riccon_rollback?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+01:54:42.125 [main] INFO org.flywaydb.core.internal.command.DbValidate -- Successfully validated 11 migrations (execution time 00:00.021s)
+01:54:42.143 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Current version of schema `riccon_rollback`: 8
+01:54:42.153 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema `riccon_rollback` to version "9 - organization and workspace scope"
+01:54:42.669 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Successfully applied 1 migration to schema `riccon_rollback`, now at version v9 (execution time 00:00.489s)
+P4a migration: V9MigrationTest tests=1; V11VocabularyTest tag-excluded
+01:54:52.327 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.persistence.TenantJdbcTest]: TenantJdbcTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:54:52.639 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.persistence.TenantJdbcTest
+01:54:52.850 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.persistence.TenantJdbcTest]: TenantJdbcTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:54:52.851 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:54:52.857 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.persistence.TenantJdbcTest
+01:54:53.007 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+01:54:53.012 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+01:54:53.051 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+01:54:54.943 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+01:54:54.946 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+01:54:54.981 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+01:54:55.228 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+01:54:55.702 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: c51e0e89f0914297f71b483a8b6096d703812e22c1b27a1a18d6c19bf076ba91
+01:54:56.227 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT0.998745S
+01:54:56.235 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+01:54:56.235 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+01:54:56.236 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+01:54:56.237 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+01:54:56.332 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: 7f4b5497a5494b155ba36e819794c1d586e68cc26d11cbe1962b9c65b3d7e584
+01:54:56.687 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:65054/riccon using query 'SELECT 1'
+01:55:07.393 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT11.156574S
+01:55:07.394 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:65054/riccon)
+01:55:07.400 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Creating container for image: opensearchproject/opensearch:3.9.0
+01:55:07.503 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 is starting: 561b9955e1705bf9c2bb2ce1cd434568161370a49d67cf4e047df5f70ca83ff9
+01:55:07.843 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /cool_cohen: Waiting for 180 seconds for URL: http://localhost:65162/_cluster/health?wait_for_status=yellow&timeout=120s (where port 65162 maps to container port 9200)
+01:55:36.312 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 started in PT28.912213S
+01:55:36.313 [main] INFO tc.rustfs/rustfs:1.0.6 -- Creating container for image: rustfs/rustfs:1.0.6
+01:55:36.474 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 is starting: fe5144de60dd9e6bf418962298ade6150578a040a7e2e0ecd141bec3d94cd2f4
+01:55:36.881 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /adoring_maxwell: Waiting for 60 seconds for URL: http://localhost:65235/health (where port 65235 maps to container port 9000)
+01:55:37.317 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 started in PT1.004061S
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-22T01:55:43.454+08:00  INFO 33777 --- [riccon-worker] [           main] c.r.worker.persistence.TenantJdbcTest    : Starting TenantJdbcTest using Java 21.0.13 with PID 33777 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/worker)
+2026-11-22T01:55:43.456+08:00  INFO 33777 --- [riccon-worker] [           main] c.r.worker.persistence.TenantJdbcTest    : The following 1 profile is active: "test"
+2026-11-22T01:55:45.922+08:00  INFO 33777 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-22T01:55:47.726+08:00  INFO 33777 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-22T01:55:47.727+08:00  INFO 33777 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-22T01:55:47.747+08:00  INFO 33777 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-22T01:55:47.763+08:00  INFO 33777 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 36 ms
+2026-11-22T01:55:47.967+08:00  INFO 33777 --- [riccon-worker] [           main] c.r.worker.persistence.TenantJdbcTest    : Started TenantJdbcTest in 5.086 seconds (process running for 57.895)
+2026-11-22T01:55:48.063+08:00  INFO 33777 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-22T01:55:48.105+08:00  INFO 33777 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-22T01:55:48.153+08:00  INFO 33777 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=11 actual=11
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+P4a worker integration: TenantJdbcTest tests=1; UntrustedDataAndToolTest tag-excluded
+01:55:58.280 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+01:55:58.290 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+01:55:58.337 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+01:56:00.008 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+01:56:00.010 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+01:56:00.051 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+01:56:00.332 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+01:56:01.121 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: b1f78d9187c1afcbba783a28b29050b546f2237fdab5aad4f39b2ac926c333f7
+01:56:01.830 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT1.498269S
+01:56:01.839 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+01:56:01.840 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+01:56:01.841 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+01:56:01.842 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+01:56:01.938 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: 2ea053634183837fb9f1e5501aa5f9cca07aec7f6b11095094ccc8aa18b03c72
+01:56:02.302 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:65321/riccon using query 'SELECT 1'
+01:56:13.522 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT11.68034S
+01:56:13.522 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:65321/riccon)
+01:56:13.527 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Creating container for image: opensearchproject/opensearch:3.9.0
+01:56:13.612 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 is starting: cdc25fbb82e535ffc3a4a472fd76ce0e2dfa61af86917c5559a59b3fada4f684
+01:56:13.967 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /ecstatic_pike: Waiting for 180 seconds for URL: http://localhost:65418/_cluster/health?wait_for_status=yellow&timeout=120s (where port 65418 maps to container port 9200)
+01:56:42.463 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 started in PT28.936628S
+01:56:42.465 [main] INFO tc.rustfs/rustfs:1.0.6 -- Creating container for image: rustfs/rustfs:1.0.6
+01:56:42.623 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 is starting: f8a38e9b49f02375be284a7689e19d8e6950aa3f169ea5fafcef8773aebd1d5c
+01:56:43.036 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /nice_heisenberg: Waiting for 60 seconds for URL: http://localhost:65493/health (where port 65493 maps to container port 9000)
+01:56:43.487 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 started in PT1.022397S
+01:56:48.824 [main] INFO com.riccon.worker.persistence.SchemaVersionChecker -- schema.version.checked expected=11 actual=11
+P4a worker migration: SchemaVersionCheckerTest tests=1; TenantJdbcTest tag-excluded
+P4a unit: platform-common untagged tests executed
+01:57:09.029 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.security.DepartmentIsolationTest]: DepartmentIsolationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:57:09.319 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.security.DepartmentIsolationTest
+01:57:09.505 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.security.DepartmentIsolationTest]: DepartmentIsolationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:57:09.505 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.security.SecurityTestSupport]: SecurityTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:57:09.506 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.FileApiTestSupport]: FileApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:57:09.507 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiStorageIntegrationTestSupport]: ApiStorageIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:57:09.508 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+01:57:09.512 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.security.DepartmentIsolationTest
+01:57:09.664 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+01:57:09.669 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+01:57:09.709 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+01:57:11.434 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+01:57:11.436 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+01:57:11.466 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+01:57:11.697 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+01:57:12.232 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: 0696ed2fc24824451aa5b05f35851d3a2da77a85480a5535573aa3f2a5355476
+01:57:12.801 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT1.103556S
+01:57:12.811 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+01:57:12.811 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+01:57:12.812 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+01:57:12.813 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+01:57:12.910 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: 8faacf7373d54978c2f48542387d2def25545c484374facb9cdefbce9669eeed
+01:57:13.304 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:49188/riccon using query 'SELECT 1'
+01:57:24.148 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT11.335178S
+01:57:24.148 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:49188/riccon)
+01:57:24.152 [main] INFO tc.rustfs/rustfs:1.0.6 -- Creating container for image: rustfs/rustfs:1.0.6
+01:57:24.281 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 is starting: 281fe4999c8e82b1a91dbc685c7ce1287d335ffa994997d133f2cc1e32f6b43f
+01:57:24.652 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /priceless_bartik: Waiting for 60 seconds for URL: http://localhost:49294/health (where port 49294 maps to container port 9000)
+01:57:24.672 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 started in PT0.519406S
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-22T01:57:26.898+08:00  INFO 34235 --- [riccon-api] [           main] c.r.a.security.DepartmentIsolationTest   : Starting DepartmentIsolationTest using Java 21.0.13 with PID 34235 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-22T01:57:26.900+08:00  INFO 34235 --- [riccon-api] [           main] c.r.a.security.DepartmentIsolationTest   : The following 1 profile is active: "test"
+2026-11-22T01:57:29.677+08:00  INFO 34235 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-22T01:57:29.710+08:00  INFO 34235 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-22T01:57:29.711+08:00  INFO 34235 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-22T01:57:29.803+08:00  INFO 34235 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2863 ms
+2026-11-22T01:57:30.165+08:00  INFO 34235 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-22T01:57:30.199+08:00  INFO 34235 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-22T01:57:30.245+08:00  INFO 34235 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:49188/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-22T01:57:30.448+08:00  INFO 34235 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon`.`flyway_schema_history` does not exist yet
+2026-11-22T01:57:30.456+08:00  INFO 34235 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 11 migrations (execution time 00:00.051s)
+2026-11-22T01:57:30.496+08:00  INFO 34235 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon`.`flyway_schema_history` ...
+2026-11-22T01:57:30.597+08:00  INFO 34235 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: << Empty Schema >>
+2026-11-22T01:57:30.610+08:00  INFO 34235 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "1 - baseline"
+2026-11-22T01:57:30.682+08:00  INFO 34235 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "2 - identity and workspace"
+2026-11-22T01:57:30.959+08:00  INFO 34235 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "3 - files knowledge and conversation"
+2026-11-22T01:57:31.281+08:00  INFO 34235 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "4 - research runs and artifacts"
+2026-11-22T01:57:31.649+08:00  INFO 34235 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "5 - model gateway and mcp"
+2026-11-22T01:57:31.966+08:00  INFO 34235 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "6 - audit event"
+2026-11-22T01:57:32.351+08:00  INFO 34235 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "7 - spring session"
+2026-11-22T01:57:32.464+08:00  INFO 34235 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "8 - approval params envelope"
+2026-11-22T01:57:32.584+08:00  INFO 34235 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "9 - organization and workspace scope"
+2026-11-22T01:57:33.033+08:00  INFO 34235 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "10 - audit query export"
+2026-11-22T01:57:33.320+08:00  INFO 34235 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "11 - model gateway depth"
+2026-11-22T01:57:33.794+08:00  INFO 34235 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 11 migrations to schema `riccon`, now at version v11 (execution time 00:02.762s)
+2026-11-22T01:57:34.177+08:00  INFO 34235 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-22T01:57:34.495+08:00  INFO 34235 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-22T01:57:34.495+08:00  INFO 34235 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-22T01:57:34.496+08:00  INFO 34235 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-22T01:57:34.496+08:00  INFO 34235 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-22T01:57:35.232+08:00  WARN 34235 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist is empty; mode=DEMO allowLegacyEndpoints=true
+2026-11-22T01:57:35.235+08:00  INFO 34235 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=0
+2026-11-22T01:57:35.297+08:00  INFO 34235 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-test, previousKey=true, fingerprintPepper=true
+2026-11-22T01:57:37.359+08:00  INFO 34235 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-22T01:57:37.515+08:00  INFO 34235 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 49311 (http) with context path '/'
+2026-11-22T01:57:37.531+08:00  INFO 34235 --- [riccon-api] [           main] c.r.a.security.DepartmentIsolationTest   : Started DepartmentIsolationTest in 11.235 seconds (process running for 30.476)
+2026-11-22T01:57:38.030+08:00  INFO 34235 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin created
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+SUITE-MANIFEST DEPT-001 DEPT-002 DEPT-003 DEPT-004 DEPT-005 DEPT-006 DEPT-007 DEPT-008 DEPT-009 DEPT-010
+P4a default: tagged class still runs without groups filter
+分片自检通过：193 类 / 1101 用例，4 片互斥完整，源码测试类均已登记
+P4a evidence: all checks passed
+
+# --- stderr ---
+

@@ -1,241 +1,401 @@
 #!/usr/bin/env node
-// 真实栈验证专用假 OpenAI 兼容模型服务。
+// 真实栈假 OpenAI 兼容模型服务（B8）。
 //
-// 该服务是独立进程，不是应用内 mock，也不 import 生产代码；它只按 OpenAI chat/completions
-// 的 SSE 协议返回确定性内容，并记录每个请求的到达/首字/结束时间，供验证者判断 SSE 是否被缓冲。
+// 该脚本是 `e2e/support/fake-model/server.mjs` 的 CLI 包装：场景表、确定性内容与控制端点
+// 全部在共享模块中，B11a/B11b 可直接同进程复用，避免两套 mock 漂移。
 //
-// 行为：
-// - 请求 tools 中包含 market_data（J2 工具阶段）：返回一次 tool_call，触发 HITL 审批；
-// - 其他请求（J1 问答、J2 生成阶段）：返回多段文本增量，首字立即发送，后续按 interval 发送。
+// 用法：
+//   node scripts/real-stack/fake-model.mjs [options]
+//   node scripts/real-stack/fake-model.mjs --self-test
 //
-// 控制端点（仅验证使用）：
-// - GET /__health__：就绪检查
-// - POST /__mode__：{"mode":"ok"|"slow"|"error"} 切换下一次调用的行为
-// - GET /__log__：返回请求时间戳记录
+// 选项：
+//   --host <host>                 监听地址（默认 127.0.0.1）
+//   --port <port>                 端口（默认 18990；0 表示随机）
+//   --scenario <name>             全局场景（默认 ok）
+//   --timeout-hold-ms <ms>        timeout 场景保持连接的时长（默认 15000）
+//   --first-delay-ms <ms>         首个增量前延迟（默认 60）
+//   --chunk-interval-ms <ms>      增量间隔（默认 180）
+//   --chunk-count <n>             增量分片数（默认 18）
+//   --key-scenarios <json>        key → 场景映射，例如 '{"bad-key":"server_error"}'
+//   --help                        打印帮助
+//
+// 环境变量与选项等价：FAKE_MODEL_HOST/PORT/SCENARIO/TIMEOUT_HOLD_MS/FIRST_DELAY_MS/
+// CHUNK_INTERVAL_MS/CHUNK_COUNT/KEY_SCENARIOS。
+//
+// 控制端点（测试专用）：GET /__health__、GET /__log__、POST /__mode__、POST /__scenario__、
+// POST /__keys__、POST /__reset__。场景覆盖 302/401/429/5xx/超时/断流/缺 usage/非法 JSON。
+// 退出码：启动失败、自检失败或收到 SIGTERM 之外的致命错误时为非零。
 
-import http from "node:http";
+import process from "node:process";
 
-const port = Number(process.env.FAKE_MODEL_PORT ?? 18990);
-const host = process.env.FAKE_MODEL_HOST ?? "127.0.0.1";
-const firstDelayMs = Number(process.env.FAKE_MODEL_FIRST_DELAY_MS ?? 60);
-const chunkIntervalMs = Number(process.env.FAKE_MODEL_CHUNK_INTERVAL_MS ?? 180);
-const chunkCount = Number(process.env.FAKE_MODEL_CHUNK_COUNT ?? 18);
+import {
+  FIXED_USAGE,
+  SCENARIO_NAMES,
+  normalizeScenario,
+  startFakeModelServer,
+} from "../../e2e/support/fake-model/index.mjs";
 
-/** 当前模式；验证者可通过控制端点切换。 */
-let mode = "ok";
+/** 打印用法。 */
+function usage() {
+  console.log(`用法: node scripts/real-stack/fake-model.mjs [options]
 
-/** 请求时间线；用于输出首字与结束时间戳。 */
-const requestLog = [];
+选项:
+  --host <host>                 监听地址，默认 127.0.0.1
+  --port <port>                 端口，默认 18990；0 表示随机
+  --scenario <name>             全局场景，默认 ok
+  --timeout-hold-ms <ms>        timeout 场景保持连接时长，默认 15000
+  --first-delay-ms <ms>         首个增量延迟，默认 60
+  --chunk-interval-ms <ms>      增量间隔，默认 180
+  --chunk-count <n>             增量分片数，默认 18
+  --key-scenarios <json>        key → 场景映射（JSON 对象）
+  --self-test                   在随机端口启动并验证全部场景确定性
+  --help                        打印本帮助
 
-/**
- * 构造一段包含可引用关键词的报告正文。生成阶段会把它放进报告的“分析”小节。
- */
-function reportBody(topic) {
-  return [
-    `## 市场规模与增长\n\n围绕“${topic}”，演示资料显示 2025—2026 年市场保持两位数增长，头部厂商集中度上升。`,
-    `\n\n## 竞争格局\n\n第一梯队厂商依靠平台化能力扩大份额，第二梯队通过行业解决方案维持差异。`,
-    `\n\n## 结论与建议\n\n建议优先验证企业协同与知识管理场景，并以可审计的 Agent 工作流作为差异化能力。`,
-  ];
+场景: ${SCENARIO_NAMES.join(", ")}（兼容旧别名 ok/slow/error）`);
 }
 
 /**
- * 从请求消息中提取调研主题。
+ * 解析命令行参数。
+ *
+ * @param {string[]} argv 参数
+ * @returns {object} 解析结果
  */
-function extractTopic(body) {
-  const messages = Array.isArray(body?.messages) ? body.messages : [];
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const text =
-      typeof messages[index]?.content === "string"
-        ? messages[index].content
-        : "";
-    const match = text.match(/调研主题：([^\n]+)/);
-    if (match) {
-      return match[1].trim();
+function parseArgs(argv) {
+  const options = {
+    host: process.env.FAKE_MODEL_HOST ?? "127.0.0.1",
+    port: Number(process.env.FAKE_MODEL_PORT ?? 18990),
+    scenario: process.env.FAKE_MODEL_SCENARIO ?? "ok",
+    timeoutHoldMs: Number(process.env.FAKE_MODEL_TIMEOUT_HOLD_MS ?? 15_000),
+    firstDelayMs: Number(process.env.FAKE_MODEL_FIRST_DELAY_MS ?? 60),
+    chunkIntervalMs: Number(process.env.FAKE_MODEL_CHUNK_INTERVAL_MS ?? 180),
+    chunkCount: Number(process.env.FAKE_MODEL_CHUNK_COUNT ?? 18),
+    keyScenarios: process.env.FAKE_MODEL_KEY_SCENARIOS
+      ? JSON.parse(process.env.FAKE_MODEL_KEY_SCENARIOS)
+      : {},
+    help: false,
+    selfTest: false,
+  };
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    const next = () => {
+      index += 1;
+      if (index >= argv.length) {
+        throw new Error(`${arg} 缺少参数值`);
+      }
+      return argv[index];
+    };
+    switch (arg) {
+      case "--host":
+        options.host = next();
+        break;
+      case "--port":
+        options.port = Number(next());
+        break;
+      case "--scenario":
+        options.scenario = next();
+        break;
+      case "--timeout-hold-ms":
+        options.timeoutHoldMs = Number(next());
+        break;
+      case "--first-delay-ms":
+        options.firstDelayMs = Number(next());
+        break;
+      case "--chunk-interval-ms":
+        options.chunkIntervalMs = Number(next());
+        break;
+      case "--chunk-count":
+        options.chunkCount = Number(next());
+        break;
+      case "--key-scenarios":
+        options.keyScenarios = JSON.parse(next());
+        break;
+      case "--self-test":
+        options.selfTest = true;
+        break;
+      case "--help":
+      case "-h":
+        options.help = true;
+        break;
+      default:
+        throw new Error(`未知参数: ${arg}`);
     }
   }
-  return "2026 年中国企业协同办公市场";
+  if (!normalizeScenario(options.scenario)) {
+    throw new Error(`未知场景: ${options.scenario}`);
+  }
+  return options;
 }
 
 /**
- * 判断是否为 J2 工具阶段：请求的 tools 里包含数据库授权的 MCP 工具。
+ * 断言 helper：失败时抛出带场景名的错误，由自检统一收集。
+ *
+ * @param {unknown} condition 条件
+ * @param {string} message 失败信息
  */
-function isToolStage(body) {
-  const tools = Array.isArray(body?.tools) ? body.tools : [];
-  return tools.some((tool) => tool?.function?.name === "market_data");
+function check(condition, message) {
+  if (!condition) {
+    throw new Error(message);
+  }
 }
 
 /**
- * 写一条 SSE data 帧；显式 flush，避免被 Nagle 或缓冲合并。
+ * 运行自检：启动随机端口服务，逐场景验证固定状态/错误码/usage/断流/超时/key 维度。
+ *
+ * @returns {Promise<object>} 自检报告
  */
-function sendEvent(res, payload) {
-  res.write(`data: ${JSON.stringify(payload)}\n\n`);
-}
+async function selfTest() {
+  const started = await startFakeModelServer({
+    host: "127.0.0.1",
+    port: 0,
+    globalScenario: "ok",
+    firstDelayMs: 0,
+    chunkIntervalMs: 0,
+    chunkCount: 4,
+    timeoutHoldMs: 1_000,
+    keyScenarios: {
+      "fake-key-bad": "server_error",
+      "fake-key-ok": "ok",
+    },
+  });
+  const results = [];
 
-/**
- * 返回 tool_call 流。首个 delta 带 id/name/arguments 分片，终止帧带 finish_reason。
- */
-function streamToolCall(res, body) {
-  const topic = extractTopic(body);
-  const callId = `call_${Date.now()}`;
-  sendEvent(res, {
-    id: "chatcmpl-tool",
-    object: "chat.completion.chunk",
-    choices: [
-      {
-        index: 0,
-        delta: {
-          role: "assistant",
-          tool_calls: [
+  /**
+   * 发送一次 chat/completions 请求。
+   *
+   * @param {object} [options] scenario/header/key/body/signal
+   * @returns {Promise<Response>} 响应
+   */
+  async function call(options = {}) {
+    const headers = { "content-type": "application/json" };
+    if (options.scenario) {
+      headers["x-fake-model-scenario"] = options.scenario;
+    }
+    if (options.key) {
+      headers.authorization = `Bearer ${options.key}`;
+    }
+    return fetch(`${started.url}/v1/chat/completions`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(
+        options.body ?? { model: "fake-chat", stream: true, messages: [] },
+      ),
+      redirect: "manual",
+      signal: options.signal,
+    });
+  }
+
+  /**
+   * 记录单场景结果。
+   *
+   * @param {string} scenario 场景
+   * @param {() => Promise<void>} action 断言过程
+   */
+  async function scenarioResult(scenario, action) {
+    try {
+      await action();
+      results.push({ scenario, status: "passed" });
+    } catch (error) {
+      results.push({ scenario, status: "failed", error: String(error) });
+    }
+  }
+
+  try {
+    await scenarioResult("unauthorized", async () => {
+      const response = await call({ scenario: "unauthorized" });
+      check(response.status === 401, `expected 401, got ${response.status}`);
+      const body = await response.json();
+      check(
+        body.error.code === "fake_unauthorized",
+        "fixed error code missing",
+      );
+    });
+    await scenarioResult("rate_limited", async () => {
+      const response = await call({ scenario: "rate_limited" });
+      check(response.status === 429, `expected 429, got ${response.status}`);
+      check(
+        response.headers.get("retry-after") === "1",
+        "Retry-After must be 1",
+      );
+      const body = await response.json();
+      check(
+        body.error.code === "fake_rate_limited",
+        "fixed error code missing",
+      );
+    });
+    await scenarioResult("server_error", async () => {
+      const response = await call({ scenario: "server_error" });
+      check(response.status === 500, `expected 500, got ${response.status}`);
+      const body = await response.json();
+      check(
+        body.error.code === "fake_server_error",
+        "fixed error code missing",
+      );
+    });
+    await scenarioResult("unavailable", async () => {
+      const response = await call({ scenario: "unavailable" });
+      check(response.status === 503, `expected 503, got ${response.status}`);
+    });
+    await scenarioResult("redirect", async () => {
+      const response = await call({ scenario: "redirect" });
+      check(response.status === 302, `expected 302, got ${response.status}`);
+      check(
+        response.headers.get("location") === "/v1/redirect-target",
+        "redirect target must be fixed",
+      );
+    });
+    await scenarioResult("ok", async () => {
+      const response = await call({ scenario: "ok" });
+      check(response.status === 200, `expected 200, got ${response.status}`);
+      const text = await response.text();
+      check(text.includes("data: "), "SSE data frames missing");
+      check(text.includes("[DONE]"), "DONE marker missing");
+      check(
+        text.includes('"prompt_tokens":128'),
+        "fixed prompt tokens missing",
+      );
+      check(
+        text.includes('"completion_tokens":96'),
+        "fixed completion tokens missing",
+      );
+    });
+    await scenarioResult("missing_usage", async () => {
+      const response = await call({ scenario: "missing_usage" });
+      check(response.status === 200, `expected 200, got ${response.status}`);
+      const text = await response.text();
+      check(text.includes("[DONE]"), "DONE marker missing");
+      check(!text.includes('"usage"'), "usage must be omitted");
+    });
+    await scenarioResult("stream_break", async () => {
+      const response = await call({ scenario: "stream_break" });
+      check(response.status === 200, `expected 200, got ${response.status}`);
+      let text = "";
+      try {
+        text = await response.text();
+      } catch {
+        // 连接被上游断开属于预期；以已收到的字节继续断言。
+      }
+      check(!text.includes("[DONE]"), "stream_break must not send DONE");
+    });
+    await scenarioResult("invalid_json", async () => {
+      const response = await call({ scenario: "invalid_json" });
+      check(response.status === 200, `expected 200, got ${response.status}`);
+      const text = await response.text();
+      check(text.includes("this-is-not-json"), "invalid JSON frame missing");
+    });
+    await scenarioResult("timeout", async () => {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 250);
+      let aborted = false;
+      try {
+        await call({ scenario: "timeout", signal: controller.signal });
+      } catch (error) {
+        aborted =
+          error?.name === "AbortError" || String(error).includes("aborted");
+      }
+      check(aborted, "timeout must not respond before client timeout");
+    });
+    await scenarioResult("tool_call", async () => {
+      const response = await call({
+        body: {
+          model: "fake-chat",
+          stream: true,
+          messages: [{ role: "user", content: "调研主题：测试主题" }],
+          tools: [
             {
-              index: 0,
-              id: callId,
               type: "function",
               function: {
                 name: "market_data",
-                arguments: JSON.stringify({ query: topic }),
+                description: "test",
+                parameters: { type: "object" },
               },
             },
           ],
         },
-        finish_reason: null,
-      },
-    ],
-  });
-  sendEvent(res, {
-    id: "chatcmpl-tool",
-    object: "chat.completion.chunk",
-    choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }],
-  });
-  res.write("data: [DONE]\n\n");
-  res.end();
-}
-
-/**
- * 流式输出文本；每段间隔 chunkIntervalMs，便于浏览器验证“逐字增长”和停止。
- */
-async function streamText(res, body) {
-  const topic = extractTopic(body);
-  const text = reportBody(topic).join("");
-  const chunks = [];
-  const size = Math.max(1, Math.ceil(text.length / chunkCount));
-  for (let index = 0; index < text.length; index += size) {
-    chunks.push(text.slice(index, index + size));
-  }
-  const log = {
-    startedAt: new Date().toISOString(),
-    firstTokenAt: null,
-    finishedAt: null,
-    mode,
-    topic,
-    chunks: chunks.length,
-  };
-  requestLog.push(log);
-  sendEvent(res, {
-    id: "chatcmpl-text",
-    object: "chat.completion.chunk",
-    choices: [
-      {
-        index: 0,
-        delta: { role: "assistant", content: "" },
-        finish_reason: null,
-      },
-    ],
-  });
-  await new Promise((resolve) => setTimeout(resolve, firstDelayMs));
-  for (let index = 0; index < chunks.length; index += 1) {
-    if (index === 0) {
-      log.firstTokenAt = new Date().toISOString();
-    }
-    sendEvent(res, {
-      id: "chatcmpl-text",
-      object: "chat.completion.chunk",
-      choices: [
-        { index: 0, delta: { content: chunks[index] }, finish_reason: null },
-      ],
+      });
+      const text = await response.text();
+      check(text.includes('"tool_calls"'), "tool_calls missing");
+      check(
+        text.includes('"quote"') === false,
+        "tool_call must not include unrelated content",
+      );
     });
-    if (index < chunks.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, chunkIntervalMs));
-    }
+    await scenarioResult("key-dimension", async () => {
+      const bad = await call({ key: "fake-key-bad" });
+      check(bad.status === 500, `bad key expected 500, got ${bad.status}`);
+      const good = await call({ key: "fake-key-ok" });
+      check(good.status === 200, `good key expected 200, got ${good.status}`);
+      const overridden = await call({ key: "fake-key-bad", scenario: "ok" });
+      check(overridden.status === 200, "header must override key scenario");
+    });
+    await scenarioResult("determinism", async () => {
+      const first = await (await call({ scenario: "ok" })).text();
+      const second = await (await call({ scenario: "ok" })).text();
+      check(
+        first === second,
+        "identical requests must produce identical SSE bodies",
+      );
+    });
+    await scenarioResult("fixed-usage", async () => {
+      const log = await (await fetch(`${started.url}/__log__`)).json();
+      const okEntry = log.requests.find(
+        (entry) => entry.scenario === "ok" && entry.usage,
+      );
+      check(Boolean(okEntry), "ok request log missing");
+      check(
+        okEntry.usage.prompt_tokens === FIXED_USAGE.prompt_tokens &&
+          okEntry.usage.completion_tokens === FIXED_USAGE.completion_tokens,
+        "usage must match fixed constants",
+      );
+      check(
+        log.requests.every((entry) => !Object.hasOwn(entry, "authorization")),
+        "log must not contain Authorization plaintext",
+      );
+    });
+  } finally {
+    await started.close();
   }
-  sendEvent(res, {
-    id: "chatcmpl-text",
-    object: "chat.completion.chunk",
-    choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
-    usage: {
-      prompt_tokens: 128,
-      completion_tokens: Math.ceil(text.length / 4),
-    },
-  });
-  log.finishedAt = new Date().toISOString();
-  res.write("data: [DONE]\n\n");
-  res.end();
+
+  const failed = results.filter((entry) => entry.status === "failed");
+  const report = {
+    status: failed.length === 0 ? "passed" : "failed",
+    scenarios: results,
+    usage: { ...FIXED_USAGE },
+  };
+  console.log(JSON.stringify(report, null, 2));
+  if (failed.length > 0) {
+    process.exitCode = 1;
+  }
 }
 
-const server = http.createServer(async (req, res) => {
-  if (req.method === "GET" && req.url === "/__health__") {
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ status: "ok" }));
-    return;
-  }
-  if (req.method === "GET" && req.url === "/__log__") {
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ requests: requestLog }));
-    return;
-  }
-  if (req.method === "POST" && req.url === "/__mode__") {
-    let raw = "";
-    for await (const chunk of req) {
-      raw += chunk;
-    }
-    try {
-      const parsed = JSON.parse(raw);
-      mode =
-        parsed.mode === "slow" || parsed.mode === "error" ? parsed.mode : "ok";
-    } catch {
-      mode = "ok";
-    }
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ mode }));
-    return;
-  }
-  if (req.method !== "POST" || !req.url?.endsWith("/chat/completions")) {
-    res.writeHead(404, { "content-type": "application/json" });
-    res.end(JSON.stringify({ error: "not found" }));
-    return;
-  }
-  let raw = "";
-  for await (const chunk of req) {
-    raw += chunk;
-  }
-  let body = {};
-  try {
-    body = JSON.parse(raw);
-  } catch {
-    res.writeHead(400, { "content-type": "application/json" });
-    res.end(JSON.stringify({ error: "invalid json" }));
-    return;
-  }
-  res.writeHead(200, {
-    "content-type": "text/event-stream; charset=utf-8",
-    "cache-control": "no-store",
-    connection: "keep-alive",
-    "x-accel-buffering": "no",
+const options = parseArgs(process.argv.slice(2));
+if (options.help) {
+  usage();
+} else if (options.selfTest) {
+  await selfTest();
+} else {
+  const started = await startFakeModelServer({
+    host: options.host,
+    port: options.port,
+    globalScenario: options.scenario,
+    firstDelayMs: options.firstDelayMs,
+    chunkIntervalMs: options.chunkIntervalMs,
+    chunkCount: options.chunkCount,
+    timeoutHoldMs: options.timeoutHoldMs,
+    keyScenarios: options.keyScenarios,
   });
-  res.flushHeaders();
-  if (mode === "error") {
-    res.write(
-      'data: {"error":{"message":"fake model failure","type":"server_error"}}\n\n',
-    );
-    res.end();
-    return;
-  }
-  if (isToolStage(body)) {
-    streamToolCall(res, body);
-    return;
-  }
-  await streamText(res, body);
-});
-
-server.listen(port, host, () => {
-  console.log(`fake model listening on http://${host}:${port}`);
-});
+  console.log(
+    `fake model listening on ${started.url} scenario=${normalizeScenario(options.scenario)}`,
+  );
+  /**
+   * 优雅退出：关闭监听与所有连接，避免脚本残留。
+   *
+   * @param {string} signal 信号名
+   */
+  const shutdown = async (signal) => {
+    console.log(`fake model shutting down (${signal})`);
+    await started.close();
+    process.exit(0);
+  };
+  process.once("SIGTERM", () => void shutdown("SIGTERM"));
+  process.once("SIGINT", () => void shutdown("SIGINT"));
+}

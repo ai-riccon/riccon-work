@@ -1,0 +1,108 @@
+# command: RICCON_MASTER_KEY=$(cat /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/opencode/riccon-m04-v2/master.key) RICCON_CREDENTIAL_FINGERPRINT_PEPPER=$(cat /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/opencode/riccon-m04-v2/pepper.key) node scripts/ops/rewrap-credentials.mjs --verify-only --via=compose && RICCON_MASTER_KEY=$(cat /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/opencode/riccon-m04-v2/master-2.key) RICCON_MASTER_KEY_PREVIOUS=$(cat /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/opencode/riccon-m04-v2/master.key) RICCON_MASTER_KEY_PREVIOUS_ID=mk-1 RICCON_MASTER_KEY_ID=mk-2 RICCON_CREDENTIAL_FINGERPRINT_PEPPER=$(cat /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/opencode/riccon-m04-v2/pepper.key) node scripts/ops/rewrap-credentials.mjs --apply --via=compose && RICCON_MASTER_KEY=$(cat /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/opencode/riccon-m04-v2/master-2.key) RICCON_MASTER_KEY_ID=mk-2 RICCON_CREDENTIAL_FINGERPRINT_PEPPER=$(cat /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/opencode/riccon-m04-v2/pepper.key) node scripts/ops/rewrap-credentials.mjs --verify-only --via=compose && RICCON_MASTER_KEY=$(cat /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/opencode/riccon-m04-v2/master-2.key) RICCON_MASTER_KEY_PREVIOUS=$(cat /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/opencode/riccon-m04-v2/master.key) RICCON_MASTER_KEY_ID=mk-2 RICCON_CREDENTIAL_FINGERPRINT_PEPPER=$(cat /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/opencode/riccon-m04-v2/pepper.key) node scripts/ops/rewrap-credentials.mjs --verify-only --via=compose
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-21T15:53:39.517+08:00
+# finished_at: 2026-11-21T15:53:44.562+08:00
+# duration_ms: 5044
+# exit_code: 0
+
+# --- stdout ---
+{
+  "mode": "read-only",
+  "targetKeyId": "mk-1",
+  "dekRows": 2,
+  "credentialsChecked": 2,
+  "rewrapped": [],
+  "verified": [
+    {
+      "tenant": "platform",
+      "provider": "0192f0a0-0000-7000-8000-000000000101",
+      "credentialType": "API_KEY"
+    },
+    {
+      "tenant": "platform",
+      "provider": "0192f0a0-0000-7000-8000-000000000102",
+      "credentialType": "API_KEY"
+    }
+  ],
+  "failures": [],
+  "status": "passed"
+}
+{
+  "mode": "apply",
+  "targetKeyId": "mk-2",
+  "dekRows": 2,
+  "credentialsChecked": 2,
+  "rewrapped": [
+    {
+      "tenant": "platform",
+      "keyId": "mk-dek-1",
+      "from": "mk-1",
+      "to": "mk-2"
+    },
+    {
+      "tenant": "tenant-alpha",
+      "keyId": "ap-5155519f68a84acfa46d89724a8d15ed",
+      "from": "mk-1",
+      "to": "mk-2"
+    }
+  ],
+  "verified": [
+    {
+      "tenant": "platform",
+      "provider": "0192f0a0-0000-7000-8000-000000000101",
+      "credentialType": "API_KEY"
+    },
+    {
+      "tenant": "platform",
+      "provider": "0192f0a0-0000-7000-8000-000000000102",
+      "credentialType": "API_KEY"
+    }
+  ],
+  "failures": [],
+  "status": "passed"
+}
+{
+  "mode": "read-only",
+  "targetKeyId": "mk-2",
+  "dekRows": 2,
+  "credentialsChecked": 2,
+  "rewrapped": [],
+  "verified": [
+    {
+      "tenant": "platform",
+      "provider": "0192f0a0-0000-7000-8000-000000000101",
+      "credentialType": "API_KEY"
+    },
+    {
+      "tenant": "platform",
+      "provider": "0192f0a0-0000-7000-8000-000000000102",
+      "credentialType": "API_KEY"
+    }
+  ],
+  "failures": [],
+  "status": "passed"
+}
+{
+  "mode": "read-only",
+  "targetKeyId": "mk-2",
+  "dekRows": 2,
+  "credentialsChecked": 2,
+  "rewrapped": [],
+  "verified": [
+    {
+      "tenant": "platform",
+      "provider": "0192f0a0-0000-7000-8000-000000000101",
+      "credentialType": "API_KEY"
+    },
+    {
+      "tenant": "platform",
+      "provider": "0192f0a0-0000-7000-8000-000000000102",
+      "credentialType": "API_KEY"
+    }
+  ],
+  "failures": [],
+  "status": "passed"
+}
+
+# --- stderr ---
+

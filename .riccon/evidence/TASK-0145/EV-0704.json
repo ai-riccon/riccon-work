@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0704",
+  "task_id": "TASK-0145",
+  "command": "set -euo pipefail; NS=m19p3vvapi; node scripts/test-services.mjs reset --namespace \"$NS\"; rm -rf apps/api/target/surefire-reports apps/worker/target/surefire-reports platform/*/target/surefire-reports; START=$(date +%s); RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=\"$NS\" perl -e 'alarm shift; exec @ARGV' 1800 ./mvnw -q -T1C -pl apps/api -am test; END=$(date +%s); WALL=$((END-START)); node scripts/test-timings.mjs --out-dir \"$TMPDIR/m19p3vvapi/timings\"; TESTS=$(grep -ho 'tests=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); SKIPPED=$(grep -ho 'skipped=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); FAILURES=$(grep -ho 'failures=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); ERRORS=$(grep -ho 'errors=\"[0-9]*\"' apps/api/target/surefire-reports/TEST-*.xml | sed 's/[^0-9]//g' | awk '{sum += $1} END {print sum}'); test \"$TESTS\" = \"642\"; test \"$FAILURES\" = \"0\"; test \"$ERRORS\" = \"0\"; test \"$SKIPPED\" = \"0\"; test \"$WALL\" -lt 1800; ./mvnw -q spotless:check; git diff --check; node -e 'const [t,f,e,s,w]=process.argv.slice(1); console.log(\"verifier_api_full namespace=m19p3vvapi tests=\"+t+\" failures=\"+f+\" errors=\"+e+\" skipped=\"+s+\" wall_seconds=\"+w)' \"$TESTS\" \"$FAILURES\" \"$ERRORS\" \"$SKIPPED\" \"$WALL\"",
+  "manual": false,
+  "commit": "0af22002c8ef32f958171b99a2c0247defe2fc41",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0145/EV-0704-2026-11-22T00-14-26-682+08-00-set-euo-pipefail-ns-m19p3vvapi-node-scripts-test.log",
+  "output_sha256": "3e5fe2221190e6105fac3010deee1ad63b2df559a95c3e105dd5794ef723b5d7",
+  "output_bytes": 1265889,
+  "agent": "riccon/verifier",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-22T00:06:21.662+08:00",
+  "finished_at": "2026-11-22T00:14:26.083+08:00",
+  "duration_ms": 484420,
+  "note": "TASK-0145 独立 Verifier 全量 API 复跑：fresh namespace m19p3vvapi 先 reset，外部热栈；断言 642 用例/0 failure/0 error/0 skip，记录 API suite 与墙钟，并跑 spotless/git diff 检查",
+  "recorded_at": "2026-11-22T00:14:26.691+08:00"
+}

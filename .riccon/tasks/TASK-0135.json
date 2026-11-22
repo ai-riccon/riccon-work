@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0135",
+  "module_id": "M04",
+  "title": "M04 修复：配额存储故障指标名对齐 ADR",
+  "owner": "riccon/builder-quota",
+  "status": "done",
+  "write_scope": [
+    "apps/api/src/main/java/com/riccon/api/quota/**",
+    "apps/api/src/test/java/com/riccon/api/quota/**",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "指标名改为 riccon_quota_store_failure_total（单数），与 ADR-0022/THREAT 一致；保留 reason 标签",
+    "补/更新指标断言与 metrics-check/文档引用；不改配额语义/契约",
+    "定向测试 + EV"
+  ],
+  "evidence": [
+    "EV-0670"
+  ],
+  "tools_used": [
+    "serena"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-21T13:16:43.981+08:00",
+  "updated_at": "2026-11-21T14:35:09.493+08:00",
+  "baseline_commit": "b264062",
+  "end_commit": "76f7e9b"
+}

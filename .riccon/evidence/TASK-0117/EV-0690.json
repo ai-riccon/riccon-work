@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0690",
+  "task_id": "TASK-0117",
+  "command": "node --check scripts/test-timings.mjs && node scripts/test-timings.mjs --out-dir \"$TMPDIR/riccon-test-timings\" && mkdir -p \"$TMPDIR/riccon-empty-reports\" && if node scripts/test-timings.mjs --reports-root \"$TMPDIR/riccon-empty-reports\"; then echo \"unexpected: 空报告目录未失败\"; exit 1; fi && mkdir -p \"$TMPDIR/riccon-bad-reports/apps/api/target/surefire-reports\" && printf \"<not-a-testsuite/>\" > \"$TMPDIR/riccon-bad-reports/apps/api/target/surefire-reports/TEST-Broken.xml\" && if node scripts/test-timings.mjs --reports-root \"$TMPDIR/riccon-bad-reports\"; then echo \"unexpected: 坏 XML 未失败\"; exit 1; fi && ruby -ryaml -e \"YAML.load_file(%q{.github/workflows/ci.yml}); puts %q{YAML OK}\" && git diff --check && echo \"ALL CHECKS PASSED\"",
+  "manual": false,
+  "commit": "3123bb3fe5ffdf47049e731da087048d02c60f26",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0117/EV-0690-2026-11-21T17-55-20-919+08-00-node-check-scripts-test-timings-mjs-node-scripts.log",
+  "output_sha256": "72fa634234a11b33318deca68146715a9da729bb77ca9b26c6d0dcb66babac38",
+  "output_bytes": 3765,
+  "agent": "riccon/ops",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-21T17:55:19.567+08:00",
+  "finished_at": "2026-11-21T17:55:20.455+08:00",
+  "duration_ms": 887,
+  "note": "",
+  "recorded_at": "2026-11-21T17:55:20.922+08:00"
+}

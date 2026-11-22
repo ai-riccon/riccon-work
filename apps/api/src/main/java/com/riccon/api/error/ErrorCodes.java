@@ -97,6 +97,39 @@ public final class ErrorCodes {
     /** 读取审计时发现白名单外或敏感的 details 键，fail-closed（M10）。 */
     public static final String AUDIT_DETAILS_INVALID = "RICCON-AUDIT-500";
 
+    /** 模型端点不允许、演示端点用于生产、只读字段被写、链为空、未知模型或字段非法（M04，ADR-0021 §7.3）。 */
+    public static final String MODEL_INVALID_REQUEST = "RICCON-MODEL-400";
+
+    /** 路由版本冲突、凭据重复、凭据状态冲突或环境变量覆盖生效时修改开关（M04，ADR-0021 §7.3）。 */
+    public static final String MODEL_CONFLICT = "RICCON-MODEL-409";
+
+    /** 首字后断流；已生成内容保留，客户端可重试但不能自动重放（M04，ADR-0021 §5.3）。 */
+    public static final String MODEL_STREAM_INTERRUPTED = "RICCON-MODEL-502";
+
+    /** 全链不可用；员工可见文案统一为“模型服务暂不可用，请稍后重试。”（M04，ADR-0021 §5.3）。 */
+    public static final String MODEL_UNAVAILABLE = "RICCON-MODEL-503";
+
+    /** 首字后空闲超时；已生成内容保留，员工可重试（M04，ADR-0021 §5.3）。 */
+    public static final String MODEL_STREAM_TIMEOUT = "RICCON-MODEL-504";
+
+    /** 配额请求非法：负数、缺键或窗口非法（M04，ADR-0022 §3.3）。 */
+    public static final String QUOTA_INVALID_REQUEST = "RICCON-QUOTA-400";
+
+    /** 并发修改同一配额（M04 用整体替换，暂不需要；保留稳定码避免未来复用语义）（ADR-0022 §3.3）。 */
+    public static final String QUOTA_CONFLICT = "RICCON-QUOTA-409";
+
+    /** 配额超限；使用专用 QuotaExceededProblem，可区分“模型不可用”（M04，ADR-0022 §1.3）。 */
+    public static final String QUOTA_EXCEEDED = "RICCON-QUOTA-429";
+
+    /** 配额存储不可用，fail-closed 拒绝新 run（M04，ADR-0022 §1.7）。 */
+    public static final String QUOTA_UNAVAILABLE = "RICCON-QUOTA-503";
+
+    /** 成本查询时间范围、维度或分页非法（M04，ADR-0022 §3.3）。 */
+    public static final String COST_INVALID_REQUEST = "RICCON-COST-400";
+
+    /** 成本查询存储超时或不可用；不返回部分结果（M04，ADR-0022 §2.5）。 */
+    public static final String COST_UNAVAILABLE = "RICCON-COST-503";
+
     /** 未预期内部错误；响应不包含堆栈、SQL 或内部主机。 */
     public static final String INTERNAL = "RICCON-COMMON-500";
 

@@ -1,13 +1,15 @@
 ---
-review_id: REV-M10-001
+review_id: REV-M10-002
+previous_review: REV-M10-001
 module_id: M10
 verifier: riccon/verifier
 reviewer:
   agent: riccon/verifier
-  session: ses_verifier_M10_TASK-0083_20261119
+  session: ses_e08d1b473ffezoltlVNmpba9tZ
   model: deepseek-v4.1-flash
   independent: true
 review_kind: module
+head_commit: cb977f98a493bfb7db9f9d4b02731ac62e195053
 verdict: pass
 reviewed_evidence:
   - EV-0395
@@ -39,6 +41,7 @@ reviewed_evidence:
   - EV-0440
   - EV-0439
   - EV-0448
+  - EV-0493
 dod:
   acceptance: true
   build: true
@@ -55,9 +58,9 @@ dod_evidence:
   build:
     - EV-0435
   tests:
-    - EV-0438
+    - EV-0493
   coverage:
-    - EV-0443
+    - EV-0493
   e2e:
     - EV-0440
   docs:
@@ -122,7 +125,7 @@ findings:
     severity: P3
     status: accepted
     title: "OPS-008/009/010/013/014/015 仍属 M09/生产"
-    evidence: "M10-OPS-review；M10-ops-drill.md"
+    evidence: "M10-OPS-review；docs/M10-OPS-DRILL.md"
   - id: F-013
     severity: P3
     status: accepted
@@ -138,10 +141,23 @@ findings:
     status: accepted
     title: "ARCHITECTURE 评审状态表未随 REV-M10-ARCH-002 更新"
     evidence: "docs/ARCHITECTURE.md 评审状态表；ADR-0019/0020 proposed"
-created_at: "2026-11-19T18:36:17+08:00"
+  - id: REVALIDATION
+    severity: P3
+    status: fixed
+    title: "2026-11-20 用当前内核按合同 commands.test 重录 test/coverage；旧 review 归档为历史"
+    evidence: "EV-0493；旧 review REV-M10-001 归档于 .riccon/archive/reviews/M10-review-REV-M10-001.md"
+created_at: "2026-11-20T13:24:00+08:00"
 ---
 
 # REV-M10-001：M10（身份与审计纵深，M03b）模块独立验证
+
+## 0. 回溯说明（2026-11-20）
+
+- **回溯原因**：DEC-0022 合并后合同 `commands.test` 改为 `./mvnw -q -T1C verify jacoco:report && pnpm -w test -- --coverage`；本模块旧 test EV（EV-0438）命令文本不再匹配，`gate check` 在 2026-11-20 以 `EV-0438 command does not match commands.test` 失败。代码未回归，属于证据/流程漂移。
+- **本次动作**：在当前 HEAD `cb977f9`（工作树干净）上用合同 `commands.test` 全量重跑一次，并按项目规则同时作为 `test` 与 `coverage` 证据：**EV-0493**（挂 TASK-0065），exit 0，`commit=cb977f98a493bfb7db9f9d4b02731ac62e195053`，`dirty=false`。
+- **本次实测**：Java 765 tests（api 453 / worker 263 / platform-common 33 / arch 12 / domain 4），failures 0、errors 0、skipped 0；前端 46 文件 384 tests passed、0 skipped；前端覆盖率 statements 87.8% / branches 80.75% / functions 84.63% / lines 87.71%；Maven `verify` 含 `jacoco:check` 通过。
+- **评审边界**：本次只重录 test/coverage；真实栈 OIDC/审计/导出、E2E、a11y、security、V10 迁移回滚未重跑，仍绑定旧 EV（见正文 §2–§7），原结论不扩大。旧 review `REV-M10-001` 原样归档在 `.riccon/archive/reviews/M10-review-REV-M10-001.md`。
+- **findings 处理**：旧 findings 全部保留，状态未改（P2/P3，F-001 为 accepted residual）；正文为旧评审原文，当前状态以 front matter 为准。
 
 ## 1. 结论
 
@@ -156,16 +172,16 @@ created_at: "2026-11-19T18:36:17+08:00"
 
 ## 2. 验证范围与证据
 
-| 检查      | 命令                                                           | 结果                                    |
-| --------- | -------------------------------------------------------------- | --------------------------------------- |
-| build     | `./mvnw -q -T1C -DskipTests package && pnpm -w build`                                                | exit 0（EV-0435）                  |
-| tests     | `./mvnw -q -T1C verify && pnpm -w test`                                                 | exit 0，751 tests（0 fail / 0 error / 0 skip；121 个 fresh surefire 报告）（EV-0438）   |
-| coverage  | `./mvnw -q -T1C verify jacoco:report && pnpm -w test -- --coverage --no-file-parallelism`                                             | exit 0，API line 91.49% / branch 73.99%（EV-0443） |
-| 合同 E2E  | `docker compose -f deploy/compose/docker-compose.test.yml up -d --wait && pnpm -w e2e`                                                  | exit 0，26 passed（EV-0440）     |
-| a11y      | `pnpm -w a11y`                                                 | exit 0，8 passed（EV-0439）   |
-| security  | `trivy fs --scanners vuln,secret,misconfig --skip-dirs node_modules --skip-dirs target --skip-dirs .git --exit-code 1 .`                                             | exit 0，trivy exit 0（仅既有 .trivyignore 抑制）（EV-0436） |
-| 真实栈    | `REAL_EVIDENCE_TASK=TASK-0083 node scripts/real-stack/run.mjs` | exit 0，真实栈全部阶段通过（EV-0448）   |
-| docs/diff | `git diff --check`                                             | exit 0（EV-0437）                   |
+| 检查      | 命令                                                                                                                     | 结果                                                                                  |
+| --------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| build     | `./mvnw -q -T1C -DskipTests package && pnpm -w build`                                                                    | exit 0（EV-0435）                                                                     |
+| tests     | `./mvnw -q -T1C verify && pnpm -w test`                                                                                  | exit 0，751 tests（0 fail / 0 error / 0 skip；121 个 fresh surefire 报告）（EV-0438） |
+| coverage  | `./mvnw -q -T1C verify jacoco:report && pnpm -w test -- --coverage --no-file-parallelism`                                | exit 0，API line 91.49% / branch 73.99%（EV-0443）                                    |
+| 合同 E2E  | `docker compose -f deploy/compose/docker-compose.test.yml up -d --wait && pnpm -w e2e`                                   | exit 0，26 passed（EV-0440）                                                          |
+| a11y      | `pnpm -w a11y`                                                                                                           | exit 0，8 passed（EV-0439）                                                           |
+| security  | `trivy fs --scanners vuln,secret,misconfig --skip-dirs node_modules --skip-dirs target --skip-dirs .git --exit-code 1 .` | exit 0，trivy exit 0（仅既有 .trivyignore 抑制）（EV-0436）                           |
+| 真实栈    | `REAL_EVIDENCE_TASK=TASK-0083 node scripts/real-stack/run.mjs`                                                           | exit 0，真实栈全部阶段通过（EV-0448）                                                 |
+| docs/diff | `git diff --check`                                                                                                       | exit 0（EV-0437）                                                                     |
 
 覆盖率为避免 Vitest 文件级并行在插桩下的计时抖动影响既有 `audit/index.test.tsx`，在同一条合同 coverage 命令后追加 `--no-file-parallelism`（同一套件、同一覆盖率阈值；合同命令前缀仍被 EV 覆盖）。这不改变被测代码，也不跳过任何测试。
 
@@ -241,7 +257,7 @@ created_at: "2026-11-19T18:36:17+08:00"
 - `V10MigrationTest`（11 tests，一次性 Testcontainers MySQL 8.4）：V1–V8 → seed M02 → V9 → seed M03/audit → V10；表/租户键/复合外键/CHECK/状态机/索引列序/权限回填/M02-M03 可读/空库 fresh install/回滚 V9/失败注入 repair 重跑全部通过。
 - 回滚包含 `flyway_schema_history` V10 行删除与 `MAX(version)=9` 校验；不接触生产。
 - `SchemaVersionCheckerTest` 5/5；真实栈 worker 在 schema 10 上健康。
-- OPS 演练记录见 `.riccon/reviews/M10-ops-drill.md`：OPS-005/006/007 测试环境通过；OPS-004 的 schema 前置通过，完整协调切换与 OPS-010 OIDC 回滚锁死仍是生产发布前置，未冒充已验证。
+- OPS 演练记录见 `docs/M10-OPS-DRILL.md`：OPS-005/006/007 测试环境通过；OPS-004 的 schema 前置通过，完整协调切换与 OPS-010 OIDC 回滚锁死仍是生产发布前置，未冒充已验证。
 
 ## 8. Findings
 

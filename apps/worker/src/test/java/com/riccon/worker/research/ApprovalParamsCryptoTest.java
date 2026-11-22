@@ -26,17 +26,19 @@ class ApprovalParamsCryptoTest extends WorkerIntegrationTestBase {
     @Autowired
     private ApprovalParamsCrypto crypto;
 
-    /** 测试租户。 */
-    private static final String TENANT = "tenant-a";
+    /** 测试租户；每个测试唯一。 */
+    private String tenant;
 
-    /** 另一租户。 */
-    private static final String OTHER_TENANT = "tenant-b";
+    /** 另一租户；每个测试唯一。 */
+    private String otherTenant;
 
-    /** 每个用例创建租户；tenant_data_key 外键依赖 tenant 行。 */
+    /** 每个用例创建唯一租户；tenant_data_key 外键依赖 tenant 行。 */
     @BeforeEach
     void createTenants() {
-        data.createTenant(TENANT);
-        data.createTenant(OTHER_TENANT);
+        tenant = uniqueTenant("tenant-a");
+        otherTenant = uniqueTenant("tenant-b");
+        data.createTenant(tenant);
+        data.createTenant(otherTenant);
     }
 
     /** 同租户同审批往返；密文与明文不同且使用租户 DEK。 */
@@ -46,26 +48,26 @@ class ApprovalParamsCryptoTest extends WorkerIntegrationTestBase {
         String json = "{\"text\":\"market-data\",\"limit\":5}";
         String sha = Digests.sha256Hex(json);
 
-        ApprovalParamsCrypto.Sealed sealed = inTenant(TENANT, () -> crypto.seal(TenantId.of(TENANT), approvalId, json));
+        ApprovalParamsCrypto.Sealed sealed = inTenant(tenant, () -> crypto.seal(TenantId.of(tenant), approvalId, json));
         Map<String, Object> opened = inTenant(
-                TENANT, () -> crypto.open(TenantId.of(TENANT), approvalId, sealed.keyId(), sealed.ciphertext(), sha));
+                tenant, () -> crypto.open(TenantId.of(tenant), approvalId, sealed.keyId(), sealed.ciphertext(), sha));
 
         assertThat(opened).containsEntry("text", "market-data").containsEntry("limit", 5);
         assertThat(sealed.ciphertext().length).isGreaterThan(json.getBytes(StandardCharsets.UTF_8).length);
         assertThat(new String(sealed.ciphertext(), StandardCharsets.UTF_8)).doesNotContain("market-data");
-        assertThat(keyCount(TENANT)).isEqualTo(1);
+        assertThat(keyCount(tenant)).isEqualTo(1);
     }
 
     /** 同一租户重复加密复用当前 DEK，不产生密钥膨胀。 */
     @Test
     void seal_reusesActiveTenantKey() {
         ApprovalParamsCrypto.Sealed first =
-                inTenant(TENANT, () -> crypto.seal(TenantId.of(TENANT), UUID.randomUUID(), "{\"a\":1}"));
+                inTenant(tenant, () -> crypto.seal(TenantId.of(tenant), UUID.randomUUID(), "{\"a\":1}"));
         ApprovalParamsCrypto.Sealed second =
-                inTenant(TENANT, () -> crypto.seal(TenantId.of(TENANT), UUID.randomUUID(), "{\"b\":2}"));
+                inTenant(tenant, () -> crypto.seal(TenantId.of(tenant), UUID.randomUUID(), "{\"b\":2}"));
 
         assertThat(second.keyId()).isEqualTo(first.keyId());
-        assertThat(keyCount(TENANT)).isEqualTo(1);
+        assertThat(keyCount(tenant)).isEqualTo(1);
     }
 
     /** 篡改密文必须认证失败，不能返回任何明文。 */
@@ -73,13 +75,13 @@ class ApprovalParamsCryptoTest extends WorkerIntegrationTestBase {
     void open_tamperedCiphertext_fails() {
         UUID approvalId = UUID.randomUUID();
         String json = "{\"text\":\"secretish\"}";
-        ApprovalParamsCrypto.Sealed sealed = inTenant(TENANT, () -> crypto.seal(TenantId.of(TENANT), approvalId, json));
+        ApprovalParamsCrypto.Sealed sealed = inTenant(tenant, () -> crypto.seal(TenantId.of(tenant), approvalId, json));
         byte[] tampered = sealed.ciphertext();
         tampered[tampered.length - 1] ^= 0x01;
 
         assertCryptoFailure(() -> inTenant(
-                TENANT,
-                () -> crypto.open(TenantId.of(TENANT), approvalId, sealed.keyId(), tampered, Digests.sha256Hex(json))));
+                tenant,
+                () -> crypto.open(TenantId.of(tenant), approvalId, sealed.keyId(), tampered, Digests.sha256Hex(json))));
     }
 
     /** 缺失密文、key id 或摘要都必须拒绝，禁止回退到预览明文。 */
@@ -87,10 +89,10 @@ class ApprovalParamsCryptoTest extends WorkerIntegrationTestBase {
     void open_missingEnvelope_fails() {
         UUID approvalId = UUID.randomUUID();
         assertCryptoFailure(
-                () -> inTenant(TENANT, () -> crypto.open(TenantId.of(TENANT), approvalId, null, null, null)));
+                () -> inTenant(tenant, () -> crypto.open(TenantId.of(tenant), approvalId, null, null, null)));
         assertCryptoFailure(() -> inTenant(
-                TENANT,
-                () -> crypto.open(TenantId.of(TENANT), approvalId, "ap-missing", new byte[29], "a".repeat(64))));
+                tenant,
+                () -> crypto.open(TenantId.of(tenant), approvalId, "ap-missing", new byte[29], "a".repeat(64))));
     }
 
     /** 使用同一租户的另一把 DEK 解密必须失败（key id 选择与 GCM 认证双重绑定）。 */
@@ -98,11 +100,11 @@ class ApprovalParamsCryptoTest extends WorkerIntegrationTestBase {
     void open_wrongKey_fails() {
         UUID approvalId = UUID.randomUUID();
         String json = "{\"text\":\"market-data\"}";
-        ApprovalParamsCrypto.Sealed sealed = inTenant(TENANT, () -> crypto.seal(TenantId.of(TENANT), approvalId, json));
+        ApprovalParamsCrypto.Sealed sealed = inTenant(tenant, () -> crypto.seal(TenantId.of(tenant), approvalId, json));
         String otherKeyId = "ap-" + UUID.randomUUID().toString().replace("-", "");
         byte[] dek = TestCredentials.newDek();
         TestCredentials.WrappedDek wrapped = TestCredentials.wrap(
-                TestCredentials.MASTER_KEY_BASE64, TENANT, ApprovalParamsKeyJdbc.PURPOSE, otherKeyId, dek);
+                TestCredentials.MASTER_KEY_BASE64, tenant, ApprovalParamsKeyJdbc.PURPOSE, otherKeyId, dek);
         jdbcClient
                 .sql("""
                         INSERT INTO tenant_data_key
@@ -110,7 +112,7 @@ class ApprovalParamsCryptoTest extends WorkerIntegrationTestBase {
                         VALUES
                             (:tenantId, :keyId, :purpose, :wrappedDek, :wrapNonce, 'AES-256-GCM', :masterKeyId)
                         """)
-                .param("tenantId", TENANT)
+                .param("tenantId", tenant)
                 .param("keyId", otherKeyId)
                 .param("purpose", ApprovalParamsKeyJdbc.PURPOSE)
                 .param("wrappedDek", wrapped.wrappedDek())
@@ -119,9 +121,9 @@ class ApprovalParamsCryptoTest extends WorkerIntegrationTestBase {
                 .update();
 
         assertCryptoFailure(() -> inTenant(
-                TENANT,
+                tenant,
                 () -> crypto.open(
-                        TenantId.of(TENANT), approvalId, otherKeyId, sealed.ciphertext(), Digests.sha256Hex(json))));
+                        TenantId.of(tenant), approvalId, otherKeyId, sealed.ciphertext(), Digests.sha256Hex(json))));
     }
 
     /** 跨租户使用同一 key id 不可见，直接失败。 */
@@ -129,12 +131,12 @@ class ApprovalParamsCryptoTest extends WorkerIntegrationTestBase {
     void open_crossTenant_fails() {
         UUID approvalId = UUID.randomUUID();
         String json = "{\"text\":\"market-data\"}";
-        ApprovalParamsCrypto.Sealed sealed = inTenant(TENANT, () -> crypto.seal(TenantId.of(TENANT), approvalId, json));
+        ApprovalParamsCrypto.Sealed sealed = inTenant(tenant, () -> crypto.seal(TenantId.of(tenant), approvalId, json));
 
         assertCryptoFailure(() -> inTenant(
-                OTHER_TENANT,
+                otherTenant,
                 () -> crypto.open(
-                        TenantId.of(OTHER_TENANT),
+                        TenantId.of(otherTenant),
                         approvalId,
                         sealed.keyId(),
                         sealed.ciphertext(),
@@ -146,12 +148,12 @@ class ApprovalParamsCryptoTest extends WorkerIntegrationTestBase {
     void open_hashMismatch_fails() {
         UUID approvalId = UUID.randomUUID();
         String json = "{\"text\":\"market-data\"}";
-        ApprovalParamsCrypto.Sealed sealed = inTenant(TENANT, () -> crypto.seal(TenantId.of(TENANT), approvalId, json));
+        ApprovalParamsCrypto.Sealed sealed = inTenant(tenant, () -> crypto.seal(TenantId.of(tenant), approvalId, json));
 
         assertCryptoFailure(() -> inTenant(
-                TENANT,
+                tenant,
                 () -> crypto.open(
-                        TenantId.of(TENANT), approvalId, sealed.keyId(), sealed.ciphertext(), "f".repeat(64))));
+                        TenantId.of(tenant), approvalId, sealed.keyId(), sealed.ciphertext(), "f".repeat(64))));
     }
 
     /** 解密后仍含敏感键时失败，防止历史/异常数据进入工具调用。 */
@@ -159,12 +161,12 @@ class ApprovalParamsCryptoTest extends WorkerIntegrationTestBase {
     void open_sensitivePlaintext_fails() {
         UUID approvalId = UUID.randomUUID();
         String json = "{\"apiKey\":\"should-not-run\"}";
-        ApprovalParamsCrypto.Sealed sealed = inTenant(TENANT, () -> crypto.seal(TenantId.of(TENANT), approvalId, json));
+        ApprovalParamsCrypto.Sealed sealed = inTenant(tenant, () -> crypto.seal(TenantId.of(tenant), approvalId, json));
 
         assertCryptoFailure(() -> inTenant(
-                TENANT,
+                tenant,
                 () -> crypto.open(
-                        TenantId.of(TENANT),
+                        TenantId.of(tenant),
                         approvalId,
                         sealed.keyId(),
                         sealed.ciphertext(),
@@ -176,7 +178,7 @@ class ApprovalParamsCryptoTest extends WorkerIntegrationTestBase {
     void seal_oversized_fails() {
         String json = "{\"text\":\"" + "x".repeat(ApprovalParamsCrypto.MAX_PARAMS_BYTES) + "\"}";
 
-        assertThatThrownBy(() -> inTenant(TENANT, () -> crypto.seal(TenantId.of(TENANT), UUID.randomUUID(), json)))
+        assertThatThrownBy(() -> inTenant(tenant, () -> crypto.seal(TenantId.of(tenant), UUID.randomUUID(), json)))
                 .isInstanceOf(AgentException.class)
                 .satisfies(error ->
                         assertThat(((AgentException) error).errorCode()).isEqualTo(AgentException.INVALID));

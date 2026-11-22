@@ -1,0 +1,140 @@
+# command: pnpm exec playwright test --config e2e/playwright.config.ts e2e/tests/j1.spec.ts --reporter=line
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-20T15:34:18.837+08:00
+# finished_at: 2026-11-20T15:35:03.330+08:00
+# duration_ms: 44492
+# exit_code: 1
+
+# --- stdout ---
+
+
+Running 5 tests using 1 worker
+
+[1/5] [chromium] › e2e/tests/j1.spec.ts:54:3 › J1 通用问答与文件处理 › 上传、流式引用、停止与重开完整闭环 @a11y
+[2/5] [chromium] › e2e/tests/j1.spec.ts:109:3 › J1 通用问答与文件处理 › 回答完成后按需查看运行详情与模型调用记录 @a11y
+[3/5] [chromium] › e2e/tests/j1.spec.ts:139:5 › J1 通用问答与文件处理 › XLSX 上传后显示解析成功并可提问引用 @a11y
+  1) [chromium] › e2e/tests/j1.spec.ts:139:5 › J1 通用问答与文件处理 › XLSX 上传后显示解析成功并可提问引用 @a11y ───────────
+
+    Error: 发现 serious/critical 可访问性问题：
+    color-contrast (serious): Elements must meet minimum color contrast ratio thresholds -> button[aria-describedby="file-hint"] > span:nth-child(2)
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 0
+    Received length: 1
+    Received array:  [{"description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds", "help": "Elements must meet minimum color contrast ratio thresholds", "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright", "id": "color-contrast", "impact": "serious", "nodes": [{"all": [], "any": [{"data": {"bgColor": "#ffffff", "contrastRatio": 4.16, "expectedContrastRatio": "4.5:1", "fgColor": "#2e7ae6", "fontSize": "10.5pt (14px)", "fontWeight": "normal", "messageKey": null}, "id": "color-contrast", "impact": "serious", "message": "Element has insufficient color contrast of 4.16 (foreground color: #2e7ae6, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1", "relatedNodes": [{"html": "<button aria-describedby=\"file-hint\" type=\"button\" class=\"ant-btn css-dev-only-do-not-override-pbsm9t css-var-_r_0_ ant-btn-default ant-btn-color-default ant-btn-variant-outlined ant-btn-sm\">", "target": ["button[aria-describedby=\"file-hint\"]"]}]}], "failureSummary": "Fix any of the following:
+      Element has insufficient color contrast of 4.16 (foreground color: #2e7ae6, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1", "html": "<span>上传文件</span>", "impact": "serious", "none": [], "target": ["button[aria-describedby=\"file-hint\"] > span:nth-child(2)"]}], "tags": ["cat.color", "wcag2aa", "wcag143", "TTv5", "TT13.c", "EN-301-549", "EN-9.1.4.3", "ACT", "RGAAv4", "RGAA-3.2.1"]}]
+
+       at a11y.ts:28
+
+      26 |     .join('\n');
+      27 |
+    > 28 |   expect(blocking, `发现 serious/critical 可访问性问题：\n${detail}`).toHaveLength(0);
+         |                                                              ^
+      29 | }
+      30 |
+        at expectNoSeriousA11yViolations (/Users/ricky/Documents/projects/riccon-work/e2e/tests/a11y.ts:28:62)
+        at /Users/ricky/Documents/projects/riccon-work/e2e/tests/j1.spec.ts:175:7
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/j1-J1-通用问答与文件处理-XLSX-上传后显示解析成功并可提问引用-a11y-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/j1-J1-通用问答与文件处理-XLSX-上传后显示解析成功并可提问引用-a11y-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/j1-J1-通用问答与文件处理-XLSX-上传后显示解析成功并可提问引用-a11y-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/j1-J1-通用问答与文件处理-XLSX-上传后显示解析成功并可提问引用-a11y-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[4/5] [chromium] › e2e/tests/j1.spec.ts:139:5 › J1 通用问答与文件处理 › PNG 上传后显示解析成功并可提问引用 @a11y
+  2) [chromium] › e2e/tests/j1.spec.ts:139:5 › J1 通用问答与文件处理 › PNG 上传后显示解析成功并可提问引用 @a11y ────────────
+
+    Error: 发现 serious/critical 可访问性问题：
+    color-contrast (serious): Elements must meet minimum color contrast ratio thresholds -> button[aria-describedby="file-hint"] > span:nth-child(2)
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 0
+    Received length: 1
+    Received array:  [{"description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds", "help": "Elements must meet minimum color contrast ratio thresholds", "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright", "id": "color-contrast", "impact": "serious", "nodes": [{"all": [], "any": [{"data": {"bgColor": "#ffffff", "contrastRatio": 4.16, "expectedContrastRatio": "4.5:1", "fgColor": "#2e7ae6", "fontSize": "10.5pt (14px)", "fontWeight": "normal", "messageKey": null}, "id": "color-contrast", "impact": "serious", "message": "Element has insufficient color contrast of 4.16 (foreground color: #2e7ae6, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1", "relatedNodes": [{"html": "<button aria-describedby=\"file-hint\" type=\"button\" class=\"ant-btn css-dev-only-do-not-override-pbsm9t css-var-_r_0_ ant-btn-default ant-btn-color-default ant-btn-variant-outlined ant-btn-sm\">", "target": ["button[aria-describedby=\"file-hint\"]"]}]}], "failureSummary": "Fix any of the following:
+      Element has insufficient color contrast of 4.16 (foreground color: #2e7ae6, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1", "html": "<span>上传文件</span>", "impact": "serious", "none": [], "target": ["button[aria-describedby=\"file-hint\"] > span:nth-child(2)"]}], "tags": ["cat.color", "wcag2aa", "wcag143", "TTv5", "TT13.c", "EN-301-549", "EN-9.1.4.3", "ACT", "RGAAv4", "RGAA-3.2.1"]}]
+
+       at a11y.ts:28
+
+      26 |     .join('\n');
+      27 |
+    > 28 |   expect(blocking, `发现 serious/critical 可访问性问题：\n${detail}`).toHaveLength(0);
+         |                                                              ^
+      29 | }
+      30 |
+        at expectNoSeriousA11yViolations (/Users/ricky/Documents/projects/riccon-work/e2e/tests/a11y.ts:28:62)
+        at /Users/ricky/Documents/projects/riccon-work/e2e/tests/j1.spec.ts:175:7
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/j1-J1-通用问答与文件处理-PNG-上传后显示解析成功并可提问引用-a11y-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/j1-J1-通用问答与文件处理-PNG-上传后显示解析成功并可提问引用-a11y-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/j1-J1-通用问答与文件处理-PNG-上传后显示解析成功并可提问引用-a11y-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/j1-J1-通用问答与文件处理-PNG-上传后显示解析成功并可提问引用-a11y-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[5/5] [chromium] › e2e/tests/j1.spec.ts:139:5 › J1 通用问答与文件处理 › JPEG 上传后显示解析成功并可提问引用 @a11y
+  3) [chromium] › e2e/tests/j1.spec.ts:139:5 › J1 通用问答与文件处理 › JPEG 上传后显示解析成功并可提问引用 @a11y ───────────
+
+    Error: 发现 serious/critical 可访问性问题：
+    color-contrast (serious): Elements must meet minimum color contrast ratio thresholds -> button[aria-describedby="file-hint"] > span:nth-child(2)
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 0
+    Received length: 1
+    Received array:  [{"description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds", "help": "Elements must meet minimum color contrast ratio thresholds", "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=playwright", "id": "color-contrast", "impact": "serious", "nodes": [{"all": [], "any": [{"data": {"bgColor": "#ffffff", "contrastRatio": 4.16, "expectedContrastRatio": "4.5:1", "fgColor": "#2e7ae6", "fontSize": "10.5pt (14px)", "fontWeight": "normal", "messageKey": null}, "id": "color-contrast", "impact": "serious", "message": "Element has insufficient color contrast of 4.16 (foreground color: #2e7ae6, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1", "relatedNodes": [{"html": "<button aria-describedby=\"file-hint\" type=\"button\" class=\"ant-btn css-dev-only-do-not-override-pbsm9t css-var-_r_0_ ant-btn-default ant-btn-color-default ant-btn-variant-outlined ant-btn-sm\">", "target": ["button[aria-describedby=\"file-hint\"]"]}]}], "failureSummary": "Fix any of the following:
+      Element has insufficient color contrast of 4.16 (foreground color: #2e7ae6, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1", "html": "<span>上传文件</span>", "impact": "serious", "none": [], "target": ["button[aria-describedby=\"file-hint\"] > span:nth-child(2)"]}], "tags": ["cat.color", "wcag2aa", "wcag143", "TTv5", "TT13.c", "EN-301-549", "EN-9.1.4.3", "ACT", "RGAAv4", "RGAA-3.2.1"]}]
+
+       at a11y.ts:28
+
+      26 |     .join('\n');
+      27 |
+    > 28 |   expect(blocking, `发现 serious/critical 可访问性问题：\n${detail}`).toHaveLength(0);
+         |                                                              ^
+      29 | }
+      30 |
+        at expectNoSeriousA11yViolations (/Users/ricky/Documents/projects/riccon-work/e2e/tests/a11y.ts:28:62)
+        at /Users/ricky/Documents/projects/riccon-work/e2e/tests/j1.spec.ts:175:7
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/j1-J1-通用问答与文件处理-JPEG-上传后显示解析成功并可提问引用-a11y-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/j1-J1-通用问答与文件处理-JPEG-上传后显示解析成功并可提问引用-a11y-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/j1-J1-通用问答与文件处理-JPEG-上传后显示解析成功并可提问引用-a11y-chromium/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/j1-J1-通用问答与文件处理-JPEG-上传后显示解析成功并可提问引用-a11y-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+  3 failed
+    [chromium] › e2e/tests/j1.spec.ts:139:5 › J1 通用问答与文件处理 › XLSX 上传后显示解析成功并可提问引用 @a11y ────────────
+    [chromium] › e2e/tests/j1.spec.ts:139:5 › J1 通用问答与文件处理 › PNG 上传后显示解析成功并可提问引用 @a11y ─────────────
+    [chromium] › e2e/tests/j1.spec.ts:139:5 › J1 通用问答与文件处理 › JPEG 上传后显示解析成功并可提问引用 @a11y ────────────
+  2 passed (43.5s)
+
+# --- stderr ---
+[WebServer] (node:43508) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)

@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0137",
+  "module_id": "M04",
+  "title": "M04 修复：k6 平台 Cookie 隔离与 PERF-M04-002",
+  "owner": "riccon/builder-gateway-e2e",
+  "status": "done",
+  "write_scope": [
+    "e2e/perf/**",
+    "scripts/real-stack/**",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "k6 平台/租户/员工登录 Cookie 隔离（每角色独立 jar/headers），平台读开关不再 403",
+    "PERF-M04-002 可执行：50 VU 配额争用、零超卖、退出码/报告；PERF-M04-001 一并可复现",
+    "不改生产代码/契约；跑通 perf 并录 EV（含 host 规格/k6 版本）"
+  ],
+  "evidence": [
+    "EV-0669"
+  ],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-21T13:16:44.394+08:00",
+  "updated_at": "2026-11-21T14:35:17.151+08:00",
+  "baseline_commit": "a109320",
+  "end_commit": "efabac9fddcf63bde96cb3a8221fe587f25f83ff"
+}

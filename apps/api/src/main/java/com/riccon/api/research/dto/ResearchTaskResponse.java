@@ -52,7 +52,7 @@ public record ResearchTaskResponse(
                 task.mcpToolId(),
                 task.currentRunId(),
                 task.failureCode(),
-                task.failureMessage(),
+                ResearchFailureText.message(task.failureCode(), task.failureMessage()),
                 task.createdAt(),
                 task.startedAt(),
                 task.finishedAt());

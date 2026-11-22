@@ -1,0 +1,68 @@
+{
+  "status": "partial",
+  "partialReasons": [
+    "凭据可解密判据未执行: 缺少 RICCON_MASTER_KEY / pepper",
+    "J1 冒烟未执行: 未提供 --api-base"
+  ],
+  "rto": {
+    "limitHours": 4,
+    "actualHours": 0.0016
+  },
+  "rpo": {
+    "declaredHours": 24,
+    "note": "每 24h 全量备份 + binlog；客户生产可由 SOW 覆盖"
+  },
+  "failures": [],
+  "options": {
+    "source": "riccon",
+    "target": "riccon_restore_drill",
+    "via": "compose"
+  },
+  "source": {
+    "tables": 46,
+    "triggers": 2,
+    "schemaVersion": 11,
+    "dataKeys": 1,
+    "credentials": 2
+  },
+  "restored": {
+    "tables": 46,
+    "triggers": 2,
+    "schemaVersion": 11,
+    "dataKeys": 1,
+    "credentials": 2
+  },
+  "dump": {
+    "bytes": 16768552,
+    "path": null
+  },
+  "restoreMs": 4950,
+  "rtoMs": 5764,
+  "grants": {
+    "applied": true,
+    "user": "riccon",
+    "hosts": [
+      "%"
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ],
+    "scope": "riccon_restore_drill.*"
+  },
+  "credentialCheck": {
+    "status": "skipped",
+    "detail": null,
+    "reason": "缺少 RICCON_MASTER_KEY / pepper"
+  },
+  "j1": {
+    "status": "skipped",
+    "reason": "未提供 --api-base"
+  },
+  "cleanup": "dropped",
+  "revokedGrants": [
+    "riccon@%"
+  ]
+}

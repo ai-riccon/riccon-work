@@ -71,9 +71,10 @@ class ChatStreamFirstTokenIntegrationTest extends WorkerIntegrationTestBase {
     /** 模型目录是全局表，同一测试内多次请求只建一次。 */
     private boolean catalogCreated;
 
-    /** 启动模型桩。 */
+    /** 启动模型桩；恢复 M04 全局模型基线。 */
     @BeforeEach
     void setUp() {
+        resetModelGatewayState();
         stub = new TestModelStub();
         catalogCreated = false;
     }
@@ -183,8 +184,9 @@ class ChatStreamFirstTokenIntegrationTest extends WorkerIntegrationTestBase {
         return (System.nanoTime() - startedAt) / 1_000_000;
     }
 
-    /** 构造对话夹具；模型目录全局唯一，只创建一次。 */
-    private Fixture fixture(String tenant, String question) {
+    /** 构造对话夹具；模型目录全局唯一，只创建一次；每个租户 ID 带随机后缀。 */
+    private Fixture fixture(String tenantPrefix, String question) {
+        String tenant = uniqueTenant(tenantPrefix);
         UUID user = seedTenant(tenant);
         UUID workspace = data.createWorkspace(tenant, user);
         UUID conversation = data.createConversation(tenant, workspace, user);

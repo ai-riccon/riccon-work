@@ -5,12 +5,12 @@ import com.riccon.worker.agent.domain.AgentSession;
 import com.riccon.worker.agent.domain.RetrievedChunk;
 import com.riccon.worker.config.AgentProperties;
 import com.riccon.worker.mcp.domain.McpToolHandle;
-import com.riccon.worker.model.domain.ResolvedModel;
-import com.riccon.worker.model.service.ModelRegistry;
+import com.riccon.worker.model.domain.ModelTarget;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.agent.RuntimeContext;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
+import io.agentscope.core.model.Model;
 import io.agentscope.core.permission.PermissionBehavior;
 import io.agentscope.core.permission.PermissionContextState;
 import io.agentscope.core.permission.PermissionRule;
@@ -35,9 +35,6 @@ public class ResearchAgentService {
     /** 检索服务。 */
     private final KnowledgeRetriever retriever;
 
-    /** 模型解析。 */
-    private final ModelRegistry modelRegistry;
-
     /** Agent 配置。 */
     private final AgentProperties properties;
 
@@ -45,12 +42,10 @@ public class ResearchAgentService {
      * 创建报告 Agent 服务。
      *
      * @param retriever 检索服务
-     * @param modelRegistry 模型解析
      * @param properties Agent 配置
      */
-    public ResearchAgentService(KnowledgeRetriever retriever, ModelRegistry modelRegistry, AgentProperties properties) {
+    public ResearchAgentService(KnowledgeRetriever retriever, AgentProperties properties) {
         this.retriever = Objects.requireNonNull(retriever, "retriever must not be null");
-        this.modelRegistry = Objects.requireNonNull(modelRegistry, "modelRegistry must not be null");
         this.properties = Objects.requireNonNull(properties, "properties must not be null");
     }
 
@@ -62,7 +57,8 @@ public class ResearchAgentService {
      * @param userId 用户 ID
      * @param topic 调研主题
      * @param handle 已授权 MCP 工具
-     * @param resolvedModel 本次模型
+     * @param model 带降级的 ChatModel
+     * @param target 链首模型快照（不含明文）
      * @return Agent 会话
      */
     public AgentSession prepareToolStage(
@@ -71,7 +67,8 @@ public class ResearchAgentService {
             UUID userId,
             String topic,
             McpToolHandle handle,
-            ResolvedModel resolvedModel) {
+            Model model,
+            ModelTarget target) {
         List<RetrievedChunk> citations = retriever.retrieveKnowledge(tenantId, topic);
         String prompt = "调研主题：" + topic + "\n"
                 + (citations.isEmpty()
@@ -94,7 +91,7 @@ public class ResearchAgentService {
                         new PermissionRule(handle.tool().name(), null, PermissionBehavior.ASK, "riccon-hitl"))
                 .build();
         ReActAgent agent = buildAgent(
-                "riccon-research-tool", AgentPrompts.RESEARCH_TOOL_SYSTEM, resolvedModel, toolkit, permissionContext);
+                "riccon-research-tool", AgentPrompts.RESEARCH_TOOL_SYSTEM, model, toolkit, permissionContext);
         RuntimeContext runtimeContext = RuntimeContext.builder()
                 .userId(userId.toString())
                 .sessionId(runId.toString())
@@ -105,7 +102,7 @@ public class ResearchAgentService {
                 .textContent(prompt)
                 .build();
         return new AgentSession(
-                agent, agent.streamEvents(List.of(message), runtimeContext), runtimeContext, resolvedModel, citations);
+                agent, agent.streamEvents(List.of(message), runtimeContext), runtimeContext, target, citations);
     }
 
     /**
@@ -116,11 +113,18 @@ public class ResearchAgentService {
      * @param userId 用户 ID
      * @param topic 调研主题
      * @param toolResult 已批准工具结果文本
-     * @param resolvedModel 本次模型
+     * @param model 带降级的 ChatModel
+     * @param target 链首模型快照（不含明文）
      * @return Agent 会话
      */
     public AgentSession prepareGenerationStage(
-            TenantId tenantId, UUID runId, UUID userId, String topic, String toolResult, ResolvedModel resolvedModel) {
+            TenantId tenantId,
+            UUID runId,
+            UUID userId,
+            String topic,
+            String toolResult,
+            Model model,
+            ModelTarget target) {
         List<RetrievedChunk> citations = retriever.retrieveKnowledge(tenantId, topic);
         String prompt = "调研主题：" + topic + "\n"
                 + (citations.isEmpty()
@@ -140,7 +144,7 @@ public class ResearchAgentService {
         ReActAgent agent = buildAgent(
                 "riccon-research-generation",
                 AgentPrompts.RESEARCH_GENERATION_SYSTEM,
-                resolvedModel,
+                model,
                 toolkit,
                 permissionContext);
         RuntimeContext runtimeContext = RuntimeContext.builder()
@@ -153,7 +157,7 @@ public class ResearchAgentService {
                 .textContent(prompt)
                 .build();
         return new AgentSession(
-                agent, agent.streamEvents(List.of(message), runtimeContext), runtimeContext, resolvedModel, citations);
+                agent, agent.streamEvents(List.of(message), runtimeContext), runtimeContext, target, citations);
     }
 
     /**
@@ -161,21 +165,17 @@ public class ResearchAgentService {
      *
      * @param name Agent 名
      * @param systemPrompt 静态系统指令
-     * @param resolvedModel 模型
+     * @param model 带降级的 ChatModel
      * @param toolkit 工具集
      * @param permissionContext 权限上下文
      * @return Agent
      */
     private ReActAgent buildAgent(
-            String name,
-            String systemPrompt,
-            ResolvedModel resolvedModel,
-            Toolkit toolkit,
-            PermissionContextState permissionContext) {
+            String name, String systemPrompt, Model model, Toolkit toolkit, PermissionContextState permissionContext) {
         return ReActAgent.builder()
                 .name(name)
                 .sysPrompt(systemPrompt)
-                .model(modelRegistry.createClient(resolvedModel))
+                .model(model)
                 .toolkit(toolkit)
                 .maxIters(properties.maxIterations())
                 .stateStore(new InMemoryAgentStateStore())

@@ -1,6 +1,7 @@
 package com.riccon.worker.support;
 
 import com.riccon.platform.domain.file.FileFormat;
+import com.riccon.platform.domain.model.ModelPurpose;
 import com.riccon.platform.domain.research.RunKind;
 import com.riccon.worker.persistence.UuidBinary;
 import java.nio.charset.StandardCharsets;
@@ -19,8 +20,8 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * 集成测试数据构造器。
  *
- * <p>只通过显式 SQL 与 S3 写入构造真实数据，不绕过租户键、外键与状态约束；测试结束后由
- * 基类统一清空数据。ID 统一使用 UUIDv7，和生产路径一致。
+ * <p>只通过显式 SQL 与 S3 写入构造真实数据，不绕过租户键、外键与状态约束；业务数据由每个测试
+ * 唯一的租户隔离，测试不再统一清空业务表。ID 统一使用 UUIDv7，和生产路径一致。
  */
 public final class TestDataFactory {
 
@@ -537,7 +538,8 @@ public final class TestDataFactory {
         UUID providerId = UuidBinary.newV7();
         UUID modelId = UuidBinary.newV7();
         UUID credentialId = UuidBinary.newV7();
-        String keyId = "dek-test";
+        // key id 必须唯一：测试不再清理 tenant_data_key，固定 key id 会与历史测试的主键冲突。
+        String keyId = "dek-" + credentialId;
         byte[] dek = TestCredentials.newDek();
         TestCredentials.WrappedDek wrapped = TestCredentials.wrap(
                 TestCredentials.MASTER_KEY_BASE64, "platform", TestCredentials.PURPOSE, keyId, dek);
@@ -547,7 +549,7 @@ public final class TestDataFactory {
                         VALUES (:id, :code, 'Stub', 'OPENAI_COMPATIBLE', :baseUrl, 'ACTIVE')
                         """)
                 .param("id", UuidBinary.toBytes(providerId))
-                .param("code", "openai-compatible-" + providerId.toString().substring(0, 8))
+                .param("code", "openai-compatible-" + providerId.toString().replace("-", ""))
                 .param("baseUrl", baseUrl)
                 .update();
         jdbcClient
@@ -585,7 +587,30 @@ public final class TestDataFactory {
                 .param("keyId", keyId)
                 .param("masterKeyId", TestCredentials.MASTER_KEY_ID)
                 .update();
+        seedRoutingEntry(ModelPurpose.CHAT, modelId);
+        seedRoutingEntry(ModelPurpose.REPORT, modelId);
         return modelId;
+    }
+
+    /**
+     * 为尚未配置链的用途播种一条 position=1 条目（M04 ROUTED 语义要求显式链）。
+     *
+     * <p>仅当该用途当前没有条目时插入，避免覆盖测试显式构造的多模型链；J1/J2 夹具因此
+     * 不再依赖已删除的“ROUTED 空链回退”。
+     *
+     * @param purpose 用途
+     * @param modelId 模型 ID
+     */
+    private void seedRoutingEntry(ModelPurpose purpose, UUID modelId) {
+        jdbcClient
+                .sql("""
+                        INSERT INTO model_routing_entry (purpose, position, model_id)
+                        SELECT :purpose, 1, :modelId FROM DUAL
+                         WHERE NOT EXISTS (SELECT 1 FROM model_routing_entry WHERE purpose = :purpose)
+                        """)
+                .param("purpose", purpose.name())
+                .param("modelId", UuidBinary.toBytes(modelId))
+                .update();
     }
 
     /**

@@ -9,6 +9,7 @@ import com.riccon.worker.crypto.service.MasterKeyProvider;
 import com.riccon.worker.support.TestCredentials;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.env.MockEnvironment;
 
 /** 主密钥校验与 DEK 解包。 */
 class MasterKeyProviderTest {
@@ -88,7 +89,8 @@ class MasterKeyProviderTest {
     /** 已知测试密钥默认拒绝。 */
     @Test
     void constructor_knownTestKey_failsWhenRejected() {
-        assertThatThrownBy(() -> provider("AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=", ""))
+        assertThatThrownBy(() -> new MasterKeyProvider(
+                        new CryptoProperties("AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=", "", "mk-1", true)))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("known test key");
     }
@@ -119,8 +121,42 @@ class MasterKeyProviderTest {
                 .hasMessageContaining("invalid length");
     }
 
-    /** 构造 provider。 */
+    /** 包裹结果对 null 数组成员保持 null（防御性复制分支），不抛异常也不伪造空数组。 */
+    @Test
+    void wrappedDek_nullArrays_arePreserved() {
+        MasterKeyProvider.WrappedDek missingCiphertext = new MasterKeyProvider.WrappedDek(null, new byte[12]);
+        MasterKeyProvider.WrappedDek missingNonce = new MasterKeyProvider.WrappedDek(new byte[16], null);
+
+        assertThat(missingCiphertext.wrappedDek()).isNull();
+        assertThat(missingCiphertext.nonce()).hasSize(12);
+        assertThat(missingNonce.wrappedDek()).hasSize(16);
+        assertThat(missingNonce.nonce()).isNull();
+    }
+
+    /** test profile 允许仓库占位测试密钥，保证 Worker 集成测试与 API 往返可启动。 */
+    @Test
+    void constructor_testProfile_allowsRepositoryTestKey() {
+        MockEnvironment environment = new MockEnvironment();
+        environment.setActiveProfiles("test");
+
+        MasterKeyProvider provider = new MasterKeyProvider(
+                new CryptoProperties(TestCredentials.MASTER_KEY_BASE64, "", "mk-test", true), environment);
+
+        assertThat(provider.masterKeyId()).isEqualTo("mk-test");
+    }
+
+    /** 非 test profile 即使配置关闭拒绝也必须失败，防止生产关闭已知测试密钥控制。 */
+    @Test
+    void constructor_nonTestProfile_rejectsRepositoryTestKeyEvenIfDisabled() {
+        assertThatThrownBy(() -> new MasterKeyProvider(
+                        new CryptoProperties(TestCredentials.MASTER_KEY_BASE64, "", "mk-test", false),
+                        new MockEnvironment()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("known test key");
+    }
+
+    /** 构造 provider；直接构造使用非仓库测试密钥并显式关闭测试密钥拒绝。 */
     private static MasterKeyProvider provider(String key, String previous) {
-        return new MasterKeyProvider(new CryptoProperties(key, previous, "mk-test", true));
+        return new MasterKeyProvider(new CryptoProperties(key, previous, "mk-test", false));
     }
 }

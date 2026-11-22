@@ -1,0 +1,23 @@
+# command: set -euo pipefail; export RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=m19p4flake; export ROOT="${TMPDIR:-/tmp}/m19p4-evidence"; rm -rf "$ROOT"; mkdir -p "$ROOT"; node scripts/test-services.mjs reset --namespace m19p4flake > "$ROOT/reset.log"; for i in $(seq 1 10); do ./mvnw -q -T1C -pl apps/worker -am test -Dtest=ChatStreamIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false > "$ROOT/targeted-$i.log" 2>&1; grep -q 'tests="17" errors="0" skipped="0" failures="0"' apps/worker/target/surefire-reports/TEST-com.riccon.worker.chat.ChatStreamIntegrationTest.xml; echo "targeted_run=$i tests=17 failures=0 errors=0 skipped=0"; done; rm -rf apps/*/target/surefire-reports platform/*/target/surefire-reports; ./mvnw -q -T1C -pl apps/worker -am test > "$ROOT/worker-full.log" 2>&1; node scripts/test-timings.mjs --out-dir "$ROOT/test-timings" > "$ROOT/test-timings.out"; grep -q "apps/worker: tests=356 failures=0 errors=0 skipped=0" "$ROOT/test-timings.out"; grep "apps/worker: tests=" "$ROOT/test-timings.out"; echo "evidence-ok targeted=10x17 worker_full=356/0/0/0"
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-22T06:00:47.467+08:00
+# finished_at: 2026-11-22T06:04:34.705+08:00
+# duration_ms: 227234
+# exit_code: 0
+
+# --- stdout ---
+targeted_run=1 tests=17 failures=0 errors=0 skipped=0
+targeted_run=2 tests=17 failures=0 errors=0 skipped=0
+targeted_run=3 tests=17 failures=0 errors=0 skipped=0
+targeted_run=4 tests=17 failures=0 errors=0 skipped=0
+targeted_run=5 tests=17 failures=0 errors=0 skipped=0
+targeted_run=6 tests=17 failures=0 errors=0 skipped=0
+targeted_run=7 tests=17 failures=0 errors=0 skipped=0
+targeted_run=8 tests=17 failures=0 errors=0 skipped=0
+targeted_run=9 tests=17 failures=0 errors=0 skipped=0
+targeted_run=10 tests=17 failures=0 errors=0 skipped=0
+  apps/worker: tests=356 failures=0 errors=0 skipped=0 time=56.381s
+evidence-ok targeted=10x17 worker_full=356/0/0/0
+
+# --- stderr ---
+

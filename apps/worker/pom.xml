@@ -91,6 +91,16 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
+    <!--
+      M04 可观测性基线（ADR-0021 §10.6、TM-54、B-20）：Worker 承载路由/降级/key 场景，
+      需要 Prometheus registry 才能被抓取；版本由 Spring Boot BOM（Micrometer 1.17.2）管理，
+      不在此处 pin。7 个 riccon_* 指标的注册归 B4（TASK-0105），
+      `/actuator/prometheus` 暴露与来源控制归 B2（TASK-0103）。
+    -->
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-registry-prometheus</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-security</artifactId>

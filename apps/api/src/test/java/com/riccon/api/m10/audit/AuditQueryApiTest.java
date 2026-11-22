@@ -271,6 +271,36 @@ class AuditQueryApiTest extends AuditTestSupport {
     }
 
     /**
+     * Worker 链空失败事件（reason=CHAIN_EMPTY）可查询；读取策略与 Worker 写入策略对称。
+     */
+    @Test
+    @DisplayName("IT-AUDIT-103 Worker 链空失败 reason 可查询")
+    void listAudit_allowsWorkerModelFailureReason() {
+        TenantFixture fixture = createFixture("aq");
+        insertAuditEvent(
+                fixture.tenantId(),
+                Instant.now().minusSeconds(2),
+                "SERVICE",
+                "worker",
+                "model.invocation.failed",
+                "MODEL",
+                "CHAT",
+                "FAILURE",
+                "{\"durationMs\":0,\"errorCode\":\"RICCON-MODEL-503\",\"retryable\":true,"
+                        + "\"emitted\":false,\"reason\":\"CHAIN_EMPTY\"}");
+
+        ApiTestClient.ApiResponse response =
+                queryAudit(fixture.tenantAdmin(), auditQueryPath("action", "model.invocation.failed", "size", "10"));
+        assertThat(response.status()).as(response.body()).isEqualTo(200);
+        JsonNode page = client.json(response);
+        assertThat(page.path("total").asLong()).isEqualTo(1);
+        assertThat(page.path("items").get(0).path("details").path("reason").asText())
+                .isEqualTo("CHAIN_EMPTY");
+        assertThat(page.path("items").get(0).path("details").path("emitted").asBoolean())
+                .isFalse();
+    }
+
+    /**
      * details 读取白名单 fail-closed：白名单外键或未知动作非空 details 返回 500。
      */
     @Test

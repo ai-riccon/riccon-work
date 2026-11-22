@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0139",
+  "module_id": "M04",
+  "title": "M04 修复：real-stack 启动顺序（先迁移/API 再 Worker）",
+  "owner": "riccon/builder-gateway-e2e",
+  "status": "done",
+  "write_scope": [
+    "scripts/real-stack/**",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "down -v 后先启动 API 并等待 health/迁移完成（schema=11），再启动 Worker；或显式迁移 Job 后再起 Worker",
+    "Worker 不再出现 RICCON-WORKER-001 expected=11 actual=7/8；全量 run.mjs --mode=full 通过（checks/browser/security/m04）",
+    "不改生产代码/契约/迁移；录 clean EV；回执 host/结果"
+  ],
+  "evidence": [
+    "EV-0689"
+  ],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-21T15:58:34.533+08:00",
+  "updated_at": "2026-11-21T16:17:44.998+08:00",
+  "baseline_commit": "38dde91",
+  "end_commit": "a8d2bbc"
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0132",
+  "module_id": "M04",
+  "title": "M04 修复：ChatService 日志不得输出 Worker detail",
+  "owner": "riccon/builder-route",
+  "status": "done",
+  "write_scope": [
+    "apps/api/src/main/java/com/riccon/api/chat/service/ChatService.java",
+    "apps/api/src/test/java/com/riccon/api/chat/**",
+    ".riccon/**"
+  ],
+  "acceptance": [
+    "WARN/ERROR 只记录状态/错误码，不打印 Worker detail 原文；响应仍映射 RICCON-MODEL-503/AC-05 文案",
+    "canary 扫描日志/surefire 无 apiKey/baseUrl/Authorization；补测试断言",
+    "不改 Worker/契约/迁移；定向测试 + EV"
+  ],
+  "evidence": [
+    "EV-0636"
+  ],
+  "tools_used": [
+    "codegraph",
+    "serena"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-21T10:55:24.694+08:00",
+  "updated_at": "2026-11-21T11:46:43.330+08:00",
+  "baseline_commit": "c6a1f72",
+  "end_commit": "ff6c383"
+}

@@ -98,23 +98,31 @@ class OpenAiCompatibleChatModelTest {
         assertThat(stub.lastRequest()).contains("\"tools\"").contains("\"echo\"");
     }
 
-    /** 429 在未输出增量前重试。 */
+    /**
+     * 内层客户端不自行重试 429：所有重试由 FailoverChatModel 拥有，
+     * 保证 HTTP 调用数 = attempt 行数 = 降级审计条数（ADR-0021 §5.2）。
+     */
     @Test
-    void stream_rateLimited_retriesThenSucceeds() {
+    void stream_rateLimited_doesNotRetryInInnerClient() {
         stub.rateLimitNext(1);
         OpenAiCompatibleChatModel model = model(Duration.ofSeconds(5), 3);
 
-        List<ChatResponse> responses = model.stream(List.of(new UserMessage("hi")), List.of(), null)
-                .collectList()
-                .block(Duration.ofSeconds(10));
-
-        assertThat(responses).isNotNull();
-        assertThat(stub.requestCount()).isEqualTo(2);
+        assertThatThrownBy(() -> model.stream(List.of(new UserMessage("hi")), List.of(), null)
+                        .collectList()
+                        .block(Duration.ofSeconds(10)))
+                .isInstanceOf(ModelException.class)
+                .satisfies(error -> {
+                    ModelException modelError = (ModelException) error;
+                    assertThat(modelError.errorCode()).isEqualTo(ModelException.RATE_LIMITED);
+                    assertThat(modelError.failureKind())
+                            .isEqualTo(com.riccon.worker.model.domain.ModelFailureKind.RATE_LIMITED);
+                });
+        assertThat(stub.requestCount()).isEqualTo(1);
     }
 
-    /** 5xx 耗尽重试后返回可重试错误。 */
+    /** 内层客户端不自行重试 5xx；失败带上可重试与 5xx 物理分类供降级状态机使用。 */
     @Test
-    void stream_serverErrorAfterRetries_failsRetryable() {
+    void stream_serverError_doesNotRetryInInnerClient() {
         stub.forceStatus(500);
         OpenAiCompatibleChatModel model = model(Duration.ofSeconds(5), 2);
 
@@ -126,8 +134,10 @@ class OpenAiCompatibleChatModelTest {
                     ModelException modelError = (ModelException) error;
                     assertThat(modelError.errorCode()).isEqualTo(ModelException.UNAVAILABLE);
                     assertThat(modelError.retryable()).isTrue();
+                    assertThat(modelError.failureKind())
+                            .isEqualTo(com.riccon.worker.model.domain.ModelFailureKind.SERVER_ERROR);
                 });
-        assertThat(stub.requestCount()).isEqualTo(2);
+        assertThat(stub.requestCount()).isEqualTo(1);
     }
 
     /** 401 不重试。 */
@@ -233,6 +243,8 @@ class OpenAiCompatibleChatModelTest {
                     ModelException modelError = (ModelException) error;
                     assertThat(modelError.errorCode()).isEqualTo(ModelException.UNAVAILABLE);
                     assertThat(modelError.retryable()).isTrue();
+                    assertThat(modelError.failureKind())
+                            .isEqualTo(com.riccon.worker.model.domain.ModelFailureKind.TRANSPORT);
                 });
     }
 

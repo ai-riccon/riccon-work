@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0093",
+  "module_id": "M18",
+  "title": "修复 M02 AC-16 a11y P1：引用链接与停止生成对比度",
+  "owner": "riccon/builder-web",
+  "status": "done",
+  "write_scope": [
+    "apps/web/src/pages/chat/**",
+    ".riccon/evidence/**",
+    ".riccon/tasks/**",
+    ".riccon/state.json"
+  ],
+  "acceptance": [
+    "完成态引用链接（序号+文件名·定位）与流式态“停止生成”文字对比度均 ≥4.5:1（WCAG AA normal text），按实际气泡背景测量",
+    "不改行为/布局/文案；现有 chat 单测、typecheck、lint 通过；不修改 E2E（Verifier 负责加 @a11y）",
+    "记录受影响测试证据；若根因是全局主题 token，说明影响面并只改必要范围，不顺手重构其他页面"
+  ],
+  "evidence": [
+    "EV-0501",
+    "EV-0502",
+    "EV-0503",
+    "EV-0507",
+    "EV-0508"
+  ],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-20T15:09:46.057+08:00",
+  "updated_at": "2026-11-20T16:00:28.387+08:00",
+  "baseline_commit": "8f2ccd960d68646f5a1b355169ba62312020451b",
+  "end_commit": "a9e508fdff2030e11ec30bf549e57b97f20ed480"
+}

@@ -1,0 +1,129 @@
+# command: ./mvnw -q -T1C -pl apps/worker -am test -Dtest='SchemaVersionCheckerTest,WorkerApplicationTests,SchemaVersionCheckerStartupEnabledTest,SchemaVersionCheckerStartupDisabledTest' -DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-21T13:37:53.901+08:00
+# finished_at: 2026-11-21T13:40:01.204+08:00
+# duration_ms: 127301
+# exit_code: 0
+
+# --- stdout ---
+13:38:03.502 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.WorkerApplicationTests]: WorkerApplicationTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+13:38:03.827 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.WorkerApplicationTests
+13:38:04.113 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.WorkerApplicationTests]: WorkerApplicationTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+13:38:04.114 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+13:38:04.120 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.WorkerApplicationTests
+13:38:04.334 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+13:38:04.341 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+13:38:04.395 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+13:38:06.905 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+13:38:06.908 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+13:38:06.947 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+13:38:07.262 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+13:38:07.913 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: f0b8480f9b22c61e806372dcfda19c0875bf47c7eba7d94dc2bff81b5b9b6974
+13:38:08.548 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT1.285348S
+13:38:08.555 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+13:38:08.556 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+13:38:08.556 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+13:38:08.557 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+13:38:08.662 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: a4ef3ec93745e8ff71314a27bcd7757022067562c6feea0ff9df51b7cc05929c
+13:38:08.964 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:64966/riccon using query 'SELECT 1'
+13:38:19.827 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT11.270467S
+13:38:19.828 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:64966/riccon)
+13:38:19.831 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Creating container for image: opensearchproject/opensearch:3.9.0
+13:38:19.930 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 is starting: 2601afafa359889618d5ad079921431f69e2784d5405031713376a5c7c5c2310
+13:38:20.204 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /clever_goldberg: Waiting for 180 seconds for URL: http://localhost:65199/_cluster/health?wait_for_status=yellow&timeout=120s (where port 65199 maps to container port 9200)
+13:39:19.275 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 started in PT59.443477S
+13:39:19.292 [main] INFO tc.rustfs/rustfs:1.0.6 -- Creating container for image: rustfs/rustfs:1.0.6
+13:39:19.581 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 is starting: 47d584f0527c806555bd506512934c4158adb3edc5e2676f1337e08e33ac03ce
+13:39:20.112 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /dazzling_chatterjee: Waiting for 60 seconds for URL: http://localhost:50107/health (where port 50107 maps to container port 9000)
+13:39:20.284 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 started in PT0.992402S
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-21T13:39:29.989+08:00  INFO 94619 --- [riccon-worker] [           main] c.riccon.worker.WorkerApplicationTests   : Starting WorkerApplicationTests using Java 21.0.13 with PID 94619 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/worker)
+2026-11-21T13:39:29.993+08:00  INFO 94619 --- [riccon-worker] [           main] c.riccon.worker.WorkerApplicationTests   : The following 1 profile is active: "test"
+2026-11-21T13:39:34.851+08:00  INFO 94619 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-21T13:39:38.162+08:00  INFO 94619 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-21T13:39:38.162+08:00  INFO 94619 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-21T13:39:38.195+08:00  INFO 94619 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-21T13:39:38.221+08:00  INFO 94619 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 57 ms
+2026-11-21T13:39:38.535+08:00  INFO 94619 --- [riccon-worker] [           main] c.riccon.worker.WorkerApplicationTests   : Started WorkerApplicationTests in 9.674 seconds (process running for 98.034)
+2026-11-21T13:39:38.713+08:00  INFO 94619 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-21T13:39:38.784+08:00  INFO 94619 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-21T13:39:38.889+08:00  INFO 94619 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=11 actual=11
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-21T13:39:48.948+08:00  INFO 94619 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.persistence.SchemaVersionCheckerStartupDisabledTest]: SchemaVersionCheckerStartupDisabledTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T13:39:49.000+08:00  INFO 94619 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.persistence.SchemaVersionCheckerStartupDisabledTest
+2026-11-21T13:39:49.012+08:00  INFO 94619 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.persistence.SchemaVersionCheckerStartupDisabledTest]: SchemaVersionCheckerStartupDisabledTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T13:39:49.014+08:00  INFO 94619 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T13:39:49.023+08:00  INFO 94619 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.persistence.SchemaVersionCheckerStartupDisabledTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-21T13:39:49.162+08:00  INFO 94619 --- [riccon-worker] [           main] .SchemaVersionCheckerStartupDisabledTest : Starting SchemaVersionCheckerStartupDisabledTest using Java 21.0.13 with PID 94619 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/worker)
+2026-11-21T13:39:49.162+08:00  INFO 94619 --- [riccon-worker] [           main] .SchemaVersionCheckerStartupDisabledTest : The following 1 profile is active: "test"
+2026-11-21T13:39:50.242+08:00  INFO 94619 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-21T13:39:50.800+08:00  INFO 94619 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-21T13:39:50.801+08:00  INFO 94619 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-21T13:39:50.811+08:00  INFO 94619 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-21T13:39:50.822+08:00  INFO 94619 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 20 ms
+2026-11-21T13:39:50.884+08:00  INFO 94619 --- [riccon-worker] [           main] .SchemaVersionCheckerStartupDisabledTest : Started SchemaVersionCheckerStartupDisabledTest in 1.841 seconds (process running for 110.383)
+2026-11-21T13:39:50.885+08:00  WARN 94619 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : RICCON-WORKER-002 schema validation disabled; worker is running in rollback window, expected schema version=11
+2026-11-21T13:39:50.893+08:00  INFO 94619 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Starting...
+2026-11-21T13:39:50.926+08:00  INFO 94619 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Start completed.
+2026-11-21T13:39:54.098+08:00  INFO 94619 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.persistence.SchemaVersionCheckerStartupEnabledTest]: SchemaVersionCheckerStartupEnabledTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T13:39:54.101+08:00  INFO 94619 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.persistence.SchemaVersionCheckerStartupEnabledTest
+2026-11-21T13:39:54.102+08:00  INFO 94619 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.persistence.SchemaVersionCheckerStartupEnabledTest]: SchemaVersionCheckerStartupEnabledTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T13:39:54.102+08:00  INFO 94619 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-21T13:39:54.104+08:00  INFO 94619 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.persistence.SchemaVersionCheckerStartupEnabledTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-21T13:39:54.134+08:00  INFO 94619 --- [riccon-worker] [           main] p.SchemaVersionCheckerStartupEnabledTest : Starting SchemaVersionCheckerStartupEnabledTest using Java 21.0.13 with PID 94619 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/worker)
+2026-11-21T13:39:54.134+08:00  INFO 94619 --- [riccon-worker] [           main] p.SchemaVersionCheckerStartupEnabledTest : The following 1 profile is active: "test"
+2026-11-21T13:39:54.757+08:00  INFO 94619 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-21T13:39:55.347+08:00  INFO 94619 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-21T13:39:55.347+08:00  INFO 94619 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-21T13:39:55.357+08:00  INFO 94619 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-21T13:39:55.364+08:00  INFO 94619 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 17 ms
+2026-11-21T13:39:55.639+08:00  INFO 94619 --- [riccon-worker] [           main] p.SchemaVersionCheckerStartupEnabledTest : Started SchemaVersionCheckerStartupEnabledTest in 1.531 seconds (process running for 115.138)
+2026-11-21T13:39:55.640+08:00  INFO 94619 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-3 - Starting...
+2026-11-21T13:39:55.665+08:00  INFO 94619 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-3 - Start completed.
+2026-11-21T13:39:55.706+08:00  INFO 94619 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=11 actual=11
+2026-11-21T13:39:59.802+08:00  WARN 94619 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : RICCON-WORKER-002 schema validation disabled; worker is running in rollback window, expected schema version=11
+2026-11-21T13:40:00.186+08:00  INFO 94619 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=11 actual=11
+2026-11-21T13:40:00.199+08:00  INFO 94619 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=11 actual=11
+2026-11-21T13:40:00.498+08:00  INFO 94619 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=11 actual=11
+
+# --- stderr ---
+

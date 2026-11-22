@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0607",
+  "task_id": "TASK-0129",
+  "command": "grep -q 'actuator/info' docs/adr/ADR-0021-m04-model-routing-failover-multi-key.md && grep -q '两者共用同一来源门禁' docs/adr/ADR-0021-m04-model-routing-failover-multi-key.md && grep -q '共用 `RICCON_OPS_ALLOWED_CIDRS` 来源门禁' docs/adr/ADR-0021-m04-model-routing-failover-multi-key.md && grep -q 'info/prometheus 见 §10.4' docs/security/THREAT-MODEL.md && ! grep -q '仅 `/actuator/health` 放行' docs/security/THREAT-MODEL.md && git diff --check && echo ACTUATOR-INFO-GATE-OK",
+  "manual": false,
+  "commit": "988e9be1f71f5c8e2b555deb8daa10ff47f215a3",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0129/EV-0607-2026-11-21T08-24-58-610+08-00-grep-q-actuator-info-docs-adr-adr-0021-m04-model.log",
+  "output_sha256": "0ff32b105dbf28d14339d49fdc4c7d052a71061a25fcf9a51f71453d035e2c9e",
+  "output_bytes": 740,
+  "agent": "riccon/architect",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-21T08:24:58.201+08:00",
+  "finished_at": "2026-11-21T08:24:58.253+08:00",
+  "duration_ms": 51,
+  "note": "ADR-0021 §2.2/§10.6 与 THREAT 观测段记录 info/prometheus 共用 RICCON_OPS_ALLOWED_CIDRS；删除仅 health 放行旧表述；纯文档",
+  "recorded_at": "2026-11-21T08:24:58.611+08:00"
+}
