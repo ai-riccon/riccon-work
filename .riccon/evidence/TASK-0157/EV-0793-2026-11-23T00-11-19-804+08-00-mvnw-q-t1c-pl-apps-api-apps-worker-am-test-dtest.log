@@ -1,0 +1,77 @@
+# command: ./mvnw -q -T1C -pl apps/api,apps/worker -am test -Dtest='InFlightCredentialRotationIntegrationTest' -Dsurefire.failIfNoSpecifiedTests=false && cat apps/worker/target/surefire-reports/com.riccon.worker.run.InFlightCredentialRotationIntegrationTest.txt
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-23T00:10:10.115+08:00
+# finished_at: 2026-11-23T00:11:19.035+08:00
+# duration_ms: 68919
+# exit_code: 0
+
+# --- stdout ---
+00:10:18.913 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.run.InFlightCredentialRotationIntegrationTest]: InFlightCredentialRotationIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+00:10:19.166 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.run.InFlightCredentialRotationIntegrationTest
+00:10:19.396 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.run.InFlightCredentialRotationIntegrationTest]: InFlightCredentialRotationIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+00:10:19.397 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+00:10:19.403 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.run.InFlightCredentialRotationIntegrationTest
+00:10:19.607 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+00:10:19.614 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+00:10:19.655 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+00:10:21.204 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+00:10:21.206 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+00:10:21.235 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+00:10:21.469 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+00:10:21.964 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: 0e5c0eb76bd58ad23b5f5d841ed6a44b83ee6f857b58ed8276c93c9e142a5409
+00:10:22.535 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT1.065791S
+00:10:22.545 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+00:10:22.545 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+00:10:22.546 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+00:10:22.547 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+00:10:22.639 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: c0fafcd8d8582fa6c4b43a783d5c40f34a744d762aa104806e67ebd7c2539fb4
+00:10:22.993 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:50281/riccon using query 'SELECT 1'
+00:10:34.876 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT12.3288S
+00:10:34.877 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:50281/riccon)
+00:10:34.882 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Creating container for image: opensearchproject/opensearch:3.9.0
+00:10:34.998 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 is starting: aae213015a6d4c62abd96447de91d29163b9c5e284a05775b36264354bb30d53
+00:10:35.306 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /peaceful_ishizaka: Waiting for 180 seconds for URL: http://localhost:50407/_cluster/health?wait_for_status=yellow&timeout=120s (where port 50407 maps to container port 9200)
+00:11:03.784 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 started in PT28.901659S
+00:11:03.785 [main] INFO tc.rustfs/rustfs:1.0.6 -- Creating container for image: rustfs/rustfs:1.0.6
+00:11:03.920 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 is starting: 386db83791f3331e346377f0bb5bdfbd5f792cf8cf5f9bfd638de6a0fc279bac
+00:11:04.295 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /boring_ganguly: Waiting for 60 seconds for URL: http://localhost:50493/health (where port 50493 maps to container port 9000)
+00:11:04.796 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 started in PT1.011477S
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-23T00:11:11.536+08:00  INFO 38643 --- [riccon-worker] [           main] nFlightCredentialRotationIntegrationTest : Starting InFlightCredentialRotationIntegrationTest using Java 21.0.13 with PID 38643 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/worker)
+2026-11-23T00:11:11.537+08:00  INFO 38643 --- [riccon-worker] [           main] nFlightCredentialRotationIntegrationTest : The following 1 profile is active: "test"
+2026-11-23T00:11:13.983+08:00  INFO 38643 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-23T00:11:15.763+08:00  INFO 38643 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-23T00:11:15.764+08:00  INFO 38643 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-23T00:11:15.784+08:00  INFO 38643 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-23T00:11:15.799+08:00  INFO 38643 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 35 ms
+2026-11-23T00:11:16.006+08:00  INFO 38643 --- [riccon-worker] [           main] nFlightCredentialRotationIntegrationTest : Started InFlightCredentialRotationIntegrationTest in 5.085 seconds (process running for 59.094)
+2026-11-23T00:11:16.102+08:00  INFO 38643 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-23T00:11:16.143+08:00  INFO 38643 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-23T00:11:16.191+08:00  INFO 38643 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=12 actual=12
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+-------------------------------------------------------------------------------
+Test set: com.riccon.worker.run.InFlightCredentialRotationIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 59.97 s -- in com.riccon.worker.run.InFlightCredentialRotationIntegrationTest
+
+# --- stderr ---
+
