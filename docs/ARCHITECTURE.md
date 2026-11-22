@@ -27,14 +27,14 @@
 
 ### M05 评审状态（ADR-0023）
 
-| 检查                        | 状态    | 记录                                                                                                                                                                                                                                                   |
-| --------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Architect 草案              | draft   | ADR-0023 `proposed`（2026-11-22，第二轮 AC 对账完成）：Excel 流式抽取、Tesseract OCR + SPI、文档级 ACL、S3 连接器、V12、索引 v2、outbox 双通道、TM-55..TM-71；P6 推荐 A（文本块/坐标高亮）、P7 推荐统一 404、AC-21 推荐 A（物理清理归 M09），预算 116h |
-| Lead 完整性/合同一致性      | pending | 待 Lead 复核：M05 范围（Excel/OCR/ACL/1 连接器）与路线图一致；模块拆分与预算（≈116h；Product §11.7 建议 98h，差异见 ADR §12.2）需用户决策；`connector` 对象 key 类别需 ADR-0009 增量修订；PRODUCT 把 M04 R-M04-01/02 并入 M05 属范围增量，需确认       |
-| 用户批准（不可逆/高成本项） | pending | 待 DEC：OCR 引擎/权重分发/精度基线（U1/U6）、连接器类型（U2）、拆分与预算（U3）、ACL 上线后回滚约束（U4）、默认可见范围（U5）、连接器原文下载（U7）、租户管理员管理性读取（U8）                                                                        |
-| Verifier 可测试性/安全边界  | pending | 待独立评审：ACL 越权矩阵（TEN-034..037、DEPT-011..014、SEC-KB-002/003）、OCR/解析资源上限、迁移 V12 与回滚 SQL 可执行性、`IT-WORKER-LANE-001`/`IT-WORKER-LEASE-001`；P6/AC-21 选 B 时增 `SEC-KB-006`/`IT-KB-118`                                       |
-| Ops 可运维/可回滚           | pending | 待 Ops 评审：OCR 原生库/权重入镜像与 `ocr-check`、索引 v2 重灌/别名切换、连接器出网/固定周期调度/凭据轮换、V12 回滚演练、RUNBOOK                                                                                                                       |
-| 安全/合规评审（如适用）     | pending | 待安全评审：提示注入（Excel/OCR/连接器）、SSRF、凭据、跨租户/跨部门越权、审计完整性；TM-55..TM-71 需合入 `docs/security/THREAT-MODEL.md`（70/71 依赖选项 B）                                                                                           |
+| 检查                        | 状态    | 记录                                                                                                                                                                                                                                                              |
+| --------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Architect 草案              | draft   | ADR-0023 `proposed`（2026-11-22，REV-M05-AC-001 架构 P1 修复）：Excel 流式、Tesseract OCR + SPI、文档级 ACL、S3 连接器、V12、索引 v2、outbox 双通道、TM-55..TM-71；DEC-0034：Product 拆分、P6=A、P8=A、U8=管理性读取+绕过 ACL 审计；预算 144h（M05 97 + M05b 47） |
+| Lead 完整性/合同一致性      | pending | 待 Lead 复核：M05 范围与路线图一致；DEC-0034 拆分已批准，预算 144h（M05 97 + M05b 47）待确认；M05 `1.4.0-m05` / M05b `1.5.0-m05b` 分段契约；`connector` 对象 key 类别需 ADR-0009 增量修订                                                                         |
+| 用户批准（不可逆/高成本项） | pass    | DEC-0034（2026-11-22）：Product 拆分、P6=A、P8=A（物理清理 M09 release blocker）、U8=管理性读取+绕过 ACL 审计、M03-AC-06 由 M05 取代；S3、Tesseract+SPI、权重随镜像、连接器原文可下载受 ACL、新文档默认 TENANT、ACL 后禁止应用回滚、429 并入 M05                  |
+| Verifier 可测试性/安全边界  | pending | 待独立评审：403/404 矩阵与 `SEC-KB-002/003`、`SEC-CONN-004`、delete/reindex、下载流式代理、`admin_read`、完整 list guard、tombstone 复用、同步 start/finish、OCR 测试 profile/零出网、注入 harness、性能场景、套件 manifest 30→37/10→14                           |
+| Ops 可运维/可回滚           | pending | 待 Ops 评审：M05-O1（镜像/权重/SBOM/CI/`ocr-check`）与 M05-O2（网络策略/凭据置空/RUNBOOK），V12 回滚演练，索引 v2 重灌/别名切换                                                                                                                                   |
+| 安全/合规评审（如适用）     | pending | 待安全评审：提示注入新建 harness、SSRF、凭据、跨租户/跨部门、`admin_read` 审计、TM-55..TM-71（70/71 仅在 P6=B/AC-21=B 时适用，选 A 登记不适用）                                                                                                                   |
 
 > 状态值：`draft`、`pending`、`pass`、`changes-requested`。ADR-0023 未评审前不进入 M05 实现；本表不声称 M05 已批准或已交付。
 
@@ -367,28 +367,32 @@ M05 的完整决策见 `docs/adr/ADR-0023-m05-knowledge-depth.md`（`proposed`�
 - 默认 Tesseract 5 + `tessdata_fast`（chi_sim+eng）经 Tess4J（Apache-2.0；JNA 选 Apache-2.0）；`OcrEngine` SPI，替代为 RapidOCR/PP-OCR ONNX（Apache-2.0）；拒绝 Python PaddleOCR、OCRmyPDF（MPL-2.0）、公有云 OCR。
 - 图片：EXIF 方向校正 → 50 MP/4000 px 上限 → OCR；置信度 < 0.45 时旋转 90° 重试一次。扫描 PDF：逐页判断文本层，无文本页用 PDFBox `PDFRenderer` 200 DPI 渲染后 OCR；混合页只 OCR 无文本页。
 - 定位：不新增 `locator_type` 枚举；图片/区域用 `page_no` + 可空 `bbox_x/y/w/h` + `ocr_confidence` 表达，契约新增可选 `bbox`。
-- 资源：每实例并发 2、单页 30 s、单文档 100 页/600 s、逐页释放；OCR 关闭或引擎/原生库缺失时 worker 启动失败（`RICCON_OCR_ENABLED=true`），语言包缺失为启动 WARN + 文档 `KB_OCR_LANG_UNAVAILABLE`，运行期失败落 `KB_OCR_*` 稳定码。
+- 资源：每实例并发 2、单页 30 s、单文档 100 页/600 s、逐页释放；OCR 关闭或引擎/原生库缺失时 worker 启动失败（生产 `RICCON_OCR_ENABLED=true`），语言包缺失为启动 WARN + 文档 `KB_OCR_LANG_UNAVAILABLE`，运行期失败落 `KB_OCR_*` 稳定码。
+- 测试 profile 默认 `RICCON_OCR_ENABLED=false`/懒加载，无 Tesseract 的宿主/CI 全量不失败；OCR 用例走 `@Tag("ocr")` 专用 job；`scripts/ops/ocr-check` 在 `--network none` 容器只跑 `OcrEngine` + fixture，不启动 MySQL/OpenSearch（ADR-0023 §4.7，F-011）。
 - 精度门槛：固定 20 张印刷体夹具，中文 CER ≤ 10%、英文 ≤ 5%；未达标切换替代引擎（需用户批准）。
+- 不可信内容：Excel/OCR/连接器文本统一走 `UntrustedData`；仓库当前无 `INJ-001..012`，M05-B10 新建注入 harness（假模型 + 工具 stub + canary 凭据/内网地址），由 `SEC-KB-004`/`SEC-CONN-002` 执行、V2 复核。
 - 区域高亮（P6 推荐 A）：M05 返回 `bbox`/`sheetName`/`cellRange` 与命中文本块，引用详情用表格/文本块高亮；不新增页图端点、不引入 PDF.js/SheetJS。若 Product 坚持“页图叠加框选”选 B，需页图渲染端点 +12–16h（ADR-0023 §11.1/§13.3）。
 
 ### 文档级 ACL
 
 - `knowledge_document.visibility ∈ {TENANT, DEPT, USERS}` + `knowledge_document_acl`（USERS，上限 200 人）；`DEPT` 必填 `department_id` 并复用 M03 单主部门与启用状态；创建人隐式可见且不可移除。
 - 单一谓词集中在知识库访问层，列表/详情/检索/引用/下载/删除/重索引共用；不可见统一 `RICCON-TENANT-404`；可见但非创建人/非 `TENANT_ADMIN` 改 ACL → 403。平台管理员持有租户文档 ID 直接访问按跨租户统一 404，不返回 403（避免存在性探测，ADR-0023 §5.2）。
-- 租户管理员对本租户知识文档有管理性读取（列表/检索/详情/下载全量、不做 ACL 过滤），因为其本就可改任意 ACL；这是有意决策（ADR-0023 §13.1 U8），ACL 不防租户管理员，平台管理员仍不可跨租户读取。
+- 租户管理员对本租户知识文档有管理性读取（列表/检索/详情/下载全量、不做 ACL 过滤）；**绕过 ACL 的读取写 `knowledge.document.admin_read` 审计**（LIST 每次一条；DETAIL/SEARCH/DOWNLOAD 仅在 ACL 本不可见时写），按 ACL 可见的读取不写；ACL 变更必须审计（DEC-0034 U8）。
+- 403/404：不可见/跨租户/跨部门/平台管理员 → 404 `RICCON-TENANT-404`；已可见但非创建人/非 `TENANT_ADMIN` 做 ACL/delete/reindex → 403 `RICCON-AUTH-403`；连接器跨租户 → 404，同租户非管理员 → 403（ADR-0023 §5.4）。
 - 与 M03 空间 ACL：知识可见性只由文档 ACL 决定，覆盖列表/详情/检索/引用/知识库下载五处；原工作空间文件路径仍只由空间谓词决定，两条路径互不放大。可见范围宽于源空间时详情给 `sourceFileAccessLimited`，默认不阻断（用户可用知识库下载）。
 - 引用可用性：聊天与产物引用读取时统一计算 `sourceStatus`（`AVAILABLE` / `NO_ACCESS` / `DELETED` / `UPDATED`）；不可访问时不返回标题/片段/定位，库内快照保留供审计/取证。
-- 知识库下载：`GET /knowledge/documents/{id}/download` 走文档 ACL，返回短时预签名或流，不暴露对象 key；无源文件返回 `RICCON-KB-404`。
+- 知识库下载：`GET /knowledge/documents/{id}/download` 走文档 ACL 并以**服务端流式代理**返回（每请求重判 ACL），不暴露对象 key/预签名 URL；无源文件返回 `RICCON-KB-404`。
 - 无跨请求缓存；ACL 变更下一次请求生效；OpenSearch 的 ACL 字段通过 `mode=ACL_ONLY` 异步刷新，不重解析源文件，且不作为授权依据。
-- 审计：`knowledge.document.added/deleted`、`knowledge.acl.changed`（details 只含枚举、计数与 UUID 列表）；审计失败变更失败。
-- 开关 `RICCON_KB_ACL_ENFORCEMENT_ENABLED`：首次部署 `false`（等价 M03），验证后打开；**ACL 打开后应用回滚会放宽为租户全员可见，默认只允许前向修复**（需用户批准，ADR-0023 §5.9）。
+- 审计：`knowledge.document.added/deleted`（`reason` USER/RETENTION/CONNECTOR）、`knowledge.acl.changed`、`knowledge.document.admin_read`；details 白名单与 fail-closed 见 ADR-0023 §5.6。
+- 开关 `RICCON_KB_ACL_ENFORCEMENT_ENABLED`：首次部署 `false` 时启动 WARN `RICCON-KB-001` 并暴露 `riccon_kb_acl_enforcement_disabled=1`，RUNBOOK 仅允许非敏感测试文档；**ACL 打开后应用回滚会放宽为租户全员可见，禁止应用回滚、只前向修复**（DEC-0034 U4）。
 
 ### 外部连接器（S3 兼容目录）
 
 - 推荐 S3 兼容 bucket + prefix（AWS SDK v2 已依赖）；替代 Confluence Data Center；拒绝网页抓取与 SharePoint。
-- `kb_connector` + `kb_connector_item`：`external_id_hash` 唯一键、ETag/checksum 增量、`last_seen_at` 对账删除、tombstone 180 天；同步摘要 JSON。
+- `kb_connector` + `kb_connector_item`：`external_id_hash` 唯一键、ETag/checksum 增量、`last_seen_at` 对账删除、tombstone 180 天；**删除-重现复用 tombstone 行（`generation+1`）**，不撞唯一键。
+- 同步时间与完整性：`last_sync_started_at`/`last_sync_finished_at`/`last_sync_status`（SUCCESS/PARTIAL/ERROR）/`last_sync_complete`；失败也写 finish；只有完整 list 才传播删除，部分/截断/超限不删除（ADR-0023 §6.3，F-008/F-009）。
 - 手动 `POST /knowledge/connectors/{id}/sync`（202）+ 部署固定周期（`RICCON_CONNECTOR_SYNC_INTERVAL_MINUTES` + `scheduleEnabled`，`next_sync_at` 条件更新）；不提供 per-connector cron/可视化调度；同步在 worker `heavy` 通道执行。
-- 凭据走 ADR-0006 信封加密（`purpose=connector-credential`），只写不读、掩码、用后清零；端点只来自 `RICCON_CONNECTOR_ENDPOINTS`，禁重定向/`169.254/16`，RFC1918 仅显式允许。
+- 凭据走 ADR-0006 信封加密（`purpose=connector-credential`），只写不读、掩码、用后清零；端点只来自 `RICCON_CONNECTOR_ENDPOINTS`，禁重定向/`169.254/16`，RFC1918 仅显式允许；连接器软删除后密文 30 天由 M09 置空（ops，M09 gate）。
 - 对象 key：`tenants/{tenantId}/connector/{yyyy}/{documentId}`，是 ADR-0009 §6 的类别扩展（需 Lead 增量修订）；不为连接器造“系统工作空间”。
 - 删除传播：源端删除 → 项 `DELETED`、文档软删除、索引 `mode=DELETE`；部分失败继续，同步级失败按 1 m/5 m/15 m 退避 3 次后 `ERROR`。
 
@@ -399,8 +403,8 @@ M05 的完整决策见 `docs/adr/ADR-0023-m05-knowledge-depth.md`（`proposed`�
 | `knowledge_document` 扩展                   | `visibility`、`department_id`、`connector_id`、`external_id`、`parse_engine`、`parse_warnings`、`parse_summary`、`acl_version`、`retention_expires_at`；`source_type` CHECK 增加 `CONNECTOR` |
 | `knowledge_document_acl`                    | USERS 授权；PK `(tenant_id, document_id, user_id)`，`idx_kda_user` 支撑检索 `EXISTS`                                                                                                         |
 | `message_citation`/`artifact_citation` 扩展 | `source_version`（引用时文档 checksum），用于 `sourceStatus=UPDATED` 判定与遮蔽                                                                                                              |
-| `kb_connector`                              | 类型、状态、端点 ID、配置 JSON、默认可见范围、凭据密文/掩码、调度、同步摘要                                                                                                                  |
-| `kb_connector_item`                         | 源对象哈希唯一键、版本/校验和、文档引用、同步状态、tombstone                                                                                                                                 |
+| `kb_connector`                              | 类型、状态、端点 ID、配置 JSON、默认可见范围、凭据密文/掩码、调度开关、同步 start/finish/status/complete、同步摘要                                                                           |
+| `kb_connector_item`                         | 源对象哈希唯一键、版本/校验和、文档引用、同步状态、tombstone、`generation`（删除-重现代数）                                                                                                  |
 | `file_chunk`/`knowledge_chunk` 扩展         | `bbox_x/y/w/h`、`ocr_confidence`（可空，不加 CHECK）                                                                                                                                         |
 
 - 新增权限 `knowledge.acl.manage`、`knowledge.connector.read/manage`（`TENANT_ADMIN`），按 V9 模式回填既有租户角色；新租户由 `RoleDefinitions` 写入。
@@ -413,14 +417,14 @@ M05 的完整决策见 `docs/adr/ADR-0023-m05-knowledge-depth.md`（`proposed`�
 - `KNOWLEDGE_INDEX_REQUESTED` payload 增加可选 `mode`（`FULL` / `ACL_ONLY` / `DELETE`）与 `reason`；新增 `riccon.knowledge.connector.sync.requested.v1`。
 - OpenSearch v2：新增 `visibility`/`department_id`/`acl_version`/`source_type`/`connector_id`/`ocr_confidence`/`bbox_*`；`scripts/ops/reindex-knowledge.mjs` 重灌并逐租户切别名，v1 保留 7 天可切回。运行期检索不依赖索引，切换无用户影响。
 
-### 契约摘要（`1.4.0-m05`）
+### 契约摘要（M05 `1.4.0-m05` / M05b `1.5.0-m05b`）
 
-| 能力   | 端点                                                                                                                                                 |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ACL    | `PUT/GET /knowledge/documents/{documentId}/acl`、`GET /knowledge/documents/{documentId}/download`                                                    |
-| 连接器 | `GET/POST /knowledge/connectors`、`PATCH/DELETE /knowledge/connectors/{id}`、`PUT .../credential`、`POST .../test`、`POST .../sync`、`GET .../items` |
+| 能力           | 端点                                                                                                                                |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| ACL/文档       | `PUT/GET /knowledge/documents/{documentId}/acl`、`DELETE /knowledge/documents/{documentId}`、`GET .../download`、`POST .../reindex` |
+| 连接器（M05b） | `GET/POST /knowledge/connectors`、`PATCH/DELETE .../{id}`、`PUT .../credential`、`POST .../test`、`POST .../sync`、`GET .../items`  |
 
-- `KnowledgeDocument` 增加 `visibility`、`departmentId`、`aclUserCount`、`parseEngine`、`warnings[]`、`parseSummary`、`connectorId`、`externalId`、`sourceFileAccessLimited`；`sourceType` 加 `CONNECTOR`；`Citation` 加可选 `bbox`/`ocrConfidence`/`sourceStatus`；知识库下载与连接器测试端点见 ADR-0023 §7.4。
+- M05 `KnowledgeDocument` 增加 `visibility`/`departmentId`/`aclUserCount`/`parseEngine`/`warnings[]`/`parseSummary`/`sourceFileAccessLimited`；M05b 再加 `connectorId`/`externalId`/`sourceType=CONNECTOR`；`Citation` 加 `bbox`/`ocrConfidence`/`sourceStatus`。
 - 错误码：`RICCON-KB-400/404/409/503`；跨租户 `RICCON-TENANT-404`；权限 `RICCON-AUTH-403`；异步 `KB_*` 稳定码。
 
 ### 迁移与回滚
@@ -431,14 +435,15 @@ M05 的完整决策见 `docs/adr/ADR-0023-m05-knowledge-depth.md`（`proposed`�
 
 ### 交付计划与预算
 
-- 任务边界见 ADR-0023 §12：B1 领域/迁移/outbox 框架、B2 唯一契约 writer、B3 ACL/下载/保留任务、B4 Excel、B5 OCR、B6 连接器、B7 索引、B8 Web、B9 引用可用性、V1/V2 独立验证；逐项估算 ≈116h（P6=A/AC-21=A；Product §11.7 建议 98h，差异项见 ADR §12.2）。
-- 两种拆分待 U3 决策：Product 方案 M05 90h + M05b 26h（Excel+OCR+ACL+M04 文案 / 连接器）；Architect 风险方案 M05a（Excel+ACL+索引/契约）+ M05b（OCR+连接器）。单模块 116h 需用户批准。B1/B3/B6/B7/B9 为高风险任务，done 前必须有独立 Verifier 任务级评审。
+- 任务边界见 ADR-0023 §12：M05 = B1/B2/B3/B4/B5/B7/B8/B9/B10/B11/O1/V1/V2（97h）；M05b = B2b/B6/B7b/B8b/B9b/O2/V1b/V2b（47h）；合计 144h。P1 修复新增项包括 delete/reindex、下载流式代理、`admin_read`、同步时间/tombstone/list guard、注入 harness、perf 场景、OCR 镜像/零出网与连接器 Ops。
+- DEC-0034 已批准 Product 拆分（M05=Excel+OCR+ACL+M04 429；M05b=S3 连接器），不再保留风险拆分/单模块选项；B1/B2/B2b/B3/B6/B7/B7b/B9/B9b 为高风险任务，done 前必须有独立 Verifier 任务级评审；M05 gate 前完成 O1，M05b gate 前完成 O2。
 
 ### 风险
 
 - Tesseract 中文精度不达标 → 固定夹具 + CER 门槛 + SPI 切换 PP-OCR（需用户批准）。
 - OCR/解析资源耗尽 → 像素/页/行/字符上限、逐页释放、heavy 并发 2、租约续期。
-- ACL 谓词漏入口 → 单一访问层 + `TEN-034..037`/`DEPT-011..014`/`SEC-KB-002/003` 越权矩阵。
+- ACL 谓词漏入口 → 单一访问层 + `TEN-034..037`/`DEPT-011..014`/`SEC-KB-002/003` 越权矩阵；租户管理员 `admin_read` 绕过 ACL 必须留审计（`IT-KB-110`）。
+- 连接器 list 不完整误删 → 只有 `last_sync_complete=true` 才传播删除；tombstone 复用 + `generation`（`IT-CONN-103`）。
 - ACL 上线后回滚放宽可见性 → 默认禁止应用回滚，前向修复；用户批准才允许放宽。
 - 连接器 SSRF/凭据 → 端点允许列表、无重定向、禁元数据地址、信封加密、只写不读。
 - 索引 v2 重灌遗漏 → 以 MySQL 重灌、逐租户别名切换、v1 保留 7 天。
@@ -455,7 +460,7 @@ M05 的完整决策见 `docs/adr/ADR-0023-m05-knowledge-depth.md`（`proposed`�
   - `contracts/README.md`：版本、兼容、幂等与安全规则。
 - 事件命名：`riccon.<domain>.<event>.v1`；事件必须带 `eventId`、`occurredAt`、`tenantId`、`traceId`、`idempotencyKey`。
 - M04 契约版本 `1.3.0-m04`（全量设计、单模块一次交付）：模型路由、降级、多 key、受管端点、开关、配额与成本已在同一版本定义；`x-riccon-deferred` 移除 `model-routing-quota`，`workspace-archive` 改为 M09，MCP 目录标 M07，BYO/多币种/价格编辑/账单对账后置。DEC-0024=B 已撤销拆分，契约不做分段，配额/成本端点由 B2 同任务实现并通过契约测试。
-- M05 设计版本 `1.4.0-m05`（ADR-0023 `proposed`，尚未实现）：知识库文档 `visibility`/`departmentId`/`warnings`/`parseEngine`、`sourceType` 加 `CONNECTOR`、ACL 两端点、连接器六端点、`Citation.bbox`；全部为 additive，破坏性变更才升 `/api/v2`。
+- M05 设计版本 `1.4.0-m05`（ADR-0023 `proposed`，尚未实现）：知识库 `visibility`/`departmentId`/`warnings`/`parseSummary`、ACL 两端点、文档 delete/download/reindex、`Citation.bbox`/`sourceStatus`；M05b 设计版本 `1.5.0-m05b`：连接器六端点、`sourceType=CONNECTOR`、`connectorId`/`externalId`。全部为 additive，破坏性变更才升 `/api/v2`。
 - OpenAPI 契约手工维护为 `contracts/openapi.yaml`；实现可用 springdoc 生成运行时描述并在契约测试中与契约对比。M01 默认关闭文档端点，M02 按环境开启。
 
 ## 安全与隐私
@@ -489,11 +494,12 @@ M05 的完整决策见 `docs/adr/ADR-0023-m05-knowledge-depth.md`（`proposed`�
 | 配额准入       | ≤ 20 ms                                  | 4 次条件 UPDATE + run 插入同事务                                                                                                                                                                     |
 | 指标抓取       | `/actuator/prometheus`                   | 仅内网/受控；M04 7 指标存在                                                                                                                                                                          |
 | ACL 检索增量   | ≤ 20%                                    | ACL 开启后检索/首字相对 M04 基线；`PERF-M05-001`                                                                                                                                                     |
+| 检索 p95       | **待量测，不预设阈值**                   | 10 万 chunk、50 并发；`LIKE` + ACL EXISTS 先量测；超 500ms 时 FTS/OpenSearch/单独预算需用户决策；`PERF-M05-005`                                                                                      |
 | OCR 单页 p95   | ≤ 3 s                                    | A4 200 DPI、2 并发、`tessdata_fast`；`PERF-M05-002`                                                                                                                                                  |
 | 索引延迟       | p95 ≤ 60s（无 OCR）/ ≤ 120s（20 页 OCR） | create → `INDEXED`；`PERF-M05-002`                                                                                                                                                                   |
 | 连接器同步     | 1,000 对象 ≤ 15 min                      | 增量、无 >10 MB 对象；`PERF-M05-003`                                                                                                                                                                 |
 
-性能预算由 k6 在 sandbox/preview 验证；未达到预算的变更不得进入 release。**API p95 只统计稳态 JSON API**：登录、workspace 列表、会话创建、setup/cleanup 不计入；聊天提交是 SSE，TTFB 单列（`m04_chat_submit_ttfb_ms`），受首字 p95 ≤ 3s 约束，不并入 500ms 预算（M04 F-013 口径，2026-11-22 对齐 `e2e/perf/mvc-smoke.js` 注释）。AC-17 的 50 并发/perf profile 必须在报告中记录 `RICCON_CHAT_MAX_STREAMS=50`、`RICCON_DB_POOL_SIZE≥25`、`RICCON_FAKE_MODEL=1`、`RICCON_MODEL_DEPLOYMENT_MODE=DEMO`。
+性能预算由 k6 在 sandbox/preview 验证；未达到预算的变更不得进入 release。**API p95 只统计稳态 JSON API**：登录、workspace 列表、会话创建、setup/cleanup 不计入；聊天提交是 SSE，TTFB 单列（`m04_chat_submit_ttfb_ms`），受首字 p95 ≤ 3s 约束，不并入 500ms 预算（M04 F-013 口径）。M05 场景由 `PERF_M05_SCENARIO=knowledge` 提供（`e2e/perf/mvc-smoke.js` + `scripts/real-stack/run.mjs`，owner M05-B11），`IT-WORKER-LANE-001` 证明 OCR/索引积压不阻塞 chat/report；检索 p95 未量测前不得声称 AC-20 通过。AC-17 的 50 并发/perf profile 必须在报告中记录 `RICCON_CHAT_MAX_STREAMS=50`、`RICCON_DB_POOL_SIZE≥25`、`RICCON_FAKE_MODEL=1`、`RICCON_MODEL_DEPLOYMENT_MODE=DEMO`。
 
 ## 运行模型
 
@@ -517,49 +523,49 @@ M05 的完整决策见 `docs/adr/ADR-0023-m05-knowledge-depth.md`（`proposed`�
 
 ## 风险
 
-| 风险                                            | 可能性 | 影响               | 缓解                                                                                                                                         |
-| ----------------------------------------------- | ------ | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| 租户上下文在线程池/异步链路丢失                 | 中     | 高（跨租户泄漏）   | ThreadLocal 只用于同步；跨线程显式传递；M02 增加越权测试套件                                                                                 |
-| AgentScope 依赖泄漏到 API                       | 中     | 高（边界腐蚀）     | ArchUnit + Maven Enforcer 双重门禁                                                                                                           |
-| MySQL Connector/J 的 GPLv2 许可与私有化分发冲突 | 中     | 高（法务）         | 发布前由 Lead/法务确认 Oracle 商业许可或替代驱动；见遗留风险                                                                                 |
-| MinIO 官方镜像停止发布                          | 高     | 低（仅测试栈）     | 测试栈使用 RustFS（ADR-0002）；生产对象存储由 ops 选型                                                                                       |
-| 覆盖率门槛在骨架期被排除项稀释                  | 中     | 中                 | 排除项仅限启动类；新增排除必须评审                                                                                                           |
-| 假模型基准与真实模型差异                        | 中     | 中                 | M02 建立假模型基准与真实模型对比记录                                                                                                         |
-| 审计触发器需要迁移账号权限                      | 中     | 高（迁移失败）     | 迁移账号需 `TRIGGER`；binlog 开启时需 `log_bin_trust_function_creators=1`，写入 RUNBOOK 与部署检查                                           |
-| 会话表成为登录关键路径                          | 低     | 中（无法登录）     | MySQL 健康检查、会话过期清理、备份包含 `SPRING_SESSION*`                                                                                     |
-| 部门成员关系陈旧或缓存导致移出后仍可访问        | 中     | 高（跨部门泄露）   | 每请求查库；无跨请求缓存；成员移出/部门停用/负责人移交下一次请求生效；`DEPT-007`                                                             |
-| M02 遗留 `TENANT` 空间在 M03 仍全租户可见       | 中     | 中（租户内越权）   | M03 不提供转换；评审列遗留清单；转换按 DEC-0023 归 M09 专用迁移；新空间禁止 `TENANT`（R-11）                                                 |
-| 知识库租户级共享被误读为部门隔离                | 中     | 中（预期错位）     | 界面固定明示；源文件打开/下载仍走空间 404；M05 文档 ACL                                                                                      |
-| IdP 配置漂移/密钥轮换失败导致企业登录不可用     | 中     | 高（无法登录）     | 配置启动校验；内置账号兜底；滚动重启；`oidc-binding/remove` 恢复本地密码；M09 运行手册                                                       |
-| OIDC token 或 IdP 原始错误泄漏到浏览器/日志     | 低     | 高（账号接管）     | 不存 token；no-op authorized client；失败只映射原因码；`SEC-OIDC-001`；日志脱敏                                                              |
-| 审计导出被审批绕过或跨租户读取                  | 低     | 高（批量泄露）     | 申请人≠审批人；只有申请人下载；平台审批仅元数据；`TEN-028..030`、`SEC-AUDIT-001`                                                             |
-| 深层分页/大范围查询拖慢审计库                   | 中     | 中（可用性）       | 最大 180 天、page ≤200、size ≤100、导出上限 10,000、V10 索引；M09 观测慢查询                                                                 |
-| 流式导出在有效期内重复生成导致行数变化          | 中     | 低（结果解释）     | `occurredTo` 固定；CSV 元数据写实际 `rowCount`；审批记录与 `data.exported` 可核对                                                            |
-| OIDC 业务失败残留 OidcUser/ID Token 会话        | 低     | 高（账号接管）     | OIDC-aware SecurityContextRepository 不落 OIDC 主体；失败清理并失效会话；`IT-OIDC-001/004/006`、`SEC-OIDC-001`                               |
-| 登出未结束 IdP 会话导致共享工作站 SSO 残留      | 中     | 高（账号接管）     | DEC-0017 A：本地先失效 + 自动 end-session 导航；IdP 不可达提示仅本地退出；`E2E-M03-03`                                                       |
-| 审计读取用 token 子串误杀模型事件               | 中     | 中（功能失败）     | action-aware 白名单；禁止子串匹配；`IT-AUDIT-101` 覆盖 promptTokens/completionTokens                                                         |
-| 平台管理员审批多管理员租户导出                  | 低     | 高（审批绕过）     | ACTIVE TENANT_ADMIN ≥2 时平台端点 409；只允许单管理员租户；`IT-AUDIT-104`                                                                    |
-| 平台租户导出无合法审批人                        | 低     | 中（功能缺口）     | M10 显式 403/deferred；不引入自批；M10+ 另立审批模型（F-023）                                                                                |
-| 审计 CSV 公式注入                               | 低     | 中（客户端执行）   | 危险前缀单元格前置 `'`；`SEC-AUDIT-001` 扫描；CSV 元数据固定                                                                                 |
-| M04 受管端点被篡改或误配导致凭据发往错误地址    | 中     | 高（凭据外发）     | 部署允许列表 + 启动校验 + 调用前二次校验 + 禁止重定向/元数据地址；`SEC-M04-001..004`                                                         |
-| M04 首字后失败被自动重试产生重复内容            | 中     | 中（错误内容）     | 首字后绝不重试/重放；保留内容 + 新消息重试；`IT-MODEL-104`、`E2E-M04-03`                                                                     |
-| M04 配额并发超卖                                | 中     | 高（成本失控）     | 单条条件 UPDATE + 固定顺序事务；50 并发用例；`IT-QUOTA-102`、`PERF-M04-002`                                                                  |
-| M04 成本快照被价格更新污染或重复重算            | 中     | 高（账单不可信）   | 成功终态读取一次价格快照（M20/TASK-0140 修订，见 ADR-0022 §2.1；价格维护上线前必须重访）+ 只读历史；禁止 UPDATE `cost_amount`；`IT-COST-101` |
-| M04 key 轮换失败或最后一个 key 被停用           | 中     | 高（模型不可用）   | 先插新 key 再停旧；HMAC fingerprint 去重/409；运行时跳到下一模型；`IT-MODEL-105/106`                                                         |
-| M04 降级风暴放大上游故障                        | 中     | 中（延迟/成本）    | 尝试上限/预算/退避抖动/key 冷却/`failoverEnabled` 开关；`PERF-M04-001`                                                                       |
-| M04 V11 大表 COPY/回填导致写阻塞或复制延迟      | 中     | 高（升级窗口）     | `model_invocation` 不加 CHECK；索引 INPLACE/LOCK=NONE；V11 不回填 `cost_day`，由 B10 在 CHECK 后独立分批回填；大表阈值停写窗口；B10 演练     |
-| M04 可观测性缺失导致 AC-17 不可验收             | 中     | 中（假绿）         | B1c 引入 Micrometer/Prometheus/M04 7 指标；`metrics-check`；V2 抓取证据                                                                      |
-| M04 跨租户成本/配额泄漏                         | 低     | 高（商业数据）     | 主体派生 + 平台无用户明细 + 统一 404；`TEN-032/033`、`IT-QUOTA-103`                                                                          |
-| M05 ACL 谓词漏入口导致租户内越权                | 中     | 高（敏感文档）     | 单一访问层集中谓词；列表/详情/检索/引用/下载/删除/重索引共用；`TEN-034..037`、`DEPT-011..014`、`SEC-KB-002/003`                              |
-| M05 ACL 上线后应用回滚放宽为租户全员可见        | 中     | 高（越权）         | 默认禁止应用回滚、只前向修复；关闭开关同样需用户书面同意；ADR-0023 §5.9                                                                      |
-| M05 OCR/解析资源耗尽或原生库崩溃                | 中     | 中（可用性）       | 像素/页/行/字符/超时上限；逐页释放；heavy 通道并发 2；租约续期；`SEC-KB-005`                                                                 |
-| M05 OCR 中文精度不达标                          | 中     | 中（体验）         | 固定夹具 CER 门槛；`OcrEngine` SPI 切换 PP-OCR ONNX；需用户批准                                                                              |
-| M05 P6=B 页图端点增加渲染/缓存/越权面           | 中     | 中（内容泄露/DoS） | 每请求 ACL、private 缓存、页号/DPI/像素上限、超时；`SEC-KB-006`；选 A 则无此风险                                                             |
-| M05 AC-21=B 物理清理误删或扩大权限面            | 低     | 高（数据丢失）     | 只处理到期且已软删除、批量上限、dry-run、审计、幂等条件删除；`IT-KB-118`；选 A 则无此风险                                                    |
-| M05 连接器 SSRF 或凭据泄露                      | 低     | 高（内网/接管）    | 端点允许列表、无重定向、禁元数据地址；信封加密、只写不读、掩码；`SEC-CONN-001/003`                                                           |
-| M05 源端删除未传播导致陈旧内容继续被检索        | 中     | 中（越权残留）     | 每轮 list + `last_seen_at` 对账；软删除 + `mode=DELETE` 清索引；`IT-CONN-103`                                                                |
-| M05 outbox 长任务阻塞报告与文件解析             | 中     | 中（延迟）         | default/heavy 双通道 + 租约续期 + 最大处理时长；`IT-WORKER-LANE-001`                                                                         |
-| M05 索引 v2 重灌遗漏或跨租户写入                | 低     | 高（越权/缺检索）  | 以 MySQL 重灌、索引名由租户派生、逐租户切别名、v1 保留 7 天；`IT-KB-113`、`TEN-034`                                                          |
+| 风险                                            | 可能性 | 影响                    | 缓解                                                                                                                                         |
+| ----------------------------------------------- | ------ | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| 租户上下文在线程池/异步链路丢失                 | 中     | 高（跨租户泄漏）        | ThreadLocal 只用于同步；跨线程显式传递；M02 增加越权测试套件                                                                                 |
+| AgentScope 依赖泄漏到 API                       | 中     | 高（边界腐蚀）          | ArchUnit + Maven Enforcer 双重门禁                                                                                                           |
+| MySQL Connector/J 的 GPLv2 许可与私有化分发冲突 | 中     | 高（法务）              | 发布前由 Lead/法务确认 Oracle 商业许可或替代驱动；见遗留风险                                                                                 |
+| MinIO 官方镜像停止发布                          | 高     | 低（仅测试栈）          | 测试栈使用 RustFS（ADR-0002）；生产对象存储由 ops 选型                                                                                       |
+| 覆盖率门槛在骨架期被排除项稀释                  | 中     | 中                      | 排除项仅限启动类；新增排除必须评审                                                                                                           |
+| 假模型基准与真实模型差异                        | 中     | 中                      | M02 建立假模型基准与真实模型对比记录                                                                                                         |
+| 审计触发器需要迁移账号权限                      | 中     | 高（迁移失败）          | 迁移账号需 `TRIGGER`；binlog 开启时需 `log_bin_trust_function_creators=1`，写入 RUNBOOK 与部署检查                                           |
+| 会话表成为登录关键路径                          | 低     | 中（无法登录）          | MySQL 健康检查、会话过期清理、备份包含 `SPRING_SESSION*`                                                                                     |
+| 部门成员关系陈旧或缓存导致移出后仍可访问        | 中     | 高（跨部门泄露）        | 每请求查库；无跨请求缓存；成员移出/部门停用/负责人移交下一次请求生效；`DEPT-007`                                                             |
+| M02 遗留 `TENANT` 空间在 M03 仍全租户可见       | 中     | 中（租户内越权）        | M03 不提供转换；评审列遗留清单；转换按 DEC-0023 归 M09 专用迁移；新空间禁止 `TENANT`（R-11）                                                 |
+| 知识库租户级共享被误读为部门隔离                | 中     | 中（预期错位）          | 界面固定明示；源文件打开/下载仍走空间 404；M05 文档 ACL                                                                                      |
+| IdP 配置漂移/密钥轮换失败导致企业登录不可用     | 中     | 高（无法登录）          | 配置启动校验；内置账号兜底；滚动重启；`oidc-binding/remove` 恢复本地密码；M09 运行手册                                                       |
+| OIDC token 或 IdP 原始错误泄漏到浏览器/日志     | 低     | 高（账号接管）          | 不存 token；no-op authorized client；失败只映射原因码；`SEC-OIDC-001`；日志脱敏                                                              |
+| 审计导出被审批绕过或跨租户读取                  | 低     | 高（批量泄露）          | 申请人≠审批人；只有申请人下载；平台审批仅元数据；`TEN-028..030`、`SEC-AUDIT-001`                                                             |
+| 深层分页/大范围查询拖慢审计库                   | 中     | 中（可用性）            | 最大 180 天、page ≤200、size ≤100、导出上限 10,000、V10 索引；M09 观测慢查询                                                                 |
+| 流式导出在有效期内重复生成导致行数变化          | 中     | 低（结果解释）          | `occurredTo` 固定；CSV 元数据写实际 `rowCount`；审批记录与 `data.exported` 可核对                                                            |
+| OIDC 业务失败残留 OidcUser/ID Token 会话        | 低     | 高（账号接管）          | OIDC-aware SecurityContextRepository 不落 OIDC 主体；失败清理并失效会话；`IT-OIDC-001/004/006`、`SEC-OIDC-001`                               |
+| 登出未结束 IdP 会话导致共享工作站 SSO 残留      | 中     | 高（账号接管）          | DEC-0017 A：本地先失效 + 自动 end-session 导航；IdP 不可达提示仅本地退出；`E2E-M03-03`                                                       |
+| 审计读取用 token 子串误杀模型事件               | 中     | 中（功能失败）          | action-aware 白名单；禁止子串匹配；`IT-AUDIT-101` 覆盖 promptTokens/completionTokens                                                         |
+| 平台管理员审批多管理员租户导出                  | 低     | 高（审批绕过）          | ACTIVE TENANT_ADMIN ≥2 时平台端点 409；只允许单管理员租户；`IT-AUDIT-104`                                                                    |
+| 平台租户导出无合法审批人                        | 低     | 中（功能缺口）          | M10 显式 403/deferred；不引入自批；M10+ 另立审批模型（F-023）                                                                                |
+| 审计 CSV 公式注入                               | 低     | 中（客户端执行）        | 危险前缀单元格前置 `'`；`SEC-AUDIT-001` 扫描；CSV 元数据固定                                                                                 |
+| M04 受管端点被篡改或误配导致凭据发往错误地址    | 中     | 高（凭据外发）          | 部署允许列表 + 启动校验 + 调用前二次校验 + 禁止重定向/元数据地址；`SEC-M04-001..004`                                                         |
+| M04 首字后失败被自动重试产生重复内容            | 中     | 中（错误内容）          | 首字后绝不重试/重放；保留内容 + 新消息重试；`IT-MODEL-104`、`E2E-M04-03`                                                                     |
+| M04 配额并发超卖                                | 中     | 高（成本失控）          | 单条条件 UPDATE + 固定顺序事务；50 并发用例；`IT-QUOTA-102`、`PERF-M04-002`                                                                  |
+| M04 成本快照被价格更新污染或重复重算            | 中     | 高（账单不可信）        | 成功终态读取一次价格快照（M20/TASK-0140 修订，见 ADR-0022 §2.1；价格维护上线前必须重访）+ 只读历史；禁止 UPDATE `cost_amount`；`IT-COST-101` |
+| M04 key 轮换失败或最后一个 key 被停用           | 中     | 高（模型不可用）        | 先插新 key 再停旧；HMAC fingerprint 去重/409；运行时跳到下一模型；`IT-MODEL-105/106`                                                         |
+| M04 降级风暴放大上游故障                        | 中     | 中（延迟/成本）         | 尝试上限/预算/退避抖动/key 冷却/`failoverEnabled` 开关；`PERF-M04-001`                                                                       |
+| M04 V11 大表 COPY/回填导致写阻塞或复制延迟      | 中     | 高（升级窗口）          | `model_invocation` 不加 CHECK；索引 INPLACE/LOCK=NONE；V11 不回填 `cost_day`，由 B10 在 CHECK 后独立分批回填；大表阈值停写窗口；B10 演练     |
+| M04 可观测性缺失导致 AC-17 不可验收             | 中     | 中（假绿）              | B1c 引入 Micrometer/Prometheus/M04 7 指标；`metrics-check`；V2 抓取证据                                                                      |
+| M04 跨租户成本/配额泄漏                         | 低     | 高（商业数据）          | 主体派生 + 平台无用户明细 + 统一 404；`TEN-032/033`、`IT-QUOTA-103`                                                                          |
+| M05 ACL 谓词漏入口导致租户内越权                | 中     | 高（敏感文档）          | 单一访问层集中谓词；列表/详情/检索/引用/下载/删除/重索引共用；`TEN-034..037`、`DEPT-011..014`、`SEC-KB-002/003`                              |
+| M05 ACL 上线后应用回滚放宽为租户全员可见        | 中     | 高（越权）              | 默认禁止应用回滚、只前向修复；关闭开关同样需用户书面同意；ADR-0023 §5.9                                                                      |
+| M05 OCR/解析资源耗尽或原生库崩溃                | 中     | 中（可用性）            | 像素/页/行/字符/超时上限；逐页释放；heavy 通道并发 2；租约续期；`SEC-KB-005`                                                                 |
+| M05 OCR 中文精度不达标                          | 中     | 中（体验）              | 固定夹具 CER 门槛；`OcrEngine` SPI 切换 PP-OCR ONNX；需用户批准                                                                              |
+| M05 P6=B 页图端点增加渲染/缓存/越权面           | 中     | 中（内容泄露/DoS）      | 每请求 ACL、private 缓存、页号/DPI/像素上限、超时；`SEC-KB-006`；选 A 则无此风险                                                             |
+| M05 AC-21=B 物理清理误删或扩大权限面            | 低     | 高（数据丢失）          | 只处理到期且已软删除、批量上限、dry-run、审计、幂等条件删除；`IT-KB-118`；选 A 则无此风险                                                    |
+| M05 连接器 SSRF 或凭据泄露                      | 低     | 高（内网/接管）         | 端点允许列表、无重定向、禁元数据地址；信封加密、只写不读、掩码；`SEC-CONN-001/003`                                                           |
+| M05 源端删除未传播或误删                        | 中     | 中（越权残留/数据丢失） | 每轮 list + `last_seen_at` 对账；只有 `last_sync_complete=true` 才删除；tombstone 复用（generation）；`IT-CONN-103`                          |
+| M05 outbox 长任务阻塞报告与文件解析             | 中     | 中（延迟）              | default/heavy 双通道 + 租约续期 + 最大处理时长；`IT-WORKER-LANE-001`                                                                         |
+| M05 索引 v2 重灌遗漏或跨租户写入                | 低     | 高（越权/缺检索）       | 以 MySQL 重灌、索引名由租户派生、逐租户切别名、v1 保留 7 天；`IT-KB-113`、`TEN-034`                                                          |
 
 ## 相关决策
 

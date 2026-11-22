@@ -3,13 +3,13 @@
 Status: proposed
 Date: 2026-11-22
 Reviewers: `riccon/lead`（范围/合同一致性）、`riccon/verifier`（ACL 越权、OCR 资源上限、迁移可测性）、`riccon/ops`（镜像/权重分发、迁移回滚、连接器凭据与出网）、安全评审（提示注入、SSRF、凭据、跨租户）
-Approved-by: 未批准（本 ADR 为 `proposed`；OCR 引擎、连接器类型、模块拆分与回滚约束需用户决策，见 §13）
+Approved-by: DEC-0034（2026-11-22）已答复：Product 拆分（M05=Excel+OCR+ACL+M04 429；M05b=S3 连接器）、P6=A 引用详情+文本块/坐标、P8=A 软删除+索引 DELETE（物理清理归 M09，release blocker）、U8=允许租户管理员管理性读取且绕过 ACL 的读取必须审计、M03-AC-06 由 M05 取代、其余技术默认值接受。ADR 本身仍为 `proposed`，待 Lead/Verifier/Ops/安全设计评审。
 Review-date: 待定（M05 gate 前完成 Lead/Verifier/Ops/安全评审）
 Supersedes: none
 Scope: M05「知识库纵深」的 Excel 结构化抽取、图片/扫描件 OCR、文档级 ACL、1 个外部连接器；M02 已有 PDF/DOCX/XLSX/图片上传与引用
-关联: `docs/PRODUCT.md` §6（M05 路线图，brief/AC 由 Product 并行编写）、`docs/ARCHITECTURE.md`、ADR-0006（信封加密）、ADR-0007（审计）、ADR-0009（租户隔离与检索）、ADR-0010（Flyway）、ADR-0012（数据模型）、ADR-0015（领域模块）、ADR-0018（M03 部门范围）、ADR-0021/0022（M04 网关）、`docs/security/THREAT-MODEL.md`、`docs/CODING-STANDARDS.md`
+关联: `docs/PRODUCT.md` §6（M05 路线图，brief/AC 由 Product 并行编写）、`docs/ARCHITECTURE.md`、ADR-0006（信封加密）、ADR-0007（审计）、ADR-0009（租户隔离与检索）、ADR-0010（Flyway）、ADR-0012（数据模型）、ADR-0015（领域模块）、ADR-0018（M03 部门范围）、ADR-0021/0022（M04 网关）、`docs/security/THREAT-MODEL.md`、`docs/CODING-STANDARDS.md`、`REV-M05-AC-001`
 
-> 状态口径：`proposed` 只表示架构草案已写出。§4（OCR 引擎与权重分发）、§5.9（ACL 上线后的回滚约束）、§6.1（连接器类型）和 §12（模块拆分/预算）未经用户批准前不进入实现；本 ADR 不修改 `docs/PRODUCT.md`，§11 只是对 Product §11 草案的设计映射，AC 以 Product 定稿为准。
+> 状态口径：`proposed` 只表示架构草案已写出。DEC-0034 已答复的范围/选项按 §2、§5.9、§8、§12、§13 记录；本 ADR 不修改 `docs/PRODUCT.md`，§11 只是对 Product §11 草案的设计映射，AC 以 Product 定稿为准。REV-M05-AC-001 的架构 P1（F-003..F-014、F-022..F-028、F-030）已在本版处理，剩余 Product/Lead 项见 §13.5。
 
 ---
 
@@ -17,19 +17,20 @@ Scope: M05「知识库纵深」的 Excel 结构化抽取、图片/扫描件 OCR�
 
 ### 1.1 现状（已实现，作为设计前提）
 
-| 事实                                                                                                                      | 代码/契约证据                                                                 | 对 M05 的含义                                                                     |
-| ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| 上传支持 PDF/DOCX/XLSX/PNG/JPEG，单文件 ≤ 200 MB；Worker 解析上限默认 50 MB（`riccon.worker.parse.max-file-bytes`）       | `FileTypes`、`application.yml`、`FileUploadPreparer`、`ParseProperties`       | Worker 已在大文件前拒绝；M05 不改变上传契约，Excel/OCR 的上限必须更低并有独立开关 |
-| XLSX 用 POI 5.5.1 DOM（`XSSFWorkbook`），每工作表一个段落，`MAX_ROWS=20_000`、`MAX_COLUMNS=200`，`cellRange` 记录整表范围 | `XlsxDocumentParser`                                                          | 200 MB XLSX 会整本载入堆，M05 必须改为流式并细化定位                              |
-| 图片只校验对象存在，返回元数据，不读像素                                                                                  | `FileContentExtractor`、`ImageDocumentParser`                                 | OCR 是新增能力，不替换现有行为；需开关与失败态                                    |
-| PDF 逐页文本抽取；无文本时解析失败                                                                                        | `PdfDocumentParser`                                                           | 扫描件 PDF 需要逐页渲染 + OCR，且不能把“有文本页 + 扫描页”整本判失败              |
-| 检索运行期走 MySQL `LIKE`（`knowledge_chunk JOIN knowledge_document`），不查 OpenSearch                                   | `AgentContextJdbc.search`、`AgentContextRepository` 注释                      | **ACL 的强制点在 MySQL**；OpenSearch 只做可重建索引，不在 M05 切换检索后端        |
-| OpenSearch 索引 `riccon-kb-v1-{tenant}`，`dynamic: strict`，字段不含 ACL                                                  | `OpenSearchIndexClient.indexMapping`                                          | 新增 ACL 字段必须建 v2 索引并重灌；`strict` 下不能只靠动态写入                    |
-| 知识库仍租户级共享：列表/详情按 `tenant_id`，界面固定明示“文档级权限在后续版本”                                           | `KnowledgeService.list/get`、`openapi.yaml` `/knowledge/documents`、M03-AC-06 | M05 必须让 ACL 真正生效，并同步撤销该明示文案（Product 侧）                       |
-| 源文件打开/下载走工作空间谓词；文档本身不判定空间                                                                         | `KnowledgeService.create` 的 `lockAccessible`、ADR-0018 §3                    | 知识可见性与文件字节可见性必须分开建模，不能互相放大                              |
-| `knowledge_document.file_id` 可空（SEED 语料），`created_by` 可空                                                         | V3 迁移                                                                       | 连接器文档可以没有 `file` 行；创建人空缺时 ACL 不能依赖“创建人隐式可见”           |
-| outbox 单通道、顺序处理，租约 90 s，无续约                                                                                | `OutboxPoller.pollOnce`、`OutboxClaimer`、`application.yml`                   | OCR/连接器长任务会阻塞 J2 报告与文件解析；M05 必须拆通道并支持租约续期            |
-| 审计 details 是 action-aware 白名单，未知动作或白名单外键 fail-closed                                                     | `AuditDetailsReader`、`AuditDetailsPolicy`                                    | 新增知识库/连接器动作必须同步白名单，否则审计写入直接失败                         |
+| 事实                                                                                                                      | 代码/契约证据                                                                 | 对 M05 的含义                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| 上传支持 PDF/DOCX/XLSX/PNG/JPEG，单文件 ≤ 200 MB；Worker 解析上限默认 50 MB（`riccon.worker.parse.max-file-bytes`）       | `FileTypes`、`application.yml`、`FileUploadPreparer`、`ParseProperties`       | Worker 已在大文件前拒绝；M05 不改变上传契约，Excel/OCR 的上限必须更低并有独立开关          |
+| XLSX 用 POI 5.5.1 DOM（`XSSFWorkbook`），每工作表一个段落，`MAX_ROWS=20_000`、`MAX_COLUMNS=200`，`cellRange` 记录整表范围 | `XlsxDocumentParser`                                                          | 200 MB XLSX 会整本载入堆，M05 必须改为流式并细化定位                                       |
+| 图片只校验对象存在，返回元数据，不读像素                                                                                  | `FileContentExtractor`、`ImageDocumentParser`                                 | OCR 是新增能力，不替换现有行为；需开关与失败态                                             |
+| PDF 逐页文本抽取；无文本时解析失败                                                                                        | `PdfDocumentParser`                                                           | 扫描件 PDF 需要逐页渲染 + OCR，且不能把“有文本页 + 扫描页”整本判失败                       |
+| 检索运行期走 MySQL `LIKE`（`knowledge_chunk JOIN knowledge_document`），不查 OpenSearch                                   | `AgentContextJdbc.search`、`AgentContextRepository` 注释                      | **ACL 的强制点在 MySQL**；OpenSearch 只做可重建索引，不在 M05 切换检索后端                 |
+| OpenSearch 索引 `riccon-kb-v1-{tenant}`，`dynamic: strict`，字段不含 ACL                                                  | `OpenSearchIndexClient.indexMapping`                                          | 新增 ACL 字段必须建 v2 索引并重灌；`strict` 下不能只靠动态写入                             |
+| 知识库仍租户级共享：列表/详情按 `tenant_id`，界面固定明示“文档级权限在后续版本”                                           | `KnowledgeService.list/get`、`openapi.yaml` `/knowledge/documents`、M03-AC-06 | M05 必须让 ACL 真正生效，并同步撤销该明示文案；DEC-0034 已批准 M03-AC-06 由 M05 取代       |
+| `KnowledgeController` 当前只有 list/create/get；`openapi.yaml` 的 DELETE 与 reindex 尚未实现                              | `KnowledgeController`、`contracts/openapi.yaml`                               | M05-B3 必须实现 delete（创建人/管理员）与 reindex（缺失页/force），否则 AC-15/16/21 不可验 |
+| 源文件打开/下载走工作空间谓词；文档本身不判定空间                                                                         | `KnowledgeService.create` 的 `lockAccessible`、ADR-0018 §3                    | 知识可见性与文件字节可见性必须分开建模，不能互相放大                                       |
+| `knowledge_document.file_id` 可空（SEED 语料），`created_by` 可空                                                         | V3 迁移                                                                       | 连接器文档可以没有 `file` 行；创建人空缺时 ACL 不能依赖“创建人隐式可见”                    |
+| outbox 单通道、顺序处理，租约 90 s，无续约                                                                                | `OutboxPoller.pollOnce`、`OutboxClaimer`、`application.yml`                   | OCR/连接器长任务会阻塞 J2 报告与文件解析；M05 必须拆通道并支持租约续期                     |
+| 审计 details 是 action-aware 白名单，未知动作或白名单外键 fail-closed                                                     | `AuditDetailsReader`、`AuditDetailsPolicy`                                    | 新增知识库/连接器动作必须同步白名单，否则审计写入直接失败                                  |
 
 ### 1.2 约束
 
@@ -43,13 +44,13 @@ Scope: M05「知识库纵深」的 Excel 结构化抽取、图片/扫描件 OCR�
 
 ## 2. 决策总览
 
-| 能力             | 决策                                                                                                                                                                                                     | 需要用户批准                                                      |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Excel 结构化抽取 | 继续用 Apache POI 5.5.1，XLSX 改为 `XSSFReader` 流式；按“工作表 × 行带”定位（`sheetName` + `cellRange`）；公式只读缓存值、不计算；隐藏表默认跳过并出警告                                                 | 否（团队可决定）；隐藏表默认值和警告展示需 Product 确认           |
-| 图片/扫描件 OCR  | 默认 Tesseract 5 + `tessdata_fast`（chi_sim+eng），经 Tess4J（Apache-2.0）调用；`OcrEngine` SPI 允许切换到 RapidOCR/PP-OCR ONNX；本地 CPU、无公网                                                        | **是**：引擎、权重随镜像分发、中文精度基线                        |
-| 文档级 ACL       | `knowledge_document.visibility ∈ {TENANT, DEPT, USERS}` + `knowledge_document_acl`（USERS）；创建人或 `TENANT_ADMIN` 可改；列表/检索/引用/知识库下载四处同一谓词；MySQL 为权威，下一次请求生效；统一 404 | **是**：默认可见范围、管理员是否可读全部文档、上线后回滚约束      |
-| 外部连接器       | 1 个：S3 兼容目录（前缀）连接器，手动 + 可选定时；ETag/校验和增量；源端删除传播；凭据信封加密；端点允许列表 + SSRF 防护                                                                                  | **是**：连接器类型（产品/高成本选择）                             |
-| 数据与索引       | Flyway V12 单迁移；OpenSearch v2 索引 + 别名切换（离线可回滚）；outbox 拆 `default`/`heavy` 双通道 + 租约续期；`1.4.0-m05` 全量契约                                                                      | 否（团队可决定），但 `connector` 对象 key 类别需 Lead 修 ADR-0009 |
+| 能力             | 决策                                                                                                                                                                                               | 决策状态                                                           |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Excel 结构化抽取 | 继续用 Apache POI 5.5.1，XLSX 改为 `XSSFReader` 流式；按“工作表 × 行带”定位（`sheetName` + `cellRange`）；公式只读缓存值、不计算；隐藏表默认跳过并出警告                                           | 团队决定；隐藏表/警告展示按 Product 草案默认                       |
+| 图片/扫描件 OCR  | 默认 Tesseract 5 + `tessdata_fast`（chi_sim+eng），经 Tess4J（Apache-2.0）调用；`OcrEngine` SPI 允许切换到 RapidOCR/PP-OCR ONNX；本地 CPU、无公网                                                  | DEC-0034 已批准；权重随镜像、精度基线按 §4.2                       |
+| 文档级 ACL       | `knowledge_document.visibility ∈ {TENANT, DEPT, USERS}` + `knowledge_document_acl`（USERS）；创建人或 `TENANT_ADMIN` 可改；列表/检索/引用/知识库下载同一谓词；MySQL 权威、下一次请求生效；统一 404 | DEC-0034 已批准；U8 管理性读取 + 绕过 ACL 读取审计；ACL 后禁止回滚 |
+| 外部连接器       | S3 兼容目录（前缀）连接器，手动 + 部署固定周期；ETag/校验和增量；源端删除传播；凭据信封加密；端点允许列表 + SSRF 防护                                                                              | DEC-0034 已批准 S3；契约/UI 归 M05b                                |
+| 数据与索引       | M05 契约 `1.4.0-m05` 只含 ACL/下载/解析/引用；M05b 契约 `1.5.0-m05b` 含连接器；V12 单迁移；OpenSearch v2 索引 + 别名切换；outbox 双通道 + 租约续期                                                 | 团队决定；`connector` 对象 key 类别需 L1 修订 ADR-0009             |
 
 ---
 
@@ -144,10 +145,7 @@ Scope: M05「知识库纵深」的 Excel 结构化抽取、图片/扫描件 OCR�
 - **默认引擎 `tesseract`**：`OcrEngine` SPI + 启动自检（原生库可加载、至少一个配置语言可加载、1 页固定 fixture 能出文本）。引擎/原生库不可用 → worker 启动失败；配置语言缺失 → 启动 WARN 并写入 `/actuator/info`，对应文档失败态为 `KB_OCR_LANG_UNAVAILABLE`。SPI 方法只接受字节与选项、返回块列表与置信度，不泄漏 Tesseract 类型。
 - **精度门槛（B 阶段先做 1 天 spike，结果进评审）**：固定 20 张印刷体夹具（中文 10、英文 5、中英混排 5），要求中文 CER ≤ 10%、英文 CER ≤ 5%、整页均置信度 ≥ 0.70。未达标 → 走替代引擎（RapidOCR/PP-OCR ONNX），由 Lead 在决策包中选。
 - **替代引擎的许可与分发**：RapidOCR/PP-OCR 模型 Apache-2.0，允许随一体机分发；需在 `NOTICE` 保留上游版权与模型来源/哈希。
-- **需用户批准**：
-  1. 选 Tesseract 还是 PP-OCR（影响中文识别质量与实现工作量）；
-  2. 允许把 `tessdata_fast`/PP-OCR 权重打进一体机镜像（Apache-2.0 允许，但属于产品分发内容）；
-  3. 接受上述精度基线作为 AC 口径（而不是“任意图片都能识别”）。
+- **DEC-0034 已批准**：1) Tesseract 默认 + SPI；2) `tessdata_fast`/PP-OCR 权重随镜像分发（Apache-2.0，保留 NOTICE/SBOM）；3) 上述精度基线作为 AC 口径（不是“任意图片都能识别”）。
 
 ### 4.3 管线与定位
 
@@ -176,17 +174,17 @@ Scope: M05「知识库纵深」的 Excel 结构化抽取、图片/扫描件 OCR�
 
 ### 4.4 资源、队列与超时
 
-| 项                   | 默认                                                                                    | 说明                                                              |
-| -------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `RICCON_OCR_ENABLED` | `true`（引擎/原生库不可用时 worker 启动失败；关闭时 OCR 文档 `FAILED/KB_OCR_DISABLED`） | 运维可关闭，非静默降级                                            |
-| `RICCON_OCR_ENGINE`  | `tesseract`                                                                             | `tesseract`/`rapidocr`（SPI 选择）                                |
-| `RICCON_OCR_LANG`    | `chi_sim+eng`                                                                           | 语言包缺失 → 启动 WARN + `KB_OCR_LANG_UNAVAILABLE`，不阻断 worker |
-| 并发                 | 每实例 2（`RICCON_OCR_MAX_CONCURRENCY`）                                                | 信号量限制，不占用 chat 流线程                                    |
-| 单页超时             | 30 s                                                                                    | 超时记 `KB_OCR_TIMEOUT`，继续下一页                               |
-| 单文档 OCR 页数      | 100                                                                                     | 超出页保持“仅文本层”，警告 `OCR_PAGE_LIMIT`                       |
-| 单文档 OCR 超时      | 600 s                                                                                   | 超时 → 部分结果入索引 + 警告；全无结果 → `FAILED`                 |
-| 图片像素             | 50 MP，最长边 4000 px                                                                   | 超出先等比缩放，再 OCR                                            |
-| 内存                 | 单页解码后 ≤ 64 MB                                                                      | 逐页释放；禁止整本渲染                                            |
+| 项                   | 默认                                                  | 说明                                                                                    |
+| -------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `RICCON_OCR_ENABLED` | 生产 `true`；测试 profile 默认 `false`/懒加载（§4.7） | 引擎/原生库不可用且生产启用时 worker 启动失败；关闭时 OCR 文档 `FAILED/KB_OCR_DISABLED` |
+| `RICCON_OCR_ENGINE`  | `tesseract`                                           | `tesseract`/`rapidocr`（SPI 选择）                                                      |
+| `RICCON_OCR_LANG`    | `chi_sim+eng`                                         | 语言包缺失 → 启动 WARN + `KB_OCR_LANG_UNAVAILABLE`，不阻断 worker                       |
+| 并发                 | 每实例 2（`RICCON_OCR_MAX_CONCURRENCY`）              | 信号量限制，不占用 chat 流线程                                                          |
+| 单页超时             | 30 s                                                  | 超时记 `KB_OCR_TIMEOUT`，继续下一页                                                     |
+| 单文档 OCR 页数      | 100                                                   | 超出页保持“仅文本层”，警告 `OCR_PAGE_LIMIT`                                             |
+| 单文档 OCR 超时      | 600 s                                                 | 超时 → 部分结果入索引 + 警告；全无结果 → `FAILED`                                       |
+| 图片像素             | 50 MP，最长边 4000 px                                 | 超出先等比缩放，再 OCR                                                                  |
+| 内存                 | 单页解码后 ≤ 64 MB                                    | 逐页释放；禁止整本渲染                                                                  |
 
 - **队列**：不新建队列表，使用 outbox `heavy` 通道（§7.3）。可观察指标：`riccon_ocr_in_flight`、`riccon_ocr_page_seconds`、`riccon_ocr_queue_wait_seconds`、`riccon_ocr_failures_total{reason}`。
 - **租约**：heavy 通道支持租约续期（§7.3），否则 90 s 租约会在长 OCR 时被重复领取。
@@ -218,9 +216,10 @@ Scope: M05「知识库纵深」的 Excel 结构化抽取、图片/扫描件 OCR�
 - `IT-KB-104`：中英文/中英混排图片与图片型 PDF 的文本、`page_no`、`bbox` 与置信度落库；文本型 PDF/DOCX 不重复 OCR。
 - `IT-KB-105`：成功/低置信/部分失败/全部失败四态；失败页集合、成功页可检索、失败页不产生分块；重试幂等。
 - `IT-KB-114`：EXIF 90°/180°/270° 夹具；低置信触发的 90° 重试只发生一次。
-- `SEC-KB-001`：禁用出网环境执行 OCR，成功且无公有云请求。证据口径：worker 容器以 `--network none` 启动后完成 fixture OCR（成功即证明无出网），辅以网络命名空间/拒绝日志；日志/审计无凭据或内部地址。
+- **测试 profile（F-011）**：`application-test.yml` 默认 `RICCON_OCR_ENABLED=false` 或 OCR Bean 懒加载；无 Tesseract 的宿主/CI 跑全量不会失败。OCR 用例挂 `@Tag("ocr")` 或环境变量 `RICCON_OCR_ENABLED=true` 的专用 job；CI/镜像需安装 Tesseract/Leptonica 与语言包。
+- `SEC-KB-001`：`scripts/ops/ocr-check` 在 `--network none` 的一次性容器内只启动 `OcrEngine` + 挂载 fixture，**不启动 MySQL/OpenSearch**；断言非空文本、均置信度与无出网尝试；日志/审计无凭据或内部地址。
 - `SEC-KB-005`：超大像素图片、畸形 JPEG、解压炸弹不导致 OOM/超时失控。
-- `scripts/ops/ocr-check`（Ops 新增）：单页 fixture 断言非空文本与均置信度，纳入部署检查与 M05 gate。
+- `scripts/ops/ocr-check` 由 Ops 维护（M05-O1），纳入部署检查与 M05 gate。
 
 ---
 
@@ -298,7 +297,7 @@ ALTER TABLE artifact_citation
 | `DEPT`       | `app_user.department_id = d.department_id` 且 `department.status='ACTIVE'` 的账号 | 复用 M03 单主部门语义；部门停用下一次请求即失效 |
 | `USERS`      | `knowledge_document_acl` 中的账号 + 创建人（若有）                                | 创建人隐式可见，不可被移除；避免“自锁”          |
 
-- **管理员边界**：`TENANT_ADMIN` 可以管理任意文档的 ACL（`knowledge.acl.manage`），并对本租户知识文档有管理性读取（列表/检索/详情/下载全量，不做 ACL 过滤）；因此**事实上可以给自己授权并读取**。M05 明确接受这一点（与 M03 租户管理员可管理空间一致，§13.1 U8），不把 ACL 当作对租户管理员的边界；读取不写审计（§5.6 读放大口径）。`PLATFORM_ADMIN` 不读取租户知识内容（沿用 ADR-0009）；平台管理员持有租户文档 ID 直接访问时按跨租户统一 404，不返回 403，避免存在性探测。
+- **管理员边界（DEC-0034 U8）**：`TENANT_ADMIN` 可以管理任意文档的 ACL（`knowledge.acl.manage`），并对本租户知识文档有管理性读取（列表/检索/详情/下载全量，不做 ACL 过滤）。**绕过文档 ACL 的读取必须写审计** `knowledge.document.admin_read`（详见 §5.6）；按 ACL 本来可见的读取不写审计，避免读放大。`PLATFORM_ADMIN` 不读取租户知识内容（沿用 ADR-0009）；平台管理员持有租户文档 ID 直接访问时按跨租户统一 404，不返回 403，避免存在性探测。
 - **创建人**：`created_by` 非空时隐式 `USERS` 授权；ACL 列表接口返回 `creator` 标记，不允许移除。
 - **源文件空间与文档可见性相互独立**：把文件加入知识库**不扩大**文件所在空间的可访问性；把文档设为 `DEPT`/`USERS` 也**不缩小**源文件的空间访问。知识库下载只按文档 ACL，原空间路径只按空间谓词；两条路径独立，不要求同时满足（§5.3）。
 
@@ -312,7 +311,7 @@ ALTER TABLE artifact_citation
 | 打开引用                        | 文档 ACL（走知识库下载/片段接口，不走原空间路径）    | 404；旧引用按 §5.4 遮蔽                  |
 | 把文件加入知识库                | 空间谓词 + `knowledge.manage`                        | 404/403                                  |
 
-- **知识库下载**：`GET /api/v1/knowledge/documents/{documentId}/download` 由服务端按 `(tenant_id, documentId)` 解析源对象（上传文件或连接器对象），返回短时预签名 URL 或流；不返回对象 key，不把连接器端点暴露给浏览器。无源文件时返回 `RICCON-KB-404`，该码只在 ACL 已通过后出现，不能替代不可见时的 `RICCON-TENANT-404`。
+- **知识库下载**：`GET /api/v1/knowledge/documents/{documentId}/download` 由服务端按 `(tenant_id, documentId)` 解析源对象（上传文件或连接器对象），以**流式代理**返回（`FileStorage.open/stream`，每次请求重判文档 ACL），设置 `Content-Type`/`Content-Disposition`；不返回对象 key、不返回预签名 URL、不把连接器端点暴露给浏览器。`readObject` 只用于小文件或确需缓冲的场景。无源文件时返回 `RICCON-KB-404`，该码只在 ACL 已通过后出现，不能替代不可见时的 `RICCON-TENANT-404`。`IT-KB-107`/`DEPT-014` 断言每请求 ACL、无 key/预签名、空间路径不被放宽。
 - **优先级**：文档 ACL 只决定“知识内容是否可见”；原工作空间路径只决定“该空间成员能否访问原文件”。知识库下载与引用打开走文档 ACL，不要求用户仍有源文件所在空间的访问权；原空间路径不因文档 ACL 放宽而扩大。两条路径互不继承、互不放大。**知识库下载是文档 ACL 的显式授权**：创建人/管理员把文档设为 `TENANT`/`DEPT`/`USERS` 时，即同时授予这些用户下载源文件的能力；UI 必须在保存前提示这一点。
 - **与 M03 的关系**：M03-AC-06 的“源文件打开/下载仍走空间判定”继续适用于**原工作空间路径**；M05 新增的“知识库下载”是独立路径，按文档 ACL，不撤销 M03 的原路径结论。`DEPT-014` 锁定两者互不放宽。
 - **可见范围宽于源空间**：允许保存，但文档详情返回 `sourceFileAccessLimited=true`（文档可见集合 ⊃ 源文件所在空间的可见集合），UI 提示“部分可见用户可能无法通过原工作空间打开源文件，可用知识库下载”。是否改为硬阻断由 Product 决定（§13 P4）。
@@ -343,10 +342,19 @@ ALTER TABLE artifact_citation
   -> UPDATED：保留快照，标注“源内容已更新”，定位指向当前版本
 ```
 
-- `:myDept` 由 `app_user.department_id` 一次查询得到；无部门时 `DEPT` 分支恒假。`TENANT_ADMIN` 的管理性读取由调用方先解析 `unrestricted` 布尔并传入检索，不在 `knowledge_chunk` 查询里 join 角色表；平台租户不适用。
-- **两条路径**：`GET /knowledge/documents/{id}/download` 走文档 ACL；`GET /workspaces/{id}/files/{fileId}/download` 仍只走空间谓词。知识库详情不返回预签名 URL 或对象 key，只返回 `fileId`/`connectorId` 供前端选择路径。
+- `:myDept` 由 `app_user.department_id` 一次查询得到；无部门时 `DEPT` 分支恒假。`TENANT_ADMIN` 的管理性读取由调用方先解析 `unrestricted` 布尔并传入检索，不在 `knowledge_chunk` 查询里 join 角色表；平台租户不适用。管理员读取审计口径：列表管理视图每次写一条 `admin_read`（`scope=LIST`、`resultCount`）；详情/检索命中/下载只在目标文档按 ACL 本不可见时写 `admin_read`（`scope=DETAIL|SEARCH|DOWNLOAD`），按 ACL 可见的读取不写。
+- **两条路径**：`GET /knowledge/documents/{id}/download` 走文档 ACL 并以流式代理返回；`GET /workspaces/{id}/files/{fileId}/download` 仍只走空间谓词。知识库详情不返回预签名 URL、对象 key，只返回 `fileId`/`connectorId` 供前端选择路径。
 - **引用可用性**：`sourceStatus` 由知识库访问层统一计算；判定依据是当前 ACL + `knowledge_document.deleted_at` + 引用创建时快照的 `source_version`（文档 checksum）与当前 checksum 的比较；`source_version` 为空时不做 `UPDATED` 判定。优先级：`NO_ACCESS` > `DELETED` > `UPDATED` > `AVAILABLE`。审计/取证所需的快照仍保存在库中（`message_citation`/`artifact_citation`），但 API 在不可访问时不再返回正文、片段、标题或定位。历史引用上区分“已删除”和“不可访问”是有意行为：用户此前已看过该来源，不构成新的存在性泄露；直接对象访问仍统一 404。实现必须按 `document_id` 批量查询，禁止逐条 N+1。
-- **统一 404**：`RICCON-TENANT-404`，不区分不存在/跨租户/跨部门/未授权；`403` 只用于“已可见但缺管理能力”。
+- **统一 403/404 判定矩阵（F-004）**：
+
+| 场景                                                                        | 响应                                                  |
+| --------------------------------------------------------------------------- | ----------------------------------------------------- |
+| 对象不存在、跨租户、跨部门、个人可见性他人、平台管理员持有租户对象 ID       | `404 RICCON-TENANT-404`（与不存在不可区分）           |
+| 文档已按 ACL 可见，但非创建人且非 `TENANT_ADMIN` 做 ACL 修改/软删除/reindex | `403 RICCON-AUTH-403`                                 |
+| ACL 修改/删除/reindex 的目标文档不可见                                      | `404 RICCON-TENANT-404`（不暴露存在性）               |
+| 连接器配置/凭据/同步/条目端点：connectorId 不存在或属于他租户               | `404 RICCON-TENANT-404`                               |
+| 同租户、非 `TENANT_ADMIN` 访问连接器端点                                    | `403 RICCON-AUTH-403`（已可见的租户功能，无管理权限） |
+| 平台管理员访问租户连接器端点                                                | `404 RICCON-TENANT-404`（跨租户）                     |
 
 ### 5.5 变更时延与索引一致性
 
@@ -366,15 +374,23 @@ ALTER TABLE artifact_citation
 
 审计动作（新增，均需同步 `AuditDetailsPolicy` 白名单）：
 
-| 动作                         | target               | details 白名单                                                                                                                                                                                     |
-| ---------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `knowledge.document.added`   | `KNOWLEDGE_DOCUMENT` | `sourceType`、`fileId`、`visibility`、`departmentId`、`connectorId`                                                                                                                                |
-| `knowledge.document.deleted` | `KNOWLEDGE_DOCUMENT` | `sourceType`、`visibility`                                                                                                                                                                         |
-| `knowledge.acl.changed`      | `KNOWLEDGE_DOCUMENT` | `visibility`、`previousVisibility`、`departmentId`、`addedUserCount`、`removedUserCount`、`addedUserIds`、`removedUserIds`（UUID 数组，最多 50，超出置 `truncated=true` 只留计数）、`aclUserCount` |
+| 动作                                                               | target                | details 白名单                                                                                                                                                                                     |
+| ------------------------------------------------------------------ | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `knowledge.document.added`                                         | `KNOWLEDGE_DOCUMENT`  | `sourceType`、`fileId`、`visibility`、`departmentId`、`connectorId`                                                                                                                                |
+| `knowledge.document.deleted`                                       | `KNOWLEDGE_DOCUMENT`  | `sourceType`、`visibility`、`reason`（`USER`/`RETENTION`/`CONNECTOR`）                                                                                                                             |
+| `knowledge.acl.changed`                                            | `KNOWLEDGE_DOCUMENT`  | `visibility`、`previousVisibility`、`departmentId`、`addedUserCount`、`removedUserCount`、`addedUserIds`、`removedUserIds`（UUID 数组，最多 50，超出置 `truncated=true` 只留计数）、`aclUserCount` |
+| `knowledge.document.admin_read`                                    | `KNOWLEDGE_DOCUMENT`  | `scope`（`LIST`/`DETAIL`/`SEARCH`/`DOWNLOAD`）、`documentId`（LIST 可空）、`visibility`、`aclUserCount`、`resultCount`（LIST/SEARCH）、`reason=ADMIN_OVERRIDE`；不含标题/片段/正文                 |
+| `knowledge.connector.created`/`updated`/`deleted`/`status.changed` | `KNOWLEDGE_CONNECTOR` | `connectorId`、`type`、`endpointId`、`bucket`、`prefix`（≤200）、`status`、`previousStatus`、`reason`                                                                                              |
+| `knowledge.connector.credential.changed`                           | `KNOWLEDGE_CONNECTOR` | `connectorId`、`type`、`credentialKeyId`、`maskedHint`                                                                                                                                             |
+| `knowledge.connector.sync.started`                                 | `KNOWLEDGE_CONNECTOR` | `connectorId`、`syncId`、`trigger`（`MANUAL`/`SCHEDULE`/`RETRY`）                                                                                                                                  |
+| `knowledge.connector.sync.completed`                               | `KNOWLEDGE_CONNECTOR` | `connectorId`、`syncId`、`scanned`、`created`、`updated`、`skipped`、`failed`、`deleted`、`durationMs`、`complete`                                                                                 |
+| `knowledge.connector.sync.failed`                                  | `KNOWLEDGE_CONNECTOR` | `connectorId`、`syncId`、`errorCode`、`retryable`、`complete`、`durationMs`                                                                                                                        |
+| `knowledge.connector.sync.retried`                                 | `KNOWLEDGE_CONNECTOR` | `connectorId`、`syncId`、`attempt`、`reason`                                                                                                                                                       |
 
-- 不含姓名、邮箱、文档标题、分块原文；`knowledge.acl.changed` 审计写失败 → 变更失败（fail-closed）。
-- 读取/检索不写审计（避免读放大）；ACL 变更、删除、添加、连接器生命周期必须审计。
-- 验证：`IT-KB-110`（新动作 details 白名单、未知键 fail-closed、审计失败回滚、四类动作可按租户/操作者/时间/结果查询）、`IT-KB-107`（`sourceFileAccessLimited` 计算与 UI 提示）。
+- 不含姓名、邮箱、文档标题、分块原文、`externalId`、对象 key、凭据；`knowledge.acl.changed`/`admin_read`/连接器动作审计写失败 → 对应操作失败（fail-closed）。
+- `admin_read` 与普通审计同保留 ≥180 天，可按租户/动作/操作者/时间查询；不写文档标题、片段或名单，只写对象 ID/范围与计数。
+- 读取/检索默认不写审计（避免读放大）；例外是 U8 管理员绕过 ACL 的读取（`admin_read`）与连接器同步生命周期。
+- 验证：`IT-KB-110` 覆盖 `admin_read`、`deleted.reason`（含 `RETENTION`）、连接器全部 details 键、未知键 fail-closed、审计失败回滚、按租户/操作者/时间/结果查询；`IT-KB-107` 覆盖 `sourceFileAccessLimited`。
 
 ### 5.7 迁移与历史回填
 
@@ -391,6 +407,7 @@ ALTER TABLE artifact_citation
 | `RICCON_KB_ACL_MAX_USERS`           | `200`            | API                   | 单文档 USERS 上限                                                |
 
 - 灰度顺序：V12 与代码（ACL off）→ 重灌 v2 索引 → 创建 `DEPT`/`USERS` 文档并核对 → 打开 ACL → 全量越权套件 → gate 以 `true` 取证。
+- `ENFORCEMENT=false` 时启动日志固定 WARN `RICCON-KB-001`，暴露 `riccon_kb_acl_enforcement_disabled=1`；此时创建 `DEPT`/`USERS` 文档会短暂按 `TENANT` 全租户可见，RUNBOOK 限定该模式只允许非敏感测试文档，禁止生产数据；M05 gate 必须在 `true` 下取证，不得用 false 模式判 pass。
 - 关闭开关只回退“强制”，不删除 ACL 数据；重新打开立即恢复。
 
 ### 5.9 回滚约束（需用户批准）
@@ -408,21 +425,23 @@ ALTER TABLE artifact_citation
 
 ### 5.11 越权测试边界
 
-| ID           | 场景                                                             | 期望                                             |
-| ------------ | ---------------------------------------------------------------- | ------------------------------------------------ |
-| `TEN-034`    | 租户 A 持有租户 B 文档 ID，读/删/改 ACL/重索引/下载              | `RICCON-TENANT-404`                              |
-| `TEN-035`    | 同租户跨部门读取 `DEPT` 文档（列表/详情/检索/引用/下载）         | 统一 404；检索无命中                             |
-| `TEN-036`    | `USERS` 文档：未授权用户、被移出用户、停用账号                   | 404；撤销后下一次请求生效                        |
-| `TEN-037`    | 连接器同步文档的跨租户/跨部门访问（M05b）                        | 404；不泄露 externalId/title                     |
-| `DEPT-011`   | `DEPT` 文档四处一致：本部门可见、他部门 404、下载与引用同判      | 4/4 面一致；无标题/片段/总数泄露                 |
-| `DEPT-012`   | 部门停用、成员移出后访问 `DEPT` 文档                             | 下一次请求 404                                   |
-| `DEPT-013`   | 部门 → 指定用户切换后，新加入部门者不再自动可见                  | 按新范围判定                                     |
-| `DEPT-014`   | 知识库下载不放宽原工作空间路径；非空间成员仍不能走空间下载       | 空间路径 404，知识库下载按 ACL                   |
-| `SEC-KB-002` | 非创建者普通员工/平台管理员改 ACL 或读正文                       | 403/无入口；响应不含正文、标题、名单             |
-| `SEC-KB-003` | ACL 从 TENANT 收窄为 USERS 后，未授权用户刷新列表/检索/引用/下载 | 无结果；旧引用 `NO_ACCESS`，不展示标题/片段/定位 |
-| `IT-KB-117`  | （未来）OpenSearch 检索切换的两阶段复核                          | 若未复核则测试失败                               |
+| ID             | 场景                                                                                                     | 期望                                             |
+| -------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `TEN-034`      | 租户 A 持有租户 B 文档 ID，读/删/改 ACL/重索引/下载                                                      | `RICCON-TENANT-404`                              |
+| `TEN-035`      | 同租户跨部门读取 `DEPT` 文档（列表/详情/检索/引用/下载）                                                 | 统一 404；检索无命中                             |
+| `TEN-036`      | `USERS` 文档：未授权用户、被移出用户、停用账号                                                           | 404；撤销后下一次请求生效                        |
+| `TEN-037`      | 连接器同步文档的跨租户/跨部门访问（M05b）                                                                | 404；不泄露 externalId/title                     |
+| `DEPT-011`     | `DEPT` 文档四处一致：本部门可见、他部门 404、下载与引用同判                                              | 4/4 面一致；无标题/片段/总数泄露                 |
+| `DEPT-012`     | 部门停用、成员移出后访问 `DEPT` 文档                                                                     | 下一次请求 404                                   |
+| `DEPT-013`     | 部门 → 指定用户切换后，新加入部门者不再自动可见                                                          | 按新范围判定                                     |
+| `DEPT-014`     | 知识库下载不放宽原工作空间路径；非空间成员仍不能走空间下载                                               | 空间路径 404，知识库下载按 ACL                   |
+| `SEC-KB-002`   | 403/404 矩阵：不可见/跨租户/跨部门/平台管理员 → 404；已可见非创建人/非管理员 → 403；含 `admin_read` 边界 | 按 §5.4 矩阵；响应不含正文、标题、名单           |
+| `SEC-CONN-004` | 同租户非 `TENANT_ADMIN` 连接器端点 → 403；跨租户 connectorId → 404                                       | 按 §5.4 矩阵；不泄露 bucket/凭据                 |
+| `SEC-KB-003`   | ACL 从 TENANT 收窄为 USERS 后，未授权用户刷新列表/检索/引用/下载                                         | 无结果；旧引用 `NO_ACCESS`，不展示标题/片段/定位 |
+| `IT-KB-117`    | （未来）OpenSearch 检索切换的两阶段复核                                                                  | 若未复核则测试失败                               |
 
 - `TEN-034..037` 使用 `@Tag("tenant-isolation")`，`DEPT-011..014` 使用 `@Tag("dept-isolation")`，纳入现有套件完整性检查；不新增合同命令，零 skip/xfail 由套件报告核对。
+- **套件 manifest（F-022）**：`TenantIsolationSecurityTest` 与 `DepartmentIsolationTest` 的 manifest/surefire grep 同步扩展；整套件清点目标为 `TEN-001..037`（30→37）与 `DEPT-001..014`（10→14）。`TEN-031..033` 是 M04 成本/配额用例，**不迁入** M05 类；若 manifest 按整套件计数则计 37，若按 M05 类计数则只新增 034..037（30→34），不得用数字掩盖缺失。零 skip/xfail 自动核对。
 
 ---
 
@@ -459,10 +478,13 @@ CREATE TABLE kb_connector (
     credential_masked_hint VARCHAR(128) NULL COMMENT '仅掩码',
     schedule_enabled BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否按部署固定周期自动同步；不存 per-connector cron',
     next_sync_at DATETIME(6) NULL,
-    last_sync_at DATETIME(6) NULL,
+    last_sync_started_at DATETIME(6) NULL COMMENT '最近一次同步开始（UTC），失败也写',
+    last_sync_finished_at DATETIME(6) NULL COMMENT '最近一次同步结束（UTC），失败也写',
+    last_sync_status VARCHAR(16) NULL COMMENT 'SUCCESS|PARTIAL|ERROR',
+    last_sync_complete BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'list 是否完整（未分页错误/截断/超限），只有完整才传播删除',
     last_success_at DATETIME(6) NULL,
     last_error_code VARCHAR(64) NULL,
-    last_sync_summary JSON NULL COMMENT 'scanned/created/updated/skipped/failed/deleted',
+    last_sync_summary JSON NULL COMMENT 'scanned/created/updated/skipped/failed/deleted/complete',
     created_by  BINARY(16) NULL,
     created_at  DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at  DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
@@ -475,6 +497,7 @@ CREATE TABLE kb_connector (
         REFERENCES department (tenant_id, id),
     CONSTRAINT chk_kb_connector_type CHECK (type IN ('S3')),
     CONSTRAINT chk_kb_connector_status CHECK (status IN ('ACTIVE', 'PAUSED', 'ERROR')),
+    CONSTRAINT chk_kb_connector_sync_status CHECK (last_sync_status IS NULL OR last_sync_status IN ('SUCCESS', 'PARTIAL', 'ERROR')),
     CONSTRAINT chk_kb_connector_visibility CHECK (default_visibility IN ('TENANT', 'DEPT')),
     CONSTRAINT chk_kb_connector_visibility_department CHECK (
         (default_visibility = 'DEPT' AND default_department_id IS NOT NULL)
@@ -492,6 +515,7 @@ CREATE TABLE kb_connector_item (
     external_version VARCHAR(255) NULL COMMENT 'ETag/version',
     checksum     CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL COMMENT '内容 SHA-256',
     document_id  BINARY(16) NULL COMMENT '对应知识库文档（逻辑引用）',
+    generation   INT NOT NULL DEFAULT 1 COMMENT '同一 external_id 的删除-重现代数；复用 tombstone 行时 +1',
     status       VARCHAR(16) NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING|SYNCED|SKIPPED|FAILED|DELETED',
     error_code   VARCHAR(64) NULL,
     last_seen_at DATETIME(6) NULL,
@@ -503,7 +527,8 @@ CREATE TABLE kb_connector_item (
     KEY idx_kb_item_status (tenant_id, connector_id, status),
     KEY idx_kb_item_document (tenant_id, document_id),
     CONSTRAINT fk_kb_item_connector FOREIGN KEY (tenant_id, connector_id) REFERENCES kb_connector (tenant_id, id),
-    CONSTRAINT chk_kb_item_status CHECK (status IN ('PENDING', 'SYNCED', 'SKIPPED', 'FAILED', 'DELETED'))
+    CONSTRAINT chk_kb_item_status CHECK (status IN ('PENDING', 'SYNCED', 'SKIPPED', 'FAILED', 'DELETED')),
+    CONSTRAINT chk_kb_item_generation CHECK (generation >= 1)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci
   COMMENT = '连接器源对象同步状态（M05）';
 ```
@@ -511,22 +536,25 @@ CREATE TABLE kb_connector_item (
 - `external_id_hash` 规避 `utf8mb4` 长唯一键限制并保持大小写敏感；展示用原文。
 - `status` 语义：`ACTIVE` 参与定时同步；`PAUSED` 只停定时、仍允许手动同步；`ERROR` 表示最近同步失败、仍可手动重试。新建默认 `PAUSED`，管理员完成连接测试后显式启用。
 - `uk_kb_connector_name` 使软删除后同名不可重建；UI 要求改名，避免“删除后重建”产生两个同源连接器。
+- **tombstone 复用（F-007）**：唯一键仍为 `(tenant_id, connector_id, external_id_hash)`，但源端重现时**不插新行**，而是复用 `status=DELETED` 的旧行：重置 `status=PENDING`、清 `deleted_at`、`generation=generation+1`、更新 checksum/version/document_id；`generation` 用于排障与审计，避免唯一键冲突。`IT-CONN-103` 增加“删除-重现”用例。
 - 连接器文档的原文存对象存储：key 由服务端派生 `tenants/{tenantId}/connector/{yyyy}/{documentId}`。**这是 ADR-0009 §6 key 类别（`file|artifact|export`）的扩展**，由 Lead 指派 ADR-0009 增量修订；不自造“系统工作空间”，也不把连接器文件塞进 `file` 表（`workspace_id` 外键不成立）。
 
 ### 6.3 同步模式、去重与删除传播
 
-| 项        | 决策                                                                                                                                                                                                        |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 触发      | 手动 `POST /knowledge/connectors/{id}/sync`（202）；`schedule_enabled=true` 时，由部署配置 `RICCON_CONNECTOR_SYNC_INTERVAL_MINUTES` 计算 `next_sync_at`，条件更新领取；不提供 per-connector cron/可视化调度 |
-| 连接测试  | `POST /knowledge/connectors/{id}/test` 只做一次 `ListObjectsV2`（`max-keys=1`），空 bucket 也算成功；返回 `auth/network/endpoint/config` 分类的中文原因，不写对象、不返回凭据                               |
-| 全量/增量 | 首次全量；之后按 `external_id_hash` + ETag/checksum 增量；未变化只更新 `last_seen_at`                                                                                                                       |
-| 去重      | 同一 `(connector, external_id)` 唯一；内容 checksum 相同且文档 `INDEXED` → 跳过；跨连接器不去重（可能是有意保留的两份）                                                                                     |
-| 新增      | 下载 → 校验大小/类型 → 存对象 → 建 `knowledge_document(CONNECTOR)` → 投递索引事件；创建请求必须显式给 `defaultVisibility`（缺省 400，不依赖 DB 默认值）                                                     |
-| 更新      | 内容变化才重写对象、更新 checksum、`acl_version`/`visibility` 不变、投递重索引                                                                                                                              |
-| 源端删除  | 本轮 list 未见且 `last_seen_at < syncStartedAt` → 项 `DELETED`、文档软删除、投递 `mode=DELETE` 清理索引                                                                                                     |
-| 源端重现  | 生成新 item 行与新文档；旧项保留 tombstone 180 天，避免“删除-重现”风暴                                                                                                                                      |
-| 部分失败  | 单项失败记 `FAILED` + error_code，同步继续；总结 `last_sync_summary`                                                                                                                                        |
-| 重试      | 失败项在下一次同步重试；同步级失败（认证/网络）按 1 m/5 m/15 m 退避 3 次后 `ERROR`                                                                                                                          |
+| 项          | 决策                                                                                                                                                                                                        |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 触发        | 手动 `POST /knowledge/connectors/{id}/sync`（202）；`schedule_enabled=true` 时，由部署配置 `RICCON_CONNECTOR_SYNC_INTERVAL_MINUTES` 计算 `next_sync_at`，条件更新领取；不提供 per-connector cron/可视化调度 |
+| 连接测试    | `POST /knowledge/connectors/{id}/test` 只做一次 `ListObjectsV2`（`max-keys=1`），空 bucket 也算成功；返回 `auth/network/endpoint/config` 分类的中文原因，不写对象、不返回凭据                               |
+| 全量/增量   | 首次全量；之后按 `external_id_hash` + ETag/checksum 增量；未变化只更新 `last_seen_at`                                                                                                                       |
+| 同步时间    | 每次同步写 `last_sync_started_at` 与 `last_sync_finished_at`（失败也写 finish）、`last_sync_status`（`SUCCESS`/`PARTIAL`/`ERROR`）、`last_sync_complete`；`IT-CONN-102/104` 断言                            |
+| list 完整性 | 只有完整 list（无分页错误、未触发 5,000 对象/2 GB 上限、无 SDK 截断）才把 `last_sync_complete=true` 并传播删除；部分/截断/超限 → `PARTIAL`/`ERROR`，**不删除任何未见对象**；`IT-CONN-103/105` 增加负向用例  |
+| 去重        | 同一 `(connector, external_id)` 唯一；内容 checksum 相同且文档 `INDEXED` → 跳过；跨连接器不去重（可能是有意保留的两份）                                                                                     |
+| 新增        | 下载 → 校验大小/类型 → 存对象 → 建 `knowledge_document(CONNECTOR)` → 投递索引事件；创建请求必须显式给 `defaultVisibility`（缺省 400，不依赖 DB 默认值）                                                     |
+| 更新        | 内容变化才重写对象、更新 checksum、`acl_version`/`visibility` 不变、投递重索引                                                                                                                              |
+| 源端删除    | **仅 `last_sync_complete=true` 时**：本轮 list 未见且 `last_seen_at < syncStartedAt` → 项 `DELETED`、文档软删除（审计 `reason=CONNECTOR`）、投递 `mode=DELETE` 清理索引；不完整 list 一律不删除             |
+| 源端重现    | 复用同 `external_id_hash` 的 tombstone 行（`generation+1`、清 `deleted_at`、重置状态并绑定新文档），不插入第二行；旧文档保留在历史/审计中                                                                   |
+| 部分失败    | 单项失败记 `FAILED` + error_code，同步继续；`last_sync_status=PARTIAL`；`last_sync_summary` 含完整计数与 `complete`                                                                                         |
+| 重试        | 失败项在下一次同步重试；同步级失败（认证/网络）按 1 m/5 m/15 m 退避 3 次后 `ERROR`；每次重试写 `knowledge.connector.sync.retried`                                                                           |
 
 - 租户停用：API 拒绝新同步请求；worker 领取事件后再次校验 `tenant.status='ACTIVE'`，非 ACTIVE 直接跳过并记日志（不把 connector 标成 ERROR，恢复后下一次定时/手动同步继续）。知识库读取本身由既有认证/租户状态过滤器拦截。
 - 索引入口：连接器文档 `file_id` 为空、`connector_id` 非空；`KnowledgeIndexService.loadChunks` 增加“连接器对象”分支，按 `(tenantId, documentId)` 派生 key 读取对象并走同一 `FileContentExtractor`，不能落进 SEED 的“读取已有分块”路径。
@@ -534,7 +562,8 @@ CREATE TABLE kb_connector_item (
 ### 6.4 凭据托管
 
 - 使用 ADR-0006 信封加密：`purpose=connector-credential`，AAD `tenantId|connector-credential|keyId|v1`；存 `kb_connector.credential_ciphertext` + `credential_key_id`。
-- 写入端点 `PUT /knowledge/connectors/{id}/credential` 只写不读；响应/日志/审计只出现 `credential_masked_hint`（如 `AKIA…7F2`）。轮换 = 覆盖写入 + 审计 `knowledge.connector.credential.changed`；旧密文不保留。
+- 写入端点 `PUT /knowledge/connectors/{id}/credential` 只写不读；响应/日志/审计只出现 `credential_masked_hint`（如 `AKIA…7F2`）。轮换 = 覆盖写入 + 审计 `knowledge.connector.credential.changed`（`IT-CONN-101` 断言）；旧密文不保留。
+- 连接器软删除后，`credential_ciphertext` 保留 30 天供误删恢复，随后由 **M09 维护任务**置空并审计（owner `riccon/ops`，due M09 gate；RUNBOOK 记录）；M05 不新增在线凭据清除端点。
 - API 不调用连接器源；只有 worker 解密并在内存中使用（`char[]`/`byte[]`，用后清零），不写日志。
 - 主密钥缺失/不可解 → worker 启动失败（ADR-0006 既有行为），不在 M05 降级。
 
@@ -545,7 +574,7 @@ CREATE TABLE kb_connector_item (
 - S3 客户端禁用区域/跨域自动重定向（或对每个 Location 重新做同一校验）；不允许 SDK 自行切换到未允许的主机。
 - 对象限制：单对象 ≤ 100 MB（`RICCON_CONNECTOR_MAX_OBJECT_BYTES`）、单次同步 ≤ 5 000 对象、≤ 2 GB 总量、单项下载超时 60 s、同步总超时 60 min。
 - 类型白名单：`pdf,docx,xlsx,png,jpg,jpeg,txt,md`；其他类型记为 `SKIPPED` + `KB_CONNECTOR_TYPE_UNSUPPORTED`，不下载。
-- 日志只记 `connectorId`/`documentId`/计数，不记 `externalId`、对象 key、bucket 全名或凭据；审计 details 的 `prefix` 截断 ≤200。
+- 日志只记 `connectorId`/`documentId`/计数，不记 `externalId`、对象 key、bucket 全名或凭据；审计 details 的 `prefix` 截断 ≤200。`externalId` 在 API/UI 只显示末段（最后 2 个路径段或 32 字符）或 `externalIdHash` 前 12 位，完整值只在库内用于比对。
 - 解压/解析沿用 POI/PDFBox 的 ZIP 与页数限制（§3.1、§4.4）；连接器不额外解包归档文件（`.zip` 不在白名单）。
 
 ### 6.6 失败、可观察性与审计
@@ -558,16 +587,16 @@ CREATE TABLE kb_connector_item (
 | 同步超时              | `ERROR` + `KB_CONNECTOR_TIMEOUT`                | 下一轮增量继续                                                              |
 | 凭据不可解            | `ERROR` + `KB_CONNECTOR_CREDENTIAL`             | worker 日志只记 connectorId                                                 |
 
-审计动作：`knowledge.connector.created/updated/deleted/status.changed/credential.changed/sync.started/sync.completed/sync.failed`，target `KNOWLEDGE_CONNECTOR`（新增枚举值，`target_type` 列无 CHECK，无需迁移）；details 只含 `connectorId`、`type`、`endpointId`、`bucket`、`prefix`（截断 ≤200）、`syncId`、计数与 `errorCode`，不含凭据/对象正文。
+审计动作：`knowledge.connector.created/updated/deleted/status.changed/credential.changed/sync.started/sync.completed/sync.failed/sync.retried`，target `KNOWLEDGE_CONNECTOR`；details 白名单与字段见 §5.6（含 `bucket`/`prefix` 摘要、计数、`complete`、`errorCode`，不含凭据/对象正文/externalId）。
 
 ### 6.7 验证
 
-- `IT-CONN-101`：配置必须选默认可见范围、连接测试成功/失败原因、凭据加密入库且只显示掩码、轮换后新请求生效。
-- `IT-CONN-102`：首次全量 100 对象 → 100 文档；重复触发不产生重复文档；不支持格式跳过且不生成失败文档。
-- `IT-CONN-103`：源端新增/修改/删除 → 增量计数正确；修改仍是同一文档；删除软删除、索引清理、列表消失、旧引用 `DELETED`；无变化同步为 0。
-- `IT-CONN-104`：源端不可达/凭据失效/部分对象解析失败 → 可读原因、上次成功时间、失败数；重试只处理失败项。
-- `IT-CONN-105`：超时、退避、同步摘要、失败状态与幂等重试。
-- `IT-CONN-106`：配置/同步/失败/凭据轮换审计（含计数，不含凭据/正文）。
+- `IT-CONN-101`：配置必须选默认可见范围、连接测试成功/失败原因、凭据加密入库且只显示掩码、轮换后新请求生效、轮换审计存在且无明文。
+- `IT-CONN-102`：首次全量 100 对象 → 100 文档；重复触发不产生重复文档；不支持格式跳过且不生成失败文档；同步 start/finish/status/complete 落库。
+- `IT-CONN-103`：源端新增/修改/删除 → 增量计数正确；修改仍是同一文档；删除软删除、索引清理、列表消失、旧引用 `DELETED`；无变化同步为 0；**删除-重现复用 tombstone（generation+1）不撞唯一键**；不完整 list 不删除。
+- `IT-CONN-104`：源端不可达/凭据失效/部分对象解析失败 → 可读原因、上次成功时间、失败数、失败也写 finish；重试只处理失败项。
+- `IT-CONN-105`：超时、退避、同步摘要、失败状态与幂等重试；删除连接器 `documents=KEEP|SOFT_DELETE` 两种处置。
+- `IT-CONN-106`：配置/同步/失败/重试/凭据轮换审计（含计数，不含凭据/正文/externalId）。
 - `IT-CONN-107`：连接器文档的保留与删除传播（180 天默认、软删除不命中）。
 - `SEC-CONN-001`：凭据与 Authorization 头不出现在页面/日志/审计/错误/导出，只出现掩码。
 - `SEC-CONN-002`：连接器内容中的中英文提示注入不改变指令、不泄露凭据、不触发未授权工具。
@@ -650,31 +679,38 @@ ALTER TABLE artifact_citation DROP COLUMN source_version;
 - 长任务不放在 HTTP 请求线程；API 只写事件并返回 202。
 - 幂等：索引事件 `doc:{id}:index:{attempt}`；ACL 刷新 `doc:{id}:acl:{acl_version}`；删除 `doc:{id}:delete:{acl_version}`；连接器按 `syncId`。
 
-### 7.4 OpenAPI `1.4.0-m05` 变更清单（Builder 单点实现）
+### 7.4 OpenAPI 契约变更（M05 `1.4.0-m05` / M05b `1.5.0-m05b`；F-006）
+
+**M05 `1.4.0-m05`（B2 唯一 writer）**：
 
 | 方法   | 路径                                                           | 权限                                | 说明                                                                                |
 | ------ | -------------------------------------------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------- |
 | PUT    | `/api/v1/knowledge/documents/{documentId}/acl`                 | 创建人 或 `knowledge.acl.manage`    | 整体替换 `{visibility, departmentId?, userIds?}`；200 返回文档                      |
 | GET    | `/api/v1/knowledge/documents/{documentId}/acl`                 | 同上                                | 返回 `visibility`、`departmentId`、`users[]`（userId/displayName）、`creatorUserId` |
-| GET    | `/api/v1/knowledge/documents/{documentId}/download`            | `knowledge.read` + 文档 ACL         | 短时预签名或流；无源文件 → `RICCON-KB-404`；不返回对象 key                          |
+| DELETE | `/api/v1/knowledge/documents/{documentId}`                     | 创建人或 `knowledge.acl.manage`     | 软删除、审计 `reason=USER`；不物理删除                                              |
+| GET    | `/api/v1/knowledge/documents/{documentId}/download`            | `knowledge.read` + 文档 ACL         | 服务端流式代理（每请求 ACL）；无源文件 → `RICCON-KB-404`；不返回对象 key/预签名 URL |
 | POST   | `/api/v1/knowledge/documents/{documentId}/reindex?force=false` | `knowledge.manage`（创建人/管理员） | 默认只补缺失页；`force=true` 整本重做                                               |
-| GET    | `/api/v1/knowledge/connectors`                                 | `knowledge.connector.read`          | 连接器列表（不含凭据）                                                              |
-| POST   | `/api/v1/knowledge/connectors`                                 | `knowledge.connector.manage`        | 创建；凭据可选写入                                                                  |
-| PATCH  | `/api/v1/knowledge/connectors/{connectorId}`                   | 同上                                | 改配置/可见范围/调度开关（`scheduleEnabled`）；不支持改 type 或自定义 cron          |
-| DELETE | `/api/v1/knowledge/connectors/{connectorId}`                   | 同上                                | 软删除；不自动删除已导入文档（需显式选择）                                          |
-| PUT    | `/api/v1/knowledge/connectors/{connectorId}/credential`        | 同上                                | 只写不读；返回掩码                                                                  |
-| POST   | `/api/v1/knowledge/connectors/{connectorId}/test`              | 同上                                | 连接测试（只读列前缀/鉴权），中文原因；不返回凭据                                   |
-| POST   | `/api/v1/knowledge/connectors/{connectorId}/sync`              | 同上                                | 202；并发同步 409                                                                   |
-| GET    | `/api/v1/knowledge/connectors/{connectorId}/items`             | `knowledge.connector.read`          | 分页同步状态（无原文）                                                              |
 
-Schema 增量（additive）：
+**M05b `1.5.0-m05b`（B2b 唯一 writer）**：
 
-- `KnowledgeDocument`：`visibility`、`departmentId`、`aclUserCount`、`parseEngine`、`warnings[]`、`parseSummary`、`connectorId`、`externalId`、`sourceFileAccessLimited`（文档可见范围宽于源文件空间）；`sourceType` 枚举加 `CONNECTOR`。
-- `KnowledgeDocumentCreateRequest`：新增可选 `visibility`/`departmentId`/`userIds`（缺省 `TENANT`，与 §13.1 U5 一致）；`PUT .../acl` 用于后续整体替换。
-- 新增 `KnowledgeDocumentAcl`、`KnowledgeDocumentAclUpdate`、`Connector`、`ConnectorCreate/Update`（`ConnectorCreate` 必填 `defaultVisibility`，含 `scheduleEnabled`，不含 cron）、`ConnectorCredential`、`ConnectorItemPage`。
+| 方法   | 路径                                                    | 权限                         | 说明                                                                                                 |
+| ------ | ------------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------- |
+| GET    | `/api/v1/knowledge/connectors`                          | `knowledge.connector.read`   | 连接器列表（不含凭据）                                                                               |
+| POST   | `/api/v1/knowledge/connectors`                          | `knowledge.connector.manage` | 创建；凭据可选写入                                                                                   |
+| PATCH  | `/api/v1/knowledge/connectors/{connectorId}`            | 同上                         | 改配置/可见范围/调度开关（`scheduleEnabled`）；不支持改 type 或自定义 cron                           |
+| DELETE | `/api/v1/knowledge/connectors/{connectorId}`            | 同上                         | 软删除；`documents=KEEP` / `SOFT_DELETE`（默认 KEEP）决定已导入文档处置；凭据密文 30 天后由 M09 置空 |
+| PUT    | `/api/v1/knowledge/connectors/{connectorId}/credential` | 同上                         | 只写不读；返回掩码                                                                                   |
+| POST   | `/api/v1/knowledge/connectors/{connectorId}/test`       | 同上                         | 连接测试（只读列前缀/鉴权），中文原因；不返回凭据                                                    |
+| POST   | `/api/v1/knowledge/connectors/{connectorId}/sync`       | 同上                         | 202；并发同步 409                                                                                    |
+| GET    | `/api/v1/knowledge/connectors/{connectorId}/items`      | `knowledge.connector.read`   | 分页同步状态（无原文）                                                                               |
+
+Schema 增量（additive；M05 字段与 M05b 连接器类型分属两个版本）：
+
+- **M05**：`KnowledgeDocument` 增加 `visibility`、`departmentId`、`aclUserCount`、`parseEngine`、`warnings[]`、`parseSummary`、`sourceFileAccessLimited`；`KnowledgeDocumentCreateRequest` 新增可选 `visibility`/`departmentId`/`userIds`（缺省 `TENANT`）；新增 `KnowledgeDocumentAcl`、`KnowledgeDocumentAclUpdate`。
+- **M05b**：`KnowledgeDocument` 增加 `connectorId`、`externalId`，`sourceType` 加 `CONNECTOR`；新增 `Connector`、`ConnectorCreate/Update`（必填 `defaultVisibility`，含 `scheduleEnabled`，不含 cron）、`ConnectorCredential`、`ConnectorItemPage`。
 - `Citation` 与分块响应：可选 `bbox {x,y,w,h}`、`ocrConfidence`、`sourceStatus`（`AVAILABLE`/`NO_ACCESS`/`DELETED`/`UPDATED`）；`NO_ACCESS`/`DELETED` 时 `title`/`snippet` 返回空串、定位为 null（保持契约 required 字段，不删字段）；不新增 `locatorType` 枚举值。
 - 契约文案：`/knowledge/documents` 列表/创建与 `/workspaces/{id}/files` 相关描述中“M03 知识库为租户级共享、文档级权限在后续版本”必须改为 M05 ACL 语义（列表/检索/下载按 ACL；原空间路径不变），并移除过期声明（Product AC-22）。
-- 错误码：`RICCON-KB-400`（ACL/连接器配置非法）、`RICCON-KB-404`（文档存在但无源文件，仅 ACL 通过后）、`RICCON-KB-409`（重复同步/重名）、`RICCON-KB-503`（连接器/索引服务不可用）；跨租户继续 `RICCON-TENANT-404`；权限继续 `RICCON-AUTH-403`。
+- 错误码：M05 `RICCON-KB-400/404/409`、`RICCON-KB-503`（索引不可用）；M05b 连接器 `RICCON-KB-400/404/409/503`；跨租户继续 `RICCON-TENANT-404`；权限继续 `RICCON-AUTH-403`。
 
 ### 7.5 功能开关与灰度
 
@@ -694,47 +730,49 @@ Schema 增量（additive）：
 
 > 本表是 ADR 级增量；`docs/security/THREAT-MODEL.md` 的正式编号/章节由威胁模型 owner 在 M05 gate 前合入（§13 L2），本 ADR 不改该文件。
 
-| ID    | 威胁                                                             | 影响                      | 控制                                                                                                    | 验证                                              |
-| ----- | ---------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| TM-55 | 上传/连接器/OCR 文本中的提示注入（隐藏指令、白字、表格公式文本） | 模型越权/数据外泄         | 检索内容一律不可信数据、不进入系统指令（M02 既有）；OCR/Excel 文本同样经 `UntrustedData`；工具仍走 HITL | `SEC-KB-004`、`SEC-CONN-002`                      |
-| TM-56 | ACL 绕过：列表/详情/检索/引用/下载任一入口漏谓词                 | 租户内越权                | 单一谓词集中在 `KnowledgeAccessJdbc`；所有入口复用；越权矩阵                                            | `TEN-034..037`、`DEPT-011..014`、`SEC-KB-002/003` |
-| TM-57 | ACL 收窄后缓存/索引延迟导致继续可见                              | 越权残留                  | MySQL 权威、无跨请求缓存；索引字段不作授权；ACL_ONLY 刷新                                               | `IT-KB-108`、`SEC-KB-003`                         |
-| TM-58 | 通过 404/403 差异枚举文档存在性                                  | 信息泄露                  | 统一 404；403 只在可见后返回；列表不出现                                                                | `SEC-KB-002`、`TEN-034`                           |
-| TM-59 | OCR/解析资源耗尽（超大图、超多页、ZIP 炸弹）                     | Worker 不可用             | 像素/页/行/字符/条目上限、逐页释放、heavy 通道并发 2、超时                                              | `SEC-KB-005`、`PERF-M05-001`                      |
-| TM-60 | 恶意 OOXML/PDF（外部链接、宏、畸形结构）                         | RCE/SSRF                  | 不执行公式/宏/外部链接；POI/PDFBox 只解析；ZIP 限制；无 shell                                           | `IT-KB-102/116`、`SEC-KB-005`                     |
-| TM-61 | 连接器 SSRF（端点/重定向/元数据地址）                            | 内网探测/凭据外发         | 端点允许列表、HTTPS、无重定向、禁 `169.254/16`、RFC1918 仅显式允许                                      | `SEC-CONN-003`                                    |
-| TM-62 | 连接器凭据泄露（响应/日志/审计/DB）                              | 源端接管                  | 信封加密、只写不读、掩码、日志禁明文、启动校验                                                          | `IT-CONN-101`、`SEC-CONN-001`                     |
-| TM-63 | 源端删除未传播                                                   | 过期/已撤权内容继续被检索 | 每轮 list + `last_seen_at` 对账；软删除 + 索引清理；tombstone                                           | `IT-CONN-103`                                     |
-| TM-64 | 审计缺失/可否认（ACL、连接器、删除）                             | 无法追责                  | 同事务审计、fail-closed、details 白名单                                                                 | `IT-KB-110`、`IT-CONN-106`、`IT-AUDIT-*`          |
-| TM-65 | 索引重灌/别名切换把 A 租户数据写入 B                             | 跨租户泄露                | 索引名由 `TenantContext` 派生；写入带 `tenant_id`；别名逐租户切换                                       | `IT-KB-113`、`TEN-034`                            |
-| TM-66 | OCR 引擎/权重供应链投毒                                          | 恶意输出/RCE              | 固定版本与文件哈希、镜像 SBOM、Trivy、启动自检输出指纹                                                  | `scripts/ops/ocr-check`、`commands.security`      |
-| TM-67 | 文档可见范围宽于源文件空间造成误解                               | 用户以为能打开却 404      | 创建/编辑警告；详情标注；提供知识库下载；不返回预签名 URL/对象 key                                      | `IT-KB-107`                                       |
-| TM-68 | 引用快照在 ACL 撤销/源删除后泄露片段                             | 内容残留                  | 聊天与产物引用读取时统一计算 `sourceStatus` 并遮蔽正文/片段/标题/定位；库内快照仅供审计/取证            | `SEC-KB-003`、`IT-CONN-103`                       |
-| TM-69 | 连接器同步放大（一次巨量对象）拖垮 Worker                        | 可用性                    | 单次对象/字节/时间上限；heavy 通道；增量                                                                | `PERF-M05-001`、`IT-CONN-105`                     |
-| TM-70 | （仅 P6=B）页图端点被越权读取、缓存泄露或渲染耗尽                | 内容泄露/Worker/API DoS   | 每请求文档 ACL、`Cache-Control: private` 且不共享缓存、不返回对象 key、页号/DPI/像素上限、渲染超时      | `SEC-KB-006`（B 方案）                            |
-| TM-71 | （仅 AC-21=B）物理清理误删未到期/他人数据                        | 数据丢失                  | 只处理 `retention_expires_at <= now` 且已软删除、批量上限、dry-run 计数、审计、幂等条件删除             | `IT-KB-118`（B 方案）                             |
+| ID    | 威胁                                                             | 影响                      | 控制                                                                                                                           | 验证                                              |
+| ----- | ---------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
+| TM-55 | 上传/连接器/OCR 文本中的提示注入（隐藏指令、白字、表格公式文本） | 模型越权/数据外泄         | 检索内容一律不可信数据、不进入系统指令（M02 既有）；OCR/Excel 文本同样经 `UntrustedData`；工具仍走 HITL                        | `SEC-KB-004`、`SEC-CONN-002`（新建 harness）      |
+| TM-56 | ACL 绕过：列表/详情/检索/引用/下载任一入口漏谓词                 | 租户内越权                | 单一谓词集中在 `KnowledgeAccessJdbc`；所有入口复用；越权矩阵；**U8 例外**：TENANT_ADMIN 管理性读取，绕过 ACL 时写 `admin_read` | `TEN-034..037`、`DEPT-011..014`、`SEC-KB-002/003` |
+| TM-57 | ACL 收窄后缓存/索引延迟导致继续可见                              | 越权残留                  | MySQL 权威、无跨请求缓存；索引字段不作授权；ACL_ONLY 刷新                                                                      | `IT-KB-108`、`SEC-KB-003`                         |
+| TM-58 | 通过 404/403 差异枚举文档存在性                                  | 信息泄露                  | 统一 404；403 只在可见后返回；列表不出现                                                                                       | `SEC-KB-002`、`TEN-034`                           |
+| TM-59 | OCR/解析资源耗尽（超大图、超多页、ZIP 炸弹）                     | Worker 不可用             | 像素/页/行/字符/条目上限、逐页释放、heavy 通道并发 2、超时                                                                     | `SEC-KB-005`、`PERF-M05-001`                      |
+| TM-60 | 恶意 OOXML/PDF（外部链接、宏、畸形结构）                         | RCE/SSRF                  | 不执行公式/宏/外部链接；POI/PDFBox 只解析；ZIP 限制；无 shell                                                                  | `IT-KB-102/116`、`SEC-KB-005`                     |
+| TM-61 | 连接器 SSRF（端点/重定向/元数据地址）                            | 内网探测/凭据外发         | 端点允许列表、HTTPS、无重定向、禁 `169.254/16`、RFC1918 仅显式允许                                                             | `SEC-CONN-003`                                    |
+| TM-62 | 连接器凭据泄露（响应/日志/审计/DB）                              | 源端接管                  | 信封加密、只写不读、掩码、日志禁明文、启动校验                                                                                 | `IT-CONN-101`、`SEC-CONN-001`                     |
+| TM-63 | 源端删除未传播                                                   | 过期/已撤权内容继续被检索 | 每轮 list + `last_seen_at` 对账；软删除 + 索引清理；tombstone                                                                  | `IT-CONN-103`                                     |
+| TM-64 | 审计缺失/可否认（ACL、连接器、删除）                             | 无法追责                  | 同事务审计、fail-closed、details 白名单                                                                                        | `IT-KB-110`、`IT-CONN-106`、`IT-AUDIT-*`          |
+| TM-65 | 索引重灌/别名切换把 A 租户数据写入 B                             | 跨租户泄露                | 索引名由 `TenantContext` 派生；写入带 `tenant_id`；别名逐租户切换                                                              | `IT-KB-113`、`TEN-034`                            |
+| TM-66 | OCR 引擎/权重供应链投毒                                          | 恶意输出/RCE              | 固定版本与文件哈希、镜像 SBOM、Trivy、启动自检输出指纹                                                                         | `scripts/ops/ocr-check`、`commands.security`      |
+| TM-67 | 文档可见范围宽于源文件空间造成误解                               | 用户以为能打开却 404      | 创建/编辑警告；详情标注；提供知识库下载；不返回预签名 URL/对象 key                                                             | `IT-KB-107`                                       |
+| TM-68 | 引用快照在 ACL 撤销/源删除后泄露片段                             | 内容残留                  | 聊天与产物引用读取时统一计算 `sourceStatus` 并遮蔽正文/片段/标题/定位；库内快照仅供审计/取证                                   | `SEC-KB-003`、`IT-CONN-103`                       |
+| TM-69 | 连接器同步放大（一次巨量对象）拖垮 Worker                        | 可用性                    | 单次对象/字节/时间上限；heavy 通道；增量                                                                                       | `PERF-M05-001`、`IT-CONN-105`                     |
+| TM-70 | （仅 P6=B）页图端点被越权读取、缓存泄露或渲染耗尽                | 内容泄露/Worker/API DoS   | 每请求文档 ACL、`Cache-Control: private` 且不共享缓存、不返回对象 key、页号/DPI/像素上限、渲染超时                             | `SEC-KB-006`（B 方案）                            |
+| TM-71 | （仅 AC-21=B）物理清理误删未到期/他人数据                        | 数据丢失                  | 只处理 `retention_expires_at <= now` 且已软删除、批量上限、dry-run 计数、审计、幂等条件删除                                    | `IT-KB-118`（B 方案）                             |
 
-- `SEC-KB-004`/`SEC-CONN-002` 的夹具由 B4/B5/B6 提供、V2 独立复核，复用 M02 的 `UntrustedData` 用例集；`IT-WORKER-LANE-001`/`IT-WORKER-LEASE-001` 归 B1。
+- **提示注入 harness（F-010）**：仓库当前**没有** `INJ-001..012`；M05-B10 新建可执行 harness：假模型 + 工具 stub（记录调用、禁止真实工具）+ canary 凭据/内网地址 + 中英文注入样本，覆盖 Excel 单元格、OCR 文本、连接器对象内容；断言系统指令不变、无 canary 外泄、无未授权工具调用。B4/B5/B6 提供样本，V2 独立复核；`externalId` 只显示末段或哈希前 12 位。
 
 ---
 
 ## 9. 性能预算与可测口径
 
-| 指标                  | 预算                | 口径                                                                | 验证           |
-| --------------------- | ------------------- | ------------------------------------------------------------------- | -------------- |
-| 首字 p95              | ≤ 3 s               | 假模型、50 并发、ACL 开启、10 万 `knowledge_chunk`                  | `PERF-M05-001` |
-| 稳态 JSON API p95     | ≤ 500 ms            | 知识库列表/详情/ACL 写；排除登录/setup/cleanup（M04 F-013 口径）    | `PERF-M05-001` |
-| ACL 谓词增量          | ≤ 20%               | 同一数据集与 M04 基线对比                                           | `PERF-M05-001` |
-| 索引延迟（无 OCR）    | p95 ≤ 60 s          | create → `INDEXED`                                                  | `PERF-M05-002` |
-| 索引延迟（OCR 20 页） | p95 ≤ 120 s         | 2 并发 OCR                                                          | `PERF-M05-002` |
-| OCR 单页 p95          | ≤ 3 s               | A4 200 DPI、2 并发、`tessdata_fast`                                 | `PERF-M05-002` |
-| 解析失败率            | ≤ 1%                | 固定 50 文件集（含损坏/加密各 2）                                   | `PERF-M05-002` |
-| 连接器同步            | 1 000 对象 ≤ 15 min | 增量、无 >10 MB 对象                                                | `PERF-M05-003` |
-| 队列等待              | p95 ≤ 5 min         | 50 并发上传/同步提交后的 heavy 通道（并发 2）；chat/report 不受影响 | `PERF-M05-004` |
+| 指标                             | 预算                       | 口径                                                                                      | 验证                           |
+| -------------------------------- | -------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------ |
+| 首字 p95                         | ≤ 3 s                      | 假模型、50 并发、ACL 开启、10 万 `knowledge_chunk`                                        | `PERF-M05-001`                 |
+| 稳态 JSON API p95                | ≤ 500 ms                   | 知识库列表/详情/ACL 写；排除登录/setup/cleanup（M04 F-013 口径）                          | `PERF-M05-001`                 |
+| 检索 p95（10 万 chunk、50 并发） | **待量测，不预设通过阈值** | `AgentContextJdbc` 为 `LIKE '%term%'` + ACL `EXISTS`；先量测，超 500ms 不在本模块静默放宽 | `PERF-M05-001`、`PERF-M05-005` |
+| ACL 谓词增量                     | ≤ 20%                      | 同一数据集与 M04 基线对比                                                                 | `PERF-M05-001`                 |
+| 索引延迟（无 OCR）               | p95 ≤ 60 s                 | create → `INDEXED`                                                                        | `PERF-M05-002`                 |
+| 索引延迟（OCR 20 页）            | p95 ≤ 120 s                | 2 并发 OCR                                                                                | `PERF-M05-002`                 |
+| OCR 单页 p95                     | ≤ 3 s                      | A4 200 DPI、2 并发、`tessdata_fast`                                                       | `PERF-M05-002`                 |
+| 解析失败率                       | ≤ 1%                       | 固定 50 文件集（含损坏/加密各 2）                                                         | `PERF-M05-002`                 |
+| 连接器同步                       | 1 000 对象 ≤ 15 min        | 增量、无 >10 MB 对象                                                                      | `PERF-M05-003`                 |
+| 队列等待                         | p95 ≤ 5 min                | 50 并发上传/同步提交后的 heavy 通道（并发 2）；chat/report 不受影响                       | `PERF-M05-004`                 |
 
-- 性能脚本：在既有 `e2e/perf/mvc-smoke.js` 增加 `PERF_M05_SCENARIO=knowledge`（不新增合同 `commands.perf` 路径，避免合同变更），模拟大 XLSX + 多页扫描件提交 + 50 并发聊天；报告必须记录 `RICCON_FAKE_MODEL=1`、`RICCON_DB_POOL_SIZE≥25`、索引版本、OCR 引擎/语言包版本、Worker CPU/内存上限。OCR 每任务单线程（`OMP_THREAD_LIMIT=1`），heavy 并发 2；若 2 并发导致首字 p95 超预算，降到 1 并记录。
-- AC-20 的“API p95 ≤500ms”只统计稳态 JSON（知识库列表/检索/ACL 写），SSE TTFB 与 OCR/同步耗时单列（M04 F-013 口径）。
-- `PERF-M05-001` 是 Product AC-20 的判定口径；`PERF-M05-002..004` 是架构补充观测（OCR/解析、连接器、队列等待），不替代 001，也不单独构成 AC 通过。
+- 性能脚本：在既有 `e2e/perf/mvc-smoke.js` 增加 `PERF_M05_SCENARIO=knowledge`（不新增合同 `commands.perf` 路径），并同步 `scripts/real-stack/run.mjs` 注入 fixtures/环境；owner `M05-B11`（写范围：`e2e/perf/mvc-smoke.js`、`scripts/real-stack/run.mjs`），V2 复核。模拟大 XLSX + 多页扫描件提交 + 50 并发聊天；报告必须记录 `RICCON_FAKE_MODEL=1`、`RICCON_DB_POOL_SIZE≥25`、索引版本、OCR 引擎/语言包版本、Worker CPU/内存上限。OCR 每任务单线程（`OMP_THREAD_LIMIT=1`），heavy 并发 2；若 2 并发导致首字 p95 超预算，降到 1 并记录。
+- AC-20 的“API p95 ≤500ms”只统计稳态 JSON（知识库列表/检索/ACL 写），SSE TTFB 与 OCR/同步耗时单列（M04 F-013 口径）。检索在 10 万 chunk、50 并发下必须先量测；若超 500ms，选项为 (a) MySQL FULLTEXT/覆盖索引，(b) OpenSearch + 两阶段 ACL 复核，(c) 用户批准单独检索预算；不得静默放宽 AC-20。
+- `IT-WORKER-LANE-001` 是 AC-20 的必需线索：OCR/索引领取不得阻塞 chat/report；`IT-WORKER-LEASE-001` 验证长任务不重复领取。
+- `PERF-M05-001` 是 Product AC-20 的判定口径；`PERF-M05-002..005` 是架构补充观测（OCR/解析、连接器、队列、检索），不替代 001，也不单独构成 AC 通过。
 - 首字预算不因知识库检索退化：ACL 谓词、OCR 队列、连接器同步都不得进入 chat 请求线程。
 
 ---
@@ -742,8 +780,8 @@ Schema 增量（additive）：
 ## 10. 数据保留与删除
 
 - 文档软删除（`deleted_at`）；检索/列表立即不可见；分块与对象保留 30 天恢复窗口后由 M09 维护任务清理。
-- 正常保留：`retention_expires_at` 默认创建后 180 天（合同 `data.retention`；租户可用 `tenant.retention_days` 覆盖），历史行 NULL 按 `created_at + 180 天` 计算（不回溯 UPDATE）；界面显示当前策略（Product AC-21）。
-- 到期清理（AC-21 选项 A）：M05 提供最小任务（API 每日 03:00 `Asia/Shanghai`，批量 500）：条件 `status='INDEXED' AND deleted_at IS NULL AND COALESCE(retention_expires_at, created_at + 180 天) <= now` → 软删除 + `mode=DELETE` 索引事件 + 审计 `knowledge.document.deleted`（`reason=retention`）；条件更新保证多实例幂等。物理对象/分块清理仍归 M09（软删除后 30 天窗口）；若选 B，M05 增加对象/分块物理清理 +8h。
+- 正常保留：`retention_expires_at` 默认创建后 180 天（合同 `data.retention`；租户可用 `tenant.retention_days` 覆盖），历史行 NULL 按 `created_at + 180 天` 计算（不回溯 UPDATE）；界面显示当前策略（Product AC-21）。**策略变更不回溯已有文档**；到期测试用注入 `Clock` 构造过期行，不实际等待 180 天；任务只处理 `status='INDEXED'` 且未软删除的文档。
+- 到期清理（AC-21 A / DEC-0034）：M05 提供最小任务（API 每日 03:00 `Asia/Shanghai`，批量 500）：条件 `status='INDEXED' AND deleted_at IS NULL AND COALESCE(retention_expires_at, created_at + 180 天) <= now` → 软删除 + `mode=DELETE` 索引事件 + 审计 `knowledge.document.deleted`（`reason=RETENTION`）；条件更新保证多实例幂等。物理对象/分块清理仍归 M09（软删除后 30 天窗口），作为 **release blocker** 跟踪。
 - 索引清理：删除事件 `mode=DELETE` 立即执行 `_delete_by_query`；失败可重试，重试不影响“已软删除即不可见”。
 - 连接器项 tombstone 保留 180 天（防“删除-重现”风暴），到期由 M09 清理；`kb_connector` 软删除后凭据密文保留 30 天再置空。
 - 引用：聊天与产物引用读取时重判 ACL/删除/版本并返回 `sourceStatus`；不可访问时不返回正文、片段、标题或定位（TM-68）。审计/取证所需的快照仍保留在库中，不随展示遮蔽删除。
@@ -756,75 +794,82 @@ Schema 增量（additive）：
 
 > `docs/PRODUCT.md` §11 的 M05 草案（2026-11-22）已列出 22 条 AC；本表用于设计自检与一致性复核，**不是验收依据**。AC 编号与测试线索以 Product 定稿为准；若冲突，以 AC 为准并回改 ADR。Product 草案的测试 ID（`IT-KB-1xx`、`IT-CONN-1xx`、`SEC-KB-00x`、`SEC-CONN-00x`、`TEN-03x`、`DEPT-01x`）是本 ADR 的唯一命名口径，不使用旧草案的 `IT-KB-XLSX-*`/`IT-KB-OCR-*`/`IT-KB-ACL-*` 编号。
 
-| AC        | 主题                                                    | ADR 章节         | 测试线索（Product 草案）                          |
-| --------- | ------------------------------------------------------- | ---------------- | ------------------------------------------------- |
-| M05-AC-01 | Excel 多表/空表/上限/损坏与非 XLSX 的状态               | §3.1–3.4         | `IT-KB-101/102`、`E2E-M05-01`                     |
-| M05-AC-02 | Excel 引用显示工作表与单元格/区域并可定位               | §3.2、§5.4       | `IT-KB-103`、`E2E-M05-01`                         |
-| M05-AC-03 | 图片/扫描件 OCR 成功、页/区域引用；文本型 PDF/DOCX 不变 | §4.3–4.5         | `IT-KB-104`、`E2E-M05-02`                         |
-| M05-AC-04 | OCR 四态（成功/低置信/部分失败/失败）与幂等重试         | §4.5             | `IT-KB-105`、`E2E-M05-02`                         |
-| M05-AC-05 | 本地 OCR 零出网、关闭开关、无凭据/内部地址              | §4.4、§4.6       | `SEC-KB-001`、`E2E-M05-02`                        |
-| M05-AC-06 | ACL 最小集合、创建者/租户管理员、历史文档默认租户全员   | §5.1、§5.2、§5.7 | `IT-KB-106/107`、`SEC-KB-002`、`E2E-M05-03`       |
-| M05-AC-07 | 列表/检索/引用/下载四处一致、统一 404、旧引用遮蔽       | §5.3、§5.4       | `SEC-KB-003`、`DEPT-011`、`TEN-034`、`E2E-M05-03` |
-| M05-AC-08 | ACL 变更下一次请求生效、部门停用/移出、审计             | §5.5、§5.6       | `IT-KB-108`、`DEPT-012`、`E2E-M05-03`             |
-| M05-AC-09 | 跨租户/跨部门/指定用户越权套件零漏检                    | §5.11            | `TEN-034..037`、`DEPT-011..014`、`SEC-KB-002/003` |
-| M05-AC-10 | 连接器配置、默认可见范围、连接测试、凭据掩码            | §6.2、§6.4       | `IT-CONN-101`、`SEC-CONN-001`、`E2E-M05-04`       |
-| M05-AC-11 | 首次同步、状态与计数、不支持格式跳过                    | §6.3             | `IT-CONN-102`、`E2E-M05-04`                       |
-| M05-AC-12 | 增量新增/修改/删除、引用状态“已更新/已删除”             | §6.3、§5.4       | `IT-CONN-103`、`E2E-M05-04`                       |
-| M05-AC-13 | 源不可达/凭据失效/部分失败、重试与审计                  | §6.6             | `IT-CONN-104/106`、`E2E-M05-05`                   |
-| M05-AC-14 | 连接器与 OCR 内容的提示注入防护                         | §8               | `SEC-CONN-002`、`SEC-KB-004`                      |
-| M05-AC-15 | 解析/OCR/同步失败可读、幂等重试、不重复文档             | §3.4、§4.5、§6.6 | `IT-KB-102/105/109`、`IT-CONN-105`、`E2E-M05-05`  |
-| M05-AC-16 | 文档/ACL/连接器/同步审计；写失败即操作失败              | §5.6、§6.6       | `IT-KB-110`、`IT-CONN-106`、`E2E-M05-05`          |
-| M05-AC-17 | 429 透传限额类型/绝对重置时间（R-M04-01）               | 前端/契约（M04） | `E2E-M05-06`                                      |
-| M05-AC-18 | 相对重置时间“还有 X 小时/天”（R-M04-02）                | 前端（M04）      | `IT-QUOTA-106`、`E2E-M05-06`                      |
-| M05-AC-19 | 四页加载/空/错误/禁用/无权限/成功态、375 px、键盘、axe  | 前端             | `E2E-M05-07`、`@a11y`                             |
-| M05-AC-20 | 50 并发首字/API p95；OCR/同步积压不阻塞 chat/report     | §7.3、§9         | `PERF-M05-001`、`IT-WORKER-LANE-001`              |
-| M05-AC-21 | 默认 180 天、软删除不命中、清理与删除传播               | §10              | `IT-KB-111`、`IT-CONN-107`、`E2E-M05-08`          |
-| M05-AC-22 | J1/J2/M03/M10/M04 回归、契约真实实现、过期文案替换      | §7.4、§12        | `IT-KB-112`、`E2E-M05-09`、契约测试               |
+| AC        | 主题                                                    | ADR 章节         | 测试线索（Product 草案）                                                          |
+| --------- | ------------------------------------------------------- | ---------------- | --------------------------------------------------------------------------------- |
+| M05-AC-01 | Excel 多表/空表/上限/损坏与非 XLSX 的状态               | §3.1–3.4         | `IT-KB-101/102`、`E2E-M05-01`                                                     |
+| M05-AC-02 | Excel 引用显示工作表与单元格/区域并可定位               | §3.2、§5.4       | `IT-KB-103`、`E2E-M05-01`                                                         |
+| M05-AC-03 | 图片/扫描件 OCR 成功、页/区域引用；文本型 PDF/DOCX 不变 | §4.3–4.5         | `IT-KB-104`、`E2E-M05-02`                                                         |
+| M05-AC-04 | OCR 四态（成功/低置信/部分失败/失败）与幂等重试         | §4.5             | `IT-KB-105`、`E2E-M05-02`                                                         |
+| M05-AC-05 | 本地 OCR 零出网、关闭开关、无凭据/内部地址              | §4.4、§4.6       | `SEC-KB-001`、`E2E-M05-02`                                                        |
+| M05-AC-06 | ACL 最小集合、创建者/租户管理员、历史文档默认租户全员   | §5.1、§5.2、§5.7 | `IT-KB-106/107`、`SEC-KB-002`、`E2E-M05-03`                                       |
+| M05-AC-07 | 列表/检索/引用/下载四处一致、统一 404、旧引用遮蔽       | §5.3、§5.4       | `SEC-KB-003`、`DEPT-011`、`TEN-034`、`E2E-M05-03`                                 |
+| M05-AC-08 | ACL 变更下一次请求生效、部门停用/移出、审计             | §5.5、§5.6       | `IT-KB-108`、`DEPT-012`、`E2E-M05-03`                                             |
+| M05-AC-09 | 跨租户/跨部门/指定用户越权套件零漏检                    | §5.11            | `TEN-034..037`、`DEPT-011..014`、`SEC-KB-002/003`、`SEC-CONN-004`                 |
+| M05-AC-10 | 连接器配置、默认可见范围、连接测试、凭据掩码            | §6.2、§6.4       | `IT-CONN-101`、`SEC-CONN-001`、`E2E-M05-04`                                       |
+| M05-AC-11 | 首次同步、状态与计数、不支持格式跳过                    | §6.3             | `IT-CONN-102`、`E2E-M05-04`                                                       |
+| M05-AC-12 | 增量新增/修改/删除、引用状态“已更新/已删除”             | §6.3、§5.4       | `IT-CONN-103`、`E2E-M05-04`                                                       |
+| M05-AC-13 | 源不可达/凭据失效/部分失败、重试与审计                  | §6.6             | `IT-CONN-104/106`、`E2E-M05-05`                                                   |
+| M05-AC-14 | 连接器与 OCR 内容的提示注入防护                         | §8               | `SEC-CONN-002`、`SEC-KB-004`                                                      |
+| M05-AC-15 | 解析/OCR/同步失败可读、幂等重试、不重复文档             | §3.4、§4.5、§6.6 | `IT-KB-102/105/109`、`IT-CONN-105`、`E2E-M05-05`                                  |
+| M05-AC-16 | 文档/ACL/连接器/同步审计；写失败即操作失败              | §5.6、§6.6       | `IT-KB-110`、`IT-CONN-106`、`E2E-M05-05`                                          |
+| M05-AC-17 | 429 透传限额类型/绝对重置时间（R-M04-01）               | 前端/契约（M04） | `E2E-M05-06`                                                                      |
+| M05-AC-18 | 相对重置时间“还有 X 小时/天”（R-M04-02）                | 前端（M04）      | `IT-QUOTA-106`、`E2E-M05-06`                                                      |
+| M05-AC-19 | 四页加载/空/错误/禁用/无权限/成功态、375 px、键盘、axe  | 前端             | `E2E-M05-07`、`@a11y`                                                             |
+| M05-AC-20 | 50 并发首字/API p95；OCR/同步积压不阻塞 chat/report     | §7.3、§9         | `PERF-M05-001`、`IT-WORKER-LANE-001`                                              |
+| M05-AC-21 | 默认 180 天、软删除不命中、清理与删除传播               | §10              | `IT-KB-111`、`IT-CONN-107`、`E2E-M05-08`                                          |
+| M05-AC-22 | J1/J2/M03/M10/M04 回归、契约真实实现、过期文案替换      | §7.4、§12        | `IT-KB-112`、`E2E-M05-09`、契约测试；M05 判 ACL/下载/解析/引用，M05b 判连接器端点 |
 
 测试 ID 口径（本 ADR 使用，Builder/Verifier 共用）：
 
-| ID                    | 内容                                               |
-| --------------------- | -------------------------------------------------- |
-| `IT-KB-101`           | Excel 多表/行带/空表/隐藏表/上限与已索引范围       |
-| `IT-KB-102`           | 损坏/加密/伪装扩展名/非 XLSX 的稳定失败态          |
-| `IT-KB-103`           | Excel 引用定位与打开                               |
-| `IT-KB-104`           | OCR 成功、页码/区域/置信度、混合页                 |
-| `IT-KB-105`           | OCR 四态、失败页与重试幂等                         |
-| `IT-KB-106`           | ACL CRUD、可见范围校验、权限                       |
-| `IT-KB-107`           | 历史迁移默认值、`sourceFileAccessLimited`、UI 提示 |
-| `IT-KB-108`           | ACL 生效时延、部门停用/成员移出                    |
-| `IT-KB-109`           | 失败与恢复（共享，覆盖文档/OCR/同步）              |
-| `IT-KB-110`           | 审计动作、details 白名单、fail-closed              |
-| `IT-KB-111`           | 保留 180 天、软删除、清理                          |
-| `IT-KB-112`           | 既有 E2E/越权/契约回归                             |
-| `IT-KB-113`           | 索引 v2 mapping、别名切换/回滚、重灌幂等           |
-| `IT-KB-114`           | EXIF 方向与 90° 重试                               |
-| `IT-KB-116`           | ZIP/像素/页数资源上限                              |
-| `IT-KB-117`           | 未来 OpenSearch 两阶段复核（占位）                 |
-| `IT-CONN-101..107`    | 连接器配置/首次/增量/失败/审计/保留                |
-| `SEC-KB-001`          | OCR 零出网                                         |
-| `SEC-KB-002`          | ACL 403/404、平台管理员不读正文                    |
-| `SEC-KB-003`          | 四处一致与旧引用遮蔽                               |
-| `SEC-KB-004`          | Excel/OCR 文本注入                                 |
-| `SEC-KB-005`          | 解析/OCR 资源耗尽                                  |
-| `SEC-CONN-001`        | 连接器凭据不泄露                                   |
-| `SEC-CONN-002`        | 连接器内容注入                                     |
-| `SEC-CONN-003`        | 连接器 SSRF/端点允许列表                           |
-| `SEC-CONN-004`        | 连接器越权（非管理员/跨租户）                      |
-| `IT-WORKER-LANE-001`  | heavy 通道不阻塞 chat/report                       |
-| `IT-WORKER-LEASE-001` | 租约续期与丢失取消                                 |
-| `PERF-M05-001`        | 首字/API p95、OCR/同步积压、后台不阻塞             |
+| ID                    | 内容                                                       |
+| --------------------- | ---------------------------------------------------------- |
+| `IT-KB-101`           | Excel 多表/行带/空表/隐藏表/上限与已索引范围               |
+| `IT-KB-102`           | 损坏/加密/伪装扩展名/非 XLSX 的稳定失败态                  |
+| `IT-KB-103`           | Excel 引用定位与打开                                       |
+| `IT-KB-104`           | OCR 成功、页码/区域/置信度、混合页                         |
+| `IT-KB-105`           | OCR 四态、失败页与重试幂等                                 |
+| `IT-KB-106`           | ACL CRUD、可见范围校验、权限                               |
+| `IT-KB-107`           | 历史迁移默认值、`sourceFileAccessLimited`、UI 提示         |
+| `IT-KB-108`           | ACL 生效时延、部门停用/成员移出                            |
+| `IT-KB-109`           | delete/reindex 幂等、失败与恢复（共享，覆盖文档/OCR/同步） |
+| `IT-KB-110`           | 审计动作、details 白名单、fail-closed                      |
+| `IT-KB-111`           | 保留 180 天、软删除、清理                                  |
+| `IT-KB-112`           | 既有 E2E/越权/契约回归                                     |
+| `IT-KB-113`           | 索引 v2 mapping、别名切换/回滚、重灌幂等                   |
+| `IT-KB-114`           | EXIF 方向与 90° 重试                                       |
+| `IT-KB-115`           | 预留：P6=B 页图端点；本次选 A，不实现/不计 gate            |
+| `IT-KB-116`           | ZIP/像素/页数资源上限                                      |
+| `IT-KB-117`           | 未来 OpenSearch 两阶段复核（占位）                         |
+| `IT-CONN-101..107`    | 连接器配置/首次/增量/失败/审计/保留                        |
+| `SEC-KB-001`          | OCR 零出网                                                 |
+| `SEC-KB-002`          | 403/404 矩阵、平台管理员 404、`admin_read` 边界            |
+| `SEC-KB-003`          | 四处一致与旧引用遮蔽                                       |
+| `SEC-KB-004`          | Excel/OCR 文本注入                                         |
+| `SEC-KB-005`          | 解析/OCR 资源耗尽                                          |
+| `SEC-CONN-001`        | 连接器凭据不泄露                                           |
+| `SEC-CONN-002`        | 连接器内容注入                                             |
+| `SEC-CONN-003`        | 连接器 SSRF/端点允许列表                                   |
+| `SEC-CONN-004`        | 连接器越权（非管理员/跨租户）                              |
+| `IT-WORKER-LANE-001`  | heavy 通道不阻塞 chat/report                               |
+| `IT-WORKER-LEASE-001` | 租约续期与丢失取消                                         |
+| `PERF-M05-001`        | 首字/API p95、OCR/同步积压、后台不阻塞                     |
 
 ### 11.1 对 Product AC 的措辞修订建议（2026-11-22 第二轮对账）
 
-> 以下为精确替换建议；本 ADR 不改 `docs/PRODUCT.md`，由 Lead 转 Product 决定。未列出的 AC 无需改措辞。
+> 以下为精确替换建议；本 ADR 不改 `docs/PRODUCT.md`，由 Lead 转 Product 决定。未列出的 AC 只补测试线索，不改语义。
 
 | AC        | 现措辞片段                                                        | 建议替换                                                                                                                                                                                                                   | 理由                                                                                            |
 | --------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | M05-AC-06 | “平台管理员无入口或 403”                                          | “平台管理员无入口；直接调用接口按跨租户统一 404（`RICCON-TENANT-404`，与对象不存在不可区分）”                                                                                                                              | ADR-0009 统一 404；返回 403 需要区分“存在但属于他租户”，形成存在性探测，和 M02/M03/M10 口径冲突 |
+| M05-AC-08 | “管理员改为…/管理员触发”                                          | “创建者或租户管理员改为…；审计 details 按 §5.6 白名单（`visibility`/前后范围/计数），不写名单正文”                                                                                                                         | 权限主语与审计白名单对齐                                                                        |
+| M05-AC-09 | “跨租户与跨部门…统一 404；同租户但角色不足…403”                   | “不可见/跨租户/跨部门/平台管理员 → 统一 404；**已可见**且非创建人/非租户管理员 → 403；连接器配置/凭据/同步跨租户 → 404（`SEC-CONN-004`）”                                                                                  | 补“已可见”限定与连接器跨租户用例，避免把 404/403 混用                                           |
+| M05-AC-11 | “同步状态显示开始/结束时间…”                                      | “同步状态显示 `last_sync_started_at`/`last_sync_finished_at`、`last_sync_status`（成功/部分/失败）与计数；失败也写结束时间”                                                                                                | F-009：失败同步必须有 finish 时间与状态                                                         |
+| M05-AC-20 | “首字/API p95…积压时聊天不被阻塞”                                 | “检索 p95 在 10 万 chunk/50 并发下先量测并记录；未达标时按 ADR §9 的 FTS/OpenSearch/单独预算选项走用户决策；`PERF_M05_SCENARIO=knowledge` 可复现；`IT-WORKER-LANE-001` 证明后台不阻塞”                                     | F-012：检索预算不能无依据；脚本分支与 lane 证据入线索                                           |
 | M05-AC-02 | “点击后打开该文档并定位到对应工作表与区域，高亮/框选可见”         | “点击后在引用详情中显示工作表名与单元格/区域（如 `销售数据!B2:D10`），并以表格/文本块高亮该区域；不要求打开完整表格编辑器”                                                                                                 | M05 不引入 XLSX 在线编辑器；文本块/表格高亮可验收，且不增加第三方查看器                         |
 | M05-AC-03 | “引用显示页码与页内区域（高亮/框选可见）”                         | 选项 A（推荐）：“引用显示页码与页内区域定位（区域坐标与命中文本块）；点击后在引用详情中显示命中文本块与坐标，不要求页图框选”；选项 B：“保留高亮/框选可见，并新增受 ACL 保护的页图端点”                                     | A 不新增页图端点；B 需 PDFBox 入 API 或 worker 预生成页图，+12–16h                              |
 | M05-AC-10 | “填写端点、bucket、prefix、凭据、同步周期与默认可见范围”          | “填写端点、bucket、prefix、凭据、是否按部署固定周期自动同步与默认可见范围”                                                                                                                                                 | OQ-M05-02：不做 per-connector cron/可视化调度；周期由部署配置固定                               |
+| M05-AC-18 | “`IT-QUOTA-106`”                                                  | “将 `IT-QUOTA-106` 注册为 M05-B8 的前端单测（相对时间格式化，`FE-QUOTA-RELATIVE-001`）；AC-18 的 pass 仍以 `E2E-M05-06` 判定”                                                                                              | F-019：原 ID 未定义；不能用一个未注册的 JUnit ID 表示前端逻辑                                   |
+| M05-AC-19 | “加载、空、错误、禁用、无权限与成功态”                            | “禁用态定义为 OCR 关闭/连接器停用；M05 验列表/详情/ACL/引用页，M05b 验连接器页；M05b gate 汇总四页”                                                                                                                        | F-021：补禁用态定义与按模块分段                                                                 |
 | M05-AC-01 | “上传损坏 XLSX、旧版 .xls、CSV 或伪装扩展名文件；Then 详情显示……” | “When 上传损坏 XLSX、旧版 .xls、CSV 或伪装扩展名文件；Then 上传/登记请求被拒绝并显示中文原因与替换/重试入口，不创建半索引文档”                                                                                             | 不支持格式在 M02 上传阶段拒绝，没有“文档详情”可显示；测试应打上传/登记接口                      |
 | M05-AC-21 | “When 保留到期；Then 按策略清理文档内容与检索结果”                | 选项 A（推荐）：“When 保留到期；Then 文档与检索结果不再可访问（列表/检索/引用不命中或显示已删除），到期标记与策略可见；物理对象与分块清理由 M09 在软删除后 30 天内完成”；选项 B：“保留现措辞，M05 增加物理清理任务（+8h）” | A 把物理删除留在 ops 边界；B 扩大 M05 的删除爆炸半径与权限面                                    |
 
@@ -841,75 +886,103 @@ Schema 增量（additive）：
 - When 保留到期；
 - Then 文档与检索结果不再可访问（列表/检索/引用不命中或显示已删除），到期标记与策略可见；物理对象与分块清理由 M09 在软删除后 30 天内完成；审计保留不受影响；删除与到期标记写审计，物理清理结果由 M09 记录。
 
+### 11.2 M05 gate 必跑补充测试（F-024）
+
+| 能力/控制                                      | 测试 ID                                       | 类型/说明                   |
+| ---------------------------------------------- | --------------------------------------------- | --------------------------- |
+| ACL 403/404 矩阵、平台管理员 404、`admin_read` | `SEC-KB-002`、`IT-KB-110`                     | 安全 + 集成；管理员边界用例 |
+| ACL 四处一致、旧引用遮蔽                       | `SEC-KB-003`、`TEN-034..037`、`DEPT-011..014` | 安全；零 skip 自动核对      |
+| Excel 解析/定位/上限/损坏                      | `IT-KB-101/102/103/116`                       | 集成                        |
+| OCR 成功/四态/旋转/资源                        | `IT-KB-104/105/114`、`SEC-KB-005`             | 集成 + 安全                 |
+| OCR 零出网                                     | `SEC-KB-001`、`scripts/ops/ocr-check`         | 安全/Ops                    |
+| 索引 v2/别名/重灌                              | `IT-KB-113`                                   | 集成/迁移                   |
+| outbox lane/lease                              | `IT-WORKER-LANE-001`、`IT-WORKER-LEASE-001`   | 集成/并发                   |
+| 连接器配置/同步/删除/凭据/SSRF/注入            | `IT-CONN-101..107`、`SEC-CONN-001..004`       | 集成 + 安全                 |
+| 注入 harness                                   | `SEC-KB-004`、`SEC-CONN-002`                  | 安全；新建 harness          |
+| 性能                                           | `PERF-M05-001..005`                           | k6；001 为 AC-20 口径       |
+
+- `IT-KB-117` 是未来 OpenSearch 两阶段复核占位，**不参与 M05 gate**；`IT-KB-115` 预留给 P6=B 的页图端点（本决策选 A，不实现、不计入 gate）。
+- TM-55..TM-71 连续；TM-70/71 仅在 P6=B/AC-21=B 时适用，选 A 时在 THREAT-MODEL 登记“不适用”，不得留空号。TM 合入由 Lead 指派威胁模型 owner，ADR 不修改 `THREAT-MODEL.md`。
+
 ---
 
 ## 12. 交付计划（单模块或拆分，待用户决策）
 
 ### 12.1 任务边界（写范围互不重叠）
 
-| 任务   | owner 建议             | 写范围（glob）                                                                                                                                                                                                                                                                                                                                                                                                                         | 内容                                                                                                                                 | 估时 |
-| ------ | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---- |
-| M05-B1 | `builder-kb-core`      | `platform/platform-domain/**`、`apps/api/src/main/resources/db/migration/V12*`、`apps/worker/src/main/java/**/run/**`、`apps/worker/src/main/java/**/parse/domain/**`、`apps/worker/src/main/resources/application.yml`、`apps/api/src/main/java/com/riccon/api/identity/domain/RoleDefinitions.java`、`apps/api/src/main/java/com/riccon/api/audit/domain/AuditDetailsPolicy.java`、`apps/api/src/main/java/com/riccon/api/config/**` | 枚举/审计常量与白名单/权限、V12、解析领域模型（bbox/置信度/summary）、全部 M05 配置键、outbox 双通道 + 租约续期、API scheduling 开关 | 11h  |
-| M05-B2 | `builder-kb-contract`  | `contracts/**`、`apps/api/src/test/java/**/contract/**`                                                                                                                                                                                                                                                                                                                                                                                | `1.4.0-m05` 全量契约 + 契约测试（唯一契约 writer）                                                                                   | 6h   |
-| M05-B3 | `builder-kb-acl`       | `apps/api/src/main/java/com/riccon/api/knowledge/{controller,service,persistence,repository,dto,domain}/**`、`apps/worker/src/main/java/**/agent/persistence/AgentContextJdbc.java`                                                                                                                                                                                                                                                    | ACL 模型/API/谓词/审计/知识库下载/保留到期标记                                                                                       | 16h  |
-| M05-B4 | `builder-kb-excel`     | `apps/worker/src/main/java/**/parse/service/XlsxDocumentParser.java`                                                                                                                                                                                                                                                                                                                                                                   | 流式 XLSX、行带定位、警告、上限                                                                                                      | 8h   |
-| M05-B5 | `builder-kb-ocr`       | `apps/worker/src/main/java/**/ocr/**`、`apps/worker/src/main/java/**/parse/service/{ImageDocumentParser,JpegDocumentParser,PdfDocumentParser,FileContentExtractor,TextChunker}.java`                                                                                                                                                                                                                                                   | OCR SPI/Tesseract/扫描 PDF/资源控制、按字节复用解析、换行优先切分/bbox 传递                                                          | 12h  |
-| M05-B6 | `builder-kb-connector` | `apps/api/src/main/java/com/riccon/api/knowledge/connector/**`、`apps/worker/src/main/java/**/connector/**`                                                                                                                                                                                                                                                                                                                            | 连接器 API/同步/凭据/删除传播/固定周期调度                                                                                           | 20h  |
-| M05-B7 | `builder-kb-index`     | `apps/worker/src/main/java/**/index/**`、`apps/worker/src/main/java/**/parse/service/S3FileContentReader.java`、`scripts/ops/reindex-knowledge.mjs`                                                                                                                                                                                                                                                                                    | 索引 v2、ACL_ONLY/DELETE、连接器对象分支、别名切换                                                                                   | 6h   |
-| M05-B8 | `builder-kb-web`       | `apps/web/**`                                                                                                                                                                                                                                                                                                                                                                                                                          | ACL 编辑、引用详情/文本块高亮、下载、OCR/解析状态、连接器管理、M04 429 文案与相对重置时间、a11y                                      | 13h  |
-| M05-B9 | `builder-kb-citation`  | `apps/api/src/main/java/com/riccon/api/chat/{domain,dto,persistence,repository,service}/**`、`apps/api/src/main/java/com/riccon/api/research/{dto,persistence,service}/**`、`apps/worker/src/main/java/com/riccon/worker/research/{domain,persistence,service}/**`                                                                                                                                                                     | 引用 `source_version` 写入、`sourceStatus` 计算、不可访问时遮蔽                                                                      | 6h   |
-| M05-V1 | `verifier`             | `apps/**/test/**`、`e2e/**`                                                                                                                                                                                                                                                                                                                                                                                                            | AC 功能/E2E/a11y 独立验证                                                                                                            | 8h   |
-| M05-V2 | `verifier`             | `apps/**/test/**`、`e2e/**`、`scripts/ops/**`                                                                                                                                                                                                                                                                                                                                                                                          | 越权/安全/性能/迁移/回滚独立验证                                                                                                     | 10h  |
+| 任务     | owner 建议             | 写范围（glob）                                                                                                                                                                                                                                                                                                                                                                                                                         | 内容                                                                                                                | 估时 |
+| -------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---- |
+| M05-B1   | `builder-kb-core`      | `platform/platform-domain/**`、`apps/api/src/main/resources/db/migration/V12*`、`apps/worker/src/main/java/**/run/**`、`apps/worker/src/main/java/**/parse/domain/**`、`apps/worker/src/main/resources/application.yml`、`apps/api/src/main/java/com/riccon/api/identity/domain/RoleDefinitions.java`、`apps/api/src/main/java/com/riccon/api/audit/domain/AuditDetailsPolicy.java`、`apps/api/src/main/java/com/riccon/api/config/**` | 枚举/审计常量与白名单/权限、V12、解析领域模型、配置键、outbox 双通道 + 租约续期、API scheduling、ACL 灰度 WARN/指标 | 11h  |
+| M05-B2   | `builder-kb-contract`  | `contracts/**`、`apps/api/src/test/java/**/contract/**`                                                                                                                                                                                                                                                                                                                                                                                | `1.4.0-m05` 契约：ACL/下载/解析/reindex/引用；唯一 M05 契约 writer                                                  | 5h   |
+| M05-B3   | `builder-kb-acl`       | `apps/api/src/main/java/com/riccon/api/knowledge/{controller,service,persistence,repository,dto,domain}/**`、`apps/worker/src/main/java/**/agent/persistence/AgentContextJdbc.java`                                                                                                                                                                                                                                                    | ACL 模型/API/谓词/审计、delete/reindex、下载流式代理、admin_read、保留到期任务                                      | 21h  |
+| M05-B4   | `builder-kb-excel`     | `apps/worker/src/main/java/**/parse/service/XlsxDocumentParser.java`                                                                                                                                                                                                                                                                                                                                                                   | 流式 XLSX、行带定位、警告、上限                                                                                     | 8h   |
+| M05-B5   | `builder-kb-ocr`       | `apps/worker/src/main/java/**/ocr/**`、`apps/worker/src/main/java/**/parse/service/{ImageDocumentParser,JpegDocumentParser,PdfDocumentParser,FileContentExtractor,TextChunker}.java`                                                                                                                                                                                                                                                   | OCR SPI/Tesseract/扫描 PDF/资源控制、按字节复用解析、换行优先切分/bbox 传递                                         | 12h  |
+| M05-B7   | `builder-kb-index`     | `apps/worker/src/main/java/**/index/**`、`scripts/ops/reindex-knowledge.mjs`                                                                                                                                                                                                                                                                                                                                                           | 索引 v2、ACL_ONLY/DELETE、别名切换（M05 范围）                                                                      | 4h   |
+| M05-B8   | `builder-kb-web`       | `apps/web/**`                                                                                                                                                                                                                                                                                                                                                                                                                          | ACL 编辑、引用详情/文本块高亮、下载、OCR/解析状态、M04 429 文案、a11y（M05 范围）                                   | 7h   |
+| M05-B9   | `builder-kb-citation`  | `apps/api/src/main/java/com/riccon/api/chat/{domain,dto,persistence,repository,service}/**`、`apps/api/src/main/java/com/riccon/api/research/{dto,persistence,service}/**`、`apps/worker/src/main/java/com/riccon/worker/research/{domain,persistence,service}/**`                                                                                                                                                                     | M05 引用 `source_version`/`sourceStatus`/遮蔽                                                                       | 4h   |
+| M05-B10  | `builder-kb-security`  | `apps/api/src/test/java/**/injection/**`、`apps/worker/src/test/java/**/injection/**`                                                                                                                                                                                                                                                                                                                                                  | 新建注入 harness（假模型+工具 stub+canary+中英文样本）                                                              | 4h   |
+| M05-B11  | `builder-kb-perf`      | `e2e/perf/mvc-smoke.js`、`scripts/real-stack/run.mjs`                                                                                                                                                                                                                                                                                                                                                                                  | `PERF_M05_SCENARIO=knowledge`、50 并发/OCR 积压/检索量测分支                                                        | 4h   |
+| M05-O1   | `riccon/ops`           | `scripts/ops/ocr-check`、`deploy/compose/**`、`docs/RUNBOOK.md`                                                                                                                                                                                                                                                                                                                                                                        | Tesseract/Leptonica/tessdata 入镜像、SBOM/NOTICE、CI 安装、零出网 ocr-check                                         | 6h   |
+| M05-V1   | `verifier`             | `apps/**/test/**`、`e2e/**`                                                                                                                                                                                                                                                                                                                                                                                                            | M05 AC 功能/E2E/a11y 独立验证                                                                                       | 5h   |
+| M05-V2   | `verifier`             | `apps/**/test/**`、`e2e/**`、`scripts/ops/**`                                                                                                                                                                                                                                                                                                                                                                                          | M05 越权/安全/性能/迁移/回滚独立验证                                                                                | 6h   |
+| M05b-B2b | `builder-kb-contract`  | `contracts/**`、`apps/api/src/test/java/**/contract/**`                                                                                                                                                                                                                                                                                                                                                                                | `1.5.0-m05b` 连接器契约；唯一 M05b 契约 writer                                                                      | 3h   |
+| M05b-B6  | `builder-kb-connector` | `apps/api/src/main/java/com/riccon/api/knowledge/connector/**`、`apps/worker/src/main/java/**/connector/**`                                                                                                                                                                                                                                                                                                                            | 连接器 API/同步/凭据/删除传播/固定周期、同步时间/complete/tombstone 复用                                            | 23h  |
+| M05b-B7b | `builder-kb-index`     | `apps/worker/src/main/java/**/parse/service/S3FileContentReader.java`、`apps/worker/src/main/java/**/index/**`                                                                                                                                                                                                                                                                                                                         | 连接器对象索引分支与重灌                                                                                            | 2h   |
+| M05b-B8b | `builder-kb-web`       | `apps/web/**`                                                                                                                                                                                                                                                                                                                                                                                                                          | 连接器配置/同步状态/凭据掩码/a11y                                                                                   | 6h   |
+| M05b-B9b | `builder-kb-citation`  | 同 B9 的 worker/API 引用路径                                                                                                                                                                                                                                                                                                                                                                                                           | 连接器源更新/删除的引用状态                                                                                         | 2h   |
+| M05b-O2  | `riccon/ops`           | `deploy/compose/**`、`docs/RUNBOOK.md`、`scripts/ops/**`                                                                                                                                                                                                                                                                                                                                                                               | 连接器出网 allowlist/网络策略、凭据 30 天置空、RUNBOOK                                                              | 4h   |
+| M05b-V1b | `verifier`             | `apps/**/test/**`、`e2e/**`                                                                                                                                                                                                                                                                                                                                                                                                            | M05b AC 功能/E2E/a11y                                                                                               | 3h   |
+| M05b-V2b | `verifier`             | `apps/**/test/**`、`e2e/**`、`scripts/ops/**`                                                                                                                                                                                                                                                                                                                                                                                          | M05b 安全/性能/迁移/回滚                                                                                            | 4h   |
 
-- 依赖：B1 → B2 → {B3,B4,B5} → B6（依赖 B3 的 ACL/来源枚举）→ B7（依赖 B4/B5 的解析器）→ {B8,B9} → V1/V2；B9 依赖 B3 的访问谓词；B2 合并前其他任务不得改 `contracts/`。
-- 高风险任务（T4）：B1（迁移/outbox 框架）、B3（ACL/下载）、B6（连接器 SSRF/凭据）、B7（索引重灌）、B9（引用遮蔽）在 done 前必须有独立 Verifier 任务级评审。
-- 不新增功能代码的文档任务（Product 文案、RUNBOOK）由 Lead 排期。
-- **范围差异（需 Lead/用户确认）**：Product §11 把 M04 的 R-M04-01/02（`RICCON-QUOTA-429` 文案与相对重置时间）并入 M05（AC-17/18）；合同 `module_roadmap` 的 M05 只写知识库纵深。若确认并入，B8 承担前端改动，后端无需新设计（429 响应已有字段）；若不并入，按 `kind: fix` 另立维护模块。
+- 依赖：M05 `B1 → B2 → {B3,B4,B5} → B7 → {B8,B9,B10,B11} → V1/V2 → O1`；M05b `B2b/B6（依赖 B3/B4/B5）→ {B7b,B8b,B9b} → V1b/V2b → O2`。M05 的 B2 只写 `1.4.0-m05`；M05b 的 B2b 只写 `1.5.0-m05b`，其他任务不得改 `contracts/`。
+- 高风险任务（T4）：B1（迁移/outbox 框架）、B2/B2b（契约）、B3（ACL/delete/reindex/下载/admin_read）、B6（连接器 SSRF/凭据/删除）、B7/B7b（索引重灌）、B9/B9b（引用遮蔽）在 done 前必须有独立 Verifier 任务级评审。
+- **DEC-0034 范围**：M04 R-M04-01/02（429 文案/相对时间）已并入 M05，B8 承担前端；AC-17/18 不断言后端新设计，若 429 响应缺字段归 M04 `kind: fix`。
+- **Ops 缺口（F-019）**：O1/O2 是新增任务，覆盖镜像/权重/SBOM/CI、零出网 ocr-check、连接器网络策略、凭据置空、V12 回滚演练与 RUNBOOK；不把运维工作藏在 Builder 任务里。
 
-### 12.2 预算与拆分建议（第二轮对账，P6=A / P7=404 / AC-21=A）
+### 12.2 预算与拆分建议（DEC-0034；P6=A / P8=A / U8=管理性读取+审计）
 
-以 §12.1 任务与 P6=A、AC-21=A 为前提：
+以 §12.1 任务为前提：
 
-| 拆分（Product 方案） | 估算     | 组成                                                                             |
-| -------------------- | -------- | -------------------------------------------------------------------------------- |
-| M05                  | 90h      | B1 11 + B2 6 + B3 16 + B4 8 + B5 12 + B7 6 + B8 13 + B9 6 + V1 8 + V2（M05 段）4 |
-| M05b                 | 26h      | B6 20 + V2（M05b 段）6                                                           |
-| **合计**             | **116h** | 单模块同价；不因拆分改变任务或 AC                                                |
+| 拆分（DEC-0034 Product 方案） | 估算     | 组成                                                                                          |
+| ----------------------------- | -------- | --------------------------------------------------------------------------------------------- |
+| M05                           | 97h      | B1 11 + B2 5 + B3 21 + B4 8 + B5 12 + B7 4 + B8 7 + B9 4 + B10 4 + B11 4 + O1 6 + V1 5 + V2 6 |
+| M05b                          | 47h      | B2b 3 + B6 23 + B7b 2 + B8b 6 + B9b 2 + O2 4 + V1b 3 + V2b 4                                  |
+| **合计**                      | **144h** | 不改 AC；与 116h 的差异见下                                                                   |
 
-与 Product §11.7 的 98h 差异（+18h）：
+与上一版 116h 的差异（+28h）：
 
-| 差异项             | 影响 | 说明                                                                         |
-| ------------------ | ---- | ---------------------------------------------------------------------------- |
-| 共享基础设施未单列 | +23h | B1 11（V12/outbox 双通道/租约/领域模型）、B2 6（契约）、B7 6（索引 v2/重灌） |
-| 引用可用性独立任务 | +6h  | B9 `source_version`/`sourceStatus`/遮蔽；Product 未单列                      |
-| 独立验证           | +10h | V1+V2 18h vs Product 8h；T4 要求独立越权/安全/性能/迁移复验                  |
-| Excel/OCR 估算更低 | −10h | ADR 8+12 vs Product 12+18                                                    |
-| 连接器估算更低     | −11h | ADR B6 20h vs Product 连接器段 34h（Product 更保守）                         |
+| 差异项       | 影响 | 说明                                                                 |
+| ------------ | ---- | -------------------------------------------------------------------- |
+| B3 增加      | +5h  | delete/reindex 2h、下载流式代理 2h、`admin_read` 审计 1h             |
+| B6 增加      | +3h  | 同步 start/finish/status/complete、tombstone 复用、list 完整性 guard |
+| 契约拆分     | +2h  | M05 `1.4.0-m05` 5h + M05b `1.5.0-m05b` 3h（原单契约 6h）             |
+| 注入 harness | +4h  | 新建可执行 harness（F-010）                                          |
+| perf 场景    | +4h  | `PERF_M05_SCENARIO=knowledge` + run.mjs（F-012）                     |
+| Ops O1/O2    | +10h | OCR 镜像/权重/CI/ocr-check 6h；连接器网络/凭据置空/RUNBOOK 4h        |
+| B8/B9 拆分   | 0    | 13+6 → 7+6+4+2，总量不变                                             |
 
-- 若 P6 选 B（页图叠加）：**+12–16h**（页图端点/缓存/ACL + B8 叠加），合计 128–132h。
-- 若 AC-21 选 B（M05 物理清理）：**+8h**，合计 124h；两项都选 B：136–140h。
-- 两种拆分都可行，AC 内容不变：
-  - **Product 方案（推荐优先讨论）**：M05 = Excel + OCR + ACL + M04 文案；M05b = 连接器。理由：OCR 是路线图 M05 的用户可见核心，连接器是最高外部依赖风险。
-  - **Architect 风险方案**：M05a = Excel + ACL + 索引/契约；M05b = OCR + 连接器。理由：先把 T4 安全面（ACL）与契约稳定，再叠加 OCR/连接器。
-- 不推荐为贴近 98h 静默砍 AC；若预算必须收敛，优先把 M05b 的连接器排到下一模块（AC 保留并标记归属），而不是删除 AC。
-- 写范围不重叠：B3 与 B6 以 `knowledge/` 下不同子包分界；B4 只改 `XlsxDocumentParser`，B5 只改 OCR/图片/PDF/`FileContentExtractor`/`TextChunker`；B1 独占 `application.yml`、解析领域模型与审计白名单，避免并行写冲突。
+- 与 Product §11.7 的 98h 差异 **+46h**：共享基础设施、独立验证、注入/perf harness、delete/reindex、下载代理与 Ops 任务此前未计入；不为贴近 98h 删除 AC。
+- 若 P6=B：+12–16h（页图端点/缓存/ACL + B8 叠加）；若 AC-21=B：+8h（物理清理）；本决策均为 A，不启用。
+- 高风险任务 B1/B2/B2b/B3/B6/B7/B7b/B9/B9b 的评审路径见 §12.1；M05 gate 前必须完成 O1，M05b gate 前必须完成 O2。
 
 ---
 
 ## 13. 风险与开放问题
 
-### 13.1 需用户决策（不可逆/高成本）
+### 13.1 需用户决策（DEC-0034 已答复）
 
-| ID  | 问题                                 | 选项                                                                                | 推荐                                                                                                                     | 截止           |
-| --- | ------------------------------------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------- |
-| U1  | OCR 引擎                             | Tesseract / PP-OCR ONNX                                                             | Tesseract 默认 + SPI；精度不达标再切 PP-OCR                                                                              | B5 开始前      |
-| U2  | 连接器类型                           | S3 / Confluence                                                                     | S3 兼容目录                                                                                                              | B6 开始前      |
-| U3  | 模块拆分与预算                       | 单模块 ≈116h / Product 方案 M05+M05b / Architect 风险方案 M05a+M05b（P6=A/AC-21=A） | 先讨论 Product 方案（OCR 留在 M05、连接器单独 M05b）                                                                     | 计划评审时     |
-| U4  | ACL 上线后回滚约束                   | 禁止应用回滚（前向修复）/ 允许回滚但先放宽为 TENANT                                 | 禁止回滚，前向修复                                                                                                       | ACL 开启前     |
-| U5  | 新文档默认可见范围                   | `TENANT`（保持现状）/ `USERS`（最小权限）                                           | `TENANT` + 上传时显式选择与提示                                                                                          | 用户范围批准前 |
-| U6  | 权重随镜像分发                       | 允许 / 不允许                                                                       | 允许（Apache-2.0，保留 NOTICE/SBOM）                                                                                     | B5 开始前      |
-| U7  | 连接器原文是否可下载                 | 可下载（受 ACL）/ 仅知识库引用                                                      | 可下载（同文档 ACL）                                                                                                     | B6 开始前      |
-| U8  | 租户管理员是否可读本租户全部知识文档 | 管理性读取（不做 ACL 过滤）/ 管理员也受 ACL 限制                                    | 管理性读取（可观察：管理员能发现并处置任意文档；边界：ACL 不防租户管理员，平台管理员仍不可跨租户读取，ACL 变更必须审计） | 计划评审时     |
+> DEC-0034（2026-11-22）已答复：U1=Tesseract+SPI、U2=S3、U3=Product 拆分（预算按 §12.2=144h）、U4=禁止应用回滚、U5=新文档默认 TENANT、U6=权重随镜像、U7=连接器原文可下载（受 ACL）、U8=管理性读取+绕过 ACL 审计；M03-AC-06 由 M05 取代。ADR 仍 `proposed`，以下保留决策记录。
+
+| ID  | 问题                                 | 选项                                                | 决策/推荐                                                                            | 截止           |
+| --- | ------------------------------------ | --------------------------------------------------- | ------------------------------------------------------------------------------------ | -------------- |
+| U1  | OCR 引擎                             | Tesseract / PP-OCR ONNX                             | Tesseract 默认 + SPI；精度不达标再切 PP-OCR（已批准）                                | B5 开始前      |
+| U2  | 连接器类型                           | S3 / Confluence                                     | S3 兼容目录（已批准）                                                                | B6 开始前      |
+| U3  | 模块拆分与预算                       | Product 方案 M05+M05b / Architect 风险方案 / 单模块 | DEC-0034 批准 Product 拆分；预算按 §12.2 = M05 97h + M05b 47h = 144h（待 Lead 确认） | 计划评审时     |
+| U4  | ACL 上线后回滚约束                   | 禁止应用回滚（前向修复）/ 允许回滚但先放宽为 TENANT | 禁止回滚，前向修复（已批准）                                                         | ACL 开启前     |
+| U5  | 新文档默认可见范围                   | `TENANT`（保持现状）/ `USERS`（最小权限）           | `TENANT` + 上传时显式选择与提示（已批准）                                            | 用户范围批准前 |
+| U6  | 权重随镜像分发                       | 允许 / 不允许                                       | 允许（Apache-2.0，保留 NOTICE/SBOM，已批准）                                         | B5 开始前      |
+| U7  | 连接器原文是否可下载                 | 可下载（受 ACL）/ 仅知识库引用                      | 可下载（同文档 ACL，已批准）                                                         | B6 开始前      |
+| U8  | 租户管理员是否可读本租户全部知识文档 | 管理性读取（不做 ACL 过滤）/ 管理员也受 ACL 限制    | 管理性读取；**绕过 ACL 的读取必须写 `knowledge.document.admin_read` 审计**（已批准） | 计划评审时     |
 
 ### 13.2 团队可决定（本 ADR 已给默认值）
 
@@ -922,21 +995,21 @@ Schema 增量（additive）：
 
 ### 13.3 依赖 Product / Lead / Ops
 
-| ID  | 依赖                                                                                | 谁                                                                      | 影响                                          |
-| --- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------- |
-| P1  | ACL 可见范围、谁可改 ACL、界面文案、默认值                                          | Product（草案已给：TENANT/DEPT/USERS、创建者+租户管理员、默认租户全员） | B3/B8 契约与 AC；待评审确认                   |
-| P2  | 隐藏表/截断警告是否对用户可见                                                       | Product（草案已给：隐藏表跳过并显示警告）                               | B4/B8，待评审确认                             |
-| P3  | OCR 区域高亮是否必需                                                                | Product（已由 P6 收敛：推荐 A 文本块/坐标）                             | bbox 展示口径见 §11.1                         |
-| P4  | 源文件空间与文档可见性不一致时警告还是阻断                                          | Product（草案倾向：知识库下载按 ACL，不阻断）                           | §5.3、B3，待评审确认                          |
-| P5  | 产物引用在 ACL 撤销/源删除后是否仍展示                                              | Product（草案已给：不展示正文/片段/定位）                               | §5.4、§10、TM-68，待评审确认                  |
-| P6  | 引用区域高亮口径：文本块/坐标 vs 页图叠加框选；是否需要页图端点                     | Product + 前端（ADR 推荐 A：文本块/坐标；B 需 +12–16h）                 | §4.3、§7.4、§11.1；影响 B8 成本与 API 依赖    |
-| P7  | Product AC-06 写“平台管理员读租户正文 → 无入口或 403”；ADR-0009 统一跨租户 404      | Product + Lead（ADR 建议改用 §11.1 的 404 措辞）                        | 保持跨租户不可区分性；不为 403 引入存在性探测 |
-| P8  | AC-21 物理清理归属：M05 软删除+索引 vs M05 物理清理                                 | Product + Ops（ADR 推荐 A：物理清理归 M09；B +8h）                      | §10、§11.1；影响 M05 删除爆炸半径与权限面     |
-| L1  | ADR-0009 §6 增加 `connector` 对象 key 类别                                          | Lead + Ops                                                              | B6 对象存储路径                               |
-| L2  | `THREAT-MODEL.md` 合入 TM-55..TM-71（70/71 仅对应 P6=B/AC-21=B，选 A 则登记不适用） | Lead（威胁模型 owner）                                                  | M05 安全 gate                                 |
-| L3  | M05 AC 定稿后复核本 ADR §11 与任务边界                                              | Lead + Product                                                          | 计划评审                                      |
-| L4  | PRODUCT §11 把 M04 R-M04-01/02（429 文案/相对时间）并入 M05，合同路线图未列         | Lead + 用户                                                             | 模块范围；确认则 B8 承担，否则 `kind: fix`    |
-| O1  | OCR 镜像/权重、`scripts/ops/ocr-check`、RUNBOOK                                     | Ops                                                                     | B5/B7 类任务                                  |
+| ID  | 依赖                                                                           | 谁                                                                      | 影响                                          |
+| --- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------- | --------------------------------------------- |
+| P1  | ACL 可见范围、谁可改 ACL、界面文案、默认值                                     | Product（草案已给：TENANT/DEPT/USERS、创建者+租户管理员、默认租户全员） | B3/B8 契约与 AC；待评审确认                   |
+| P2  | 隐藏表/截断警告是否对用户可见                                                  | Product（草案已给：隐藏表跳过并显示警告）                               | B4/B8，待评审确认                             |
+| P3  | OCR 区域高亮是否必需                                                           | Product（DEC-0034 已选 P6=A：文本块/坐标）                              | 按 §11.1 改 AC-02/03                          |
+| P4  | 源文件空间与文档可见性不一致时警告还是阻断                                     | Product（DEC-0034：知识库下载按 ACL，不阻断）                           | §5.3、B3                                      |
+| P5  | 产物引用在 ACL 撤销/源删除后是否仍展示                                         | Product（DEC-0034：不可访问时不展示正文/片段/定位）                     | §5.4、§10、TM-68                              |
+| P6  | 引用区域高亮口径：文本块/坐标 vs 页图叠加框选；是否需要页图端点                | **DEC-0034 选 A**：文本块/坐标，不新增页图端点                          | §4.3、§7.4、§11.1；B 方案 +12–16h 不启用      |
+| P7  | Product AC-06 写“平台管理员读租户正文 → 无入口或 403”；ADR-0009 统一跨租户 404 | Product + Lead（建议改用 §11.1 的 404 措辞）                            | 保持跨租户不可区分性；不为 403 引入存在性探测 |
+| P8  | AC-21 物理清理归属：M05 软删除+索引 vs M05 物理清理                            | **DEC-0034 选 A**：物理清理归 M09，release blocker                      | §10、§11.1；B 方案 +8h 不启用                 |
+| L1  | ADR-0009 §6 增加 `connector` 对象 key 类别                                     | Lead + Ops                                                              | B6 对象存储路径                               |
+| L2  | `THREAT-MODEL.md` 合入 TM-55..TM-71（70/71 仅对应 P6=B/P8=B，选 A 登记不适用） | Lead（威胁模型 owner）                                                  | M05 安全 gate                                 |
+| L3  | M05 AC 定稿后复核本 ADR §11 与任务边界                                         | Lead + Product                                                          | 计划评审                                      |
+| L4  | M04 R-M04-01/02（429 文案/相对时间）已由 DEC-0034 并入 M05                     | Lead + Product                                                          | B8 承担；429 字段缺失归 M04 `kind: fix`       |
+| O1  | M05-O1/O2：OCR 镜像/权重/CI/ocr-check、连接器网络/凭据置空/RUNBOOK             | Ops                                                                     | §12.1；M05/M05b gate 前                       |
 
 ### 13.4 对 Product §11.8 OQ-M05-01..08 的架构回应
 
@@ -952,6 +1025,24 @@ Schema 增量（additive）：
 | OQ-M05-08 | 可行；保留清理按 AC-21 选项 A  | 创建者 + 租户管理员软删除；平台管理员不可删除；默认 180 天、`tenant.retention_days` 覆盖；M05 做到期标记 + 软删除 + 索引 DELETE，物理清理归 M09（B 方案 +8h）                                      |
 
 > 以上是架构可行性结论，不改变 Product 草案；用户批准后由 Product 同步 §11.1/§11.3 与 AC 措辞。
+
+### 13.5 剩余 Product / Lead 处理项（REV-M05-AC-001）
+
+| ID    | 项                                                                               | owner            | 说明                                       |
+| ----- | -------------------------------------------------------------------------------- | ---------------- | ------------------------------------------ |
+| F-001 | AC-02/03 改为 P6=A 的文本块/坐标措辞                                             | Product          | 精确句在 §11.1；不改则 A 方案不满足字面    |
+| F-002 | AC-21 改为 P8=A 的软删除/索引措辞；M09 物理清理登记 release blocker 与 owner/due | Product/Lead     | DEC-0034 已选 A；M09 清理需排期            |
+| F-015 | M03-AC-06 标注由 M05 取代；`E2E-M03-02` 旧文案断言更新                           | Product/Lead     | DEC-0034 已批准取代；需改 AC 与 E2E        |
+| F-016 | AC-01 不支持格式改“上传阶段拒绝”                                                 | Product          | §11.1 已给句                               |
+| F-017 | AC-08 创建人隐式可见与“只有名单内可见”冲突                                       | Product          | 明确创建人是否始终可见                     |
+| F-018 | AC-10 “同步周期/bucket 摘要/导出”措辞                                            | Product          | §11.1 已给句                               |
+| F-019 | `IT-QUOTA-106` 注册为前端单测或改用 E2E 判定                                     | Verifier/Product | §11.1 已给建议                             |
+| F-020 | AC-21 策略不回溯、只处理 INDEXED、测试用 Clock                                   | Product          | §10 已写架构口径                           |
+| F-021 | AC-19 禁用态定义与 M05/M05b 页面拆分                                             | Product/Lead     | §11.1 已给建议                             |
+| F-025 | 预算 144h 与 98h 差异确认                                                        | Lead/用户        | §12.2 已列差异；不改 AC                    |
+| F-026 | AC-17/18 已由 DEC-0034 并入 M05，合同路线图需同步                                | Lead/Product     | 不阻塞实现，但需范围记录                   |
+| F-024 | THREAT-MODEL 合入 TM-55..71                                                      | Lead             | ADR 不改该文件                             |
+| F-029 | 文案/线索清理（meta-ID、AC-02 示例与行带、sync.retried）                         | Product          | ADR 已加 `sync.retried` 与 externalId 脱敏 |
 
 ---
 
@@ -981,7 +1072,7 @@ Schema 增量（additive）：
 
 ### 14.5 高风险任务
 
-- B1/B3/B6/B7/B9 均在 §12.1 标注写范围与内容，验收以 §9 指标、§11 对应测试 ID 与任务级评审为准；B2 是唯一契约 writer；B8 不写后端。
+- 高风险任务：B1/B2/B2b/B3/B6/B7/B7b/B9/B9b 在 §12.1 标注写范围与内容，done 前必须有独立 Verifier 任务级评审；B2/B2b 分别是 M05/M05b 唯一契约 writer；B8/B8b 不写后端；O1/O2 由 Ops 负责并由 Verifier 核对运行证据。
 
 ### 14.6 AC 可行性扫描（AC-01..22）
 
@@ -1037,7 +1128,8 @@ Schema 增量（additive）：
 
 ## 修订记录
 
-| 日期       | 变更                                                                                                                                       | 依据                            |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
-| 2026-11-22 | 初稿（proposed）：Excel/OCR/ACL/连接器设计、V12、契约增量、威胁模型、性能与任务边界                                                        | M05 规划任务；Product AC 待定   |
-| 2026-11-22 | 第二轮 AC 对账：P7 统一 404、P6 推荐 A（文本块/坐标）、AC-21 推荐 A（物理清理归 M09）、连接器调度改为部署固定周期、预算 116h、TM-70/71、U8 | Lead 计划评审；Product §11 草案 |
+| 日期       | 变更                                                                                                                                                                                                                            | 依据                            |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| 2026-11-22 | 初稿（proposed）：Excel/OCR/ACL/连接器设计、V12、契约增量、威胁模型、性能与任务边界                                                                                                                                             | M05 规划任务；Product AC 待定   |
+| 2026-11-22 | 第二轮 AC 对账：P7 统一 404、P6 推荐 A（文本块/坐标）、AC-21 推荐 A（物理清理归 M09）、连接器调度改为部署固定周期、预算 116h、TM-70/71、U8                                                                                      | Lead 计划评审；Product §11 草案 |
+| 2026-11-22 | REV-M05-AC-001 架构 P1/P2 修复：F-003..F-014/F-022..F-028/F-030、DEC-0034 落地、契约/UI 按 M05/M05b 分段、delete/reindex、下载流式代理、admin_read、tombstone/list guard/sync 时间、注入/OCR/perf harness、Ops O1/O2、预算 144h | Verifier pre-review；DEC-0034   |
