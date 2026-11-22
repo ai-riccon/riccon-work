@@ -48,7 +48,8 @@ class SessionDepartmentApiTest extends ApiIntegrationTestSupport {
 
         // 重新登录走 AuthService.authenticateInTenant + 会话摘要，验证登录响应同样保留部门字段。
         String memberUsername = member.body().path("user").path("username").asText();
-        JsonNode reloginUser = login(tenantId, memberUsername, "member-password-12").body().path("user");
+        JsonNode reloginUser =
+                login(tenantId, memberUsername, "member-password-12").body().path("user");
         assertThat(reloginUser.path("departmentId").asText()).isEqualTo(departmentId.toString());
         assertThat(reloginUser.path("departmentName").asText()).isEqualTo("研发部");
 
