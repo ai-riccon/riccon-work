@@ -4,7 +4,7 @@
   "module_id": "M05",
   "title": "M05-B1 基础模型/V12/outbox 双通道/审计白名单",
   "owner": "riccon/builder-kb-core",
-  "status": "planned",
+  "status": "blocked",
   "write_scope": [
     "platform/platform-domain/**",
     "apps/api/src/main/resources/db/migration/V12*",
@@ -20,9 +20,12 @@
     "outbox default/heavy 双通道、租约续期、配置键、ACL 灰度 WARN/指标",
     "审计 details action-specific 数组/可空键/枚举；迁移与单测通过"
   ],
-  "evidence": [],
+  "evidence": [
+    "EV-0769"
+  ],
   "tools_used": [],
-  "blocker": null,
+  "blocker": "实现、V12 修复、全量 verify 与 EV-0769 已完成（commit cd83e24，dirty=false），但任务卡 write_scope 无法容纳 brief 明确授权的对应测试与 SchemaVersionChecker.java：agent 无法通过 riccon CLI 修改 write_scope，review 转换被 ERR_WRITE_SCOPE 拒绝。请 Lead 把以下路径加入 TASK-0164.write_scope：apps/worker/src/main/java/com/riccon/worker/persistence/SchemaVersionChecker.java、apps/worker/src/test/java/com/riccon/worker/persistence/SchemaVersionCheckerTest.java、apps/worker/src/test/java/com/riccon/worker/outbox/**、apps/api/src/test/java/com/riccon/api/ApiApplicationTests.java、apps/api/src/test/java/com/riccon/api/config/**、apps/api/src/test/java/com/riccon/api/migration/V10MigrationTest.java、apps/api/src/test/java/com/riccon/api/migration/V11MigrationTest.java、apps/api/src/test/java/com/riccon/api/migration/V12*、apps/api/src/test/java/com/riccon/api/security/m04verify/M04V2VerifierBoundaryTest.java。代码未越界实现：除这些测试与 SchemaVersionChecker 外均在原 write_scope。另：V11MigrationTest 的 fresh install 已改跑 V1–V12（空库始终最新）；V10MigrationTest 的版本断言同步为 12；平台审计词汇守卫允许 ADR-0023 的 knowledge.document.admin_read 下划线段。Spotless 仅剩 TASK-0163 已提交的 SessionDepartmentApiTest 未格式化（不在本任务写范围）。",
   "created_at": "2026-11-22T19:25:23.786+08:00",
-  "updated_at": "2026-11-22T19:25:23.786+08:00"
+  "updated_at": "2026-11-22T21:47:38.542+08:00",
+  "baseline_commit": "93b09f7d73c80d8734197b17e2b7bd9ba9566878"
 }
