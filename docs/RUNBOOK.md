@@ -103,17 +103,32 @@ pnpm test:affected -- --base HEAD~1 --dry-run
 | OpenSearch 旧索引干扰                              | `reset --namespace <ns>` 清理 `riccon-kb-<ns>-` 前缀索引；测试基类启动时也会清理当前 namespace 前缀。 |
 | 迁移/回滚测试误连热栈                              | 检查是否误设 `RICCON_TEST_SERVICES`；迁移测试必须使用一次性容器。                                     |
 
-### CI 热栈与测试分片（external + namespace + 4-shard，M19 P1/P2）
+### CI 热栈与测试分片（external + namespace + 4-shard + coverage，M19 P1/P2、M22 F-001）
 
-CI 后端由三个 job 组成，替代 M19 P1 之前的单个 `backend` job：
+CI 后端由四个 job 组成，替代 M19 P1 之前的单个 `backend` job：
 
-| job              | 作用                                                       | 失败时的含义                                     |
-| ---------------- | ---------------------------------------------------------- | ------------------------------------------------ |
-| `backend-shards` | 4 片矩阵并行跑 surefire `test`（快速反馈）                 | 某片用例失败/编译失败；分片 namespace 或热栈异常 |
-| `backend-merge`  | 校验 4 片合集 = 基线（每类恰好一次、0 failure/error/skip） | 有漏跑、重复跑、用例变少或报告缺失               |
-| `backend-smoke`  | 迁移冒烟（默认 `riccon` 库）+ `spotless:check`             | 迁移/触发器/格式回归                             |
+| job                | 作用                                                            | 失败时的含义                                     |
+| ------------------ | --------------------------------------------------------------- | ------------------------------------------------ |
+| `backend-shards`   | 4 片矩阵并行跑 surefire `test`（快速反馈）                      | 某片用例失败/编译失败；分片 namespace 或热栈异常 |
+| `backend-merge`    | 校验 4 片合集 = 基线（每类恰好一次、0 failure/error/skip）      | 有漏跑、重复跑、用例变少或报告缺失               |
+| `backend-smoke`    | 迁移冒烟（默认 `riccon` 库）+ `spotless:check`                  | 迁移/触发器/格式回归                             |
+| `backend-coverage` | canonical `./mvnw -q -T1C verify jacoco:report`（含覆盖率门槛） | 全量测试失败，或覆盖率跌破 line 80 / branch 70   |
 
-`commands.test` 不变：模块 gate 仍跑 canonical `./mvnw -q -T1C verify jacoco:report`，由 verifier 取证。CI 分片只用于快速反馈，不产生覆盖率，也不能替代 gate。
+`commands.test`/`commands.coverage` 文本不变：模块 gate 仍跑 canonical `./mvnw -q -T1C verify jacoco:report`，由 verifier 取证；CI 的 `backend-coverage` 用同一条后端命令做自动兜底。4 个分片只用于快速反馈（单片墙钟仍按 ≤5 分钟预算），不采集覆盖率，也不替代 gate；coverage job 是 canonical 兜底，因此这里**不承诺**总 CI 墙钟 ≤5 分钟。
+
+`backend-coverage` 的细节（M22/F-001）：
+
+- 与分片相同的 external 热栈 + 唯一 namespace `ci-<github.run_id>-cov`（与 `ci-<run_id>-b<shard>` 隔离）；迁移/回滚/schema 测试仍自建一次性容器。
+- `jacoco:check` 绑定在 `verify` 阶段，检查 `apps/api`、`apps/worker`、`platform-common`、`platform-domain` 的 line 80 / branch 70；覆盖率不足时该 job 直接红。
+- 报告作为 artifact `backend-coverage-<run_id>` 上传：`apps/*/target/site/jacoco/**`、`platform/*/target/site/jacoco/**`（always，保留 14 天）。
+- 本地复现/负向演练：先跑 canonical 命令，再用执行配置临时抬高阈值确认 `jacoco:check` 会失败，不要提交临时阈值：
+  ```bash
+  ./mvnw -q -T1C verify jacoco:report
+  ./mvnw -q -pl apps/api jacoco:check@check-coverage \
+    -Dcoverage.line.minimum=1.01   # 预期非 0 退出
+  ```
+- 前端 `pnpm -w test` 仍未带 `--coverage`，不在本 job 范围内（M22 观察项，未扩大改动）。
+- M22/F-003 起 CI action 使用 Node24-backed 主版本：`actions/checkout@v7`、`actions/setup-java@v6`、`actions/setup-node@v7`、`actions/upload-artifact@v7`、`actions/download-artifact@v8`、`pnpm/action-setup@v6`（仍排在 setup-node 之前）；CI 日志不应再出现 Node.js 20 弃用告警。
 
 分片 job 的环境变量与 P1 相同，只是 namespace 按分片区分（≤30 字符，满足 `[a-z0-9](?:[a-z0-9-]{0,28}[a-z0-9])?`）：
 
@@ -134,7 +149,7 @@ FILTER="$(node scripts/test-shards.mjs --shard 0 --print-test-filter)"
 ./mvnw -q -T1C test -Dtest="$FILTER" -Dsurefire.failIfNoSpecifiedTests=false -Djacoco.skip=true
 ```
 
-- 分片只跑 `test`，不用 `verify`/`jacoco:report`：分片覆盖率不完整，覆盖率仍由 canonical gate 采集。`-Djacoco.skip=true` 只关闭采集代理，不改变测试内容与断言。
+- 分片只跑 `test`，不用 `verify`/`jacoco:report`：分片覆盖率不完整，覆盖率仍由 CI `backend-coverage` 与 verifier 的 canonical gate 采集。`-Djacoco.skip=true` 只关闭采集代理，不改变测试内容与断言。
 - `-Dtest` 用 Surefire 3.5.6 的排除语法（`!FQCN`）：每片运行“除其他 3 片之外的所有类”。未登记到基线的新测试类不会被任何排除列表命中，会在 4 片全部执行，合并时以“重复类/额外类”失败，靠运行时集合校验防漏跑，不依赖源码命名扫描。
 - 迁移、回滚与 schema 版本测试（`V9/V10/V11MigrationTest`、`SchemaVersionCheckerTest` 的 external 分支）仍使用一次性容器，不受热栈影响；迁移冒烟在 `backend-smoke` 用默认 `riccon` 库，不读写 namespace。
 - 本地复用共享热栈时只 `stop`（保留数据卷），不要照抄 CI 的 `down -v`，否则会清空其他 agent 的数据。
@@ -321,7 +336,7 @@ docker compose -f deploy/compose/docker-compose.test.yml down -v
 
 手工重放只用于演练与 CI 冒烟，不会写入 `flyway_schema_history`。**不要在同一数据卷上随即启动 API**：Flyway 会因“非空 schema 但无历史表”拒绝迁移；需要继续用 API 验证时先 `down -v` 再 `up -d --wait`。
 
-CI 的 `backend-smoke` job 使用同一个 compose 文件做冒烟（`.github/workflows/ci.yml` 的“迁移冒烟”步骤），按 Flyway 版本号顺序（`sort -V`）重放全部 `V*.sql`；本 job 只跑迁移冒烟与 `spotless:check`，不跑构建与全量测试（canonical gate 仍由本地/verifier 跑 `./mvnw -q -T1C verify jacoco:report`）。表数不写死：期望值从 `apps/api/src/main/resources/db/migration/V*.sql` 的 `CREATE TABLE` 数量推导，并额外断言 V10 表、索引、权限与 append-only 触发器。
+CI 的 `backend-smoke` job 使用同一个 compose 文件做冒烟（`.github/workflows/ci.yml` 的“迁移冒烟”步骤），按 Flyway 版本号顺序（`sort -V`）重放全部 `V*.sql`；本 job 只跑迁移冒烟与 `spotless:check`，不跑构建与全量测试（canonical `./mvnw -q -T1C verify jacoco:report` 由 CI `backend-coverage` 与 verifier gate 跑）。表数不写死：期望值从 `apps/api/src/main/resources/db/migration/V*.sql` 的 `CREATE TABLE` 数量推导，并额外断言 V10 表、索引、权限与 append-only 触发器。
 
 > 合同 `commands.run` 引用 `deploy/compose/docker-compose.dev.yml`，该文件由后续 ops 任务建立；M01 用测试栈替代。不要在 M01 中创建生产/预览编排。
 
