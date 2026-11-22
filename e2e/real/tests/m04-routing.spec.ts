@@ -1,4 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
+import path from 'node:path';
+
+import { expect, test, type Page, type Request, type Response } from '@playwright/test';
 
 import { readSeed } from './real-session';
 import {
@@ -135,6 +137,153 @@ async function readChatChainModelIds(page: Page): Promise<string[]> {
   const modelIds = chat?.entries.map((entry) => entry.modelId) ?? [];
   expect(modelIds.length, 'CHAT 路由链缺失或为空').toBeGreaterThanOrEqual(3);
   return modelIds;
+}
+
+/** 真实栈 J1 fixture；与 J1 旅程使用同一份可解析 DOCX。 */
+const MARKET_DOCX = path.resolve(__dirname, '../fixtures/market.docx');
+
+/** 真实引用条目最小字段；与 OpenAPI Citation 对齐，只声明本文件断言的字段。 */
+interface ServerCitation {
+  ordinal: number;
+  sourceType: 'FILE' | 'KNOWLEDGE';
+  fileId?: string | null;
+  knowledgeDocumentId?: string | null;
+  locatorType?: 'PAGE' | 'SHEET' | 'PARAGRAPH' | null;
+  paragraphNo?: number | null;
+  title: string;
+  snippet: string;
+}
+
+/** 会话消息最小字段；用于读取服务端落库结果，避免只依赖前端渲染。 */
+interface ServerMessage {
+  seq: number;
+  role: 'USER' | 'ASSISTANT' | 'SYSTEM' | 'TOOL';
+  content: string;
+  status: 'PENDING' | 'STREAMING' | 'COMPLETED' | 'FAILED' | 'STOPPED';
+  errorCode?: string | null;
+  citations?: ServerCitation[];
+}
+
+/** 发送消息请求体最小字段。 */
+interface SendMessageBody {
+  content: string;
+  clientMessageId: string;
+  fileIds?: string[];
+}
+
+/**
+ * 判断是否为员工发送消息请求。
+ *
+ * 只匹配契约路径，避免把文件上传、停止生成等 POST 误当成一次新回答。
+ *
+ * @param request Playwright 请求
+ * @returns 是否消息发送请求
+ */
+function isSendMessageRequest(request: Request): boolean {
+  return (
+    request.method() === 'POST' &&
+    /\/api\/v1\/conversations\/[^/]+\/messages$/.test(new URL(request.url()).pathname)
+  );
+}
+
+/**
+ * 判断是否为员工发送消息响应。
+ *
+ * @param response Playwright 响应
+ * @returns 是否消息发送响应
+ */
+function isSendMessageResponse(response: Response): boolean {
+  return isSendMessageRequest(response.request());
+}
+
+/**
+ * 新建会话并返回服务端会话 ID。
+ *
+ * 会话 ID 用于在回答结束后读取服务端消息/引用快照，证明界面内容不是前端拼装。
+ *
+ * @param page Playwright 页面
+ * @returns 会话 ID
+ */
+async function openNewConversation(page: Page): Promise<string> {
+  const created = page.waitForResponse((response) => {
+    return (
+      response.request().method() === 'POST' &&
+      /\/api\/v1\/workspaces\/[^/]+\/conversations$/.test(new URL(response.url()).pathname)
+    );
+  });
+  await page.getByRole('button', { name: '新建会话' }).click();
+  const response = await created;
+  expect(response.status(), '新建会话必须 201').toBe(201);
+  await expect(page.getByText('开始 J1 问答')).toBeVisible();
+  const body = (await response.json()) as { id: string };
+  return body.id;
+}
+
+/**
+ * 在当前会话输入并发送问题；不新建会话，保证文件与上下文留在同一会话。
+ *
+ * @param page Playwright 页面
+ * @param question 问题
+ */
+async function sendInActiveConversation(page: Page, question: string): Promise<void> {
+  const composer = page.getByPlaceholder('输入问题，Enter 发送，Shift+Enter 换行');
+  await composer.fill(question);
+  await composer.press('Enter');
+}
+
+/**
+ * 上传真实 DOCX 并等待解析成功；返回服务端文件 ID。
+ *
+ * 解析成功后才发送问题，模拟 R-M04-03 要求的“先上传可解析文件再提问”。
+ *
+ * @param page Playwright 页面
+ * @param workspaceId 工作空间 ID
+ * @param conversationId 会话 ID
+ * @returns 上传文件 ID
+ */
+async function uploadMarketDocx(
+  page: Page,
+  workspaceId: string,
+  conversationId: string,
+): Promise<string> {
+  const chooserPromise = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: /上传文件/ }).click();
+  const chooser = await chooserPromise;
+  await chooser.setFiles(MARKET_DOCX);
+  await expect(
+    page.locator('.chat-file-item').first().getByText('解析成功', { exact: true }),
+  ).toBeVisible({ timeout: 60_000 });
+
+  const response = await page.request.get(
+    `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/files?conversationId=${encodeURIComponent(conversationId)}&page=1&size=100`,
+  );
+  expect(response.status(), '读取会话文件列表失败').toBe(200);
+  const body = (await response.json()) as {
+    items: Array<{ id: string; originalName: string; status: string }>;
+  };
+  const file = body.items.find((item) => item.originalName === 'market.docx');
+  expect(file, '会话文件列表必须包含刚上传的 market.docx').toBeTruthy();
+  expect(file!.status).toBe('AVAILABLE');
+  return file!.id;
+}
+
+/**
+ * 读取会话详情并按 seq 升序返回消息。
+ *
+ * @param page Playwright 页面
+ * @param conversationId 会话 ID
+ * @returns 按 seq 排序的消息
+ */
+async function readConversationMessages(
+  page: Page,
+  conversationId: string,
+): Promise<ServerMessage[]> {
+  const response = await page.request.get(
+    `/api/v1/conversations/${encodeURIComponent(conversationId)}`,
+  );
+  expect(response.status(), '读取会话详情失败').toBe(200);
+  const body = (await response.json()) as { messages: ServerMessage[] };
+  return [...body.messages].sort((left, right) => left.seq - right.seq);
 }
 
 test.describe('M04-B11a 真实栈降级与审计', () => {
@@ -546,5 +695,202 @@ test.describe('M04-B11a 真实栈降级与审计', () => {
     expect(await readChatChainModelIds(page), '用例结束必须把 CHAT 链还原为进入时的顺序').toEqual(
       beforeIds,
     );
+  });
+
+  test('R-M04-03 降级 run 携带上传文件仍返回可定位引用', async ({ page }) => {
+    const seed = readSeed();
+    await resetFakeModel();
+    await loginRealLocal(
+      page,
+      seed.tenants.alpha,
+      seed.users.alphaMember,
+      seed.passwords.alphaMember,
+      'Alpha 员工',
+    );
+
+    // 先在同一会话上传并解析文件；引用检索依赖服务端文件快照，不能用知识库命中替代。
+    const conversationId = await openNewConversation(page);
+    const fileId = await uploadMarketDocx(page, seed.workspaces.alpha.id, conversationId);
+    await expect(page.getByText('提问会附带 1 个已解析文件；引用可点击查看位置。')).toBeVisible();
+
+    // 同 key 重试一次后再换模型的规则：两次 5xx 由主 key 消费，第三次由备用模型成功。
+    await queueFakeModelScenario('server_error', 2);
+    const messageRequestPromise = page.waitForRequest(isSendMessageRequest);
+    await sendInActiveConversation(page, '请总结真实栈文件中的市场规模与竞争格局');
+    const messageRequest = await messageRequestPromise;
+    const messageBody = messageRequest.postDataJSON() as SendMessageBody;
+    expect(messageBody.fileIds, '降级 run 必须在同一请求中携带已上传文件').toEqual([fileId]);
+
+    // 降级成功：员工拿到完整回答，不出现 provider/model/key 或“已切换/已降级”提示。
+    await expect(page.getByText(REPORT_HEADING, { exact: false }).first()).toBeVisible({
+      timeout: 60_000,
+    });
+    await expect(page.getByText(REPORT_TAIL, { exact: false }).first()).toBeVisible({
+      timeout: 60_000,
+    });
+    await expect(page.getByText(/已切换|已降级/)).toHaveCount(0);
+    await expectNoProviderModelKeyLeak(page);
+
+    const detailButton = page.getByRole('button', { name: '运行详情' }).last();
+    await expect(detailButton).toBeVisible({ timeout: 60_000 });
+
+    // 服务端快照：引用条数与文件 ID 必须对应本次上传文件，不能只凭前端文本判断。
+    const messages = await readConversationMessages(page, conversationId);
+    const assistant = messages.find(
+      (message) => message.role === 'ASSISTANT' && message.status === 'COMPLETED',
+    );
+    expect(assistant, '降级 run 必须落库为完成态助手消息').toBeTruthy();
+    const citations = assistant!.citations ?? [];
+    expect(citations.length, '带文件提问必须产生引用').toBeGreaterThan(0);
+    const fileCitations = citations.filter((citation) => citation.sourceType === 'FILE');
+    expect(fileCitations.length, '引用必须包含上传文件来源，而不是只有知识库命中').toBeGreaterThan(
+      0,
+    );
+    for (const citation of fileCitations) {
+      expect(citation.fileId, '文件引用必须指向本次上传文件').toBe(fileId);
+      expect(citation.title).toBe('market.docx');
+      expect(citation.locatorType).toBe('PARAGRAPH');
+      expect(citation.paragraphNo ?? null, '文件引用必须保留段落定位').not.toBeNull();
+      expect(citation.snippet.trim().length, '文件引用必须包含非空片段').toBeGreaterThan(0);
+    }
+
+    // 前端引用条数与服务端快照一致，并逐条对应序号、标题与段落定位。
+    const citationBlock = page.locator('.citation-block').last();
+    await expect(citationBlock.getByText('引用来源')).toBeVisible();
+    const citationButtons = citationBlock.locator('.citation-link');
+    await expect(citationButtons).toHaveCount(citations.length);
+    for (let index = 0; index < citations.length; index += 1) {
+      const text = await citationButtons.nth(index).innerText();
+      const citation = citations[index]!;
+      expect(text).toContain(`[${citation.ordinal}]`);
+      expect(text).toContain(citation.title);
+      expect(text).toMatch(/第 \d+ 段/);
+    }
+
+    // 打开文件引用：来源类型、文件标题、段落定位与片段都必须来自上传文件快照。
+    const fileCitationIndex = citations.findIndex((citation) => citation.sourceType === 'FILE');
+    await citationButtons.nth(fileCitationIndex).click();
+    const citationDrawer = page.getByRole('dialog').filter({ hasText: '引用详情' });
+    await expect(citationDrawer.getByText('引用详情')).toBeVisible();
+    await expect(citationDrawer.getByRole('heading', { name: 'market.docx' })).toBeVisible();
+    await expect(citationDrawer.getByText(/类型：文件；定位：\s*第 \d+ 段/)).toBeVisible();
+    const snippet = (await citationDrawer.locator('.citation-snippet').innerText()).trim();
+    expect(snippet.length, '文件引用抽屉必须展示非空片段').toBeGreaterThan(0);
+    await page.keyboard.press('Escape');
+    await expect(citationDrawer).toBeHidden();
+
+    // 运行详情保留实际提供首字的模型标识。
+    await detailButton.click();
+    const runDrawer = page.getByRole('dialog').filter({ hasText: '运行详情' });
+    await expect(runDrawer.getByText('模型调用')).toBeVisible();
+    await expect(runDrawer.getByText('fake-chat-secondary').first()).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    // 假模型请求日志证明降级确实发生：主模型两次 5xx，备用模型完成本次 run。
+    const requests = await readFakeModelRequests();
+    const primaryFailures = requests.filter((request) => request.scenario === 'server_error');
+    expect(primaryFailures, `主模型应恰好失败两次：${JSON.stringify(requests)}`).toHaveLength(2);
+    for (const failure of primaryFailures) {
+      expect(failure.model).toBe('fake-chat-primary');
+      expect(failure.status).toBe(500);
+    }
+    const successes = requests.filter(
+      (request) => request.scenario === 'ok' && request.status === 200,
+    );
+    expect(successes, `备用模型应完成一次请求：${JSON.stringify(requests)}`).toHaveLength(1);
+    expect(successes[0]!.model).toBe('fake-chat-secondary');
+
+    await test.info().attach('r-m04-03-failover-citations.json', {
+      contentType: 'application/json',
+      body: JSON.stringify({ conversationId, fileId, messageBody, citations, requests }, null, 2),
+    });
+  });
+
+  test('R-M04-03 全链失败后保留已上传文件且重试为独立请求', async ({ page }) => {
+    const seed = readSeed();
+    await resetFakeModel();
+    await setFakeModelScenario('server_error');
+    await loginRealLocal(
+      page,
+      seed.tenants.alpha,
+      seed.users.alphaMember,
+      seed.passwords.alphaMember,
+      'Alpha 员工',
+    );
+
+    const conversationId = await openNewConversation(page);
+    await uploadMarketDocx(page, seed.workspaces.alpha.id, conversationId);
+    await expect(page.getByText('提问会附带 1 个已解析文件；引用可点击查看位置。')).toBeVisible();
+
+    // 全链失败：固定 503 与稳定错误码，请求本身必须携带已上传文件。
+    const failedRequestPromise = page.waitForRequest(isSendMessageRequest);
+    const failedResponsePromise = page.waitForResponse(isSendMessageResponse);
+    await sendInActiveConversation(page, '请总结真实栈文件中的市场规模');
+    const failedRequest = await failedRequestPromise;
+    const failedResponse = await failedResponsePromise;
+    expect(failedResponse.status()).toBe(503);
+    const problem = (await failedResponse.json()) as {
+      code?: string;
+      detail?: string;
+      title?: string;
+    };
+    expect(problem.code).toBe('RICCON-MODEL-503');
+    expect(problem.detail ?? problem.title).toBe('模型服务暂不可用，请稍后重试。');
+    const failedBody = failedRequest.postDataJSON() as SendMessageBody;
+    const failedFileIds = failedBody.fileIds ?? [];
+    expect(failedFileIds, '失败请求必须携带已上传文件').toHaveLength(1);
+
+    // 失败后文件仍留在文件列表与输入区，重试入口可用。
+    await expect(page.getByText('模型服务暂不可用，请稍后重试。')).toBeVisible({
+      timeout: 60_000,
+    });
+    await expect(page.getByText('错误码：RICCON-MODEL-503')).toBeVisible();
+    const retry = page.locator('.message-error').getByRole('button', { name: /重\s*试/ });
+    await expect(retry).toBeVisible();
+    await expect(page.locator('.chat-file-item').filter({ hasText: 'market.docx' })).toHaveCount(1);
+    await expect(page.getByText('会话文件 1/5')).toBeVisible();
+    await expect(page.getByText('提问会附带 1 个已解析文件；引用可点击查看位置。')).toBeVisible();
+
+    // 重试是新的独立消息请求：新 clientMessageId/幂等键，但仍携带同一个文件。
+    await setFakeModelScenario('ok');
+    const retryRequestPromise = page.waitForRequest(isSendMessageRequest);
+    const retryResponsePromise = page.waitForResponse(isSendMessageResponse);
+    await retry.click();
+    const retryRequest = await retryRequestPromise;
+    const retryResponse = await retryResponsePromise;
+    expect([200, 201], '重试请求应成功').toContain(retryResponse.status());
+    const retryBody = retryRequest.postDataJSON() as SendMessageBody;
+    expect(retryBody.fileIds, '重试请求仍携带已上传文件').toEqual(failedFileIds);
+    expect(retryBody.clientMessageId).not.toBe(failedBody.clientMessageId);
+    expect(retryRequest.headers()['idempotency-key']).not.toBe(
+      failedRequest.headers()['idempotency-key'],
+    );
+
+    await expect(page.getByText(REPORT_TAIL, { exact: false }).first()).toBeVisible({
+      timeout: 60_000,
+    });
+    await expect(page.getByRole('button', { name: '运行详情' }).last()).toBeVisible({
+      timeout: 60_000,
+    });
+
+    // 失败记录仍在、文件仍在；完整正文只出现一次，旧回答没有被拼接或重放。
+    await expect(page.getByText('错误码：RICCON-MODEL-503')).toBeVisible();
+    await expect(page.locator('.chat-file-item').filter({ hasText: 'market.docx' })).toHaveCount(1);
+    const messageTexts = await page.locator('.chat-message-list .message-text').allInnerTexts();
+    const headingCount = messageTexts.reduce(
+      (total, text) => total + (text.match(/市场规模与增长/g)?.length ?? 0),
+      0,
+    );
+    expect(headingCount, `重试后完整正文只应出现一次：${JSON.stringify(messageTexts)}`).toBe(1);
+
+    // 服务端消息快照：失败消息与重试成功消息是两条独立记录，失败内容为空。
+    const messages = await readConversationMessages(page, conversationId);
+    const assistants = messages.filter((message) => message.role === 'ASSISTANT');
+    expect(assistants.map((message) => message.status)).toEqual(['FAILED', 'COMPLETED']);
+    expect(assistants[0]!.errorCode).toBe('RICCON-MODEL-503');
+    expect(assistants[0]!.content).toBe('');
+    expect(assistants[1]!.content).toContain(REPORT_TAIL);
+    expect(assistants[1]!.content.match(/市场规模与增长/g) ?? []).toHaveLength(1);
+    await expectNoProviderModelKeyLeak(page);
   });
 });

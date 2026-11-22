@@ -1,4 +1,11 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import {
+  expect,
+  test,
+  type APIRequestContext,
+  type Page,
+  type Request,
+  type Response,
+} from '@playwright/test';
 
 import { expectNoSeriousA11yViolations } from '../../tests/a11y';
 import {
@@ -12,7 +19,13 @@ import {
   runRealStackSql,
   setQuotaEnforcement,
 } from '../../support/m04-quota-cost';
-import { expectNoHorizontalScroll, loginRealLocal, logout } from '../../support/m04-routing';
+import {
+  createChatAndSend,
+  expectNoHorizontalScroll,
+  loginRealLocal,
+  logout,
+  resetFakeModel,
+} from '../../support/m04-routing';
 import { readSeed, type RealSeed } from './real-session';
 
 /**
@@ -37,6 +50,9 @@ const WEB_BASE = process.env.REAL_WEB_BASE ?? 'http://127.0.0.1:8092';
 
 /** 成本轮询总超时；假模型正常时单次调用在数秒内完成。 */
 const COST_POLL_TIMEOUT_MS = 60_000;
+
+/** 真实栈固定报告正文中的末段标记；用于区分首次成功与提额后重试的两次完整回答。 */
+const REPORT_TAIL = '结论与建议';
 
 /**
  * 读取真实栈 seed 中的平台管理员账号。
@@ -186,6 +202,106 @@ async function restoreTenantQuota(
     data: { limits },
   });
   expect(response.status(), `恢复租户限额失败：${await response.text()}`).toBe(200);
+}
+
+/** 配额窗口最小字段；与 OpenAPI `QuotaWindowState` 对齐。 */
+interface QuotaWindow {
+  window: 'DAILY' | 'MONTHLY';
+  limit: number | null;
+  used: number;
+  resetsAt: string;
+  source: string;
+}
+
+/** 平台配额行最小字段；平台视图不含用户明细。 */
+interface PlatformQuotaRowResponse {
+  tenantId: string;
+  tenantCode: string;
+  tenantName?: string | null;
+  windows: QuotaWindow[];
+}
+
+/**
+ * 读取指定租户的日/月窗口；前后配额都以服务端读数为准。
+ *
+ * @param request 平台管理员请求上下文
+ * @param tenantId 租户 ID
+ * @returns 日/月窗口
+ */
+async function readTenantQuota(
+  request: APIRequestContext,
+  tenantId: string,
+): Promise<{ daily: QuotaWindow; monthly: QuotaWindow }> {
+  const response = await request.get('/api/v1/admin/quotas?page=1&size=100');
+  expect(response.status(), '平台配额列表必须 200').toBe(200);
+  const body = (await response.json()) as { items: PlatformQuotaRowResponse[] };
+  const row = body.items.find((item) => item.tenantId === tenantId);
+  expect(row, '平台配额列表必须包含 Alpha 租户').toBeTruthy();
+  const daily = row!.windows.find((window) => window.window === 'DAILY');
+  const monthly = row!.windows.find((window) => window.window === 'MONTHLY');
+  expect(daily && monthly, 'Alpha 租户必须包含 DAILY/MONTHLY 窗口').toBeTruthy();
+  return { daily: daily!, monthly: monthly! };
+}
+
+/**
+ * 统计租户已有模型调用记录数；用于断言拒绝不建模、重试只新增一条。
+ *
+ * @param tenantId 租户 ID
+ * @returns 调用记录数
+ */
+function modelInvocationCount(tenantId: string): number {
+  return Number(
+    realStackQueryValue(`SELECT COUNT(*) FROM model_invocation WHERE tenant_id='${tenantId}';`),
+  );
+}
+
+/**
+ * 统计负数额度用量行；配额表 CHECK 约束之外再做一次运行期断言。
+ *
+ * @param tenantId 租户 ID
+ * @returns 负数行数
+ */
+function negativeQuotaUsageCount(tenantId: string): number {
+  return Number(
+    realStackQueryValue(
+      `SELECT COUNT(*) FROM quota_usage WHERE tenant_id='${tenantId}' AND used_count < 0;`,
+    ),
+  );
+}
+
+/**
+ * 判断是否为员工发送消息请求。
+ *
+ * @param request Playwright 请求
+ * @returns 是否消息发送请求
+ */
+function isSendMessageRequest(request: Request): boolean {
+  return (
+    request.method() === 'POST' &&
+    /\/api\/v1\/conversations\/[^/]+\/messages$/.test(new URL(request.url()).pathname)
+  );
+}
+
+/**
+ * 判断是否为员工发送消息响应。
+ *
+ * @param response Playwright 响应
+ * @returns 是否消息发送响应
+ */
+function isSendMessageResponse(response: Response): boolean {
+  return isSendMessageRequest(response.request());
+}
+
+/**
+ * 在当前会话输入并发送问题；不新建会话，保持同一员工与同一上下文。
+ *
+ * @param page Playwright 页面
+ * @param question 问题
+ */
+async function sendInActiveConversation(page: Page, question: string): Promise<void> {
+  const composer = page.getByPlaceholder('输入问题，Enter 发送，Shift+Enter 换行');
+  await composer.fill(question);
+  await composer.press('Enter');
 }
 
 test.describe('M04-B11b 真实栈配额与成本', () => {
@@ -682,5 +798,209 @@ SELECT GROUP_CONCAT(LOWER(HEX(model_id)) ORDER BY position SEPARATOR ',')
       page.getByText('本租户聚合：按用户、模型、日查看估算成本，可展开分组查看调用价格快照。'),
     ).toBeVisible();
     await expect(page.getByRole('button', { name: /保存|调整|新增|删除|编辑/ })).toHaveCount(0);
+  });
+
+  test('R-M04-03 提高日限额后同一用户重试成功且用量只增 1', async ({
+    page,
+    request,
+    browser,
+    playwright,
+  }) => {
+    const seed = readSeed();
+    await resetFakeModel();
+
+    // 平台侧独立 API 上下文读取/恢复配额与开关，员工页保持同一会话与重试入口。
+    const platformCsrf = await loginByApi(
+      request,
+      'platform',
+      seed.users.platformAdmin,
+      PLATFORM_ADMIN_PASSWORD,
+    );
+    const before = await readTenantQuota(request, seed.tenants.alpha);
+    const switchesBefore = await readGatewaySwitches(request);
+    const switchesOriginal = {
+      routingMode: switchesBefore.routingMode,
+      failoverEnabled: switchesBefore.failoverEnabled,
+      quotaEnforcementEnabled: switchesBefore.quotaEnforcementEnabled,
+    };
+    const originalLimits = { daily: before.daily.limit, monthly: before.monthly.limit };
+    const baselineInvocations = modelInvocationCount(seed.tenants.alpha);
+    const platformContext = await browser.newContext({ baseURL: WEB_BASE });
+    let tenantAdminRequest: APIRequestContext | null = null;
+
+    try {
+      // 打满日窗口：剩余恰好 1 次，并通过受支持 API 打开配额执行开关。
+      const limitResponse = await request.put(
+        `/api/v1/admin/tenants/${seed.tenants.alpha}/quotas`,
+        {
+          headers: { 'X-CSRF-TOKEN': platformCsrf },
+          data: { limits: { daily: before.daily.used + 1, monthly: before.monthly.limit } },
+        },
+      );
+      expect(limitResponse.status(), `设置测试限额失败：${await limitResponse.text()}`).toBe(200);
+      const prepared = await readTenantQuota(request, seed.tenants.alpha);
+      expect(prepared.daily.limit, '准备阶段日限额应为已用 + 1').toBe(before.daily.used + 1);
+      const enabled = await setQuotaEnforcement(request, platformCsrf, true);
+      expect(enabled.quotaEnforcementEnabled).toBe(true);
+
+      // 员工首次提问消耗唯一剩余名额并完成。
+      await loginRealLocal(
+        page,
+        seed.tenants.alpha,
+        seed.users.alphaMember,
+        seed.passwords.alphaMember,
+        'Alpha 员工',
+      );
+      await createChatAndSend(page, 'R-M04-03 配额提额重试：请输出固定演示内容。');
+      await expect(page.getByText(REPORT_TAIL, { exact: false }).first()).toBeVisible({
+        timeout: 60_000,
+      });
+      await expect(page.getByRole('button', { name: '运行详情' }).last()).toBeVisible({
+        timeout: 60_000,
+      });
+
+      const afterFirst = await readTenantQuota(request, seed.tenants.alpha);
+      expect(afterFirst.daily.used, '首次准入应消耗一次日配额').toBe(before.daily.used + 1);
+      const invocationsAfterFirst = modelInvocationCount(seed.tenants.alpha);
+      expect(invocationsAfterFirst, '首次成功应新增一条 model_invocation').toBe(
+        baselineInvocations + 1,
+      );
+
+      // 第二次提问被配额拒绝：HTTP 429 + 稳定错误码，且不产生模型调用。
+      const rejectedResponsePromise = page.waitForResponse(isSendMessageResponse);
+      await sendInActiveConversation(page, 'R-M04-03 配额提额重试：第二次请求。');
+      const rejectedResponse = await rejectedResponsePromise;
+      const rejectedText = await rejectedResponse.text();
+      expect(
+        rejectedResponse.status(),
+        `第二次 run 应被配额拒绝：${rejectedText.slice(0, 400)}`,
+      ).toBe(429);
+      const problem = JSON.parse(rejectedText) as {
+        code: string;
+        scopeType: string;
+        window: string;
+        limit: number;
+        used: number;
+        detail: string;
+      };
+      expect(problem.code).toBe('RICCON-QUOTA-429');
+      expect(problem.scopeType).toBe('TENANT');
+      expect(problem.window).toBe('DAILY');
+      expect(problem.limit).toBe(before.daily.used + 1);
+      expect(problem.used).toBe(before.daily.used + 1);
+      expect(problem.detail).toContain('已达日限额');
+      await expect(page.getByText('请求过于频繁，请稍后重试。')).toBeVisible();
+      await expect(page.getByText('错误码：RICCON-QUOTA-429')).toBeVisible();
+      const retry = page.locator('.message-error').getByRole('button', { name: /重\s*试/ });
+      await expect(retry).toBeVisible();
+
+      const afterReject = await readTenantQuota(request, seed.tenants.alpha);
+      expect(afterReject.daily.used, '429 不得增加配额用量').toBe(before.daily.used + 1);
+      expect(modelInvocationCount(seed.tenants.alpha), '429 不得产生 model_invocation').toBe(
+        invocationsAfterFirst,
+      );
+
+      // 平台管理员通过真实 UI 提高日限额，并记录保存前后的服务端配额。
+      const platformPage = await platformContext.newPage();
+      await loginPlatformAdminReal(platformPage);
+      await platformPage.goto(M04_QUOTA_COST_FIXTURES.routes.quotas);
+      await expect(platformPage.getByText('租户配额（跨租户聚合）')).toBeVisible();
+      const alphaRow = platformPage.getByRole('row').filter({ hasText: seed.tenants.alpha });
+      await alphaRow.getByRole('button', { name: /调整限额/ }).click();
+      const limitDialog = platformPage.getByRole('dialog');
+      const dailyInput = limitDialog.getByLabel('日限额（次/自然日）');
+      expect(await dailyInput.inputValue(), '弹窗应显示当前生效日限额').toBe(
+        String(before.daily.used + 1),
+      );
+      const raisedDaily = before.daily.used + 3;
+      await dailyInput.fill(String(raisedDaily));
+      await limitDialog.getByRole('button', { name: '保存限额' }).click();
+      await expect(platformPage.getByText(/已保存租户“.*”的配额/)).toBeVisible();
+      await expect(limitDialog).toBeHidden();
+      const raised = await readTenantQuota(request, seed.tenants.alpha);
+      expect(raised.daily.limit, 'UI 保存后服务端日限额必须提高').toBe(raisedDaily);
+      expect(raised.daily.used, '提高限额本身不改变已用').toBe(before.daily.used + 1);
+
+      // 同一员工点击重试：新的独立请求成功，用量与调用记录各只增 1。
+      const retryResponsePromise = page.waitForResponse(isSendMessageResponse);
+      await retry.click();
+      const retryResponse = await retryResponsePromise;
+      expect([200, 201], `提额后重试应成功：${retryResponse.status()}`).toContain(
+        retryResponse.status(),
+      );
+      await expect(
+        page.locator('.chat-message-list .message-text').filter({ hasText: REPORT_TAIL }),
+      ).toHaveCount(2, { timeout: 60_000 });
+
+      const afterRetry = await readTenantQuota(request, seed.tenants.alpha);
+      expect(afterRetry.daily.limit).toBe(raisedDaily);
+      expect(afterRetry.daily.used, '首次成功 + 重试成功应恰好增加 2').toBe(before.daily.used + 2);
+      expect(afterRetry.daily.used - afterReject.daily.used, '提额后重试只增加 1 次').toBe(1);
+      expect(afterRetry.daily.limit! - afterRetry.daily.used, '剩余名额应为 1').toBe(1);
+      const invocationsAfterRetry = modelInvocationCount(seed.tenants.alpha);
+      expect(
+        invocationsAfterRetry - invocationsAfterFirst,
+        '重试应只新增一条 model_invocation',
+      ).toBe(1);
+      expect(negativeQuotaUsageCount(seed.tenants.alpha), 'quota_usage 不得出现负数').toBe(0);
+
+      // 拒绝审计与失败气泡仍保留，不被成功重试覆盖。
+      // 审计查询按主体租户隔离：平台管理员只能读 platform 事件，租户配额拒绝必须用租户管理员会话查询。
+      tenantAdminRequest = await playwright.request.newContext({ baseURL: WEB_BASE });
+      await loginByApi(
+        tenantAdminRequest,
+        seed.tenants.alpha,
+        seed.users.alphaAdmin,
+        seed.passwords.alphaAdmin,
+      );
+      const auditResponse = await tenantAdminRequest.get(
+        '/api/v1/audit-events?action=quota.exceeded&page=1&size=20',
+      );
+      expect(auditResponse.status(), '拒绝审计查询必须 200').toBe(200);
+      const audit = (await auditResponse.json()) as {
+        total: number;
+        items: Array<{ action: string; details?: Record<string, unknown> | null }>;
+      };
+      expect(audit.total, '拒绝必须写入 quota.exceeded 审计').toBeGreaterThan(0);
+      expect(
+        audit.items.some(
+          (item) =>
+            item.action === 'quota.exceeded' &&
+            item.details?.scopeType === 'TENANT' &&
+            item.details?.window === 'DAILY' &&
+            item.details?.limit === before.daily.used + 1,
+        ),
+        '拒绝审计必须保留本次打满限额的记录',
+      ).toBe(true);
+      await expect(page.getByText('错误码：RICCON-QUOTA-429')).toBeVisible();
+
+      await test.info().attach('r-m04-03-quota-retry.json', {
+        contentType: 'application/json',
+        body: JSON.stringify(
+          {
+            before,
+            prepared,
+            afterFirst,
+            afterReject,
+            raised,
+            afterRetry,
+            baselineInvocations,
+            invocationsAfterFirst,
+            invocationsAfterRetry,
+            auditTotal: audit.total,
+          },
+          null,
+          2,
+        ),
+      });
+    } finally {
+      try {
+        await restoreGatewaySwitches(request, platformCsrf, switchesOriginal);
+      } finally {
+        await restoreTenantQuota(request, platformCsrf, seed, originalLimits);
+        await tenantAdminRequest?.dispose();
+        await platformContext.close();
+      }
+    }
   });
 });
