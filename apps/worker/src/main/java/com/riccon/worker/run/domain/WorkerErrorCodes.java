@@ -4,8 +4,8 @@ package com.riccon.worker.run.domain;
  * Worker 稳定错误码。
  *
  * <p>错误码写入 {@code file_parse.error_code}、{@code knowledge_document.error_code} 或
- * outbox 的 {@code last_error} 前缀；格式对齐合同 {@code RICCON-<DOMAIN>-<NNN>}。
- * 不得把堆栈、原文或对象 key 写入错误信息。
+ * outbox 的 {@code last_error} 前缀；租约丢失只在日志 {@code errorCode} 字段出现（事件由新租约重放，
+ * 不写业务结果）。格式对齐合同 {@code RICCON-<DOMAIN>-<NNN>}。不得把堆栈、原文或对象 key 写入错误信息。
  */
 public final class WorkerErrorCodes {
 

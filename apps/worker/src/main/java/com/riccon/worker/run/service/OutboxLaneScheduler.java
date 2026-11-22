@@ -23,10 +23,15 @@ import org.springframework.stereotype.Component;
  * 索引与连接器同步。通道由 {@code RICCON_WORKER_OUTBOX_LANES} 选择，允许按实例拆分部署。
  *
  * <p>与旧 {@link OutboxScheduler} 的差异：旧调度器领取全部事件，会在本类启用时造成通道争抢，
- * 因此只在显式设置 {@code legacy-all-lane-scheduling=true} 时注册（回滚窗口用）。
+ * 因此只在显式设置 {@code legacy-all-lane-scheduling=true} 时注册（回滚窗口用）；本类则要求
+ * {@code legacy-all-lane-scheduling=false}，两个调度器严格互斥，避免回滚窗口新旧调度同时领取。
  */
 @Component
 @ConditionalOnProperty(name = "riccon.worker.outbox.scheduling-enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(
+        name = "riccon.worker.outbox.legacy-all-lane-scheduling",
+        havingValue = "false",
+        matchIfMissing = true)
 public class OutboxLaneScheduler {
 
     /** 日志记录器。 */
@@ -90,10 +95,11 @@ public class OutboxLaneScheduler {
             LOG.info("outbox.lane.partial_deployment lanes={} uncoveredEventTypes={}", enabled, uncovered);
         }
         LOG.info(
-                "outbox.lane.scheduler.started lanes={} heavyConcurrency={} maxProcessing={}",
+                "outbox.lane.scheduler.started lanes={} heavyConcurrency={} defaultMaxProcessing={} heavyMaxProcessing={}",
                 enabled,
                 laneProperties.heavyConcurrency(),
-                laneProperties.maxProcessing());
+                laneProperties.maxProcessing(),
+                laneProperties.getHeavyMaxProcessing());
     }
 
     /** 取消全部通道任务；线程池由 Spring 调度器负责关闭。 */

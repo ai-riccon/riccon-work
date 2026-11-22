@@ -2,6 +2,7 @@ package com.riccon.worker.run.service;
 
 import com.riccon.worker.run.domain.ClaimedOutboxEvent;
 import com.riccon.worker.run.domain.OutboxLeaseRenewer;
+import com.riccon.worker.run.domain.WorkerErrorCodes;
 import jakarta.annotation.PreDestroy;
 import java.time.Duration;
 import java.util.Objects;
@@ -22,8 +23,10 @@ import org.springframework.stereotype.Component;
  * 按事件创建、按事件取消，不使用共享定时器批量续期；同一个 {@code eventId} + {@code leaseOwner}
  * 只允许一个活跃心跳。
  *
- * <p>另设单事件最大处理时长 {@code RICCON_WORKER_OUTBOX_MAX_PROCESSING}（默认 30 分钟）：超时后
- * 中断 handler，并由轮询器按可重试失败推进退避，不把事件直接判死。
+ * <p>另设按通道的单事件最大处理时长：default 通道 {@code RICCON_WORKER_OUTBOX_MAX_PROCESSING}
+ * 默认 30 分钟，heavy 通道 {@code RICCON_WORKER_OUTBOX_HEAVY_MAX_PROCESSING} 默认 65 分钟
+ * （覆盖连接器同步 60 分钟总超时）。超时后中断 handler，并由轮询器按可重试失败推进退避，
+ * 不把事件直接判死。租约丢失与超时日志都带稳定错误码，便于告警与排障检索。
  */
 @Component
 public class OutboxLeaseHeartbeat {
@@ -170,20 +173,23 @@ public class OutboxLeaseHeartbeat {
                 int updated = renewer.renew(tenantId, eventId, leaseOwner, leaseDuration);
                 if (updated == 0 && !closed.get() && lost.compareAndSet(false, true)) {
                     LOG.warn(
-                            "outbox.lease_lost eventId={} tenantId={} leaseOwner={} action=renew",
+                            "outbox.lease_lost eventId={} tenantId={} leaseOwner={} action=renew errorCode={}",
                             eventIdForLog,
                             tenantId,
-                            leaseOwner);
+                            leaseOwner,
+                            WorkerErrorCodes.LEASE_LOST);
                     interruptProcessing();
                 }
             } catch (RuntimeException ex) {
                 // 数据库瞬时不可用时不能假设租约仍有效：放弃结果，等待新租约重放。
                 if (!closed.get() && lost.compareAndSet(false, true)) {
                     LOG.warn(
-                            "outbox.lease_lost eventId={} tenantId={} leaseOwner={} action=renew error={}",
+                            "outbox.lease_lost eventId={} tenantId={} leaseOwner={} action=renew"
+                                    + " errorCode={} error={}",
                             eventIdForLog,
                             tenantId,
                             leaseOwner,
+                            WorkerErrorCodes.LEASE_LOST,
                             ex.getClass().getSimpleName());
                     interruptProcessing();
                 }
@@ -197,11 +203,13 @@ public class OutboxLeaseHeartbeat {
             }
             if (timedOut.compareAndSet(false, true)) {
                 LOG.warn(
-                        "outbox.processing_timeout eventId={} tenantId={} leaseOwner={} maxProcessing={}",
+                        "outbox.processing_timeout eventId={} tenantId={} leaseOwner={} maxProcessing={}"
+                                + " errorCode={}",
                         eventIdForLog,
                         tenantId,
                         leaseOwner,
-                        maxProcessing);
+                        maxProcessing,
+                        WorkerErrorCodes.PROCESSING_TIMEOUT);
                 interruptProcessing();
             }
         }

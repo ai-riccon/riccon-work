@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
  */
 class OutboxLanePropertiesTest {
 
-    /** 默认 default+heavy、并发 2、最大处理 30 分钟。 */
+    /** 默认 default+heavy、并发 2、default 最大处理 30 分钟、heavy 65 分钟。 */
     @Test
     @DisplayName("通道配置默认值符合 ADR")
     void defaults_matchAdr() {
@@ -27,6 +27,22 @@ class OutboxLanePropertiesTest {
         assertThat(properties.enabledLanes()).containsExactly(OutboxLane.DEFAULT, OutboxLane.HEAVY);
         assertThat(properties.heavyConcurrency()).isEqualTo(2);
         assertThat(properties.maxProcessing()).isEqualTo(Duration.ofMinutes(30));
+        assertThat(properties.maxProcessing(OutboxLane.DEFAULT)).isEqualTo(Duration.ofMinutes(30));
+        assertThat(properties.maxProcessing(OutboxLane.HEAVY)).isEqualTo(Duration.ofMinutes(65));
+        assertThat(properties.maxProcessing(null)).as("旧的全事件领取沿用 default 值").isEqualTo(Duration.ofMinutes(30));
+    }
+
+    /** 两个通道的处理时长都可以独立配置，互不覆盖。 */
+    @Test
+    @DisplayName("按通道配置最大处理时长")
+    void perLaneMaxProcessing_isConfigurable() {
+        OutboxLaneProperties properties = new OutboxLaneProperties();
+        properties.setMaxProcessing(Duration.ofMinutes(12));
+        properties.setHeavyMaxProcessing(Duration.ofMinutes(70));
+        properties.afterPropertiesSet();
+        assertThat(properties.maxProcessing(OutboxLane.DEFAULT)).isEqualTo(Duration.ofMinutes(12));
+        assertThat(properties.maxProcessing(OutboxLane.HEAVY)).isEqualTo(Duration.ofMinutes(70));
+        assertThat(properties.maxProcessing(null)).isEqualTo(Duration.ofMinutes(12));
     }
 
     /** 允许只启用 heavy（分实例部署），未覆盖事件由调度器日志提示。 */
@@ -89,5 +105,17 @@ class OutboxLanePropertiesTest {
         assertThatThrownBy(negativeMax::afterPropertiesSet)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("max-processing");
+
+        OutboxLaneProperties zeroHeavyMax = new OutboxLaneProperties();
+        zeroHeavyMax.setHeavyMaxProcessing(Duration.ZERO);
+        assertThatThrownBy(zeroHeavyMax::afterPropertiesSet)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("heavy-max-processing");
+
+        OutboxLaneProperties negativeHeavyMax = new OutboxLaneProperties();
+        negativeHeavyMax.setHeavyMaxProcessing(Duration.ofSeconds(-1));
+        assertThatThrownBy(negativeHeavyMax::afterPropertiesSet)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("heavy-max-processing");
     }
 }

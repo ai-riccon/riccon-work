@@ -43,7 +43,7 @@ import org.testcontainers.mysql.MySQLContainer;
  * <p>多 key 回滚演练在同一个一次性容器的第二个 schema（{@code riccon_rollback}）上执行：V11 后插入
  * 2 把 ACTIVE + 1 把 INVALID，按“每组 1 行、有 ACTIVE 保留 ACTIVE，否则保留 RETIRED”收敛后
  * 删除 V11 对象/列/权限，验证回到 V10 且 M02 数据可读。第三个 schema（{@code riccon_fresh}）验证
- * 空库 V1–V11 后 RoleDefinitions 的权限字典完整。
+ * 空库 V1–V12 后 RoleDefinitions 的权限字典完整。
  *
  * <p>生产执行前提：V11 的一次性迁移 Job、备份/恢复与旧 Worker 回滚窗口仍需 B10 RUNBOOK 与
  * 用户 T4 生产批准；本测试只证明迁移与回滚在非生产副本上可执行。

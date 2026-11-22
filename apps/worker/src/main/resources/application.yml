@@ -4,6 +4,8 @@ spring:
   task:
     scheduling:
       # M05：分通道调度需要 default(1) + heavy(默认并发 2) 同时运行；单线程会把重任务饿死。
+      # 启动期校验 size >= 1 + RICCON_WORKER_OUTBOX_HEAVY_CONCURRENCY（只启用 heavy 时为该并发本身）；
+      # 调高 heavy 并发时同步调高本值，否则 Worker 拒绝启动并提示所需值。
       pool:
         size: ${RICCON_WORKER_SCHEDULER_POOL_SIZE:4}
       thread-name-prefix: riccon-sched-
@@ -64,6 +66,9 @@ info:
       userMonthly: ${RICCON_QUOTA_DEFAULT_USER_MONTHLY:20000}
 
 riccon:
+  # M05b 连接器总开关（API 与 Worker 共用）：启用时 heavy 看门狗必须 >= 60m，启动期校验。
+  connector:
+    enabled: ${RICCON_CONNECTOR_ENABLED:false}
   # M04 受管端点与网关开关：与 API 使用同一组键与环境变量，便于 B10 预检漂移。
   # endpoint 允许列表只来自部署（JSON 数组）；PRODUCTION 未配置时启动失败。
   model:
@@ -102,8 +107,10 @@ riccon:
       # M05：default 保持 chat/report 顺序；heavy 承载 FILE_PARSE/KNOWLEDGE_INDEX/CONNECTOR_SYNC。
       lanes: ${RICCON_WORKER_OUTBOX_LANES:default,heavy}
       heavy-concurrency: ${RICCON_WORKER_OUTBOX_HEAVY_CONCURRENCY:2}
-      # 单事件最大处理时长；超时中断 handler 并按可重试失败退避。
+      # 单事件最大处理时长按通道配置：default 通道 30m 对齐 ADR-0023 §7.3；heavy 通道默认 65m，
+      # 覆盖 §6.5 连接器同步 60m 总超时，避免看门狗在合法同步完成前中断。超时中断 handler 并按可重试失败退避。
       max-processing: ${RICCON_WORKER_OUTBOX_MAX_PROCESSING:30m}
+      heavy-max-processing: ${RICCON_WORKER_OUTBOX_HEAVY_MAX_PROCESSING:65m}
       poll-interval: 500ms
       poll-initial-delay: 5s
       batch-size: 10

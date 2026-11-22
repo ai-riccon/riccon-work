@@ -14,10 +14,12 @@ import org.springframework.stereotype.Component;
  * Outbox 通道与处理时长配置（ADR-0023 第 7.3 节）。
  *
  * <p>与既有 outbox 轮询配置共用前缀 {@code riccon.worker.outbox}，只负责通道相关键：
- * {@code lanes}（默认 {@code default,heavy}）、{@code heavy-concurrency}（默认 2）与
- * {@code max-processing}（默认 30 分钟）。环境变量分别为
+ * {@code lanes}（默认 {@code default,heavy}）、{@code heavy-concurrency}（默认 2）与按通道的
+ * 最大处理时长。{@code max-processing}（默认 30 分钟）作用于 default 通道；
+ * {@code heavy-max-processing}（默认 65 分钟）作用于 heavy 通道，覆盖 ADR-0023 §6.5 的连接器同步
+ * 60 分钟总超时，避免看门狗在合法同步完成前中断。环境变量分别为
  * {@code RICCON_WORKER_OUTBOX_LANES}、{@code RICCON_WORKER_OUTBOX_HEAVY_CONCURRENCY}、
- * {@code RICCON_WORKER_OUTBOX_MAX_PROCESSING}。
+ * {@code RICCON_WORKER_OUTBOX_MAX_PROCESSING}、{@code RICCON_WORKER_OUTBOX_HEAVY_MAX_PROCESSING}。
  *
  * <p>放在 {@code run/config} 而非共享 config 包，是 M05-B1 写范围（worker run）内的最小改动；
  * 配置校验在启动期失败，避免无通道或永久处理把事件卡死。
@@ -32,14 +34,23 @@ public class OutboxLaneProperties implements InitializingBean {
     /** 重通道并发上限，防止单个 Worker 吃满 CPU/内存。 */
     private static final int MAX_HEAVY_CONCURRENCY = 8;
 
+    /** default 通道单事件最大处理时长默认值。 */
+    private static final Duration DEFAULT_MAX_PROCESSING = Duration.ofMinutes(30);
+
+    /** heavy 通道单事件最大处理时长默认值；覆盖连接器同步 60 分钟总超时。 */
+    private static final Duration DEFAULT_HEAVY_MAX_PROCESSING = Duration.ofMinutes(65);
+
     /** 通道配置原文，逗号分隔。 */
     private List<String> lanes = List.of(OutboxLane.DEFAULT.code(), OutboxLane.HEAVY.code());
 
     /** 重通道并发。 */
     private int heavyConcurrency = DEFAULT_HEAVY_CONCURRENCY;
 
-    /** 单事件最大处理时长；超时按可重试失败处理。 */
-    private Duration maxProcessing = Duration.ofMinutes(30);
+    /** default 通道单事件最大处理时长；超时按可重试失败处理。 */
+    private Duration maxProcessing = DEFAULT_MAX_PROCESSING;
+
+    /** heavy 通道单事件最大处理时长；覆盖长耗时解析/索引/连接器同步。 */
+    private Duration heavyMaxProcessing = DEFAULT_HEAVY_MAX_PROCESSING;
 
     /** 解析后的启用通道，只在启动校验后使用。 */
     private List<OutboxLane> enabledLanes = List.of();
@@ -81,7 +92,7 @@ public class OutboxLaneProperties implements InitializingBean {
     }
 
     /**
-     * 返回单事件最大处理时长。
+     * 返回 default 通道单事件最大处理时长。
      *
      * @return 最大处理时长
      */
@@ -90,12 +101,30 @@ public class OutboxLaneProperties implements InitializingBean {
     }
 
     /**
-     * 设置单事件最大处理时长。
+     * 设置 default 通道单事件最大处理时长。
      *
      * @param maxProcessing 最大处理时长
      */
     public void setMaxProcessing(Duration maxProcessing) {
         this.maxProcessing = maxProcessing;
+    }
+
+    /**
+     * 返回 heavy 通道单事件最大处理时长。
+     *
+     * @return 最大处理时长
+     */
+    public Duration getHeavyMaxProcessing() {
+        return heavyMaxProcessing;
+    }
+
+    /**
+     * 设置 heavy 通道单事件最大处理时长。
+     *
+     * @param heavyMaxProcessing 最大处理时长
+     */
+    public void setHeavyMaxProcessing(Duration heavyMaxProcessing) {
+        this.heavyMaxProcessing = heavyMaxProcessing;
     }
 
     /**
@@ -117,12 +146,25 @@ public class OutboxLaneProperties implements InitializingBean {
     }
 
     /**
-     * 返回单事件最大处理时长（只读访问器）。
+     * 返回 default 通道单事件最大处理时长（只读访问器）。
      *
      * @return 最大处理时长
      */
     public Duration maxProcessing() {
         return maxProcessing;
+    }
+
+    /**
+     * 按事件通道返回单事件最大处理时长。
+     *
+     * <p>通道为空（{@code lane == null}）时使用 default 通道值，保持 M02–M04 回滚窗口的既有语义；
+     * heavy 通道单独使用 {@code heavy-max-processing}。
+     *
+     * @param lane 通道；null 表示旧的全事件领取
+     * @return 该通道的最大处理时长
+     */
+    public Duration maxProcessing(OutboxLane lane) {
+        return lane == OutboxLane.HEAVY ? heavyMaxProcessing : maxProcessing;
     }
 
     /**
@@ -157,6 +199,9 @@ public class OutboxLaneProperties implements InitializingBean {
         }
         if (maxProcessing == null || maxProcessing.isNegative() || maxProcessing.isZero()) {
             throw new IllegalArgumentException("riccon.worker.outbox.max-processing must be positive");
+        }
+        if (heavyMaxProcessing == null || heavyMaxProcessing.isNegative() || heavyMaxProcessing.isZero()) {
+            throw new IllegalArgumentException("riccon.worker.outbox.heavy-max-processing must be positive");
         }
         this.enabledLanes = List.copyOf(parsed);
     }

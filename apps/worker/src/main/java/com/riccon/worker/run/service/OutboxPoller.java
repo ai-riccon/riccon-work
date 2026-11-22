@@ -32,8 +32,8 @@ import org.springframework.stereotype.Component;
  * 处理器必须幂等，租约过期后的再次领取不得产生重复产物。
  *
  * <p>M05 起：按通道领取（{@link #pollOnce(OutboxLane)}）时启动单事件租约心跳；租约丢失立即中断并
- * 丢弃结果，超过 {@code max-processing} 按可重试失败处理。无通道的 {@link #pollOnce()} 保持旧行为，
- * 供既有集成测试与回滚窗口使用。
+ * 丢弃结果，超过事件通道的最大处理时长（default 30 分钟、heavy 65 分钟）按可重试失败处理。
+ * 无通道的 {@link #pollOnce()} 保持旧行为，供既有集成测试与回滚窗口使用。
  */
 @Component
 public class OutboxPoller {
@@ -302,7 +302,10 @@ public class OutboxPoller {
             return null;
         }
         return heartbeat.start(
-                event, outboxRepository.leaseOwner(lane), properties.leaseDuration(), laneProperties.maxProcessing());
+                event,
+                outboxRepository.leaseOwner(lane),
+                properties.leaseDuration(),
+                laneProperties.maxProcessing(lane));
     }
 
     /**
@@ -318,11 +321,12 @@ public class OutboxPoller {
             return false;
         }
         LOG.warn(
-                "outbox.event.lease_lost_discarded eventId={} tenantId={} runId={} action={}",
+                "outbox.event.lease_lost_discarded eventId={} tenantId={} runId={} action={} errorCode={}",
                 event.id(),
                 event.tenantId(),
                 event.runId(),
-                action);
+                action,
+                WorkerErrorCodes.LEASE_LOST);
         return true;
     }
 
@@ -354,7 +358,11 @@ public class OutboxPoller {
                     tenantId, event.runId(), event.attempts(), failure.errorCode(), failure.getMessage());
             int updated = markRetry(event, availableAt, reason, lane);
             if (updated == 0) {
-                LOG.warn("outbox.lease_lost eventId={} tenantId={} action=retry", event.id(), event.tenantId());
+                LOG.warn(
+                        "outbox.lease_lost eventId={} tenantId={} action=retry errorCode={}",
+                        event.id(),
+                        event.tenantId(),
+                        WorkerErrorCodes.LEASE_LOST);
             } else {
                 LOG.warn(
                         "outbox.event.retry_scheduled eventId={} tenantId={} runId={} attempts={} errorCode={} availableAt={}",
@@ -380,7 +388,11 @@ public class OutboxPoller {
     private void markDone(ClaimedOutboxEvent event, OutboxLane lane) {
         int updated = lane == null ? outboxRepository.markDone(event) : outboxRepository.markDone(event, lane);
         if (updated == 0) {
-            LOG.warn("outbox.lease_lost eventId={} tenantId={} action=done", event.id(), event.tenantId());
+            LOG.warn(
+                    "outbox.lease_lost eventId={} tenantId={} action=done errorCode={}",
+                    event.id(),
+                    event.tenantId(),
+                    WorkerErrorCodes.LEASE_LOST);
             return;
         }
         LOG.info(
@@ -418,7 +430,11 @@ public class OutboxPoller {
                 ? outboxRepository.markDead(event, reason)
                 : outboxRepository.markDead(event, reason, lane);
         if (updated == 0) {
-            LOG.warn("outbox.lease_lost eventId={} tenantId={} action=dead", event.id(), event.tenantId());
+            LOG.warn(
+                    "outbox.lease_lost eventId={} tenantId={} action=dead errorCode={}",
+                    event.id(),
+                    event.tenantId(),
+                    WorkerErrorCodes.LEASE_LOST);
             return;
         }
         LOG.warn(
