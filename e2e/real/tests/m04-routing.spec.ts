@@ -52,6 +52,7 @@ interface FakeModelRequestLog {
   path: string;
   model: string | null;
   status: number | null;
+  finishedAt?: string | null;
   errorCode?: string | null;
 }
 
@@ -161,8 +162,32 @@ interface ServerMessage {
   role: 'USER' | 'ASSISTANT' | 'SYSTEM' | 'TOOL';
   content: string;
   status: 'PENDING' | 'STREAMING' | 'COMPLETED' | 'FAILED' | 'STOPPED';
+  runId?: string | null;
   errorCode?: string | null;
   citations?: ServerCitation[];
+}
+
+/** 运行详情中的模型调用最小字段；只声明终态等待需要的字段。 */
+interface RunInvocationSnapshot {
+  modelKey: string;
+  purpose: 'CHAT' | 'REPORT';
+  status: 'STARTED' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+  finishedAt?: string | null;
+}
+
+/** 运行详情最小字段；用于在读取 UI 前轮询服务端终态。 */
+interface RunDetailSnapshot {
+  id: string;
+  status:
+    | 'PENDING'
+    | 'RUNNING'
+    | 'WAITING_APPROVAL'
+    | 'RETRY_WAIT'
+    | 'SUCCEEDED'
+    | 'FAILED'
+    | 'CANCELLED';
+  finishedAt?: string | null;
+  modelInvocations: RunInvocationSnapshot[];
 }
 
 /** 发送消息请求体最小字段。 */
@@ -285,6 +310,142 @@ async function readConversationMessages(
   expect(response.status(), '读取会话详情失败').toBe(200);
   const body = (await response.json()) as { messages: ServerMessage[] };
   return [...body.messages].sort((left, right) => left.seq - right.seq);
+}
+
+/**
+ * 等待助手消息落库为 COMPLETED 并返回本次运行的 ID。
+ *
+ * 前端“运行详情”入口只代表浏览器已收到终态事件，服务端消息/运行/调用记录可能仍在收尾；
+ * 这里轮询会话详情作为确定性前置，避免在中间态读取运行详情或假模型日志。
+ *
+ * @param page Playwright 页面（员工会话）
+ * @param conversationId 会话 ID
+ * @returns 本次回答对应的运行 ID
+ */
+async function waitForCompletedAssistantRun(page: Page, conversationId: string): Promise<string> {
+  const latest: { runId: string | null; status: ServerMessage['status'] | null } = {
+    runId: null,
+    status: null,
+  };
+  await expect
+    .poll(
+      async () => {
+        const messages = await readConversationMessages(page, conversationId);
+        const assistant = [...messages].reverse().find((message) => message.role === 'ASSISTANT');
+        latest.runId = assistant?.runId ?? null;
+        latest.status = assistant?.status ?? null;
+        return { runId: latest.runId, status: latest.status };
+      },
+      {
+        message: `等待会话 ${conversationId} 的助手消息落库为 COMPLETED 且带 runId`,
+        timeout: 60_000,
+        intervals: [250, 500, 1_000],
+      },
+    )
+    .toMatchObject({ status: 'COMPLETED' });
+  expect(latest.runId, 'COMPLETED 助手消息必须关联 runId，才能读取服务端运行终态').not.toBeNull();
+  return latest.runId!;
+}
+
+/**
+ * 等待运行进入 SUCCEEDED，且 CHAT 模型调用落终态并命中期望模型。
+ *
+ * 只读 `GET /api/v1/runs/{runId}`；同时校验运行与调用的 `finishedAt` 非空，
+ * 避免把“已出现运行详情按钮”当成服务端终态已落库。
+ *
+ * @param page Playwright 页面
+ * @param runId 运行 ID
+ * @param expectedModelKey 期望实际使用的链首模型 key
+ * @returns 已终止的运行详情
+ */
+async function waitForChatRunTerminal(
+  page: Page,
+  runId: string,
+  expectedModelKey: ActiveModelKey,
+): Promise<RunDetailSnapshot> {
+  const latest: { detail: RunDetailSnapshot | null; httpStatus: number | null } = {
+    detail: null,
+    httpStatus: null,
+  };
+  await expect
+    .poll(
+      async () => {
+        const response = await page.request.get(`/api/v1/runs/${encodeURIComponent(runId)}`);
+        latest.httpStatus = response.status();
+        latest.detail =
+          response.status() === 200 ? ((await response.json()) as RunDetailSnapshot) : null;
+        return {
+          httpStatus: latest.httpStatus,
+          status: latest.detail?.status ?? null,
+          finishedAt: latest.detail?.finishedAt ?? null,
+          chatInvocations:
+            latest.detail?.modelInvocations
+              .filter((invocation) => invocation.purpose === 'CHAT')
+              .map((invocation) => ({
+                modelKey: invocation.modelKey,
+                status: invocation.status,
+                finishedAt: invocation.finishedAt ?? null,
+              })) ?? [],
+        };
+      },
+      {
+        message: `等待运行 ${runId} 进入 SUCCEEDED 且 CHAT 调用（${expectedModelKey}）落终态`,
+        timeout: 60_000,
+        intervals: [250, 500, 1_000],
+      },
+    )
+    .toMatchObject({
+      httpStatus: 200,
+      status: 'SUCCEEDED',
+      finishedAt: expect.any(String),
+      chatInvocations: [
+        { modelKey: expectedModelKey, status: 'SUCCEEDED', finishedAt: expect.any(String) },
+      ],
+    });
+  expect(latest.detail, `运行 ${runId} 终态读取失败（HTTP ${latest.httpStatus}）`).not.toBeNull();
+  return latest.detail!;
+}
+
+/**
+ * 等待假模型请求日志稳定：至少一次请求，且所有请求都已写入终态。
+ *
+ * 假模型在收到请求时立即追加条目，随后才填充 `status/finishedAt`；只等 UI 可能在
+ * 最后一段增量之后读到未收尾的条目。这里轮询日志本身，稳定后再断言 model/path/status。
+ *
+ * @param expectedModelKey 期望的链首模型 key
+ * @returns 稳定的请求日志（按到达顺序）
+ */
+async function waitForFakeModelLogSettled(
+  expectedModelKey: ActiveModelKey,
+): Promise<FakeModelRequestLog[]> {
+  const expectedPath = providerPathFor(expectedModelKey);
+  const latest: FakeModelRequestLog[] = [];
+  await expect
+    .poll(
+      async () => {
+        latest.splice(0, latest.length, ...(await readFakeModelRequests()));
+        return {
+          count: latest.length,
+          settled: latest.every(
+            (request) => request.status !== null && Boolean(request.finishedAt),
+          ),
+          unexpected: latest.filter(
+            (request) => request.model !== expectedModelKey || request.path !== expectedPath,
+          ).length,
+        };
+      },
+      {
+        message: `等待假模型日志稳定：保存路由后的 CHAT 必须产生指向 ${expectedModelKey} ${expectedPath} 的终态请求`,
+        timeout: 60_000,
+        intervals: [250, 500, 1_000],
+      },
+    )
+    .toMatchObject({ settled: true, unexpected: 0 });
+  expect(
+    latest.length,
+    `保存路由后的下一次 CHAT 未产生任何模型请求：${JSON.stringify(latest)}`,
+  ).toBeGreaterThan(0);
+  return [...latest];
 }
 
 /**
@@ -652,21 +813,42 @@ test.describe('M04-B11a 真实栈降级与审计', () => {
       seed.passwords.alphaMember,
       'Alpha 员工',
     );
+    const messageRequestPromise = page.waitForRequest(isSendMessageRequest);
     await createChatAndSend(page, '请总结 2026 年企业协同办公市场规模');
+    const messageRequest = await messageRequestPromise;
+    const conversationMatch = /\/api\/v1\/conversations\/([^/]+)\/messages$/.exec(
+      new URL(messageRequest.url()).pathname,
+    );
+    expect(
+      conversationMatch,
+      `无法从发送消息请求中解析会话 ID：${messageRequest.url()}`,
+    ).not.toBeNull();
+    const conversationId = conversationMatch![1]!;
     await expect(page.getByText(REPORT_TAIL, { exact: false }).first()).toBeVisible({
       timeout: 60_000,
     });
-    // “运行详情”只在流结束后出现，代表本次 CHAT 已到终态；等到它再读假模型日志，
-    // 避免在最后一个增量之后、finish/usage 之前读到 status=null 的中间态。
+
+    // “运行详情”只在流结束后出现，但不代表服务端运行、模型调用与假模型日志都已收尾；
+    // 先轮询会话消息、运行详情与假模型日志的终态，再读取 UI，避免中间态。
     const detailButton = page.getByRole('button', { name: '运行详情' }).last();
     await expect(detailButton).toBeVisible({ timeout: 60_000 });
+    const runId = await waitForCompletedAssistantRun(page, conversationId);
+    const runDetail = await waitForChatRunTerminal(page, runId, promotedKey);
 
     // 4. 新链生效的可观测证据：假模型收到的 model 与 provider 端点。
-    const requests = await readFakeModelRequests();
+    const requests = await waitForFakeModelLogSettled(promotedKey);
     await test.info().attach('fake-model-log.json', {
       contentType: 'application/json',
       body: JSON.stringify(
-        { promotedKey, expectedPath: providerPathFor(promotedKey), beforeIds, afterIds, requests },
+        {
+          promotedKey,
+          expectedPath: providerPathFor(promotedKey),
+          beforeIds,
+          afterIds,
+          runId,
+          runDetail,
+          requests,
+        },
         null,
         2,
       ),
@@ -689,8 +871,10 @@ test.describe('M04-B11a 真实栈降级与审计', () => {
     }
 
     // 5. 运行详情（产品界面）显示实际使用的模型，作为跨组件第二信号。
+    // 服务端终态已由上一步轮询确认，这里同时要求抽屉读取到“成功”，避免展示旧快照。
     await detailButton.click();
     const runDrawer = page.getByRole('dialog').filter({ hasText: '运行详情' });
+    await expect(runDrawer.getByText('成功', { exact: true }).first()).toBeVisible();
     await expect(runDrawer.getByText(promotedKey).first()).toBeVisible();
     await page.keyboard.press('Escape');
 
