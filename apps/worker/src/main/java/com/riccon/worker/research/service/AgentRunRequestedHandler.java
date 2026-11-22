@@ -38,8 +38,11 @@ import com.riccon.worker.run.repository.RunRepository;
 import com.riccon.worker.run.service.EventPayloadParser;
 import io.agentscope.core.event.AgentEndEvent;
 import io.agentscope.core.event.AgentEvent;
+import io.agentscope.core.event.ModelCallStartEvent;
 import io.agentscope.core.event.RequireUserConfirmEvent;
+import io.agentscope.core.event.TextBlockDeltaEvent;
 import io.agentscope.core.message.ToolUseBlock;
+import java.time.Instant;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -341,17 +344,19 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
                     com.riccon.platform.domain.model.ModelPurpose.REPORT);
             session = researchAgentService.prepareToolStage(
                     tenantId, runId, run.userId(), task.topic(), handle.get(), modelClient, target);
-            ToolUseBlock pending =
+            ApprovalRequest approvalRequest =
                     awaitApprovalRequest(session.events().toIterable().iterator());
+            ToolUseBlock pending = approvalRequest.pending();
             // 工具阶段以 HITL 审批事件结束，AgentScope 不回传 usage；成本记为 USAGE_UNKNOWN，
-            // 只计入调用量，不猜测 token 或金额（ADR-0022 §2.3）。
+            // 只计入调用量，不猜测 token 或金额（ADR-0022 §2.3）。首字只在模型先输出文本时记录；
+            // 仅返回 tool_calls 时没有可见首字，保持 null（ADR-0021 §1）。
             invocationService.succeeded(
                     invocation,
                     selectedModelId(modelClient, target),
                     selectedModelKey(modelClient, target),
                     run.traceId(),
                     null,
-                    null,
+                    approvalRequest.firstTokenMs(),
                     null,
                     null,
                     modelClient.attemptCount());
@@ -474,27 +479,47 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
     }
 
     /**
-     * 等待模型发起需要审批的工具调用。
+     * 等待模型发起需要审批的工具调用，并顺带记录首字。
+     *
+     * <p>首字从 {@link ModelCallStartEvent} 到首个非空 {@link TextBlockDeltaEvent} 的事件
+     * 时间戳计算；工具调用不是可见首字，模型只返回 tool_calls 时保持 {@code null}
+     *（ADR-0021 §1、ADR-0022 §2.1/§2.3）。
      *
      * @param iterator 事件迭代器
-     * @return 待审批工具调用；模型未请求时为空
+     * @return 待审批工具调用与首字延迟；模型未请求时 pending 为空
      */
-    private static ToolUseBlock awaitApprovalRequest(Iterator<AgentEvent> iterator) {
+    private static ApprovalRequest awaitApprovalRequest(Iterator<AgentEvent> iterator) {
+        Integer firstTokenMs = null;
+        Instant modelCallStartedAt = null;
         while (iterator.hasNext()) {
             AgentEvent event = iterator.next();
+            if (event instanceof ModelCallStartEvent) {
+                modelCallStartedAt = ModelFirstToken.eventInstant(event);
+            }
+            if (firstTokenMs == null) {
+                firstTokenMs = ModelFirstToken.firstTokenMs(modelCallStartedAt, event);
+            }
             if (event instanceof RequireUserConfirmEvent confirm) {
                 if (confirm.getToolCalls().size() != 1) {
                     throw new EventProcessingException(
                             WorkerErrorCodes.EVENT_INVALID, false, "M02 requires exactly one approved tool call");
                 }
-                return confirm.getToolCalls().get(0);
+                return new ApprovalRequest(confirm.getToolCalls().get(0), firstTokenMs);
             }
             if (event instanceof AgentEndEvent) {
-                return null;
+                break;
             }
         }
-        return null;
+        return new ApprovalRequest(null, firstTokenMs);
     }
+
+    /**
+     * 工具阶段等待结果。
+     *
+     * @param pending 待审批工具调用，可为空
+     * @param firstTokenMs 首字延迟，可为空
+     */
+    private record ApprovalRequest(ToolUseBlock pending, Integer firstTokenMs) {}
 
     /**
      * 写入工具阶段失败。

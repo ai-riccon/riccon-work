@@ -14,6 +14,8 @@ Scope: M04「模型网关纵深」的租户/用户配额与成本估算；路由
 > 修订（2026-11-21，REV-TASK-0107-001 F-001）：§1.3 补充租户行锁、实测锁序与 B10 验证归属。该修订只记录已实现并已定向验证的并发控制，不改变 DEC-0023/DEC-0024 已批准的配额语义、AC、错误码或契约；ADR 状态保持 `accepted`。
 >
 > 修订（2026-11-22，REV-TASK-0108-001 F-007/F-008/F-010，TASK-0143）：§2.4 记录平台成本 `tenantId` 过滤与 ADR-0009 的例外关系、AC-12 的 403/404 分工、查询参数错误码边界（空白 `tenantId` 的 400 校验待 M20/TASK-0141 落地）和分页上限的契约位置；§2.5 记录分页上限的契约落点。该修订只澄清契约、已实现行为与验收口径，不改变 DEC-0023/DEC-0024 已批准的配额语义、AC 结果或错误码种类；ADR 状态保持 `accepted`，ADR-0009 本身不修改（修订归 TASK-0142）。
+>
+> 修订（2026-11-22，REV-TASK-0108-001 F-001/F-003/F-004/F-012，TASK-0140）：§2.1 把价格快照时点如实修订为“成功终态读取一次”，并记录它与 V11/ADR-0021 历史列注释的差异、影响边界和未来重访条件（正确的“最终成功尝试开始时”快照需要改 `FailoverChatModel` 的尝试生命周期，超出 TASK-0140 写范围）；§2.3 增加负 usage 归一规则；新增 §2.6 记录报表 TOOL/GENERATION 的 `first_token_ms` 来源与 TOOL 阶段“没有文本首字”的边界。该修订不改变 DEC-0023/DEC-0024 已批准的成本公式、6 位小数、日桶、未定价/用量未知与单币种语义，也不改变 M04-AC-11 的用户可见结果；ADR 状态保持 `accepted`。
 
 ## Context
 
@@ -190,7 +192,11 @@ else:
 #### 2.1 价格快照
 
 - 价格源：`model.input_price_per_1m`、`model.output_price_per_1m`（DECIMAL(12,6)，每百万 token，币种由部署配置），由部署种子/运维维护；M04 **不提供价格编辑端点**。
-- 快照时机：**最终成功尝试开始时**读取该模型的输入/输出价格并固定到本次调用上下文；失败尝试不计成本；同一 `model_invocation` 不会混合多个模型的价格。完成时写入 `model_invocation`，避免调用过程中价格变更导致同一回答使用两个价格。全链失败时没有成功模型，`cost_status=USAGE_UNKNOWN`、价格/金额为空。
+- 快照时机（2026-11-22 修订，TASK-0140）：**成功终态读取一次**。`ModelInvocationService.succeeded` 在最终成功尝试已经确定、写入 `model_invocation` 之前，按最终成功模型 ID 调用一次 `findPricing`，把该次读到的输入/输出价格、部署币种、`pricing_version` 与 `cost_amount` 写入同一行；失败尝试不计成本；同一 `model_invocation` 只读一次、只使用一个模型的价格，不会混合多个价格。全链失败时没有成功模型，`cost_status=USAGE_UNKNOWN`、价格/金额为空。
+  - **与历史文案的差异**：ADR-0022 旧版、`docs/ARCHITECTURE.md` 风险表、`V11__model_gateway_depth.sql`（以及 ADR-0021 §5 引用的迁移片段）列注释写“最终成功尝试开始时”。V11 是已应用迁移，修改注释会改变 Flyway checksum，禁止为文案改历史迁移；ADR-0021 的迁移片段属于历史设计记录。本节的“成功终态读取一次”是当前运行语义的权威口径，历史文案不再代表当前实现。
+  - **为什么没有实现“尝试开始时”**：成功尝试在 `FailoverChatModel` 内部决定；在尝试开始时读取价格需要让降级客户端/attempt 生命周期持有价格快照并传给调用记录服务，涉及 `FailoverChatModel`、`ModelAttemptRepository` 等 TASK-0140 写范围外的文件，M04 未实现。TASK-0140 按验收允许的第二路径修订文档，不把“成功终态读取一次”写成“已满足开始时快照”。
+  - **影响边界**：M04 不提供价格编辑端点，价格只由部署种子/运维 SQL 维护；一次调用只读一次，调用内部不会混价。边界是“调用进行中，运维直接修改 `model` 价格”：在途调用会使用修改后的价格。该风险有界（无自助改价入口、无混合价格），但**任何价格维护端点或批量改价作业（M05+）上线前必须重访本节**：要么实现尝试开始快照并同步修订本节/列注释策略，要么由 Lead/Architect 书面接受终态读取语义与运维改价窗口。
+  - **未来实现的最小范围**：在 `FailoverChatModel.runAttempt` 开始时按候选模型读取价格快照，成功时把该 attempt 的快照传给 `ModelInvocationService.succeeded`；需要 `FailoverChatModel`/`ModelRouter`/调用句柄的协作和相应集成测试，不能在 `ModelInvocationService` 内单独完成。
 - 快照列（ADR-0021 §3.3）：`input_price_per_1m`、`output_price_per_1m`、`price_currency`、`pricing_version='v1'`、`cost_amount`、`cost_status`、`cost_day`。
 - 价格更新后历史不变：查询只读快照列，不 join 当前 `model` 价格；`IT-COST-101` 断言更新价格后历史金额不变。
 - 单币种：`RICCON_BILLING_CURRENCY`（ISO 4217，默认 `CNY`）。币种变更不是 M04 支持的操作；若历史快照与当前配置不一致，成本报告返回 `currencyMismatchCalls` 并把它们排除在金额合计之外（正常情况下为 0）。
@@ -217,6 +223,7 @@ cost = prompt_tokens * input_price_per_1m / 1_000_000
 
 - 优先级：先判断价格，再判断 token；两者都缺 → `UNPRICED`（因为即使有 token 也无法计价）。
 - usage 以 provider 返回的 `prompt_tokens`/`completion_tokens` 为准；M04 **不做本地 tokenizer 估算**（依赖与误差不可控）。缺失即 `USAGE_UNKNOWN`。
+- **非法 usage（2026-11-22 修订，TASK-0140）**：任一 token 为负时该组 usage 视为不可信；写库前把两个 token 都归一为 NULL，`cost_status=USAGE_UNKNOWN`，金额为空。禁止写入负 token（数据库 `CHECK` 也不允许）或负金额，也不因上游异常 usage 让成功的模型调用失败；价格快照列仍按成功终态读取保留。`IT-COST-102` 覆盖负 prompt、负 completion 两种组合并断言后续合法调用仍按公式计价。
 - 失败/取消调用也写 `model_invocation`（M02 已有），`cost_status=USAGE_UNKNOWN`，计入“调用量”但不计金额；便于运维看到失败率，不伪造成本。
 - `cost_day` 用 `started_at` 转 `Asia/Shanghai` 的自然日；`started_at` 仍 UTC。回滚窗口旧 Worker 不写 `cost_day`，这些行在报告中计入 `unbucketedCalls`（**不是** `cost_status` 值），单列且不计金额；RUNBOOK 标明混合版本窗口不可用于对账。
 
@@ -250,6 +257,12 @@ cost = prompt_tokens * input_price_per_1m / 1_000_000
 - 理由：私有化规模（50 并发、单租户月调用量万级）下实时聚合足够；预聚合会引入回填、重算与一致性风险。若 M09 观测到 p95 > 2 s，再评估按日 rollup（另立 ADR）。
 - 保留：`model_invocation` 与 `model_invocation_attempt` 默认保留 ≥180 天，与成本可查范围一致；M09 维护任务按 `started_at`/`cost_day` 清理更早数据，先 attempt 再 invocation，`quota_usage` 历史窗口同批清理。清理不删除审计；成本历史不要求永久保留。
 - 查询保护：最大 180 天、page ≤200、size ≤100；DB 超时 3 s，超时返回 503 `RICCON-COST-503`（不返回部分结果）。page 上限在契约中由成本专用 `components.parameters.CostPage`（`maximum: 200`）承载，三个成本端点共用；全局 `Page` 不加上限。
+
+#### 2.6 报表 `first_token_ms`
+
+- 聊天路径由 `ChatStreamService` 在首个 SSE delta 写入时记录 `model_invocation.first_token_ms`；报表路径（`AgentRunRequestedHandler` 的 TOOL 阶段、`AgentRunResumeHandler` 的 GENERATION 阶段）从 AgentScope `streamEvents` 的 `ModelCallStartEvent` 到首个非空 `TextBlockDeltaEvent`（或 `TextBlockStartEvent`）的 `AgentEvent.createdAt` 计算，写入 `model_invocation.first_token_ms`。
+- 首字定义沿用 ADR-0021 §1：**第一个非空文本增量**；工具调用不是可见首字。当前报告 TOOL 阶段的模型只返回 `tool_calls`，没有文本输出，因此 TOOL 调用的 `model_invocation.first_token_ms` 与对应 `model_invocation_attempt.first_token_ms` 都保持 NULL，这是语义上的“没有首字”，不是 AgentScope 不提供事件。若模型在工具调用前先输出文本，处理器会记录该首字。
+- 生成阶段 `AgentResultEvent.getResult().getChatUsage()` 提供 usage，`ModelInvocationService` 据此写 `PRICED`；`ReportArtifactIntegrationTest` 断言固定样例（prompt=12、completion=8、3.000000/6.000000 → 0.000084）与首字非空，`ChatStreamIntegrationTest` 断言聊天路径同一固定样例。该语义不改变 M04-AC-17 的首字 p95 预算，也不把 TOOL 的无文本调用伪造成有首字。
 
 ### 3. 契约
 

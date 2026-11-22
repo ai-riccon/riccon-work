@@ -46,9 +46,15 @@ import com.riccon.worker.run.service.EventPayloadParser;
 import io.agentscope.core.event.AgentEndEvent;
 import io.agentscope.core.event.AgentEvent;
 import io.agentscope.core.event.AgentResultEvent;
+import io.agentscope.core.event.ModelCallStartEvent;
 import io.agentscope.core.event.RequireUserConfirmEvent;
+import io.agentscope.core.event.TextBlockDeltaEvent;
+import io.agentscope.core.event.TextBlockStartEvent;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.model.ChatUsage;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -430,14 +436,15 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                     tenantId, runId, run.userId(), task.topic(), toolResult.text(), modelClient, target);
             GenerationResult generated =
                     awaitGeneration(session.events().toIterable().iterator());
-            // 生成阶段从 AgentResultEvent 取 provider usage；缺失时传 null，成本记 USAGE_UNKNOWN。
+            // 生成阶段从 AgentResultEvent 取 provider usage，并从细粒度文本事件回填首字延迟；
+            // usage 缺失或为负时由调用记录服务归一为 USAGE_UNKNOWN（ADR-0022 §2.1/§2.3）。
             invocationService.succeeded(
                     invocation,
                     selectedModelId(modelClient, target),
                     selectedModelKey(modelClient, target),
                     run.traceId(),
                     null,
-                    null,
+                    generated.firstTokenMs(),
                     generated.usage() == null ? null : generated.usage().getInputTokens(),
                     generated.usage() == null ? null : generated.usage().getOutputTokens(),
                     modelClient.attemptCount());
@@ -652,16 +659,26 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
      * 读取生成阶段最终文本与 usage。
      *
      * <p>{@link AgentResultEvent} 同时携带文本与 provider usage；usage 用于成本快照，
-     * 缺失时保持 {@code null}，不得本地估算 token（ADR-0022 §2.3）。
+     * 缺失时保持 {@code null}，不得本地估算 token（ADR-0022 §2.3）。首字延迟从
+     * {@link ModelCallStartEvent} 到首个非空 {@link TextBlockDeltaEvent} 的事件时间戳计算；
+     * 工具调用不是可见首字（ADR-0021 §1），没有文本输出时保持 {@code null}。
      *
      * @param iterator 事件迭代器
-     * @return 文本与 usage；没有结果时文本为空
+     * @return 文本、usage 与首字延迟；没有结果时文本为空
      */
     private static GenerationResult awaitGeneration(Iterator<AgentEvent> iterator) {
         String text = null;
         ChatUsage usage = null;
+        Integer firstTokenMs = null;
+        Instant modelCallStartedAt = null;
         while (iterator.hasNext()) {
             AgentEvent event = iterator.next();
+            if (event instanceof ModelCallStartEvent) {
+                modelCallStartedAt = ModelFirstToken.eventInstant(event);
+            }
+            if (firstTokenMs == null) {
+                firstTokenMs = ModelFirstToken.firstTokenMs(modelCallStartedAt, event);
+            }
             if (event instanceof AgentResultEvent result) {
                 Msg message = result.getResult();
                 text = message == null ? null : message.getTextContent();
@@ -673,7 +690,7 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
                 break;
             }
         }
-        return new GenerationResult(text, usage);
+        return new GenerationResult(text, usage, firstTokenMs);
     }
 
     /**
@@ -681,8 +698,9 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
      *
      * @param text 生成文本，可为空
      * @param usage provider token 用量，可为空
+     * @param firstTokenMs 首字延迟（毫秒），没有可见文本时为空
      */
-    private record GenerationResult(String text, ChatUsage usage) {}
+    private record GenerationResult(String text, ChatUsage usage, Integer firstTokenMs) {}
 
     /**
      * 写入生成阶段失败并同步任务失败状态。
@@ -734,5 +752,72 @@ public class AgentRunResumeHandler implements OutboxEventHandler {
         } catch (RuntimeException ex) {
             LOG.warn("research.agent.close_failed", ex);
         }
+    }
+}
+
+/**
+ * 报表阶段首字观测。
+ *
+ * <p>AgentScope 的 {@code streamEvents} 会发出 {@link ModelCallStartEvent} 与文本块事件；
+ * 这里使用事件自带的 {@code createdAt} 计算“模型调用开始 → 首个可见文本增量”的延迟，
+ * 避免把 Agent 构建、队列等待与消费线程调度时间计入。工具调用不是可见首字
+ *（ADR-0021 §1），因此仅返回 tool_calls 的 TOOL 阶段保持 null；若模型在工具调用前先输出
+ * 文本，仍会记录首字（ADR-0022 §2.1/§2.3）。
+ */
+final class ModelFirstToken {
+
+    /** 工具类，禁止实例化。 */
+    private ModelFirstToken() {}
+
+    /**
+     * 读取事件创建时间。
+     *
+     * @param event AgentScope 事件
+     * @return 时间；缺失或格式非法时为空
+     */
+    static Instant eventInstant(AgentEvent event) {
+        String createdAt = event.getCreatedAt();
+        if (createdAt == null || createdAt.isBlank()) {
+            return null;
+        }
+        try {
+            return Instant.parse(createdAt);
+        } catch (DateTimeParseException ex) {
+            return null;
+        }
+    }
+
+    /**
+     * 计算首个可见文本增量相对模型调用起点的延迟。
+     *
+     * @param modelCallStartedAt 模型调用起点，可为空
+     * @param event 当前事件
+     * @return 毫秒；不是首个文本事件、时间戳缺失或早于起点时为空
+     */
+    static Integer firstTokenMs(Instant modelCallStartedAt, AgentEvent event) {
+        if (modelCallStartedAt == null || !isVisibleText(event)) {
+            return null;
+        }
+        Instant observedAt = eventInstant(event);
+        if (observedAt == null) {
+            return null;
+        }
+        return (int)
+                Math.max(0, Duration.between(modelCallStartedAt, observedAt).toMillis());
+    }
+
+    /**
+     * 判断事件是否为可见文本首字。
+     *
+     * @param event 事件
+     * @return 非空 TextBlockDeltaEvent 或 TextBlockStartEvent 时返回 true
+     */
+    private static boolean isVisibleText(AgentEvent event) {
+        if (event instanceof TextBlockStartEvent) {
+            return true;
+        }
+        return event instanceof TextBlockDeltaEvent delta
+                && delta.getDelta() != null
+                && !delta.getDelta().isBlank();
     }
 }

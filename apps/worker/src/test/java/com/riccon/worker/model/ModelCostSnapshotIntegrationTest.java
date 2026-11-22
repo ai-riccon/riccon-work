@@ -148,6 +148,49 @@ class ModelCostSnapshotIntegrationTest extends WorkerIntegrationTestBase {
     }
 
     /**
+     * F-012/IT-COST-102：provider 返回负 token 时整组 usage 归一为缺失，不写负 token 或负金额。
+     */
+    @Test
+    @DisplayName("IT-COST-102：负 token 不生成负金额，按 USAGE_UNKNOWN 记录")
+    void succeeded_withNegativeUsage_neverWritesNegativeTokensOrAmount() {
+        TenantId tenant = tenant("cost-negative-usage");
+        UUID userId = data.createUser(tenant.value());
+        UUID modelId = fixture.createModel("https://model.invalid/v1", "cost-negative-model");
+        setPrices(modelId, "3.000000", "6.000000");
+
+        InvocationHandle negativePrompt = start(tenant, userId, modelId);
+        succeed(tenant, negativePrompt, -1, 8);
+        assertNegativeUsageNormalized(tenant, negativePrompt);
+
+        InvocationHandle negativeCompletion = start(tenant, userId, modelId);
+        succeed(tenant, negativeCompletion, 5, -3);
+        assertNegativeUsageNormalized(tenant, negativeCompletion);
+
+        // 负 usage 只影响该次调用；后续合法 usage 仍按公式计价。
+        InvocationHandle valid = start(tenant, userId, modelId);
+        succeed(tenant, valid, 1000, 500);
+        assertThat(invocationRow(tenant, valid).get("costAmount")).isEqualTo(new BigDecimal("0.006000"));
+    }
+
+    /**
+     * 断言负 usage 被归一为 USAGE_UNKNOWN：金额与 token 为空，价格快照仍保留。
+     *
+     * @param tenant 租户
+     * @param handle 调用句柄
+     */
+    private void assertNegativeUsageNormalized(TenantId tenant, InvocationHandle handle) {
+        Map<String, Object> row = invocationRow(tenant, handle);
+        assertThat(row.get("status")).isEqualTo("SUCCEEDED");
+        assertThat(row.get("costStatus")).isEqualTo(CostStatus.USAGE_UNKNOWN.name());
+        assertThat(row.get("costAmount")).isNull();
+        assertThat(row.get("promptTokens")).isNull();
+        assertThat(row.get("completionTokens")).isNull();
+        assertThat(row.get("inputPrice")).isEqualTo(new BigDecimal("3.000000"));
+        assertThat(row.get("outputPrice")).isEqualTo(new BigDecimal("6.000000"));
+        assertThat(row.get("priceCurrency")).isEqualTo("CNY");
+    }
+
+    /**
      * IT-COST-102：失败调用写 USAGE_UNKNOWN 与日桶，不写价格或金额；同一调用不产生第二行。
      */
     @Test
@@ -250,7 +293,8 @@ class ModelCostSnapshotIntegrationTest extends WorkerIntegrationTestBase {
     private Map<String, Object> invocationRow(TenantId tenant, InvocationHandle handle) {
         return jdbcClient
                 .sql("""
-                        SELECT status, user_id, prompt_tokens, input_price_per_1m, output_price_per_1m,
+                        SELECT status, user_id, prompt_tokens, completion_tokens,
+                               input_price_per_1m, output_price_per_1m,
                                price_currency, pricing_version, cost_amount, cost_status, cost_day, started_at
                           FROM model_invocation
                          WHERE tenant_id = :tenantId AND id = :id
@@ -262,6 +306,7 @@ class ModelCostSnapshotIntegrationTest extends WorkerIntegrationTestBase {
                     row.put("status", rs.getString("status"));
                     row.put("userId", UuidBinary.fromBytes(rs.getBytes("user_id")));
                     row.put("promptTokens", rs.getObject("prompt_tokens", Integer.class));
+                    row.put("completionTokens", rs.getObject("completion_tokens", Integer.class));
                     row.put("inputPrice", rs.getBigDecimal("input_price_per_1m"));
                     row.put("outputPrice", rs.getBigDecimal("output_price_per_1m"));
                     row.put("priceCurrency", rs.getString("price_currency"));

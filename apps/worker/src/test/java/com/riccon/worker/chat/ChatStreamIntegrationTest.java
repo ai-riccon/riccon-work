@@ -11,8 +11,12 @@ import com.riccon.worker.persistence.UuidBinary;
 import com.riccon.worker.support.TestCredentials;
 import com.riccon.worker.support.TestModelStub;
 import com.riccon.worker.support.TestServiceToken;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -83,6 +87,35 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(invocationStatus(fixture.runId())).isEqualTo("SUCCEEDED");
         assertThat(auditCount("model.invocation.started", fixture.tenantId())).isEqualTo(1);
         assertThat(auditCount("model.invocation.completed", fixture.tenantId())).isEqualTo(1);
+    }
+
+    /**
+     * F-003：聊天路径从 AgentResultEvent 取 provider usage，按固定价格写入 PRICED 成本快照。
+     *
+     * <p>固定样例：prompt=12、completion=8、输入价 3.000000、输出价 6.000000 →
+     * (12×3 + 8×6) / 1_000_000 = 0.000084；首字延迟必须保留。
+     */
+    @Test
+    void stream_happyPath_persistsPricedInvocationFromUsage() throws Exception {
+        ChatFixture fixture = chatFixture("tenant-a", "市场问题");
+        setModelPrices();
+
+        MvcResult result = performStream(fixture, fixture.token());
+        assertThat(normalize(result.getResponse().getContentAsString(StandardCharsets.UTF_8)))
+                .contains("event: riccon.chat.completed.v1");
+
+        Map<String, Object> row = invocationRow(fixture.runId());
+        assertThat(row.get("status")).isEqualTo("SUCCEEDED");
+        assertThat(row.get("costStatus")).isEqualTo("PRICED");
+        assertThat(row.get("promptTokens")).isEqualTo(12);
+        assertThat(row.get("completionTokens")).isEqualTo(8);
+        assertThat(row.get("inputPrice")).isEqualTo(new BigDecimal("3.000000"));
+        assertThat(row.get("outputPrice")).isEqualTo(new BigDecimal("6.000000"));
+        assertThat(row.get("costAmount")).isEqualTo(new BigDecimal("0.000084"));
+        assertThat(row.get("priceCurrency")).isEqualTo("CNY");
+        assertThat(row.get("pricingVersion")).isEqualTo("v1");
+        assertThat((Integer) row.get("firstTokenMs")).isNotNull().isGreaterThanOrEqualTo(0);
+        assertThat(row.get("costDay")).isEqualTo(expectedDay((Instant) row.get("startedAt")));
     }
 
     /** 缺少服务令牌返回 ProblemDetail 401。 */
@@ -556,6 +589,64 @@ class ChatStreamIntegrationTest extends WorkerIntegrationTestBase {
         int dataIndex = body.indexOf("data: ", index);
         int end = body.indexOf('\n', dataIndex);
         return objectMapper.readTree(body.substring(dataIndex + "data: ".length(), end));
+    }
+
+    /** 为当前测试的 ACTIVE 模型设置固定价格，用于断言固定样例金额。 */
+    private void setModelPrices() {
+        jdbcClient.sql("""
+                        UPDATE model
+                           SET input_price_per_1m = 3.000000, output_price_per_1m = 6.000000
+                         WHERE status = 'ACTIVE'
+                        """).update();
+    }
+
+    /**
+     * 读取运行最新一次模型调用的成本快照列。
+     *
+     * @param runId 运行 ID
+     * @return 列名到值的映射；允许 null 值
+     */
+    private Map<String, Object> invocationRow(UUID runId) {
+        return jdbcClient
+                .sql("""
+                        SELECT status, prompt_tokens, completion_tokens, input_price_per_1m,
+                               output_price_per_1m, price_currency, pricing_version, cost_amount,
+                               cost_status, first_token_ms, cost_day, started_at
+                          FROM model_invocation
+                         WHERE run_id = :runId
+                         ORDER BY started_at DESC, id DESC
+                         LIMIT 1
+                        """)
+                .param("runId", UuidBinary.toBytes(runId))
+                .query((rs, rowNum) -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("status", rs.getString("status"));
+                    row.put("promptTokens", rs.getObject("prompt_tokens", Integer.class));
+                    row.put("completionTokens", rs.getObject("completion_tokens", Integer.class));
+                    row.put("inputPrice", rs.getBigDecimal("input_price_per_1m"));
+                    row.put("outputPrice", rs.getBigDecimal("output_price_per_1m"));
+                    row.put("priceCurrency", rs.getString("price_currency"));
+                    row.put("pricingVersion", rs.getString("pricing_version"));
+                    row.put("costAmount", rs.getBigDecimal("cost_amount"));
+                    row.put("costStatus", rs.getString("cost_status"));
+                    row.put("firstTokenMs", rs.getObject("first_token_ms", Integer.class));
+                    row.put("costDay", rs.getObject("cost_day", java.time.LocalDate.class));
+                    row.put(
+                            "startedAt",
+                            rs.getObject("started_at", LocalDateTime.class).toInstant(ZoneOffset.UTC));
+                    return row;
+                })
+                .single();
+    }
+
+    /**
+     * 独立计算期望日桶，避免测试复用被测转换逻辑。
+     *
+     * @param instant 调用开始瞬时
+     * @return 北京时间自然日
+     */
+    private static java.time.LocalDate expectedDay(Instant instant) {
+        return instant.atZone(java.time.ZoneId.of("Asia/Shanghai")).toLocalDate();
     }
 
     /** 运行状态。 */

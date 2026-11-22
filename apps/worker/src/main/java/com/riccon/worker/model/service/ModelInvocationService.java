@@ -32,7 +32,8 @@ import org.springframework.stereotype.Component;
  *
  * <p>每次调用固定写 {@code model.invocation.started} 与 completed/failed 两条审计；
  * 调用记录用于运行详情。任何写库失败都让当前模型调用失败，禁止静默继续（ADR-0007）。
- * M04 增记 {@code attempt_count} 与 {@code emitted}，并在最终成功调用写入价格/币种/金额快照。
+ * M04 增记 {@code attempt_count} 与 {@code emitted}，并在最终成功调用按 ADR-0022 §2.1
+ *（2026-11-22 修订）在成功终态读取一次价格、写入价格/币种/金额快照；负 usage 归一为用量未知。
  *
  * <p>成本口径（ADR-0022 §2.2）：{@code prompt_tokens × input_price_per_1m / 1_000_000 +
  * completion_tokens × output_price_per_1m / 1_000_000}，使用 {@link BigDecimal}、6 位小数、
@@ -133,8 +134,12 @@ public class ModelInvocationService {
     /**
      * 记录成功结束并写入成本快照。
      *
-     * <p>价格在成功终态读取一次并固定：M04 不提供价格编辑端点，一次成功调用只使用一个价格快照，
-     * 后续更新 {@code model} 价格不会改写本行（ADR-0022 §2.1）。
+     * <p>价格按 ADR-0022 §2.1（2026-11-22 修订）在成功终态读取一次并固定：M04 不提供价格编辑
+     * 端点，一次成功调用只读一次、只使用最终成功模型的价格，不会混用两个价格；后续更新
+     * {@code model} 价格不会改写本行。调用期间由运维直接改价的边界与重访条件见该节。
+     *
+     * <p>provider usage 中任一 token 为负时整组 usage 视为不可信，写库前归为缺失
+     *（{@code USAGE_UNKNOWN}），禁止写入负 token 或负金额（ADR-0022 §2.3）。
      *
      * @param handle 调用句柄
      * @param actualModelId 最终成功模型 ID（降级后可能与首个尝试不同）
@@ -158,8 +163,13 @@ public class ModelInvocationService {
             int attemptCount) {
         long duration = Math.max(0, clock.millis() - handle.startedAt());
         int normalizedAttempts = Math.max(1, attemptCount);
+        // 任一 token 为负说明上游 usage 不可信：整组归为缺失，成本记 USAGE_UNKNOWN，
+        // 既不生成负金额，也不让成功调用因违反 token >= 0 的数据库约束而写库失败。
+        boolean invalidUsage = isNegative(promptTokens) || isNegative(completionTokens);
+        Integer safePromptTokens = invalidUsage ? null : promptTokens;
+        Integer safeCompletionTokens = invalidUsage ? null : completionTokens;
         try {
-            CostSnapshot cost = costSnapshot(actualModelId, promptTokens, completionTokens, handle.startedAt());
+            CostSnapshot cost = costSnapshot(actualModelId, safePromptTokens, safeCompletionTokens, handle.startedAt());
             invocationRepository.succeeded(
                     handle.tenantId(),
                     handle.id(),
@@ -167,12 +177,18 @@ public class ModelInvocationService {
                     actualModelKey,
                     firstTokenMs,
                     duration,
-                    promptTokens,
-                    completionTokens,
+                    safePromptTokens,
+                    safeCompletionTokens,
                     normalizedAttempts,
                     cost);
             auditService.modelCompleted(
-                    handle.tenantId(), traceId, requestId, actualModelId, duration, promptTokens, completionTokens);
+                    handle.tenantId(),
+                    traceId,
+                    requestId,
+                    actualModelId,
+                    duration,
+                    safePromptTokens,
+                    safeCompletionTokens);
         } catch (RuntimeException ex) {
             LOG.error("model.invocation.completion_record_failed invocationId={}", handle.id(), ex);
             throw new ModelException(
@@ -287,6 +303,9 @@ public class ModelInvocationService {
      * 价格齐全但 token 缺失为 {@code USAGE_UNKNOWN}。金额只在 {@code PRICED} 时计算并做一次 6 位
      * HALF_UP 舍入。
      *
+     * <p>价格来自成功终态的一次读取（ADR-0022 §2.1 修订）；调用方必须先把负 usage 归一为 null，
+     * 本方法只接受非负 token 或 null，保证金额列不会出现负数。
+     *
      * @param modelId 最终成功模型 ID
      * @param promptTokens 输入 token，可为空
      * @param completionTokens 输出 token，可为空
@@ -312,6 +331,18 @@ public class ModelInvocationService {
                 .add(BigDecimal.valueOf(completionTokens).multiply(outputPrice));
         BigDecimal amount = numerator.divide(TOKENS_PER_MILLION, COST_SCALE, RoundingMode.HALF_UP);
         return new CostSnapshot(inputPrice, outputPrice, currency, amount, CostStatus.PRICED, PRICING_VERSION, day);
+    }
+
+    /**
+     * 判断 provider token 是否为负。
+     *
+     * <p>负 token 不是可计价用量；归一为 null 后按 {@code USAGE_UNKNOWN} 处理（ADR-0022 §2.3）。
+     *
+     * @param tokens token 数，可为空
+     * @return 小于 0 时返回 true
+     */
+    private static boolean isNegative(Integer tokens) {
+        return tokens != null && tokens < 0;
     }
 
     /**

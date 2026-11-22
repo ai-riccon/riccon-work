@@ -24,10 +24,16 @@ import com.riccon.worker.support.TestCredentials;
 import com.riccon.worker.support.TestDataFactory;
 import com.riccon.worker.support.TestMcpCommands;
 import com.riccon.worker.support.TestModelStub;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -174,6 +180,52 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
                 .contains(artifact.id().toString())
                 .contains(fixture.runId().toString())
                 .contains("\"version\": 1");
+    }
+
+    /**
+     * F-003/F-004：报表生成调用按 provider usage 写 PRICED 快照，并从 AgentScope 事件回填首字。
+     *
+     * <p>TOOL 阶段模型只返回 tool_calls，没有可见文本首字，因此成本为 USAGE_UNKNOWN 且
+     * first_token_ms 为空；GENERATION 阶段返回文本与 usage，固定样例：
+     * prompt=12、completion=8、输入价 3.000000、输出价 6.000000 → 0.000084。
+     */
+    @Test
+    void approved_persistsPricedGenerationInvocationWithUsageAndFirstToken() {
+        Fixture fixture = fixture("tenant-a", true);
+        setModelPrices(fixture.modelId());
+
+        assertThat(poller.pollOnce()).isEqualTo(1);
+        UUID approvalId = approvalId(fixture.runId());
+        approve(fixture.userId(), approvalId);
+        data.publishResearchResume(fixture.tenant(), fixture.runId(), fixture.taskId(), approvalId);
+        assertThat(poller.pollOnce()).isEqualTo(1);
+
+        List<Map<String, Object>> invocations = invocations(fixture.runId());
+        assertThat(invocations).hasSize(2);
+
+        Map<String, Object> tool = invocations.get(0);
+        assertThat(tool.get("purpose")).isEqualTo("REPORT");
+        assertThat(tool.get("costStatus")).isEqualTo("USAGE_UNKNOWN");
+        assertThat(tool.get("costAmount")).isNull();
+        assertThat(tool.get("promptTokens")).isNull();
+        assertThat(tool.get("completionTokens")).isNull();
+        // 工具调用不是可见首字（ADR-0021 §1）；模型只返回 tool_calls 时保持 null。
+        assertThat(tool.get("firstTokenMs")).isNull();
+
+        Map<String, Object> generation = invocations.get(1);
+        assertThat(generation.get("purpose")).isEqualTo("REPORT");
+        assertThat(generation.get("status")).isEqualTo("SUCCEEDED");
+        assertThat(generation.get("costStatus")).isEqualTo("PRICED");
+        assertThat(generation.get("promptTokens")).isEqualTo(12);
+        assertThat(generation.get("completionTokens")).isEqualTo(8);
+        assertThat(generation.get("inputPrice")).isEqualTo(new BigDecimal("3.000000"));
+        assertThat(generation.get("outputPrice")).isEqualTo(new BigDecimal("6.000000"));
+        // (12×3 + 8×6) / 1_000_000 = 84 / 1_000_000 = 0.000084。
+        assertThat(generation.get("costAmount")).isEqualTo(new BigDecimal("0.000084"));
+        assertThat(generation.get("priceCurrency")).isEqualTo("CNY");
+        assertThat(generation.get("pricingVersion")).isEqualTo("v1");
+        assertThat((Integer) generation.get("firstTokenMs")).isNotNull().isGreaterThanOrEqualTo(0);
+        assertThat(generation.get("costDay")).isEqualTo(expectedDay((Instant) generation.get("startedAt")));
     }
 
     /** 审批拒绝：终止运行与任务、记录决定与审批人，不产生任何产物。 */
@@ -499,11 +551,11 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
                 McpMockServer.TOOL_NAME,
                 "{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}");
         data.grantMcpTool(tenant, tool);
-        data.createModelCatalog(stub.url(), TestCredentials.API_KEY);
+        UUID modelId = data.createModelCatalog(stub.url(), TestCredentials.API_KEY);
         TestDataFactory.ResearchPublished published =
                 data.publishResearchRequested(tenant, workspace, user, "市场调研", tool);
         return new Fixture(
-                tenant, published.runId(), published.taskId(), published.eventId(), user, document, workspace);
+                tenant, published.runId(), published.taskId(), published.eventId(), user, document, workspace, modelId);
     }
 
     /**
@@ -759,6 +811,69 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         return TenantContext.callWithTenant(TenantId.of(tenant), supplier);
     }
 
+    /**
+     * 为当前测试的模型设置固定价格，用于断言固定样例金额。
+     *
+     * @param modelId 模型 ID
+     */
+    private void setModelPrices(UUID modelId) {
+        jdbcClient.sql("""
+                        UPDATE model
+                           SET input_price_per_1m = 3.000000, output_price_per_1m = 6.000000
+                         WHERE id = :id
+                        """).param("id", UuidBinary.toBytes(modelId)).update();
+    }
+
+    /**
+     * 读取运行的全部模型调用（按开始时间排序），用于区分 TOOL 与 GENERATION 阶段。
+     *
+     * @param runId 运行 ID
+     * @return 调用成本快照列
+     */
+    private List<Map<String, Object>> invocations(UUID runId) {
+        return jdbcClient
+                .sql("""
+                        SELECT purpose, status, prompt_tokens, completion_tokens,
+                               input_price_per_1m, output_price_per_1m, price_currency,
+                               pricing_version, cost_amount, cost_status, first_token_ms,
+                               cost_day, started_at
+                          FROM model_invocation
+                         WHERE run_id = :runId
+                         ORDER BY started_at, id
+                        """)
+                .param("runId", UuidBinary.toBytes(runId))
+                .query((rs, rowNum) -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("purpose", rs.getString("purpose"));
+                    row.put("status", rs.getString("status"));
+                    row.put("promptTokens", rs.getObject("prompt_tokens", Integer.class));
+                    row.put("completionTokens", rs.getObject("completion_tokens", Integer.class));
+                    row.put("inputPrice", rs.getBigDecimal("input_price_per_1m"));
+                    row.put("outputPrice", rs.getBigDecimal("output_price_per_1m"));
+                    row.put("priceCurrency", rs.getString("price_currency"));
+                    row.put("pricingVersion", rs.getString("pricing_version"));
+                    row.put("costAmount", rs.getBigDecimal("cost_amount"));
+                    row.put("costStatus", rs.getString("cost_status"));
+                    row.put("firstTokenMs", rs.getObject("first_token_ms", Integer.class));
+                    row.put("costDay", rs.getObject("cost_day", java.time.LocalDate.class));
+                    row.put(
+                            "startedAt",
+                            rs.getObject("started_at", LocalDateTime.class).toInstant(ZoneOffset.UTC));
+                    return row;
+                })
+                .list();
+    }
+
+    /**
+     * 独立计算期望日桶，避免测试复用被测转换逻辑。
+     *
+     * @param instant 调用开始瞬时
+     * @return 北京时间自然日
+     */
+    private static java.time.LocalDate expectedDay(Instant instant) {
+        return instant.atZone(java.time.ZoneId.of("Asia/Shanghai")).toLocalDate();
+    }
+
     /** 计算 SHA-256。 */
     private static String sha256(String value) {
         try {
@@ -783,7 +898,15 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
      * @param userId 用户
      * @param documentId 知识库文档
      * @param workspaceId 工作空间
+     * @param modelId 模型目录 ID
      */
     private record Fixture(
-            String tenant, UUID runId, UUID taskId, UUID eventId, UUID userId, UUID documentId, UUID workspaceId) {}
+            String tenant,
+            UUID runId,
+            UUID taskId,
+            UUID eventId,
+            UUID userId,
+            UUID documentId,
+            UUID workspaceId,
+            UUID modelId) {}
 }
