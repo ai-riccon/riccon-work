@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0180",
+  "module_id": "M05",
+  "title": "M05-B1 评审整改：outbox 调度/看门狗/legacy/409 测试与 P3 收口",
+  "owner": "riccon/builder-kb-core",
+  "status": "ready",
+  "write_scope": [
+    "apps/worker/src/main/java/com/riccon/worker/run/**",
+    "apps/worker/src/main/resources/application.yml",
+    "apps/worker/src/test/java/com/riccon/worker/outbox/**",
+    "apps/worker/src/test/java/com/riccon/worker/run/**",
+    "apps/api/src/main/java/com/riccon/api/config/**",
+    "apps/api/src/test/java/com/riccon/api/config/**",
+    "apps/api/src/test/java/com/riccon/api/ApiApplicationTests.java",
+    "apps/api/src/test/java/com/riccon/api/migration/V11MigrationTest.java"
+  ],
+  "acceptance": [
+    "F-002：补 OutboxLaneScheduler 启动/停止/通道并发/legacy 互斥测试，以及 OutboxPoller 租约丢失/超时（504/可重试/不落结果）测试；scheduler 覆盖率不再为 0",
+    "F-003：启动期校验或推导调度池大小 >= 1+heavy-concurrency，配置 4-8 不再静默截断，并有测试",
+    "F-004：max-processing 按通道配置，default 30m、heavy 65m 默认，解决连接器 60m 冲突；有测试与配置说明",
+    "F-005：legacy-all-lane-scheduling=true 时 lane scheduler 不再注册，旧/新调度互斥；有测试",
+    "P3：RICCON-WORKER-409 用于租约丢失可观察路径或删除；V1-V11 注释更新到 V12；KnowledgeAclStartupCheck WARN/指标有直接断言；RICCON-WORKER-500 静态文案不变",
+    "最终提交上 ./mvnw -q spotless:check 与 ./mvnw -q -T1C verify jacoco:report exit 0，EV dirty=false"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-22T22:28:38.582+08:00",
+  "updated_at": "2026-11-22T22:28:44.082+08:00"
+}
