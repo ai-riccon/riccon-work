@@ -1,0 +1,116 @@
+# command: LOCK="${TMPDIR:-/tmp}/riccon-maven.lock"; while ! mkdir "$LOCK" 2>/dev/null; do sleep 5; done; trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT; ./mvnw -q -T1C -pl apps/worker -am test -Dtest='*Ocr*Test,*DocumentParserTest,*PdfDocumentParserTest,*TextChunkerTest,*FileParseServiceIntegrationTest' -Dsurefire.failIfNoSpecifiedTests=false
+# cwd: /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-b5-verify-wt
+# started_at: 2026-11-23T11:33:27.920+08:00
+# finished_at: 2026-11-23T11:35:07.194+08:00
+# duration_ms: 99273
+# exit_code: 0
+
+# --- stdout ---
+11:34:03.682 [main] WARN org.apache.poi.openxml4j.util.ZipSecureFile -- setting max text size greater than 10485760 can be risky; set to 268435456 chars
+11:34:04.405 [main] WARN org.apache.poi.openxml4j.opc.ZipPackage -- Error in zip file /var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-xlsx-7878089922163733183.xlsx - falling back to stream processing (i.e. ignoring zip central directory)
+11:34:06.456 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.parse.service.FileParseServiceIntegrationTest]: FileParseServiceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+11:34:06.625 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.parse.service.FileParseServiceIntegrationTest
+11:34:06.751 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.parse.service.FileParseServiceIntegrationTest]: FileParseServiceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+11:34:06.751 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+11:34:06.754 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.parse.service.FileParseServiceIntegrationTest
+11:34:06.841 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+11:34:06.844 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+11:34:06.855 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+11:34:08.002 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+11:34:08.004 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+11:34:08.034 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+11:34:08.263 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+11:34:08.700 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: 2f7d194fb578f70c3dda2fb6797be60317d980dcaff2a630faee0b4e3de61853
+11:34:09.082 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT0.819179S
+11:34:09.091 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+11:34:09.092 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+11:34:09.093 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+11:34:09.093 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+11:34:09.183 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: 998276561ba20644ef791ac52a44f21de8abb36253a4b3ddc54052de0a1b3773
+11:34:09.446 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:60300/riccon using query 'SELECT 1'
+11:34:18.150 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT9.057037S
+11:34:18.150 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:60300/riccon)
+11:34:18.158 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Creating container for image: opensearchproject/opensearch:3.9.0
+11:34:18.212 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 is starting: ef656976f9ddb3ab93cf627c07c3d2365704703147606685cb5de4cd4602f3a3
+11:34:18.436 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /admiring_johnson: Waiting for 180 seconds for URL: http://localhost:60390/_cluster/health?wait_for_status=yellow&timeout=120s (where port 60390 maps to container port 9200)
+11:34:40.817 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 started in PT22.659579S
+11:34:40.818 [main] INFO tc.rustfs/rustfs:1.0.6 -- Creating container for image: rustfs/rustfs:1.0.6
+11:34:40.944 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 is starting: da894d6154a3ec949f7e8e5ddee8fe1c1b49fdceb6e663868d116705ce1d02e1
+11:34:41.316 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /pedantic_dijkstra: Waiting for 60 seconds for URL: http://localhost:60443/health (where port 60443 maps to container port 9000)
+11:34:41.830 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 started in PT1.011641S
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-23T11:34:46.264+08:00  INFO 53408 --- [riccon-worker] [           main] .r.w.p.s.FileParseServiceIntegrationTest : Starting FileParseServiceIntegrationTest using Java 21.0.13 with PID 53408 (started by ricky in /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-b5-verify-wt/apps/worker)
+2026-11-23T11:34:46.266+08:00  INFO 53408 --- [riccon-worker] [           main] .r.w.p.s.FileParseServiceIntegrationTest : The following 1 profile is active: "test"
+2026-11-23T11:34:48.170+08:00  INFO 53408 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-23T11:34:54.505+08:00  INFO 53408 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-23T11:34:54.505+08:00  INFO 53408 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-23T11:34:54.519+08:00  INFO 53408 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-23T11:34:54.530+08:00  INFO 53408 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 25 ms
+2026-11-23T11:34:54.689+08:00  INFO 53408 --- [riccon-worker] [           main] .r.w.p.s.FileParseServiceIntegrationTest : Started FileParseServiceIntegrationTest in 8.899 seconds (process running for 58.583)
+2026-11-23T11:34:54.763+08:00  INFO 53408 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-23T11:34:54.794+08:00  INFO 53408 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-23T11:34:54.829+08:00  INFO 53408 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=12 actual=12
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-23T11:34:56.351+08:00  WARN 53408 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a20678-9821-770b-9cdb-513cdbd14163 tenantId=tenant-a-523e4ae1be runId=01a20678-9804-7d2d-871c-5da4b26ce628 attempts=1 reason=RICCON-TENANT-404: file parse attempt not found
+2026-11-23T11:34:56.619+08:00  INFO 53408 --- [riccon-worker] [           main] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-a-9f0b184c16 fileId=01a20678-9889-74bf-8928-4cf66319d407 parseId=01a20678-9898-7836-af15-fe6a92962c5b chunks=2
+2026-11-23T11:34:56.628+08:00  INFO 53408 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a20678-98a0-7347-852b-8553e51fcf64 tenantId=tenant-a-9f0b184c16 runId=01a20678-989c-716c-af5a-035d0937928d attempts=1
+2026-11-23T11:34:56.749+08:00  INFO 53408 --- [riccon-worker] [           main] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-a-f5ed808f85 fileId=01a20678-99a0-72a0-9958-7adb3c4be18c parseId=01a20678-99b1-77e2-ad0d-ea61107dd1e3 chunks=2
+2026-11-23T11:34:56.758+08:00  INFO 53408 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a20678-99b9-7106-a406-98354f3b44d6 tenantId=tenant-a-f5ed808f85 runId=01a20678-99b4-7f3b-a237-ca2c10b11f3d attempts=1
+2026-11-23T11:34:56.887+08:00  WARN 53408 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a20678-9a29-7df8-8473-fd2701b73467 tenantId=tenant-a-0878d8a76c runId=01a20678-9a24-7b75-abb5-f0c380e36b29 attempts=1 reason=RICCON-TENANT-404: file not found
+2026-11-23T11:34:57.177+08:00  INFO 53408 --- [riccon-worker] [           main] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-a-ec63f8f4fa fileId=01a20678-9b3a-7806-93d9-71d4c06cad31 parseId=01a20678-9b47-783a-9779-68fc53192ccd chunks=3
+2026-11-23T11:34:57.183+08:00  INFO 53408 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a20678-9b4d-7315-9c33-38423339dc15 tenantId=tenant-a-ec63f8f4fa runId=01a20678-9b4a-7278-81a6-e400ecc2cf33 attempts=1
+2026-11-23T11:34:57.262+08:00  INFO 53408 --- [riccon-worker] [           main] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-a-0608a8171c fileId=01a20678-9bb4-7351-bb9c-321319666bee parseId=01a20678-9bc1-7012-959c-75198823a510 chunks=1
+2026-11-23T11:34:57.270+08:00  INFO 53408 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a20678-9bc7-791b-8301-4ee8aec36c66 tenantId=tenant-a-0608a8171c runId=01a20678-9bc4-793b-8436-142fdd177e3b attempts=1
+2026-11-23T11:34:57.444+08:00  WARN 53408 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a20678-9c7c-7fe7-936a-ad23d7e72edc tenantId=tenant-a-56d44a0b67 runId=01a20678-9c79-757f-abd9-67c8c63c9c98 attempts=1 reason=KB_OCR_DISABLED: OCR 未启用，图片仅保留原图与文件名
+2026-11-23T11:34:57.535+08:00  WARN 53408 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a20678-9cd1-7fee-9668-6f8acb4bcb27 tenantId=tenant-a-0f4d4fda66 runId=01a20678-9cce-78ef-b228-049cebf4f71a attempts=1 reason=KB_OCR_DISABLED: OCR 未启用，图片仅保留原图与文件名
+2026-11-23T11:34:57.617+08:00  WARN 53408 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a20678-9d27-71d0-81f3-7d48b421c55b tenantId=tenant-a-c9a4afa48d runId=01a20678-9d25-7f72-a150-dcc8489c25fa attempts=1 reason=RICCON-FILE-422: pdf document is not readable
+2026-11-23T11:35:00.312+08:00  INFO 53408 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.ocr.OcrInfoEndpointIntegrationTest]: OcrInfoEndpointIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-23T11:35:00.339+08:00  INFO 53408 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.ocr.OcrInfoEndpointIntegrationTest
+2026-11-23T11:35:00.341+08:00  INFO 53408 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.ocr.OcrInfoEndpointIntegrationTest]: OcrInfoEndpointIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-23T11:35:00.341+08:00  INFO 53408 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-23T11:35:00.343+08:00  INFO 53408 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.ocr.OcrInfoEndpointIntegrationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-23T11:35:00.382+08:00  INFO 53408 --- [riccon-worker] [           main] c.r.w.o.OcrInfoEndpointIntegrationTest   : Starting OcrInfoEndpointIntegrationTest using Java 21.0.13 with PID 53408 (started by ricky in /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-b5-verify-wt/apps/worker)
+2026-11-23T11:35:00.382+08:00  INFO 53408 --- [riccon-worker] [           main] c.r.w.o.OcrInfoEndpointIntegrationTest   : The following 1 profile is active: "test"
+2026-11-23T11:35:00.837+08:00  INFO 53408 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-23T11:35:06.051+08:00  INFO 53408 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-23T11:35:06.052+08:00  INFO 53408 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-23T11:35:06.055+08:00  INFO 53408 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 4 endpoints beneath base path '/actuator'
+2026-11-23T11:35:06.059+08:00  INFO 53408 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 7 ms
+2026-11-23T11:35:06.091+08:00  INFO 53408 --- [riccon-worker] [           main] c.r.w.o.OcrInfoEndpointIntegrationTest   : Started OcrInfoEndpointIntegrationTest in 5.744 seconds (process running for 69.985)
+2026-11-23T11:35:06.092+08:00  INFO 53408 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Starting...
+2026-11-23T11:35:06.114+08:00  INFO 53408 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Start completed.
+2026-11-23T11:35:06.134+08:00  INFO 53408 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=12 actual=12
+2026-11-23T11:35:06.424+08:00  INFO 53408 --- [riccon-worker] [           main] c.riccon.worker.ocr.service.OcrService   : ocr.image.rotate_retry pageNo=1 firstConfidence=0.300 retryConfidence=0.950
+2026-11-23T11:35:06.487+08:00  WARN 53408 --- [riccon-worker] [           main] c.riccon.worker.ocr.service.OcrService   : ocr.page.timeout pageNo=1 timeoutMs=50
+
+# --- stderr ---
+
