@@ -13,7 +13,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *
  * @param enabled 是否启用 OCR；仅在此为 true 时装配原生引擎并在不可用时启动失败
  * @param engine 引擎标识，当前支持 {@code tesseract}
- * @param language Tesseract 语言，冒号分隔多个语言时使用 {@code +}，例如 {@code chi_sim+eng}
+ * @param language Tesseract 语言，多个语言使用 {@code +} 分隔，例如 {@code chi_sim+eng}
  * @param maxConcurrency 每实例并发 OCR 线程数；不占用 chat/report 线程
  * @param pageTimeout 单页 OCR 超时
  * @param documentTimeout 单文档 OCR 总超时；超时后保留已成功页并告警
@@ -53,7 +53,7 @@ public record OcrProperties(
             throw new IllegalArgumentException("riccon.worker.ocr.engine must not be blank");
         }
         if (language == null || language.isBlank()) {
-            throw new IllegalArgumentException("riccon.worker.ocr.lang must not be blank");
+            throw new IllegalArgumentException("riccon.worker.ocr.language must not be blank");
         }
         if (maxConcurrency < 1 || maxConcurrency > 16) {
             throw new IllegalArgumentException("riccon.worker.ocr.max-concurrency must be in [1, 16]");
