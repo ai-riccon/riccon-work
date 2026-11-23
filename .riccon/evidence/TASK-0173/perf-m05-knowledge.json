@@ -1,10 +1,10 @@
 {
   "scenario": "knowledge",
   "failureMode": null,
-  "generatedAt": "2026-11-23T07:10:03.603Z",
+  "generatedAt": "2026-11-23T07:16:39.857Z",
   "baseUrl": "http://127.0.0.1:18080",
   "env": {
-    "generatedAt": "2026-11-23T07:06:09.805Z",
+    "generatedAt": "2026-11-23T07:12:06.109Z",
     "mode": "perf",
     "host": {
       "platform": "darwin 24.6.0",
@@ -14,17 +14,17 @@
       "memoryBytes": 17179869184,
       "memoryGiB": 16,
       "loadAverage": [
-        69.77,
-        93.86,
-        84.25
+        12.64,
+        44.99,
+        64.59
       ],
       "node": "v26.13.0"
     },
     "images": {
       "compose": [
-        "rustfs/rustfs:1.0.6",
         "mysql:8.4.13",
-        "opensearchproject/opensearch:3.9.0"
+        "opensearchproject/opensearch:3.9.0",
+        "rustfs/rustfs:1.0.6"
       ],
       "started": [
         "mysql:8.4.13",
@@ -45,7 +45,7 @@
       "language": "chi_sim+eng",
       "sample": "deploy/ocr/sample.png",
       "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
-      "probedAt": "2026-11-23T15:06:06+08:00"
+      "probedAt": "2026-11-23T15:12:03+08:00"
     },
     "startCommand": "node scripts/real-stack/run.mjs --mode=perf",
     "startupCommands": [
@@ -128,167 +128,167 @@
     ]
   },
   "metrics": {
-    "m05_chat_stream_ms": {
-      "count": 271,
-      "avg": 9473.461254612546,
-      "min": 4209,
-      "med": 9777,
-      "p(90)": 10864,
-      "p(95)": 11315.5,
-      "max": 11895
-    },
-    "m05_acl_get_ms": {
-      "avg": 205.2,
-      "min": 76,
-      "med": 178,
-      "p(90)": 271.79999999999995,
-      "p(95)": 360.8999999999998,
-      "max": 450,
-      "count": 10
-    },
-    "m05_acl_write_ok": {
-      "rate": 1,
-      "passes": 10,
-      "fails": 0
-    },
-    "m05_detail_ok": {
-      "rate": 1,
-      "passes": 271,
-      "fails": 0
-    },
-    "m05_chat_submit_ttfb_ms": {
-      "p(95)": 10691.068500000001,
-      "max": 11115.849,
-      "count": 271,
-      "avg": 8781.064298892989,
-      "min": 3582.22,
-      "med": 9100.556,
-      "p(90)": 10144.21
-    },
-    "m05_acl_write_ms": {
-      "p(95)": 6682.849999999999,
-      "max": 6866,
-      "count": 10,
-      "avg": 4001.4,
-      "min": 89,
-      "med": 5131.5,
-      "p(90)": 6499.7
+    "http_req_duration": {
+      "p(90)": 19118.855100000015,
+      "p(95)": 26888.7219,
+      "max": 30002.489,
+      "count": 940,
+      "avg": 4141.3801319148915,
+      "min": 60.359,
+      "med": 709.5350000000001
     },
     "m05_denied_404": {
       "rate": 1,
-      "passes": 271,
+      "passes": 116,
       "fails": 0
-    },
-    "m05_acl_get_ok": {
-      "rate": 1,
-      "passes": 10,
-      "fails": 0
-    },
-    "http_req_duration": {
-      "avg": 1516.7426070577028,
-      "min": 28.472,
-      "med": 244.224,
-      "p(90)": 8741.7384,
-      "p(95)": 10065.145999999997,
-      "max": 11894.35,
-      "count": 2097
-    },
-    "m05_download_ok": {
-      "rate": 1,
-      "passes": 271,
-      "fails": 0
-    },
-    "m04_api_ms": {
-      "p(90)": 297.564,
-      "p(95)": 338.206,
-      "max": 505.294,
-      "count": 271,
-      "avg": 192.95970110701103,
-      "min": 53.205,
-      "med": 182.833
-    },
-    "iterations": {
-      "count": 281,
-      "rate": 3.963434118479289
-    },
-    "m05_api_ms": {
-      "p(90)": 469.23740000000004,
-      "p(95)": 550.89545,
-      "max": 942.979,
-      "count": 542,
-      "avg": 278.2145996309961,
-      "min": 54.012,
-      "med": 252.017
-    },
-    "m05_api_ok": {
-      "rate": 1,
-      "passes": 542,
-      "fails": 0
-    },
-    "m05_run_detail_ms": {
-      "avg": 193.23247232472326,
-      "min": 54,
-      "med": 183,
-      "p(90)": 298,
-      "p(95)": 338,
-      "max": 506,
-      "count": 271
     },
     "m05_download_ms": {
-      "count": 271,
-      "avg": 230.07380073800738,
-      "min": 62,
-      "med": 207,
-      "p(90)": 379,
-      "p(95)": 425,
-      "max": 509
+      "avg": 684.4051724137931,
+      "min": 77,
+      "med": 526.5,
+      "p(90)": 1298,
+      "p(95)": 1650.75,
+      "max": 2660,
+      "count": 116
+    },
+    "m05_acl_get_ms": {
+      "p(95)": 862.2,
+      "max": 865,
+      "count": 3,
+      "avg": 812.6666666666666,
+      "min": 736,
+      "med": 837,
+      "p(90)": 859.4
+    },
+    "m05_api_ms": {
+      "p(90)": 1361.1824,
+      "p(95)": 1577.7942999999996,
+      "max": 2706.61,
+      "count": 232,
+      "avg": 761.1499137931037,
+      "min": 60.359,
+      "med": 659.2975
+    },
+    "m04_api_ms": {
+      "max": 1680.063,
+      "count": 79,
+      "avg": 446.3555189873417,
+      "min": 64.832,
+      "med": 362.456,
+      "p(90)": 891.1126,
+      "p(95)": 943.8275999999997
+    },
+    "m05_acl_write_ok": {
+      "rate": 1,
+      "passes": 3,
+      "fails": 0
+    },
+    "m05_acl_write_ms": {
+      "avg": 18328.666666666668,
+      "min": 15958,
+      "med": 16213,
+      "p(90)": 21494.6,
+      "p(95)": 22154.8,
+      "max": 22815,
+      "count": 3
+    },
+    "m05_chat_stream_ms": {
+      "med": 26380.5,
+      "p(90)": 30002,
+      "p(95)": 30002,
+      "max": 30010,
+      "count": 116,
+      "avg": 24411.827586206895,
+      "min": 9127
+    },
+    "m05_detail_ms": {
+      "min": 60,
+      "med": 526,
+      "p(90)": 1086.5,
+      "p(95)": 1284.25,
+      "max": 2038,
+      "count": 116,
+      "avg": 592.4137931034483
+    },
+    "iterations": {
+      "count": 119,
+      "rate": 1.3496563111545294
     },
     "m05_list_ok": {
       "rate": 1,
-      "passes": 271,
+      "passes": 116,
       "fails": 0
     },
-    "m05_detail_ms": {
-      "p(95)": 389.5,
-      "max": 554,
-      "count": 271,
-      "avg": 206.11439114391143,
-      "min": 54,
-      "med": 193,
-      "p(90)": 321
+    "m05_chat_submit_ttfb_ms": {
+      "p(90)": 30000.0855,
+      "p(95)": 30000.38825,
+      "max": 30002.209,
+      "count": 116,
+      "avg": 22933.630534482745,
+      "min": 6741.868,
+      "med": 24410.82
     },
-    "http_req_failed": {
-      "rate": 0.25846447305674775,
-      "passes": 542,
-      "fails": 1555
-    },
-    "m05_first_token_ok": {
+    "m05_detail_ok": {
       "rate": 1,
-      "passes": 271,
+      "passes": 116,
       "fails": 0
     },
     "m05_list_ms": {
-      "p(90)": 550,
-      "p(95)": 640,
-      "max": 943,
-      "count": 271,
-      "avg": 350.75645756457567,
-      "min": 106,
-      "med": 319
+      "avg": 930.6637931034483,
+      "min": 118,
+      "med": 829.5,
+      "p(90)": 1562.5,
+      "p(95)": 1799.25,
+      "max": 2707,
+      "count": 116
     },
-    "m05_chat_citations": {
+    "m05_run_detail_ms": {
+      "avg": 446.65822784810126,
+      "min": 65,
+      "med": 363,
+      "p(90)": 891.8000000000001,
+      "p(95)": 944.1999999999998,
+      "max": 1682,
+      "count": 79
+    },
+    "m05_api_ok": {
+      "passes": 232,
+      "fails": 0,
+      "rate": 1
+    },
+    "m05_download_ok": {
+      "passes": 116,
+      "fails": 0,
+      "rate": 1
+    },
+    "m05_acl_get_ok": {
       "rate": 1,
-      "passes": 271,
+      "passes": 3,
       "fails": 0
     },
     "m05_first_token_ms": {
-      "avg": 85.54612546125462,
-      "min": 23,
-      "med": 73,
-      "p(90)": 144,
-      "p(95)": 173.5,
-      "max": 486,
-      "count": 271
+      "min": 42,
+      "med": 228,
+      "p(90)": 448.80000000000007,
+      "p(95)": 617.999999999999,
+      "max": 868,
+      "count": 79,
+      "avg": 257.2911392405063
+    },
+    "http_req_failed": {
+      "rate": 0.28617021276595744,
+      "passes": 269,
+      "fails": 671
+    },
+    "m05_first_token_ok": {
+      "rate": 0.6810344827586207,
+      "passes": 79,
+      "fails": 37
+    },
+    "m05_chat_citations": {
+      "rate": 0.6810344827586207,
+      "passes": 79,
+      "fails": 37
     }
   },
   "m05": {
@@ -296,7 +296,7 @@
     "documentId": "00000000-0000-0000-0000-0000001e8481",
     "aclDocumentId": "00000000-0000-0000-0000-0000001e97a5",
     "hiddenDocumentId": "00000000-0000-0000-0000-0000001e97d7",
-    "downloadDocumentId": "01a2073c-6ee7-746d-bcd4-bddb3e9fd09f",
+    "downloadDocumentId": "01a20742-21a2-7352-bc40-be735ec588ba",
     "aclUserCount": 2,
     "concurrency": {
       "knowledgeVus": 50,
@@ -304,7 +304,7 @@
     },
     "duration": "60s",
     "note": "检索 p95 由 scripts/real-stack/run.mjs 从 MySQL slow_log 汇总后写回报告；k6 只负责并发与首字/API/ACL/下载指标",
-    "generatedAt": "2026-11-23T15:10:05+08:00",
+    "generatedAt": "2026-11-23T15:16:44+08:00",
     "dataset": {
       "documents": 5000,
       "chunks": 100000,
@@ -319,7 +319,7 @@
       "query": "PERFKNOW",
       "matchDocuments": "20%（每篇全部 chunk 含检索词）",
       "matchingChunks": "约 2 万（10 万 chunk 中）",
-      "seedMs": 7444,
+      "seedMs": 40817,
       "countsRaw": "documents\tchunks\tmatching_chunks\n5000\t100000\t20000",
       "note": "直插 SQL 只用于列表/检索/ACL 数据规模；索引与下载仍走真实上传→解析→索引→对象存储路径"
     },
@@ -331,19 +331,19 @@
       "memoryBytes": 17179869184,
       "memoryGiB": 16,
       "loadAverage": [
-        69.77,
-        93.86,
-        84.25
+        12.64,
+        44.99,
+        64.59
       ],
       "node": "v26.13.0"
     },
     "hostEnd": {
       "loadAverage": [
-        40.86,
-        63.79,
-        73.35
+        168.76,
+        91.12,
+        76.93
       ],
-      "measuredAt": "2026-11-23T15:10:05+08:00"
+      "measuredAt": "2026-11-23T15:16:44+08:00"
     },
     "openSearch": "started (perf knowledge; riccon-kb index-version v1, 512m heap)",
     "ocr": {
@@ -354,7 +354,7 @@
         "language": "chi_sim+eng",
         "sample": "deploy/ocr/sample.png",
         "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
-        "probedAt": "2026-11-23T15:06:06+08:00"
+        "probedAt": "2026-11-23T15:12:03+08:00"
       },
       "measured": false,
       "samples": [],
@@ -363,15 +363,15 @@
     "indexing": {
       "noOcr": {
         "samples": [
-          1511,
-          10956,
-          10789,
-          9255,
-          11721,
-          9482,
-          10617
+          6498,
+          14700,
+          14902,
+          15736,
+          17782,
+          13461,
+          20003
         ],
-        "p95Ms": 11721,
+        "p95Ms": 20003,
         "budgetMs": 60000,
         "withinBudget": true
       },
@@ -384,82 +384,82 @@
       },
       "baseline": {
         "kind": "docx",
-        "fileId": "01a2073c-65b6-76df-8a60-f715a0fb5701",
-        "documentId": "01a2073c-6ee7-746d-bcd4-bddb3e9fd09f",
-        "parseMs": 1864,
-        "createToIndexedMs": 1511,
-        "totalMs": 3882
+        "fileId": "01a20741-f613-7360-9727-de7d83e25a1f",
+        "documentId": "01a20742-21a2-7352-bc40-be735ec588ba",
+        "parseMs": 6813,
+        "createToIndexedMs": 6498,
+        "totalMs": 18277
       },
       "backlog": [
         {
           "kind": "docx",
           "index": 1,
-          "fileId": "01a2073c-8186-7c6d-9406-8b51ba72bc5c",
-          "documentId": "01a2073c-a4e0-728a-bad5-f85598c56847",
-          "uploadMs": 6528,
-          "parseMs": 2472,
-          "createToIndexedMs": 10956,
-          "totalMs": 19956,
+          "fileId": "01a20742-4a41-71c2-9448-b1116f5cb66d",
+          "documentId": "01a20742-6018-705a-83e4-58e9b32e2df6",
+          "uploadMs": 2575,
+          "parseMs": 2511,
+          "createToIndexedMs": 14700,
+          "totalMs": 19786,
           "chunkCount": null,
           "parseEngine": "NONE"
         },
         {
           "kind": "docx",
           "index": 2,
-          "fileId": "01a2073c-8198-7682-8c68-b13ea40822ff",
-          "documentId": "01a2073c-a017-745c-89d1-de3a2d39b36a",
-          "uploadMs": 6614,
-          "parseMs": 1136,
-          "createToIndexedMs": 10789,
-          "totalMs": 18539,
+          "fileId": "01a20742-4a44-7c4f-8887-9cbeee7ace26",
+          "documentId": "01a20742-629c-7976-8336-893da72dff7a",
+          "uploadMs": 3505,
+          "parseMs": 2525,
+          "createToIndexedMs": 14902,
+          "totalMs": 20932,
           "chunkCount": null,
           "parseEngine": "NONE"
         },
         {
           "kind": "docx",
           "index": 3,
-          "fileId": "01a2073c-8182-7af0-86c3-e909ff9ffa97",
-          "documentId": "01a2073c-9ee9-7ec9-b7a4-466076d876ad",
-          "uploadMs": 6412,
-          "parseMs": 1048,
-          "createToIndexedMs": 9255,
-          "totalMs": 16715,
+          "fileId": "01a20742-4a4e-7114-b79b-d72ecd15eb15",
+          "documentId": "01a20742-6828-74ea-aac3-b69971834d8e",
+          "uploadMs": 2515,
+          "parseMs": 4948,
+          "createToIndexedMs": 15736,
+          "totalMs": 23199,
           "chunkCount": null,
           "parseEngine": "NONE"
         },
         {
           "kind": "docx",
           "index": 4,
-          "fileId": "01a2073c-8197-7d88-a270-8270068dec95",
-          "documentId": "01a2073c-a6af-764d-9a23-73178f295a2a",
-          "uploadMs": 6560,
-          "parseMs": 2839,
-          "createToIndexedMs": 11721,
-          "totalMs": 21120,
+          "fileId": "01a20742-4a54-713c-a050-f46dc64ca226",
+          "documentId": "01a20742-6b67-77f7-aaaa-bb7487f8e148",
+          "uploadMs": 3552,
+          "parseMs": 5108,
+          "createToIndexedMs": 17782,
+          "totalMs": 26442,
           "chunkCount": null,
           "parseEngine": "NONE"
         },
         {
           "kind": "docx",
           "index": 5,
-          "fileId": "01a2073c-8183-732b-a4ff-b2ed7a43d249",
-          "documentId": "01a2073c-9fee-7423-b7bd-dbcf1de97444",
-          "uploadMs": 6223,
-          "parseMs": 1478,
-          "createToIndexedMs": 9482,
-          "totalMs": 17183,
+          "fileId": "01a20742-4a44-755c-a868-587ae00afe03",
+          "documentId": "01a20742-5c15-71d8-90a9-f553cbbfd516",
+          "uploadMs": 2782,
+          "parseMs": 1535,
+          "createToIndexedMs": 13461,
+          "totalMs": 17778,
           "chunkCount": null,
           "parseEngine": "NONE"
         },
         {
           "kind": "docx",
           "index": 6,
-          "fileId": "01a2073c-8186-767b-93f1-1d978a072870",
-          "documentId": "01a2073c-a1eb-7675-a54b-e728b6209f53",
-          "uploadMs": 6517,
-          "parseMs": 1637,
-          "createToIndexedMs": 10617,
-          "totalMs": 18771,
+          "fileId": "01a20742-4a5c-7479-8b64-0ad64b10ae40",
+          "documentId": "01a20742-7118-7b30-af2b-5f08b9600699",
+          "uploadMs": 2704,
+          "parseMs": 6923,
+          "createToIndexedMs": 20003,
+          "totalMs": 29630,
           "chunkCount": null,
           "parseEngine": "NONE"
         }
@@ -469,33 +469,33 @@
     "retrieval": {
       "source": "mysql.slow_log (long_query_time=0.001s, log_output=TABLE)",
       "statement": "AgentContextJdbc.search: knowledge_chunk.content LIKE / knowledge_document.title LIKE + ACL 谓词",
-      "samples": 271,
-      "p50Ms": 2000,
-      "p95Ms": 2000,
-      "maxMs": 3000,
-      "avgRowsExamined": 104137.2,
+      "samples": 116,
+      "p50Ms": 4000,
+      "p95Ms": 7000,
+      "maxMs": 8000,
+      "avgRowsExamined": 104138.7,
       "budgetMs": 500,
       "decisionRequired": true,
       "decision": "检索 p95 未证明 ≤500ms：需在 M05 gate 前决定 (a) MySQL FULLTEXT/覆盖索引，(b) OpenSearch 两阶段 ACL 复核，(c) 用户批准单独检索预算（ADR-0023 §9）"
     },
     "budgets": {
-      "firstTokenServerP95Ms": 173.5,
+      "firstTokenServerP95Ms": 617.999999999999,
       "firstTokenServerBudgetMs": 3000,
       "firstTokenServerWithinBudget": true,
-      "userFirstTokenEstimatedP95Ms": 2173.5,
+      "userFirstTokenEstimatedP95Ms": 7617.999999999999,
       "userFirstTokenBudgetMs": 3000,
-      "userFirstTokenWithinBudget": true,
-      "apiP95Ms": 550.89545,
+      "userFirstTokenWithinBudget": false,
+      "apiP95Ms": 1577.7942999999996,
       "apiBudgetMs": 500,
       "apiWithinBudget": false,
-      "aclWriteP95Ms": 6682.849999999999,
-      "aclGetP95Ms": 360.8999999999998,
+      "aclWriteP95Ms": 22154.8,
+      "aclGetP95Ms": 862.2,
       "aclBudgetMs": 500,
       "aclWithinBudget": false,
-      "downloadP95Ms": 425,
-      "indexNoOcrP95Ms": 11721,
+      "downloadP95Ms": 1650.75,
+      "indexNoOcrP95Ms": 20003,
       "indexBudgetMs": 60000,
-      "sseBufferedRequestP95Ms": 10691.068500000001,
+      "sseBufferedRequestP95Ms": 30000.38825,
       "note": "首字用 retrieval p95 + 服务端模型首字 p95 估算；k6 对 SSE 整段缓冲，m05_chat_submit_ttfb_ms 不是首字口径"
     },
     "thresholds": {
@@ -546,7 +546,7 @@
       "检索 p95 来自 MySQL slow_log 中 AgentContextJdbc LIKE + ACL 谓词的实际执行时间；不含网络与结果映射。",
       "slow_log 在 API/Worker 建连前开启（long_query_time=0.001s）；它会给测试栈带来额外写开销，结果偏保守。",
       "M05 不启用连接器分支。",
-      "宿主 1 分钟负载 40.9 高于 CPU 数 12；结果偏保守，复验应在空闲宿主进行"
+      "宿主 1 分钟负载 168.8 高于 CPU 数 12；结果偏保守，复验应在空闲宿主进行"
     ]
   }
 }

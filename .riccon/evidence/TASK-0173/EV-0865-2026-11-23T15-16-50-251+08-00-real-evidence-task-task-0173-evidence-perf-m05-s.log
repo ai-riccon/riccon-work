@@ -1,0 +1,500 @@
+# command: REAL_EVIDENCE_TASK=TASK-0173-evidence PERF_M05_SCENARIO=knowledge REAL_PERF_SKIP_M04=1 PERF_M05_BACKLOG=6 PERF_M05_DURATION=60s node scripts/real-stack/run.mjs --mode=perf
+# cwd: /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/opencode/riccon-m05-perf
+# started_at: 2026-11-23T15:12:03.633+08:00
+# finished_at: 2026-11-23T15:16:49.132+08:00
+# duration_ms: 285495
+# exit_code: 1
+
+# --- stdout ---
+[real-stack] perf mode: mysql + opensearch + object-storage (M05 knowledge)
+[real-stack] started model pid=86883 log=.riccon/evidence/TASK-0173-evidence/real-stack-model.log
+[real-stack] started api pid=86906 log=.riccon/evidence/TASK-0173-evidence/real-stack-api.log
+[real-stack] api ready (flyway=12); starting worker
+[real-stack] started worker pid=87109 log=.riccon/evidence/TASK-0173-evidence/real-stack-worker.log
+[real-stack] k6 knowledge exit=99 report=.riccon/evidence/TASK-0173-evidence/perf-m05-knowledge.json
+{
+  "status": "failed",
+  "generatedAt": "2026-11-23T15:16:44+08:00",
+  "phase": {
+    "dataset": "passed",
+    "baselineIndex": "passed",
+    "retrievalCapture": "passed"
+  },
+  "k6": {
+    "status": 99,
+    "report": ".riccon/evidence/TASK-0173-evidence/perf-m05-knowledge.json",
+    "log": ".riccon/evidence/TASK-0173-evidence/perf-m05-knowledge.log"
+  },
+  "retrieval": {
+    "source": "mysql.slow_log (long_query_time=0.001s, log_output=TABLE)",
+    "statement": "AgentContextJdbc.search: knowledge_chunk.content LIKE / knowledge_document.title LIKE + ACL 谓词",
+    "samples": 116,
+    "p50Ms": 4000,
+    "p95Ms": 7000,
+    "maxMs": 8000,
+    "avgRowsExamined": 104138.7
+  },
+  "budgets": {
+    "firstTokenServerP95Ms": 617.999999999999,
+    "firstTokenServerBudgetMs": 3000,
+    "firstTokenServerWithinBudget": true,
+    "userFirstTokenEstimatedP95Ms": 7617.999999999999,
+    "userFirstTokenBudgetMs": 3000,
+    "userFirstTokenWithinBudget": false,
+    "apiP95Ms": 1577.7942999999996,
+    "apiBudgetMs": 500,
+    "apiWithinBudget": false,
+    "aclWriteP95Ms": 22154.8,
+    "aclGetP95Ms": 862.2,
+    "aclBudgetMs": 500,
+    "aclWithinBudget": false,
+    "downloadP95Ms": 1650.75,
+    "indexNoOcrP95Ms": 20003,
+    "indexBudgetMs": 60000,
+    "sseBufferedRequestP95Ms": 30000.38825,
+    "note": "首字用 retrieval p95 + 服务端模型首字 p95 估算；k6 对 SSE 整段缓冲，m05_chat_submit_ttfb_ms 不是首字口径"
+  },
+  "indexing": {
+    "noOcr": {
+      "samples": [
+        6498,
+        14700,
+        14902,
+        15736,
+        17782,
+        13461,
+        20003
+      ],
+      "p95Ms": 20003,
+      "budgetMs": 60000,
+      "withinBudget": true
+    },
+    "ocr": {
+      "samples": [],
+      "p95Ms": null,
+      "budgetMs": 120000,
+      "withinBudget": false,
+      "note": "单页样本，非 ADR 的 20 页口径"
+    },
+    "baseline": {
+      "kind": "docx",
+      "fileId": "01a20741-f613-7360-9727-de7d83e25a1f",
+      "documentId": "01a20742-21a2-7352-bc40-be735ec588ba",
+      "parseMs": 6813,
+      "createToIndexedMs": 6498,
+      "totalMs": 18277
+    },
+    "backlog": [
+      {
+        "kind": "docx",
+        "index": 1,
+        "fileId": "01a20742-4a41-71c2-9448-b1116f5cb66d",
+        "documentId": "01a20742-6018-705a-83e4-58e9b32e2df6",
+        "uploadMs": 2575,
+        "parseMs": 2511,
+        "createToIndexedMs": 14700,
+        "totalMs": 19786,
+        "chunkCount": null,
+        "parseEngine": "NONE"
+      },
+      {
+        "kind": "docx",
+        "index": 2,
+        "fileId": "01a20742-4a44-7c4f-8887-9cbeee7ace26",
+        "documentId": "01a20742-629c-7976-8336-893da72dff7a",
+        "uploadMs": 3505,
+        "parseMs": 2525,
+        "createToIndexedMs": 14902,
+        "totalMs": 20932,
+        "chunkCount": null,
+        "parseEngine": "NONE"
+      },
+      {
+        "kind": "docx",
+        "index": 3,
+        "fileId": "01a20742-4a4e-7114-b79b-d72ecd15eb15",
+        "documentId": "01a20742-6828-74ea-aac3-b69971834d8e",
+        "uploadMs": 2515,
+        "parseMs": 4948,
+        "createToIndexedMs": 15736,
+        "totalMs": 23199,
+        "chunkCount": null,
+        "parseEngine": "NONE"
+      },
+      {
+        "kind": "docx",
+        "index": 4,
+        "fileId": "01a20742-4a54-713c-a050-f46dc64ca226",
+        "documentId": "01a20742-6b67-77f7-aaaa-bb7487f8e148",
+        "uploadMs": 3552,
+        "parseMs": 5108,
+        "createToIndexedMs": 17782,
+        "totalMs": 26442,
+        "chunkCount": null,
+        "parseEngine": "NONE"
+      },
+      {
+        "kind": "docx",
+        "index": 5,
+        "fileId": "01a20742-4a44-755c-a868-587ae00afe03",
+        "documentId": "01a20742-5c15-71d8-90a9-f553cbbfd516",
+        "uploadMs": 2782,
+        "parseMs": 1535,
+        "createToIndexedMs": 13461,
+        "totalMs": 17778,
+        "chunkCount": null,
+        "parseEngine": "NONE"
+      },
+      {
+        "kind": "docx",
+        "index": 6,
+        "fileId": "01a20742-4a5c-7479-8b64-0ad64b10ae40",
+        "documentId": "01a20742-7118-7b30-af2b-5f08b9600699",
+        "uploadMs": 2704,
+        "parseMs": 6923,
+        "createToIndexedMs": 20003,
+        "totalMs": 29630,
+        "chunkCount": null,
+        "parseEngine": "NONE"
+      }
+    ],
+    "backlogDuringLoad": true
+  },
+  "ocr": {
+    "probed": {
+      "available": false,
+      "exitCode": 4,
+      "engine": "tesseract",
+      "language": "chi_sim+eng",
+      "sample": "deploy/ocr/sample.png",
+      "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
+      "probedAt": "2026-11-23T15:12:03+08:00"
+    },
+    "measured": false,
+    "samples": [],
+    "note": "宿主 libtesseract 不可用，OCR 未量测；报告不把未执行当通过，需在含 Tesseract 的 worker 镜像/CI 复验"
+  },
+  "decisionRequired": true,
+  "decision": "检索 p95 未证明 ≤500ms：需在 M05 gate 前决定 (a) MySQL FULLTEXT/覆盖索引，(b) OpenSearch 两阶段 ACL 复核，(c) 用户批准单独检索预算（ADR-0023 §9）",
+  "notes": [
+    "PERF-M05-001：首字/API/ACL 写/检索量测；PERF-M05-002：索引延迟（无 OCR 与 OCR 单页）。",
+    "检索 >500ms 时 status 为 passed-with-decision（ADR-0023 §9 未预设通过阈值）；设置 PERF_M05_SEARCH_ENFORCE=1 可按 500ms 硬失败。",
+    "OCR 不可用时 ocr.measured=false，不把未执行当通过。"
+  ]
+}
+{
+  "status": "failed",
+  "generatedAt": "2026-11-23T07:16:45.953Z",
+  "mode": "perf",
+  "env": {
+    "generatedAt": "2026-11-23T07:12:06.109Z",
+    "mode": "perf",
+    "host": {
+      "platform": "darwin 24.6.0",
+      "arch": "x64",
+      "cpus": 12,
+      "cpuModel": "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz",
+      "memoryBytes": 17179869184,
+      "memoryGiB": 16,
+      "loadAverage": [
+        12.64,
+        44.99,
+        64.59
+      ],
+      "node": "v26.13.0"
+    },
+    "images": {
+      "compose": [
+        "mysql:8.4.13",
+        "opensearchproject/opensearch:3.9.0",
+        "rustfs/rustfs:1.0.6"
+      ],
+      "started": [
+        "mysql:8.4.13",
+        "opensearchproject/opensearch:3.9.0",
+        "rustfs/rustfs:1.0.6"
+      ]
+    },
+    "k6Version": "k6 v2.4.0 (commit/dd9395906d, go1.26.11, darwin/amd64)",
+    "scriptSha256": "cdbdff983cfff15437fcda35a59a498d451c9bd057bb2855d31fc4c707d8c2df",
+    "chatMaxStreams": 50,
+    "dbPoolSize": 50,
+    "fakeModel": 1,
+    "deploymentMode": "DEMO",
+    "ocr": {
+      "available": false,
+      "exitCode": 4,
+      "engine": "tesseract",
+      "language": "chi_sim+eng",
+      "sample": "deploy/ocr/sample.png",
+      "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
+      "probedAt": "2026-11-23T15:12:03+08:00"
+    },
+    "startCommand": "node scripts/real-stack/run.mjs --mode=perf",
+    "startupCommands": [
+      "java -jar apps/api/target/riccon-api-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/MASTER_KEY_ID/FINGERPRINT_PEPPER/BILLING_CURRENCY/QUOTA_DEFAULT_*/DB_POOL)",
+      "java -jar apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/CHAT_MAX_STREAMS/DB_POOL_SIZE/MODEL_FIRST_TOKEN_TIMEOUT/PRE_FIRST_TOKEN_BUDGET)",
+      "node scripts/real-stack/fake-model.mjs --scenario ok --chunk-count 6"
+    ],
+    "perfProfile": {
+      "chatMaxStreams": 50,
+      "dbPoolSize": 50,
+      "dbPoolFloor": 25,
+      "fakeModel": 1,
+      "connectTimeout": "500ms",
+      "firstTokenTimeout": "1000ms",
+      "preFirstTokenBudget": "2500ms",
+      "maxAttempts": 3,
+      "retryDelays": "50ms,100ms",
+      "duration": "45s"
+    },
+    "openSearch": "started (perf knowledge; riccon-kb index-version v1, 512m heap)",
+    "perfM05": {
+      "scenario": "knowledge",
+      "dataset": {
+        "documents": 5000,
+        "chunks": 100000,
+        "chunksPerDocument": 20,
+        "query": "PERFKNOW",
+        "matchRatio": "20% 文档包含检索词（每篇全部 20 chunk）"
+      },
+      "concurrency": {
+        "knowledgeVus": 50,
+        "aclWriteVus": 1
+      },
+      "duration": "60s",
+      "dbPoolSize": 50,
+      "chatMaxStreams": 50,
+      "fakeModel": 1,
+      "aclEnforcement": true
+    }
+  },
+  "fingerprint": {
+    "api": {
+      "deploymentMode": "DEMO",
+      "endpointSetHash": "45f1b03d8c4b3b8901c8960ecb498d83165b34b92bd18fbddab53356820ca7a2",
+      "routingMode": "",
+      "failoverEnabled": "",
+      "quotaEnforcementEnabled": "",
+      "masterKeyId": "mk-1",
+      "currency": "CNY",
+      "tenantDaily": "10000",
+      "tenantMonthly": "200000",
+      "userDaily": "1000",
+      "userMonthly": "20000"
+    },
+    "worker": {
+      "deploymentMode": "DEMO",
+      "endpointSetHash": "45f1b03d8c4b3b8901c8960ecb498d83165b34b92bd18fbddab53356820ca7a2",
+      "routingMode": "",
+      "failoverEnabled": "",
+      "quotaEnforcementEnabled": "",
+      "masterKeyId": "mk-1",
+      "currency": "CNY",
+      "tenantDaily": "10000",
+      "tenantMonthly": "200000",
+      "userDaily": "1000",
+      "userMonthly": "20000"
+    },
+    "matched": true
+  },
+  "phases": {
+    "compose": "passed",
+    "objectStorage": "passed",
+    "retrievalCapture": "enabled",
+    "migration": "passed",
+    "fingerprint": "passed",
+    "seed": "passed",
+    "m04": "skipped-by-REAL_PERF_SKIP_M04",
+    "knowledge": "failed",
+    "ocr": "unavailable-on-host"
+  },
+  "runs": [],
+  "knowledge": {
+    "status": "failed",
+    "generatedAt": "2026-11-23T15:16:44+08:00",
+    "phase": {
+      "dataset": "passed",
+      "baselineIndex": "passed",
+      "retrievalCapture": "passed"
+    },
+    "k6": {
+      "status": 99,
+      "report": ".riccon/evidence/TASK-0173-evidence/perf-m05-knowledge.json",
+      "log": ".riccon/evidence/TASK-0173-evidence/perf-m05-knowledge.log"
+    },
+    "retrieval": {
+      "source": "mysql.slow_log (long_query_time=0.001s, log_output=TABLE)",
+      "statement": "AgentContextJdbc.search: knowledge_chunk.content LIKE / knowledge_document.title LIKE + ACL 谓词",
+      "samples": 116,
+      "p50Ms": 4000,
+      "p95Ms": 7000,
+      "maxMs": 8000,
+      "avgRowsExamined": 104138.7
+    },
+    "budgets": {
+      "firstTokenServerP95Ms": 617.999999999999,
+      "firstTokenServerBudgetMs": 3000,
+      "firstTokenServerWithinBudget": true,
+      "userFirstTokenEstimatedP95Ms": 7617.999999999999,
+      "userFirstTokenBudgetMs": 3000,
+      "userFirstTokenWithinBudget": false,
+      "apiP95Ms": 1577.7942999999996,
+      "apiBudgetMs": 500,
+      "apiWithinBudget": false,
+      "aclWriteP95Ms": 22154.8,
+      "aclGetP95Ms": 862.2,
+      "aclBudgetMs": 500,
+      "aclWithinBudget": false,
+      "downloadP95Ms": 1650.75,
+      "indexNoOcrP95Ms": 20003,
+      "indexBudgetMs": 60000,
+      "sseBufferedRequestP95Ms": 30000.38825,
+      "note": "首字用 retrieval p95 + 服务端模型首字 p95 估算；k6 对 SSE 整段缓冲，m05_chat_submit_ttfb_ms 不是首字口径"
+    },
+    "indexing": {
+      "noOcr": {
+        "samples": [
+          6498,
+          14700,
+          14902,
+          15736,
+          17782,
+          13461,
+          20003
+        ],
+        "p95Ms": 20003,
+        "budgetMs": 60000,
+        "withinBudget": true
+      },
+      "ocr": {
+        "samples": [],
+        "p95Ms": null,
+        "budgetMs": 120000,
+        "withinBudget": false,
+        "note": "单页样本，非 ADR 的 20 页口径"
+      },
+      "baseline": {
+        "kind": "docx",
+        "fileId": "01a20741-f613-7360-9727-de7d83e25a1f",
+        "documentId": "01a20742-21a2-7352-bc40-be735ec588ba",
+        "parseMs": 6813,
+        "createToIndexedMs": 6498,
+        "totalMs": 18277
+      },
+      "backlog": [
+        {
+          "kind": "docx",
+          "index": 1,
+          "fileId": "01a20742-4a41-71c2-9448-b1116f5cb66d",
+          "documentId": "01a20742-6018-705a-83e4-58e9b32e2df6",
+          "uploadMs": 2575,
+          "parseMs": 2511,
+          "createToIndexedMs": 14700,
+          "totalMs": 19786,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 2,
+          "fileId": "01a20742-4a44-7c4f-8887-9cbeee7ace26",
+          "documentId": "01a20742-629c-7976-8336-893da72dff7a",
+          "uploadMs": 3505,
+          "parseMs": 2525,
+          "createToIndexedMs": 14902,
+          "totalMs": 20932,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 3,
+          "fileId": "01a20742-4a4e-7114-b79b-d72ecd15eb15",
+          "documentId": "01a20742-6828-74ea-aac3-b69971834d8e",
+          "uploadMs": 2515,
+          "parseMs": 4948,
+          "createToIndexedMs": 15736,
+          "totalMs": 23199,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 4,
+          "fileId": "01a20742-4a54-713c-a050-f46dc64ca226",
+          "documentId": "01a20742-6b67-77f7-aaaa-bb7487f8e148",
+          "uploadMs": 3552,
+          "parseMs": 5108,
+          "createToIndexedMs": 17782,
+          "totalMs": 26442,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 5,
+          "fileId": "01a20742-4a44-755c-a868-587ae00afe03",
+          "documentId": "01a20742-5c15-71d8-90a9-f553cbbfd516",
+          "uploadMs": 2782,
+          "parseMs": 1535,
+          "createToIndexedMs": 13461,
+          "totalMs": 17778,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 6,
+          "fileId": "01a20742-4a5c-7479-8b64-0ad64b10ae40",
+          "documentId": "01a20742-7118-7b30-af2b-5f08b9600699",
+          "uploadMs": 2704,
+          "parseMs": 6923,
+          "createToIndexedMs": 20003,
+          "totalMs": 29630,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        }
+      ],
+      "backlogDuringLoad": true
+    },
+    "ocr": {
+      "probed": {
+        "available": false,
+        "exitCode": 4,
+        "engine": "tesseract",
+        "language": "chi_sim+eng",
+        "sample": "deploy/ocr/sample.png",
+        "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
+        "probedAt": "2026-11-23T15:12:03+08:00"
+      },
+      "measured": false,
+      "samples": [],
+      "note": "宿主 libtesseract 不可用，OCR 未量测；报告不把未执行当通过，需在含 Tesseract 的 worker 镜像/CI 复验"
+    },
+    "decisionRequired": true,
+    "decision": "检索 p95 未证明 ≤500ms：需在 M05 gate 前决定 (a) MySQL FULLTEXT/覆盖索引，(b) OpenSearch 两阶段 ACL 复核，(c) 用户批准单独检索预算（ADR-0023 §9）",
+    "notes": [
+      "PERF-M05-001：首字/API/ACL 写/检索量测；PERF-M05-002：索引延迟（无 OCR 与 OCR 单页）。",
+      "检索 >500ms 时 status 为 passed-with-decision（ADR-0023 §9 未预设通过阈值）；设置 PERF_M05_SEARCH_ENFORCE=1 可按 500ms 硬失败。",
+      "OCR 不可用时 ocr.measured=false，不把未执行当通过。"
+    ]
+  },
+  "notes": [
+    "M05 knowledge：MySQL + OpenSearch + RustFS 启动；OpenSearch 只做可重建索引，检索仍以 MySQL LIKE + ACL 为准。",
+    "每个降级模式独立一次 k6 运行并在前后重置 fake provider key 场景与 key 健康，避免 401 失效/冷却掩盖降级。",
+    "配额场景会通过开关 GET/PUT 临时打开 quotaEnforcementEnabled，并把租户/用户日限额设为已用+1；结束后恢复开关与两级限额原值。",
+    "OCR 引擎由宿主 libtesseract 决定；不可用时 Worker 以 RICCON_OCR_ENABLED=0 启动并在报告中标记未量测。"
+  ]
+}
+[real-stack] stopping worker pid=87109
+[real-stack] stopping api pid=86906
+[real-stack] stopping model pid=86883
+[real-stack] model exited code=0 signal=null
+[real-stack] killing worker pid=87109
+[real-stack] killing api pid=86906
+[real-stack] worker exited code=null signal=SIGKILL
+[real-stack] api exited code=null signal=SIGKILL
+
+# --- stderr ---
+
