@@ -1,0 +1,52 @@
+Riccon
+Copyright 2026 Riccon
+
+本产品包含由第三方提供的组件。以下列出与本项目运行时（尤其是 M05 本地 OCR）
+直接相关、随镜像分发的第三方组件、其许可证与固定版本/指纹。
+
+完整清单以构建产物 SBOM（CycloneDX/SPDX，见 deploy/sbom/README.md）为准；
+本文件只列随镜像分发且需要保留版权/许可声明的组件。
+
+================================================================================
+运行时 OCR 组件（worker 镜像，deploy/Dockerfile.worker）
+================================================================================
+
+1) Tesseract OCR 5.3.4
+   许可证：Apache License 2.0
+   上游：https://github.com/tesseract-ocr/tesseract
+   分发形式：Ubuntu 24.04 (noble) 发行包 tesseract-ocr=5.3.4-1build5、
+             libtesseract5=5.3.4-1build5
+   版权：Copyright Google Inc. and Contributors
+
+2) Leptonica 1.82.0
+   许可证：BSD 2-Clause "Simplified" License
+   上游：http://www.leptonica.org/
+   分发形式：Ubuntu 24.04 (noble) 发行包 liblept5=1.82.0-3build4
+   版权：Copyright Dan Bloomberg and Contributors
+
+3) tessdata_fast 语言权重（chi_sim, eng）
+   许可证：Apache License 2.0
+   上游：https://github.com/tesseract-ocr/tessdata_fast
+   固定引用：tessdata_fast commit 87416418657359cb625c412a48b6e1d6d41c29bd
+   文件指纹（SHA256）：
+     chi_sim.traineddata  a5fcb6f0db1e1d6d8522f39db4e848f05984669172e584e8d76b6b3141e1f730
+     eng.traineddata      7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2
+   版权：Copyright Google Inc. and Contributors
+   说明：eng/osd 基础数据同时由 Ubuntu 发行包 tesseract-ocr-eng / tesseract-ocr-osd
+         (1:4.1.0-2) 提供；镜像用 tessdata_fast 覆盖 eng 并新增 chi_sim。
+
+================================================================================
+许可合规说明
+================================================================================
+
+- 本项目只使用 Apache-2.0、MIT、BSD、EPL 兼容许可的依赖（AGENTS.md
+  constraints.licensing）。上述 OCR 组件均为 Apache-2.0 或 BSD-2-Clause。
+- 镜像内不含 AGPL 组件，也不含任何公有云 OCR SDK/服务端依赖（ADR-0023 §4.1
+  明确拒绝公有云 OCR；M05-AC-05 要求零出网）。
+- 若未来切换到 RapidOCR/PP-OCR ONNX 替代引擎，必须在本文件追加 RapidOCR、
+  ONNX Runtime 与 PP-OCR 模型的版权、许可、来源与文件哈希，再发布镜像。
+- 第三方许可证原文随各发行包位于 /usr/share/doc/<package>/copyright；
+  上游全文见各组件仓库的 LICENSE 文件。
+
+本文件随仓库版本演进；新增或升级 OCR/原生依赖时必须同步更新并与
+deploy/sbom/README.md 的 SBOM 检查一起复核。

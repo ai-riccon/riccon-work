@@ -1,0 +1,118 @@
+# syntax=docker/dockerfile:1.7
+#
+# Riccon Worker 运行时镜像（M05-O1a：本地 OCR 能力）
+#
+# 自包含构建：`docker build -f deploy/Dockerfile.worker -t riccon-worker:local .`
+# 构建上下文 = 仓库根；同目录的 Dockerfile.worker.dockerignore 只放行 Maven 构建
+# 所需的源文件，排除 node_modules/target/.git。
+#
+# 供应链固定（ADR-0023 §4.6、M05-AC-05）：
+#   - 构建与运行镜像均按 digest 固定；
+#   - Tesseract/Leptonica 按 apt 版本固定；
+#   - tessdata_fast 权重在构建期按仓库 commit + SHA256 校验后写入镜像；
+#   - 运行期零出网：不下载权重、不访问公有云 OCR。
+#   - 最终镜像不含密钥/代理凭据/构建工具（curl 只在临时权重阶段使用）。
+
+ARG BUILD_IMAGE=eclipse-temurin:21.0.13_9-jdk-noble@sha256:bc12ebd88ffa6dda0092940e179365b05aef8d813b867f9df5a1f168c9a44feb
+ARG RUNTIME_IMAGE=eclipse-temurin:21.0.13_9-jre-noble@sha256:b4f9d2a0bc273417cf5219b7b832bbf0493ed500b7b57d5001d9f83374659060
+ARG APP_VERSION=0.1.0-SNAPSHOT
+
+# tessdata_fast 固定 commit 与文件哈希（Apache-2.0）。更新权重时必须同时更新 NOTICE。
+ARG TESSDATA_FAST_REF=87416418657359cb625c412a48b6e1d6d41c29bd
+ARG CHI_SIM_SHA256=a5fcb6f0db1e1d6d8522f39db4e848f05984669172e584e8d76b6b3141e1f730
+ARG ENG_SHA256=7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2
+
+# ---- 构建期：编译 worker fat jar（只在构建阶段，不进入最终镜像） ----
+FROM ${BUILD_IMAGE} AS build
+WORKDIR /build
+COPY .mvn/ .mvn/
+COPY mvnw ./
+COPY pom.xml ./
+COPY platform/ platform/
+COPY apps/api/pom.xml apps/api/pom.xml
+COPY apps/worker/ apps/worker/
+RUN --mount=type=cache,target=/root/.m2 \
+    ./mvnw -q -T1C -DskipTests -pl apps/worker -am package
+
+# ---- 构建期：下载并校验语言权重（不进入最终镜像） ----
+FROM ${RUNTIME_IMAGE} AS tessdata
+ARG TESSDATA_FAST_REF
+ARG CHI_SIM_SHA256
+ARG ENG_SHA256
+RUN set -eux; \
+    apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      ca-certificates \
+      curl; \
+    rm -rf /var/lib/apt/lists/*; \
+    mkdir -p /tessdata; \
+    curl -fsSL --retry 3 -o /tessdata/chi_sim.traineddata \
+      "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/${TESSDATA_FAST_REF}/chi_sim.traineddata"; \
+    echo "${CHI_SIM_SHA256}  /tessdata/chi_sim.traineddata" | sha256sum -c -; \
+    curl -fsSL --retry 3 -o /tessdata/eng.traineddata \
+      "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/${TESSDATA_FAST_REF}/eng.traineddata"; \
+    echo "${ENG_SHA256}  /tessdata/eng.traineddata" | sha256sum -c -
+
+# ---- 运行时镜像 ----
+FROM ${RUNTIME_IMAGE} AS runtime
+
+ARG APP_VERSION
+ARG TESSERACT_VERSION=5.3.4-1build5
+ARG LIBTESSERACT_VERSION=5.3.4-1build5
+ARG LIBLEPT_VERSION=1.82.0-3build4
+ARG TESSDATA_FAST_REF
+ARG CHI_SIM_SHA256
+ARG ENG_SHA256
+
+LABEL org.opencontainers.image.title="riccon-worker" \
+      org.opencontainers.image.description="Riccon 异步 Agent 运行与本地 OCR（Tesseract，零出网）" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.version="${APP_VERSION}" \
+      riccon.ocr.engine="tesseract" \
+      riccon.ocr.tesseract.version="${TESSERACT_VERSION}" \
+      riccon.ocr.leptonica.version="${LIBLEPT_VERSION}" \
+      riccon.ocr.tessdata="tessdata_fast@${TESSDATA_FAST_REF}" \
+      riccon.ocr.chi_sim.sha256="${CHI_SIM_SHA256}" \
+      riccon.ocr.eng.sha256="${ENG_SHA256}"
+
+# 只安装 OCR 原生库；eng/osd 数据由 tesseract-ocr 依赖带入，随后用 tessdata_fast 覆盖 eng 并新增 chi_sim。
+# --no-install-recommends 防止带入不需要的推荐包。
+RUN set -eux; \
+    apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      tesseract-ocr="${TESSERACT_VERSION}" \
+      libtesseract5="${LIBTESSERACT_VERSION}" \
+      liblept5="${LIBLEPT_VERSION}"; \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+# 语言包落在 Tesseract 默认 tessdata 目录，保留发行版的 configs/pdf.ttf/tessconfigs。
+COPY --from=tessdata /tessdata/chi_sim.traineddata /usr/share/tesseract-ocr/5/tessdata/chi_sim.traineddata
+COPY --from=tessdata /tessdata/eng.traineddata /usr/share/tesseract-ocr/5/tessdata/eng.traineddata
+
+# 版本/哈希指纹文件：供运维检查与 B5 启动自检读取（/actuator/info 暴露由 B5 应用代码完成）。
+RUN set -eux; \
+    mkdir -p /opt/riccon/ocr; \
+    printf '{"engine":"tesseract","engineVersion":"%s","leptonicaVersion":"%s","tessdata":"tessdata_fast@%s","languages":{"chi_sim":"%s","eng":"%s"}}\n' \
+      "${TESSERACT_VERSION}" "${LIBLEPT_VERSION}" "${TESSDATA_FAST_REF}" "${CHI_SIM_SHA256}" "${ENG_SHA256}" \
+      > /opt/riccon/ocr/manifest.json
+
+# 非 root 运行，uid/gid 与沙箱约定一致（10001:10001）。
+RUN set -eux; \
+    groupadd -g 10001 riccon; \
+    useradd -u 10001 -g 10001 -m -d /home/riccon -s /usr/sbin/nologin riccon; \
+    mkdir -p /app; \
+    chown -R 10001:10001 /app /opt/riccon /usr/share/tesseract-ocr/5/tessdata
+
+COPY --from=build /build/apps/worker/target/riccon-worker-${APP_VERSION}-exec.jar /app/app.jar
+RUN chown 10001:10001 /app/app.jar
+
+ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata \
+    OMP_THREAD_LIMIT=1 \
+    HOME=/home/riccon
+
+USER 10001:10001
+WORKDIR /app
+
+EXPOSE 8081
+
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

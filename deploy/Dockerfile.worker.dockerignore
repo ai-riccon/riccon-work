@@ -1,0 +1,17 @@
+# Dockerfile 专用 ignore（BuildKit：<Dockerfile>.dockerignore）。
+# 构建上下文 = 仓库根；只放行 Maven 编译 worker 所需的源文件与 wrapper，
+# 避免上传 node_modules（1GB+）、target、.git 等。
+*
+!pom.xml
+!mvnw
+!.mvn
+!.mvn/**
+!platform
+!platform/**
+!apps
+!apps/api
+!apps/api/pom.xml
+!apps/worker
+!apps/worker/**
+**/target
+**/node_modules
