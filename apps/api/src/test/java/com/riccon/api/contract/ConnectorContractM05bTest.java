@@ -69,6 +69,7 @@ class ConnectorContractM05bTest {
     @DisplayName("#listConnectors")
     void listConnectors() {
         Map<String, Object> operation = OpenApiContract.operation(document, "/api/v1/knowledge/connectors", "get");
+        assertThat(operation.get("operationId")).isEqualTo("listConnectors");
         assertThat(OpenApiContract.permission(operation)).isEqualTo("knowledge.connector.read");
         assertThat(OpenApiContract.responseSchemaName(operation)).isEqualTo("ConnectorPage");
         assertThat(OpenApiContract.referencesParameter(operation, "Page")).isTrue();
@@ -101,6 +102,7 @@ class ConnectorContractM05bTest {
     @DisplayName("#createConnector")
     void createConnector() {
         Map<String, Object> operation = OpenApiContract.operation(document, "/api/v1/knowledge/connectors", "post");
+        assertThat(operation.get("operationId")).isEqualTo("createConnector");
         assertThat(OpenApiContract.permission(operation)).isEqualTo("knowledge.connector.manage");
         assertThat(OpenApiContract.referencesParameter(operation, "CsrfToken")).isTrue();
         assertThat(OpenApiContract.referencesParameter(operation, "IdempotencyKey"))
@@ -148,6 +150,7 @@ class ConnectorContractM05bTest {
     void updateConnector() {
         Map<String, Object> operation =
                 OpenApiContract.operation(document, "/api/v1/knowledge/connectors/{connectorId}", "patch");
+        assertThat(operation.get("operationId")).isEqualTo("updateConnector");
         assertThat(OpenApiContract.permission(operation)).isEqualTo("knowledge.connector.manage");
         assertThat(OpenApiContract.referencesParameter(operation, "CsrfToken")).isTrue();
         assertThat(OpenApiContract.referencesParameter(operation, "ConnectorId"))
@@ -194,6 +197,7 @@ class ConnectorContractM05bTest {
     void deleteConnector() {
         Map<String, Object> operation =
                 OpenApiContract.operation(document, "/api/v1/knowledge/connectors/{connectorId}", "delete");
+        assertThat(operation.get("operationId")).isEqualTo("deleteConnector");
         assertThat(OpenApiContract.permission(operation)).isEqualTo("knowledge.connector.manage");
         assertThat(OpenApiContract.referencesParameter(operation, "CsrfToken")).isTrue();
         assertThat(OpenApiContract.referencesParameter(operation, "ConnectorId"))
@@ -220,6 +224,7 @@ class ConnectorContractM05bTest {
     void putConnectorCredential() {
         Map<String, Object> operation =
                 OpenApiContract.operation(document, "/api/v1/knowledge/connectors/{connectorId}/credential", "put");
+        assertThat(operation.get("operationId")).isEqualTo("putConnectorCredential");
         assertThat(OpenApiContract.permission(operation)).isEqualTo("knowledge.connector.manage");
         assertThat(OpenApiContract.referencesParameter(operation, "CsrfToken")).isTrue();
         assertThat(OpenApiContract.referencesParameter(operation, "ConnectorId"))
@@ -253,6 +258,7 @@ class ConnectorContractM05bTest {
     void testConnector() {
         Map<String, Object> operation =
                 OpenApiContract.operation(document, "/api/v1/knowledge/connectors/{connectorId}/test", "post");
+        assertThat(operation.get("operationId")).isEqualTo("testConnector");
         assertThat(OpenApiContract.permission(operation)).isEqualTo("knowledge.connector.manage");
         assertThat(OpenApiContract.referencesParameter(operation, "CsrfToken")).isTrue();
         assertThat(OpenApiContract.referencesParameter(operation, "ConnectorId"))
@@ -274,6 +280,26 @@ class ConnectorContractM05bTest {
         assertThat(OpenApiContract.stringList(OpenApiContract.schema(document, "ConnectorTestCategory")
                         .get("enum")))
                 .contains("AUTH", "NETWORK", "ENDPOINT", "CONFIG");
+        assertThat(OpenApiContract.required(result)).doesNotContain("category");
+
+        Map<String, Object> condition = OpenApiContract.map(result.get("if"));
+        assertThat(OpenApiContract.required(condition)).contains("success");
+        assertThat(OpenApiContract.map(
+                                OpenApiContract.map(condition.get("properties")).get("success"))
+                        .get("const"))
+                .isEqualTo(Boolean.FALSE);
+        Map<String, Object> thenBranch = OpenApiContract.map(result.get("then"));
+        assertThat(OpenApiContract.required(thenBranch)).contains("category");
+        assertThat(OpenApiContract.map(OpenApiContract.map(thenBranch.get("properties"))
+                                .get("category"))
+                        .get("type"))
+                .isEqualTo("string");
+        Map<String, Object> elseBranch = OpenApiContract.map(result.get("else"));
+        assertThat(OpenApiContract.map(OpenApiContract.map(elseBranch.get("properties"))
+                                .get("category"))
+                        .get("type"))
+                .isEqualTo("null");
+        assertThat(String.valueOf(result.get("description"))).contains("成功时", "失败时", "必填");
         assertThat(String.valueOf(operation.get("description")))
                 .contains("ListObjectsV2", "max-keys=1", "空 bucket", "不返回凭据", "200");
     }
@@ -284,6 +310,7 @@ class ConnectorContractM05bTest {
     void syncConnector() {
         Map<String, Object> operation =
                 OpenApiContract.operation(document, "/api/v1/knowledge/connectors/{connectorId}/sync", "post");
+        assertThat(operation.get("operationId")).isEqualTo("syncConnector");
         assertThat(OpenApiContract.permission(operation)).isEqualTo("knowledge.connector.manage");
         assertThat(OpenApiContract.referencesParameter(operation, "CsrfToken")).isTrue();
         assertThat(OpenApiContract.referencesParameter(operation, "ConnectorId"))
@@ -314,6 +341,7 @@ class ConnectorContractM05bTest {
     void listConnectorItems() {
         Map<String, Object> operation =
                 OpenApiContract.operation(document, "/api/v1/knowledge/connectors/{connectorId}/items", "get");
+        assertThat(operation.get("operationId")).isEqualTo("listConnectorItems");
         assertThat(OpenApiContract.permission(operation)).isEqualTo("knowledge.connector.read");
         assertThat(OpenApiContract.referencesParameter(operation, "ConnectorId"))
                 .isTrue();
@@ -382,7 +410,13 @@ class ConnectorContractM05bTest {
                         "lastSuccessAt",
                         "lastErrorCode",
                         "lastSyncSummary")
-                .doesNotContain("credential", "accessKeyId", "secretAccessKey", "cron");
+                .doesNotContain(
+                        "credential",
+                        "accessKeyId",
+                        "secretAccessKey",
+                        "credentialKeyId",
+                        "credentialCiphertext",
+                        "cron");
 
         Map<String, Object> properties = OpenApiContract.map(connector.get("properties"));
         assertThat(OpenApiContract.map(properties.get("type")).get("$ref"))

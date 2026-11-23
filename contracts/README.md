@@ -102,7 +102,7 @@ contracts/
 
 | 方法   | 路径                                                    | 权限                         | 说明                                                                                   |
 | ------ | ------------------------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------- |
-| GET    | `/api/v1/knowledge/connectors`                          | `knowledge.connector.read`   | 分页列表；不含凭据、端点 URL、对象 key                                                 |
+| GET    | `/api/v1/knowledge/connectors`                          | `knowledge.connector.read`   | 分页列表；返回配置（含 `bucket`/`prefix`），凭据仅掩码，不含端点 URL/对象 key          |
 | POST   | `/api/v1/knowledge/connectors`                          | `knowledge.connector.manage` | 创建；必须显式 `defaultVisibility`，默认 `PAUSED`，凭据可选写入；同名 409              |
 | PATCH  | `/api/v1/knowledge/connectors/{connectorId}`            | 同上                         | 部分更新配置/可见范围/端点/`scheduleEnabled`/`status`；不支持改 type 或自定义 cron     |
 | DELETE | `/api/v1/knowledge/connectors/{connectorId}`            | 同上                         | 软删除；`documents=KEEP`（默认）/`SOFT_DELETE`；凭据密文 30 天后由 M09 置空            |
@@ -114,7 +114,7 @@ contracts/
 - 错误码：`RICCON-KB-400`（可见范围/端点/配置/凭据非法）、`RICCON-TENANT-404`（跨租户或不存在）、`RICCON-AUTH-403`（同租户非管理员）、`RICCON-KB-409`（同名、并发同步或状态冲突）、`RICCON-KB-503`（连接器功能未启用或同步/测试服务不可用）。
 - 调度：只支持“立即同步 + 部署固定周期 + `scheduleEnabled`”，周期由 `RICCON_CONNECTOR_SYNC_INTERVAL_MINUTES` 计算，不存 per-connector cron，也没有独立调度端点。
 - 同步状态：`status`（`ACTIVE`/`PAUSED`/`ERROR`）、`lastSyncStatus`（`SUCCESS`/`PARTIAL`/`ERROR`）、`lastSyncComplete`、`lastSyncSummary` 与 `lastErrorCode` 由连接器详情返回；只有 `lastSyncComplete=true` 才传播源端删除。
-- 数据边界：响应不含凭据明文/密文/DEK、端点 URL、bucket 全名或对象 key 全文；连接器导入文档的 `sourceType=CONNECTOR`，`fileId` 为空、`connectorId`/`externalId` 非空。
+- 数据边界：API 响应向有权限的管理员返回连接器配置（含 `config.bucket`/`config.prefix`），凭据只返回 `credentialMaskedHint`，不返回明文/密文/DEK；只返回 `endpointId`，不返回端点 URL 或对象 key。日志不记 bucket 全名、`externalId`、对象 key 或凭据；审计 details 只记 `bucket`/`prefix` 摘要（`prefix` 截断 ≤200），不记凭据、正文或完整 `externalId`。连接器导入文档的 `sourceType=CONNECTOR`，`fileId` 为空、`connectorId`/`externalId` 非空。
 
 ## 5. 安全边界
 
@@ -127,7 +127,7 @@ contracts/
 - 审计哈希链、MFA、平台跨租户审计明细、租户 BYO 模型凭据、模型价格编辑、多币种/账单对账、MCP 注册与凭据托管（M07）、引用页图渲染/框选、物理对象与分块清理（M09）不在本契约中定义；
   `openapi.yaml` 的 `x-riccon-deferred` 记录后置范围。M05 已交付文档级 ACL/OCR 引用定位，`knowledge-acl-ocr` deferred 已移除；M05b 已交付连接器契约（`1.5.0-m05b`），不存在 `knowledge-connectors` deferred。
 - 知识库 ACL：`knowledge.read` 控制入口，`knowledge.acl.manage`（当前仅 `TENANT_ADMIN`）控制 ACL/删除/重索引；创建人是服务层资源例外，不是角色授权。不可见/跨租户统一 404，已可见但无管理能力 403；租户管理员绕过 ACL 的管理性读取写 `knowledge.document.admin_read` 审计；平台管理员不读取租户文档内容。
-- 连接器：`knowledge.connector.read` 控制列表/条目，`knowledge.connector.manage` 控制创建/更新/删除/凭据/测试/同步；当前仅 `TENANT_ADMIN` 持有。端点只来自部署允许列表，连接器只存 `endpointId`，不能提交任意 URL、查询串或重定向；响应/日志/审计不返回凭据明文/密文/DEK、端点 URL、bucket 全名或对象 key 全文；跨租户 `connectorId` 统一 404，同租户非管理员 403。
+- 连接器：`knowledge.connector.read` 控制列表/条目，`knowledge.connector.manage` 控制创建/更新/删除/凭据/测试/同步；当前仅 `TENANT_ADMIN` 持有。端点只来自部署允许列表，连接器只存 `endpointId`，不能提交任意 URL、查询串或重定向。API 响应只向有权限的管理员返回配置（含 `bucket`/`prefix`）与 `credentialMaskedHint`，不返回凭据明文/密文/DEK、端点 URL 或对象 key；日志不记 bucket 全名、`externalId`、对象 key 或凭据；审计 details 只记 `bucket`/`prefix` 摘要（`prefix` ≤200），不记凭据、正文或完整 `externalId`；跨租户 `connectorId` 统一 404，同租户非管理员 403。
 
 ## 6. 校验
 
