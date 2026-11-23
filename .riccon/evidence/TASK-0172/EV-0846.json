@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0846",
+  "task_id": "TASK-0172",
+  "command": "LOCK=\"${TMPDIR:-/tmp}/riccon-maven.lock\"; while ! mkdir \"$LOCK\" 2>/dev/null; do sleep 5; done; trap 'rmdir \"$LOCK\" 2>/dev/null || true' EXIT; rm -rf apps/worker/target/surefire-reports; ./mvnw -q -T1C -pl apps/worker -am test -Dtest='*Injection*Test,*Inj*Test' -Dsurefire.failIfNoSpecifiedTests=false; code=$?; echo \"--- injection surefire summary ---\"; grep -h -o \"<testsuite[^>]*\" apps/worker/target/surefire-reports/TEST-com.riccon.worker.injection.*.xml 2>/dev/null | sed 's/ xmlns[^ ]*//g; s/ version=\"[^\"]*\"//'; exit $code",
+  "manual": false,
+  "commit": "e78950400c2465b3e41f81221c84f6d3f4e0b235",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0172/EV-0846-2026-11-23T12-40-10-155+08-00-lock-tmpdir-tmp-riccon-maven-lock-while-mkdir-lo.log",
+  "output_sha256": "1f2fe5386b22e7f443f10db123c024c64a51f8b4bf70e3c717f65ac20be7bd9e",
+  "output_bytes": 4843,
+  "agent": "riccon/builder-kb-security",
+  "cwd": "/private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-task-0172-wt2",
+  "started_at": "2026-11-23T12:39:42.081+08:00",
+  "finished_at": "2026-11-23T12:40:09.595+08:00",
+  "duration_ms": 27512,
+  "note": "M05-B10 最终 harness：20 个用例（12 INJ 参数化 + 3 工具诱导 + 2 负向对照 + 3 目录契约），0 skip/0 failure，含 surefire 计数；worktree e789504",
+  "recorded_at": "2026-11-23T12:40:10.158+08:00"
+}
