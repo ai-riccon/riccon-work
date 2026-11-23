@@ -30,7 +30,9 @@ import org.w3c.dom.NodeList;
  *
  * <ul>
  *   <li>解码前读取头部尺寸，超过 {@code max-decode-pixels} 直接拒绝，避免像素炸弹把堆打满；
- *   <li>超过 {@code max-pixels} 或 {@code max-long-edge} 时用子采样与等比缩放降低内存与 OCR 时间；
+ *   <li>输入长边超过硬上限（{@code max-long-edge × 8}）直接拒绝，避免极端长条绕过像素预算；
+ *   <li>解码子采样同时受 64 MiB 字节预算（{@code max-decode-bytes}）、{@code max-pixels}
+ *       与 {@code max-long-edge} 约束，保证解码峰值不超过 64 MiB；
  *   <li>单页解码结果最多约 64 MB（4000×4000×4B），与 ADR 的单页内存上限一致。
  * </ul>
  *
@@ -48,6 +50,9 @@ public final class OcrImagePreprocessor {
     /** Orientation 标签。 */
     private static final int EXIF_ORIENTATION_TAG = 0x0112;
 
+    /** 输入长边相对目标最长边的硬上限倍数，防止极端长条绕过像素预算。 */
+    private static final int MAX_INPUT_LONG_EDGE_FACTOR = 8;
+
     /** 解码前硬上限（像素）。 */
     private final long maxDecodePixels;
 
@@ -56,6 +61,9 @@ public final class OcrImagePreprocessor {
 
     /** 目标最长边。 */
     private final int maxLongEdge;
+
+    /** 单页解码像素预算（64 MiB 字节预算 / 4B、目标像素与最长边平方的较小值）。 */
+    private final long targetDecodePixels;
 
     /**
      * 创建预处理器。
@@ -66,6 +74,7 @@ public final class OcrImagePreprocessor {
         this.maxDecodePixels = properties.maxDecodePixels();
         this.maxPixels = properties.maxPixels();
         this.maxLongEdge = properties.maxLongEdge();
+        this.targetDecodePixels = properties.effectiveDecodePixels();
     }
 
     /**
@@ -163,10 +172,17 @@ public final class OcrImagePreprocessor {
                     false,
                     "图片像素超出 OCR 解码上限（" + pixels + " > " + maxDecodePixels + "）");
         }
+        long maxInputLongEdge = (long) maxLongEdge * MAX_INPUT_LONG_EDGE_FACTOR;
+        if (Math.max(width, height) > maxInputLongEdge) {
+            throw new OcrException(
+                    ParseErrorCodes.PARSE_RESOURCE_LIMIT,
+                    false,
+                    "图片长边超出 OCR 解码上限（" + Math.max(width, height) + " > " + maxInputLongEdge + "）");
+        }
     }
 
     /**
-     * 按最大像素计算子采样并解码。
+     * 按 64 MiB 字节预算、目标像素与最长边计算子采样并解码。
      *
      * @param reader 图片读取器
      * @param width 原始宽度
@@ -176,7 +192,8 @@ public final class OcrImagePreprocessor {
      */
     private BufferedImage decode(ImageReader reader, int width, int height) throws IOException {
         int step = 1;
-        while (scaledPixels(width, height, step) > maxPixels) {
+        while (scaledLongEdge(width, height, step) > maxLongEdge
+                || scaledPixels(width, height, step) > targetDecodePixels) {
             step++;
         }
         ImageReadParam param = reader.getDefaultReadParam();
@@ -188,6 +205,20 @@ public final class OcrImagePreprocessor {
             throw new OcrException(ParseErrorCodes.PARSE_CORRUPT, false, "图片解码结果为空");
         }
         return image;
+    }
+
+    /**
+     * 计算子采样后的最长边。
+     *
+     * @param width 原始宽度
+     * @param height 原始高度
+     * @param step 子采样步长
+     * @return 最长边
+     */
+    private static long scaledLongEdge(int width, int height, int step) {
+        long sampledWidth = (width + step - 1L) / step;
+        long sampledHeight = (height + step - 1L) / step;
+        return Math.max(sampledWidth, sampledHeight);
     }
 
     /**

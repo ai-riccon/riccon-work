@@ -216,6 +216,27 @@ class PdfDocumentParserTest {
         }
     }
 
+    /** 全部页无文本：应按 ADR 返回不可重试的 KB_NO_TEXT。 */
+    @Test
+    @DisplayName("parse 全部页无文本返回 KB_NO_TEXT")
+    void parse_allPagesNoText_returnsNoText() throws IOException {
+        byte[] content = imagePdf(2);
+        FakeOcrEngine engine = new FakeOcrEngine(new OcrResult(List.of(), 100, 100));
+        OcrProperties properties = OcrTestSupport.defaults();
+        com.riccon.worker.ocr.service.OcrService service = service(engine, properties);
+        try {
+            assertThatThrownBy(() -> parser(service, properties).parse(file(content), content))
+                    .isInstanceOf(ParseException.class)
+                    .satisfies(exception -> {
+                        ParseException parseException = (ParseException) exception;
+                        assertThat(parseException.errorCode()).isEqualTo(ParseErrorCodes.NO_TEXT);
+                        assertThat(parseException.retryable()).isFalse();
+                    });
+        } finally {
+            service.close();
+        }
+    }
+
     /** OCR 关闭的纯扫描 PDF：失败并返回 KB_OCR_UNAVAILABLE。 */
     @Test
     @DisplayName("parse OCR 关闭的扫描件返回 KB_OCR_UNAVAILABLE")
@@ -272,6 +293,34 @@ class PdfDocumentParserTest {
                     .satisfies(exception -> assertThat(((ParseException) exception).errorCode())
                             .isEqualTo(ParseErrorCodes.PARSE_RESOURCE_LIMIT));
             assertThat(engine.callCount()).isZero();
+        } finally {
+            service.close();
+        }
+    }
+
+    /** 5000×5000pt 页在 200 DPI 下请求 192.9MP：必须在渲染前降采样到 64MB/4000px 预算内。 */
+    @Test
+    @DisplayName("parse 近上限 PDF 页降采样后渲染")
+    void parse_nearLimitPage_downscalesBeforeRender() throws Exception {
+        byte[] content = nearLimitPagePdf();
+        FakeOcrEngine engine = new FakeOcrEngine(options -> new OcrResult(
+                List.of(new OcrBlock("page", new java.math.BigDecimal("0.900"), new BoundingBox(0, 0, 50, 20), 1, 1)),
+                100,
+                100));
+        OcrProperties properties = OcrTestSupport.defaults();
+        com.riccon.worker.ocr.service.OcrService service = service(engine, properties);
+        try {
+            parser(service, properties).parse(file(content), content);
+
+            assertThat(engine.receivedImages()).hasSize(1);
+            BufferedImage received = ImageIO.read(
+                    new ByteArrayInputStream(engine.receivedImages().get(0)));
+            assertThat(received).isNotNull();
+            assertThat(Math.max(received.getWidth(), received.getHeight())).isLessThanOrEqualTo(4000);
+            assertThat((long) received.getWidth() * received.getHeight())
+                    .isLessThanOrEqualTo(properties.effectiveDecodePixels());
+            // 降采样后仍应保留可 OCR 的页面（约 57 DPI），不是 579MB 的原始渲染。
+            assertThat(received.getWidth()).isBetween(3900, 4000);
         } finally {
             service.close();
         }
@@ -436,6 +485,18 @@ class PdfDocumentParserTest {
     private static byte[] hugePagePdf() throws IOException {
         try (PDDocument document = new PDDocument()) {
             document.addPage(new PDPage(new PDRectangle(10000f, 10000f)));
+            return save(document);
+        }
+    }
+
+    /**
+     * 生成一页 5000×5000pt PDF；200 DPI 请求约 192.9MP，低于硬上限但超过 64MB 预算。
+     *
+     * @return PDF 字节
+     */
+    private static byte[] nearLimitPagePdf() throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            document.addPage(new PDPage(new PDRectangle(5000f, 5000f)));
             return save(document);
         }
     }

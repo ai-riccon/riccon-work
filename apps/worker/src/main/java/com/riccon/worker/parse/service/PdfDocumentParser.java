@@ -143,13 +143,27 @@ public class PdfDocumentParser implements DocumentParser {
                 ocrErrors.add(ParseErrorCodes.PARSE_RESOURCE_LIMIT);
                 continue;
             }
+            PageRenderPlan plan = planRender(document.getPage(page - 1));
+            if (plan == null) {
+                // 目标 DPI 下无法在 64 MiB / 4000px 预算内渲染，直接拒绝，绝不进入渲染。
+                failedPages.add(page);
+                pagesWithoutText++;
+                ocrErrors.add(ParseErrorCodes.PARSE_RESOURCE_LIMIT);
+                continue;
+            }
             BufferedImage pageImage;
             try {
-                pageImage = renderer.renderImageWithDPI(page - 1, ocrProperties.pdfDpi(), ImageType.RGB);
+                pageImage = renderer.renderImage(page - 1, plan.scale(), ImageType.RGB);
             } catch (IOException | RuntimeException exception) {
                 failedPages.add(page);
                 pagesWithoutText++;
                 ocrErrors.add(ParseErrorCodes.PARSE_CORRUPT);
+                continue;
+            }
+            if (!plan.fits(pageImage.getWidth(), pageImage.getHeight(), ocrProperties)) {
+                failedPages.add(page);
+                pagesWithoutText++;
+                ocrErrors.add(ParseErrorCodes.PARSE_RESOURCE_LIMIT);
                 continue;
             }
             Duration budget = min(ocrProperties.pageTimeout(), Duration.ofMillis(remainingMillis));
@@ -247,6 +261,10 @@ public class PdfDocumentParser implements DocumentParser {
         if (errors.isEmpty()) {
             return pagesWithoutText > 0 ? ParseErrorCodes.OCR_UNAVAILABLE : ParseErrorCodes.NO_TEXT;
         }
+        if (errors.stream().allMatch(ParseErrorCodes.NO_TEXT::equals)) {
+            // ADR-0023 §4.5：全部页无文本 → KB_NO_TEXT（不可重试），不能归为 OCR 失败。
+            return ParseErrorCodes.NO_TEXT;
+        }
         if (errors.stream().allMatch(ParseErrorCodes.OCR_TIMEOUT::equals)) {
             return ParseErrorCodes.OCR_TIMEOUT;
         }
@@ -254,7 +272,7 @@ public class PdfDocumentParser implements DocumentParser {
     }
 
     /**
-     * 计算页面按目标 DPI 渲染后的像素尺寸。
+     * 计算页面按目标 DPI 渲染后的像素尺寸（仅在硬上限判断时使用）。
      *
      * @param page PDF 页
      * @return 宽度与高度
@@ -275,6 +293,75 @@ public class PdfDocumentParser implements DocumentParser {
             return new long[] {ocrProperties.maxDecodePixels() + 1, 1};
         }
         return new long[] {width, height};
+    }
+
+    /**
+     * 计算 PDF 页在目标 DPI 下的渲染计划。
+     *
+     * <p>先按页面尺寸 × DPI 计算请求像素：超过 {@code max-decode-pixels} 直接拒绝；否则把
+     * 渲染比例压到 64 MiB 字节预算（{@code max-decode-bytes}/4B）与 {@code max-long-edge}
+     * 以内，再调用 {@link PDFRenderer#renderImage(int, float, ImageType)}。渲染后仍不满足预算时
+     * 由调用方按 {@code KB_PARSE_RESOURCE_LIMIT} 处理，绝不把用户可控页面直接交给可能 OOM 的渲染。
+     *
+     * @param page PDF 页
+     * @return 渲染计划；无法在预算内渲染时返回 null
+     */
+    private PageRenderPlan planRender(PDPage page) {
+        PDRectangle box = page.getCropBox();
+        float widthPoints = box.getWidth();
+        float heightPoints = box.getHeight();
+        if (page.getRotation() % 180 != 0) {
+            float swap = widthPoints;
+            widthPoints = heightPoints;
+            heightPoints = swap;
+        }
+        if (widthPoints <= 0 || heightPoints <= 0) {
+            return null;
+        }
+        double requestedScale = ocrProperties.pdfDpi() / 72.0;
+        double requestedWidth = widthPoints * requestedScale;
+        double requestedHeight = heightPoints * requestedScale;
+        double requestedPixels = requestedWidth * requestedHeight;
+        if (requestedPixels > ocrProperties.maxDecodePixels()) {
+            return null;
+        }
+        long budgetPixels = ocrProperties.effectiveDecodePixels();
+        double edgeCap = (ocrProperties.maxLongEdge() - 2.0) / Math.max(requestedWidth, requestedHeight);
+        double pixelCap = Math.sqrt(Math.max(1.0, budgetPixels - 2.0) / Math.max(1.0, requestedPixels));
+        double scaleCap = Math.min(1.0, Math.min(edgeCap, pixelCap));
+        double scale = requestedScale * Math.max(scaleCap, 1e-6);
+        // 取 floor 并留 0.99 余量，避免 PDFBox 的取整导致刚好越过预算。
+        for (int attempt = 0; attempt < 4; attempt++) {
+            long width = Math.max(1, (long) Math.floor(widthPoints * scale));
+            long height = Math.max(1, (long) Math.floor(heightPoints * scale));
+            if (Math.max(width, height) <= ocrProperties.maxLongEdge() && width * height <= budgetPixels) {
+                return new PageRenderPlan((float) scale);
+            }
+            scale *= 0.99;
+        }
+        return null;
+    }
+
+    /**
+     * PDF 页渲染计划。
+     *
+     * @param scale PDFBox 相对 72 DPI 的渲染比例
+     */
+    private record PageRenderPlan(float scale) {
+
+        /**
+         * 校验实际渲染尺寸仍在本页预算内。
+         *
+         * @param actualWidth 实际宽度
+         * @param actualHeight 实际高度
+         * @param properties OCR 配置
+         * @return 在预算内返回 true
+         */
+        private boolean fits(int actualWidth, int actualHeight, OcrProperties properties) {
+            long actualPixels = (long) actualWidth * actualHeight;
+            return Math.max(actualWidth, actualHeight) <= properties.maxLongEdge()
+                    && actualPixels <= properties.effectiveDecodePixels();
+        }
     }
 
     /**

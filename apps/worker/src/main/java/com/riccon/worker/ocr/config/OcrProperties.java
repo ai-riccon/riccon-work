@@ -20,6 +20,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param maxPages 单文档最多 OCR 页数，超出页只保留文本层
  * @param maxPixels 单页目标最大像素数，超出先等比缩放
  * @param maxDecodePixels 单页解码前硬上限，超出直接拒绝（防像素炸弹）
+ * @param maxDecodeBytes 单页解码后字节预算，默认 64 MiB；按 4 B/px 推导解码像素预算
  * @param maxLongEdge 单页最长边像素，超出等比缩放
  * @param pdfDpi PDF 页渲染 DPI
  * @param lowConfidenceThreshold 块级低置信阈值，低于该值仍入索引但告警
@@ -38,6 +39,7 @@ public record OcrProperties(
         @DefaultValue("100") int maxPages,
         @DefaultValue("50000000") long maxPixels,
         @DefaultValue("200000000") long maxDecodePixels,
+        @DefaultValue("67108864") long maxDecodeBytes,
         @DefaultValue("4000") int maxLongEdge,
         @DefaultValue("200") int pdfDpi,
         @DefaultValue("0.60") BigDecimal lowConfidenceThreshold,
@@ -72,6 +74,9 @@ public record OcrProperties(
             throw new IllegalArgumentException(
                     "riccon.worker.ocr.max-decode-pixels must be greater than or equal to max-pixels");
         }
+        if (maxDecodeBytes < 1) {
+            throw new IllegalArgumentException("riccon.worker.ocr.max-decode-bytes must be positive");
+        }
         if (maxLongEdge < 100) {
             throw new IllegalArgumentException("riccon.worker.ocr.max-long-edge must be at least 100");
         }
@@ -91,6 +96,20 @@ public record OcrProperties(
         }
         tessdataPath = tessdataPath == null ? "" : tessdataPath;
         manifestPath = manifestPath == null ? "" : manifestPath;
+    }
+
+    /**
+     * 返回单页解码的像素预算。
+     *
+     * <p>同时受三个上限约束：目标像素（maxPixels）、64 MiB 字节预算（按 4 B/px 保守估算）
+     * 与最长边平方。结果用于图片子采样和 PDF 渲染前的缩放，保证解码/渲染峰值不超过 64 MiB。
+     *
+     * @return 单页解码像素上限
+     */
+    public long effectiveDecodePixels() {
+        long bytePixels = maxDecodeBytes / 4L;
+        long edgePixels = (long) maxLongEdge * maxLongEdge;
+        return Math.max(1L, Math.min(Math.min(maxPixels, bytePixels), edgePixels));
     }
 
     /**
@@ -124,6 +143,7 @@ public record OcrProperties(
                 100,
                 50_000_000L,
                 200_000_000L,
+                67_108_864L,
                 4000,
                 200,
                 new BigDecimal("0.60"),

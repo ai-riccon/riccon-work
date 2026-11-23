@@ -117,6 +117,27 @@ class ImageDocumentParserTest {
         }
     }
 
+    /** 引擎返回空块时图片失败原因应为 KB_NO_TEXT（不可重试）。 */
+    @Test
+    @DisplayName("ImageDocumentParser 无文本返回 KB_NO_TEXT")
+    void parse_noText_throwsNoText() {
+        FakeOcrEngine engine = new FakeOcrEngine(new OcrResult(List.of(), 100, 100));
+        OcrProperties properties = OcrTestSupport.defaults();
+        OcrService service = service(engine, properties);
+        try {
+            assertThatThrownBy(() -> new ImageDocumentParser(service)
+                            .parse(file(FileFormat.PNG, TestDocuments.png()), TestDocuments.png()))
+                    .isInstanceOf(ParseException.class)
+                    .satisfies(exception -> {
+                        ParseException parseException = (ParseException) exception;
+                        assertThat(parseException.errorCode()).isEqualTo(ParseErrorCodes.NO_TEXT);
+                        assertThat(parseException.retryable()).isFalse();
+                    });
+        } finally {
+            service.close();
+        }
+    }
+
     /** JPEG 使用同一 OCR 策略。 */
     @Test
     @DisplayName("JpegDocumentParser 报告 JPEG 并执行 OCR")

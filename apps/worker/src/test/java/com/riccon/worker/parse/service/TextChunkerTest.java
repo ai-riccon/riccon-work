@@ -100,6 +100,22 @@ class TextChunkerTest {
                 .allSatisfy(chunk -> assertThat(chunk.content().length()).isLessThanOrEqualTo(100));
     }
 
+    /** 极端 overlap 下换行断点仍要前进，不能产生大量重复块。 */
+    @Test
+    void chunk_extremeOverlap_advancesWithoutDuplication() {
+        TextChunker extreme = new TextChunker(new ParseProperties(1024, 100, 80));
+        String text = "A".repeat(60) + "\n" + "B".repeat(60) + "\n" + "C".repeat(60);
+        ParsedContent content = new ParsedContent(
+                List.of(new ParsedSegment(text, LocatorType.SHEET, null, "Budget", "A1:B20", null)), null, 1, "test");
+
+        List<ParsedChunk> chunks = extreme.chunk(content);
+
+        assertThat(chunks).hasSize(3);
+        assertThat(chunks)
+                .extracting(ParsedChunk::content)
+                .containsExactly("A".repeat(60), "B".repeat(60), "C".repeat(60));
+    }
+
     /** OCR 段的 bbox 与置信度被切分块原样继承。 */
     @Test
     void chunk_ocrSegment_preservesBboxAndConfidence() {

@@ -58,6 +58,20 @@ class OcrInfoContributorTest {
         assertThat(details).containsEntry("language_available", true);
     }
 
+    /** info 使用绑定后的 language，而不是硬编码默认值。 */
+    @Test
+    @DisplayName("OcrInfoContributor 使用绑定语言")
+    void contribute_customLanguage_reportsBoundValue() {
+        OcrManifest manifest = OcrManifest.load(OcrTestSupport.manifestPath());
+        OcrInfoContributor contributor = new OcrInfoContributor(
+                OcrTestSupport.withLanguage("eng", OcrTestSupport.manifestPath(), false), manifest, provider(null));
+        Info.Builder builder = new Info.Builder();
+
+        contributor.contribute(builder);
+
+        assertThat(ocrDetails(builder.build().getDetails())).containsEntry("lang", "eng");
+    }
+
     /**
      * 取出 {@code ocr} 详情。
      *

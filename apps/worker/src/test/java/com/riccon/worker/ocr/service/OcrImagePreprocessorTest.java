@@ -126,6 +126,45 @@ class OcrImagePreprocessorTest {
         assertThat(prepared.height()).isEqualTo(50);
     }
 
+    /** 64 MiB 解码字节预算会把大图先子采样，再缩放。 */
+    @Test
+    @DisplayName("prepare 按解码字节预算子采样")
+    void prepare_decodeByteBudget_subsamplesBeforeFullDecode() throws IOException {
+        OcrProperties properties = OcrTestSupport.properties(
+                true, Duration.ofSeconds(5), Duration.ofSeconds(30), 100, 50_000_000L, 200_000_000L, 1_000_000L, 4000);
+        OcrImagePreprocessor small = new OcrImagePreprocessor(properties);
+
+        OcrImagePreprocessor.PreparedImage prepared = small.prepare(png(1000, 1000));
+
+        // 有效预算 = 1_000_000 / 4 = 250_000 像素，子采样步长 2 → 500×500。
+        assertThat(prepared.width()).isEqualTo(500);
+        assertThat(prepared.height()).isEqualTo(500);
+        assertThat(prepared.width() * prepared.height()).isLessThanOrEqualTo(250_000);
+    }
+
+    /** 输入长边超过硬上限时在解码前拒绝。 */
+    @Test
+    @DisplayName("prepare 输入长边炸弹按资源上限拒绝")
+    void prepare_inputLongEdgeBomb_rejectedBeforeDecode() {
+        byte[] bomb = pngHeader(40_000, 100);
+
+        assertThatThrownBy(() -> preprocessor.prepare(bomb))
+                .isInstanceOf(OcrException.class)
+                .extracting(exception -> ((OcrException) exception).errorCode())
+                .isEqualTo(ParseErrorCodes.PARSE_RESOURCE_LIMIT);
+    }
+
+    /** 64 MiB 预算内的普通图片保持尺寸，不误拒。 */
+    @Test
+    @DisplayName("prepare 64MB 预算内图片保持尺寸")
+    void prepare_withinDecodeBudget_keepsDimensions() throws IOException {
+        OcrImagePreprocessor.PreparedImage prepared = preprocessor.prepare(png(2000, 2000));
+
+        assertThat(prepared.width()).isEqualTo(2000);
+        assertThat(prepared.height()).isEqualTo(2000);
+        assertThat((long) prepared.width() * prepared.height()).isLessThanOrEqualTo(16_000_000L);
+    }
+
     /** 渲染页同样应用缩放。 */
     @Test
     @DisplayName("prepareRendered 应用最长边限制")

@@ -90,7 +90,11 @@ public class TextChunker {
             if (end >= text.length()) {
                 break;
             }
-            int next = Math.max(end - chunkOverlap, start + 1);
+            int next = end - chunkOverlap;
+            if (next <= start) {
+                // overlap >= chunkSize/2 等极端配置下放弃重叠，保证每次都前进，避免重复块放大。
+                next = end;
+            }
             start = next;
         }
         return List.copyOf(chunks);

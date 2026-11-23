@@ -41,6 +41,7 @@ public final class OcrTestSupport {
                 100,
                 50_000_000L,
                 200_000_000L,
+                67_108_864L,
                 4000,
                 200,
                 new BigDecimal("0.60"),
@@ -69,6 +70,32 @@ public final class OcrTestSupport {
             long maxPixels,
             long maxDecodePixels,
             int maxLongEdge) {
+        return properties(
+                enabled, pageTimeout, documentTimeout, maxPages, maxPixels, maxDecodePixels, 67_108_864L, maxLongEdge);
+    }
+
+    /**
+     * 自定义 OCR 配置（含 64 MiB 解码字节预算）。
+     *
+     * @param enabled 是否启用
+     * @param pageTimeout 单页超时
+     * @param documentTimeout 文档超时
+     * @param maxPages OCR 页数上限
+     * @param maxPixels 目标像素
+     * @param maxDecodePixels 解码硬上限
+     * @param maxDecodeBytes 解码字节预算
+     * @param maxLongEdge 最长边
+     * @return OCR 配置
+     */
+    public static OcrProperties properties(
+            boolean enabled,
+            Duration pageTimeout,
+            Duration documentTimeout,
+            int maxPages,
+            long maxPixels,
+            long maxDecodePixels,
+            long maxDecodeBytes,
+            int maxLongEdge) {
         return new OcrProperties(
                 enabled,
                 "tesseract",
@@ -79,6 +106,7 @@ public final class OcrTestSupport {
                 maxPages,
                 maxPixels,
                 maxDecodePixels,
+                maxDecodeBytes,
                 maxLongEdge,
                 200,
                 new BigDecimal("0.60"),
@@ -105,6 +133,35 @@ public final class OcrTestSupport {
                 100,
                 50_000_000L,
                 200_000_000L,
+                67_108_864L,
+                4000,
+                200,
+                new BigDecimal("0.60"),
+                new BigDecimal("0.45"),
+                "",
+                manifestPath);
+    }
+
+    /**
+     * 构造指定语言的配置，用于配置绑定与 info 测试。
+     *
+     * @param language 语言
+     * @param manifestPath manifest 路径
+     * @param enabled 是否启用
+     * @return OCR 配置
+     */
+    public static OcrProperties withLanguage(String language, String manifestPath, boolean enabled) {
+        return new OcrProperties(
+                enabled,
+                "tesseract",
+                language,
+                1,
+                Duration.ofSeconds(5),
+                Duration.ofSeconds(30),
+                100,
+                50_000_000L,
+                200_000_000L,
+                67_108_864L,
                 4000,
                 200,
                 new BigDecimal("0.60"),
