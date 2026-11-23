@@ -11,7 +11,9 @@
     "apps/worker/src/main/java/com/riccon/worker/persistence/SchemaVersionChecker.java",
     "apps/api/src/test/java/**/migration/**",
     "apps/worker/src/test/java/**/agent/persistence/**",
-    "apps/worker/src/test/java/**/persistence/**"
+    "apps/worker/src/test/java/**/persistence/**",
+    "apps/api/src/test/java/com/riccon/api/ApiApplicationTests.java",
+    "apps/api/src/test/java/com/riccon/api/security/m04verify/M04V2VerifierBoundaryTest.java"
   ],
   "acceptance": [
     "V14 additive：knowledge_chunk/content 与 knowledge_document/title ngram FULLTEXT 索引 + 回滚 SQL；worker schema 14",
@@ -32,5 +34,14 @@
   "updated_at": "2026-11-23T18:09:06.038+08:00",
   "baseline_commit": "3d6e78d87325aa2ed0f57da0530a78db46a54564",
   "evidence_note": "EV-0916 为最终提交 d2558c2 的主树干净证据（V10–V14 迁移、API/worker 定向、100k 微基准）；EV-0915 与并行 TASK-0197 证据 ID 冲突，已重编号为 EV-0917 并保留为 dirty 补充证据，不绑定任务。",
-  "end_commit": "d2558c2"
+  "end_commit": "d2558c2",
+  "scope_amendment": {
+    "at": "2026-11-23T10:24:40.706Z",
+    "by": "riccon/lead",
+    "reason": "REV-TASK-0197-002 X-001：V14 后这两处 schema 断言仍为 13，导致合同 test 红；补入 V14 scope 修复到 14。",
+    "added": [
+      "apps/api/src/test/java/com/riccon/api/ApiApplicationTests.java",
+      "apps/api/src/test/java/com/riccon/api/security/m04verify/M04V2VerifierBoundaryTest.java"
+    ]
+  }
 }
