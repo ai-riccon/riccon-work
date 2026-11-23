@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0831",
+  "task_id": "TASK-0166",
+  "command": "while ! mkdir '/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T//riccon-maven.lock' 2>/dev/null; do sleep 5; done; trap 'rmdir \"/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T//riccon-maven.lock\" 2>/dev/null || true' EXIT; ./mvnw -q -T1C -pl apps/api -am test && ./mvnw -q -T1C -pl apps/worker -am test -Dtest='AgentContextJdbcAclTest,KnowledgeRetrieverIntegrationTest,UntrustedDataAndToolTest,KnowledgeWiringTest,KnowledgeSearchAuditFailClosedTest' -Dsurefire.failIfNoSpecifiedTests=false",
+  "manual": false,
+  "commit": "ab79182afe0f0bbd6fcfd38edea9c409b5715a1b",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0166/EV-0831-2026-11-23T11-52-58-193+08-00-while-mkdir-var-folders-jz-47nmh5g113sb1674f5q-t.log",
+  "output_sha256": "733a1493088ee168f207facd31fd9c0bb04e655320c98c503de4ee5e2c2d7cc2",
+  "output_bytes": 1716983,
+  "agent": "riccon/builder-kb-acl",
+  "cwd": "/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-b3-fix-wt",
+  "started_at": "2026-11-23T11:41:45.313+08:00",
+  "finished_at": "2026-11-23T11:52:57.341+08:00",
+  "duration_ms": 672026,
+  "note": "M05-B3 修复：检索 actor/SEARCH/reindex 审计/历史保留；API 全量与 worker 定向（隔离工作树，同 code commit ab79182）",
+  "recorded_at": "2026-11-23T11:52:58.217+08:00"
+}
