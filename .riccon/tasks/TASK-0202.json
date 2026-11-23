@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0202",
+  "module_id": "M05",
+  "title": "M05 fix：失败时间与保留策略界面明示（R-M05-06/07）",
+  "owner": "riccon/builder-kb-web",
+  "status": "ready",
+  "write_scope": [
+    "contracts/**",
+    "apps/api/src/main/java/com/riccon/api/knowledge/dto/**",
+    "apps/api/src/test/java/**/knowledge/**",
+    "apps/web/src/pages/**",
+    "apps/web/src/services/**",
+    "apps/web/src/test/**",
+    "e2e/tests/**"
+  ],
+  "acceptance": [
+    "AC-15 失败时间：API KnowledgeDocument 可选 failedAt（FAILED 时来自 updated_at 或专用字段；契约/测试一致），Web 详情显示失败时间；E2E 覆盖",
+    "AC-21 保留策略变更不追溯：界面明示（历史/新文档差异）并有组件/E2E 断言；不改变保留计算",
+    "contract tests、API/worker 定向、pnpm -w test --coverage、a11y、e2e 通过；不 retry/skip/放宽"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-24T00:42:42.220+08:00",
+  "updated_at": "2026-11-24T00:42:42.503+08:00"
+}
