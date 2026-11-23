@@ -5,7 +5,7 @@
 | 检查                   | 状态    | 记录                                                                                                                                                                                                                                                       |
 | ---------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Product 草案           | pass    | M05 草案完成（§11，已按 REV-M05-AC-001/002 修订）；M04 pass（§10）；M03/M10 见 §8；M01/M02 legacy                                                                                                                                                          |
-| Lead 完整性/合同一致性 | pass    | M05 pass（2026-11-22）：范围/AC/non-goals/优先级与合同一致；22 条 AC 可观察；用户批准 DEC-0034；预算 157h 待 DEC-0035；对应 ADR-0023、REV-M05-AC-001/002。M04 pass（2026-11-20）；M03/M10 pass；M01/M02 legacy                                             |
+| Lead 完整性/合同一致性 | pass    | M05 pass（2026-11-22）：范围/AC/non-goals/优先级与合同一致；22 条 AC 可观察；用户批准 DEC-0034；预算按 DEC-0035=A 为 Stage 1 130h（M05 104h + M23 6h + M24 20h），M05b 53h 待 M05 用户验收后另批；对应 ADR-0023、REV-M05-AC-001/002。M04 pass（2026-11-20）；M03/M10 pass；M01/M02 legacy                                             |
 | 用户范围批准           | pass    | M05 pass（DEC-0034，2026-11-22：拆分/P6=A/P8=A/U8/M03 取代/技术默认值）；M04 pass（DEC-0023/0024）；M03/M10 pass；M01/M02 legacy                                                                                                                           |
 | Architect 可行性       | pending | M05 pending（ADR-0023 proposed，待 P1 修复后评审）；M04 pass（REV-M04-ARCH-005、REV-M04-OPS-006）；M03/M10 pass；M02 ADR-0001..0017                                                                                                                        |
 | Verifier AC 可验证性   | pass    | M05 pass（2026-11-22，REV-M05-AC-001/002 三轮；F-001..F-123 已关闭；F-121..F-123 为机械收口，正式模块 gate 仍由独立 Verifier 在最终提交重跑）；M04 pass（REV-M04-005）；M03/M10 pass（REV-M03-001、REV-M13-001、REV-M10-001、REV-M15-001）；M02/M01 见记录 |
@@ -23,7 +23,7 @@
 | M04  | pass（§10）  | pass                       | pass（DEC-0023 范围；DEC-0024=B 预算 48h 单模块） | pass（REV-M04-ARCH-005；REV-M04-OPS-006）        | pass（REV-M04-005）                                 | pass                                    | accepted（DEC-0027） |
 | M05  | pass（§11）  | pass                       | pass（DEC-0034）                                  | pending（ADR-0023 proposed；设计评审后转）       | pass（REV-M05-AC-001/002；正式 gate 重跑）          | pending                                 | pending              |
 
-M05（2026-11-22）：DEC-0034=A 已批准 Product 拆分（M05=Excel+OCR+ACL+M04 429；M05b=S3 连接器）、P6=A、P8=A、U8、M03-AC-06 由 M05 取代及技术默认值。§11 已按 REV-M05-AC-001 的 15 条与 REV-M05-AC-002 的 8 条 P1 完成修订；Product 草案 `pass`、Lead 完整性 `pass`、用户范围批准 `pass（DEC-0034）`、Verifier AC 可验证性 `pass`（REV-M05-AC-001/002，F-001..F-123 关闭）；Architect 可行性仍 `pending`（ADR-0023 `proposed`，待独立设计评审）；预算 157h 待 DEC-0035。未获 ARCHITECT/预算决策前不进入实现。M04 行按事实订正：Product 预验收 `pass`、用户 `accepted（DEC-0027）`、Architect 引用 REV-M04-ARCH-005/REV-M04-OPS-006、Verifier 引用 REV-M04-005。
+M05（2026-11-22）：DEC-0034=A 已批准 Product 拆分（M05=Excel+OCR+ACL+M04 429；M05b=S3 连接器）、P6=A、P8=A、U8、M03-AC-06 由 M05 取代及技术默认值。§11 已按 REV-M05-AC-001 的 15 条与 REV-M05-AC-002 的 8 条 P1 完成修订；Product 草案 `pass`、Lead 完整性 `pass`、用户范围批准 `pass（DEC-0034）`、Verifier AC 可验证性 `pass`（REV-M05-AC-001/002，F-001..F-123 关闭）；Architect 可行性仍 `pending`（ADR-0023 `proposed`，待独立设计评审）；预算按 DEC-0035=A 为 Stage 1 130h（M05 104h + M23 6h + M24 20h），M05b 53h 待 M05 用户验收后另批；Architect 评审仍为设计前置。M04 行按事实订正：Product 预验收 `pass`、用户 `accepted（DEC-0027）`、Architect 引用 REV-M04-ARCH-005/REV-M04-OPS-006、Verifier 引用 REV-M04-005。
 
 M05 权限措辞澄清（TASK-0182，2026-11-22）：按 ADR-0023 §5.6 与 ADR-0018 §3.4，`knowledge.manage`/`knowledge.acl.manage` 仅 `TENANT_ADMIN`；文档创建人是资源关系（`created_by`）而非角色，不替代端点 RBAC；普通员工登记/添加文档不在 M05 范围。只澄清 AC-06/15 与 OQ-M05-03 措辞，未改变已批准的用户可见结果；上述评审结论状态不改写，是否需 Verifier 对改后文本重开可验证性由 Lead/Verifier 在 M05 gate 前判定。
 
@@ -694,7 +694,7 @@ M05 的可 demo 闭环：上传多工作表 Excel → 提问 → 引用详情显
 
 ### 11.7 预算建议
 
-**M05 104h + M05b 53h = 157h（ADR §12.2；待用户 DEC-0035）；不含 M23/M24 债务。** 合同 `8h/module` 明显不足；以上为当前基线，最终以 DEC-0035 为准。
+**M05 104h + M05b 53h = 157h；DEC-0035=A 已批准 Stage 1 = M05 104h + M23 6h + M24 20h = 130h；M05b 53h 待 M05 用户验收后另批。** 合同 `8h/module` 明显不足；以上为当前基线。M23/M24 已 done，Product 预验收 pass（REV-M23-001/REV-M24-001）；其 6h + 20h 已计入 Stage 1。
 
 已知预算缺口（至少包含）：
 
@@ -709,9 +709,9 @@ M05 的可 demo 闭环：上传多工作表 Excel → 提问 → 引用详情显
 | V12 / 索引 v2 / outbox | 迁移、索引重灌/别名、双通道与租约续期（`IT-KB-113`、`IT-WORKER-LANE-001`、`IT-WORKER-LEASE-001`）                         | Architect + Ops      |
 | 契约/UI 拆分           | M05 只写 ACL/下载/解析/引用/删除/重索引；连接器契约与 UI 归 M05b；AC-22 分段                                              | Architect + Lead     |
 
-- M05 gate 前置债务（M13 F-001 fix、M22 F-001/F-002、M20 F-004、ADR-0022 摘要、M04 F-006/F-008/F-010/F-012/F-013）另计，不计入功能预算。
+- M05 gate 前置债务 M23（M13 F-001）与 M24（M04 F-006/F-008/F-010/F-012、M22 F-001、M20 F-004、R-M04-03）已完成并 Product 预验收 pass（REV-M23-001/REV-M24-001）；6h + 20h 已计入 DEC-0035 Stage 1，不重复计入功能预算。M22 F-002、ADR-0022 摘要与 M04 F-013 文档已关闭。
 - 任何 AC 后移必须写明被移出的 AC ID、原因、去向（后续模块 / `kind: fix` / deferred）、替代验证与残余风险；不得在预算内静默砍 AC。
-- 本预算只是 Product 建议，不是合同承诺；预算调整需用户决策。
+- Stage 1 130h 已由 DEC-0035=A 批准；本表其余估算仍为 Product 建议，不是合同承诺；M05b 53h 与后续预算调整需用户决策。
 
 ### 11.8 待确认默认值（OQ-M05-01..12，已定/未定）
 
