@@ -866,9 +866,10 @@ public class XlsxDocumentParser implements DocumentParser {
                 collector.endRow(rowNum);
             }
             String rowReference = attributes.getValue("r");
-            int parsed = rowReference == null ? nextRowNum : parseIndex(rowReference);
-            // OOXML 行号从 1 开始；内部统一用 0 基索引，与 cellRange 输出一致。
-            rowNum = parsed <= 0 ? nextRowNum : parsed - 1;
+            int parsed = rowReference == null ? -1 : parseIndex(rowReference);
+            // OOXML 行号从 1 开始；内部统一用 0 基索引。r 是可选属性：
+            // 缺失或非法时按文档顺序取“前一行 + 1”，不能把 1 基值再减一，否则行号会坍缩。
+            rowNum = parsed > 0 ? parsed - 1 : nextRowNum;
             nextRowNum = rowNum + 1;
             nextColNum = 0;
             rowOpen = true;
@@ -950,13 +951,18 @@ public class XlsxDocumentParser implements DocumentParser {
             }
             try {
                 int index = Integer.parseInt(raw);
-                if (index < 0 || index >= sharedStrings.getCount()) {
+                if (index < 0) {
                     return null;
                 }
+                // count/uniqueCount 是可选属性，不能作为实际条目边界；getItemAt 以已解析的 <si>
+                // 列表为准，越界时抛出 IllegalStateException，按损坏单元格跳过。
                 var item = sharedStrings.getItemAt(index);
                 return item == null ? null : item.toString();
             } catch (NumberFormatException ex) {
                 // 非法共享字符串索引视为损坏单元格，跳过而不是中断整表。
+                return null;
+            } catch (IllegalStateException ex) {
+                // sst 缺失或索引越界；跳过该单元格，避免整本合法工作簿被误判为 KB_NO_TEXT。
                 return null;
             }
         }

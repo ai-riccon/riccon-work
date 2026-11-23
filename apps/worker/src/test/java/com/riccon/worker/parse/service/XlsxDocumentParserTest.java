@@ -17,7 +17,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
+import java.util.regex.Pattern;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 import org.apache.poi.openxml4j.util.ZipSecureFile;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -257,6 +263,69 @@ class XlsxDocumentParserTest {
         assertThat(parsed.segments()).hasSize(1);
         assertThat(parsed.segments().get(0).content()).isEqualTo("0123456789");
         assertThat(parsed.warnings()).containsExactly(ParseWarningCodes.CHARS_TRUNCATED);
+    }
+
+    /**
+     * sharedStrings.xml 缺可选 count/uniqueCount 时，仍按实际 &lt;si&gt; 条目解析字符串。
+     */
+    @Test
+    @DisplayName("sst 缺 count/uniqueCount 仍解析共享字符串")
+    void parse_sharedStringsWithoutCount_parsesStrings() {
+        byte[] content = workbook(workbook -> {
+            Sheet sheet = workbook.createSheet("SST");
+            for (int index = 0; index < 3; index++) {
+                sheet.createRow(index).createCell(0).setCellValue("value-" + (index + 1));
+            }
+        });
+        byte[] withoutCounts = rewriteZip(
+                content,
+                Map.of(
+                        "xl/sharedStrings.xml",
+                        xml -> xml.replaceFirst("\\s+count=\"[^\"]*\"", "")
+                                .replaceFirst("\\s+uniqueCount=\"[^\"]*\"", "")));
+        String sharedStrings = zipEntry(withoutCounts, "xl/sharedStrings.xml");
+        assertThat(Pattern.compile("<sst\\b[^>]*\\b(count|uniqueCount)=")
+                        .matcher(sharedStrings)
+                        .find())
+                .isFalse();
+
+        ParsedContent parsed = parse(withoutCounts);
+
+        assertThat(parsed.segments()).hasSize(1);
+        assertThat(parsed.segments().get(0).content()).contains("value-1").contains("value-3");
+        ParseSummary.SheetSummary sheet = parsed.summary().sheets().get(0);
+        assertThat(sheet.rowCount()).isEqualTo(3);
+        assertThat(sheet.indexedRange()).isEqualTo("A1:A3");
+    }
+
+    /**
+     * row 缺可选 r 属性时，按文档顺序取前一行 + 1，cellRange 与 rowCount 不坍缩。
+     */
+    @Test
+    @DisplayName("row 缺 r 时按顺序回退行号")
+    void parse_rowsWithoutReference_useSequentialRows() {
+        byte[] content = workbook(workbook -> {
+            Sheet sheet = workbook.createSheet("Rows");
+            for (int index = 0; index < 3; index++) {
+                sheet.createRow(index).createCell(0).setCellValue("line-" + (index + 1));
+            }
+        });
+        byte[] withoutRowReferences = rewriteZip(
+                content,
+                Map.of("xl/worksheets/sheet1.xml", xml -> xml.replaceAll("(<row\\b[^>]*?)\\s+r=\"[^\"]*\"", "$1")));
+        String sheetXml = zipEntry(withoutRowReferences, "xl/worksheets/sheet1.xml");
+        assertThat(Pattern.compile("<row\\b[^>]*\\br=").matcher(sheetXml).find())
+                .isFalse();
+
+        ParsedContent parsed = parse(withoutRowReferences);
+
+        assertThat(parsed.segments()).hasSize(1);
+        assertThat(parsed.segments().get(0).content()).contains("line-1").contains("line-3");
+        assertThat(parsed.segments().get(0).content().split("\n", -1)).hasSize(3);
+        assertThat(parsed.segments().get(0).cellRange()).isEqualTo("A1:A3");
+        ParseSummary.SheetSummary sheet = parsed.summary().sheets().get(0);
+        assertThat(sheet.rowCount()).isEqualTo(3);
+        assertThat(sheet.indexedRange()).isEqualTo("A1:A3");
     }
 
     /**
@@ -680,6 +749,56 @@ class XlsxDocumentParserTest {
             return output.toByteArray();
         } catch (IOException ex) {
             throw new IllegalStateException("failed to create large xlsx fixture", ex);
+        }
+    }
+
+    /**
+     * 重写 ZIP 中的指定 XML 条目，用于模拟省略可选 OOXML 属性的合法工作簿。
+     *
+     * @param xlsx 原始 XLSX
+     * @param edits 条目名到文本变换的映射
+     * @return 重写后的 XLSX
+     */
+    private static byte[] rewriteZip(byte[] xlsx, Map<String, UnaryOperator<String>> edits) {
+        try (ZipInputStream input = new ZipInputStream(new ByteArrayInputStream(xlsx));
+                ByteArrayOutputStream output = new ByteArrayOutputStream();
+                ZipOutputStream zip = new ZipOutputStream(output, StandardCharsets.UTF_8)) {
+            ZipEntry entry;
+            while ((entry = input.getNextEntry()) != null) {
+                byte[] data = input.readAllBytes();
+                UnaryOperator<String> edit = edits.get(entry.getName());
+                if (edit != null) {
+                    data = edit.apply(new String(data, StandardCharsets.UTF_8)).getBytes(StandardCharsets.UTF_8);
+                }
+                zip.putNextEntry(new ZipEntry(entry.getName()));
+                zip.write(data);
+                zip.closeEntry();
+            }
+            zip.finish();
+            return output.toByteArray();
+        } catch (IOException ex) {
+            throw new IllegalStateException("failed to rewrite xlsx fixture", ex);
+        }
+    }
+
+    /**
+     * 读取 ZIP 条目文本，供测试断言夹具确实省略了目标属性。
+     *
+     * @param xlsx XLSX 字节
+     * @param name 条目名
+     * @return 条目文本
+     */
+    private static String zipEntry(byte[] xlsx, String name) {
+        try (ZipInputStream input = new ZipInputStream(new ByteArrayInputStream(xlsx))) {
+            ZipEntry entry;
+            while ((entry = input.getNextEntry()) != null) {
+                if (name.equals(entry.getName())) {
+                    return new String(input.readAllBytes(), StandardCharsets.UTF_8);
+                }
+            }
+            throw new IllegalStateException("zip entry not found: " + name);
+        } catch (IOException ex) {
+            throw new IllegalStateException("failed to read xlsx fixture entry", ex);
         }
     }
 
