@@ -1,0 +1,25 @@
+# command: set -e; docker compose --profile connector-egress -f deploy/compose/docker-compose.test.yml config >/dev/null; docker compose -p riccon-o2a-egress --profile connector-egress -f deploy/compose/docker-compose.test.yml run --rm --no-deps connector-egress-probe; docker compose -p riccon-o2a-egress --profile connector-egress -f deploy/compose/docker-compose.test.yml down --remove-orphans; if docker network inspect riccon-o2a-egress_riccon-connector-egress >/dev/null 2>&1; then echo 'FAIL: 演练网络仍存在'; exit 1; else echo 'OK: 演练网络已删除'; fi
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-24T05:06:12.399+08:00
+# finished_at: 2026-11-24T05:06:13.608+08:00
+# duration_ms: 1208
+# exit_code: 0
+
+# --- stdout ---
+== connector egress probe (internal network) ==
+-- /proc/net/route --
+Iface	Destination	Gateway 	Flags	RefCnt	Use	Metric	Mask		MTU	Window	IRTT                                                       
+eth0	000013AC	00000000	0001	0	0	0	0000FFFF	0	0	0                                                                               
+OK: 无默认路由（只剩 internal 网段路由）
+OK: 外部地址被拒绝
+OK: 云元数据地址被拒绝
+connector-egress-probe: PASS
+OK: 演练网络已删除
+
+# --- stderr ---
+ Network riccon-o2a-egress_riccon-connector-egress Creating 
+ Network riccon-o2a-egress_riccon-connector-egress Created 
+ Container riccon-o2a-egress-connector-egress-probe-run-e0eaa442f36e Creating 
+ Container riccon-o2a-egress-connector-egress-probe-run-e0eaa442f36e Created 
+ Network riccon-o2a-egress_riccon-connector-egress Removing 
+ Network riccon-o2a-egress_riccon-connector-egress Removed

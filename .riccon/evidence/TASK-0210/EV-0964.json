@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0964",
+  "task_id": "TASK-0210",
+  "command": "set -e; docker compose --profile connector-egress -f deploy/compose/docker-compose.test.yml config >/dev/null; docker compose -p riccon-o2a-egress --profile connector-egress -f deploy/compose/docker-compose.test.yml run --rm --no-deps connector-egress-probe; docker compose -p riccon-o2a-egress --profile connector-egress -f deploy/compose/docker-compose.test.yml down --remove-orphans; if docker network inspect riccon-o2a-egress_riccon-connector-egress >/dev/null 2>&1; then echo 'FAIL: 演练网络仍存在'; exit 1; else echo 'OK: 演练网络已删除'; fi",
+  "manual": false,
+  "commit": "572ed85a625ab89735fa11a024f3b36260d3defa",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0210/EV-0964-2026-11-24T05-06-13-846+08-00-set-e-docker-compose-profile-connector-egress-f-.log",
+  "output_sha256": "2f1c29c780aacd3794e4a389c74620d6c4572b6ad0f6de3fedafbc0de521d423",
+  "output_bytes": 1676,
+  "agent": "riccon/lead",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-24T05:06:12.399+08:00",
+  "finished_at": "2026-11-24T05:06:13.608+08:00",
+  "duration_ms": 1208,
+  "note": "O2a 返工后复验：profile config + 零出网探针 + down 清理断言（F-002 关闭）",
+  "recorded_at": "2026-11-24T05:06:13.848+08:00"
+}
