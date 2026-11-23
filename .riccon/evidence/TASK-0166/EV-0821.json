@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0821",
+  "task_id": "TASK-0166",
+  "command": "while ! mkdir '/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T//riccon-maven.lock' 2>/dev/null; do sleep 5; done; trap 'rmdir \"/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T//riccon-maven.lock\" 2>/dev/null || true' EXIT; ./mvnw -q -T1C -pl apps/api -am test && ./mvnw -q -T1C -pl apps/worker -am test -Dtest='AgentContextJdbcAclTest,KnowledgeRetrieverIntegrationTest,UntrustedDataAndToolTest' -Dsurefire.failIfNoSpecifiedTests=false",
+  "manual": false,
+  "commit": "dbef7ba5107734f06da14ff5fd6061b9bcdf1c0e",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0166/EV-0821-2026-11-23T10-56-50-726+08-00-while-mkdir-var-folders-jz-47nmh5g113sb1674f5q-t.log",
+  "output_sha256": "69aa1b7f799d517a82b57099d36af3b506dc8ebd2ceccfae9d0e929a8b874858",
+  "output_bytes": 1679551,
+  "agent": "riccon/builder-kb-acl",
+  "cwd": "/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-b3-evidence-wt",
+  "started_at": "2026-11-23T10:42:37.886+08:00",
+  "finished_at": "2026-11-23T10:56:49.724+08:00",
+  "duration_ms": 851836,
+  "note": "M05-B3：ACL/delete/reindex/流式下载/admin_read/保留；API 全量与 worker 定向（隔离工作树，同代码提交）",
+  "recorded_at": "2026-11-23T10:56:50.741+08:00"
+}
