@@ -1626,6 +1626,7 @@ async function uploadBacklog(admin, workspace, options) {
         return {
           kind: "docx",
           index,
+          status: "succeeded",
           fileId,
           documentId: indexed.documentId,
           uploadMs: uploadDoneAt - startedAt,
@@ -1635,7 +1636,12 @@ async function uploadBacklog(admin, workspace, options) {
           chunkCount: null,
           parseEngine: indexed.document?.parseEngine ?? null,
         };
-      })(),
+      })().catch((error) => ({
+        kind: "docx",
+        index,
+        status: "failed",
+        error: truncateText(error, 300),
+      })),
     );
   }
   if (options.ocr) {
@@ -1655,6 +1661,7 @@ async function uploadBacklog(admin, workspace, options) {
         return {
           kind: "ocr-image",
           index: 0,
+          status: "succeeded",
           fileId,
           documentId: indexed.documentId,
           uploadMs: uploadDoneAt - startedAt,
@@ -1665,7 +1672,12 @@ async function uploadBacklog(admin, workspace, options) {
           parseEngine: indexed.document?.parseEngine ?? null,
           ocr: indexed.document?.parseSummary?.ocr ?? null,
         };
-      })(),
+      })().catch((error) => ({
+        kind: "ocr-image",
+        index: 0,
+        status: "failed",
+        error: truncateText(error, 300),
+      })),
     );
   }
   return Promise.all(uploads);
@@ -1815,8 +1827,13 @@ async function runKnowledgePerf(context) {
       PERF_M05_ACL_USER_IDS: JSON.stringify(aclUserIds),
       PERF_M05_QUERY: KNOWLEDGE_QUERY,
     });
-    // 等 k6 进入负载后再提交积压，避免所有 VU 登录阶段与上传争抢连接池。
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    // 等 k6 进入负载后再提交积压；默认 8s 避开 50 VU 登录/首轮检索的峰值。
+    await new Promise((resolve) =>
+      setTimeout(
+        resolve,
+        Number(process.env.PERF_M05_BACKLOG_DELAY_MS ?? "8000"),
+      ),
+    );
     const backlogPromise = uploadBacklog(admin, workspace, {
       documents: backlogDocuments,
       ocr: ocrAvailable,
@@ -1849,11 +1866,15 @@ async function runKnowledgePerf(context) {
     );
   }
   const report = JSON.parse(readFileSync(reportFile, "utf8"));
+  const backlogSucceeded = backlog.filter(
+    (item) => item.status === "succeeded",
+  );
+  const backlogFailed = backlog.filter((item) => item.status === "failed");
   const docxSamples = [
     baseline,
-    ...backlog.filter((item) => item.kind === "docx"),
+    ...backlogSucceeded.filter((item) => item.kind === "docx"),
   ].map((item) => item.createToIndexedMs);
-  const ocrSamples = backlog
+  const ocrSamples = backlogSucceeded
     .filter((item) => item.kind === "ocr-image")
     .map((item) => item.createToIndexedMs);
   const metrics = report.metrics ?? {};
@@ -1928,6 +1949,7 @@ async function runKnowledgePerf(context) {
       },
       baseline,
       backlog,
+      backlogFailures: backlogFailed,
       backlogDuringLoad: true,
     },
     retrieval: {
