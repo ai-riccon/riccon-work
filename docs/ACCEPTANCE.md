@@ -9,16 +9,16 @@
 
 ## 范围
 
-- 模块：M03「权限纵深与组织模型」；M10「身份与审计纵深（M03b）」；M13 为 M03 验收补丁；M18 回溯复验（含 M02 回溯 Product 预验收）；M04「模型网关纵深」（2026-11-21 gate 后 Product 预验收）；M19「测试基础设施与全量测试提速」（2026-11-22 gate 后 Product 预验收，技术性 fix，无用户可见 AC）；M21（fix M19，合并前 `ModelFailover` 时序 flake 修复，无用户可见 AC）
+- 模块：M03「权限纵深与组织模型」；M10「身份与审计纵深（M03b）」；M13 为 M03 验收补丁；M18 回溯复验（含 M02 回溯 Product 预验收）；M04「模型网关纵深」（2026-11-21 gate 后 Product 预验收）；M19「测试基础设施与全量测试提速」（2026-11-22 gate 后 Product 预验收，技术性 fix，无用户可见 AC）；M21（fix M19，合并前 `ModelFailover` 时序 flake 修复，无用户可见 AC）；M23（fix M13，2026-11-23 gate 后 Product 预验收）；M24（fix M04/M20/M22，2026-11-23 gate 后 Product 预验收）
 - M18 回溯复验（2026-11-20）：TASK-0090 对 M01/M02/M03/M10/M12/M13/M15 用当前合同 `commands.test` 重录 test/coverage（EV-0490..EV-0496）、重写 `REV-*-002`、恢复 gate（EV-0498）；TASK-0092/0093 补 M02 AC-02 逐格式 UI 证据与 a11y P1 修复；TASK-0094 在最终代码 `ec6a650` 上执行全量合同证据（EV-0512 build、EV-0513 test/coverage、EV-0514 E2E 33 passed、EV-0515 a11y 13 passed、EV-0516 security、EV-0517 gate 循环）。真实栈 E2E/a11y 与迁移回滚未重跑。详见「M18 回溯复验（2026-11-20）」。
 - M03 原 gate：`bc97d1c`（REV-M03-001，EV-0342..EV-0349）
 - M03 验收补丁（M13）：代码 `410cddd`，gate pass（REV-M13-001，EV-0352..EV-0359、EV-0361）；完整合同证据 `6564879`，最终 E2E `650663f`。EV-0360 为中间失败，不引用
 - M10 gate：代码最终提交 `a88d003`，gate pass（REV-M10-001，29 条 reviewed_evidence；DEC-0018 将上限从 12h 提高到 20h）；V1 TASK-0083 done
 - M15 补丁（fixes M10）：后端 `08e0fc6`（EV-0449）、前端 `4538d8c`（EV-0450）、a11y `c4ebd3e`（EV-0478）；TASK-0084/0085/0087/0086 done，gate pass（REV-M15-001）；代码证据 EV-0482..0486、EV-0488 在 `864b0a7`，docs EV-0489 在 `de33ed8`（EV-0487 为中间失败，不引用）
 - M04：`feature`，gate pass（REV-M04-005，2026-11-21；18 条 AC 全 pass）；证据 EV-0675/0676/0677/0681/0682..0686/0687/0689、EV-0669、EV-0640；Product 预验收见「M04 模型网关纵深（gate pass 后 Product 预验收）」
-- 验收日期：2026-11-19（M10 初次）、2026-11-20（M15 后复验）、2026-11-20（M18 回溯与最终全量）、2026-11-21（M04 gate 后）、2026-11-22（M19 gate 后）、2026-11-22（M21 合并后）
-- 验收人：Product（M03/M10/M15 预验收；M02 回溯预验收；M04 预验收；M19/M21 预验收）；用户（M03/M10 accepted；M02/M18 回溯 accepted，DEC-0025；M04 最终验收 `accepted`，DEC-0027；M19 合并批准，DEC-0030）
-- 参考：REV-M13-001、REV-M03-001、REV-M03-V1-002、REV-M10-001、REV-M15-001、REV-M10-ARCH-002、REV-M10-OPS-001、M10-OPS-DRILL、REV-TASK-0033-002、REV-TASK-0037/0039/0041/0043/0045、REV-TASK-0065-002/0068/0069/0071/0076；M18 回溯：REV-M01-002、REV-M02-004、REV-M03-002、REV-M10-002、REV-M12-002、REV-M13-002、REV-M15-002、REV-M18-REVALIDATION-001；M04：REV-M04-005、REV-TASK-0115-002、TASK-0116/TASK-0139；M19：REV-M19-001、EV-0716/0721/0723/0724；M21：EV-0725、CI run 44965051297、merge `1434733`
+- 验收日期：2026-11-19（M10 初次）、2026-11-20（M15 后复验）、2026-11-20（M18 回溯与最终全量）、2026-11-21（M04 gate 后）、2026-11-22（M19 gate 后）、2026-11-22（M21 合并后）、2026-11-23（M23/M24 gate 后）
+- 验收人：Product（M03/M10/M15 预验收；M02 回溯预验收；M04 预验收；M19/M21 预验收；M23/M24 预验收）；用户（M03/M10 accepted；M02/M18 回溯 accepted，DEC-0025；M04 最终验收 `accepted`，DEC-0027；M19 合并批准，DEC-0030；M23/M24 无新增用户可见 AC，最终验收 `pending`）
+- 参考：REV-M13-001、REV-M03-001、REV-M03-V1-002、REV-M10-001、REV-M15-001、REV-M10-ARCH-002、REV-M10-OPS-001、M10-OPS-DRILL、REV-TASK-0033-002、REV-TASK-0037/0039/0041/0043/0045、REV-TASK-0065-002/0068/0069/0071/0076；M18 回溯：REV-M01-002、REV-M02-004、REV-M03-002、REV-M10-002、REV-M12-002、REV-M13-002、REV-M15-002、REV-M18-REVALIDATION-001；M04：REV-M04-005、REV-TASK-0115-002、TASK-0116/TASK-0139；M19：REV-M19-001、EV-0716/0721/0723/0724；M21：EV-0725、CI run 44965051297、merge `1434733`；M23：REV-M23-001、EV-0770/0814..0817、DEC-0036；M24：REV-M24-001、REV-TASK-0157-001、EV-0771/0775/0783/0786/0794/0795/0796/0797/0798/0802/0804/0807/0808..0813
 
 ## 模块关系与验收状态
 
@@ -34,6 +34,8 @@
 - **M04**：`feature`，done；gate pass（REV-M04-005，2026-11-21；18 条 AC 全 pass，F-001..F-005/F-011 fixed，P2/P3 残余登记）；Product 预验收 `pass`（with residual：R-M04-01 P2 员工侧配额 429 文案、R-M04-02/03 P3，以及 Verifier F-006/F-008/F-009/F-010/F-012/F-013），见「M04 模型网关纵深（gate pass 后 Product 预验收）」；用户最终验收 `accepted`（DEC-0027，A；with residual，R-M04-01/02/03 转 M05），见「用户最终验收（M04）」。
 - **M19**：`fix`，done；gate pass（REV-M19-001，2026-11-22；14.3h/16h）；9 个任务全部 done；Product 预验收 `pass`（with residual F-001..F-005，见「M19 测试基础设施与全量测试提速（gate pass 后 Product 预验收）」）；用户最终验收 `accepted`（DEC-0030=A，2026-11-22）；PR #1 已合并（merge commit `1434733`）；不改变产品 AC/API/DB/UX/部署行为。M21（fix M19）修复合并前最终 CI 暴露的 `ModelFailoverIntegrationTest` 时序 flake，属于同一交付的稳定性修复，Product 预验收 `pass`（见「M21（fix M19）：ModelFailover 时序 flake 修复（合并后 Product 预验收）」）。
 - **M21**：`fix`，`fixes_module=M19`；TASK-0150（`2bee040`）只改 `ModelFailoverIntegrationTest`，复用 `holdAfterFirstContent` 闸门消除首字前 503/502 竞态；EV-0725（定向 10×17 + Worker 全量 356/0/0/0）、CI run 44965051297（shard2 17/0/0/0、merge 196/1115/0/0/0）、merge `1434733`；Product 预验收 `pass`（无用户可见 AC，无产品/UX/API/DB 变更）；用户验收引用 DEC-0030，无需额外验收。
+- **M23**：`fix`，`fixes_module=M13`；gate pass（REV-M23-001，`state.gate` 2026-11-23T09:23:26+08:00；DEC-0036=A 接受排队时间 overrun，不改 DEC-0035 的 6h 执行预算）；TASK-0163 done；Product 预验收 `pass`（with residual F-001..F-003，见「M23（fix M13）：部门字段契约对齐（gate pass 后 Product 预验收）」）；用户最终验收 `pending`（内部修复，无新增用户可见 AC；DEC-0036 仅接受排队时间，不是产品验收）。
+- **M24**：`fix`，`fixes_module=M04`，同时关闭 M20/M22 前置残余；gate pass（REV-M24-001；`gate check --module M24` 2026-11-23T09:20 PASS）；9 个任务全部 done；Product 预验收 `pass`（with residual F-001..F-006，见「M24（fix M04/M20/M22）：M05 gate 前置残余（gate pass 后 Product 预验收）」）；用户最终验收 `pending`（内部修复，无新增用户可见 AC）。
 
 ## 验收标准（M03，M13 补丁后）
 
@@ -459,11 +461,70 @@ M02 是用户可见 MVC 模块，但 2026-11-18 关闭时没有 `product_accepta
 - **明确不声称**：CI 总墙钟 ≤5 分钟（coverage job 约 8.5 分钟，RUNBOOK 已写明不承诺）；前端覆盖率已由 CI 强制（CI frontend 仍只跑 `pnpm -w test`，前端覆盖率由 verifier gate 采集）；已消除所有 flake（F-001 仍在）；surefire 多 fork/并行隔离已验证（只给出约束与重验前置）；Actions 升级长期有效（仅本次 run 证明）；M22 改变产品行为或产品 AC/API/DB/UX。
 - **用户最终验收**：`accepted`（DEC-0031，2026-11-22；用户接受 M22 技术验收并批准合并 PR #2）。M22 无用户可见 AC；本记录不改变 F-001/F-002 的 owner/due。
 
+## M23（fix M13）：部门字段契约对齐（gate pass 后 Product 预验收）
+
+- **预验收日期**：2026-11-23。
+- **性质与范围**：`kind: fix`、`fixes_module=M13`；TASK-0163（代码 `979248c`，closeout `3ae6335`）让 `SessionInfo.user` 与管理端 `UserSummary` 实际下发 `departmentId`/`departmentName`，未分配为 `null`，停用部门仍返回名称；OpenAPI 原本已声明这两个可空字段，本模块未改契约。无前端源码、迁移、部署或用户可见文案改动；模块目标是关闭 M13 F-001，不改变 M03/M13 已验收的用户可见结果。
+- **gate 与预算**：gate pass（REV-M23-001，`head_commit=3ae6335`；`state.gate` 2026-11-23T09:23:26+08:00）。DEC-0036=A 接受 13.3h 中的跨模块排队时间，**不改变 DEC-0035 批准的 6h 执行预算**；操作性 `wall_clock_limit_hours` 为让 gate 重跑临时调为 14h，M23 done 后不复用，不作为后续预算放宽先例。
+- **证据**：REV-M23-001（独立 Verifier，verdict pass）；EV-0770（定向 8 类：`SessionDepartmentApiTest` 4/4、`UserSummaryDepartmentContractTest` 3/3，另有 AuthFlow/OIDC/TenantIsolation 回归）；EV-0814 build；EV-0815 test+coverage（Java 220 类/1247 用例/0 failure/0 error/0 skip；web 57 文件/493 用例；覆盖率 api 92.47/75.55、worker 88.22/71.99、platform-common 90.83/75.41、platform-domain 96.51、web 87.01/80.01）；EV-0816 合同 E2E 40/40（含 R-M03-01 四态）；EV-0817 lint/typecheck。a11y EV-0811 15/15 与 security EV-0812 在同一 HEAD 由 M24 全量运行覆盖；按 strict gate 归属不列入 M23 的 `dod_evidence`，仅作同 HEAD 佐证。
+
+| 验收项                                                                                                                                        | 结果                        | 证据                                    | 用户可见结果核对                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SessionInfo.user 与 UserSummary 实际下发 departmentId/departmentName（未分配为 null），OpenAPI 与实现一致；前端不再必须依赖 /departments 兜底 | pass（with residual F-002） | EV-0770、EV-0815、EV-0816               | 真实 MySQL + HTTP 链路：成员 `/auth/session` 与租户管理员 `/api/v1/users` 均返回 `departmentId`/`departmentName`；未分配时字段存在且为 `null`（不省略、不空串）；停用部门仍返回名称；`UserSummaryDepartmentContractTest` 直接读取仓库 `contracts/openapi.yaml` 断言两字段可空、不在 required、`SessionInfo.user` 引用 `UserSummary`。**“前端不再必须依赖 /departments”只在“按 departmentId 精确识别主部门”范围成立；名称与停用状态仍读 `/departments`，见 F-002，不声称已完全去除依赖。** |
+| 成员/未分配/停用/租户管理员四态 UI 与既有 E2E 不回归                                                                                          | pass                        | EV-0816 40/40、EV-0815 web 493、EV-0811 | 成员“所属部门：销售部”、未分配“未分配部门”、停用“综合部 + 已停用”、租户管理员“角色：租户管理员”且不误报主部门；M13 R-M03-01/02/03 全部通过；375px、键盘与 axe 由同一 HEAD 的 EV-0811 15/15 覆盖。                                                                                                                                                                                                                                                                                         |
+| 受影响测试与契约校验通过；不改变 M03/M13 已验收的 AC 结果                                                                                     | pass                        | EV-0770/0814/0815/0816/0817             | 无 OpenAPI、前端、迁移、部署或既有字段变更；仅向既有响应增加可空字段；全量 test/coverage、E2E、lint/typecheck 全绿；M03/M13 已验收 AC 的输入与用户可见结果不变。                                                                                                                                                                                                                                                                                                                          |
+
+### 已接受/残余项（M23）
+
+| 来源 | ID    | 级别 | 状态     | owner / due                                                   | 说明 / 对验收的影响                                                                                                                                                                                                                                                          |
+| ---- | ----- | ---- | -------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M23  | F-001 | P3   | accepted | `riccon/builder-web` / `riccon/builder-identity`，M05 gate 前 | `e2e/stub/server.mjs` 的 `sessionInfo` 未下发部门字段，M13 四态 E2E 仍靠 `/departments` 种子兜底；后端字段本身由 EV-0770 的真实 MySQL + HTTP 用例直接覆盖。属浏览器保真度增强，不改变四态用户结果。                                                                          |
+| M23  | F-002 | P3   | accepted | `riccon/builder-web`，M05 gate 前                             | 前端名称/停用状态仍从 `/departments` 读取，`SessionInfo.departmentName` 未被消费；`apps/web/src/services/api/types.ts:40` 的“服务端可能暂未下发”注释已过期。M13 F-001 的核心后端缺口已关闭，不声称前端已完全去掉列表依赖；完全去除需把部门状态纳入会话契约，属后续契约扩展。 |
+| M23  | F-003 | P3   | accepted | `riccon/lead`，M05 gate 前                                    | TASK-0163 属认证/身份高风险变更，done 前无任务级独立 review；模块评审 REV-M23-001 已在同一 HEAD 实质覆盖（独立读 diff、重跑定向/全量/E2E）。需 Lead 在 closeout/handoff 明确记录本次一次性流程例外，后续身份类任务不得复用此路径。                                           |
+
+- **Product 结论**：`pass`（with residual F-001..F-003）。后端的部门字段、未分配 `null`、停用部门名称与四态用户结果均有可复核证据；未发现 P0/P1 或新的用户可见缺口；三条 P3 分别是 E2E 保真度、前端依赖收敛与任务级评审流程，均有 owner/due，不改变 M13 已验收结论。
+- **明确不声称**：四态 E2E 已仅凭会话字段证明（F-001）；前端名称/停用状态已不依赖 `/departments`（F-002）；TASK-0163 有任务级独立 review（F-003）；M23 改变了 M03/M13 的用户可见行为；用户已最终验收。
+- **边界**：本结论不是用户最终验收；Product 不检查实现细节、安全边界、并发或测试充分性，这些由 REV-M23-001 负责。用户最终验收 `pending`；DEC-0036 仅接受排队时间，不是产品验收。
+
+## M24（fix M04/M20/M22）：M05 gate 前置残余（gate pass 后 Product 预验收）
+
+- **预验收日期**：2026-11-23。
+- **性质与范围**：`kind: fix`、`fixes_module=M04`，`depends_on=M04/M20/M22`；9 个任务全部 done，关闭 M04 F-006/F-008/F-010/F-012、M22 F-001、M20 F-004、R-M04-03。除 TASK-0157 新增 Worker 集成测试外，其余为测试/E2E/格式修复；`git diff 1046807..9018026 -- apps platform contracts deploy` 只有 2 个测试文件（`CostPageContractTest`、`InFlightCredentialRotationIntegrationTest`）；另有 `e2e/real/tests/m04-routing.spec.ts`、`m04-quota-cost.spec.ts` 两个真实栈 spec。没有生产源码、迁移、OpenAPI、部署配置或用户可见文案改动，因此 M04/M20/M22 已验收 AC 的用户可见结果不变；M24 不新增界面或流程，UX 状态清单（空/错/加载/权限/移动端/文案）N/A。
+- **gate**：gate pass（REV-M24-001；`gate check --module M24` 2026-11-23T09:20 PASS；head `3ae6335`）。
+- **证据**：REV-M24-001（独立 Verifier，verdict pass）；REV-TASK-0157-001（任务级独立评审）；EV-0808 build；EV-0809 test+coverage（Java 220 类/1247 用例/0/0/0；web 57/493；覆盖率全部过 80/70）；EV-0810 合同 E2E 40/40；EV-0811 a11y 15/15；EV-0812 security（0 漏洞/0 密钥/0 错配，仅 ADR-0011 已登记例外）；EV-0813 lint/typecheck；EV-0807 真实栈连续两次 11/11；EV-0804 定向 6/6；EV-0794/0795（F-006）；EV-0771（F-008）；EV-0797/0798（F-010）；EV-0783/0786（F-012/M22 F-001）；EV-0796（M20 F-004）；EV-0802/0804（R-M04-03）。失败 EV-0803/0805/0806 保留，未用 retry 掩盖。
+
+| 任务      | 原债务                                       | 结论                                           | 证据                            |
+| --------- | -------------------------------------------- | ---------------------------------------------- | ------------------------------- |
+| TASK-0157 | M04 F-006 真实并发在途轮换                   | fixed（集成层；跨进程 E2E 为 F-001 P3）        | EV-0794/0795；REV-TASK-0157-001 |
+| TASK-0158 | M04 F-008 非 503 detail 脱敏确认             | fixed（验证）；生产 pass-through 仍为 F-006 P3 | EV-0771                         |
+| TASK-0159 | M04 F-010 保存→下一次 CHAT 跨组件 E2E        | fixed                                          | EV-0797/0798；最终 EV-0807      |
+| TASK-0160 | M04 F-012 web 套件 flake                     | fixed（5× 全量 + 10× 单文件；3s 上限见 F-004） | EV-0783/0786                    |
+| TASK-0161 | M20 F-004 CostPage 契约断言                  | fixed                                          | EV-0796                         |
+| TASK-0162 | R-M04-03 三处定向证据                        | fixed                                          | EV-0802/0804；EV-0807           |
+| TASK-0178 | 格式修复 `RunFailureMessageSanitizationTest` | done（断言/语义不变）                          | EV-0775                         |
+| TASK-0181 | M22 F-001 同类 web 异步竞态                  | fixed                                          | EV-0786                         |
+| TASK-0184 | 真实栈用例顺序污染                           | fixed（失败 EV 保留；最终 2×11/11）            | EV-0805/0806/0807               |
+
+### 已接受/残余项（M24）
+
+| 来源 | ID    | 级别 | 状态                   | owner / due                                                      | 说明 / 对验收的影响                                                                                                                                                                                                                                                       |
+| ---- | ----- | ---- | ---------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M24  | F-001 | P3   | accepted               | `riccon/builder-key` / `riccon/builder-gateway-e2e`，M05 gate 前 | 未覆盖“API HTTP 轮换端点 + 独立 Worker 活跃流”的跨进程真实栈 E2E；TASK-0157 在真实 MySQL/SSE/信封/审计上复刻同一单事务 SQL 语义，API 侧 HTTP 轮换由 IT-MODEL-106 等独立覆盖。属部署拓扑/连接池可见性补强。                                                                |
+| M24  | F-002 | P3   | accepted               | `riccon/builder-key`，M05 gate 前                                | 无明文扫描范围有限（最后一次模型请求体、`com.riccon.worker` logger、DEK HEX），未扫描 API 响应、非 worker logger 或 surefire 输出；API 响应/页面掩码由既有 M04 测试与 E2E 覆盖。                                                                                          |
+| M24  | F-003 | P3   | accepted（due 已到期） | `riccon/architect`，M05 gate 前                                  | `docs/CODING-STANDARDS.md` §10.4 的 security 映射未列 `InFlightCredentialRotationIntegrationTest`；测试类已有 `@Tag("security")`/`@Tag("integration")`，选择与断言强度不受影响，属纯文档漂移。原 due“M24 gate 前”已到期，必须在 M05 gate 前补齐。                         |
+| M24  | F-004 | P3   | accepted               | `riccon/builder-web`，M05 gate 前                                | `apps/web/src/test/setup.ts` 将全局 `asyncUtilTimeout` 从 1s 提到 3s，可能掩盖 1–3s 慢回归；未改断言、未用 retry/skip、未降低并行度，元素不出现仍会失败；EV-0783 5× 全量、EV-0786 10× 单文件通过。                                                                        |
+| M24  | F-005 | P3   | accepted               | `riccon/builder-gateway-e2e`，M05 gate 前                        | 真实栈 E2E 仍依赖单 worker 文件内顺序与跨用例全局状态清理约定；EV-0805/0806 已暴露确定性污染并修复，Playwright `retries=0`、`workers=1`，失败显式暴露。后续新增用例需遵守路由链/seed key 清理约定，建议写入 spec 注释/清单。                                              |
+| M24  | F-006 | P3   | accepted               | `riccon/builder-route`，M05 gate 前                              | M04 F-008 的生产 pass-through 仍在：`ChatService` 将 Worker `failedMessage` 原样写入 `run.error_message`；M24 只锁定当前 Worker 静态脱敏文案与负向回显（EV-0771），未做 API 侧白名单/截断/结构化分类。当前写入为固定脱敏文案，风险有界；不声称 F-008 在生产层已完全修复。**M04 F-008 仍按 M04 评审 P2 accepted（DEC-0027），不因 M24 的 P3 标签降级；M24 只关闭“脱敏确认”这一验证项。** |
+
+- **Product 结论**：`pass`（with residual F-001..F-006）。M24 是内部修复，不改变 M04/M20/M22 已验收 AC 的用户可见结果；9 个任务全部 done，债务逐条 fixed 或 accepted，无 open P0/P1；全量 build/test+coverage/E2E/a11y/security/lint 与真实栈 2×11/11 均可复核；失败 EV 保留，未用 retry 掩盖 flake。
+- **明确不声称**：跨进程 HTTP 轮换 E2E 已覆盖（F-001）；无明文扫描已覆盖全部响应/日志（F-002）；CODING-STANDARDS 映射已补齐（F-003，已过期）；3s 全局等待不会掩盖慢回归（F-004）；真实栈顺序约定已消除（F-005）；M04 F-008 的生产 pass-through 已修复或已降级（F-006；仍为 M04 P2 accepted）；M24 改变了产品 AC/API/DB/UX/部署行为；用户已最终验收。
+- **边界**：本结论不是用户最终验收；Product 不检查实现细节、安全边界、并发或测试充分性，这些由 REV-M24-001 负责。用户最终验收 `pending`；M24 无新增用户可见 AC，建议 Lead 在 closeout 中引用既有 M04 DEC-0027、M20 DEC-0033、M22 DEC-0031，无需新增用户决策。
+
 ## M05（规划）
 
 - Product §11 已完成，并按 `REV-M05-AC-001/002` 修订；用户范围/拆分/技术默认值 `pass`（DEC-0034，2026-11-22）。按 DEC-0034 拆分 M05（Excel + OCR + ACL + M04 429）与 M05b（S3 连接器）。
-- Architect/Verifier 最终评审仍 `pending`；预算 157h 待 DEC-0035；未创建模块/任务，未写实现。
-- M05 104h + M05b 53h = 157h（ADR §12.2；待用户 DEC-0035）；V1/V2 充分性与最终预算待 DEC-0035；不含 M23/M24 债务。M05 gate 前置债务 M23（M13 F-001 部门字段）与 M24（M04/M20/M22 残余）待 Lead 排期。
+- Architect 最终评审仍 `pending`（ADR-0023 proposed）；Verifier AC 可验证性 `pass`（REV-M05-AC-001/002）；预算按 DEC-0035 Stage 1 = M05 104h + M23 6h + M24 20h = 130h，M05b 53h 待 M05 用户验收后另批。M05 模块与任务（TASK-0164..0177）已创建，执行状态以 `.riccon` 为准；本记录不写实现结论。
+- M05 104h + M05b 53h = 157h（ADR §12.2；DEC-0035 批准 Stage 1 130h，M05b 53h 待 M05 用户验收后另批）；V1/V2 充分性按 DEC-0035。M05 gate 前置债务 M23（M13 F-001 部门字段）与 M24（M04/M20/M22 残余）均已完成 gate pass 与 Product 预验收（M23 `pass` with residual F-001..F-003；M24 `pass` with residual F-001..F-006），残余 owner/due 见对应章节；M23/M24 用户最终验收 `pending`，不改变 M05 已批准的范围与预算。
 - 本记录**不是预验收、不是模块 done、不是用户最终验收**。
 
 ## 历史模块
