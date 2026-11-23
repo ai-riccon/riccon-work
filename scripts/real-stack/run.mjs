@@ -679,7 +679,7 @@ function buildEnvSnapshot(context) {
     openSearch:
       context.mode === "perf"
         ? context.knowledgePerf
-          ? "started (perf knowledge; riccon-kb index-version v1, 512m heap)"
+          ? `started (perf knowledge; riccon-kb index-version ${context.openSearchIndexVersion ?? "v1"}, 512m heap)`
           : "excluded (perf mode; 2C4Gi sandbox 不足，主机规格见 host)"
         : "started (compose full)",
     perfM05:
@@ -737,8 +737,15 @@ function sharedModelEnv(context) {
     RICCON_FAKE_MODEL: "1",
     SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: dbPool,
     // 知识库场景必须开启文档级 ACL，否则列表/检索/下载量测的是无 ACL 的旧路径。
+    // v2 索引是 B7 的默认验收索引：Worker 写入 riccon-kb-v2-{tenant}，别名在全新测试栈指向 v2。
     ...(context.knowledgePerf
-      ? { RICCON_KB_ACL_ENFORCEMENT_ENABLED: "true" }
+      ? {
+          RICCON_KB_ACL_ENFORCEMENT_ENABLED: "true",
+          RICCON_OPENSEARCH_INDEX_VERSION:
+            context.openSearchIndexVersion ?? "v2",
+          RICCON_OPENSEARCH_INDEX_PREFIX:
+            context.openSearchIndexPrefix ?? "riccon-kb",
+        }
       : {}),
   };
 }
@@ -1661,6 +1668,86 @@ async function uploadBacklog(admin, workspace, options) {
 }
 
 /**
+ * 读取 OpenSearch 别名目标与 v2 mapping 关键字段，作为“同一 v2 索引”证据。
+ *
+ * @param {object} context 上下文
+ * @param {string} tenant 租户代码
+ * @returns {Promise<object>} 检查结果
+ */
+async function inspectOpenSearch(context, tenant) {
+  const url = `http://127.0.0.1:${19200}`;
+  const prefix = context.openSearchIndexPrefix ?? "riccon-kb";
+  const alias = `${prefix}-${tenant}`;
+  const result = {
+    url,
+    indexVersion: context.openSearchIndexVersion ?? "v1",
+    prefix,
+    alias,
+    aliasTarget: null,
+    mappingFields: [],
+    bboxFields: false,
+    aclFields: false,
+    checkedAt: shanghaiIso(),
+    error: null,
+  };
+  try {
+    const aliasResponse = await fetch(`${url}/_alias/${alias}`);
+    if (aliasResponse.status !== 200) {
+      throw new Error(`alias ${alias} status ${aliasResponse.status}`);
+    }
+    const aliasJson = await aliasResponse.json();
+    result.aliasTarget = Object.keys(aliasJson)[0] ?? null;
+    if (!result.aliasTarget) {
+      throw new Error(`alias ${alias} has no index target`);
+    }
+    const mappingResponse = await fetch(
+      `${url}/${result.aliasTarget}/_mapping`,
+    );
+    if (mappingResponse.status !== 200) {
+      throw new Error(
+        `mapping ${result.aliasTarget} status ${mappingResponse.status}`,
+      );
+    }
+    const mappingJson = await mappingResponse.json();
+    const properties =
+      Object.values(mappingJson)[0]?.mappings?.properties ?? {};
+    result.mappingFields = Object.keys(properties).sort();
+    result.bboxFields = ["bbox_x", "bbox_y", "bbox_w", "bbox_h"].every(
+      (field) => field in properties,
+    );
+    result.aclFields = ["visibility", "department_id", "acl_version"].every(
+      (field) => field in properties,
+    );
+  } catch (error) {
+    result.error = truncateText(error, 400);
+  }
+  return result;
+}
+
+/**
+ * 采样 1 分钟 load；用于报告运行期间的峰值，避免只看首尾掩盖外部争抢。
+ *
+ * @param {number} [intervalMs] 采样间隔
+ * @returns {{stop: function(): {peak:number, samples:number}}} 监控句柄
+ */
+function startLoadMonitor(intervalMs = 500) {
+  let peak = os.loadavg()[0];
+  let samples = 0;
+  const timer = setInterval(() => {
+    const value = os.loadavg()[0];
+    peak = Math.max(peak, value);
+    samples += 1;
+  }, intervalMs);
+  timer.unref?.();
+  return {
+    stop() {
+      clearInterval(timer);
+      return { peak: Number(peak.toFixed(2)), samples };
+    },
+  };
+}
+
+/**
  * 执行 M05 knowledge 场景：造语料、并发上传积压、跑 k6、汇总 slow_log 并写增强报告。
  *
  * @param {object} context 运行上下文
@@ -1714,6 +1801,7 @@ async function runKnowledgePerf(context) {
   clearRetrievalSamples();
   let k6Result;
   let backlog = [];
+  const loadMonitor = startLoadMonitor();
   try {
     k6Result = launchK6(context, "knowledge", {
       PERF_M05_DOC_ID: seeded.ids.visibleDocumentId,
@@ -1735,8 +1823,21 @@ async function runKnowledgePerf(context) {
   } finally {
     stopRetrievalCapture();
   }
+  const loadSamples = loadMonitor.stop();
   const retrieval = readRetrievalSamples();
   phases.retrievalCapture = retrieval.samples > 0 ? "passed" : "failed";
+  const openSearchDetail = await inspectOpenSearch(context, "tenant-alpha");
+  const openSearchMismatch =
+    openSearchDetail.error !== null ||
+    !String(openSearchDetail.aliasTarget ?? "").includes(
+      `-${context.openSearchIndexVersion ?? "v1"}-`,
+    ) ||
+    !openSearchDetail.bboxFields ||
+    !openSearchDetail.aclFields;
+  phases.openSearch =
+    openSearchDetail.error === null && !openSearchMismatch
+      ? "passed"
+      : "failed";
 
   if (!existsSync(reportFile)) {
     throw new Error(
@@ -1792,9 +1893,13 @@ async function runKnowledgePerf(context) {
     host: context.envSnapshot.host,
     hostEnd: {
       loadAverage: os.loadavg().map((value) => Number(value.toFixed(2))),
+      loadPeak: loadSamples.peak,
+      loadSamples: loadSamples.samples,
       measuredAt: shanghaiIso(),
     },
     openSearch: context.envSnapshot.openSearch,
+    openSearchDetail,
+    openSearchMismatch,
     ocr: {
       probed: context.ocrProbe ?? null,
       measured: ocrAvailable && ocrSamples.length > 0,
@@ -1883,6 +1988,7 @@ async function runKnowledgePerf(context) {
     status:
       k6Result.status === 0 &&
       !indexBudgetExceeded &&
+      !openSearchMismatch &&
       (!decisionRequired || !enforceSearch)
         ? decisionRequired
           ? "passed-with-decision"
@@ -1898,11 +2004,20 @@ async function runKnowledgePerf(context) {
     retrieval,
     budgets: report.m05.budgets,
     indexing: report.m05.indexing,
+    openSearch: report.m05.openSearchDetail,
+    openSearchMismatch,
+    load: {
+      start: report.m05.host.loadAverage,
+      peak: report.m05.hostEnd.loadPeak,
+      end: report.m05.hostEnd.loadAverage,
+      samples: report.m05.hostEnd.loadSamples,
+    },
     ocr: report.m05.ocr,
     decisionRequired,
     decision: report.m05.retrieval.decision,
     notes: [
       "PERF-M05-001：首字/API/ACL 写/检索量测；PERF-M05-002：索引延迟（无 OCR 与 OCR 单页）。",
+      "OpenSearch 使用 v2 索引并核对别名目标与 bbox/acl mapping 字段；检索仍以 MySQL LIKE + ACL 为准。",
       "检索 >500ms 时 status 为 passed-with-decision（ADR-0023 §9 未预设通过阈值）；设置 PERF_M05_SEARCH_ENFORCE=1 可按 500ms 硬失败。",
       "OCR 不可用时 ocr.measured=false，不把未执行当通过。",
     ],
@@ -1916,6 +2031,7 @@ async function runKnowledgePerf(context) {
   const failed =
     k6Result.status !== 0 ||
     indexBudgetExceeded ||
+    openSearchMismatch ||
     (enforceSearch && decisionRequired);
   return {
     status: failed ? "failed" : matrix.status,
@@ -2314,6 +2430,11 @@ async function runPerf() {
     endpoints: endpoints.endpoints,
     endpointHash: endpoints.hash,
     modelKeysEnv: { REAL_MODEL_KEYS: initialKeys.json },
+    openSearchIndexVersion:
+      process.env.RICCON_OPENSEARCH_INDEX_VERSION ??
+      (knowledgePerf ? "v2" : "v1"),
+    openSearchIndexPrefix:
+      process.env.RICCON_OPENSEARCH_INDEX_PREFIX ?? "riccon-kb",
     ocrProbe,
     ocrEnv: ocrProbe.available
       ? {
