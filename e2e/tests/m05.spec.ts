@@ -648,18 +648,46 @@ test.describe('M05 知识库纵深', () => {
     await expect(noSource.getByTestId('citation-download')).toHaveCount(0);
   });
 
-  test('E2E-M05-03b 知识库空态/错误态与 ACL 表单影响提示', async ({ page, stub, consoleGuard }) => {
+  test('E2E-M05-03b 新文档登记、空/错误态与 ACL 表单影响提示', async ({
+    page,
+    stub,
+    consoleGuard,
+  }) => {
     await stub.seedM05();
     await loginAs(page, M03_CREDENTIALS.tenantAdmin, '王芳');
+    consoleGuard.allowNetworkError(/\/api\/v1\/knowledge\/documents$/, 403);
+    consoleGuard.allowNetworkError(/\/api\/v1\/knowledge\/documents$/, 404);
+    consoleGuard.allowNetworkError(/\/api\/v1\/knowledge\/documents$/, 409);
     consoleGuard.allowNetworkError(/\/api\/v1\/knowledge\/documents\?/, 500);
 
-    // 空态：筛选无结果时给出清空筛选的下一步。
-    const drawer = await openKnowledge(page);
-    // AC-06 的“新文档登记 + 保存前可见范围选择”当前没有生产入口；此处显式记录缺口，
-    // 由 M05-V1 回执报告 Lead 决定 fix 任务，不在验证任务内补生产 UI。
-    await expect(drawer.getByRole('button', { name: /加入知识库|登记文档|新建文档/ })).toHaveCount(
-      0,
+    // 先上传一个工作空间文件，作为登记来源。
+    await page.getByRole('button', { name: '新建会话' }).click();
+    await expect(page.getByText('开始 J1 问答')).toBeVisible();
+    const uploadResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        /\/api\/v1\/workspaces\/[^/]+\/files$/.test(response.url()),
     );
+    const chooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: /上传文件/ }).click();
+    const chooser = await chooserPromise;
+    await chooser.setFiles({
+      name: '登记测试文件.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('%PDF-1.4\n% M05 create stub file\n'),
+    });
+    const uploadedFile = (await (await uploadResponsePromise).json()) as { id: string };
+    const fileRow = page.locator('.chat-file-item').filter({ hasText: '登记测试文件.pdf' });
+    await expect(fileRow.getByText('解析成功', { exact: true })).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // 空态与历史文档提示：筛选无结果时给出清空筛选的下一步。
+    const drawer = await openKnowledge(page);
+    await expect(drawer.getByTestId('knowledge-legacy-notice')).toContainText(
+      '历史文档默认全租户可见，可收紧',
+    );
+    await expect(drawer.getByTestId('knowledge-create-open')).toBeVisible();
     await drawer.getByRole('combobox', { name: '筛选文档状态' }).click();
     await page
       .locator('.ant-select-dropdown:visible .ant-select-item-option')
@@ -679,6 +707,62 @@ test.describe('M05 知识库纵深', () => {
     await expect(
       detail.getByText('创建人始终可见，无需列入；未选择用户时仅创建人可见。'),
     ).toBeVisible();
+
+    // 新文档登记：默认 TENANT、未确认不能保存、保存后列表出现。
+    const modal = page.locator('.ant-modal').filter({ hasText: '登记知识库文档' });
+    await drawer.getByTestId('knowledge-create-open').click();
+    await expect(modal).toBeVisible();
+    await expect(modal.getByRole('radio', { name: '租户全员' })).toBeChecked();
+    await modal.getByTestId('knowledge-create-submit').click();
+    await expect(modal.getByText('请选择工作空间中的文件。')).toBeVisible();
+    await modal.getByRole('combobox', { name: '源文件' }).click();
+    await page
+      .locator('.ant-select-dropdown:visible .ant-select-item-option')
+      .filter({ hasText: '登记测试文件.pdf' })
+      .click();
+    await expect(modal.getByRole('textbox', { name: '文档标题' })).toHaveValue('登记测试文件');
+    await modal.getByTestId('knowledge-create-submit').click();
+    await expect(modal.getByText('请先确认可见范围影响。')).toBeVisible();
+
+    await modal.getByTestId('knowledge-create-confirm').check();
+    const createRequestPromise = page.waitForRequest(
+      (request) =>
+        request.method() === 'POST' && request.url().endsWith('/api/v1/knowledge/documents'),
+    );
+    await modal.getByTestId('knowledge-create-submit').click();
+    const createRequest = await createRequestPromise;
+    expect(createRequest.postDataJSON()).toEqual({
+      title: '登记测试文件',
+      fileId: uploadedFile.id,
+      visibility: 'TENANT',
+    });
+    expect(createRequest.headers()['idempotency-key']).toMatch(/[0-9a-f-]{36}/);
+    await expect(modal).toBeHidden();
+    await expect(drawer.getByTestId('knowledge-notice')).toContainText('文档已登记并进入解析队列');
+    await expectDocumentRow(drawer, '登记测试文件');
+
+    // 登记错误分支：403/404/409 均显示稳定中文原因，不出现堆栈。
+    for (const [scenario, message] of [
+      ['m05-create-403', '没有登记知识库文档的权限'],
+      ['m05-create-404', '源文件不存在或已被删除'],
+      ['m05-create-409', '该文件已在知识库中'],
+    ] as const) {
+      await drawer.getByTestId('knowledge-create-open').click();
+      await expect(modal).toBeVisible();
+      await modal.getByRole('combobox', { name: '源文件' }).click();
+      await page
+        .locator('.ant-select-dropdown:visible .ant-select-item-option')
+        .filter({ hasText: '登记测试文件.pdf' })
+        .click();
+      await modal.getByTestId('knowledge-create-confirm').check();
+      await stub.setScenario(scenario);
+      await modal.getByTestId('knowledge-create-submit').click();
+      await expect(modal.getByTestId('knowledge-create-error')).toContainText(message);
+      await expect(modal.getByText(/java\.|Exception|at com\./)).toHaveCount(0);
+      await modal.locator('.ant-modal-close').click();
+      await expect(modal).toBeHidden();
+    }
+    await stub.setScenario('none');
 
     // 错误态：列表 500 显示可重试错误，不出现堆栈。
     await stub.setScenario('m05-list-500');

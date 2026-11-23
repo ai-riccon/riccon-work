@@ -4713,7 +4713,8 @@ function handleM05Api(req, res, url, raw, session) {
     const status = searchParams.get('status');
     const visible = state.knowledge.documents
       .filter((document) => m05CanSee(account, document))
-      .filter((document) => !status || document.status === status);
+      .filter((document) => !status || document.status === status)
+      .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
     if (
       m05Permissions(account).includes('knowledge.acl.manage') &&
       visible.some((document) => !m05NaturallyVisible(account, document))
@@ -4744,6 +4745,18 @@ function handleM05Api(req, res, url, raw, session) {
     }
     if (!m05Permissions(account).includes('knowledge.manage')) {
       writeResult(res, problem(403, 'RICCON-AUTH-403', '没有权限', '只有租户管理员可以登记文档。'));
+      return true;
+    }
+    if (scenario === 'm05-create-403') {
+      writeResult(res, problem(403, 'RICCON-AUTH-403', '没有权限', '只有租户管理员可以登记文档。'));
+      return true;
+    }
+    if (scenario === 'm05-create-404') {
+      writeResult(res, problem(404, 'RICCON-TENANT-404', '文件不存在', '源文件不存在或已被删除。'));
+      return true;
+    }
+    if (scenario === 'm05-create-409') {
+      writeResult(res, problem(409, 'RICCON-KB-409', '文档已存在', '该文件已在知识库中。'));
       return true;
     }
     const body = readJson(raw);
