@@ -11,11 +11,12 @@ review_kind: module
 review_status: final
 previous_review: REV-M05-001
 supersedes: REV-M05-001
-product_preacceptance_status: pending
+product_preacceptance_status: pass
 product_preacceptance_note: >-
-  截至本评审，Product 正在重新预验收（R-M05-06/R-M05-07 已由 TASK-0202 修复并 done；Product
-  预验收结果未在本 review 中记录）。模块 done 需 Product 预验收 pass；本评审只是技术验收。
-head_commit: 823bfc0a4bf719044a88b8aa97adac62895d2a20
+  Product 预验收已 pass（with residual R-M05-01..05；R-M05-06/07 fixed），见 docs/ACCEPTANCE.md
+  2026-11-24 M05 段。Product pass 不替代用户最终验收；ACL 写 residual（R-M05-01）仍需用户最终
+  验收显式接受。模块 done 可在本技术 gate pass 后由 Lead 记录。
+head_commit: 2554b97e2c2de6c4c13bcb52bc7ad05566cc70b6
 reviewed_commits:
   - 8c5781c9048befdc1911fc9738503ea938a44f38
   - c384c3579caf3725f6830d5460211844bf939e71
@@ -32,6 +33,7 @@ reviewed_commits:
   - b7b8c45
   - 028a2ce
   - 823bfc0a4bf719044a88b8aa97adac62895d2a20
+  - 2554b97e2c2de6c4c13bcb52bc7ad05566cc70b6
 verdict: pass
 dod:
   acceptance: true
@@ -47,7 +49,6 @@ dod_evidence:
     - EV-0939
     - EV-0943
     - EV-0951
-    - EV-0953
     - EV-0954
     - EV-0955
     - EV-0959
@@ -255,6 +256,13 @@ evidence:
   - EV-0951
   - EV-0952
   - EV-0953
+  - EV-0954
+  - EV-0955
+  - EV-0956
+  - EV-0957
+  - EV-0958
+  - EV-0959
+  - EV-0960
   - EV-0922
   - EV-0947
 reviewed_evidence:
@@ -368,17 +376,18 @@ notes: >-
   knowledge-failed-at + retention-note + E2E-M05-09）。合同 build/lint/typecheck/test+coverage/
   E2E/a11y/security 与真实栈 29/29 全绿；EV-0954..0960 在 b7b8c45/823bfc0，dirty=false。技术
   verdict pass；ACL 写 p95 4.33–4.58s 为 P2 accepted residual，需用户最终验收显式接受。Product
-  预验收正在重新进行（pending）；模块 done 需 Product pass，用户 `accepted` 前不启动 M05b。本评审
-  是独立技术验收，不替代 Product 预验收或用户最终验收。gate 预期 pass（仅技术 gate）。
-created_at: "2026-11-24T01:32:00+08:00"
+  预验收已 pass（with residual R-M05-01..05；R-M05-06/07 fixed）；模块 done 可在技术 gate pass 后
+  由 Lead 记录，用户 `accepted` 前不启动 M05b。本评审是独立技术验收，不替代 Product 预验收或用户
+  最终验收。gate 已 pass（exit 0，0 errors，3 warnings，仅技术 gate）。
+created_at: "2026-11-24T01:38:07+08:00"
 ---
 
 # REV-M05-002：M05 知识库纵深模块独立评审（定稿）
 
-> **Product 预验收：pending（Product 正在重新预验收）。** R-M05-06（失败时间 P1）与 R-M05-07
-> （保留策略界面明示 P2）已由 TASK-0202 修复并 done（b7b8c45）；Product 尚未在本评审中确认 pass。
-> 本文件是**技术验收**，技术 verdict 为 pass；模块 done 仍需 Product 预验收 pass，用户 `accepted`
-> 前不启动 M05b。本评审不写 Product pass，也不替代用户最终验收。
+> **Product 预验收：pass（with residual R-M05-01..05；R-M05-06/07 fixed）。** R-M05-06（失败时间
+> P1）与 R-M05-07（保留策略界面明示 P2）已由 TASK-0202 修复并 done（b7b8c45）；Product 2026-11-24
+> 预验收 pass。本文件是**技术验收**，技术 verdict 为 pass；用户最终验收（含 ACL 写 residual 的
+> 显式接受）仍 pending，用户 `accepted` 前不启动 M05b。本评审不替代用户最终验收。
 
 ## 结论
 
@@ -397,10 +406,10 @@ commit、dirty、日志哈希一致。关键闭环：
   下载 301ms 达标；ACL 写 p95 4.33–4.58s > 500ms 为 quota 租户行锁 residual，P2 accepted，
   仍需用户最终验收显式接受。
 
-Product 预验收当前 **pending**：R-M05-06/R-M05-07 已修复并 done，但 Product 正在重新预验收；
-本评审未记录 Product pass。M05 模块 done 需 Product 预验收 pass；这是技术 gate 之外的产品门。
-本评审是独立技术验收，**不替代** Product 预验收或用户最终验收；M05 状态、Product/用户验收与
-gate 重跑由 Lead 处理。
+Product 预验收 **pass**（with residual R-M05-01..05；R-M05-06/07 fixed，见 `docs/ACCEPTANCE.md`
+2026-11-24 M05 段）。模块 done 可在本技术 gate pass 后由 Lead 记录；用户最终验收仍 pending，
+ACL 写 residual 需用户显式接受，用户 `accepted` 前不启动 M05b。本评审是独立技术验收，**不替代**
+Product 预验收或用户最终验收；M05 状态、Product/用户验收与 gate 重跑由 Lead 处理。
 
 ## 1. 范围与基线
 
@@ -414,13 +423,14 @@ gate 重跑由 Lead 处理。
   12 个，模块 review 直接复核其 EV）。
 - 代码基线：全量合同证据 EV-0939..EV-0944 录制于 `c1bd0e7`；TASK-0202 修复提交 `b7b8c45`
   （`KnowledgeDocument.failedAt`/API/Web/OpenAPI/E2E-M05-09）；`028a2ce`/`823bfc0` 是
-  TASK-0202 证据与 closeout（.riccon）。当前 HEAD 为 `823bfc0`。`b7b8c45` 后的代码变更只有
-  TASK-0202 修复面，没有其他 `apps/`/`platform/`/`contracts/` 变更。
+  TASK-0202 证据与 closeout（.riccon）；`2554b97` 记录 Product 预验收 pass（with residual
+  R-M05-01..05）与 EV-0960。当前 HEAD 为 `2554b97`。`b7b8c45` 后的代码变更只有 TASK-0202
+  修复面，没有其他 `apps/`/`platform/`/`contracts/` 变更。
 - 真实栈最终证据 EV-0951 在 `f8b6211`；security/HEALTHCHECK EV-0953 在 `f4c4399`；TASK-0202
   的 EV-0954..0959 在 `b7b8c45`（dirty=false）；docs EV-0960 在 `823bfc0`（clean worktree，
   dirty=false）。这些 commit 都是 HEAD 的祖先。
-- 工作树当前有一份未提交的 `docs/ACCEPTANCE.md` Product 预验收草稿（Product 正在重新预验收）；
-  本评审只读取、不修改它；Product 的最终 pass 由 Product/Lead 记录，本 review 不写 Product pass。
+- Product 预验收已在 `2554b97`/`docs/ACCEPTANCE.md` 记录 **pass（with residual R-M05-01..05；
+  R-M05-06/07 fixed）**；本评审不替代用户最终验收，用户 `accepted` 前不启动 M05b。
 
 ## 2. 全量证据（EV 完整性已核对）
 
@@ -516,20 +526,20 @@ TASK-0202 是 Product 修复任务，没有单独任务级 review（按 Lead 要
 
 ## 5. Findings
 
-| ID    | 级别   | 状态     | 摘要                                                                 | Owner / due                                     |
-| ----- | ------ | -------- | -------------------------------------------------------------------- | ----------------------------------------------- |
+| ID    | 级别   | 状态      | 摘要                                                                        | Owner / due                                          |
+| ----- | ------ | --------- | --------------------------------------------------------------------------- | ---------------------------------------------------- |
 | F-001 | **P1** | **fixed** | AC-15 失败时间已补：API `failedAt` + Web `knowledge-failed-at` + E2E-M05-09 | builder-kb-index + builder-kb-web / fixed in b7b8c45 |
-| F-002 | **P2** | **fixed** | AC-21 保留策略不追溯界面明示已补：`knowledge-retention-note` + E2E-M05-09 | builder-kb-web / fixed in b7b8c45               |
-| F-003 | P2     | accepted | AC-20 ACL 写 p95 4.33–4.58s > 500ms（quota 行锁）                    | Lead + Architect / 用户最终验收前、M05b gate 前 |
-| F-004 | P2     | accepted | force=false 仍整本重解析，未只补缺失页                               | builder-kb-index + Architect / M05b             |
-| F-005 | P3     | accepted | 宿主 Tesseract IT 未跑；真实栈 full 用 OCR 关闭；M05 UI 无真实栈单列 | verifier + ops / M05b                           |
-| F-006 | P2     | accepted | V14 生产锁/维护窗口未量测；物理清理归 M09                            | ops + Architect / M09                           |
-| F-007 | P2     | accepted | M04 F-008 生产 pass-through 继承                                     | builder-route / M09 前                          |
-| F-008 | P2     | accepted | 解析 180s/稳定码未按 ADR §3.3                                        | Lead + Architect / M05b                         |
-| F-009 | P2     | accepted | 重灌脚本大租户 ID 校验缺口                                           | builder-kb-index / M05b/M09                     |
-| F-010 | P3     | accepted | ARCHITECTURE/THREAT-MODEL/application-test/ADR 状态文档漂移          | Architect + Lead / M05b                         |
-| F-011 | P3     | accepted | AC 测试线索 ID 与真实测试类无可追溯映射                              | Architect + Lead / M05b                         |
-| F-012 | P3     | accepted | TASK-0202 后未在 b7b8c45 重跑合同全量 Maven verify                   | verifier + Lead / M05b 或下次全量               |
+| F-002 | **P2** | **fixed** | AC-21 保留策略不追溯界面明示已补：`knowledge-retention-note` + E2E-M05-09   | builder-kb-web / fixed in b7b8c45                    |
+| F-003 | P2     | accepted  | AC-20 ACL 写 p95 4.33–4.58s > 500ms（quota 行锁）                           | Lead + Architect / 用户最终验收前、M05b gate 前      |
+| F-004 | P2     | accepted  | force=false 仍整本重解析，未只补缺失页                                      | builder-kb-index + Architect / M05b                  |
+| F-005 | P3     | accepted  | 宿主 Tesseract IT 未跑；真实栈 full 用 OCR 关闭；M05 UI 无真实栈单列        | verifier + ops / M05b                                |
+| F-006 | P2     | accepted  | V14 生产锁/维护窗口未量测；物理清理归 M09                                   | ops + Architect / M09                                |
+| F-007 | P2     | accepted  | M04 F-008 生产 pass-through 继承                                            | builder-route / M09 前                               |
+| F-008 | P2     | accepted  | 解析 180s/稳定码未按 ADR §3.3                                               | Lead + Architect / M05b                              |
+| F-009 | P2     | accepted  | 重灌脚本大租户 ID 校验缺口                                                  | builder-kb-index / M05b/M09                          |
+| F-010 | P3     | accepted  | ARCHITECTURE/THREAT-MODEL/application-test/ADR 状态文档漂移                 | Architect + Lead / M05b                              |
+| F-011 | P3     | accepted  | AC 测试线索 ID 与真实测试类无可追溯映射                                     | Architect + Lead / M05b                              |
+| F-012 | P3     | accepted  | TASK-0202 后未在 b7b8c45 重跑合同全量 Maven verify                          | verifier + Lead / M05b 或下次全量                    |
 
 ### 5.1 F-001（P1，fixed）AC-15 失败时间
 
@@ -569,7 +579,7 @@ worker 未改。风险是其他 API 回归未在新提交重跑；建议 M05b �
 ## 6. 残余与未验证
 
 - **M05b**：AC-10..14、AC-09 连接器段、AC-15/16/21 连接器段、AC-20/22 整条复验均未做；M05 不据此
-  判 pass。S3 连接器/凭据/注入 harness 归 M05b。
+  判整条 pass。S3 连接器/凭据/注入 harness 归 M05b。
 - **ACL 写性能**：4.33–4.58s 是 500ms 预算的 8.7–9.2 倍；检索/首字/API/索引/下载均达标。F-003 技术
   验收 accepted，但用户最终验收必须显式接受或验收前修复；DEC-0038 只覆盖检索 FTS，不覆盖 ACL 写。
 - **OCR**：宿主无 libtesseract，`TesseractOcrEngineIT` 未跑；真实栈 29/29 以 `RICCON_OCR_ENABLED=0`
@@ -582,32 +592,30 @@ worker 未改。风险是其他 API 回归未在新提交重跑；建议 M05b �
   可能让合同 `verify` 变红，建议 M05b 前加缓冲（非 AC finding）。
 - **文档/可追溯性**：F-010（ARCHITECTURE V2–V12、INJ 文档“未建”、ADR-0023 proposed、application-test
   V1–V11）与 F-011（IT-KB/IT-WORKER/FE-QUOTA 线索 ID 未映射到实际测试类）为 P3 accepted；不影响
-  本轮 AC-15/21 失败结论，但应在 Product 预验收/M05b 前收口。
+  AC-15/21 的修复结论，但应在 Product 预验收/M05b 前收口。
+- **证据范围**：F-012（TASK-0202 后未在 b7b8c45 重跑合同全量 Maven verify）为 P3 accepted；EV-0954
+  API 定向 + EV-0955 web 全量 + EV-0959 E2E 52 覆盖修复面，worker 未改。建议 M05b 或下次全量补一次
+  `b7b8c45` 之后的合同 test/coverage。
 - **证据卫生**：EV-0908 无 commit 字段（TASK-0173 的中间证据），本评审未把它当权威通过证据；
   TASK-0173 的权威 perf 证据是 EV-0922（exit 1，residual）与 V2 EV-0947（exit 1，residual）。
-  EV-0927/0928/0945/0949/0950 为失败尝试，保留但不作通过证据。
+  EV-0927/0928/0945/0949/0950 为失败尝试，保留但不作通过证据。EV-0919 是 TASK-0197 的负向探针、
+  不在 TASK-0197.evidence 列表，已从 `reviewed_evidence` 移除。
 
 ## 7. Gate 预期与下一步
 
-- 当前 `riccon gate check --module M05` 预期 **fail**：review verdict 为 fail，`dod.acceptance=false`；
-  这是正确反馈，不应改 review 强行通过。本文件是等待 TASK-0202 的草稿；TASK-0202 修复前不重跑
-  gate 作为模块通过依据。2026-11-24T00:47 试跑结果为 **4 errors**：verdict fail、
-  `dod.acceptance` false、`EV-0952/EV-0953` docs evidence 被判 placeholder/no-op；其余
-  evidence/task coverage/DoD build/tests/coverage/e2e/docs/evidence 检查均通过。
-- 本次试跑 gate 另暴露一个**证据格式问题**（不影响 F-001/F-002 结论）：`EV-0952`/`EV-0953` 的
-  命令末尾 `; echo ...` 被 strict masking 检测判为 placeholder/no-op，因此 `dod_evidence.docs`
-  当前会被 gate 拒绝；`EV-0919` 是 TASK-0197 的负向探针、不在 TASK-0197.evidence 列表，已从
-  `reviewed_evidence` 移除（正文仍引用其失败事实）。TASK-0202 定稿时请补一条无 `; echo` 的 docs
-  证据（例如 `git diff --check && grep -q "ngram" ... && grep -q "M05AclSecurityMatrixTest" ...`
-  的纯命令）或由 Lead 记录格式例外，再重新绑定 docs。
+- 本评审定稿后运行 `riccon gate check --module M05`：**exit 0，0 errors，3 warnings**（EV-0571/EV-0908
+  为历史 manual 证据不能建立 pass；1 条 legacy evidence 无 commit attestation），技术 gate **PASS**。
+- `dod_evidence.docs` 使用 **EV-0960**（TASK-0202，clean worktree、`git diff --check && grep ... &&
+contract validate`，无 `; echo`、exit 0、dirty=false），未绑定会被 strict masking 拒绝的
+  EV-0952/EV-0953；三者仍保留在 `reviewed_evidence` 作为 V14/Healthcheck 历史证据。
+- Product 预验收 **pass**（with residual R-M05-01..05；R-M05-06/07 fixed，`2554b97`/`docs/ACCEPTANCE.md`）；
+  R-M05-06/R-M05-07 已 fixed。模块 done 可在本技术 gate pass 后由 Lead 记录；用户最终验收仍
+  pending，用户 `accepted` 前不启动 M05b。
 - Lead 需要：
-  1. 完成已建的 **TASK-0202**：F-001（P1，失败时间：迁移/Worker/API/UI/E2E）与 F-002（P2，策略
-     变更界面明示或书面接受）；
-  2. 修复后重跑定向测试 + 全量合同 test/coverage/E2E/a11y（必要时 security），新增 EV；
-  3. 写 `REV-M05-002`（新上下文/新会话），更新 `reviewed_task_reviews`（含 TASK-0202 的任务 review
-     如适用）、`head_commit` 与 `reviewed_evidence`（含 TASK-0202 的 EV）；
-  4. 重新 Product 预验收；Product `pass` 后才可模块 done；用户 `accepted` 前不启动 M05b；
-  5. ACL 写 residual（F-003）需在用户最终验收中显式接受，或验收前修复；DEC-0038 不能替代。
-- 注意：本评审的技术 verdict 只说明当前代码不满足 AC-15/21；**gate 通过/技术 review pass 都不能替代
-  Product 预验收**。Product 当前为 changes-requested，TASK-0202 未关闭前模块 done 不应发生。
-- 本评审不修改任务/模块状态、不提交 git；`docs/ACCEPTANCE.md` 的 Product 草稿由 Product/Lead 处理。
+  1. 将 `product_status=pass`（with residual）与模块 done 记录到 `.riccon`（按 Lead 流程）；
+  2. 用户最终验收时显式接受 ACL 写 residual（F-003），或验收前修复；DEC-0038 不能替代；
+  3. M05b 前处理 F-004/F-005/F-006/F-009/F-010/F-011/F-012 与 M23/M24 继承残余；
+  4. M05b 开工前另批 53h 预算（DEC-0035），并复验 AC-09/10..14/19/20/22 的连接器段。
+- 注意：技术 review pass / gate pass **不能替代**用户最终验收；Product 预验收已 pass，用户最终
+  验收仍 pending，用户 `accepted` 前不启动 M05b。
+- 本评审不修改任务/模块状态、不提交 git；`docs/ACCEPTANCE.md` 的 Product 结论由 Product/Lead 记录。
