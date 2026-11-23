@@ -386,6 +386,7 @@ ALTER TABLE artifact_citation
 | ------------------------------------------------------------------ | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `knowledge.document.added`                                         | `KNOWLEDGE_DOCUMENT`  | `sourceType`、`fileId`、`visibility`、`departmentId`、`connectorId`                                                                                                                                                                        |
 | `knowledge.document.deleted`                                       | `KNOWLEDGE_DOCUMENT`  | `sourceType`、`visibility`、`reason`（`USER`/`RETENTION`/`CONNECTOR`）                                                                                                                                                                     |
+| `knowledge.document.reindexed`                                     | `KNOWLEDGE_DOCUMENT`  | `documentId`、`force`（布尔）、`status`（`KnowledgeDocumentStatus` 枚举名：`PENDING`/`INDEXING`/`INDEXED`/`FAILED`/`DELETED`；实际受理时 `INDEXING`/`DELETED` 已在审计前被 409 拒绝）；不含标题/片段/正文 |
 | `knowledge.acl.changed`                                            | `KNOWLEDGE_DOCUMENT`  | `visibility`、`previousVisibility`、`departmentId`、`addedUserCount`、`removedUserCount`、`addedUserIds`、`removedUserIds`（UUID 数组，最多 50，超出置 `truncated=true` 只留计数）、`aclUserCount`                                         |
 | `knowledge.document.admin_read`                                    | `KNOWLEDGE_DOCUMENT`  | `scope`（`LIST`/`DETAIL`/`SEARCH`/`DOWNLOAD`）、`documentId`（LIST 可空，其他 scope 必填）、`visibility`（`scope=LIST` 可空，其他 scope 必填）、`aclUserCount`、`resultCount`（LIST/SEARCH）、`reason=MANAGEMENT_READ`；不含标题/片段/正文 |
 | `knowledge.connector.created`/`updated`/`deleted`/`status.changed` | `KNOWLEDGE_CONNECTOR` | `connectorId`、`type`、`endpointId`、`bucket`、`prefix`（≤200）、`status`、`previousStatus`、`reason`                                                                                                                                      |
@@ -395,12 +396,12 @@ ALTER TABLE artifact_citation
 | `knowledge.connector.sync.failed`                                  | `KNOWLEDGE_CONNECTOR` | `connectorId`、`syncId`、`errorCode`、`retryable`、`complete`、`durationMs`                                                                                                                                                                |
 | `knowledge.connector.sync.retried`                                 | `KNOWLEDGE_CONNECTOR` | `connectorId`、`syncId`、`attempt`、`reason`                                                                                                                                                                                               |
 
-- `AuditDetailsPolicy`（B1 义务）必须 action-specific 校验：`knowledge.acl.changed` 的 `addedUserIds`/`removedUserIds` 为 UUID 数组、各自最多 50、允许空数组；`knowledge.document.admin_read` 的 `documentId` 在 `scope=LIST` 时可为空、其他 scope 必填，`visibility` 在 `scope=LIST` 时可为空（管理列表跨多个可见范围，没有单一值）、其他 scope 必填，`resultCount` 在 LIST/SEARCH 必填；`reason` 只允许 `MANAGEMENT_READ`/`RETENTION`/`USER`/`CONNECTOR`；未知键/超限/类型错误 fail-closed。`IT-KB-110` 覆盖。
+- `AuditDetailsPolicy`（B1 义务）必须 action-specific 校验：`knowledge.acl.changed` 的 `addedUserIds`/`removedUserIds` 为 UUID 数组、各自最多 50、允许空数组；`knowledge.document.admin_read` 的 `documentId` 在 `scope=LIST` 时可为空、其他 scope 必填，`visibility` 在 `scope=LIST` 时可为空（管理列表跨多个可见范围，没有单一值）、其他 scope 必填，`resultCount` 在 LIST/SEARCH 必填；`reason` 只允许 `MANAGEMENT_READ`/`RETENTION`/`USER`/`CONNECTOR`；`knowledge.document.reindexed` 的 `documentId`/`status` 必填，`force` 必须为布尔，`status` 只允许 `KnowledgeDocumentStatus` 枚举名；未知键/超限/类型错误 fail-closed。`IT-KB-110` 覆盖。
 - **`admin_read.visibility` 可空规则（REV-TASK-0164-001 F-014）**：可空仅限 `scope=LIST`。`DETAIL`/`SEARCH`/`DOWNLOAD` 的目标是单个文档，`visibility` 是该文档当时的可见范围，必须写入；`LIST` 一次覆盖多个文档，用 `resultCount` 表达规模，不强行填某一个文档的范围。实现若放宽到其他 scope，按审计完整性缺陷处理。
-- 不含姓名、邮箱、文档标题、分块原文、`externalId`、对象 key、凭据；`knowledge.acl.changed`/`admin_read`/连接器动作审计写失败 → 对应操作失败（fail-closed）。
+- 不含姓名、邮箱、文档标题、分块原文、`externalId`、对象 key、凭据；`knowledge.acl.changed`/`admin_read`/`reindexed`/连接器动作审计写失败 → 对应操作失败（fail-closed）。
 - `admin_read` 与普通审计同保留 ≥180 天，可按租户/动作/操作者/时间查询；不写文档标题、片段或名单，只写对象 ID/范围与计数。
 - 读取/检索默认不写审计（避免读放大）；例外是 U8 管理员绕过 ACL 的读取（`admin_read`）与连接器同步生命周期。
-- 验证：`IT-KB-110` 覆盖 `admin_read`、`deleted.reason`（含 `RETENTION`）、连接器全部 details 键、未知键 fail-closed、审计失败回滚、按租户/操作者/时间/结果查询；`IT-KB-107` 覆盖 `sourceFileAccessLimited`。
+- 验证：`IT-KB-110` 覆盖 `admin_read`、`deleted.reason`（含 `RETENTION`）、`reindexed` 三键、连接器全部 details 键、未知键 fail-closed、审计失败回滚、按租户/操作者/时间/结果查询；`IT-KB-107` 覆盖 `sourceFileAccessLimited`。
 
 ### 5.7 迁移与历史回填
 
@@ -1114,7 +1115,7 @@ Schema 增量（additive；M05 字段与 M05b 连接器类型分属两个版本�
 
 ### 14.4 命名一致性
 
-- 文档、契约、代码统一使用：`visibility`（TENANT/DEPT/USERS）、`knowledge_document_acl`、`kb_connector`、`kb_connector_item`、`KNOWLEDGE_CONNECTOR`、`knowledge.acl.changed`、`RICCON-KB-*`、`KB_*`（异步 error_code）。
+- 文档、契约、代码统一使用：`visibility`（TENANT/DEPT/USERS）、`knowledge_document_acl`、`kb_connector`、`kb_connector_item`、`KNOWLEDGE_CONNECTOR`、`knowledge.acl.changed`、`knowledge.document.reindexed`、`RICCON-KB-*`、`KB_*`（异步 error_code）。
 - 不引入第二套命名（如 `scope`/`shareLevel`/`acl_entry`）。
 
 ### 14.5 高风险任务
@@ -1181,3 +1182,4 @@ Schema 增量（additive；M05 字段与 M05b 连接器类型分属两个版本�
 | 2026-11-22 | 第二轮 AC 对账：P7 统一 404、P6 推荐 A（文本块/坐标）、AC-21 推荐 A（物理清理归 M09）、连接器调度改为部署固定周期、TM-70/71、U8                                                                                                                                 | Lead 计划评审；Product §11 草案 |
 | 2026-11-22 | REV-M05-AC-001/002 架构 P1/P2 修复：F-003..F-028/F-030、F-101..F-120 架构项、DEC-0034 落地、契约/UI 按 M05/M05b 分段、delete/reindex、下载流式代理、admin_read、tombstone/list guard/sync 时间、注入/OCR/perf harness、Ops O1a/O1b/O2a/O2b、预算 157h           | Verifier pre-review；DEC-0034   |
 | 2026-11-22 | REV-TASK-0164-001 P2 承接：§5.6 `knowledge.manage` 收回 `TENANT_ADMIN`（F-001）、§7.2 记录 COPY+LOCK=SHARED 与真实回滚对象/锁等待归 M09（F-006）、§7.3 per-lane 看门狗 30m/65m（F-004）、§5.6 `admin_read.visibility` 仅 LIST 可空（F-014）、§14.2 迁移顺序同步 | REV-TASK-0164-001               |
+| 2026-11-23 | §5.6 增补 `knowledge.document.reindexed`（target/details 必填与 `status` 枚举、fail-closed）；§14.4 命名同步；依据 B3 `AuditActions`/`AuditDetailsPolicy`/`KnowledgeAuditEvents.reindexed` | TASK-0191                      |
