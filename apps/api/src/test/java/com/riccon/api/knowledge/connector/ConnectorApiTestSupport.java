@@ -325,6 +325,19 @@ abstract class ConnectorApiTestSupport extends ApiIntegrationTestSupport {
      * @return 文档 ID
      */
     protected UUID insertConnectorDocument(String tenant, String connectorId) {
+        return insertConnectorDocument(tenant, connectorId, "docs/a.pdf", "a".repeat(64));
+    }
+
+    /**
+     * 插入连接器文档并指定 externalId/checksum。
+     *
+     * @param tenant 租户
+     * @param connectorId 连接器 ID
+     * @param externalId 源对象 key
+     * @param checksum 内容哈希
+     * @return 文档 ID
+     */
+    protected UUID insertConnectorDocument(String tenant, String connectorId, String externalId, String checksum) {
         UUID documentId = com.riccon.api.common.UuidV7.generate();
         jdbcClient
                 .sql("""
@@ -333,7 +346,7 @@ abstract class ConnectorApiTestSupport extends ApiIntegrationTestSupport {
                             mime_type, size_bytes, status, created_by, created_at, updated_at, visibility,
                             department_id, parse_engine, acl_version
                         ) VALUES (
-                            :tenant, :id, '连接器文档', 'CONNECTOR', NULL, :connectorId, 'docs/a.pdf',
+                            :tenant, :id, '连接器文档', 'CONNECTOR', NULL, :connectorId, :externalId,
                             :checksum, 'application/pdf', 4, 'PENDING', NULL, NOW(6), NOW(6), 'TENANT',
                             NULL, 'NONE', 1
                         )
@@ -341,7 +354,35 @@ abstract class ConnectorApiTestSupport extends ApiIntegrationTestSupport {
                 .param("tenant", tenant)
                 .param("id", com.riccon.api.persistence.BinaryUuids.toBytes(documentId))
                 .param("connectorId", com.riccon.api.persistence.BinaryUuids.toBytes(UUID.fromString(connectorId)))
-                .param("checksum", "a".repeat(64))
+                .param("externalId", externalId)
+                .param("checksum", checksum)
+                .update();
+        return documentId;
+    }
+
+    /**
+     * 插入一个 UPLOAD 文档（无源文件），用于读路径字段断言。
+     *
+     * @param tenant 租户
+     * @return 文档 ID
+     */
+    protected UUID insertUploadDocument(String tenant) {
+        UUID documentId = com.riccon.api.common.UuidV7.generate();
+        jdbcClient
+                .sql("""
+                        INSERT INTO knowledge_document (
+                            tenant_id, id, title, source_type, file_id, connector_id, external_id, checksum,
+                            mime_type, size_bytes, status, created_by, created_at, updated_at, visibility,
+                            department_id, parse_engine, acl_version
+                        ) VALUES (
+                            :tenant, :id, '上传文档', 'UPLOAD', NULL, NULL, NULL,
+                            :checksum, 'application/pdf', 4, 'PENDING', NULL, NOW(6), NOW(6), 'TENANT',
+                            NULL, 'NONE', 1
+                        )
+                        """)
+                .param("tenant", tenant)
+                .param("id", com.riccon.api.persistence.BinaryUuids.toBytes(documentId))
+                .param("checksum", "b".repeat(64))
                 .update();
         return documentId;
     }

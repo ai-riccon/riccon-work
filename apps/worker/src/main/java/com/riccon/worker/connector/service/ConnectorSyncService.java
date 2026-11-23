@@ -97,6 +97,9 @@ public class ConnectorSyncService {
     /** 审计。 */
     private final ConnectorAuditWriter auditWriter;
 
+    /** 终态收尾短事务。 */
+    private final ConnectorSyncCompletionService completionService;
+
     /** 指标。 */
     private final ConnectorMetrics metrics;
 
@@ -122,6 +125,7 @@ public class ConnectorSyncService {
             ConnectorS3ClientFactory clientFactory,
             ConnectorEventPublisher eventPublisher,
             ConnectorAuditWriter auditWriter,
+            ConnectorSyncCompletionService completionService,
             ConnectorMetrics metrics,
             Clock clock) {
         this.connectorRepository = Objects.requireNonNull(connectorRepository, "connectorRepository must not be null");
@@ -130,6 +134,7 @@ public class ConnectorSyncService {
         this.clientFactory = Objects.requireNonNull(clientFactory, "clientFactory must not be null");
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher must not be null");
         this.auditWriter = Objects.requireNonNull(auditWriter, "auditWriter must not be null");
+        this.completionService = Objects.requireNonNull(completionService, "completionService must not be null");
         this.metrics = Objects.requireNonNull(metrics, "metrics must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
@@ -205,13 +210,19 @@ public class ConnectorSyncService {
                     false,
                     traceId);
         }
+        SyncState state;
+        ConnectorFailureKind failureKind;
+        boolean retryable;
         try (credential;
                 S3Client client = clientFactory.build(endpoint, connector.config(), credential)) {
-            SyncState state = runSync(tenantId, connector, client, startedAt, actorId, traceId);
-            return finish(tenantId, connector, request, startedAt, state, state.failureKind, state.retryable, traceId);
+            state = runSync(tenantId, connector, client, startedAt, actorId, traceId);
+            failureKind = state.failureKind;
+            retryable = state.retryable;
         } catch (SyncFailure failure) {
-            SyncState state = new SyncState(failure.scanned, 0, 0, 0, 0, 0, false, failure.errorCode);
-            return finish(tenantId, connector, request, startedAt, state, failure.kind, failure.retryable, traceId);
+            state = new SyncState(failure.scanned, 0, 0, 0, 0, 0, false, failure.errorCode)
+                    .withFailure(failure.errorCode, failure.kind, failure.retryable);
+            failureKind = failure.kind;
+            retryable = failure.retryable;
         } catch (RuntimeException exception) {
             // 不输出异常消息/堆栈：S3 异常可能携带 bucket 或对象 key（ADR-0023 §6.5）。
             LOG.error(
@@ -219,9 +230,12 @@ public class ConnectorSyncService {
                     connector.id(),
                     ConnectorErrorCodes.INTERNAL,
                     exception.getClass().getSimpleName());
-            SyncState state = new SyncState(0, 0, 0, 0, 0, 0, false, ConnectorErrorCodes.INTERNAL);
-            return finish(tenantId, connector, request, startedAt, state, ConnectorFailureKind.CONFIG, false, traceId);
+            state = new SyncState(0, 0, 0, 0, 0, 0, false, ConnectorErrorCodes.INTERNAL);
+            failureKind = ConnectorFailureKind.CONFIG;
+            retryable = false;
         }
+        // 终态收尾不在长同步 try/catch 内，避免审计/事务失败被误当作一次同步失败而再次 finish。
+        return finish(tenantId, connector, request, startedAt, state, failureKind, retryable, traceId);
     }
 
     /**
@@ -634,9 +648,12 @@ public class ConnectorSyncService {
                 ? finishedAt.plus(Duration.ofMinutes(properties.syncIntervalMinutes()))
                 : null;
         String errorCode = state.errorCode;
-        connectorRepository.finishSync(
+        long durationMs = Duration.between(startedAt, finishedAt).toMillis();
+        // 终态与完成/失败/状态审计必须同一短事务；失败会抛异常，由 outbox 重试，不留下“终态已落库但审计缺失”。
+        completionService.complete(
                 tenantId,
-                connector.id(),
+                connector,
+                request.syncId(),
                 startedAt,
                 finishedAt,
                 status,
@@ -644,25 +661,13 @@ public class ConnectorSyncService {
                 errorCode,
                 summary,
                 connectorStatus,
-                nextSyncAt);
-        long durationMs = Duration.between(startedAt, finishedAt).toMillis();
+                nextSyncAt,
+                durationMs,
+                retryable,
+                traceId);
         if (status == ConnectorSyncStatus.ERROR) {
             recordMetric(failureKind);
-            auditWriter.syncFailed(
-                    tenantId,
-                    connector.id(),
-                    request.syncId(),
-                    errorCode,
-                    retryable,
-                    summary.complete(),
-                    durationMs,
-                    traceId);
             scheduleRetry(tenantId, connector, request, failureKind, retryable, traceId, finishedAt);
-        } else {
-            auditWriter.syncCompleted(tenantId, connector.id(), request.syncId(), summary, durationMs, traceId);
-        }
-        if (connectorStatus != connector.status()) {
-            auditWriter.statusChanged(tenantId, connector, connector.status(), connectorStatus, "SYNC_RESULT", traceId);
         }
         LOG.info(
                 "connector.sync.finished connectorId={} syncId={} status={} complete={} scanned={} created={} updated={}"

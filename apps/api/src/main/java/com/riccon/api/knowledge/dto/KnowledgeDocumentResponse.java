@@ -1,5 +1,6 @@
 package com.riccon.api.knowledge.dto;
 
+import com.riccon.api.knowledge.connector.domain.ConnectorExternalIds;
 import com.riccon.api.knowledge.domain.KnowledgeDocumentRecord;
 import com.riccon.api.knowledge.domain.KnowledgeParseSummary;
 import com.riccon.api.knowledge.domain.KnowledgeRetentionPolicy;
@@ -42,6 +43,8 @@ import java.util.UUID;
  * @param retentionExpiresAt 保留到期时间
  * @param retentionDays 生效保留天数
  * @param retentionPolicy 保留策略来源
+ * @param connectorId 来源连接器；仅 CONNECTOR 非空
+ * @param externalId 连接器源对象展示值（末两段路径或最后 32 字符）；非连接器为空
  */
 public record KnowledgeDocumentResponse(
         UUID id,
@@ -66,7 +69,9 @@ public record KnowledgeDocumentResponse(
         boolean sourceFileAccessLimited,
         Instant retentionExpiresAt,
         int retentionDays,
-        KnowledgeRetentionPolicy retentionPolicy) {
+        KnowledgeRetentionPolicy retentionPolicy,
+        UUID connectorId,
+        String externalId) {
 
     /**
      * 映射文档快照。
@@ -99,7 +104,9 @@ public record KnowledgeDocumentResponse(
                 document.sourceFileAccessLimited(),
                 document.retentionExpiresAt(),
                 document.retentionDays(tenantRetentionDays),
-                document.retentionPolicy(tenantRetentionDays));
+                document.retentionPolicy(tenantRetentionDays),
+                document.connectorId(),
+                ConnectorExternalIds.display(document.externalId()));
     }
 
     /**

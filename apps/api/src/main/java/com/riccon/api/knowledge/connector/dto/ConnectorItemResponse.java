@@ -1,5 +1,6 @@
 package com.riccon.api.knowledge.connector.dto;
 
+import com.riccon.api.knowledge.connector.domain.ConnectorExternalIds;
 import com.riccon.api.knowledge.connector.domain.ConnectorItemRecord;
 import com.riccon.platform.domain.knowledge.ConnectorItemStatus;
 import java.time.Instant;
@@ -36,9 +37,6 @@ public record ConnectorItemResponse(
         Instant updatedAt,
         Instant deletedAt) {
 
-    /** 展示值最大长度。 */
-    private static final int MAX_DISPLAY_LENGTH = 32;
-
     /**
      * 映射条目响应。
      *
@@ -46,9 +44,10 @@ public record ConnectorItemResponse(
      * @return 响应
      */
     public static ConnectorItemResponse from(ConnectorItemRecord item) {
+        String display = ConnectorExternalIds.display(item.externalId());
         return new ConnectorItemResponse(
                 item.id(),
-                displayExternalId(item.externalId()),
+                display == null ? "" : display,
                 item.externalVersion(),
                 item.status(),
                 item.documentId(),
@@ -58,27 +57,5 @@ public record ConnectorItemResponse(
                 item.createdAt(),
                 item.updatedAt(),
                 item.deletedAt());
-    }
-
-    /**
-     * 生成 externalId 展示值：优先最后两段路径，再截断到 32 字符。
-     *
-     * @param externalId 完整 key
-     * @return 展示值；空值返回空串
-     */
-    static String displayExternalId(String externalId) {
-        if (externalId == null || externalId.isBlank()) {
-            return "";
-        }
-        String value = externalId;
-        int first = value.lastIndexOf('/');
-        if (first > 0) {
-            int second = value.lastIndexOf('/', first - 1);
-            value = second >= 0 ? value.substring(second + 1) : value.substring(first + 1);
-        }
-        if (value.length() > MAX_DISPLAY_LENGTH) {
-            value = value.substring(value.length() - MAX_DISPLAY_LENGTH);
-        }
-        return value;
     }
 }
