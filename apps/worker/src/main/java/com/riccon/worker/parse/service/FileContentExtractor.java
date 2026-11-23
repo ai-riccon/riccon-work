@@ -1,7 +1,6 @@
 package com.riccon.worker.parse.service;
 
 import com.riccon.platform.common.tenant.TenantId;
-import com.riccon.platform.domain.file.FileFormat;
 import com.riccon.worker.parse.domain.FileRecord;
 import com.riccon.worker.parse.domain.ParsedContent;
 import java.util.Objects;
@@ -10,8 +9,9 @@ import org.springframework.stereotype.Component;
 /**
  * 文件内容抽取入口。
  *
- * <p>文件解析与知识库索引共用同一抽取逻辑：普通文档下载后交给解析器；图片只校验对象存在，
- * 由图片解析器输出元数据，不读取像素内容（M02 不做 OCR）。
+ * <p>文件解析与知识库索引共用同一抽取逻辑：每份文档按字节读取一次，再交给对应解析器，避免
+ * PDF/Excel/图片在解析与索引阶段重复下载。M05 起图片需要读取像素做 OCR，不再只校验对象存在；
+ * 对象 key 的租户前缀与大小上限由 {@link S3FileContentReader} 在读取前统一校验。
  */
 @Component
 public class FileContentExtractor {
@@ -41,10 +41,7 @@ public class FileContentExtractor {
      * @return 解析结果
      */
     public ParsedContent extract(TenantId tenantId, FileRecord file) {
-        if (file.format() == FileFormat.PNG || file.format() == FileFormat.JPEG) {
-            fileReader.verifyExists(tenantId, file);
-            return parserRegistry.parse(file, new byte[0]);
-        }
+        // 同一文档只下载一次：OCR/PDF/Office 都按字节解析，解析器不得再次访问对象存储。
         byte[] content = fileReader.read(tenantId, file);
         return parserRegistry.parse(file, content);
     }

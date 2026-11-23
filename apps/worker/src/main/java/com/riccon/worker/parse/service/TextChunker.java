@@ -12,9 +12,10 @@ import org.springframework.stereotype.Component;
 /**
  * 文本切分器。
  *
- * <p>按字符窗口切分，相邻块保留重叠，避免答案跨块被截断；定位字段从原始文本段继承，
- * 同一页/工作表/段落被切多块时仍能回溯。token 数按字符数 / 4 估算，只用于上下文预算，
- * 不作为精确计费依据。
+ * <p>按字符窗口切分，相邻块保留重叠，避免答案跨块被截断；定位字段（页码/工作表/单元格/段落）
+ * 与 M05 的 OCR 区域（bbox）和置信度从原始文本段原样继承，同一页/行被切多块时仍能回溯。
+ * Excel/OCR 文本通常含换行，切分优先在换行处断开，避免把一行拆成两个无语义块；token 数按字符数
+ * / 4 估算，只用于上下文预算，不作为精确计费依据。
  */
 @Component
 public class TextChunker {
@@ -68,6 +69,13 @@ public class TextChunker {
         int start = 0;
         while (start < text.length()) {
             int end = Math.min(start + chunkSize, text.length());
+            if (end < text.length()) {
+                // 换行优先：只在窗口后半段断行，避免产生大量极短块。
+                int newline = text.lastIndexOf('\n', end - 1);
+                if (newline >= start + chunkSize / 2) {
+                    end = newline;
+                }
+            }
             // 避免在 UTF-16 代理对中间截断，否则会产生非法字符。
             if (end < text.length() && Character.isHighSurrogate(text.charAt(end - 1))) {
                 end--;
@@ -82,17 +90,14 @@ public class TextChunker {
             if (end >= text.length()) {
                 break;
             }
-            int next = end - chunkOverlap;
-            if (next <= start) {
-                next = end;
-            }
+            int next = Math.max(end - chunkOverlap, start + 1);
             start = next;
         }
         return List.copyOf(chunks);
     }
 
     /**
-     * 构造带定位与 token 估算的文本块。
+     * 构造带定位、bbox、置信度与 token 估算的文本块。
      *
      * @param content 块内容
      * @param segment 来源文本段
@@ -106,7 +111,9 @@ public class TextChunker {
                 segment.sheetName(),
                 segment.cellRange(),
                 segment.paragraphNo(),
-                estimateTokens(content));
+                estimateTokens(content),
+                segment.bbox(),
+                segment.ocrConfidence());
     }
 
     /**

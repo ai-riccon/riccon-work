@@ -4,9 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.riccon.platform.domain.chat.LocatorType;
 import com.riccon.worker.config.ParseProperties;
+import com.riccon.worker.parse.domain.BoundingBox;
 import com.riccon.worker.parse.domain.ParsedChunk;
 import com.riccon.worker.parse.domain.ParsedContent;
 import com.riccon.worker.parse.domain.ParsedSegment;
+import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -81,5 +83,36 @@ class TextChunkerTest {
         assertThat(TextChunker.estimateTokens("")).isZero();
         assertThat(TextChunker.estimateTokens("abcd")).isEqualTo(1);
         assertThat(TextChunker.estimateTokens("abcde")).isEqualTo(2);
+    }
+
+    /** 长文本优先在换行处截断，避免把一整行拆成两个块。 */
+    @Test
+    void chunk_longTextWithNewlines_breaksAtNewline() {
+        String text = "A".repeat(60) + "\n" + "B".repeat(60) + "\n" + "C".repeat(60);
+        ParsedContent content = new ParsedContent(
+                List.of(new ParsedSegment(text, LocatorType.SHEET, null, "Budget", "A1:B20", null)), null, 1, "test");
+
+        List<ParsedChunk> chunks = chunker.chunk(content);
+
+        assertThat(chunks).hasSizeGreaterThan(1);
+        assertThat(chunks.get(0).content()).isEqualTo("A".repeat(60));
+        assertThat(chunks)
+                .allSatisfy(chunk -> assertThat(chunk.content().length()).isLessThanOrEqualTo(100));
+    }
+
+    /** OCR 段的 bbox 与置信度被切分块原样继承。 */
+    @Test
+    void chunk_ocrSegment_preservesBboxAndConfidence() {
+        BoundingBox bbox = new BoundingBox(1, 2, 30, 40);
+        ParsedSegment segment =
+                new ParsedSegment("ocr text", LocatorType.PAGE, 2, null, null, null, bbox, new BigDecimal("0.780"));
+        ParsedContent content = new ParsedContent(List.of(segment), 2, null, "test");
+
+        List<ParsedChunk> chunks = chunker.chunk(content);
+
+        assertThat(chunks).hasSize(1);
+        assertThat(chunks.get(0).bbox()).isEqualTo(bbox);
+        assertThat(chunks.get(0).ocrConfidence()).isEqualByComparingTo("0.780");
+        assertThat(chunks.get(0).pageNo()).isEqualTo(2);
     }
 }

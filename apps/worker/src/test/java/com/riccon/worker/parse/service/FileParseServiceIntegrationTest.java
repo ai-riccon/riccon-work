@@ -97,31 +97,33 @@ class FileParseServiceIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(chunks.get(0).cellRange()).isEqualTo("A1:B2");
     }
 
-    /** PNG 只产出元数据块，不执行 OCR。 */
+    /** OCR 关闭时图片保留原图并以 KB_OCR_DISABLED 失败，不产生伪分块。 */
     @Test
-    void pollOnce_png_storesMetadataOnly() {
+    void pollOnce_png_ocrDisabled_marksFailedWithoutChunks() {
         Seed seed = seed("tenant-a", FileFormat.PNG, TestDocuments.png(), "photo.png");
 
         assertThat(poller.pollOnce()).isEqualTo(1);
 
         Map<String, Object> parse = parseRow(seed.tenant(), seed.parseId());
-        assertThat(parse).containsEntry("status", "SUCCEEDED");
-        assertThat(parse.get("page_count")).isEqualTo(1);
-        assertThat(parse.get("chunk_count")).isEqualTo(1);
-        assertThat(chunks(seed.tenant(), seed.parseId()).get(0).content())
-                .contains("图片元数据")
-                .contains("M02 未执行 OCR");
+        assertThat(parse).containsEntry("status", "FAILED");
+        assertThat(parse.get("error_code")).isEqualTo("KB_OCR_DISABLED");
+        assertThat((String) parse.get("error_message")).contains("OCR 未启用");
+        assertThat(chunks(seed.tenant(), seed.parseId())).isEmpty();
+        assertThat(outboxStatus(seed.eventId())).isEqualTo("DEAD");
+        assertThat(runStatus(seed.runId())).isEqualTo("FAILED");
     }
 
-    /** JPEG 与 PNG 使用同一元数据策略。 */
+    /** JPEG 与 PNG 使用同一关闭策略。 */
     @Test
-    void pollOnce_jpeg_storesMetadataOnly() {
+    void pollOnce_jpeg_ocrDisabled_marksFailedWithoutChunks() {
         Seed seed = seed("tenant-a", FileFormat.JPEG, TestDocuments.jpeg(), "photo.jpg");
 
         assertThat(poller.pollOnce()).isEqualTo(1);
 
-        assertThat(parseRow(seed.tenant(), seed.parseId())).containsEntry("status", "SUCCEEDED");
-        assertThat(chunks(seed.tenant(), seed.parseId()).get(0).content()).contains("M02 未执行 OCR");
+        Map<String, Object> parse = parseRow(seed.tenant(), seed.parseId());
+        assertThat(parse).containsEntry("status", "FAILED");
+        assertThat(parse.get("error_code")).isEqualTo("KB_OCR_DISABLED");
+        assertThat(chunks(seed.tenant(), seed.parseId())).isEmpty();
     }
 
     /** 损坏 PDF 属于不可重试错误：保留原因，直接终止，不无限重试。 */

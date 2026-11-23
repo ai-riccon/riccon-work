@@ -142,6 +142,25 @@ riccon:
       max-file-bytes: 52428800
       chunk-size: 800
       chunk-overlap: 80
+    ocr:
+      # M05 本地 OCR（ADR-0023 §4.2/§4.4/§4.6）。生产默认启用并在原生库不可用时启动失败；
+      # application-test.yml 显式关闭，保证无 Tesseract 的宿主/CI 跑全量不失败。
+      enabled: ${RICCON_OCR_ENABLED:true}
+      engine: ${RICCON_OCR_ENGINE:tesseract}
+      lang: ${RICCON_OCR_LANG:chi_sim+eng}
+      max-concurrency: ${RICCON_OCR_MAX_CONCURRENCY:2}
+      page-timeout: ${RICCON_OCR_PAGE_TIMEOUT:30s}
+      document-timeout: ${RICCON_OCR_DOCUMENT_TIMEOUT:600s}
+      max-pages: ${RICCON_OCR_MAX_PAGES:100}
+      max-pixels: ${RICCON_OCR_MAX_PIXELS:50000000}
+      max-decode-pixels: ${RICCON_OCR_MAX_DECODE_PIXELS:200000000}
+      max-long-edge: ${RICCON_OCR_MAX_LONG_EDGE:4000}
+      pdf-dpi: ${RICCON_OCR_PDF_DPI:200}
+      low-confidence-threshold: ${RICCON_OCR_LOW_CONFIDENCE:0.60}
+      page-low-confidence-threshold: ${RICCON_OCR_PAGE_LOW_CONFIDENCE:0.45}
+      # 空值使用镜像 ENV TESSDATA_PREFIX；manifest 由 O1a 写入，缺失时 info 显示 unknown。
+      tessdata-path: ${RICCON_OCR_TESSDATA_PATH:}
+      manifest-path: ${RICCON_OCR_MANIFEST_PATH:/opt/riccon/ocr/manifest.json}
     crypto:
       # 主密钥只由部署环境注入；缺失/长度错误时 Worker 启动失败（ADR-0006）。
       master-key: ${RICCON_MASTER_KEY:}

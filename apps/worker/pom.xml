@@ -23,6 +23,12 @@
     <pdfbox.version>3.0.8</pdfbox.version>
     <poi.version>5.5.1</poi.version>
     <aws-sdk.version>2.59.2</aws-sdk.version>
+    <!--
+      M05 本地 OCR：Tess4J 5.20.0（Apache-2.0）+ JNA（LGPL-2.1+/Apache-2.0，本项目按
+      Apache-2.0 使用）。原生 libtesseract/tessdata 由 deploy/Dockerfile.worker 固定并校验哈希；
+      B5 只引入 JVM 绑定，不下载权重、不访问网络。升级时必须同步 Trivy/SBOM 与 NOTICE 检查。
+    -->
+    <tess4j.version>5.20.0</tess4j.version>
   </properties>
 
   <dependencies>
@@ -66,6 +72,39 @@
       <groupId>org.apache.poi</groupId>
       <artifactId>poi-ooxml</artifactId>
       <version>${poi.version}</version>
+    </dependency>
+
+    <!--
+      M05 本地 OCR：Tess4J 绑定 libtesseract。排除 Tess4J 自带的 PDFBox/工具/应用服务器
+      依赖，只保留 OCR 实际使用的 JNA、lept4j、jai-imageio-core 与 commons-io；
+      PDFBox 已由上方直接依赖固定为同一版本。
+    -->
+    <dependency>
+      <groupId>net.sourceforge.tess4j</groupId>
+      <artifactId>tess4j</artifactId>
+      <version>${tess4j.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.pdfbox</groupId>
+          <artifactId>pdfbox</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.pdfbox</groupId>
+          <artifactId>pdfbox-tools</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.pdfbox</groupId>
+          <artifactId>jbig2-imageio</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.jboss</groupId>
+          <artifactId>jboss-vfs</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <!-- S3 协议客户端：测试与私有化部署使用 S3 兼容对象存储（ADR-0002）。 -->
