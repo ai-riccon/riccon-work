@@ -235,6 +235,7 @@ platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
 | `integration`  | 需要 Spring 上下文、真实 MySQL/RustFS/OpenSearch 或 HTTP 端口        | `ApiIntegrationTestSupport`、`FileApiTestSupport`、`WorkerIntegrationTestBase`；子类继承 |
 | `security`     | 越权、租户/部门隔离、凭据泄露、安全审计边界                          | `SecurityTestSupport`；未继承它的独立套件逐类标注                                        |
 | `migration`    | Flyway 迁移、回滚、schema 版本校验；始终使用一次性容器               | `V9MigrationTest`、`V10MigrationTest`、`V11MigrationTest`、`SchemaVersionCheckerTest`    |
+| `ocr`          | 真实 Tesseract 集成测试；需宿主机/CI 安装 Tesseract/Leptonica 与 chi_sim+eng，默认不执行 | `TesseractOcrEngineIT`（`RICCON_OCR_IT=true` 才启用）                                     |
 | `unit`（约定） | 未带上述标签即 unit：纯 JUnit/AssertJ/ArchUnit，不启动 Spring 与容器 | 不逐类标注                                                                               |
 
 - 当前映射（M19 P4a）：
@@ -242,6 +243,7 @@ platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
   - `security`：`DepartmentIsolationTest`、`TenantIsolationSecurityTest`（继承 `SecurityTestSupport`），`TenantIsolationTest`，`ChatScopeApiTest`、`ContentScopeApiTest`，`M04VerifierGatewaySecurityTest`、`M04VerifierProductionEndpointTest`、`M04VerifierSwitchDeltaTest`、`M04V2VerifierBoundaryTest`，`ModelCredentialSecurityTest`、`ModelRoutingAuditSecurityTest`、`PlatformCostTenantFilterTest`、`InFlightCredentialRotationIntegrationTest`（M24/TASK-0157：并发在途 key 轮换，断言无明文）；原有 `dept-isolation`/`tenant-isolation` 标签保留。认证/会话功能流（`AuthFlowTest`、`OidcLoginFlowTest`）仍归 `integration`，不强行并入 `security`。
   - `security`（M05，承接中）：M05 安全测试以 ADR-0023 §5.11/§11.2 的测试 ID 为唯一口径，当前尚未全部实现，**不得把计划项当成已存在类名**：`SEC-KB-001..005`（OCR 零出网、403/404 矩阵、四处一致、注入、资源耗尽）、`INJ-001..012`（Excel/OCR 注入包装）、`DEPT-011/014`、`TEN-034`、`IT-KB-110/119` 等。落点：TASK-0166 承接 ACL/下载/`admin_read` 与 `IT-KB-110/119`，TASK-0168 承接 `SEC-KB-001`（零出网 `ocr-check`），TASK-0172 承接 `SEC-KB-004` 与 `INJ-001..012`（Excel/OCR；连接器 `SEC-CONN-002` 归 M05b，不在 M05 gate），TASK-0176/0177 在 V1/V2 独立验证整套 M05 越权/安全矩阵。实现完成后把实际类名与本映射同步，在此之前只登记测试 ID 与承接任务。
   - `migration`：上表四个类；它们不继承集成基类，因此只带 `migration`。
+  - `ocr`：`TesseractOcrEngineIT`（`apps/worker/src/test/java/com/riccon/worker/ocr/service`，`@Tag("ocr")` + `RICCON_OCR_IT=true`）。类名 `*IT` 不在 surefire 默认 include（`*Test`/`Test*`/`*Tests`/`*TestCase`），`@EnabledIfEnvironmentVariable` 再兜底；默认全量/CI 不执行，也不依赖原生 OCR 库。专用 job/镜像需先完成 O1a（TASK-0174）的 Tesseract/Leptonica 与 `chi_sim+eng` 安装，再显式设置 `RICCON_OCR_IT=true`。该 tag 的用例是 `IT-KB-104` 的原生引擎侧证据，并作为 `SEC-KB-001` 的辅助；`SEC-KB-001` 的“零出网”判定以 O1b（TASK-0175）的 `scripts/ops/ocr-check` 在 `--network none` 容器内复用 `OcrCli` 的结果为准，不能用本 IT 代替。新增/重命名 `@Tag("ocr")` 测试时，必须同时更新本表与本映射，并保持 O1a/O1b 的镜像与零出网证据链。
   - 其余测试类（含 `platform/**` 的纯单测与 ArchUnit）视为 unit。
 - **维护规则**：新增、重命名或删除测试类，或改变其 `@Tag`/基类继承关系时，必须同时更新本节映射；计划中的测试 ID/任务落点在实现后改为实际类名，禁止只改测试不改本文。
 - 继承规则：
