@@ -463,3 +463,44 @@ jobs:
       - name: 清理测试依赖
         if: always()
         run: docker compose -f deploy/compose/docker-compose.test.yml down -v
+
+  # M05-O1a：worker OCR 镜像（Tesseract + tessdata_fast）构建与零出网验证。
+  # 与后端测试 job 解耦：不启动 MySQL/OpenSearch，只验证镜像内容与离线 OCR
+  # （ADR-0023 §4.6/§4.7、M05-AC-05）。jar 在 Docker 多阶段构建内编译，
+  # 失败不影响既有 backend/frontend job。
+  worker-ocr-image:
+    name: Worker OCR 镜像（离线）
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7
+
+      - name: 构建 OCR 镜像
+        run: docker build -f deploy/Dockerfile.worker -t riccon-worker-ocr:ci .
+
+      - name: 校验 OCR 版本/语言包/指纹并以非 root 零出网识别
+        run: |
+          set -euo pipefail
+          img=riccon-worker-ocr:ci
+          # 镜像默认 ENTRYPOINT 是 java -jar（生产运行）；OCR 自检需显式 --entrypoint。
+          docker run --rm --network none --entrypoint tesseract "$img" --version
+          docker run --rm --network none --entrypoint tesseract "$img" --list-langs | tee /tmp/langs.txt
+          grep -qx 'chi_sim' /tmp/langs.txt
+          grep -qx 'eng' /tmp/langs.txt
+          docker run --rm --network none --entrypoint cat "$img" /opt/riccon/ocr/manifest.json
+          test "$(docker run --rm --network none --entrypoint id "$img" -u)" = "10001"
+          out="$(docker run --rm --network none -v "$PWD/deploy/ocr:/ocr:ro" \
+            --entrypoint tesseract "$img" /ocr/sample.png stdout -l chi_sim+eng --psm 7)"
+          echo "$out"
+          grep -q 'RICCON OCR 12345' <<< "$out"
+          # 镜像不得携带代理或密钥类环境变量（构建期凭据也不得泄漏）。
+          if docker run --rm --network none --entrypoint env "$img" \
+            | grep -qiE '^(https?|all|no)_proxy=|password=|secret=|token='; then
+            echo "镜像环境变量疑似包含代理或密钥" >&2
+            exit 1
+          fi
+
+      - name: 清理镜像
+        if: always()
+        run: docker image rm -f riccon-worker-ocr:ci || true
