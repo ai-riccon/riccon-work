@@ -1,0 +1,52 @@
+# command: set -euo pipefail; git diff --check; bash deploy/sbom/check-jvm-ocr-licenses.sh; node ~/.config/opencode/riccon/scripts/riccon.mjs contract validate --strict --project .; echo notice-ok
+# cwd: /var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-ops-notice-wt
+# started_at: 2026-11-23T11:37:47.750+08:00
+# finished_at: 2026-11-23T11:37:52.235+08:00
+# duration_ms: 4483
+# exit_code: 0
+
+# --- stdout ---
+== 依赖树（apps/worker，offline）
+== 实际引入的 OCR 相关依赖
+  ok net.sourceforge.tess4j:tess4j:jar:5.20.0
+  ok net.sourceforge.lept4j:lept4j:jar:1.24.0
+  ok net.java.dev.jna:jna:jar:5.19.1
+  ok com.github.jai-imageio:jai-imageio-core:jar:1.4.0
+  ok commons-io:commons-io:jar:2.21.0
+== 被排除的 Tess4J 附加依赖不得出现
+  ok 未出现 org.apache.pdfbox:pdfbox-tools
+  ok 未出现 org.apache.pdfbox:jbig2-imageio
+  ok 未出现 org.jboss:jboss-vfs
+== 禁止许可与公有云 OCR
+  ok 无 AGPL/SSPL、无公有云 OCR
+== NOTICE 登记项
+  ok Tess4J 5.20.0
+  ok net.sourceforge.tess4j:tess4j:5.20.0
+  ok Lept4J 1.24.0
+  ok net.sourceforge.lept4j:lept4j:1.24.0
+  ok Java Native Access (JNA) 5.19.1
+  ok net.java.dev.jna:jna:5.19.1
+  ok LGPL-2.1-or-later 或 Apache License 2.0
+  ok 本项目按 Apache-2.0 使用
+  ok jai-imageio-core 1.4.0
+  ok com.github.jai-imageio:jai-imageio-core:1.4.0
+  ok BSD 3-Clause
+  ok Apache Commons IO 2.21.0
+  ok commons-io:commons-io:2.21.0
+  ok 不含 AGPL/SSPL 组件
+== 产物核对（若已构建 fat jar）
+  扫描 apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar
+  ok 产物无 pdfbox-tools
+  ok 产物无 jbig2-imageio
+  ok 产物无 jboss-vfs
+  ok 产物含 tess4j-5.20.0.jar
+  ok 产物含 lept4j-1.24.0.jar
+  ok 产物含 jna-5.19.1.jar
+  ok 产物含 jai-imageio-core-1.4.0.jar
+  ok 产物含 commons-io-2.21.0.jar
+jvm-ocr-license-ok
+Project contract: OK (0 errors, 0 warnings)
+notice-ok
+
+# --- stderr ---
+
