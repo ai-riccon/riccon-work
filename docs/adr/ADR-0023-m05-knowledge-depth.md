@@ -429,10 +429,26 @@ ALTER TABLE artifact_citation
 
 ### 5.10 性能影响
 
-- 检索谓词的 `EXISTS` 使用 `idx_kda_user`；`TENANT`/`DEPT` 分支是常量比较。检索仍以 `knowledge_chunk` 的 `LIKE` 扫描为主，ACL 只增加每行少量比较。
+- 检索谓词的 `EXISTS` 使用 `idx_kda_user`；`TENANT`/`DEPT` 分支是常量比较。检索已由 V14 `FULLTEXT ... WITH PARSER ngram`（`knowledge_chunk.content` + `knowledge_document.title`）替换 leading-wildcard `LIKE`；`MATCH ... AGAINST` 与租户/文档状态/ACL 谓词在同一 SQL，ACL 只增加每行少量比较。
 - 列表 `count` 与 `list` 使用同一谓词；`idx_kd_visibility` 覆盖 `TENANT`/`DEPT`，`USERS` 走 `idx_kda_user`。
 - 预算：ACL 开启后检索/首字 p95 相对 M04 基线增幅 ≤ 20%，绝对首字 p95 ≤ 3 s（`PERF-M05-001`）；10 万 `knowledge_chunk`、5 000 文档下列表 p95 ≤ 500 ms。
 - 若 MySQL 8.4 对 `OR + EXISTS` 选择次优计划，允许改为“先取可见文档 ID 子查询再 JOIN”（同一语义），但必须保留 `EXPLAIN` 证据与 `PERF-M05-001` 对比。
+
+### 5.10.1 检索索引 V14（B3b，DEC-0038=A）
+
+- **决策**：DEC-0038=A（2026-11-23）选择 MySQL FULLTEXT/覆盖索引，检索仍以 MySQL 为权威，不切换 OpenSearch；目标检索 p95 ≤ 500 ms。ACL 写/租户行锁问题另修，不与检索优化混在一起。
+- **迁移**：`V14__knowledge_fulltext_search.sql` 只追加两个 InnoDB FULLTEXT ngram 索引——`knowledge_chunk.content` → `ft_knowledge_chunk_content`，`knowledge_document.title` → `ft_knowledge_document_title`；不改列、不回填，历史行创建索引后立即可检索。ngram 使用 MySQL 默认 token size 2（中文二元组）；`MATCH ... AGAINST` 仍由 MySQL 做租户、文档状态与 ACL 过滤，OpenSearch 不参与授权（§5.4/§5.5）。
+- **锁与维护窗口**：MySQL 8.4 的 InnoDB FULLTEXT 创建要求 `LOCK=SHARED`（错误 1846），允许并发读、阻塞写；耗时随 `knowledge_chunk` 行数增长。生产锁等待、维护窗口与回滚演练由 **M09** 在客户数据量上测量，V14 不声明已量测生产锁等待（当前只有 Testcontainers MySQL 8.4.13 的小数据量证据）。
+- **回滚**（仅回滚窗口；先停新 Worker，回滚后旧 Worker 以 schema 13 启动）：
+
+```sql
+ALTER TABLE knowledge_chunk DROP INDEX ft_knowledge_chunk_content, ALGORITHM=INPLACE, LOCK=NONE;
+ALTER TABLE knowledge_document DROP INDEX ft_knowledge_document_title, ALGORITHM=INPLACE, LOCK=NONE;
+DELETE FROM flyway_schema_history WHERE version = '14';
+```
+
+- **实测（真实栈：5 000 文档/10 万 chunk/50 VU/45 s，ACL 开启，v2 索引）**：EV-0922（TASK-0173，`f4a1b04`）检索 p95 **73.4 ms**、API p95 **284.6 ms**、用户首字估算 p95 **154.4 ms**；EV-0947（TASK-0177，`c384c35`）检索 p95 **97.5 ms**、API p95 **386.8 ms**、首字估算 p95 **201.5 ms**。两者首字/API 与检索目标（≤500 ms）均达标；EV-0947 的 retrieval max 24.2 s 是离群冷查询（p50 27.3 ms），预算按 p95。
+- **ACL 写 residual**：EV-0922/EV-0947 整体 `exit_code=1` 均来自 ACL 写 p95 4.58 s/4.33 s（quota 租户行锁），不是检索回归；ACL 写优化另立任务，M05 不把它算作检索通过或失败。
 
 ### 5.11 越权测试边界
 
@@ -801,7 +817,7 @@ Schema 增量（additive；M05 字段与 M05b 连接器类型分属两个版本�
 | -------------------------------- | -------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------ |
 | 首字 p95                         | ≤ 3 s                      | 假模型、50 并发、ACL 开启、10 万 `knowledge_chunk`                                        | `PERF-M05-001`                 |
 | 稳态 JSON API p95                | ≤ 500 ms                   | 知识库列表/详情/ACL 写；排除登录/setup/cleanup（M04 F-013 口径）                          | `PERF-M05-001`                 |
-| 检索 p95（10 万 chunk、50 并发） | **待量测，不预设通过阈值** | `AgentContextJdbc` 为 `LIKE '%term%'` + ACL `EXISTS`；先量测，超 500ms 不在本模块静默放宽 | `PERF-M05-001`、`PERF-M05-005` |
+| 检索 p95（10 万 chunk、50 并发） | ≤ 500 ms | V14 InnoDB FULLTEXT ngram（`knowledge_chunk.content` + `knowledge_document.title`）+ ACL 谓词；MySQL 为权威；EV-0922 73.4 ms、EV-0947 97.5 ms | `PERF-M05-001`、`PERF-M05-005` |
 | ACL 谓词增量                     | ≤ 20%                      | 同一数据集与 M04 基线对比                                                                 | `PERF-M05-001`                 |
 | 索引延迟（无 OCR）               | p95 ≤ 60 s                 | create → `INDEXED`                                                                        | `PERF-M05-002`                 |
 | 索引延迟（OCR 20 页）            | p95 ≤ 120 s                | 2 并发 OCR                                                                                | `PERF-M05-002`                 |
@@ -811,7 +827,8 @@ Schema 增量（additive；M05 字段与 M05b 连接器类型分属两个版本�
 | 队列等待                         | p95 ≤ 5 min                | 50 并发上传/同步提交后的 heavy 通道（并发 2）；chat/report 不受影响                       | `PERF-M05-004`                 |
 
 - 性能脚本：在既有 `e2e/perf/mvc-smoke.js` 增加 `PERF_M05_SCENARIO=knowledge`（不新增合同 `commands.perf` 路径），并同步 `scripts/real-stack/run.mjs` 注入 fixtures/环境；owner `M05-B11`（写范围：`e2e/perf/mvc-smoke.js`、`scripts/real-stack/run.mjs`），V2 复核。模拟大 XLSX + 多页扫描件提交 + 50 并发聊天；报告必须记录 `RICCON_FAKE_MODEL=1`、`RICCON_DB_POOL_SIZE≥25`、索引版本、OCR 引擎/语言包版本、Worker CPU/内存上限。OCR 每任务单线程（`OMP_THREAD_LIMIT=1`），heavy 并发 2；若 2 并发导致首字 p95 超预算，降到 1 并记录。
-- AC-20 的“API p95 ≤500ms”只统计稳态 JSON（知识库列表/检索/ACL 写），SSE TTFB 与 OCR/同步耗时单列（M04 F-013 口径）。检索在 10 万 chunk、50 并发下必须先量测并记录；若 >500ms，**M05 gate 前必须有用户决策**：(a) MySQL FULLTEXT/覆盖索引，(b) OpenSearch + 两阶段 ACL 复核，(c) 用户批准单独检索预算；**无决策则 M05 gate 不可 pass**，不得静默放宽 AC-20。`PERF-M05-005` 记录量测与决策链接。
+- AC-20 的“API p95 ≤500ms”只统计稳态 JSON（知识库列表/检索/ACL 写），SSE TTFB 与 OCR/同步耗时单列（M04 F-013 口径）。检索在 10 万 chunk、50 并发下已按 DEC-0038=A 用 V14 FULLTEXT 优化并实测：EV-0922 73.4 ms、EV-0947 97.5 ms（≤500 ms）；若后续回归 >500ms，按本 ADR 的决策流程处理，不得静默放宽 AC-20。`PERF-M05-005` 记录量测与决策链接。
+- **ACL 写 residual**：EV-0922/EV-0947 的 ACL 写 p95 分别为 4.58 s/4.33 s，未达 500 ms；根因是 quota 租户行锁（DEC-0038 已记录为独立问题），不是检索回归。该 residual 由后续 quota/ACL 写优化承接，M05 不据此改变检索/首字/API 读接口的达标结论。
 - `IT-WORKER-LANE-001` 是 AC-20 的必需线索：OCR/索引领取不得阻塞 chat/report；`IT-WORKER-LEASE-001` 验证长任务不重复领取。
 - `PERF-M05-001` 是 Product AC-20 的判定口径；`PERF-M05-002..005` 是架构补充观测（OCR/解析、连接器、队列、检索），不替代 001，也不单独构成 AC 通过。
 - 首字预算不因知识库检索退化：ACL 谓词、OCR 队列、连接器同步都不得进入 chat 请求线程。
