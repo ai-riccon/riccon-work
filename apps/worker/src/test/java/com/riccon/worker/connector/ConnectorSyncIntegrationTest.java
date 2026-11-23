@@ -508,7 +508,9 @@ class ConnectorSyncIntegrationTest extends WorkerIntegrationTestBase {
         List<Map<String, Object>> syncEvents = events(tenant, EventTypes.KNOWLEDGE_CONNECTOR_SYNC_REQUESTED);
         assertThat(syncEvents).hasSize(1);
         JsonNode payload = JSON.readTree((String) syncEvents.get(0).get("payload"));
-        assertThat(payload.path("trigger").asText()).isEqualTo("SCHEDULE");
+        assertThat(payload.path("connectorId").asText()).isEqualTo(connector.toString());
+        assertThat(payload.path("syncId").asText()).isNotBlank();
+        assertThat(payload.path("startedAt").asText()).isNotBlank();
         assertThat(((java.time.LocalDateTime) connectorState(tenant, connector).get("next_sync_at")))
                 .isAfter(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC));
         assertThat(auditCount(tenant, "knowledge.connector.sync.started")).isEqualTo(1);

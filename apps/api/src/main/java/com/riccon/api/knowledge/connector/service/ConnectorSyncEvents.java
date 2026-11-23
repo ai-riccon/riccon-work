@@ -6,7 +6,6 @@ import com.riccon.api.outbox.repository.OutboxRepository;
 import com.riccon.api.run.repository.RunRepository;
 import com.riccon.platform.common.tenant.TenantId;
 import com.riccon.platform.domain.contract.EventTypes;
-import com.riccon.platform.domain.knowledge.ConnectorSyncTrigger;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
@@ -54,14 +53,7 @@ public class ConnectorSyncEvents {
      * @param now 受理时间
      * @return 事件 ID
      */
-    public UUID enqueue(
-            TenantId tenantId,
-            UUID connectorId,
-            UUID syncId,
-            UUID actorId,
-            ConnectorSyncTrigger trigger,
-            String traceId,
-            Instant now) {
+    public UUID enqueue(TenantId tenantId, UUID connectorId, UUID syncId, UUID actorId, String traceId, Instant now) {
         UUID runId = UuidV7.generate(now);
         UUID eventId = UuidV7.generate(now);
         runRepository.createPending(
@@ -76,7 +68,6 @@ public class ConnectorSyncEvents {
         payload.put("connectorId", connectorId.toString());
         payload.put("syncId", syncId.toString());
         payload.put("startedAt", DateTimeFormatter.ISO_INSTANT.format(now));
-        payload.put("trigger", trigger.name());
         OutboxEvent event = new OutboxEvent(
                 eventId,
                 runId,

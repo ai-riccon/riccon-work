@@ -90,8 +90,8 @@ public class ConnectorSyncHandler implements OutboxEventHandler {
         UUID connectorId = payloadParser.requiredUuid(payload, "connectorId");
         UUID syncId = payloadParser.requiredUuid(payload, "syncId");
         Instant startedAt = readStartedAt(payload);
-        ConnectorSyncTrigger trigger = readTrigger(payload);
         int retryAttempt = retryAttempt(event.idempotencyKey());
+        ConnectorSyncTrigger trigger = retryAttempt > 0 ? ConnectorSyncTrigger.RETRY : ConnectorSyncTrigger.MANUAL;
         TenantId tenantId = TenantContext.require();
         if (!properties.enabled()) {
             LOG.info("connector.sync.skipped connectorId={} reason=feature_disabled", connectorId);
@@ -131,27 +131,6 @@ public class ConnectorSyncHandler implements OutboxEventHandler {
             return Instant.parse(node.asText());
         } catch (DateTimeParseException exception) {
             throw invalid("payload field startedAt is not a valid ISO-8601 instant");
-        }
-    }
-
-    /**
-     * 读取触发方式；缺省 MANUAL。
-     *
-     * @param payload payload
-     * @return 触发方式
-     */
-    private static ConnectorSyncTrigger readTrigger(JsonNode payload) {
-        JsonNode node = payload.get("trigger");
-        if (node == null || node.isNull()) {
-            return ConnectorSyncTrigger.MANUAL;
-        }
-        if (!node.isTextual()) {
-            throw invalid("payload field trigger must be a string");
-        }
-        try {
-            return ConnectorSyncTrigger.valueOf(node.asText());
-        } catch (IllegalArgumentException exception) {
-            throw invalid("payload field trigger is not a known trigger");
         }
     }
 

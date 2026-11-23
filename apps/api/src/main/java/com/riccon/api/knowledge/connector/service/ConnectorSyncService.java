@@ -116,8 +116,7 @@ public class ConnectorSyncService {
                 traceId,
                 requestId));
         try {
-            syncEvents.enqueue(
-                    tenantId, connectorId, syncId, actor.userId(), ConnectorSyncTrigger.MANUAL, traceId, now);
+            syncEvents.enqueue(tenantId, connectorId, syncId, actor.userId(), traceId, now);
         } catch (DataAccessException exception) {
             throw new ConnectorUnavailableException("connector sync queue is unavailable");
         }

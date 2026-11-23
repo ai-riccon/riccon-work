@@ -143,8 +143,7 @@ public class ConnectorSyncScheduler {
             UUID syncId = UuidV7.generate();
             String traceId = "conn-" + syncId.toString().replace("-", "");
             try {
-                eventPublisher.enqueueSync(
-                        tenantId, connector, syncId, ConnectorSyncTrigger.SCHEDULE, actorId, traceId, now);
+                eventPublisher.enqueueSync(tenantId, connector, syncId, actorId, traceId, now);
             } catch (DuplicateKeyException exception) {
                 return false;
             }

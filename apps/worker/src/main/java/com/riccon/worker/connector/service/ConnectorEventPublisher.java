@@ -2,7 +2,6 @@ package com.riccon.worker.connector.service;
 
 import com.riccon.platform.common.tenant.TenantId;
 import com.riccon.platform.domain.contract.EventTypes;
-import com.riccon.platform.domain.knowledge.ConnectorSyncTrigger;
 import com.riccon.platform.domain.knowledge.KnowledgeIndexMode;
 import com.riccon.worker.common.UuidV7;
 import com.riccon.worker.connector.domain.ConnectorRecord;
@@ -129,20 +128,13 @@ public class ConnectorEventPublisher {
      */
     @Transactional
     public UUID enqueueSync(
-            TenantId tenantId,
-            ConnectorRecord connector,
-            UUID syncId,
-            ConnectorSyncTrigger trigger,
-            UUID actorId,
-            String traceId,
-            Instant now) {
+            TenantId tenantId, ConnectorRecord connector, UUID syncId, UUID actorId, String traceId, Instant now) {
         UUID runId = UuidV7.generate();
         UUID eventId = UuidV7.generate();
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("connectorId", connector.id().toString());
         payload.put("syncId", syncId.toString());
         payload.put("startedAt", DateTimeFormatter.ISO_INSTANT.format(now));
-        payload.put("trigger", trigger.name());
         connectorRepository.insertRun(tenantId, runId, actorId, traceId, now);
         connectorRepository.insertOutboxEvent(
                 tenantId,
@@ -185,7 +177,6 @@ public class ConnectorEventPublisher {
         payload.put("connectorId", connector.id().toString());
         payload.put("syncId", syncId.toString());
         payload.put("startedAt", DateTimeFormatter.ISO_INSTANT.format(now));
-        payload.put("trigger", ConnectorSyncTrigger.RETRY.name());
         connectorRepository.insertRun(tenantId, runId, actorId, traceId, now);
         connectorRepository.insertOutboxEvent(
                 tenantId,
