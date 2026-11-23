@@ -1,0 +1,208 @@
+{
+  "status": "passed",
+  "generatedAt": "2026-11-23T16:18:17.456Z",
+  "auditActions": {
+    "approval.decided": 4,
+    "artifact.downloaded": 5,
+    "artifact.saved": 2,
+    "audit.export.approved": 3,
+    "audit.export.requested": 3,
+    "audit.queried": 27,
+    "auth.login.failed": 8,
+    "auth.login.succeeded": 284,
+    "auth.logout": 7,
+    "data.exported": 2,
+    "file.deleted": 1,
+    "file.uploaded": 8,
+    "knowledge.document.added": 1,
+    "mcp.tool.invoked": 2,
+    "message.sent": 17,
+    "model.credential.created": 1,
+    "model.credential.disabled": 1,
+    "model.credential.rotated": 1,
+    "model.failover.triggered": 8,
+    "model.gateway.switch.changed": 4,
+    "model.invocation.completed": 21,
+    "model.invocation.failed": 3,
+    "model.invocation.started": 23,
+    "model.routing.updated": 6,
+    "permission.changed": 1,
+    "quota.exceeded": 2,
+    "quota.limit.changed": 12,
+    "research.task.created": 4,
+    "session.created": 16,
+    "tenant.created": 3,
+    "user.created": 10,
+    "user.oidc.bound": 3
+  },
+  "mcpTools": {
+    "alphaTotal": 1,
+    "betaTotal": 0,
+    "grantedToolId": "0192f0a0-0000-7000-8000-000000000004"
+  },
+  "runs": {
+    "j1RunId": "01a20933-40b2-7288-9db9-b1068e87ba38",
+    "j2RunId": "01a20933-19d5-7dc8-a502-7dbd2cf73dbd",
+    "j1FirstTokenMs": 74,
+    "j1DurationMs": 3016,
+    "dbFirstTokenMs": 74
+  },
+  "appendOnly": {
+    "updateExit": 1,
+    "deleteExit": 1,
+    "updateError": "ERROR 1644 (45000) at line 1: audit_event is append-only",
+    "deleteError": "ERROR 1644 (45000) at line 1: audit_event is append-only"
+  },
+  "crossTenantChecks": [
+    {
+      "name": "conversation",
+      "url": "/api/v1/conversations/01a20933-3832-7afb-8281-002344d5ce13",
+      "status": 404
+    },
+    {
+      "name": "task",
+      "url": "/api/v1/research-tasks/01a20933-19d5-7c04-aa6a-9194ae0e760a",
+      "status": 404
+    },
+    {
+      "name": "artifact",
+      "url": "/api/v1/artifacts/01a20933-2b46-72cd-bec6-0b1262036b36",
+      "status": 404
+    },
+    {
+      "name": "artifactVersion",
+      "url": "/api/v1/artifacts/01a20933-2b46-72cd-bec6-0b1262036b36/versions/1",
+      "status": 404
+    },
+    {
+      "name": "artifactDownload",
+      "url": "/api/v1/artifacts/01a20933-2b46-72cd-bec6-0b1262036b36/versions/1/download-url",
+      "status": 404
+    },
+    {
+      "name": "artifactContent",
+      "url": "/api/v1/artifacts/01a20933-2b46-72cd-bec6-0b1262036b36/versions/1/content",
+      "status": 404
+    },
+    {
+      "name": "knowledgeDocument",
+      "url": "/api/v1/knowledge/documents/01a2092e-b783-76a6-b317-2eed27b678f1",
+      "status": 404
+    },
+    {
+      "name": "file",
+      "url": "/api/v1/files/01a2092e-ad22-780b-af7f-0bbd8cc98b5a",
+      "status": 404
+    }
+  ],
+  "observations": {
+    "artifactContent": {
+      "bytes": 2020,
+      "contentType": "text/markdown;charset=UTF-8",
+      "cacheControl": "no-store"
+    },
+    "crossTenantToolCreate": "400 RICCON-REQUEST-400",
+    "j1RunId": "01a20933-40b2-7288-9db9-b1068e87ba38",
+    "j1FirstTokenMs": 74,
+    "j1InvocationDurationMs": 3016,
+    "dbFirstTokenMs": 74,
+    "crossTenantRuns": "404/404",
+    "oversizedContent": {
+      "status": 413,
+      "code": "RICCON-ARTIFACT-413"
+    },
+    "m04": {
+      "fakeScenarios": {
+        "redirect": 302,
+        "unauthorized": 401,
+        "rate_limited": 429,
+        "server_error": 500,
+        "unavailable": 503,
+        "timeout": "client-abort",
+        "stream_break": "interrupted",
+        "missing_usage": "no-usage"
+      },
+      "catalog": {
+        "providers": [
+          {
+            "code": "fake-primary",
+            "allowed": true,
+            "environmentLabel": "DEMO_ONLY"
+          },
+          {
+            "code": "fake-secondary",
+            "allowed": true,
+            "environmentLabel": "DEMO_ONLY"
+          }
+        ],
+        "models": [
+          {
+            "modelKey": "fake-chat-disabled",
+            "pricingStatus": "UNPRICED",
+            "status": "DISABLED"
+          },
+          {
+            "modelKey": "fake-chat-primary",
+            "pricingStatus": "PRICED",
+            "status": "ACTIVE"
+          },
+          {
+            "modelKey": "fake-chat-secondary",
+            "pricingStatus": "PRICED",
+            "status": "ACTIVE"
+          }
+        ],
+        "employeeCatalogLeaks": 0
+      },
+      "routing": {
+        "chatEntries": 3,
+        "reportEntries": 2,
+        "version": 9,
+        "auditEvents": 8
+      },
+      "credentials": {
+        "maskedHint": "****bc89",
+        "idempotentDisable": true,
+        "duplicateRejected": true
+      },
+      "switches": {
+        "routingMode": "ROUTED",
+        "failoverEnabled": true,
+        "quotaEnforcementEnabled": false
+      },
+      "quota": {
+        "tenantWindows": 2,
+        "platformRows": 4,
+        "employeeRejected": 403
+      },
+      "cost": {
+        "status": "passed",
+        "currency": "CNY"
+      },
+      "fingerprint": {
+        "matched": true,
+        "deploymentMode": "DEMO",
+        "currency": "CNY"
+      },
+      "database": "item\ttotal\nrouting_chat\t3\nrouting_report\t2\nswitches\t3\nplatform_credentials\t4\nrouting_audit\t8",
+      "textIntegrity": {
+        "status": "passed",
+        "models": 3,
+        "providers": 2
+      }
+    }
+  },
+  "gaps": [
+    {
+      "endpoint": "/api/v1/admin/mcp-servers",
+      "status": 404,
+      "code": "RICCON-REQUEST-404"
+    },
+    {
+      "endpoint": "/api/v1/admin/mcp-tools",
+      "status": 404,
+      "code": "RICCON-REQUEST-404"
+    }
+  ]
+}
+
