@@ -4,7 +4,7 @@
   "module_id": "M05",
   "title": "M05-B4 Excel 流式解析/区域引用/警告",
   "owner": "riccon/builder-kb-excel",
-  "status": "blocked",
+  "status": "review",
   "write_scope": [
     "apps/worker/src/main/java/com/riccon/worker/parse/service/XlsxDocumentParser.java",
     "apps/worker/src/test/java/com/riccon/worker/parse/service/XlsxDocumentParserTest.java"
@@ -13,17 +13,19 @@
     "XSSFReader 流式、工作表×20 行行带、隐藏表/公式/合并单元格、上限/警告",
     "拒绝与 FAILED 分开；IT-KB-101/102/103 通过；无 500/半索引"
   ],
-  "evidence": [],
+  "evidence": [
+    "EV-0824"
+  ],
   "tools_used": [
     "serena",
     "codegraph",
     "maven",
     "poi"
   ],
-  "blocker": "B5(TASK-0168) 工作区仍有未提交源码，strict 证据无法在 clean tree 录制；TASK-0167.write_scope 缺少 apps/worker/src/test/java/com/riccon/worker/parse/service/XlsxDocumentParserTest.java，CLI 无 --write-scope，review 转换会被 enforceWriteScope 拒绝。请 Lead 补录测试写范围（同 TASK-0166 先例）并协调 B5 提交，或批准隔离工作树证据例外后重试。",
+  "blocker": null,
   "created_at": "2026-11-22T19:25:24.569+08:00",
-  "updated_at": "2026-11-23T11:07:30.680+08:00",
-  "baseline_commit": "5c230e4b25cbd61f033ff86e41728869f9529e7c",
+  "updated_at": "2026-11-23T11:14:14.783+08:00",
+  "baseline_commit": "dbef7ba",
   "scope_amendment": {
     "at": "2026-11-23T03:09:21.136Z",
     "by": "riccon/lead",
@@ -32,5 +34,6 @@
       "apps/worker/src/test/java/com/riccon/worker/parse/service/XlsxDocumentParserTest.java"
     ]
   },
-  "commit_attribution_note": "6a70b9b 标题为 m05-b3，但包含 B4 的 XlsxDocumentParser 硬化与测试增量；文件均在 B4 write_scope，HEAD 内容正确。"
+  "commit_attribution_note": "6a70b9b 标题为 m05-b3，但包含 B4 的 XlsxDocumentParser 硬化与测试增量；文件均在 B4 write_scope，HEAD 内容正确。",
+  "end_commit": "8acffe9"
 }

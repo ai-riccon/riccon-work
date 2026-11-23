@@ -1,0 +1,13 @@
+# command: LOCK="${TMPDIR:-/tmp}/riccon-maven.lock"; while ! mkdir "$LOCK" 2>/dev/null; do sleep 5; done; trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT; ./mvnw -q -T1C -pl apps/worker -am test -Dtest='XlsxDocumentParser*Test' -Dsurefire.failIfNoSpecifiedTests=false
+# cwd: /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-b4-evidence-wt
+# started_at: 2026-11-23T11:12:33.378+08:00
+# finished_at: 2026-11-23T11:12:47.993+08:00
+# duration_ms: 14614
+# exit_code: 0
+
+# --- stdout ---
+11:12:44.795 [main] WARN org.apache.poi.openxml4j.util.ZipSecureFile -- setting max text size greater than 10485760 can be risky; set to 268435456 chars
+11:12:45.623 [main] WARN org.apache.poi.openxml4j.opc.ZipPackage -- Error in zip file /var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-xlsx-1986068915076034198.xlsx - falling back to stream processing (i.e. ignoring zip central directory)
+
+# --- stderr ---
+
