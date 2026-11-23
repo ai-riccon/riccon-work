@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0866",
+  "task_id": "TASK-0171",
+  "command": "LOCK=\"${TMPDIR:-/tmp}/riccon-maven.lock\"; while ! mkdir \"$LOCK\" 2>/dev/null; do sleep 5; done; trap 'rmdir \"$LOCK\" 2>/dev/null || true' EXIT; ./mvnw -q -T1C -pl apps/api -am test -Dtest='*Citation*Test,*Chat*Test,*Research*Test' -Dsurefire.failIfNoSpecifiedTests=false && ./mvnw -q -T1C -pl apps/worker -am test -Dtest='*Report*Test,*Research*Test' -Dsurefire.failIfNoSpecifiedTests=false",
+  "manual": false,
+  "commit": "595120ec73f344b9111b7646068a90459fefcdb2",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0171/EV-0866-2026-11-23T15-22-54-278+08-00-lock-tmpdir-tmp-riccon-maven-lock-while-mkdir-lo.log",
+  "output_sha256": "9bc9531eadd8e833c55f548903950893b0599ff45d6354e7123fb38eeac31ac9",
+  "output_bytes": 398444,
+  "agent": "riccon/verifier",
+  "cwd": "/private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-b9-verify-wt",
+  "started_at": "2026-11-23T15:18:10.188+08:00",
+  "finished_at": "2026-11-23T15:22:52.959+08:00",
+  "duration_ms": 282769,
+  "note": "独立验证重跑：OpenSearch 测试容器首轮启动超时；引用四态/遮蔽/J1J2；worktree 生成 EV-0857，回灌主树重编号 EV-0866",
+  "recorded_at": "2026-11-23T15:22:54.287+08:00"
+}
