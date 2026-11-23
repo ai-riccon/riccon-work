@@ -176,14 +176,11 @@ class XlsxDocumentParserTest {
     @Test
     @DisplayName("格式与 Spring 构造器参数")
     void parse_formatAndConstructor_exposeXlsxFormat() {
-        byte[] content = workbook(workbook -> workbook.createSheet("数据")
-                .createRow(0)
-                .createCell(0)
-                .setCellValue("value"));
+        byte[] content = workbook(workbook ->
+                workbook.createSheet("数据").createRow(0).createCell(0).setCellValue("value"));
 
         assertThat(new XlsxDocumentParser().format()).isEqualTo(FileFormat.XLSX);
-        XlsxDocumentParser configured =
-                new XlsxDocumentParser(20, 20_000, 200, 50, 8_000_000, 5_000);
+        XlsxDocumentParser configured = new XlsxDocumentParser(20, 20_000, 200, 50, 8_000_000, 5_000);
         assertThat(configured.parse(file(content), content).segments()).hasSize(1);
     }
 
@@ -221,8 +218,8 @@ class XlsxDocumentParserTest {
     void parse_emptyContent_throwsCorrupt() {
         assertThatThrownBy(() -> parse(new byte[0]))
                 .isInstanceOf(ParseException.class)
-                .satisfies(exception -> assertThat(((ParseException) exception).errorCode())
-                        .isEqualTo(ParseErrorCodes.PARSE_CORRUPT));
+                .satisfies(exception ->
+                        assertThat(((ParseException) exception).errorCode()).isEqualTo(ParseErrorCodes.PARSE_CORRUPT));
     }
 
     /**
@@ -238,8 +235,7 @@ class XlsxDocumentParserTest {
             sheet.createRow(2).createCell(0).setCellValue("def");
         });
 
-        ParsedContent parsed =
-                parse(content, new XlsxDocumentParser.Limits(1, 20_000, 200, 50, 5, 5_000));
+        ParsedContent parsed = parse(content, new XlsxDocumentParser.Limits(1, 20_000, 200, 50, 5, 5_000));
 
         assertThat(parsed.segments()).hasSize(1);
         assertThat(parsed.warnings()).containsExactly(ParseWarningCodes.CHARS_TRUNCATED);
@@ -253,13 +249,10 @@ class XlsxDocumentParserTest {
     @Test
     @DisplayName("单格超长文本按字符上限截断")
     void parse_singleHugeCell_truncatesAtCharLimit() {
-        byte[] content = workbook(workbook -> workbook.createSheet("数据")
-                .createRow(0)
-                .createCell(0)
-                .setCellValue("0123456789ABCDEFGHIJ"));
+        byte[] content = workbook(workbook ->
+                workbook.createSheet("数据").createRow(0).createCell(0).setCellValue("0123456789ABCDEFGHIJ"));
 
-        ParsedContent parsed =
-                parse(content, new XlsxDocumentParser.Limits(20, 20_000, 200, 50, 10, 5_000));
+        ParsedContent parsed = parse(content, new XlsxDocumentParser.Limits(20, 20_000, 200, 50, 10, 5_000));
 
         assertThat(parsed.segments()).hasSize(1);
         assertThat(parsed.segments().get(0).content()).isEqualTo("0123456789");
