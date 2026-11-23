@@ -41,7 +41,7 @@ import tools.jackson.databind.ObjectMapper;
  *       读与写一律 403，匿名 401，响应不回显链内容；
  *   <li>AC-02 / IT-MODEL-102：平台保存路由写操作者/动作/变更摘要/结果；审计写入失败时保存 500
  *       且链版本与顺序不变；
- *   <li>AC-18：关闭路由/降级/配额执行后下一次读取生效并写三条审计，schema 仍为 V11（不需要回滚
+ *   <li>AC-18：关闭路由/降级/配额执行后下一次读取生效并写三条审计，schema 不回滚（当前 V14）
  *       数据库），历史调用行与成本快照不被删除或改写。
  * </ul>
  */
@@ -288,7 +288,7 @@ class M04V2VerifierBoundaryTest extends ApiIntegrationTestSupport {
     }
 
     /**
-     * AC-18：关闭路由/降级/配额后下一次读取生效并逐项写审计；V11 schema 不回滚，历史调用与成本
+     * AC-18：关闭路由/降级/配额后下一次读取生效并逐项写审计；当前 schema 不回滚，历史调用与成本
      * 快照保留。
      */
     @Test
@@ -344,8 +344,8 @@ class M04V2VerifierBoundaryTest extends ApiIntegrationTestSupport {
                     assertThat(row.details()).doesNotContain(PROVIDER_URL).doesNotContain("apiKey");
                 });
 
-        // 关闭开关不需要回滚数据库：schema 仍为当前 13（V13 只加引用分块列），历史调用行与成本快照可读且未被改写。
-        assertThat(schemaVersion()).isEqualTo(13);
+        // 关闭开关不需要回滚数据库：schema 仍为当前 14（V14 只加 FULLTEXT 索引），历史调用行与成本快照可读且未被改写。
+        assertThat(schemaVersion()).isEqualTo(14);
         Map<String, Object> after = historicalSnapshot(tenantCode, invocationId);
         assertThat(after).isEqualTo(before);
         // 旧应用（M04 前）按列名读取历史调用仍工作。
