@@ -79,6 +79,61 @@ class ConnectorDeletePropagationIntegrationTest extends WorkerIntegrationTestBas
         reset(eventPublisher);
     }
 
+    @Test
+    void propagate_existingDeleteEventIsIdempotent() {
+        Fixture fixture = fixture();
+        UUID runId = com.riccon.worker.persistence.UuidBinary.newV7();
+        jdbcClient
+                .sql("""
+                        INSERT INTO agent_run (
+                            tenant_id, id, kind, user_id, status, attempt, max_attempts, trace_id,
+                            created_at, updated_at
+                        ) VALUES (
+                            :tenant, :id, 'KNOWLEDGE_INDEX', :userId, 'PENDING', 1, 3, 'trace',
+                            NOW(6), NOW(6)
+                        )
+                        """)
+                .param("tenant", fixture.tenant())
+                .param("id", com.riccon.worker.persistence.UuidBinary.toBytes(runId))
+                .param("userId", com.riccon.worker.persistence.UuidBinary.toBytes(fixture.user()))
+                .update();
+        jdbcClient
+                .sql("""
+                        INSERT INTO agent_run_outbox (
+                            tenant_id, id, run_id, event_type, event_version, idempotency_key, payload,
+                            status, attempts, available_at, created_at, updated_at
+                        ) VALUES (
+                            :tenant, :id, :runId, 'riccon.knowledge.index.requested.v1', 1,
+                            :key, '{}', 'PENDING', 0, NOW(6), NOW(6), NOW(6)
+                        )
+                        """)
+                .param("tenant", fixture.tenant())
+                .param(
+                        "id",
+                        com.riccon.worker.persistence.UuidBinary.toBytes(
+                                com.riccon.worker.persistence.UuidBinary.newV7()))
+                .param("runId", com.riccon.worker.persistence.UuidBinary.toBytes(runId))
+                .param("key", "doc:" + fixture.documentId() + ":delete:1")
+                .update();
+        try (TenantContext.TenantScope ignored = TenantContext.open(TenantId.of(fixture.tenant()))) {
+            assertThat(propagationService.propagate(
+                            TenantId.of(fixture.tenant()), fixture.item(), fixture.user(), "trace", Instant.now()))
+                    .isTrue();
+        }
+        assertThat(itemStatus(fixture)).isEqualTo("DELETED");
+        assertThat(documentDeletedAt(fixture)).isNotNull();
+        assertThat(jdbcClient
+                        .sql("""
+                        SELECT COUNT(*) FROM agent_run_outbox
+                         WHERE tenant_id=:tenant AND idempotency_key=:key
+                        """)
+                        .param("tenant", fixture.tenant())
+                        .param("key", "doc:" + fixture.documentId() + ":delete:1")
+                        .query(Long.class)
+                        .single())
+                .isEqualTo(1);
+    }
+
     /**
      * 创建租户、连接器、文档、条目。
      */

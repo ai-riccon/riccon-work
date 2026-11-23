@@ -2,7 +2,9 @@ package com.riccon.worker.connector;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
@@ -16,6 +18,7 @@ import com.riccon.worker.WorkerIntegrationTestBase;
 import com.riccon.worker.connector.config.ConnectorProperties;
 import com.riccon.worker.connector.domain.ConnectorContentTypes;
 import com.riccon.worker.connector.domain.ConnectorErrorCodes;
+import com.riccon.worker.connector.service.ConnectorEventPublisher;
 import com.riccon.worker.connector.service.ConnectorS3ClientFactory;
 import com.riccon.worker.connector.service.ConnectorSyncHandler;
 import com.riccon.worker.connector.service.ConnectorSyncScheduler;
@@ -104,6 +107,10 @@ class ConnectorSyncIntegrationTest extends WorkerIntegrationTestBase {
     /** 临时文件工厂 spy，用于断言失败清理。 */
     @MockitoSpyBean
     private ConnectorTempFileFactory tempFileFactory;
+
+    /** 事件发布 spy，用于模拟新文档索引事件失败。 */
+    @MockitoSpyBean
+    private ConnectorEventPublisher eventPublisher;
 
     /**
      * 注入连接器配置。
@@ -578,8 +585,11 @@ class ConnectorSyncIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(payload.path("connectorId").asText()).isEqualTo(connector.toString());
         assertThat(payload.path("syncId").asText()).isNotBlank();
         assertThat(payload.path("startedAt").asText()).isNotBlank();
-        assertThat(((java.time.LocalDateTime) connectorState(tenant, connector).get("next_sync_at")))
-                .isAfter(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC));
+        Map<String, Object> scheduledState = connectorState(tenant, connector);
+        LocalDateTime nextSyncAt = (LocalDateTime) scheduledState.get("next_sync_at");
+        LocalDateTime updatedAt = (LocalDateTime) scheduledState.get("updated_at");
+        assertThat(nextSyncAt).isAfter(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC));
+        assertThat(updatedAt).isBefore(nextSyncAt);
         assertThat(auditCount(tenant, "knowledge.connector.sync.started")).isEqualTo(1);
 
         scheduler.scheduleDue();
@@ -600,12 +610,27 @@ class ConnectorSyncIntegrationTest extends WorkerIntegrationTestBase {
         sync(tenant, connector, 0);
         assertThat(documents(tenant, connector)).hasSize(3);
 
+        String existingEtag = s3Client.headObject(
+                        builder -> builder.bucket(SOURCE_BUCKET).key(prefix + "a.pdf"))
+                .eTag();
+        Map<String, Object> existingItem = items(tenant, connector).stream()
+                .filter(row -> (prefix + "a.pdf").equals(row.get("external_id")))
+                .findFirst()
+                .orElseThrow();
+        UUID existingItemId = com.riccon.worker.persistence.UuidBinary.fromBytes((byte[]) existingItem.get("id"));
+        jdbcClient
+                .sql(
+                        "UPDATE kb_connector_item SET last_seen_at='2020-01-01 00:00:00' WHERE tenant_id=:tenant AND id=:id")
+                .param("tenant", tenant)
+                .param("id", com.riccon.worker.persistence.UuidBinary.toBytes(existingItemId))
+                .update();
+
         S3Client sourceClient = mock(S3Client.class);
         when(sourceClient.listObjectsV2(any(ListObjectsV2Request.class)))
                 .thenReturn(ListObjectsV2Response.builder()
                         .contents(S3Object.builder()
-                                .key(prefix + "a.zip")
-                                .eTag("e")
+                                .key(prefix + "a.pdf")
+                                .eTag(existingEtag)
                                 .size(1L)
                                 .build())
                         .isTruncated(true)
@@ -616,6 +641,13 @@ class ConnectorSyncIntegrationTest extends WorkerIntegrationTestBase {
         } finally {
             reset(clientFactory);
         }
+
+        Map<String, Object> processed = items(tenant, connector).stream()
+                .filter(row -> (prefix + "a.pdf").equals(row.get("external_id")))
+                .findFirst()
+                .orElseThrow();
+        assertThat((LocalDateTime) processed.get("last_seen_at")).isAfter(LocalDateTime.of(2021, 1, 1, 0, 0));
+        assertThat(processed.get("status")).isEqualTo("SYNCED");
 
         Map<String, Object> state = connectorState(tenant, connector);
         assertThat(state.get("last_sync_status")).isEqualTo("PARTIAL");
@@ -667,6 +699,33 @@ class ConnectorSyncIntegrationTest extends WorkerIntegrationTestBase {
         Map<String, Object> state = connectorState(tenant, connector);
         assertThat(state.get("last_sync_started_at")).isNotNull();
         assertThat(state.get("last_sync_status")).isNull();
+    }
+
+    @Test
+    void createDocumentEventFailureRollsBackAndNextSyncRecovers() {
+        String tenant = uniqueTenant("conn");
+        data.createTenant(tenant);
+        UUID user = data.createUser(tenant);
+        String prefix = uniquePrefix("create-fail");
+        UUID connector = createConnector(tenant, user, prefix, List.of(), List.of(), false);
+        put(prefix + "a.pdf", "a");
+        doThrow(new IllegalStateException("index event unavailable"))
+                .doCallRealMethod()
+                .when(eventPublisher)
+                .enqueueIndex(any(), any(), anyInt(), any(), any(), any());
+        try {
+            sync(tenant, connector, 0);
+            assertThat(documents(tenant, connector)).isEmpty();
+            assertThat(items(tenant, connector).get(0).get("status")).isEqualTo("FAILED");
+            assertThat(events(tenant, EventTypes.KNOWLEDGE_INDEX_REQUESTED)).isEmpty();
+
+            sync(tenant, connector, 0);
+            assertThat(documents(tenant, connector)).hasSize(1);
+            assertThat(items(tenant, connector).get(0).get("status")).isEqualTo("SYNCED");
+            assertThat(events(tenant, EventTypes.KNOWLEDGE_INDEX_REQUESTED)).hasSize(1);
+        } finally {
+            reset(eventPublisher);
+        }
     }
 
     @Test
@@ -841,7 +900,7 @@ class ConnectorSyncIntegrationTest extends WorkerIntegrationTestBase {
         return jdbcClient
                 .sql("""
                         SELECT last_sync_started_at, last_sync_finished_at, last_sync_status, last_sync_complete,
-                               last_error_code, last_sync_summary, next_sync_at, status
+                               last_error_code, last_sync_summary, next_sync_at, status, updated_at
                           FROM kb_connector
                          WHERE tenant_id=:tenant AND id=:id
                         """)

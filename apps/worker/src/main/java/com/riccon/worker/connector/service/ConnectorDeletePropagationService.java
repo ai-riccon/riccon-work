@@ -72,7 +72,11 @@ public class ConnectorDeletePropagationService {
             return true;
         }
         auditWriter.documentDeleted(tenantId, item.documentId(), document.visibility(), traceId);
-        eventPublisher.enqueueDelete(tenantId, item.documentId(), document.aclVersion(), actorId, traceId, now);
+        try {
+            eventPublisher.enqueueDelete(tenantId, item.documentId(), document.aclVersion(), actorId, traceId, now);
+        } catch (org.springframework.dao.DuplicateKeyException exception) {
+            // 并发下唯一键兜底：事件已存在视为成功，不回滚已完成的 item/文档删除。
+        }
         return true;
     }
 }

@@ -100,6 +100,10 @@ public class ConnectorEventPublisher {
     @Transactional
     public UUID enqueueDelete(
             TenantId tenantId, UUID documentId, int aclVersion, UUID actorId, String traceId, Instant now) {
+        if (connectorRepository.hasDeleteIndexEvent(tenantId, documentId, aclVersion)) {
+            // 事件已存在（API 删除连接器或上一轮传播已投递）：视为成功，不重复插入。
+            return null;
+        }
         UUID runId = UuidV7.generate();
         UUID eventId = UuidV7.generate();
         Map<String, Object> payload = new LinkedHashMap<>();

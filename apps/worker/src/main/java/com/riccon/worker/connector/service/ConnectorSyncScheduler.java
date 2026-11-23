@@ -114,7 +114,7 @@ public class ConnectorSyncScheduler {
         TenantId tenantId = TenantId.of(candidate.tenantId());
         Instant nextAt = now.plus(Duration.ofMinutes(properties.syncIntervalMinutes()));
         try (TenantContext.TenantScope ignored = TenantContext.open(tenantId)) {
-            if (!connectorRepository.claimDue(tenantId, candidate.connectorId(), candidate.dueAt(), nextAt)) {
+            if (!connectorRepository.claimDue(tenantId, candidate.connectorId(), candidate.dueAt(), nextAt, now)) {
                 return false;
             }
             if (connectorRepository.hasPendingSyncEvent(tenantId, candidate.connectorId())) {

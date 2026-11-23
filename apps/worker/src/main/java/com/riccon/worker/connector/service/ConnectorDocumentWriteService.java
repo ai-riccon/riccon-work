@@ -79,6 +79,7 @@ public class ConnectorDocumentWriteService {
             UUID actorId,
             String traceId,
             Instant now) {
+        requireSyncable(tenantId, connectorId);
         connectorRepository.insertDocument(
                 tenantId,
                 documentId,
@@ -101,6 +102,7 @@ public class ConnectorDocumentWriteService {
      * 更新连接器文档内容、绑定条目并投递重索引事件。
      *
      * @param tenantId 租户
+     * @param connectorId 连接器 ID
      * @param itemId 条目 ID
      * @param documentId 文档 ID
      * @param aclVersion ACL 版本（保持不变）
@@ -115,6 +117,7 @@ public class ConnectorDocumentWriteService {
     @Transactional
     public void updateDocument(
             TenantId tenantId,
+            UUID connectorId,
             UUID itemId,
             UUID documentId,
             int aclVersion,
@@ -125,10 +128,23 @@ public class ConnectorDocumentWriteService {
             UUID actorId,
             String traceId,
             Instant now) {
+        requireSyncable(tenantId, connectorId);
         if (connectorRepository.updateDocumentContent(tenantId, documentId, checksum, sizeBytes, mimeType, now) == 0) {
             throw new IllegalStateException("connector document update affected no rows");
         }
         connectorRepository.markItemSynced(tenantId, itemId, documentId, checksum, externalVersion, now);
         eventPublisher.enqueueIndex(tenantId, documentId, aclVersion, actorId, traceId, now);
+    }
+
+    /**
+     * 在事务内锁定连接器并校验租户 ACTIVE；失败抛异常回滚文档/条目/事件。
+     *
+     * @param tenantId 租户
+     * @param connectorId 连接器 ID
+     */
+    private void requireSyncable(TenantId tenantId, UUID connectorId) {
+        connectorRepository
+                .lockSyncableConnector(tenantId, connectorId)
+                .orElseThrow(() -> new IllegalStateException("connector is not syncable"));
     }
 }
