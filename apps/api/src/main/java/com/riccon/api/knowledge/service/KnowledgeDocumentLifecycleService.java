@@ -150,15 +150,12 @@ public class KnowledgeDocumentLifecycleService {
         KnowledgeDocumentRecord document = knowledgeRepository
                 .findVisibleByIdIncludingDeleted(tenantId, documentId, scope)
                 .orElseThrow(() -> new NotFoundException("knowledge document"));
-        if (document.deletedAt() != null) {
-            if (actor.manage() || actor.unrestricted() || actor.userId().equals(document.createdBy())) {
-                throw new KnowledgeConflictException("document is deleted");
-            }
-            throw new ForbiddenException(PermissionCodes.KNOWLEDGE_MANAGE);
-        }
         // 重索引的 RBAC 门是 knowledge.manage，创建人例外不替代该门（ADR-0023 第 5.6 节）。
         if (!actor.manage()) {
             throw new ForbiddenException(PermissionCodes.KNOWLEDGE_MANAGE);
+        }
+        if (document.deletedAt() != null) {
+            throw new KnowledgeConflictException("document is deleted");
         }
         if (document.status() == KnowledgeDocumentStatus.INDEXING
                 || knowledgeRepository.hasPendingIndexEvent(tenantId, documentId)) {

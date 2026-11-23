@@ -127,6 +127,31 @@ class KnowledgeDownloadApiTest extends KnowledgeAclTestSupport {
                 .isEmpty();
     }
 
+    /** 对象存储读取失败返回 502 且不泄露对象 key。 */
+    @Test
+    @DisplayName("下载：存储读取失败返回 RICCON-KB-502")
+    void download_storageFailureReturnsKb502() {
+        TenantFixture fixture = tenantFixture();
+        JsonNode document = createDocument(fixture, "对象缺失", null, null, null);
+        String documentId = document.path("id").asText();
+        String storageKey = jdbcClient
+                .sql("SELECT storage_key FROM file WHERE tenant_id = :tenantId AND id = :fileId")
+                .param("tenantId", fixture.tenant())
+                .param(
+                        "fileId",
+                        BinaryUuids.toBytes(
+                                UUID.fromString(document.path("fileId").asText())))
+                .query(String.class)
+                .single();
+        s3Client.deleteObject(builder -> builder.bucket(BUCKET).key(storageKey));
+
+        ApiTestClient.ApiResponse response = download(fixture.admin(), documentId);
+        assertThat(response.status()).isEqualTo(502);
+        assertThat(client.json(response).path("code").asText()).isEqualTo("RICCON-KB-502");
+        assertThat(response.body()).doesNotContain(storageKey);
+        assertThat(response.body()).doesNotContain("tenants/");
+    }
+
     /**
      * 下载请求。
      *

@@ -273,9 +273,10 @@ public class KnowledgeJdbc {
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("documentId", BinaryUuids.toBytes(documentId));
         params.put("now", SqlTimestamps.toDatabase(now));
+        params.put("deletedStatus", KnowledgeDocumentStatus.DELETED.name());
         return tenantJdbc.update(tenantId, """
                 UPDATE knowledge_document
-                   SET status = 'DELETED', deleted_at = :now, updated_at = :now
+                   SET status = :deletedStatus, deleted_at = :now, updated_at = :now
                  WHERE tenant_id = :tenantId
                    AND id = :documentId
                    AND deleted_at IS NULL
