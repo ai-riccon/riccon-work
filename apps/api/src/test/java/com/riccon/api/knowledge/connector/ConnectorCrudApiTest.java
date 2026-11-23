@@ -222,6 +222,33 @@ class ConnectorCrudApiTest extends ConnectorApiTestSupport {
     }
 
     @Test
+    @DisplayName("平台管理员访问 8 个连接器端点统一 404，不返回 403")
+    void platformAdmin_allConnectorEndpointsReturn404() {
+        LoginSession platform = loginPlatformAdmin();
+        String connectorId = UUID.randomUUID().toString();
+        assertPlatformNotFound(createConnector(
+                platform, "platform-" + UUID.randomUUID().toString().substring(0, 8), "TENANT", null, false, null));
+        assertPlatformNotFound(client.get("/api/v1/knowledge/connectors", platform.sessionCookie(), Map.of()));
+        assertPlatformNotFound(patchConnector(platform, connectorId, "{\"name\":\"platform\"}"));
+        assertPlatformNotFound(deleteConnector(platform, connectorId, ""));
+        assertPlatformNotFound(
+                putCredential(platform, connectorId, new Credential("platform-access", "platform-secret")));
+        assertPlatformNotFound(testConnector(platform, connectorId));
+        assertPlatformNotFound(syncConnector(platform, connectorId));
+        assertPlatformNotFound(listItems(platform, connectorId, ""));
+    }
+
+    /**
+     * 断言平台管理员得到 404 而非 403。
+     *
+     * @param response 响应
+     */
+    private static void assertPlatformNotFound(ApiTestClient.ApiResponse response) {
+        assertThat(response.status()).as(response.body()).isEqualTo(404);
+        assertThat(response.body()).contains("RICCON-TENANT-404");
+    }
+
+    @Test
     @DisplayName("DEPT→TENANT：未显式带部门时清空，显式部门在 TENANT 下拒绝")
     void patchConnector_switchesVisibilityAndClearsDepartment() {
         ConnectorFixture fixture = connectorFixture();
@@ -246,6 +273,20 @@ class ConnectorCrudApiTest extends ConnectorApiTestSupport {
         assertThat(patchConnector(fixture.admin(), connectorId, "{\"defaultDepartmentId\":\"" + departmentId + "\"}")
                         .status())
                 .isEqualTo(400);
+    }
+
+    @Test
+    @DisplayName("PATCH 重名返回 409 RICCON-KB-409")
+    void patchConnector_duplicateNameReturns409() {
+        ConnectorFixture fixture = connectorFixture();
+        String firstName = "conn-a-" + UUID.randomUUID().toString().substring(0, 6);
+        String secondName = "conn-b-" + UUID.randomUUID().toString().substring(0, 6);
+        JsonNode first = json(createConnector(fixture.admin(), firstName, "TENANT", null, false, null), 201);
+        JsonNode second = json(createConnector(fixture.admin(), secondName, "TENANT", null, false, null), 201);
+        ApiTestClient.ApiResponse response =
+                patchConnector(fixture.admin(), second.path("id").asText(), "{\"name\":\"" + firstName + "\"}");
+        assertThat(response.status()).as(response.body()).isEqualTo(409);
+        assertThat(response.body()).contains("RICCON-KB-409");
     }
 
     @Test

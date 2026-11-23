@@ -227,18 +227,23 @@ public class ConnectorService {
         ConnectorStatus status = command.status() == null ? current.status() : command.status();
         Instant now = clock.instant();
         Instant nextSyncAt = nextSyncAt(current, scheduleEnabled, status);
-        int updated = connectorRepository.updateConnector(
-                tenantId,
-                connectorId,
-                name,
-                endpointId,
-                config,
-                visibility,
-                departmentId,
-                scheduleEnabled,
-                nextSyncAt,
-                status,
-                now);
+        int updated;
+        try {
+            updated = connectorRepository.updateConnector(
+                    tenantId,
+                    connectorId,
+                    name,
+                    endpointId,
+                    config,
+                    visibility,
+                    departmentId,
+                    scheduleEnabled,
+                    nextSyncAt,
+                    status,
+                    now);
+        } catch (DuplicateKeyException exception) {
+            throw new ConnectorConflictException("connector name already exists");
+        }
         if (updated == 0) {
             throw new NotFoundException("connector");
         }

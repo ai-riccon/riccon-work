@@ -49,6 +49,11 @@ public class ConnectorRepository {
         return connectorJdbc.findTenant(tenantId);
     }
 
+    /** 判断连接器是否仍可同步（未删除且租户 ACTIVE）。 */
+    public boolean isSyncable(TenantId tenantId, UUID connectorId) {
+        return connectorJdbc.isSyncable(tenantId, connectorId);
+    }
+
     /** 标记同步开始。 */
     public int markSyncStarted(TenantId tenantId, UUID connectorId, Instant now) {
         return connectorJdbc.markSyncStarted(tenantId, connectorId, now);
@@ -202,6 +207,11 @@ public class ConnectorRepository {
     /** 软删除文档。 */
     public int softDeleteDocument(TenantId tenantId, UUID documentId, Instant now) {
         return connectorJdbc.softDeleteDocument(tenantId, documentId, now);
+    }
+
+    /** 是否已有排队/处理中的索引事件。 */
+    public boolean hasPendingIndexEvent(TenantId tenantId, UUID documentId) {
+        return connectorJdbc.hasPendingIndexEvent(tenantId, documentId);
     }
 
     /** 下一次索引尝试号。 */

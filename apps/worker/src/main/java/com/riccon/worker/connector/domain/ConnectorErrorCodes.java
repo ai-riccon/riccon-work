@@ -35,6 +35,9 @@ public final class ConnectorErrorCodes {
     /** 单次总字节超过上限。 */
     public static final String TOTAL_BYTES_LIMIT = "KB_CONNECTOR_TOTAL_BYTES_LIMIT";
 
+    /** 源端返回 truncated 但缺少 continuation token；list 不完整，不得传播删除。 */
+    public static final String TRUNCATED = "KB_CONNECTOR_TRUNCATED";
+
     /** externalId 超过数据库列长度。 */
     public static final String EXTERNAL_ID_TOO_LONG = "KB_CONNECTOR_EXTERNAL_ID_TOO_LONG";
 

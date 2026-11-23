@@ -1,7 +1,9 @@
 package com.riccon.api.knowledge.connector.controller;
 
+import com.riccon.api.auth.service.AuthService;
 import com.riccon.api.error.BadRequestException;
-import com.riccon.api.identity.domain.RequirePermission;
+import com.riccon.api.error.NotFoundException;
+import com.riccon.api.identity.domain.PlatformTenant;
 import com.riccon.api.identity.domain.RicconPrincipal;
 import com.riccon.api.identity.dto.PageQuery;
 import com.riccon.api.knowledge.connector.dto.ConnectorItemPageResponse;
@@ -69,6 +71,9 @@ public class ConnectorController {
     /** 请求校验。 */
     private final ConnectorRequestValidator validator;
 
+    /** 认证服务，用于每次请求重新计算权限。 */
+    private final AuthService authService;
+
     /**
      * 创建控制器。
      *
@@ -76,16 +81,19 @@ public class ConnectorController {
      * @param testService 连接测试服务
      * @param syncService 同步受理服务
      * @param validator 请求校验
+     * @param authService 认证服务
      */
     public ConnectorController(
             ConnectorService connectorService,
             ConnectorTestService testService,
             ConnectorSyncService syncService,
-            ConnectorRequestValidator validator) {
+            ConnectorRequestValidator validator,
+            AuthService authService) {
         this.connectorService = connectorService;
         this.testService = testService;
         this.syncService = syncService;
         this.validator = validator;
+        this.authService = authService;
     }
 
     /**
@@ -99,7 +107,6 @@ public class ConnectorController {
      * @return 连接器分页
      */
     @GetMapping
-    @RequirePermission(PermissionCodes.KNOWLEDGE_CONNECTOR_READ)
     public ConnectorPageResponse list(
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
@@ -109,7 +116,11 @@ public class ConnectorController {
         PageQuery pageQuery = ConnectorRequestValidator.page(page, size);
         ConnectorStatus statusFilter = ConnectorRequestValidator.optionalEnum(status, "status", ConnectorStatus.class);
         ConnectorType typeFilter = ConnectorRequestValidator.optionalEnum(type, "type", ConnectorType.class);
-        return connectorService.list(principal(authentication), pageQuery, statusFilter, typeFilter);
+        return connectorService.list(
+                authorize(authentication, PermissionCodes.KNOWLEDGE_CONNECTOR_READ),
+                pageQuery,
+                statusFilter,
+                typeFilter);
     }
 
     /**
@@ -123,7 +134,6 @@ public class ConnectorController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequirePermission(PermissionCodes.KNOWLEDGE_CONNECTOR_MANAGE)
     public ConnectorResponse create(
             @RequestBody JsonNode body,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
@@ -131,7 +141,7 @@ public class ConnectorController {
             HttpServletRequest request) {
         validateIdempotencyKey(idempotencyKey);
         return connectorService.create(
-                principal(authentication),
+                authorize(authentication, PermissionCodes.KNOWLEDGE_CONNECTOR_MANAGE),
                 validator.parseCreate(body),
                 RequestContext.traceId(request),
                 RequestContext.requestId(request));
@@ -147,14 +157,13 @@ public class ConnectorController {
      * @return 更新后的连接器
      */
     @PatchMapping("/{connectorId}")
-    @RequirePermission(PermissionCodes.KNOWLEDGE_CONNECTOR_MANAGE)
     public ConnectorResponse update(
             @PathVariable UUID connectorId,
             @RequestBody JsonNode body,
             Authentication authentication,
             HttpServletRequest request) {
         return connectorService.update(
-                principal(authentication),
+                authorize(authentication, PermissionCodes.KNOWLEDGE_CONNECTOR_MANAGE),
                 connectorId,
                 validator.parseUpdate(body),
                 RequestContext.traceId(request),
@@ -171,14 +180,13 @@ public class ConnectorController {
      * @return 204
      */
     @DeleteMapping("/{connectorId}")
-    @RequirePermission(PermissionCodes.KNOWLEDGE_CONNECTOR_MANAGE)
     public ResponseEntity<Void> delete(
             @PathVariable UUID connectorId,
             @RequestParam(required = false) String documents,
             Authentication authentication,
             HttpServletRequest request) {
         connectorService.delete(
-                principal(authentication),
+                authorize(authentication, PermissionCodes.KNOWLEDGE_CONNECTOR_MANAGE),
                 connectorId,
                 documents,
                 RequestContext.traceId(request),
@@ -196,14 +204,13 @@ public class ConnectorController {
      * @return 仅掩码的连接器
      */
     @PutMapping("/{connectorId}/credential")
-    @RequirePermission(PermissionCodes.KNOWLEDGE_CONNECTOR_MANAGE)
     public ConnectorResponse putCredential(
             @PathVariable UUID connectorId,
             @RequestBody JsonNode body,
             Authentication authentication,
             HttpServletRequest request) {
         return connectorService.putCredential(
-                principal(authentication),
+                authorize(authentication, PermissionCodes.KNOWLEDGE_CONNECTOR_MANAGE),
                 connectorId,
                 validator.parseCredentialBody(body),
                 RequestContext.traceId(request),
@@ -218,9 +225,9 @@ public class ConnectorController {
      * @return 测试结果
      */
     @PostMapping("/{connectorId}/test")
-    @RequirePermission(PermissionCodes.KNOWLEDGE_CONNECTOR_MANAGE)
     public ConnectorTestResponse test(@PathVariable UUID connectorId, Authentication authentication) {
-        ConnectorTestService.TestResult result = testService.test(principal(authentication), connectorId);
+        ConnectorTestService.TestResult result =
+                testService.test(authorize(authentication, PermissionCodes.KNOWLEDGE_CONNECTOR_MANAGE), connectorId);
         return ConnectorTestResponse.from(result.outcome(), result.testedAt());
     }
 
@@ -235,7 +242,6 @@ public class ConnectorController {
      */
     @PostMapping("/{connectorId}/sync")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    @RequirePermission(PermissionCodes.KNOWLEDGE_CONNECTOR_MANAGE)
     public ConnectorSyncAcceptedResponse sync(
             @PathVariable UUID connectorId,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
@@ -243,7 +249,7 @@ public class ConnectorController {
             HttpServletRequest request) {
         validateIdempotencyKey(idempotencyKey);
         return syncService.requestSync(
-                principal(authentication),
+                authorize(authentication, PermissionCodes.KNOWLEDGE_CONNECTOR_MANAGE),
                 connectorId,
                 RequestContext.traceId(request),
                 RequestContext.requestId(request));
@@ -260,7 +266,6 @@ public class ConnectorController {
      * @return 条目分页
      */
     @GetMapping("/{connectorId}/items")
-    @RequirePermission(PermissionCodes.KNOWLEDGE_CONNECTOR_READ)
     public ConnectorItemPageResponse items(
             @PathVariable UUID connectorId,
             @RequestParam(required = false) Integer page,
@@ -270,17 +275,31 @@ public class ConnectorController {
         PageQuery pageQuery = ConnectorRequestValidator.page(page, size);
         ConnectorItemStatus statusFilter =
                 ConnectorRequestValidator.optionalEnum(status, "status", ConnectorItemStatus.class);
-        return connectorService.listItems(principal(authentication), connectorId, pageQuery, statusFilter);
+        return connectorService.listItems(
+                authorize(authentication, PermissionCodes.KNOWLEDGE_CONNECTOR_READ),
+                connectorId,
+                pageQuery,
+                statusFilter);
     }
 
     /**
-     * 读取当前主体。
+     * 统一授权：平台管理员按 M05-AC-10 统一 404，其余按权限码 403。
+     *
+     * <p>连接器端点不能使用路由级 {@code @RequirePermission}：拦截器会在租户判定前对平台管理员返回 403。
+     * 这里先识别平台保留租户并抛 {@link NotFoundException}（RICCON-TENANT-404），再按数据库实时权限快照
+     * 校验 read/manage，普通员工返回 403，他租户管理员由服务层租户过滤返回 404。
      *
      * @param authentication 当前认证
-     * @return 主体
+     * @param permissionCode 所需权限码
+     * @return 当前主体
      */
-    private static RicconPrincipal principal(Authentication authentication) {
-        return AuthenticationSupport.requirePrincipal(authentication);
+    private RicconPrincipal authorize(Authentication authentication, String permissionCode) {
+        RicconPrincipal principal = AuthenticationSupport.requirePrincipal(authentication);
+        if (PlatformTenant.ID.equals(principal.tenantId())) {
+            throw new NotFoundException("connector");
+        }
+        authService.requirePermission(principal, permissionCode);
+        return principal;
     }
 
     /**

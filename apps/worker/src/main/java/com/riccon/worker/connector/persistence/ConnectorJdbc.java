@@ -109,6 +109,34 @@ public class ConnectorJdbc {
     }
 
     /**
+     * 判断连接器是否仍可同步：连接器未软删除且租户为 ACTIVE。
+     *
+     * <p>同步是长任务，必须在每个对象处理前复核；否则管理员在同步中删除连接器/停用租户后仍会新增文档。
+     *
+     * @param tenantId 租户
+     * @param connectorId 连接器 ID
+     * @return 可同步时返回 true
+     */
+    public boolean isSyncable(TenantId tenantId, UUID connectorId) {
+        return tenantJdbc
+                .queryOne(
+                        tenantId,
+                        """
+                        SELECT 1 AS present
+                          FROM kb_connector c
+                          JOIN tenant t ON t.id = c.tenant_id
+                         WHERE c.tenant_id = :tenantId
+                           AND c.id = :connectorId
+                           AND c.deleted_at IS NULL
+                           AND t.status = 'ACTIVE'
+                         LIMIT 1
+                        """,
+                        Map.of("connectorId", UuidBinary.toBytes(connectorId)),
+                        (rs, rowNum) -> rs.getInt("present"))
+                .isPresent();
+    }
+
+    /**
      * 标记同步开始；失败也由后续 finish 写结束时间。
      *
      * @param tenantId 租户
@@ -673,6 +701,26 @@ public class ConnectorJdbc {
                         """, Map.of("prefix", "doc:" + documentId + ":index:"), (rs, rowNum) -> rs.getLong(1))
                 .orElse(1L);
         return attempt.intValue();
+    }
+
+    /**
+     * 查询文档是否已有排队/处理中的索引事件。
+     *
+     * @param tenantId 租户
+     * @param documentId 文档 ID
+     * @return 存在时返回 true
+     */
+    public boolean hasPendingIndexEvent(TenantId tenantId, UUID documentId) {
+        Long count = tenantJdbc
+                .queryOne(
+                        tenantId, """
+                        SELECT COUNT(*) FROM agent_run_outbox
+                         WHERE tenant_id = :tenantId
+                           AND idempotency_key LIKE CONCAT(:prefix, '%')
+                           AND status IN ('PENDING', 'DISPATCHED')
+                        """, Map.of("prefix", "doc:" + documentId + ":index:"), (rs, rowNum) -> rs.getLong(1))
+                .orElse(0L);
+        return count > 0;
     }
 
     /**
