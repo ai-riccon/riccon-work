@@ -90,8 +90,8 @@ public class KnowledgeAclPolicy {
                     throw new KnowledgeBadRequestException("departmentId is only allowed when visibility=DEPT");
                 }
                 if (userIds.size() > Math.min(properties.maxUsers(), CONTRACT_MAX_USERS)) {
-                    throw new KnowledgeBadRequestException(
-                            "userIds must not exceed " + Math.min(properties.maxUsers(), CONTRACT_MAX_USERS) + " users");
+                    throw new KnowledgeBadRequestException("userIds must not exceed "
+                            + Math.min(properties.maxUsers(), CONTRACT_MAX_USERS) + " users");
                 }
                 Set<UUID> activeUsers = knowledgeRepository.findActiveUserIds(tenantId);
                 List<UUID> filtered = new ArrayList<>(userIds.size());

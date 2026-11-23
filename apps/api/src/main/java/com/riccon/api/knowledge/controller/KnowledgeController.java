@@ -279,8 +279,7 @@ public class KnowledgeController {
         CurrentUser current = authService.loadCurrentUser(principal);
         // 平台管理员没有租户知识库权限，但按 ADR-0023 5.4 持有租户文档 ID 时必须返回统一 404；
         // 因此知识读端点不设路由级 knowledge.read 门，由服务层先按租户/ACL 取文档。
-        if (!current.hasPermission(PermissionCodes.KNOWLEDGE_READ)
-                && !PlatformTenant.ID.equals(principal.tenantId())) {
+        if (!current.hasPermission(PermissionCodes.KNOWLEDGE_READ) && !PlatformTenant.ID.equals(principal.tenantId())) {
             throw new ForbiddenException(PermissionCodes.KNOWLEDGE_READ);
         }
         return new KnowledgeActor(
