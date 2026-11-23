@@ -47,6 +47,8 @@ docker compose -f deploy/compose/docker-compose.test.yml down -v
 
 测试凭据通过环境变量覆盖：`RICCON_DB_PASSWORD`、`RICCON_DB_ROOT_PASSWORD`、`RICCON_S3_ACCESS_KEY`、`RICCON_S3_SECRET_KEY`。默认值只用于本地测试，禁止用于任何共享环境。
 
+M05b 连接器出网演练另有专用 internal 网络与探针（`--profile connector-egress`，默认不启动、默认零出网），见「M05b 连接器出网与运维（O2a）」；它不改变上面的启动/停止命令与现有服务定义。
+
 ### 热测试栈与受影响测试（M12，可选）
 
 M12 起本地内层循环可显式复用同一套 compose 服务；默认与模块 gate 不启用，CI 后端分片自 M19 P1/P2 起显式启用（见下文「CI 热栈与测试分片」）。启动/停止/重置统一通过脚本操作，不另造服务：
@@ -1097,6 +1099,144 @@ curl -fsS "$RICCON_OPENSEARCH_URL/_cat/indices/riccon-kb-*?v&h=index,docs.count,
 - 测试栈（`deploy/compose/docker-compose.test.yml`）只跑 MySQL/OpenSearch/RustFS 三个依赖，不起 API/Worker，
   因此 v2 开关由启动 Worker 的环境决定；**生产默认保持 v1**，由运维在发布单里显式设置。
 
+## M05b 连接器出网与运维（O2a）
+
+依据 ADR-0023 §6.5/§6.6/§7.5/§12.1。B6 负责 allowlist 解析、SSRF 校验与连接器实现；本节只交付部署配置、
+网络策略、回滚与可执行验证，**不代替** B6 的代码级拒绝逻辑。生产出网策略（K8s NetworkPolicy/防火墙）由 M09
+落地；测试栈只做本地模拟，本节不承诺生产已具备该能力。
+
+### M05b-1 端点允许列表 `RICCON_CONNECTOR_ENDPOINTS`
+
+- **默认零出网**：未设置或 `[]` 即允许列表为空；配合默认 `RICCON_CONNECTOR_ENABLED=false`，连接器完全不可用。
+  空列表时没有任何可选端点，按 ADR-0023 §6.5 的 `endpoint_id` 校验将无法创建连接器（B6 实现，fail-closed）；
+  不要用“先空着以后再说”上线。
+- **格式**：JSON 数组，元素字段固定为 `id`、`url`、`label`、`allowHttp`、`production`：
+
+  | 字段         | 必填 | 说明                                                         |
+  | ------------ | ---- | ------------------------------------------------------------ |
+  | `id`         | 是   | 稳定标识（如 `test-rustfs`）；连接器只存该值，改名等于换端点 |
+  | `url`        | 是   | 端点基址；生产必须 `https`，不带 userinfo/query              |
+  | `label`      | 是   | 管理端展示名，不含凭据或内网拓扑细节                         |
+  | `allowHttp`  | 是   | 仅显式内部端点允许 `http`；生产条目必须 `false`              |
+  | `production` | 是   | 标记是否为生产端点；测试/演示端点必须 `false`                |
+
+- **只存 `endpoint_id`**：连接器不能保存任意 URL，API/UI 不接受自由 URL（B6 契约 `1.5.0-m05b`）。
+- 示例（**仅本地测试栈**，`production: false`，`allowHttp: true` 指向内部 RustFS）：
+
+  ```json
+  [
+    {
+      "id": "test-rustfs",
+      "url": "http://object-storage:9000",
+      "label": "本地测试 RustFS",
+      "allowHttp": true,
+      "production": false
+    }
+  ]
+  ```
+
+  容器内 Worker 走 compose DNS 用 `http://object-storage:9000`；宿主进程直连测试栈时用
+  `http://127.0.0.1:19000`（是否接受 loopback 以 B6 判定为准，若被拒就改用容器内 DNS）。两者都**只用于本地**，
+  不得进入任何共享环境；生产条目必须 `https` + `allowHttp: false` + `production: true`，且只列客户内网网关/
+  对象存储的固定 FQDN。
+
+- **API 与 Worker 注入同一份 JSON**（同一部署版本、同一 ConfigMap/Secret 引用）：两侧端点判断必须一致，
+  不要让 API 认为合法而 Worker 连不上，或反之。
+
+### M05b-2 校验与拒绝规则（判定归 B6，Ops 不绕过）
+
+| 规则           | 期望行为                                                                                  |
+| -------------- | ----------------------------------------------------------------------------------------- |
+| 仅 HTTPS       | 非 `https` 一律拒绝；仅 `allowHttp=true` 的显式内部端点例外                               |
+| 无 userinfo    | `user:pass@host` 拒绝                                                                     |
+| 无 query       | 带查询串的 URL 拒绝                                                                       |
+| 无重定向       | 不跟随 3xx；S3 客户端禁用区域/跨域自动重定向，或对每个 `Location` 重做同一校验            |
+| 永不允许       | 解析后的 IP 命中 `169.254.0.0/16`（云元数据）、`::1`、`fe80::/10` 即拒绝                  |
+| RFC1918        | 仅当端点本身在允许列表中显式列出时放行；主机名解析到 RFC1918 视为拒绝（防 DNS rebinding） |
+| 不接受任意 URL | 连接器只能引用允许列表内的 `endpoint_id`                                                  |
+
+本节配置只定义“端点集合 + 网络底座”。上表失败的错误码、审计与重试归 B6（ADR-0023 §6.6）；
+**运维不得通过放宽 allowlist（例如临时加 `0.0.0.0/0`、`169.254.169.254` 或关闭 TLS 校验）绕过故障**。
+
+### M05b-3 零出网验证与网络策略
+
+`deploy/compose/docker-compose.test.yml` 新增专用网络 `riccon-connector-egress`（`internal: true`，默认**无任何
+服务接入**），以及仅在 `--profile connector-egress` 启动的演练探针 `connector-egress-probe`。现有
+`riccon-test-net` 与 MySQL/OpenSearch/RustFS 定义未改；探针不接入依赖服务。
+
+```bash
+# 1) compose 可解析（只读，不影响运行中的测试栈）
+docker compose -f deploy/compose/docker-compose.test.yml config >/dev/null; echo "config exit=$?"
+
+# 2) 与合同 sandbox 同参数的零出网探针：/proc/net/route 只有表头，外部地址不可达
+docker run --rm --network none --read-only --cap-drop ALL --user 10001:10001 \
+  --entrypoint bash mysql:8.4.13 -c 'cat /proc/net/route'
+docker run --rm --network none --read-only --cap-drop ALL --user 10001:10001 \
+  --entrypoint bash mysql:8.4.13 -c \
+  'timeout 3 bash -c "exec 3<>/dev/tcp/1.1.1.1/443" 2>/dev/null; echo "external connect exit=$?"'
+# 期望：第一条只有表头；第二条打印 external connect exit=1（无路由）
+
+# 3) compose 声明的 internal 网络 + 自动化探针（不启动 MySQL/OpenSearch/RustFS）
+docker compose -p riccon-o2a-egress --profile connector-egress \
+  -f deploy/compose/docker-compose.test.yml run --rm --no-deps connector-egress-probe
+# 期望：末行 connector-egress-probe: PASS，exit 0
+
+# 4) 清理演练网络（容器已由 --rm 删除）
+docker compose -p riccon-o2a-egress -f deploy/compose/docker-compose.test.yml down --remove-orphans
+```
+
+判据与边界：
+
+- `internal: true` 的容器仍会看到一条 **internal 网段**路由，但没有默认路由；因此断言是“无默认路由 +
+  外部/元数据地址不可达”，不是“路由表为空”。`--network none` 才是路由表只有表头。
+- 不要把 MySQL/OpenSearch/RustFS 接入 `riccon-connector-egress`；接入的 peer 就等于“允许列表内的端点”，
+  当前测试栈不模拟正向放行（正向路径由 B6 `SEC-CONN-003` 用测试桩覆盖）。
+- 测试栈不启动 API/Worker，所以本节只证明网络底座；**连接器容器的真实出网拒绝**在生产由 M09 的
+  NetworkPolicy（默认 deny egress，仅放行允许列表中的 FQDN/IP + 端口与 DNS）或客户防火墙实现。
+  M09 交付前，生产发布单必须把“无 NetworkPolicy”登记为 release blocker，不得靠“没配置”假设安全。
+
+验证记录（2026-11-24，基线 `c3c8d2c`，Docker 29.9.3 / Compose v5.7.1）：第 1 步 exit 0；第 2 步路由表仅表头、
+`external connect exit=1`；第 3 步 `connector-egress-probe: PASS`、exit 0；第 4 步 exit 0。合同命令
+`bash scripts/sandbox.sh` 也在改动后 exit 0，MySQL/OpenSearch/RustFS 均 healthy，说明新增网络与探针不影响
+`commands.sandbox` 与既有测试栈。
+
+### M05b-4 开关与回滚
+
+- **键**：`RICCON_CONNECTOR_ENABLED`（Spring `riccon.connector.enabled`，默认 **false**）。ADR-0023 §7.5 要求
+  API 与 Worker **同键同值**；两侧都改、都重启，缺一不可。启用时 worker `heavy` 看门狗必须 ≥ 60 min（B1 启动校验），
+  连接器关闭时可把 heavy 调小（测试/小部署）。
+- **回滚（用户可见停止）**：
+  1. API 与 Worker 同时设 `RICCON_CONNECTOR_ENABLED=false`；
+  2. 重启两者（ADR-0023 §7.6 的最小回滚是重启 worker；API 侧同键生效也需重启）；
+  3. 验证：不再产生新的 `knowledge.connector.sync.started` 审计与同步日志，`riccon_connector_sync_failures_total`
+     不再增长；管理端同步入口按 B6/B8b 关闭或返回不可用；
+  4. **已同步的文档、索引与引用保持现状**，不删除数据、不新增同步；V12 为 additive，不做 down migration；
+     软删除连接器的 30 天凭据恢复窗口继续有效。
+- 重新开启：先修端点/凭据，再同键 `true` + 重启，手动触发一次同步或用固定周期观察首个摘要。
+- 关闭开关只停“新同步”，不是 SSRF/凭据问题的修复手段；不要用它掩盖安全缺陷。
+
+### M05b-5 同步失败、超时与凭据交接（O2b/M09）
+
+- **观测**（B6 实现）：指标 `riccon_connector_sync_failures_total{reason=auth|network}`；`last_error_code` 取
+  `KB_CONNECTOR_AUTH`/`UNREACHABLE`/`TIMEOUT`/`CREDENTIAL`；审计 `knowledge.connector.sync.started`/
+  `sync.completed`/`sync.failed`/`sync.retried`；日志只含 `connectorId`，不含 `externalId`、对象 key、
+  bucket 全名或凭据。
+- **处置**：
+
+  | 现象                       | 先检查                                                      | 处置                                                                     |
+  | -------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------ |
+  | `KB_CONNECTOR_AUTH`        | 源端凭据是否过期/被吊销                                     | 管理员在管理端重写凭据（只写不读、只回显掩码）→ 手动同步；不贴凭据到工单 |
+  | `KB_CONNECTOR_UNREACHABLE` | `endpoint_id` 是否在允许列表、scheme/host/port、DNS、防火墙 | 修部署 allowlist 或网络后重启；**不得**放宽 CIDR 或加元数据地址          |
+  | `KB_CONNECTOR_TIMEOUT`     | 单对象 ≤100 MB、≤5 000 对象、≤2 GB、单对象 60 s、总 60 min  | 缩小 prefix 或分批；等下一轮增量继续；不手工调整 tombstone               |
+  | `KB_CONNECTOR_CREDENTIAL`  | 主密钥是否可解（ADR-0006）                                  | 按“M04-8 主密钥轮换”处理；worker 启动失败是预期，不降级                  |
+
+- **失败语义**：退避重试后置 `ERROR`，失败也写 finish（含计数与错误码）；不完整的 list 不删除文档；
+  超时后下一轮增量继续。重试只处理失败项，不重复建文档（B6 `IT-CONN-104/105`）。
+- **凭据 30 天置空**：连接器软删除后 `credential_ciphertext` 保留 30 天供误删恢复，随后由 **M09 维护任务**置空并
+  审计（owner `riccon/ops`，due M09 gate）；M05b 不提供在线清除端点。脚本与细化步骤归 **O2b**（`scripts/ops/**`）。
+  在 M09 任务就绪前，到期未置空记为 **release blocker**；禁止手工
+  `UPDATE kb_connector SET credential_ciphertext = NULL` 绕过审计。
+
 ## 生产
 
 M09 交付。发布前必须满足 T4 要求：
@@ -1116,6 +1256,7 @@ M09 交付。发布前必须满足 T4 要求：
 
 - **API 无法启动**：检查 `RICCON_DB_*`、Flyway 迁移状态、端口占用；先恢复依赖再重启。
 - **Worker 无法启动**：检查 `RICCON_WORKER_PORT`、模型/MCP 出网允许列表与凭据；Worker 不健康不应阻塞 API 登录。
+- **连接器同步失败/出网被拒**：对照「M05b-5」先查 `endpoint_id` 是否在 `RICCON_CONNECTOR_ENDPOINTS`、scheme/host/port、DNS 与防火墙；修正部署配置后重启，**不要**放宽 allowlist（加宽 CIDR、加元数据地址）或关闭 TLS 校验。
 - **Worker 报 `RICCON-WORKER-001`（schema 版本不符）**：确认迁移已成功且 worker 镜像期望版本等于 DB（M04 起为 11）；**DB 版本高于 worker 期望时禁止启动旧 worker**，必须按“V10 生产迁移”/“M04-1…6 发布顺序”协调切换（或先回滚 API 与 DB 再回退 worker）。
 - **M04 链空/降级/配额/成本故障**：按“M04-15 故障与恢复”定位；配额 fail-closed 会返回 503 `RICCON-QUOTA-503`，不要用自动重试掩盖。
 - **Worker 无法领取任务**：检查 MySQL 连接、`agent_run_outbox` 索引与租约时间、服务令牌密钥；不要让 API 直接执行 Agent。

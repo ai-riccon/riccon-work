@@ -91,6 +91,54 @@ services:
     networks:
       - riccon-test-net
 
+  # M05b 连接器出网演练探针（O2a）。默认不启动，只在 --profile connector-egress 时运行。
+  # 只接入 internal 网络，用于证明“连接器容器默认零出网”：无默认路由、外部地址与云元数据地址不可达。
+  # 真实出网拒绝由 B6 的 allowlist 校验（SEC-CONN-003）与 M09 的 K8s NetworkPolicy 承担；
+  # 本探针只验证网络底座，不代替代码级校验，也不接入 MySQL/OpenSearch/RustFS。
+  connector-egress-probe:
+    image: mysql:8.4.13
+    profiles:
+      - connector-egress
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        set -u
+        fail=0
+        echo "== connector egress probe (internal network) =="
+        echo "-- /proc/net/route --"
+        cat /proc/net/route
+        if awk 'NR > 1 && $2 == "00000000" { found = 1 } END { exit(found ? 0 : 1) }' /proc/net/route; then
+          echo "FAIL: 存在默认路由，internal 网络未生效"
+          fail=1
+        else
+          echo "OK: 无默认路由（只剩 internal 网段路由）"
+        fi
+        if timeout 3 bash -c 'exec 3<>/dev/tcp/1.1.1.1/443' 2>/dev/null; then
+          echo "FAIL: 外部地址 1.1.1.1:443 可达"
+          fail=1
+        else
+          echo "OK: 外部地址被拒绝"
+        fi
+        if timeout 3 bash -c 'exec 3<>/dev/tcp/169.254.169.254/80' 2>/dev/null; then
+          echo "FAIL: 云元数据地址 169.254.169.254:80 可达"
+          fail=1
+        else
+          echo "OK: 云元数据地址被拒绝"
+        fi
+        if [ "$$fail" -eq 0 ]; then
+          echo "connector-egress-probe: PASS"
+        else
+          echo "connector-egress-probe: FAIL"
+        fi
+        exit "$$fail"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - riccon-connector-egress
+
 volumes:
   mysql-test-data:
   opensearch-test-data:
@@ -99,3 +147,10 @@ volumes:
 networks:
   riccon-test-net:
     driver: bridge
+  # M05b 连接器出网隔离（O2a）：internal=true 表示没有默认路由、不出网，
+  # 只能访问显式接入本网络的 peer。默认没有任何服务接入 → 连接器零出网。
+  # 不要把 MySQL/OpenSearch/RustFS 接进来：它们是依赖服务，走 riccon-test-net。
+  # 生产出网策略（K8s NetworkPolicy/防火墙）由 M09 落地，本网络只用于本地与 CI 演练。
+  riccon-connector-egress:
+    driver: bridge
+    internal: true
