@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0189",
+  "module_id": "M05",
+  "title": "M05-B4 修复：sst 缺 count/uniqueCount 与 row 缺 r 的定位回退",
+  "owner": "riccon/builder-kb-excel",
+  "status": "ready",
+  "write_scope": [
+    "apps/worker/src/main/java/com/riccon/worker/parse/service/XlsxDocumentParser.java",
+    "apps/worker/src/test/java/com/riccon/worker/parse/service/XlsxDocumentParserTest.java"
+  ],
+  "acceptance": [
+    "sst 缺 count/uniqueCount 时按实际条目解析，不被误判 KB_NO_TEXT（REV-TASK-0167-001 F-002）",
+    "row 缺 r 时按文档顺序/前一行+1 回退，cellRange/rowCount 不错位（F-003）；两条回归测试；25+ tests 全绿；spotless 通过并录 EV"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-23T11:39:40.335+08:00",
+  "updated_at": "2026-11-23T11:39:40.598+08:00"
+}
