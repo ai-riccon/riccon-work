@@ -1,0 +1,29 @@
+# command: scripts/ops/ocr-check --image riccon-worker-ocr:o1b
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-23T23:50:03.801+08:00
+# finished_at: 2026-11-23T23:50:20.029+08:00
+# duration_ms: 16226
+# exit_code: 0
+
+# --- stdout ---
+== ocr-check 参数
+  image=riccon-worker-ocr:o1b
+  fixture=deploy/ocr/sample.png
+  lang=chi_sim+eng dpi=200
+  network=none（所有容器）
+  ok manifest engine=tesseract engineVersion=5.3.4-1build5 leptonica=1.82.0-3build4
+  ok 镜像 label 与 manifest 一致（含 tessdata 引用与权重哈希）
+  ok 权重 SHA256 与 manifest 一致
+  ok tesseract 5.3.4 / leptonica 1.82.0
+  ok 语言包 chi_sim/eng/osd 可用
+  ok 运行用户 uid=10001
+  ok --network none：容器无任何路由（/proc/net/route 仅表头）
+  ok 镜像 env 无 DB/OpenSearch/S3 依赖变量
+  ok OcrCli jar：镜像内 /app/app.jar
+     sha256=4a25b6006f51fc81b739656b9a92f857a13ad7158c08f06f09d1f1081a34cc37
+  ok engine=tesseract text="RICCON OCR 12345" averageConfidence=0.922 blocks=1
+  ok bbox 存在：57,74,766,54
+ocr-check: OK image=riccon-worker-ocr:o1b jar=镜像内 /app/app.jar lang=chi_sim+eng text="RICCON OCR 12345" averageConfidence=0.922
+
+# --- stderr ---
+
