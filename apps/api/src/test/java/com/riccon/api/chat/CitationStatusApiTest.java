@@ -68,13 +68,18 @@ class CitationStatusApiTest extends ApiIntegrationTestSupport {
         UUID crossTenant = seedDocument(otherTenant.tenant(), crossTenantTitle, "TENANT", null, "1".repeat(64));
 
         markDeleted(fixture.tenant(), deleted);
-        seedCitation(fixture.tenant(), messageId, 1, available, "a".repeat(64), availableTitle, "可见片段");
-        seedCitation(fixture.tenant(), messageId, 2, updated, "0".repeat(64), updatedTitle, "更新片段");
-        seedCitation(fixture.tenant(), messageId, 3, deleted, "c".repeat(64), deletedTitle, "删除片段");
-        seedCitation(fixture.tenant(), messageId, 4, noAccess, "d".repeat(64), noAccessTitle, "受限片段");
-        seedCitation(fixture.tenant(), messageId, 5, deptOnly, "e".repeat(64), deptTitle, "部门片段");
-        seedCitation(fixture.tenant(), messageId, 6, history, null, historyTitle, "历史片段");
-        seedCitation(fixture.tenant(), messageId, 7, crossTenant, "1".repeat(64), crossTenantTitle, "跨租户片段");
+        UUID availableChunk = seedChunk(fixture.tenant(), available, 1, 100, 200, 300, 400, "0.950");
+        UUID updatedChunk = seedChunk(fixture.tenant(), updated, 1, 10, 20, 30, 40, "0.880");
+        UUID deletedChunk = seedChunk(fixture.tenant(), deleted, 1, 7, 8, 9, 10, "0.700");
+        UUID noAccessChunk = seedChunk(fixture.tenant(), noAccess, 1, 11, 12, 13, 14, "0.600");
+        UUID deptChunk = seedChunk(fixture.tenant(), deptOnly, 1, 15, 16, 17, 18, "0.500");
+        seedCitation(fixture.tenant(), messageId, 1, available, availableChunk, "a".repeat(64), availableTitle, "可见片段");
+        seedCitation(fixture.tenant(), messageId, 2, updated, updatedChunk, "0".repeat(64), updatedTitle, "更新片段");
+        seedCitation(fixture.tenant(), messageId, 3, deleted, deletedChunk, "c".repeat(64), deletedTitle, "删除片段");
+        seedCitation(fixture.tenant(), messageId, 4, noAccess, noAccessChunk, "d".repeat(64), noAccessTitle, "受限片段");
+        seedCitation(fixture.tenant(), messageId, 5, deptOnly, deptChunk, "e".repeat(64), deptTitle, "部门片段");
+        seedCitation(fixture.tenant(), messageId, 6, history, null, null, historyTitle, "历史片段");
+        seedCitation(fixture.tenant(), messageId, 7, crossTenant, null, "1".repeat(64), crossTenantTitle, "跨租户片段");
         seedFileCitation(fixture.tenant(), messageId, 8, "文件片段");
 
         ApiTestClient.ApiResponse response = client.get(
@@ -88,16 +93,25 @@ class CitationStatusApiTest extends ApiIntegrationTestSupport {
         assertThat(citations.get(0).path("sourceStatus").asText()).isEqualTo("AVAILABLE");
         assertThat(citations.get(0).path("title").asText()).isEqualTo(availableTitle);
         assertThat(citations.get(0).path("snippet").asText()).isEqualTo("可见片段");
+        assertThat(citations.get(0).path("bbox").path("x").asInt()).isEqualTo(100);
+        assertThat(citations.get(0).path("bbox").path("y").asInt()).isEqualTo(200);
+        assertThat(citations.get(0).path("bbox").path("w").asInt()).isEqualTo(300);
+        assertThat(citations.get(0).path("bbox").path("h").asInt()).isEqualTo(400);
+        assertThat(citations.get(0).path("ocrConfidence").asDouble()).isEqualTo(0.950);
 
         assertThat(citations.get(1).path("sourceStatus").asText()).isEqualTo("UPDATED");
         assertThat(citations.get(1).path("title").asText()).isEqualTo(updatedTitle);
         assertThat(citations.get(1).path("snippet").asText()).isEqualTo("更新片段");
+        assertThat(citations.get(1).path("bbox").path("x").asInt()).isEqualTo(10);
+        assertThat(citations.get(1).path("ocrConfidence").asDouble()).isEqualTo(0.880);
 
         assertMasked(citations.get(2), "DELETED");
         assertMasked(citations.get(3), "NO_ACCESS");
         assertMasked(citations.get(4), "NO_ACCESS");
         assertThat(citations.get(5).path("sourceStatus").asText()).isEqualTo("AVAILABLE");
         assertThat(citations.get(5).path("title").asText()).isEqualTo(historyTitle);
+        assertThat(citations.get(5).path("bbox").isNull()).isTrue();
+        assertThat(citations.get(5).path("ocrConfidence").isNull()).isTrue();
         assertMasked(citations.get(6), "NO_ACCESS");
         assertThat(citations.get(7).path("sourceStatus").asText()).isEqualTo("AVAILABLE");
         assertThat(citations.get(7).path("sourceType").asText()).isEqualTo("FILE");
@@ -178,7 +192,7 @@ class CitationStatusApiTest extends ApiIntegrationTestSupport {
         UUID conversationId = seedConversation(fixture.tenant(), workspace, actorId(fixture.member()));
         UUID messageId = seedAssistantMessage(fixture.tenant(), conversationId);
         UUID documentId = seedDocument(fixture.tenant(), "历史文档", "TENANT", null, "2".repeat(64));
-        seedCitation(fixture.tenant(), messageId, 1, documentId, null, "历史文档", "历史片段");
+        seedCitation(fixture.tenant(), messageId, 1, documentId, null, null, "历史文档", "历史片段");
 
         ApiTestClient.ApiResponse response = client.get(
                 "/api/v1/conversations/" + conversationId + "/messages",
@@ -232,6 +246,8 @@ class CitationStatusApiTest extends ApiIntegrationTestSupport {
         assertThat(citation.path("sheetName").isNull()).isTrue();
         assertThat(citation.path("cellRange").isNull()).isTrue();
         assertThat(citation.path("paragraphNo").isNull()).isTrue();
+        assertThat(citation.path("bbox").isNull()).isTrue();
+        assertThat(citation.path("ocrConfidence").isNull()).isTrue();
     }
 
     /**
@@ -386,6 +402,45 @@ class CitationStatusApiTest extends ApiIntegrationTestSupport {
     }
 
     /**
+     * 种子知识库分块（含 OCR 区域与置信度）。
+     *
+     * @param tenant 租户
+     * @param documentId 文档 ID
+     * @param ordinal 分块序号
+     * @param x 左上角 X
+     * @param y 左上角 Y
+     * @param width 宽度
+     * @param height 高度
+     * @param confidence 置信度
+     * @return 分块 ID
+     */
+    private UUID seedChunk(
+            String tenant, UUID documentId, int ordinal, int x, int y, int width, int height, String confidence) {
+        UUID chunkId = UuidV7.generate(Instant.now());
+        jdbcClient
+                .sql("""
+                        INSERT INTO knowledge_chunk (
+                            tenant_id, id, document_id, ordinal, locator_type, paragraph_no,
+                            content, token_count, bbox_x, bbox_y, bbox_w, bbox_h, ocr_confidence
+                        ) VALUES (
+                            :tenantId, :id, :documentId, :ordinal, 'PARAGRAPH', :ordinal,
+                            'OCR 分块', 3, :x, :y, :width, :height, :confidence
+                        )
+                        """)
+                .param("tenantId", tenant)
+                .param("id", BinaryUuids.toBytes(chunkId))
+                .param("documentId", BinaryUuids.toBytes(documentId))
+                .param("ordinal", ordinal)
+                .param("x", x)
+                .param("y", y)
+                .param("width", width)
+                .param("height", height)
+                .param("confidence", new java.math.BigDecimal(confidence))
+                .update();
+        return chunkId;
+    }
+
+    /**
      * 写入用户级 ACL。
      *
      * @param tenant 租户
@@ -420,6 +475,7 @@ class CitationStatusApiTest extends ApiIntegrationTestSupport {
             UUID messageId,
             int ordinal,
             UUID documentId,
+            UUID chunkId,
             String sourceVersion,
             String title,
             String snippet) {
@@ -431,7 +487,7 @@ class CitationStatusApiTest extends ApiIntegrationTestSupport {
                             title_snapshot, snippet, score, created_at, source_version
                         ) VALUES (
                             :tenantId, :id, :messageId, :ordinal, 'KNOWLEDGE', NULL, :documentId,
-                            NULL, 'SHEET', 2, '销售数据', 'B2:D10', 3,
+                            :chunkId, 'SHEET', 2, '销售数据', 'B2:D10', 3,
                             :title, :snippet, 0.5, NOW(6), :sourceVersion
                         )
                         """)
@@ -440,6 +496,7 @@ class CitationStatusApiTest extends ApiIntegrationTestSupport {
                 .param("messageId", BinaryUuids.toBytes(messageId))
                 .param("ordinal", ordinal)
                 .param("documentId", BinaryUuids.toBytes(documentId))
+                .param("chunkId", chunkId == null ? null : BinaryUuids.toBytes(chunkId))
                 .param("title", title)
                 .param("snippet", snippet)
                 .param("sourceVersion", sourceVersion)

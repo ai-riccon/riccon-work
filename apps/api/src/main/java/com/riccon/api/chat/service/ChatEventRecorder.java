@@ -136,6 +136,8 @@ public class ChatEventRecorder {
                     citation.snippet(),
                     citation.score(),
                     now,
+                    null,
+                    null,
                     sourceVersion,
                     CitationSourceStatus.AVAILABLE);
             messageRepository.insertCitation(tenantId, messageId, record);

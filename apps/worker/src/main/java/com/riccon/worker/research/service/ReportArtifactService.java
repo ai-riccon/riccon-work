@@ -169,6 +169,7 @@ public class ReportArtifactService {
                 citation.sourceType(),
                 citation.fileId(),
                 citation.knowledgeDocumentId(),
+                citation.chunkId(),
                 citation.mcpInvocationId(),
                 citation.title(),
                 citation.snippet(),

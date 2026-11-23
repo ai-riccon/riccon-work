@@ -43,29 +43,45 @@ class CitationStatusApiTest extends ResearchApiTestSupport {
         UUID noAccess = seedDocument(fixture.tenant(), noAccessTitle, "USERS", null, "d".repeat(64));
         seedAcl(fixture.tenant(), noAccess, actorId(fixture.admin()));
         markDeleted(fixture.tenant(), deleted);
+        UUID availableChunk = seedChunk(fixture.tenant(), available, 1, 100, 200, 300, 400, "0.930");
+        UUID updatedChunk = seedChunk(fixture.tenant(), updated, 1, 10, 20, 30, 40, "0.820");
+        UUID deletedChunk = seedChunk(fixture.tenant(), deleted, 1, 5, 6, 7, 8, "0.700");
+        UUID noAccessChunk = seedChunk(fixture.tenant(), noAccess, 1, 9, 10, 11, 12, "0.600");
 
         UUID artifactId = seedArtifact(
                 fixture.tenant(), fixture.memberWorkspace(), null, userId(fixture.member()), "引用报告", "SAVED", 1);
         UUID versionId = seedArtifactVersion(fixture.tenant(), artifactId, 1, userId(fixture.member()), "引用版本");
-        seedKnowledgeCitation(fixture.tenant(), versionId, 1, available, "a".repeat(64), availableTitle);
-        seedKnowledgeCitation(fixture.tenant(), versionId, 2, updated, "0".repeat(64), updatedTitle);
-        seedKnowledgeCitation(fixture.tenant(), versionId, 3, deleted, "c".repeat(64), deletedTitle);
-        seedKnowledgeCitation(fixture.tenant(), versionId, 4, noAccess, "d".repeat(64), noAccessTitle);
-        seedFileCitation(fixture.tenant(), versionId, 5, fileTitle);
+        seedKnowledgeCitation(
+                fixture.tenant(), versionId, 1, available, availableChunk, "a".repeat(64), availableTitle);
+        seedKnowledgeCitation(fixture.tenant(), versionId, 2, updated, updatedChunk, "0".repeat(64), updatedTitle);
+        seedKnowledgeCitation(fixture.tenant(), versionId, 3, deleted, deletedChunk, "c".repeat(64), deletedTitle);
+        seedKnowledgeCitation(fixture.tenant(), versionId, 4, noAccess, noAccessChunk, "d".repeat(64), noAccessTitle);
+        seedKnowledgeCitation(fixture.tenant(), versionId, 5, available, null, "a".repeat(64), "历史产物引用");
+        seedFileCitation(fixture.tenant(), versionId, 6, fileTitle);
 
         ApiTestClient.ApiResponse detail =
                 client.get("/api/v1/artifacts/" + artifactId, fixture.member().sessionCookie(), Map.of());
         assertThat(detail.status()).as(detail.body()).isEqualTo(200);
         JsonNode citations = client.json(detail).path("currentVersionDetail").path("citations");
-        assertThat(citations).hasSize(5);
+        assertThat(citations).hasSize(6);
         assertThat(citations.get(0).path("sourceStatus").asText()).isEqualTo("AVAILABLE");
+        assertThat(citations.get(0).path("bbox").path("x").asInt()).isEqualTo(100);
+        assertThat(citations.get(0).path("bbox").path("y").asInt()).isEqualTo(200);
+        assertThat(citations.get(0).path("bbox").path("w").asInt()).isEqualTo(300);
+        assertThat(citations.get(0).path("bbox").path("h").asInt()).isEqualTo(400);
+        assertThat(citations.get(0).path("ocrConfidence").asDouble()).isEqualTo(0.930);
         assertThat(citations.get(1).path("sourceStatus").asText()).isEqualTo("UPDATED");
+        assertThat(citations.get(1).path("bbox").path("x").asInt()).isEqualTo(10);
+        assertThat(citations.get(1).path("ocrConfidence").asDouble()).isEqualTo(0.820);
         assertThat(citations.get(1).path("title").asText()).isEqualTo(updatedTitle);
         assertMasked(citations.get(2), "DELETED");
         assertMasked(citations.get(3), "NO_ACCESS");
         assertThat(citations.get(4).path("sourceStatus").asText()).isEqualTo("AVAILABLE");
-        assertThat(citations.get(4).path("sourceType").asText()).isEqualTo("FILE");
-        assertThat(citations.get(4).path("title").asText()).isEqualTo(fileTitle);
+        assertThat(citations.get(4).path("bbox").isNull()).isTrue();
+        assertThat(citations.get(4).path("ocrConfidence").isNull()).isTrue();
+        assertThat(citations.get(5).path("sourceStatus").asText()).isEqualTo("AVAILABLE");
+        assertThat(citations.get(5).path("sourceType").asText()).isEqualTo("FILE");
+        assertThat(citations.get(5).path("title").asText()).isEqualTo(fileTitle);
         assertThat(detail.body()).doesNotContain(deletedTitle).doesNotContain(noAccessTitle);
 
         ApiTestClient.ApiResponse version = client.get(
@@ -94,11 +110,12 @@ class CitationStatusApiTest extends ResearchApiTestSupport {
         seedAcl(fixture.tenant(), noAccess, actorId(fixture.admin()));
         UUID deleted = seedDocument(fixture.tenant(), deletedTitle, "TENANT", null, "c".repeat(64));
         markDeleted(fixture.tenant(), deleted);
+        UUID availableChunk = seedChunk(fixture.tenant(), available, 1, 21, 22, 23, 24, "0.770");
 
         List<Map<String, Object>> sources = new ArrayList<>();
-        sources.add(source(1, available, availableTitle));
-        sources.add(source(2, noAccess, noAccessTitle));
-        sources.add(source(3, deleted, deletedTitle));
+        sources.add(source(1, available, availableChunk, availableTitle));
+        sources.add(source(2, noAccess, null, noAccessTitle));
+        sources.add(source(3, deleted, null, deletedTitle));
         Map<String, Object> details = new LinkedHashMap<>();
         details.put("query", "引用遮蔽");
         details.put("querySha256", "0".repeat(64));
@@ -115,6 +132,8 @@ class CitationStatusApiTest extends ResearchApiTestSupport {
         assertThat(responseSources).hasSize(3);
         assertThat(responseSources.get(0).path("sourceStatus").asText()).isEqualTo("AVAILABLE");
         assertThat(responseSources.get(0).path("title").asText()).isEqualTo(availableTitle);
+        assertThat(responseSources.get(0).path("bbox").path("x").asInt()).isEqualTo(21);
+        assertThat(responseSources.get(0).path("ocrConfidence").asDouble()).isEqualTo(0.770);
         assertMasked(responseSources.get(1), "NO_ACCESS");
         assertMasked(responseSources.get(2), "DELETED");
         assertThat(response.body()).doesNotContain(noAccessTitle).doesNotContain(deletedTitle);
@@ -128,11 +147,14 @@ class CitationStatusApiTest extends ResearchApiTestSupport {
      * @param title 标题
      * @return 来源
      */
-    private static Map<String, Object> source(int ordinal, UUID documentId, String title) {
+    private static Map<String, Object> source(int ordinal, UUID documentId, UUID chunkId, String title) {
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("ordinal", ordinal);
         source.put("sourceType", "KNOWLEDGE");
         source.put("knowledgeDocumentId", documentId.toString());
+        if (chunkId != null) {
+            source.put("chunkId", chunkId.toString());
+        }
         source.put("title", title);
         source.put("snippet", "检索片段");
         source.put("locatorType", "PAGE");
@@ -155,6 +177,8 @@ class CitationStatusApiTest extends ResearchApiTestSupport {
         assertThat(citation.path("sheetName").isNull()).isTrue();
         assertThat(citation.path("cellRange").isNull()).isTrue();
         assertThat(citation.path("paragraphNo").isNull()).isTrue();
+        assertThat(citation.path("bbox").isNull()).isTrue();
+        assertThat(citation.path("ocrConfidence").isNull()).isTrue();
     }
 
     /**
@@ -237,17 +261,23 @@ class CitationStatusApiTest extends ResearchApiTestSupport {
      * @param title 标题
      */
     private void seedKnowledgeCitation(
-            String tenant, UUID versionId, int ordinal, UUID documentId, String sourceVersion, String title) {
+            String tenant,
+            UUID versionId,
+            int ordinal,
+            UUID documentId,
+            UUID chunkId,
+            String sourceVersion,
+            String title) {
         jdbcClient
                 .sql("""
                         INSERT INTO artifact_citation (
                             tenant_id, id, artifact_version_id, ordinal, source_type, file_id,
-                            knowledge_document_id, mcp_invocation_id, title_snapshot, snippet,
+                            knowledge_document_id, chunk_id, mcp_invocation_id, title_snapshot, snippet,
                             locator_type, page_no, sheet_name, cell_range, paragraph_no, source_version,
                             created_at
                         ) VALUES (
                             :tenantId, :id, :versionId, :ordinal, 'KNOWLEDGE', NULL,
-                            :documentId, NULL, :title, '引用片段',
+                            :documentId, :chunkId, NULL, :title, '引用片段',
                             'SHEET', NULL, '销售数据', 'B2:D10', NULL, :sourceVersion,
                             NOW(6)
                         )
@@ -257,9 +287,49 @@ class CitationStatusApiTest extends ResearchApiTestSupport {
                 .param("versionId", BinaryUuids.toBytes(versionId))
                 .param("ordinal", ordinal)
                 .param("documentId", BinaryUuids.toBytes(documentId))
+                .param("chunkId", chunkId == null ? null : BinaryUuids.toBytes(chunkId))
                 .param("title", title)
                 .param("sourceVersion", sourceVersion)
                 .update();
+    }
+
+    /**
+     * 种子知识库分块（含 OCR 区域与置信度）。
+     *
+     * @param tenant 租户
+     * @param documentId 文档 ID
+     * @param ordinal 序号
+     * @param x 左上角 X
+     * @param y 左上角 Y
+     * @param width 宽度
+     * @param height 高度
+     * @param confidence 置信度
+     * @return 分块 ID
+     */
+    private UUID seedChunk(
+            String tenant, UUID documentId, int ordinal, int x, int y, int width, int height, String confidence) {
+        UUID chunkId = UuidV7.generate(Instant.now());
+        jdbcClient
+                .sql("""
+                        INSERT INTO knowledge_chunk (
+                            tenant_id, id, document_id, ordinal, locator_type, paragraph_no,
+                            content, token_count, bbox_x, bbox_y, bbox_w, bbox_h, ocr_confidence
+                        ) VALUES (
+                            :tenantId, :id, :documentId, :ordinal, 'PARAGRAPH', :ordinal,
+                            'OCR 分块', 3, :x, :y, :width, :height, :confidence
+                        )
+                        """)
+                .param("tenantId", tenant)
+                .param("id", BinaryUuids.toBytes(chunkId))
+                .param("documentId", BinaryUuids.toBytes(documentId))
+                .param("ordinal", ordinal)
+                .param("x", x)
+                .param("y", y)
+                .param("width", width)
+                .param("height", height)
+                .param("confidence", new java.math.BigDecimal(confidence))
+                .update();
+        return chunkId;
     }
 
     /**

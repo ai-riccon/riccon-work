@@ -14,6 +14,7 @@ import java.util.UUID;
  * @param sourceType 来源类型（FILE/KNOWLEDGE/MCP）
  * @param fileId 来源文件 ID
  * @param knowledgeDocumentId 来源知识库文档 ID
+ * @param chunkId 来源知识库分块 ID（逻辑引用）；历史行为空
  * @param mcpInvocationId 来源 MCP 调用 ID
  * @param titleSnapshot 引用时的来源标题快照
  * @param snippet 引用片段
@@ -31,6 +32,7 @@ public record ArtifactCitationRecord(
         String sourceType,
         UUID fileId,
         UUID knowledgeDocumentId,
+        UUID chunkId,
         UUID mcpInvocationId,
         String titleSnapshot,
         String snippet,

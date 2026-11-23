@@ -2,6 +2,7 @@ package com.riccon.api.research.dto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.riccon.api.chat.domain.CitationBoundingBox;
 import com.riccon.api.chat.domain.CitationSourceStatus;
 import com.riccon.api.research.domain.ArtifactCitationSnapshot;
 import com.riccon.api.research.domain.ArtifactSourceType;
@@ -28,6 +29,8 @@ class CitationMaskingTest {
         assertThat(response.sourceStatus()).isEqualTo(CitationSourceStatus.UPDATED);
         assertThat(response.title()).isEqualTo("销售数据.xlsx");
         assertThat(response.snippet()).isEqualTo("区域摘要");
+        assertThat(response.bbox()).isEqualTo(new CitationBoundingBox(5, 6, 70, 80));
+        assertThat(response.ocrConfidence()).isEqualByComparingTo("0.910");
     }
 
     /** NO_ACCESS/DELETED 遮蔽产物引用正文、定位与 cellRange。 */
@@ -46,6 +49,8 @@ class CitationMaskingTest {
             assertThat(response.sheetName()).isNull();
             assertThat(response.cellRange()).isNull();
             assertThat(response.paragraphNo()).isNull();
+            assertThat(response.bbox()).isNull();
+            assertThat(response.ocrConfidence()).isNull();
         }
     }
 
@@ -99,6 +104,7 @@ class CitationMaskingTest {
                 sourceType,
                 null,
                 UUID.randomUUID(),
+                UUID.randomUUID(),
                 null,
                 "销售数据.xlsx",
                 "区域摘要",
@@ -107,6 +113,8 @@ class CitationMaskingTest {
                 "销售数据",
                 "B2:D10",
                 null,
+                new CitationBoundingBox(5, 6, 70, 80),
+                new java.math.BigDecimal("0.910"),
                 "a".repeat(64),
                 status);
     }

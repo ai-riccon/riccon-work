@@ -43,7 +43,7 @@ import org.testcontainers.mysql.MySQLContainer;
  * <p>多 key 回滚演练在同一个一次性容器的第二个 schema（{@code riccon_rollback}）上执行：V11 后插入
  * 2 把 ACTIVE + 1 把 INVALID，按“每组 1 行、有 ACTIVE 保留 ACTIVE，否则保留 RETIRED”收敛后
  * 删除 V11 对象/列/权限，验证回到 V10 且 M02 数据可读。第三个 schema（{@code riccon_fresh}）验证
- * 空库 V1–V12 后 RoleDefinitions 的权限字典完整。
+ * 空库 V1–V13 后 RoleDefinitions 的权限字典完整。
  *
  * <p>生产执行前提：V11 的一次性迁移 Job、备份/恢复与旧 Worker 回滚窗口仍需 B10 RUNBOOK 与
  * 用户 T4 生产批准；本测试只证明迁移与回滚在非生产副本上可执行。
@@ -192,9 +192,9 @@ class V11MigrationTest {
         seedMultiKeyCredentials(rollback);
         rollbackV11Objects(rollback);
 
-        // fresh install：空库直接应用 V1–V12，验证当前最新 schema 的权限字典覆盖与种子可用。
+        // fresh install：空库直接应用 V1–V13，验证当前最新 schema 的权限字典覆盖与种子可用。
         // 空库始终代表“新装系统”，必须跑最新迁移；V11 自身的增量仍由 forward/rollback 两个 schema 覆盖。
-        migrate(freshUrl, "root", "12");
+        migrate(freshUrl, "root", "13");
         fresh = jdbcClient(freshUrl, "root");
     }
 
@@ -810,12 +810,12 @@ class V11MigrationTest {
                 .isZero();
     }
 
-    /** fresh install：V1–V12 后 RoleDefinitions 的每条权限都能在字典中找到并用于角色创建。 */
+    /** fresh install：V1–V13 后 RoleDefinitions 的每条权限都能在字典中找到并用于角色创建。 */
     @Test
-    @DisplayName("空库 V1–V12 后 RoleDefinitions 覆盖 M04 权限")
+    @DisplayName("空库 V1–V13 后 RoleDefinitions 覆盖 M04 权限")
     void freshDatabase_roleDefinitionsCoverM04Permissions() {
         assertThat(flyway(freshUrl, "root").info().current().getVersion().getVersion())
-                .isEqualTo("12");
+                .isEqualTo("13");
         assertThat(fresh.sql("SELECT purpose FROM model_routing ORDER BY purpose")
                         .query(String.class)
                         .list())
@@ -850,7 +850,7 @@ class V11MigrationTest {
 
     /** fresh install 的权限字典必须覆盖 PermissionCodes 的全部常量，且无多余/重复行。 */
     @Test
-    @DisplayName("空库 V1–V12 的 permission 字典与 PermissionCodes 全集一一对应")
+    @DisplayName("空库 V1–V13 的 permission 字典与 PermissionCodes 全集一一对应")
     void freshDatabase_permissionDictionaryCoversAllPermissionCodes() {
         List<String> seeded = fresh.sql("SELECT code FROM permission ORDER BY code")
                 .query(String.class)

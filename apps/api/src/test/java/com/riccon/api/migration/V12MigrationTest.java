@@ -40,7 +40,7 @@ import org.testcontainers.mysql.MySQLContainer;
  * 必须保持 {@code visibility=TENANT}、部门为空、分块与迁移前一致（ADR-0023 第 5.7 节）。
  *
  * <p>回滚演练在第二个 schema 上执行：V12 后写入 ACL/连接器数据，按 ADR-0023 §7.2 的删除顺序回到
- * V11，验证 M02 数据仍可读。fresh install 在第三个 schema 上验证 V1–V12 的权限字典与
+ * V11，验证 M02 数据仍可读。fresh install 在第三个 schema 上验证 V1–V13 的权限字典与
  * {@link RoleDefinitions} 完全一致。
  *
  * <p>生产执行前提：V12 的一次性迁移 Job、备份/恢复与旧 Worker 回滚窗口仍需 M09 RUNBOOK 与用户 T4
@@ -158,8 +158,8 @@ class V12MigrationTest {
         seedM05Data(rollback);
         rollbackV12Objects(rollback);
 
-        // fresh install：空库直接应用 V1–V12，验证权限字典与角色创建路径。
-        migrate(freshUrl, "root", "12");
+        // fresh install：空库直接应用 V1–V13，验证权限字典与角色创建路径。
+        migrate(freshUrl, "root", "13");
         fresh = jdbcClient(freshUrl, "root");
     }
 
@@ -525,9 +525,9 @@ class V12MigrationTest {
         }
     }
 
-    /** fresh install：V1–V12 的权限字典与 RoleDefinitions 完全一致，角色创建不会因缺码失败。 */
+    /** fresh install：V1–V13 的权限字典与 RoleDefinitions 完全一致，角色创建不会因缺码失败。 */
     @Test
-    @DisplayName("空库 V1–V12 的权限字典覆盖 PermissionCodes 全集")
+    @DisplayName("空库 V1–V13 的权限字典覆盖 PermissionCodes 全集")
     void freshDatabase_permissionDictionaryCoversAllPermissionCodes() {
         List<String> seeded = fresh.sql("SELECT code FROM permission ORDER BY code")
                 .query(String.class)

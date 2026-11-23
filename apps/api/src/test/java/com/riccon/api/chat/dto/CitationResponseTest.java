@@ -2,6 +2,7 @@ package com.riccon.api.chat.dto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.riccon.api.chat.domain.CitationBoundingBox;
 import com.riccon.api.chat.domain.CitationRecord;
 import com.riccon.api.chat.domain.CitationSourceStatus;
 import com.riccon.platform.domain.chat.CitationSourceType;
@@ -33,6 +34,8 @@ class CitationResponseTest {
         assertThat(response.locatorType()).isEqualTo(LocatorType.SHEET);
         assertThat(response.pageNo()).isEqualTo(2);
         assertThat(response.paragraphNo()).isEqualTo(3);
+        assertThat(response.bbox()).isEqualTo(new CitationBoundingBox(10, 20, 30, 40));
+        assertThat(response.ocrConfidence()).isEqualByComparingTo("0.870");
         assertThat(response.knowledgeDocumentId()).isNotNull();
         assertThat(response.chunkId()).isNotNull();
     }
@@ -53,6 +56,8 @@ class CitationResponseTest {
             assertThat(response.sheetName()).isNull();
             assertThat(response.cellRange()).isNull();
             assertThat(response.paragraphNo()).isNull();
+            assertThat(response.bbox()).isNull();
+            assertThat(response.ocrConfidence()).isNull();
             // 来源 ID 与序号用于前端关联“不可访问”占位，不构成新的存在性泄露。
             assertThat(response.knowledgeDocumentId()).isNotNull();
             assertThat(response.ordinal()).isEqualTo(1);
@@ -82,6 +87,8 @@ class CitationResponseTest {
                 "B2:D10 区域摘要",
                 new BigDecimal("0.9"),
                 Instant.parse("2026-11-23T00:00:00Z"),
+                new CitationBoundingBox(10, 20, 30, 40),
+                new BigDecimal("0.870"),
                 "a".repeat(64),
                 status);
     }

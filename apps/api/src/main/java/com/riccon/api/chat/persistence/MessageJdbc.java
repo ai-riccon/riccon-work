@@ -509,6 +509,8 @@ public class MessageJdbc {
                 rs.getString("snippet"),
                 score,
                 SqlTimestamps.toInstant(rs.getObject("created_at", LocalDateTime.class)),
+                null,
+                null,
                 rs.getString("source_version"),
                 CitationSourceStatus.AVAILABLE);
     }

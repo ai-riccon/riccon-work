@@ -47,7 +47,7 @@ public class ArtifactJdbc {
     /** 引用清单列；cell_range 不在 OpenAPI ArtifactCitation 中，故不查询。 */
     private static final String CITATION_COLUMNS = """
             artifact_version_id, ordinal, source_type, file_id, knowledge_document_id,
-            mcp_invocation_id, title_snapshot, snippet, locator_type, page_no,
+            chunk_id, mcp_invocation_id, title_snapshot, snippet, locator_type, page_no,
             sheet_name, cell_range, paragraph_no, source_version
             """;
 
@@ -284,6 +284,7 @@ public class ArtifactJdbc {
                 rs.getBytes("knowledge_document_id") == null
                         ? null
                         : BinaryUuids.fromBytes(rs.getBytes("knowledge_document_id")),
+                rs.getBytes("chunk_id") == null ? null : BinaryUuids.fromBytes(rs.getBytes("chunk_id")),
                 rs.getBytes("mcp_invocation_id") == null
                         ? null
                         : BinaryUuids.fromBytes(rs.getBytes("mcp_invocation_id")),
@@ -294,6 +295,8 @@ public class ArtifactJdbc {
                 rs.getString("sheet_name"),
                 rs.getString("cell_range"),
                 rs.getObject("paragraph_no", Integer.class),
+                null,
+                null,
                 rs.getString("source_version"),
                 CitationSourceStatus.AVAILABLE);
         return new CitationRow(BinaryUuids.fromBytes(rs.getBytes("artifact_version_id")), citation);

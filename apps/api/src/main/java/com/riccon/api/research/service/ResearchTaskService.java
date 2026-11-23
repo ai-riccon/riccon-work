@@ -3,8 +3,10 @@ package com.riccon.api.research.service;
 import com.riccon.api.audit.domain.AdditionalAuditActions;
 import com.riccon.api.audit.domain.AuditEvent;
 import com.riccon.api.audit.service.AuditService;
+import com.riccon.api.chat.domain.CitationRegion;
 import com.riccon.api.chat.domain.CitationSourceState;
 import com.riccon.api.chat.domain.CitationSourceStatus;
+import com.riccon.api.chat.repository.CitationRegionRepository;
 import com.riccon.api.chat.repository.CitationStatusRepository;
 import com.riccon.api.common.UuidV7;
 import com.riccon.api.error.BadRequestException;
@@ -110,6 +112,9 @@ public class ResearchTaskService {
     /** 引用源文档状态。 */
     private final CitationStatusRepository citationStatusRepository;
 
+    /** 引用分块 OCR 元数据。 */
+    private final CitationRegionRepository citationRegionRepository;
+
     /** 工作空间可见性。 */
     private final WorkspaceService workspaceService;
 
@@ -133,6 +138,7 @@ public class ResearchTaskService {
      * @param mcpInvocationRepository MCP 调用仓储
      * @param artifactRepository 产物仓储
      * @param citationStatusRepository 引用源文档状态
+     * @param citationRegionRepository 引用分块 OCR 元数据
      * @param workspaceService 工作空间可见性
      * @param quotaAdmissionService 配额准入
      * @param auditService 审计写入
@@ -147,6 +153,7 @@ public class ResearchTaskService {
             McpInvocationRepository mcpInvocationRepository,
             ArtifactRepository artifactRepository,
             CitationStatusRepository citationStatusRepository,
+            CitationRegionRepository citationRegionRepository,
             WorkspaceService workspaceService,
             QuotaAdmissionService quotaAdmissionService,
             AuditService auditService,
@@ -159,6 +166,7 @@ public class ResearchTaskService {
         this.mcpInvocationRepository = Objects.requireNonNull(mcpInvocationRepository, "mcpInvocationRepository");
         this.artifactRepository = Objects.requireNonNull(artifactRepository, "artifactRepository");
         this.citationStatusRepository = Objects.requireNonNull(citationStatusRepository, "citationStatusRepository");
+        this.citationRegionRepository = Objects.requireNonNull(citationRegionRepository, "citationRegionRepository");
         this.workspaceService = Objects.requireNonNull(workspaceService, "workspaceService");
         this.quotaAdmissionService = Objects.requireNonNull(quotaAdmissionService, "quotaAdmissionService");
         this.auditService = Objects.requireNonNull(auditService, "auditService");
@@ -400,6 +408,7 @@ public class ResearchTaskService {
             return List.of();
         }
         Set<UUID> documentIds = new LinkedHashSet<>();
+        Set<UUID> chunkIds = new LinkedHashSet<>();
         for (RunStageSnapshot stage : stages) {
             RunStageDetails details = RunStageDetails.from(stage.details());
             if (details == null || details.sources() == null) {
@@ -409,11 +418,15 @@ public class ResearchTaskService {
                 if (source.sourceType() == ArtifactSourceType.KNOWLEDGE && source.knowledgeDocumentId() != null) {
                     documentIds.add(source.knowledgeDocumentId());
                 }
+                if (source.chunkId() != null) {
+                    chunkIds.add(source.chunkId());
+                }
             }
         }
         Map<UUID, CitationSourceState> states = citationStatusRepository.findStates(tenantId, viewerId, documentIds);
+        Map<UUID, CitationRegion> regions = citationRegionRepository.findRegions(tenantId, chunkIds);
         return stages.stream()
-                .map(stage -> RunStageResponse.from(stage, source -> withStageStatus(source, states)))
+                .map(stage -> RunStageResponse.from(stage, source -> withStageStatus(source, states, regions)))
                 .toList();
     }
 
@@ -422,14 +435,18 @@ public class ResearchTaskService {
      *
      * @param source 来源
      * @param states 文档状态映射
-     * @return 带可用性与遮蔽的来源
+     * @param regions 分块 OCR 元数据
+     * @return 带可用性、遮蔽与区域的来源
      */
-    private static CitationResponse withStageStatus(CitationResponse source, Map<UUID, CitationSourceState> states) {
-        if (source.sourceType() != ArtifactSourceType.KNOWLEDGE || source.knowledgeDocumentId() == null) {
-            return source.withSourceStatus(CitationSourceStatus.AVAILABLE);
+    private static CitationResponse withStageStatus(
+            CitationResponse source, Map<UUID, CitationSourceState> states, Map<UUID, CitationRegion> regions) {
+        CitationSourceStatus status = CitationSourceStatus.AVAILABLE;
+        if (source.sourceType() == ArtifactSourceType.KNOWLEDGE && source.knowledgeDocumentId() != null) {
+            CitationSourceState state = states.get(source.knowledgeDocumentId());
+            status = state == null ? CitationSourceStatus.NO_ACCESS : state.statusFor(null);
         }
-        CitationSourceState state = states.get(source.knowledgeDocumentId());
-        return source.withSourceStatus(state == null ? CitationSourceStatus.NO_ACCESS : state.statusFor(null));
+        CitationRegion region = source.chunkId() == null ? null : regions.get(source.chunkId());
+        return source.withSourceStatus(status).withRegion(region);
     }
 
     /**
@@ -499,6 +516,13 @@ public class ResearchTaskService {
             }
         }
         Map<UUID, CitationSourceState> states = citationStatusRepository.findStates(tenantId, viewerId, documentIds);
+        Set<UUID> chunkIds = new LinkedHashSet<>();
+        for (ArtifactCitationSnapshot citation : citations) {
+            if (citation.chunkId() != null) {
+                chunkIds.add(citation.chunkId());
+            }
+        }
+        Map<UUID, CitationRegion> regions = citationRegionRepository.findRegions(tenantId, chunkIds);
         List<ArtifactCitationSnapshot> resolved = new ArrayList<>(citations.size());
         for (ArtifactCitationSnapshot citation : citations) {
             CitationSourceStatus status = CitationSourceStatus.AVAILABLE;
@@ -506,7 +530,8 @@ public class ResearchTaskService {
                 CitationSourceState state = states.get(citation.knowledgeDocumentId());
                 status = state == null ? CitationSourceStatus.NO_ACCESS : state.statusFor(citation.sourceVersion());
             }
-            resolved.add(citation.withSourceStatus(status));
+            CitationRegion region = citation.chunkId() == null ? null : regions.get(citation.chunkId());
+            resolved.add(citation.withSourceStatus(status).withRegion(region));
         }
         return List.copyOf(resolved);
     }

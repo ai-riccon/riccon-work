@@ -1,6 +1,7 @@
 package com.riccon.api.chat.repository;
 
 import com.riccon.api.chat.domain.CitationRecord;
+import com.riccon.api.chat.domain.CitationRegion;
 import com.riccon.api.chat.domain.CitationSourceState;
 import com.riccon.api.chat.domain.CitationSourceStatus;
 import com.riccon.api.chat.domain.MessageRecord;
@@ -36,16 +37,25 @@ public class MessageRepository {
     /** 引用源文档状态。 */
     private final CitationStatusRepository citationStatusRepository;
 
+    /** 引用分块 OCR 元数据。 */
+    private final CitationRegionRepository citationRegionRepository;
+
     /**
      * 创建仓储。
      *
      * @param messageJdbc 消息 SQL
      * @param citationStatusRepository 引用源文档状态
+     * @param citationRegionRepository 引用分块 OCR 元数据
      */
-    public MessageRepository(MessageJdbc messageJdbc, CitationStatusRepository citationStatusRepository) {
+    public MessageRepository(
+            MessageJdbc messageJdbc,
+            CitationStatusRepository citationStatusRepository,
+            CitationRegionRepository citationRegionRepository) {
         this.messageJdbc = Objects.requireNonNull(messageJdbc, "messageJdbc must not be null");
         this.citationStatusRepository =
                 Objects.requireNonNull(citationStatusRepository, "citationStatusRepository must not be null");
+        this.citationRegionRepository =
+                Objects.requireNonNull(citationRegionRepository, "citationRegionRepository must not be null");
     }
 
     /**
@@ -154,10 +164,12 @@ public class MessageRepository {
         }
         Map<UUID, List<CitationRecord>> byMessage = messageJdbc.listCitations(tenantId, List.copyOf(assistantIds));
         Map<UUID, CitationSourceState> states = citationStates(tenantId, viewerId, byMessage.values());
+        Map<UUID, CitationRegion> regions = citationRegions(tenantId, byMessage.values());
         List<MessageRecord> enriched = new ArrayList<>(messages.size());
         for (MessageRecord message : messages) {
             List<CitationRecord> citations = byMessage.getOrDefault(message.id(), List.of()).stream()
-                    .map(citation -> citation.withSourceStatus(statusOf(citation, states)))
+                    .map(citation -> citation.withSourceStatus(statusOf(citation, states))
+                            .withRegion(regionOf(citation, regions)))
                     .toList();
             enriched.add(new MessageRecord(
                     message.id(),
@@ -195,6 +207,40 @@ public class MessageRepository {
             }
         }
         return citationStatusRepository.findStates(tenantId, viewerId, documentIds);
+    }
+
+    /**
+     * 批量读取本页引用涉及的分块 OCR 元数据。
+     *
+     * @param tenantId 当前租户
+     * @param citationLists 本页引用分组
+     * @return 分块 ID 到区域的映射
+     */
+    private Map<UUID, CitationRegion> citationRegions(
+            TenantId tenantId, Collection<List<CitationRecord>> citationLists) {
+        Set<UUID> chunkIds = new LinkedHashSet<>();
+        for (List<CitationRecord> citations : citationLists) {
+            for (CitationRecord citation : citations) {
+                if (citation.sourceType() == CitationSourceType.KNOWLEDGE && citation.chunkId() != null) {
+                    chunkIds.add(citation.chunkId());
+                }
+            }
+        }
+        return citationRegionRepository.findRegions(tenantId, chunkIds);
+    }
+
+    /**
+     * 读取引用的分块区域；只有知识库引用按 knowledge_chunk 关联。
+     *
+     * @param citation 引用
+     * @param regions 分块 ID 到区域的映射
+     * @return 区域；非知识库引用或历史空分块为 {@code null}
+     */
+    private static CitationRegion regionOf(CitationRecord citation, Map<UUID, CitationRegion> regions) {
+        if (citation.sourceType() != CitationSourceType.KNOWLEDGE || citation.chunkId() == null) {
+            return null;
+        }
+        return regions.get(citation.chunkId());
     }
 
     /**

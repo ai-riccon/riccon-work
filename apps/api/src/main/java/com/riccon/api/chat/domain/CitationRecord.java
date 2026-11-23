@@ -31,6 +31,8 @@ import java.util.UUID;
  * @param snippet 片段
  * @param score 检索相关度；可为空
  * @param createdAt 创建时间
+ * @param bbox 分块页内区域；读取时按 chunk_id 补齐，历史引用为空
+ * @param ocrConfidence 分块 OCR 置信度；读取时按 chunk_id 补齐
  * @param sourceVersion 引用时的知识库文档 checksum；FILE 引用与历史引用为空
  * @param sourceStatus 读取时计算的可用性；写入时为 {@code AVAILABLE}
  */
@@ -50,6 +52,8 @@ public record CitationRecord(
         String snippet,
         BigDecimal score,
         Instant createdAt,
+        CitationBoundingBox bbox,
+        BigDecimal ocrConfidence,
         String sourceVersion,
         CitationSourceStatus sourceStatus) {
 
@@ -99,7 +103,40 @@ public record CitationRecord(
                 snippet,
                 score,
                 createdAt,
+                bbox,
+                ocrConfidence,
                 sourceVersion,
                 status);
+    }
+
+    /**
+     * 复制引用并附加分块 OCR 元数据；不可访问时不保留区域。
+     *
+     * @param region 分块区域；为空时保持空
+     * @return 新引用
+     */
+    public CitationRecord withRegion(CitationRegion region) {
+        boolean hidden = sourceStatus == CitationSourceStatus.NO_ACCESS || sourceStatus == CitationSourceStatus.DELETED;
+        CitationRegion resolved = region == null ? CitationRegion.EMPTY : region;
+        return new CitationRecord(
+                id,
+                ordinal,
+                sourceType,
+                fileId,
+                knowledgeDocumentId,
+                chunkId,
+                locatorType,
+                pageNo,
+                sheetName,
+                cellRange,
+                paragraphNo,
+                title,
+                snippet,
+                score,
+                createdAt,
+                hidden ? null : resolved.bbox(),
+                hidden ? null : resolved.ocrConfidence(),
+                sourceVersion,
+                sourceStatus);
     }
 }

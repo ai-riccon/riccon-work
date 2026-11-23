@@ -1,5 +1,6 @@
 package com.riccon.api.chat.dto;
 
+import com.riccon.api.chat.domain.CitationBoundingBox;
 import com.riccon.api.chat.domain.CitationRecord;
 import com.riccon.api.chat.domain.CitationSourceStatus;
 import com.riccon.platform.domain.chat.CitationSourceType;
@@ -24,6 +25,8 @@ import java.util.UUID;
  * @param sheetName 工作表名；不可访问时为空
  * @param cellRange 单元格范围；不可访问时为空
  * @param paragraphNo 段落号；不可访问时为空
+ * @param bbox OCR 页内区域；不可访问或非 OCR 分块为空
+ * @param ocrConfidence OCR 置信度；不可访问或非 OCR 分块为空
  * @param sourceStatus 引用可用性
  * @param title 来源标题快照；不可访问时为空串
  * @param snippet 片段；不可访问时为空串
@@ -40,6 +43,8 @@ public record CitationResponse(
         String sheetName,
         String cellRange,
         Integer paragraphNo,
+        CitationBoundingBox bbox,
+        BigDecimal ocrConfidence,
         CitationSourceStatus sourceStatus,
         String title,
         String snippet,
@@ -65,6 +70,8 @@ public record CitationResponse(
                 hidden ? null : citation.sheetName(),
                 hidden ? null : citation.cellRange(),
                 hidden ? null : citation.paragraphNo(),
+                hidden ? null : citation.bbox(),
+                hidden ? null : citation.ocrConfidence(),
                 status,
                 hidden ? "" : citation.title(),
                 hidden ? "" : citation.snippet(),

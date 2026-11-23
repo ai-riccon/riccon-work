@@ -101,6 +101,7 @@ public class ReportComposer {
                     sourceType,
                     chunk.fileId(),
                     chunk.knowledgeDocumentId(),
+                    chunk.sourceType() == CitationSourceType.KNOWLEDGE ? chunk.chunkId() : null,
                     null,
                     fallbackTitle(chunk.title()),
                     chunk.snippet(MAX_SNIPPET_LENGTH),
@@ -115,6 +116,7 @@ public class ReportComposer {
             citations.add(new ReportCitation(
                     ordinal,
                     "MCP",
+                    null,
                     null,
                     null,
                     toolSource.invocationId(),

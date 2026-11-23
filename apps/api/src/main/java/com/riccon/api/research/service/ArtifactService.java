@@ -3,8 +3,10 @@ package com.riccon.api.research.service;
 import com.riccon.api.audit.domain.AdditionalAuditActions;
 import com.riccon.api.audit.domain.AuditEvent;
 import com.riccon.api.audit.service.AuditService;
+import com.riccon.api.chat.domain.CitationRegion;
 import com.riccon.api.chat.domain.CitationSourceState;
 import com.riccon.api.chat.domain.CitationSourceStatus;
+import com.riccon.api.chat.repository.CitationRegionRepository;
 import com.riccon.api.chat.repository.CitationStatusRepository;
 import com.riccon.api.config.StorageProperties;
 import com.riccon.api.error.ArtifactContentTooLargeException;
@@ -82,6 +84,9 @@ public class ArtifactService {
     /** 引用源文档状态。 */
     private final CitationStatusRepository citationStatusRepository;
 
+    /** 引用分块 OCR 元数据。 */
+    private final CitationRegionRepository citationRegionRepository;
+
     /** 工作空间可见性。 */
     private final WorkspaceService workspaceService;
 
@@ -102,6 +107,7 @@ public class ArtifactService {
      *
      * @param artifactRepository 产物仓储
      * @param citationStatusRepository 引用源文档状态
+     * @param citationRegionRepository 引用分块 OCR 元数据
      * @param workspaceService 工作空间可见性
      * @param fileStorage 对象存储
      * @param storageProperties 存储配置
@@ -111,6 +117,7 @@ public class ArtifactService {
     public ArtifactService(
             ArtifactRepository artifactRepository,
             CitationStatusRepository citationStatusRepository,
+            CitationRegionRepository citationRegionRepository,
             WorkspaceService workspaceService,
             FileStorage fileStorage,
             StorageProperties storageProperties,
@@ -118,6 +125,7 @@ public class ArtifactService {
             Clock clock) {
         this.artifactRepository = Objects.requireNonNull(artifactRepository, "artifactRepository");
         this.citationStatusRepository = Objects.requireNonNull(citationStatusRepository, "citationStatusRepository");
+        this.citationRegionRepository = Objects.requireNonNull(citationRegionRepository, "citationRegionRepository");
         this.workspaceService = Objects.requireNonNull(workspaceService, "workspaceService");
         this.fileStorage = Objects.requireNonNull(fileStorage, "fileStorage");
         this.storageProperties = Objects.requireNonNull(storageProperties, "storageProperties");
@@ -410,6 +418,13 @@ public class ArtifactService {
             }
         }
         Map<UUID, CitationSourceState> states = citationStatusRepository.findStates(tenantId, viewerId, documentIds);
+        Set<UUID> chunkIds = new LinkedHashSet<>();
+        for (ArtifactCitationSnapshot citation : citations) {
+            if (citation.chunkId() != null) {
+                chunkIds.add(citation.chunkId());
+            }
+        }
+        Map<UUID, CitationRegion> regions = citationRegionRepository.findRegions(tenantId, chunkIds);
         List<ArtifactCitationSnapshot> resolved = new ArrayList<>(citations.size());
         for (ArtifactCitationSnapshot citation : citations) {
             CitationSourceStatus status = CitationSourceStatus.AVAILABLE;
@@ -417,7 +432,8 @@ public class ArtifactService {
                 CitationSourceState state = states.get(citation.knowledgeDocumentId());
                 status = state == null ? CitationSourceStatus.NO_ACCESS : state.statusFor(citation.sourceVersion());
             }
-            resolved.add(citation.withSourceStatus(status));
+            CitationRegion region = citation.chunkId() == null ? null : regions.get(citation.chunkId());
+            resolved.add(citation.withSourceStatus(status).withRegion(region));
         }
         return List.copyOf(resolved);
     }

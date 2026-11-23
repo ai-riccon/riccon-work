@@ -260,6 +260,7 @@ public class ArtifactJdbc {
         params.put(
                 "knowledgeDocumentId",
                 citation.knowledgeDocumentId() == null ? null : UuidBinary.toBytes(citation.knowledgeDocumentId()));
+        params.put("chunkId", citation.chunkId() == null ? null : UuidBinary.toBytes(citation.chunkId()));
         params.put(
                 "mcpInvocationId",
                 citation.mcpInvocationId() == null ? null : UuidBinary.toBytes(citation.mcpInvocationId()));
@@ -276,11 +277,11 @@ public class ArtifactJdbc {
         tenantJdbc.insert(tenantId, """
                 INSERT INTO artifact_citation
                     (tenant_id, id, artifact_version_id, ordinal, source_type, file_id,
-                     knowledge_document_id, mcp_invocation_id, title_snapshot, snippet,
+                     knowledge_document_id, chunk_id, mcp_invocation_id, title_snapshot, snippet,
                      locator_type, page_no, sheet_name, cell_range, paragraph_no, source_version)
                 VALUES
                     (:tenantId, :id, :artifactVersionId, :ordinal, :sourceType, :fileId,
-                     :knowledgeDocumentId, :mcpInvocationId, :titleSnapshot, :snippet,
+                     :knowledgeDocumentId, :chunkId, :mcpInvocationId, :titleSnapshot, :snippet,
                      :locatorType, :pageNo, :sheetName, :cellRange, :paragraphNo, :sourceVersion)
                 ON DUPLICATE KEY UPDATE id = id
                 """, params);
@@ -298,7 +299,7 @@ public class ArtifactJdbc {
                 tenantId,
                 """
                 SELECT id, artifact_version_id, ordinal, source_type, file_id, knowledge_document_id,
-                       mcp_invocation_id, title_snapshot, snippet, locator_type, page_no,
+                       chunk_id, mcp_invocation_id, title_snapshot, snippet, locator_type, page_no,
                        sheet_name, cell_range, paragraph_no, source_version
                   FROM artifact_citation
                  WHERE tenant_id = :tenantId
@@ -315,6 +316,7 @@ public class ArtifactJdbc {
                         rs.getBytes("knowledge_document_id") == null
                                 ? null
                                 : UuidBinary.fromBytes(rs.getBytes("knowledge_document_id")),
+                        rs.getBytes("chunk_id") == null ? null : UuidBinary.fromBytes(rs.getBytes("chunk_id")),
                         rs.getBytes("mcp_invocation_id") == null
                                 ? null
                                 : UuidBinary.fromBytes(rs.getBytes("mcp_invocation_id")),

@@ -86,6 +86,8 @@ class CitationSourceStateTest {
                 "片段",
                 new BigDecimal("0.5"),
                 Instant.parse("2026-11-23T00:00:00Z"),
+                null,
+                null,
                 sourceVersion,
                 CitationSourceStatus.AVAILABLE);
     }

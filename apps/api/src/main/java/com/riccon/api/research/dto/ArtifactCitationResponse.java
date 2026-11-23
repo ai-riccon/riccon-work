@@ -1,9 +1,11 @@
 package com.riccon.api.research.dto;
 
+import com.riccon.api.chat.domain.CitationBoundingBox;
 import com.riccon.api.chat.domain.CitationSourceStatus;
 import com.riccon.api.research.domain.ArtifactCitationSnapshot;
 import com.riccon.api.research.domain.ArtifactSourceType;
 import com.riccon.platform.domain.chat.LocatorType;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
@@ -24,6 +26,8 @@ import java.util.UUID;
  * @param sheetName 工作表名
  * @param cellRange 单元格范围
  * @param paragraphNo 段落号
+ * @param bbox OCR 页内区域；不可访问或非 OCR 分块为空
+ * @param ocrConfidence OCR 置信度；不可访问或非 OCR 分块为空
  * @param sourceStatus 引用可用性
  */
 public record ArtifactCitationResponse(
@@ -39,6 +43,8 @@ public record ArtifactCitationResponse(
         String sheetName,
         String cellRange,
         Integer paragraphNo,
+        CitationBoundingBox bbox,
+        BigDecimal ocrConfidence,
         CitationSourceStatus sourceStatus) {
 
     /**
@@ -63,6 +69,8 @@ public record ArtifactCitationResponse(
                 hidden ? null : citation.sheetName(),
                 hidden ? null : citation.cellRange(),
                 hidden ? null : citation.paragraphNo(),
+                hidden ? null : citation.bbox(),
+                hidden ? null : citation.ocrConfidence(),
                 status);
     }
 

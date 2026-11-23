@@ -14,6 +14,7 @@ import java.util.UUID;
  * @param sourceType 来源类型
  * @param fileId 来源文件 ID
  * @param knowledgeDocumentId 来源知识库文档 ID
+ * @param chunkId 来源知识库分块 ID；用于读取 bbox/ocr_confidence，仅 KNOWLEDGE
  * @param mcpInvocationId 来源 MCP 调用 ID
  * @param title 来源标题
  * @param snippet 引用片段
@@ -29,6 +30,7 @@ public record ReportCitation(
         String sourceType,
         UUID fileId,
         UUID knowledgeDocumentId,
+        UUID chunkId,
         UUID mcpInvocationId,
         String title,
         String snippet,

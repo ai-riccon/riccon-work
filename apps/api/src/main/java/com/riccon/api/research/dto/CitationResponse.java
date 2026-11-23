@@ -1,9 +1,12 @@
 package com.riccon.api.research.dto;
 
+import com.riccon.api.chat.domain.CitationBoundingBox;
+import com.riccon.api.chat.domain.CitationRegion;
 import com.riccon.api.chat.domain.CitationSourceStatus;
 import com.riccon.api.research.domain.ArtifactCitationSnapshot;
 import com.riccon.api.research.domain.ArtifactSourceType;
 import com.riccon.platform.domain.chat.LocatorType;
+import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
 
@@ -26,6 +29,8 @@ import java.util.UUID;
  * @param sheetName 工作表名
  * @param cellRange 单元格范围
  * @param paragraphNo 段落号
+ * @param bbox OCR 页内区域；不可访问或非 OCR 分块为空
+ * @param ocrConfidence OCR 置信度；不可访问或非 OCR 分块为空
  * @param sourceStatus 引用可用性
  * @param title 标题
  * @param snippet 片段摘要；检索阶段没有片段时为空字符串
@@ -43,6 +48,8 @@ public record CitationResponse(
         String sheetName,
         String cellRange,
         Integer paragraphNo,
+        CitationBoundingBox bbox,
+        BigDecimal ocrConfidence,
         CitationSourceStatus sourceStatus,
         String title,
         String snippet,
@@ -63,13 +70,15 @@ public record CitationResponse(
                         citation.sourceType(),
                         citation.fileId(),
                         citation.knowledgeDocumentId(),
-                        null,
+                        citation.chunkId(),
                         citation.mcpInvocationId(),
                         citation.locatorType(),
                         citation.pageNo(),
                         citation.sheetName(),
                         citation.cellRange(),
                         citation.paragraphNo(),
+                        citation.bbox(),
+                        citation.ocrConfidence(),
                         citation.sourceStatus(),
                         citation.title(),
                         citation.snippet(),
@@ -99,6 +108,8 @@ public record CitationResponse(
                 citation.sheetName(),
                 citation.cellRange(),
                 citation.paragraphNo(),
+                citation.bbox(),
+                citation.ocrConfidence(),
                 citation.sourceStatus(),
                 citation.title(),
                 citation.snippet(),
@@ -142,6 +153,8 @@ public record CitationResponse(
                 asString(source.get("sheetName")),
                 asString(source.get("cellRange")),
                 asInteger(source.get("paragraphNo")),
+                asBoundingBox(source.get("bbox")),
+                asDecimal(source.get("ocrConfidence")),
                 CitationSourceStatus.AVAILABLE,
                 title,
                 snippet == null ? "" : snippet,
@@ -167,7 +180,38 @@ public record CitationResponse(
                         sheetName,
                         cellRange,
                         paragraphNo,
+                        bbox,
+                        ocrConfidence,
                         status,
+                        title,
+                        snippet,
+                        score)
+                .masked();
+    }
+
+    /**
+     * 复制引用并附加分块 OCR 元数据；不可访问时不保留区域。
+     *
+     * @param region 分块区域；为空时保持空
+     * @return 新响应
+     */
+    public CitationResponse withRegion(CitationRegion region) {
+        CitationRegion resolved = region == null ? CitationRegion.EMPTY : region;
+        return new CitationResponse(
+                        ordinal,
+                        sourceType,
+                        fileId,
+                        knowledgeDocumentId,
+                        chunkId,
+                        mcpInvocationId,
+                        locatorType,
+                        pageNo,
+                        sheetName,
+                        cellRange,
+                        paragraphNo,
+                        resolved.bbox(),
+                        resolved.ocrConfidence(),
+                        sourceStatus,
                         title,
                         snippet,
                         score)
@@ -190,6 +234,8 @@ public record CitationResponse(
                 knowledgeDocumentId,
                 chunkId,
                 mcpInvocationId,
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -219,6 +265,45 @@ public record CitationResponse(
      */
     private static Integer asInteger(Object value) {
         return value instanceof Number number ? number.intValue() : null;
+    }
+
+    /**
+     * 安全读取 OCR 置信度。
+     *
+     * @param value 原始值
+     * @return 小数或 {@code null}
+     */
+    private static BigDecimal asDecimal(Object value) {
+        if (value instanceof BigDecimal decimal) {
+            return decimal;
+        }
+        if (value instanceof Number number) {
+            return BigDecimal.valueOf(number.doubleValue());
+        }
+        return null;
+    }
+
+    /**
+     * 安全读取 bbox；字段不完整或非法时返回 {@code null}。
+     *
+     * @param value 原始值
+     * @return bbox 或 {@code null}
+     */
+    private static CitationBoundingBox asBoundingBox(Object value) {
+        if (!(value instanceof Map<?, ?> raw)) {
+            return null;
+        }
+        Integer x = asInteger(raw.get("x"));
+        Integer y = asInteger(raw.get("y"));
+        Integer width = asInteger(raw.get("w"));
+        Integer height = asInteger(raw.get("h"));
+        if (x == null || y == null || width == null || height == null) {
+            return null;
+        }
+        if (x < 0 || y < 0 || width < 1 || height < 1) {
+            return null;
+        }
+        return new CitationBoundingBox(x, y, width, height);
     }
 
     /**
