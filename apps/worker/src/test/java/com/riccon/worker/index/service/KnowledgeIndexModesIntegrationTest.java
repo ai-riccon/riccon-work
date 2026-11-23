@@ -264,7 +264,8 @@ class KnowledgeIndexModesIntegrationTest extends WorkerIntegrationTestBase {
      * @return 数量
      */
     private long indexCount(String tenant, UUID documentId) {
-        if (indexClient.aliasTargets(com.riccon.platform.common.tenant.TenantId.of(tenant))
+        if (indexClient
+                .aliasTargets(com.riccon.platform.common.tenant.TenantId.of(tenant))
                 .isEmpty()) {
             // 文档从未索引或已被 DELETE 清理：没有别名时视为 0，避免把 404 当测试错误。
             return 0;
