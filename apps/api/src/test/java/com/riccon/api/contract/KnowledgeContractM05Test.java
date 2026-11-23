@@ -270,7 +270,7 @@ class KnowledgeContractM05Test {
         assertThat(String.valueOf(operation.get("description"))).contains("软删除", "reason=USER", "幂等", "创建人", "M09");
     }
 
-    /** {@code downloadKnowledgeDocument}：流式代理、无 key/预签名与两种 404 语义。 */
+    /** {@code downloadKnowledgeDocument}：流式代理、动态 Content-Type、RFC 5987 与 404/502 语义。 */
     @Test
     @DisplayName("#downloadKnowledgeDocument")
     void downloadKnowledgeDocument() {
@@ -284,6 +284,16 @@ class KnowledgeContractM05Test {
         Map<String, Object> headers = OpenApiContract.map(ok.get("headers"));
         assertThat(headers.keySet())
                 .contains("Content-Type", "Content-Disposition", "Cache-Control", "X-Content-Type-Options");
+
+        Map<String, Object> contentType = OpenApiContract.map(headers.get("Content-Type"));
+        assertThat(String.valueOf(contentType.get("description")))
+                .contains("mimeType", "application/pdf", "application/octet-stream");
+        assertThat(contentType.get("example")).isEqualTo("application/pdf");
+
+        Map<String, Object> contentDisposition = OpenApiContract.map(headers.get("Content-Disposition"));
+        assertThat(String.valueOf(contentDisposition.get("description")))
+                .contains("attachment", "filename=", "filename*=", "UTF-8''");
+
         assertThat(OpenApiContract.map(headers.get("X-Content-Type-Options"))
                         .get("schema")
                         .toString())
@@ -292,13 +302,25 @@ class KnowledgeContractM05Test {
         assertThat(content.keySet()).contains("application/octet-stream").doesNotContain("application/json");
         Map<String, Object> binary = OpenApiContract.map(content.get("application/octet-stream"));
         assertThat(OpenApiContract.map(binary.get("schema")).get("format")).isEqualTo("binary");
+        assertThat(String.valueOf(ok.get("description"))).contains("application/octet-stream", "mimeType", "二进制");
 
         assertThat(String.valueOf(OpenApiContract.resolvedResponse(document, operation, "404")
                         .get("description")))
                 .contains("RICCON-KB-404")
                 .contains("RICCON-TENANT-404");
-        assertThat(OpenApiContract.response(operation, "502")).isNotEmpty();
-        assertThat(String.valueOf(operation.get("description"))).contains("流式", "不返回对象 key", "预签名", "每次请求重判");
+
+        assertThat(OpenApiContract.response(operation, "502").get("$ref"))
+                .isEqualTo("#/components/responses/KnowledgeDownloadFailed");
+        Map<String, Object> downloadFailed = OpenApiContract.resolvedResponse(document, operation, "502");
+        assertThat(String.valueOf(downloadFailed.get("description")))
+                .contains("RICCON-KB-502", "ProblemDetail", "对象 key", "存储端点");
+        Map<String, Object> failedJson = OpenApiContract.map(
+                OpenApiContract.map(downloadFailed.get("content")).get("application/problem+json"));
+        assertThat(OpenApiContract.map(failedJson.get("schema")).get("$ref"))
+                .isEqualTo("#/components/schemas/ProblemDetail");
+
+        assertThat(String.valueOf(operation.get("description")))
+                .contains("流式", "不返回对象 key", "预签名", "每次请求重判", "RICCON-KB-502", "mimeType", "filename*=UTF-8''");
     }
 
     /** {@code reindexKnowledgeDocument}：force 参数、缺失页语义与 400/403/404/409/503。 */

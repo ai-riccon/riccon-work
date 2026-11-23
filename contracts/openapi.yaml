@@ -57,7 +57,7 @@ info:
     ## 错误
     统一使用 RFC 9457 `application/problem+json`，至少包含 `type/title/status/code/traceId`。
     错误码格式 `RICCON-<DOMAIN>-<NNN>`；禁止返回堆栈、SQL、内部主机、密钥或完整提示词。
-    部门/空间成员关系冲突使用 `RICCON-DEPT-409`；跨租户/跨部门/不可见统一 `RICCON-TENANT-404`；OIDC 绑定冲突使用 `RICCON-OIDC-409`；审计查询/导出使用 `RICCON-AUDIT-*`；模型配置使用 `RICCON-MODEL-400/409`；配额使用 `RICCON-QUOTA-429/503`；成本查询使用 `RICCON-COST-400/503`；知识库文档 ACL/下载/重索引使用 `RICCON-KB-400/404/409/503`。
+    部门/空间成员关系冲突使用 `RICCON-DEPT-409`；跨租户/跨部门/不可见统一 `RICCON-TENANT-404`；OIDC 绑定冲突使用 `RICCON-OIDC-409`；审计查询/导出使用 `RICCON-AUDIT-*`；模型配置使用 `RICCON-MODEL-400/409`；配额使用 `RICCON-QUOTA-429/503`；成本查询使用 `RICCON-COST-400/503`；知识库文档 ACL/下载/重索引使用 `RICCON-KB-400/404/409/502/503`（源文件读取失败为 `RICCON-KB-502`）。
     知识库下载在 ACL 通过后才发现无源文件时返回 `RICCON-KB-404`；该码不得替代不可见时的 `RICCON-TENANT-404`。
     路径存在但不支持该 HTTP 方法返回 405 `RICCON-METHOD-405`，并在 `Allow` 响应头列出受支持方法；路径不存在仍是 404 `RICCON-REQUEST-404`，已认证但无权限仍是 403。405 不产生审计写入，也不新增路由。
 
@@ -1137,23 +1137,30 @@ paths:
       operationId: downloadKnowledgeDocument
       summary: 下载知识库文档源文件
       description: |
-        服务端按 `(tenant_id, documentId)` 解析源文件并流式代理返回，每次请求重判文档 ACL；
-        `Content-Type` 取文档 `mimeType`，`Content-Disposition` 为附件。不返回对象 key、预签名 URL 或存储端点；
-        不因文档 ACL 放宽原工作空间路径。ACL 通过但文档无源文件（SEED 或已清理）返回 `RICCON-KB-404`；
-        文档不可见、跨租户或跨部门返回 `RICCON-TENANT-404`。
+        服务端按 `(tenant_id, documentId)` 解析源文件并流式代理返回，每次请求重判文档 ACL。
+        `Content-Type` 为文档 `mimeType`（如 `application/pdf`；MIME 非法时回退 `application/octet-stream`），
+        `Content-Disposition` 为 `attachment; filename="<ASCII 回退>"; filename*=UTF-8''<RFC 5987 编码文件名>`。
+        不返回对象 key、预签名 URL 或存储端点；不因文档 ACL 放宽原工作空间路径。
+        ACL 通过但文档无源文件（SEED 或已清理）返回 `RICCON-KB-404`；文档不可见、跨租户或跨部门返回 `RICCON-TENANT-404`；
+        对象存储读取失败返回 `RICCON-KB-502`。
       x-riccon-permission: knowledge.read
       parameters:
         - $ref: "#/components/parameters/KnowledgeDocumentId"
       responses:
         "200":
-          description: 源文件字节流（服务端代理）
+          description: |
+            源文件字节流（服务端代理）。契约以 `application/octet-stream` 表达二进制载体；
+            实际响应 `Content-Type` 为文档 `mimeType`（MIME 非法时回退 `application/octet-stream`），不使用 JSON 包装。
           headers:
             Content-Type:
-              description: 文档 `mimeType`；不回显对象存储端点
+              description: 文档 `mimeType`（如 `application/pdf`）；MIME 非法时回退 `application/octet-stream`；不回显对象存储端点
               schema:
                 type: string
+              example: application/pdf
             Content-Disposition:
-              description: attachment; filename="<RFC 5987 编码的文档标题>"
+              description: |
+                `attachment` 附件；同时提供 ASCII 回退与 RFC 5987 编码：
+                `attachment; filename="<ASCII 回退>"; filename*=UTF-8''<RFC 5987 编码文件名>`。
               schema:
                 type: string
             Cache-Control:
@@ -1177,7 +1184,7 @@ paths:
         "404":
           $ref: "#/components/responses/KnowledgeSourceNotFound"
         "502":
-          $ref: "#/components/responses/BadGateway"
+          $ref: "#/components/responses/KnowledgeDownloadFailed"
   /api/v1/knowledge/documents/{documentId}/reindex:
     post:
       tags: [Knowledge]
@@ -3844,6 +3851,14 @@ components:
             $ref: "#/components/schemas/ProblemDetail"
     KnowledgeIndexUnavailable:
       description: 知识库索引队列或索引服务不可用（`RICCON-KB-503`）；不返回部分受理结果
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    KnowledgeDownloadFailed:
+      description: |
+        知识库源文件读取失败（`RICCON-KB-502`）：对象存储不可用、读取超时或流中断。
+        响应为 `ProblemDetail`，只含脱敏说明与 traceId；不包含对象 key、桶名、存储端点、预签名 URL 或凭据。
       content:
         application/problem+json:
           schema:
