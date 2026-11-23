@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0835",
+  "task_id": "TASK-0166",
+  "command": "while ! mkdir '/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T//riccon-maven.lock' 2>/dev/null; do sleep 5; done; trap 'rmdir \"/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T//riccon-maven.lock\" 2>/dev/null || true' EXIT; ./mvnw -q -T1C -pl apps/api -am test -Dtest='KnowledgeAclApiTest,KnowledgeAuditFailClosedTest,KnowledgeDeleteReindexApiTest,KnowledgeDownloadApiTest,KnowledgeRetentionTest,KnowledgeAuditPolicyTest,KnowledgeAdminReadAuditTest,KnowledgeIndexUnavailableTest' -Dsurefire.failIfNoSpecifiedTests=false",
+  "manual": false,
+  "commit": "cbd761f46d2150c90424dd29768415f16a630f9e",
+  "dirty": true,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0166/EV-0835-2026-11-23T11-57-59-051+08-00-while-mkdir-var-folders-jz-47nmh5g113sb1674f5q-t.log",
+  "output_sha256": "cb68e5dfd89dc5485e0d0ce64a85671db6c9eab0965d964f4ed1126829faed8b",
+  "output_bytes": 252790,
+  "agent": "riccon/builder-kb-acl",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-23T11:56:37.093+08:00",
+  "finished_at": "2026-11-23T11:57:58.237+08:00",
+  "duration_ms": 81143,
+  "note": "M05-B3 修复主树 API 定向 attestation：ACL/RBAC/SEARCH/reindex/保留（worker 证据见 EV-0831）",
+  "recorded_at": "2026-11-23T11:57:59.056+08:00"
+}
