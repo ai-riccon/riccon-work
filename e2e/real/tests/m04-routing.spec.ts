@@ -1085,7 +1085,8 @@ test.describe('M04-B11a 真实栈降级与审计', () => {
       const citationDrawer = page.getByRole('dialog').filter({ hasText: '引用详情' });
       await expect(citationDrawer.getByText('引用详情')).toBeVisible();
       await expect(citationDrawer.getByRole('heading', { name: 'market.docx' })).toBeVisible();
-      await expect(citationDrawer.getByText(/类型：文件；定位：\s*第 \d+ 段/)).toBeVisible();
+      await expect(citationDrawer.getByText('文件', { exact: true })).toBeVisible();
+      await expect(citationDrawer.getByText(/^第 \d+ 段$/)).toBeVisible();
       const snippet = (await citationDrawer.locator('.citation-snippet').innerText()).trim();
       expect(snippet.length, '文件引用抽屉必须展示非空片段').toBeGreaterThan(0);
       await page.keyboard.press('Escape');

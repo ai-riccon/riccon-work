@@ -377,7 +377,7 @@ test.describe('M04-B11b 真实栈配额与成本', () => {
           .filter({ hasText: '日窗口' })
           .getByText(formattedLimit, { exact: true }),
       ).toBeVisible();
-      await expect(page.getByText(/\+\d{2}:\d{2}$/).first()).toBeVisible();
+      await expect(page.getByText(/\+\d{2}:\d{2}（还有 \d+ (小时|天)）$/).first()).toBeVisible();
       await expect(page.getByRole('button', { name: /调整限额/ })).toHaveCount(0);
       await expect(page.getByText('只读', { exact: true })).toBeVisible();
 
@@ -889,7 +889,8 @@ SELECT GROUP_CONCAT(LOWER(HEX(model_id)) ORDER BY position SEPARATOR ',')
       expect(problem.limit).toBe(before.daily.used + 1);
       expect(problem.used).toBe(before.daily.used + 1);
       expect(problem.detail).toContain('已达日限额');
-      await expect(page.getByText('请求过于频繁，请稍后重试。')).toBeVisible();
+      await expect(page.locator('.message-error').getByText(/已达日限额/)).toBeVisible();
+      await expect(page.getByText('请求过于频繁，请稍后重试。')).toHaveCount(0);
       await expect(page.getByText('错误码：RICCON-QUOTA-429')).toBeVisible();
       const retry = page.locator('.message-error').getByRole('button', { name: /重\s*试/ });
       await expect(retry).toBeVisible();
