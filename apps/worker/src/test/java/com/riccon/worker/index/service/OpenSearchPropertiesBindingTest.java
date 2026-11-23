@@ -14,6 +14,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.MutablePropertySources;
 import org.springframework.core.env.PropertySource;
 import org.springframework.core.env.SystemEnvironmentPropertySource;
 import org.springframework.core.io.ClassPathResource;
@@ -33,6 +34,9 @@ import org.springframework.core.io.ClassPathResource;
  *
  * <p>测试把真实的 {@code application.yml} 作为最低优先级属性源加载，并用
  * {@link SystemEnvironmentPropertySource} 模拟环境变量；不启动完整 Worker 栈、不连外部服务。
+ * 每个用例先移除宿主 JVM 的 {@code systemEnvironment}/{@code systemProperties}，避免 CI 或
+ * M05 gate 导出的 {@code RICCON_OPENSEARCH_INDEX_VERSION} 等变量让“默认 v1”用例假失败
+ * （REV-TASK-0169-001 F-009）。
  */
 class OpenSearchPropertiesBindingTest {
 
@@ -49,7 +53,8 @@ class OpenSearchPropertiesBindingTest {
     @Test
     @DisplayName("RICCON_OPENSEARCH_INDEX_VERSION=v2 绑定为 v2")
     void adrIndexVersionKey_bindsToV2() {
-        runner.withInitializer(environmentWith(Map.of("RICCON_OPENSEARCH_INDEX_VERSION", "v2")))
+        runner.withInitializer(isolateHostIndexEnvironment())
+                .withInitializer(environmentWith(Map.of("RICCON_OPENSEARCH_INDEX_VERSION", "v2")))
                 .run(context -> assertThat(
                                 context.getBean(OpenSearchProperties.class).indexVersion())
                         .isEqualTo("v2"));
@@ -59,17 +64,18 @@ class OpenSearchPropertiesBindingTest {
     @Test
     @DisplayName("RICCON_WORKER_OPENSEARCH_INDEX_VERSION=v2 仍可覆盖")
     void workerIndexVersionKey_stillOverrides() {
-        runner.withInitializer(environmentWith(Map.of("RICCON_WORKER_OPENSEARCH_INDEX_VERSION", "v2")))
+        runner.withInitializer(isolateHostIndexEnvironment())
+                .withInitializer(environmentWith(Map.of("RICCON_WORKER_OPENSEARCH_INDEX_VERSION", "v2")))
                 .run(context -> assertThat(
                                 context.getBean(OpenSearchProperties.class).indexVersion())
                         .isEqualTo("v2"));
     }
 
-    /** 未设置任何环境变量时使用 v1/riccon-kb 默认值。 */
+    /** 宿主即使导出 v2/worker 键，未显式注入时仍使用 v1/riccon-kb 默认值。 */
     @Test
-    @DisplayName("未设置环境变量时使用默认 v1/riccon-kb")
+    @DisplayName("宿主 env 设 v2 时默认仍为 v1/riccon-kb")
     void defaults_areV1AndRicconKb() {
-        runner.run(context -> {
+        runner.withInitializer(isolateHostIndexEnvironment()).run(context -> {
             OpenSearchProperties properties = context.getBean(OpenSearchProperties.class);
             assertThat(properties.indexVersion()).isEqualTo("v1");
             assertThat(properties.indexPrefix()).isEqualTo("riccon-kb");
@@ -80,7 +86,8 @@ class OpenSearchPropertiesBindingTest {
     @Test
     @DisplayName("RICCON_OPENSEARCH_INDEX_PREFIX 绑定为自定义前缀")
     void adrIndexPrefixKey_bindsToPrefix() {
-        runner.withInitializer(environmentWith(Map.of("RICCON_OPENSEARCH_INDEX_PREFIX", "riccon-kb-adr")))
+        runner.withInitializer(isolateHostIndexEnvironment())
+                .withInitializer(environmentWith(Map.of("RICCON_OPENSEARCH_INDEX_PREFIX", "riccon-kb-adr")))
                 .run(context -> assertThat(
                                 context.getBean(OpenSearchProperties.class).indexPrefix())
                         .isEqualTo("riccon-kb-adr"));
@@ -90,7 +97,8 @@ class OpenSearchPropertiesBindingTest {
     @Test
     @DisplayName("RICCON_WORKER_OPENSEARCH_INDEX_PREFIX 仍可覆盖")
     void workerIndexPrefixKey_stillOverrides() {
-        runner.withInitializer(environmentWith(Map.of("RICCON_WORKER_OPENSEARCH_INDEX_PREFIX", "riccon-kb-spring")))
+        runner.withInitializer(isolateHostIndexEnvironment())
+                .withInitializer(environmentWith(Map.of("RICCON_WORKER_OPENSEARCH_INDEX_PREFIX", "riccon-kb-spring")))
                 .run(context -> assertThat(
                                 context.getBean(OpenSearchProperties.class).indexPrefix())
                         .isEqualTo("riccon-kb-spring"));
@@ -107,6 +115,22 @@ class OpenSearchPropertiesBindingTest {
         } catch (IOException ex) {
             throw new IllegalStateException("failed to load worker application.yml", ex);
         }
+    }
+
+    /**
+     * 移除宿主 JVM 的环境变量/系统属性属性源，隔离 `RICCON_*` 索引键。
+     *
+     * <p>只移除这两个标准属性源；`application.yml` 与测试显式注入的属性源保持不变，
+     * 因此默认值用例仍能验证 YAML 的 `:v1` / `:riccon-kb` 回退。
+     *
+     * @return 上下文初始化器
+     */
+    private static ApplicationContextInitializer<ConfigurableApplicationContext> isolateHostIndexEnvironment() {
+        return context -> {
+            MutablePropertySources sources = context.getEnvironment().getPropertySources();
+            sources.remove("systemEnvironment");
+            sources.remove("systemProperties");
+        };
     }
 
     /**
