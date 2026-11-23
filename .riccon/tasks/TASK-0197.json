@@ -25,12 +25,24 @@
     "V13MigrationTest/V12/V11 基线与遮罩测试通过；不改契约（1.4.0-m05 已声明 bbox/ocrConfidence）；spotless"
   ],
   "evidence": [
-    "EV-0910"
+    "EV-0910",
+    "EV-0911",
+    "EV-0913",
+    "EV-0914"
   ],
   "tools_used": [],
   "blocker": null,
   "created_at": "2026-11-23T15:30:56.961+08:00",
   "updated_at": "2026-11-23T16:12:18.427+08:00",
   "baseline_commit": "15472ad",
-  "end_commit": "a976197"
+  "end_commit": "a976197",
+  "scope_amendment": {
+    "at": "2026-11-23T08:54:18.558Z",
+    "by": "riccon/lead",
+    "reason": "V13 必要基线更新：builder 在 a976197 内把 ApiApplicationTests/M04V2VerifierBoundaryTest 加入 write_scope；两者只改 schema 版本断言，属迁移基线，Lead 追认。EV-0912 为负向失败证据，保留文件不绑定。",
+    "added": [
+      "apps/api/src/test/java/com/riccon/api/ApiApplicationTests.java",
+      "apps/api/src/test/java/com/riccon/api/security/m04verify/M04V2VerifierBoundaryTest.java"
+    ]
+  }
 }

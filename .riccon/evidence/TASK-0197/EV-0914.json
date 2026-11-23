@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0914",
+  "task_id": "TASK-0197",
+  "command": "LOCK=\"${TMPDIR:-/tmp}/riccon-maven.lock\"; while ! mkdir \"$LOCK\" 2>/dev/null; do sleep 5; done; trap 'rmdir \"$LOCK\" 2>/dev/null || true' EXIT; ./mvnw -q -T1C -pl apps/api -am test -Dtest=M04V2VerifierBoundaryTest -Dsurefire.failIfNoSpecifiedTests=false",
+  "manual": false,
+  "commit": "a97619783a0586378a0828caff0be303e8ad0c08",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0197/EV-0914-2026-11-23T16-42-01-346+08-00-lock-tmpdir-tmp-riccon-maven-lock-while-mkdir-lo.log",
+  "output_sha256": "0f594bcf5853780319c3dcdccbe25ce45f9d37f62aafdbe1d7acedcfcf2a08ef",
+  "output_bytes": 48159,
+  "agent": "riccon/verifier",
+  "cwd": "/private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/opencode/riccon-b9-v13-verify-wt",
+  "started_at": "2026-11-23T16:41:13.074+08:00",
+  "finished_at": "2026-11-23T16:42:00.712+08:00",
+  "duration_ms": 47637,
+  "note": "独立验证：M04V2VerifierBoundaryTest schema 12→13 基线（builder EV-0910 未覆盖）（worktree 原 EV-0913，回灌重编号 EV-0914）",
+  "recorded_at": "2026-11-23T16:42:01.349+08:00"
+}

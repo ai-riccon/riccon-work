@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0911",
+  "task_id": "TASK-0197",
+  "command": "LOCK=\"${TMPDIR:-/tmp}/riccon-maven.lock\"; while ! mkdir \"$LOCK\" 2>/dev/null; do sleep 5; done; trap 'rmdir \"$LOCK\" 2>/dev/null || true' EXIT; ./mvnw -q -T1C -pl apps/api -am test -Dtest='*Citation*Test,*Chat*Test,*Research*Test,V11MigrationTest,V12MigrationTest,V13MigrationTest,ApiApplicationTests' -Dsurefire.failIfNoSpecifiedTests=false && ./mvnw -q -T1C -pl apps/worker -am test -Dtest='*Report*Test,*Research*Test,*SchemaVersion*Test' -Dsurefire.failIfNoSpecifiedTests=false",
+  "manual": false,
+  "commit": "a97619783a0586378a0828caff0be303e8ad0c08",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0197/EV-0911-2026-11-23T16-33-12-735+08-00-lock-tmpdir-tmp-riccon-maven-lock-while-mkdir-lo.log",
+  "output_sha256": "b82989a975c9a04675757b02ada47e0ad1daa1599933713c0d4e7a5add4207e3",
+  "output_bytes": 446412,
+  "agent": "riccon/verifier",
+  "cwd": "/private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/opencode/riccon-b9-v13-verify-wt",
+  "started_at": "2026-11-23T16:25:50.356+08:00",
+  "finished_at": "2026-11-23T16:33:11.998+08:00",
+  "duration_ms": 441640,
+  "note": "独立验证：V13 迁移/回滚/J1J2 bbox/遮蔽/历史 NULL；a976197 隔离 worktree（worktree 原 EV-0910，回灌重编号 EV-0911）",
+  "recorded_at": "2026-11-23T16:33:12.742+08:00"
+}
