@@ -17,7 +17,19 @@ export type StubScenario =
   | 'citation-source-404'
   | 'rename-409'
   | 'rename-403'
-  | 'rename-404';
+  | 'rename-404'
+  | 'm05-list-403'
+  | 'm05-list-500'
+  | 'm05-download-502'
+  | 'm05-reindex-409'
+  | 'm05-reindex-503'
+  | 'm05-quota-429'
+  | 'm05-citation-excel'
+  | 'm05-citation-ocr'
+  | 'm05-citation-ocr-low'
+  | 'm05-citation-no-access'
+  | 'm05-citation-deleted'
+  | 'm05-citation-no-source';
 
 /** stub 控制面；控制端点不属于产品 OpenAPI，仅 E2E 使用。 */
 export interface StubControl {
@@ -29,6 +41,10 @@ export interface StubControl {
   revokeSessions: () => Promise<void>;
   /** 播种 M03 部门/空间演示数据；只影响当前用例。 */
   seedM03: () => Promise<void>;
+  /** 播种 M05 知识库文档/ACL 演示数据；只影响当前用例。 */
+  seedM05: () => Promise<void>;
+  /** 读取 M05 stub 审计动作；仅用于验证 E2E 触发的动作序列。 */
+  audit: () => Promise<Array<Record<string, unknown>>>;
 }
 
 /**
@@ -58,17 +74,33 @@ function createStubControl(request: APIRequestContext): StubControl {
       const response = await request.post(`${STUB_URL}/__stub__/m03-seed`);
       expect(response.ok(), 'stub M03 数据播种失败').toBe(true);
     },
+    seedM05: async () => {
+      const response = await request.post(`${STUB_URL}/__stub__/m05-seed`);
+      expect(response.ok(), 'stub M05 知识库数据播种失败').toBe(true);
+    },
+    audit: async () => {
+      const response = await request.get(`${STUB_URL}/__stub__/m05-audit`);
+      expect(response.ok(), 'stub M05 审计读取失败').toBe(true);
+      const payload = (await response.json()) as { items: Array<Record<string, unknown>> };
+      return payload.items;
+    },
   };
 }
 
 /**
  * 框架告警文本白名单。
  *
- * 当前为空：/chat、/research、/admin、/login 页面在修复 antd 6 Alert 属性与 Umi MFSU
- * 互操作问题后不应出现任何框架 console.error。若未来必须放行，必须在此写明来源、版本、
- * 原因与移除条件，禁止在用例里临时屏蔽。网络错误不走这里，由下方的 URL+状态码匹配处理。
+ * 当前只放行 M05 知识库详情解析警告列表触发的 antd `List` 弃用告警：
+ * - 来源：`apps/web/src/pages/knowledge/components/knowledge-detail.tsx` 的 `<List data-testid="knowledge-warning-list">`；
+ * - 版本：antd 6.7.1 在 6.6.0 起把 `List` 标记 deprecated，并在 `console.error` 输出固定文案；
+ * - 原因：该告警不是运行时错误，但会让 console 守卫把整条 M05 用例判红；
+ * - 移除条件：owner `riccon/builder-kb-web` 在 M05 gate 前把 `List` 替换为 `Listy` 后删除本项。
+ *
+ * 网络错误不走这里，由下方的 URL+状态码匹配处理。
  */
-const CONSOLE_ERROR_ALLOWLIST: RegExp[] = [];
+const CONSOLE_ERROR_ALLOWLIST: RegExp[] = [
+  /^Warning: \[antd: List\] The `List` component is deprecated/,
+];
 
 /**
  * 已知可接受的网络错误白名单。

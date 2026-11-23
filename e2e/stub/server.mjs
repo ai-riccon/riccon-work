@@ -123,6 +123,31 @@ const M04_MONTHLY_RESET = '2026-12-01T00:00:00+08:00';
 /** 成本免责声明；与 OpenAPI const 逐字一致。 */
 const M04_COST_DISCLAIMER = '成本为按调用时价格快照估算，不是供应商账单。';
 
+/** M05 知识库合成文档 ID；E2E 只依赖这些稳定 UUID。 */
+const M05_DOC_EXCEL_MULTI = 'b5b5b5b5-b5b5-45b5-85b5-000000000001';
+const M05_DOC_EXCEL_TRUNCATED = 'b5b5b5b5-b5b5-45b5-85b5-000000000002';
+const M05_DOC_EXCEL_CORRUPT = 'b5b5b5b5-b5b5-45b5-85b5-000000000003';
+const M05_DOC_OCR_OK = 'b5b5b5b5-b5b5-45b5-85b5-000000000004';
+const M05_DOC_OCR_LOW = 'b5b5b5b5-b5b5-45b5-85b5-000000000005';
+const M05_DOC_OCR_PARTIAL = 'b5b5b5b5-b5b5-45b5-85b5-000000000006';
+const M05_DOC_OCR_FAILED = 'b5b5b5b5-b5b5-45b5-85b5-000000000007';
+const M05_DOC_OCR_DISABLED = 'b5b5b5b5-b5b5-45b5-85b5-000000000008';
+const M05_DOC_ACL_USERS = 'b5b5b5b5-b5b5-45b5-85b5-000000000009';
+const M05_DOC_ACL_DEPT = 'b5b5b5b5-b5b5-45b5-85b5-00000000000a';
+const M05_DOC_ACL_CREATOR = 'b5b5b5b5-b5b5-45b5-85b5-00000000000b';
+const M05_DOC_TENANT = 'b5b5b5b5-b5b5-45b5-85b5-00000000000c';
+const M05_DOC_EXPIRED = 'b5b5b5b5-b5b5-45b5-85b5-00000000000d';
+const M05_DOC_NO_SOURCE = 'b5b5b5b5-b5b5-45b5-85b5-00000000000e';
+
+/** M05 合成文件 ID；知识库下载只暴露文档 ID，不暴露这些文件 ID。 */
+const M05_FILE_EXCEL = 'c5c5c5c5-c5c5-45c5-85c5-000000000001';
+const M05_FILE_OCR = 'c5c5c5c5-c5c5-45c5-85c5-000000000002';
+const M05_FILE_ACL = 'c5c5c5c5-c5c5-45c5-85c5-000000000003';
+
+/** 知识库保留到期时间；固定值让页面断言稳定（Asia/Shanghai，带偏移）。 */
+const M05_RETENTION_EXPIRES = '2027-05-22T10:00:00+08:00';
+const M05_RETENTION_EXPIRED = '2026-11-01T00:00:00+08:00';
+
 /**
  * E2E 登录账号表；key 为 `tenantCode/username`。
  *
@@ -198,6 +223,7 @@ const M03_CREDENTIALS = {
       'department.read',
       'knowledge.read',
       'knowledge.manage',
+      'knowledge.acl.manage',
       'tenant.user.manage',
       'quota.read',
       'cost.read',
@@ -772,6 +798,8 @@ function createInitialState() {
     workspaceMembers: {},
     // M04：模型路由/key/配额/成本页面的合成状态；由 /__stub__/m04-seed 填充。
     m04: createM04State(),
+    // M05：知识库文档、ACL 与审计；由 /__stub__/m05-seed 填充。
+    knowledge: { seeded: false, documents: [], audit: [] },
   };
 }
 
@@ -1403,7 +1431,162 @@ function finishRun(run, status) {
  * @param conversation 会话
  * @param raw 已读取的请求体
  */
+/**
+ * 构造 M05 场景引用；用于在浏览器中验证 Excel/OCR 定位、低置信、遮蔽与无源文件。
+ *
+ * 只有显式切换 stub 场景时才返回；默认仍由上传文件生成引用，避免影响 J1 既有用例。
+ *
+ * @returns 引用快照或 null
+ */
+function m05ScenarioCitation() {
+  switch (scenario) {
+    case 'm05-citation-excel':
+      return {
+        ordinal: 1,
+        sourceType: 'KNOWLEDGE',
+        knowledgeDocumentId: M05_DOC_EXCEL_MULTI,
+        fileId: M05_FILE_EXCEL,
+        chunkId: null,
+        title: '销售数据.xlsx',
+        snippet: '销售数据!B2:D10：华东区季度销售额 128 万元，同比增长 18%。',
+        score: 0.91,
+        locatorType: 'SHEET',
+        sheetName: '销售数据',
+        cellRange: 'B2:D10',
+        pageNo: null,
+        paragraphNo: null,
+        bbox: null,
+        ocrConfidence: null,
+        sourceStatus: 'AVAILABLE',
+      };
+    case 'm05-citation-ocr':
+      return {
+        ordinal: 1,
+        sourceType: 'KNOWLEDGE',
+        knowledgeDocumentId: M05_DOC_OCR_OK,
+        fileId: M05_FILE_OCR,
+        chunkId: null,
+        title: '扫描合同.png',
+        snippet: '甲方应在 2026 年 12 月 31 日前完成验收。',
+        score: 0.88,
+        locatorType: 'PAGE',
+        sheetName: null,
+        cellRange: null,
+        pageNo: 2,
+        paragraphNo: null,
+        bbox: { x: 120, y: 340, w: 480, h: 200 },
+        ocrConfidence: 0.93,
+        sourceStatus: 'AVAILABLE',
+      };
+    case 'm05-citation-ocr-low':
+      return {
+        ordinal: 1,
+        sourceType: 'KNOWLEDGE',
+        knowledgeDocumentId: M05_DOC_OCR_LOW,
+        fileId: M05_FILE_OCR,
+        chunkId: null,
+        title: '模糊票据.jpg',
+        snippet: '报销金额：壹仟贰佰元（识别结果可能不准确）。',
+        score: 0.61,
+        locatorType: 'PAGE',
+        sheetName: null,
+        cellRange: null,
+        pageNo: 1,
+        paragraphNo: null,
+        bbox: { x: 40, y: 60, w: 300, h: 120 },
+        ocrConfidence: 0.52,
+        sourceStatus: 'AVAILABLE',
+      };
+    case 'm05-citation-no-access':
+      return {
+        ordinal: 1,
+        sourceType: 'KNOWLEDGE',
+        knowledgeDocumentId: M05_DOC_ACL_USERS,
+        fileId: M05_FILE_ACL,
+        chunkId: null,
+        title: '',
+        snippet: '',
+        score: null,
+        locatorType: null,
+        sheetName: null,
+        cellRange: null,
+        pageNo: null,
+        paragraphNo: null,
+        bbox: null,
+        ocrConfidence: null,
+        sourceStatus: 'NO_ACCESS',
+      };
+    case 'm05-citation-deleted':
+      return {
+        ordinal: 1,
+        sourceType: 'KNOWLEDGE',
+        knowledgeDocumentId: M05_DOC_EXPIRED,
+        fileId: M05_FILE_ACL,
+        chunkId: null,
+        title: '',
+        snippet: '',
+        score: null,
+        locatorType: null,
+        sheetName: null,
+        cellRange: null,
+        pageNo: null,
+        paragraphNo: null,
+        bbox: null,
+        ocrConfidence: null,
+        sourceStatus: 'DELETED',
+      };
+    case 'm05-citation-no-source':
+      return {
+        ordinal: 1,
+        sourceType: 'KNOWLEDGE',
+        knowledgeDocumentId: null,
+        fileId: null,
+        chunkId: null,
+        title: '种子语料：行业知识',
+        snippet: '行业知识片段：企业协同办公渗透率持续提升。',
+        score: 0.7,
+        locatorType: 'PARAGRAPH',
+        sheetName: null,
+        cellRange: null,
+        pageNo: null,
+        paragraphNo: 3,
+        bbox: null,
+        ocrConfidence: null,
+        sourceStatus: 'AVAILABLE',
+      };
+    default:
+      return null;
+  }
+}
+
+/**
+ * 构造 M05-AC-17/18 的配额 429 响应；重置时间按当前时间 +3 小时，保证相对时间可断言。
+ *
+ * @returns ProblemDetail 响应
+ */
+function m05QuotaProblem() {
+  return {
+    body: {
+      type: 'about:blank',
+      title: '配额超限',
+      status: 429,
+      code: 'RICCON-QUOTA-429',
+      traceId: nextTraceId(),
+      detail: '已达日限额，请稍后恢复。',
+      scopeType: 'TENANT',
+      window: 'DAILY',
+      resetsAt: new Date(Date.now() + 3 * 3_600_000).toISOString(),
+    },
+    status: 429,
+    contentType: 'application/problem+json; charset=utf-8',
+  };
+}
+
 function handleSendMessage(req, res, conversation, raw) {
+  if (scenario === 'm05-quota-429') {
+    writeResult(res, m05QuotaProblem());
+    return;
+  }
   const body = readJson(raw);
   const content = typeof body?.content === 'string' ? body.content.trim() : '';
   const clientMessageId = typeof body?.clientMessageId === 'string' ? body.clientMessageId : '';
@@ -1459,10 +1642,13 @@ function handleSendMessage(req, res, conversation, raw) {
   conversation.updatedAt = new Date().toISOString();
   conversation.lastMessageAt = conversation.updatedAt;
 
+  const scenarioCitation = m05ScenarioCitation();
   const citations =
     scenario === 'citation-source-404'
       ? [unavailableSourceCitation()]
-      : usableFiles.slice(0, 2).map((file, index) => citationForFile(file, index + 1));
+      : scenarioCitation
+        ? [scenarioCitation]
+        : usableFiles.slice(0, 2).map((file, index) => citationForFile(file, index + 1));
   const wantsNoCitation = /无引用|无资料|没有资料/.test(content);
   const effectiveCitations = wantsNoCitation ? [] : citations;
   const answer = buildAnswer(content, effectiveCitations);
@@ -2331,6 +2517,15 @@ function handleControl(req, res, pathname, raw) {
   if (pathname === '/__stub__/m03-seed' && req.method === 'POST') {
     seedM03State();
     writeResult(res, json({ ok: true, departments: state.departments.length }));
+    return true;
+  }
+  if (pathname === '/__stub__/m05-seed' && req.method === 'POST') {
+    seedM05State();
+    writeResult(res, json({ ok: true, documents: state.knowledge.documents.length }));
+    return true;
+  }
+  if (pathname === '/__stub__/m05-audit' && req.method === 'GET') {
+    writeResult(res, json({ ok: true, items: state.knowledge.audit }));
     return true;
   }
   if (pathname === '/__stub__/m04-seed' && req.method === 'POST') {
@@ -4026,6 +4221,767 @@ function seedM03State() {
   state.researchTasks = [deptResearchTask];
 }
 
+/**
+ * 播种 M05 知识库合成状态。
+ *
+ * 覆盖 Excel 多表/空表/隐藏表/截断、OCR 四态、ACL 三种范围、创建人例外、已到期文档与无源文件语料。
+ * 部门与成员关系只在缺失时补齐，避免覆盖 M03 用例自己播种的数据。
+ */
+function seedM05State() {
+  if (state.departments.length === 0) {
+    state.departments = [
+      {
+        id: M03_SALES_DEPARTMENT_ID,
+        tenantId: M03_TENANT_ACME,
+        name: '销售部',
+        status: 'ACTIVE',
+        managerUserId: M03_MANAGER_USER_ID,
+        createdAt: BASE_TIME,
+        updatedAt: BASE_TIME,
+      },
+      {
+        id: M03_MARKETING_DEPARTMENT_ID,
+        tenantId: M03_TENANT_ACME,
+        name: '市场部',
+        status: 'ACTIVE',
+        managerUserId: null,
+        createdAt: BASE_TIME,
+        updatedAt: BASE_TIME,
+      },
+      {
+        id: M03_ARCHIVED_DEPARTMENT_ID,
+        tenantId: M03_TENANT_ACME,
+        name: '综合部',
+        status: 'DISABLED',
+        managerUserId: null,
+        createdAt: BASE_TIME,
+        updatedAt: BASE_TIME,
+      },
+    ];
+    state.users = state.users.map((user) => {
+      if (user.id === M03_MEMBER_USER_ID || user.id === M03_MANAGER_USER_ID) {
+        return { ...user, departmentId: M03_SALES_DEPARTMENT_ID };
+      }
+      if (user.id === M03_OUTSIDER_USER_ID) {
+        return { ...user, departmentId: M03_MARKETING_DEPARTMENT_ID };
+      }
+      if (user.id === M03_DISABLED_USER_ID) {
+        return { ...user, departmentId: M03_ARCHIVED_DEPARTMENT_ID };
+      }
+      return user;
+    });
+  }
+
+  const createdAt = BASE_TIME;
+  /**
+   * 构造知识库文档；未给出的字段使用 M05 默认值。
+   *
+   * @param overrides 覆盖字段
+   * @returns 内部文档记录
+   */
+  const document = (overrides) => ({
+    tenantId: M03_TENANT_ACME,
+    sourceType: 'UPLOAD',
+    status: 'INDEXED',
+    checksum: pseudoSha256(overrides.title ?? 'm05-document'),
+    mimeType: 'application/pdf',
+    sizeBytes: 4096,
+    errorCode: null,
+    errorMessage: null,
+    indexedAt: createdAt,
+    createdAt,
+    visibility: 'TENANT',
+    departmentId: null,
+    userIds: [],
+    creatorUserId: M03_ADMIN_USER_ID,
+    parseEngine: 'PDFBOX',
+    warnings: [],
+    parseSummary: null,
+    sourceFileAccessLimited: false,
+    retentionExpiresAt: M05_RETENTION_EXPIRES,
+    retentionDays: 180,
+    retentionPolicy: 'DEPLOYMENT_DEFAULT',
+    deletedAt: null,
+    deletedReason: null,
+    ...overrides,
+  });
+
+  state.knowledge = {
+    seeded: true,
+    documents: [
+      document({
+        id: M05_DOC_EXCEL_MULTI,
+        title: '销售数据.xlsx',
+        fileId: M05_FILE_EXCEL,
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        sizeBytes: 8192,
+        parseEngine: 'POI',
+        warnings: ['HIDDEN_SHEETS_SKIPPED:1'],
+        parseSummary: {
+          sheets: [
+            {
+              name: '销售数据',
+              cellRange: 'A1:F20',
+              empty: false,
+              indexed: true,
+              indexedRange: 'A1:F20',
+            },
+            {
+              name: '汇总',
+              cellRange: 'A1:D8',
+              empty: false,
+              indexed: true,
+              indexedRange: 'A1:D8',
+            },
+            { name: '空表', cellRange: null, empty: true, indexed: true, indexedRange: null },
+          ],
+          hiddenSheetCount: 1,
+          ocr: null,
+        },
+      }),
+      document({
+        id: M05_DOC_EXCEL_TRUNCATED,
+        title: '明细大表.xlsx',
+        fileId: M05_FILE_EXCEL,
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        sizeBytes: 16384,
+        parseEngine: 'POI',
+        warnings: ['ROWS_TRUNCATED:明细'],
+        parseSummary: {
+          sheets: [
+            {
+              name: '明细',
+              cellRange: 'A1:Z200000',
+              empty: false,
+              indexed: true,
+              indexedRange: 'A1:Z50000',
+            },
+            {
+              name: '附件',
+              cellRange: 'A1:B10',
+              empty: false,
+              indexed: false,
+              indexedRange: null,
+            },
+          ],
+          hiddenSheetCount: 0,
+          ocr: null,
+        },
+      }),
+      document({
+        id: M05_DOC_EXCEL_CORRUPT,
+        title: '损坏数据.xlsx',
+        fileId: M05_FILE_EXCEL,
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        sizeBytes: 512,
+        status: 'FAILED',
+        errorCode: 'KB_PARSE_CORRUPT',
+        errorMessage: 'at java.util.zip.ZipFile.read(ZipFile.java:1)',
+        indexedAt: null,
+        parseEngine: 'POI',
+      }),
+      document({
+        id: M05_DOC_OCR_OK,
+        title: '扫描合同.png',
+        fileId: M05_FILE_OCR,
+        mimeType: 'image/png',
+        sizeBytes: 20480,
+        parseEngine: 'TESSERACT',
+        parseSummary: {
+          sheets: [],
+          hiddenSheetCount: 0,
+          ocr: { averageConfidence: 0.93, lowConfidencePages: [], failedPages: [] },
+        },
+      }),
+      document({
+        id: M05_DOC_OCR_LOW,
+        title: '模糊票据.jpg',
+        fileId: M05_FILE_OCR,
+        mimeType: 'image/jpeg',
+        sizeBytes: 18432,
+        parseEngine: 'TESSERACT',
+        warnings: ['LOW_CONFIDENCE', 'LOW_CONFIDENCE_PAGES:[1]'],
+        parseSummary: {
+          sheets: [],
+          hiddenSheetCount: 0,
+          ocr: { averageConfidence: 0.52, lowConfidencePages: [1], failedPages: [] },
+        },
+      }),
+      document({
+        id: M05_DOC_OCR_PARTIAL,
+        title: '多页扫描.pdf',
+        fileId: M05_FILE_OCR,
+        mimeType: 'application/pdf',
+        sizeBytes: 30720,
+        parseEngine: 'TESSERACT',
+        warnings: ['FAILED_PAGES:[2]'],
+        parseSummary: {
+          sheets: [],
+          hiddenSheetCount: 0,
+          ocr: { averageConfidence: 0.88, lowConfidencePages: [], failedPages: [2] },
+        },
+      }),
+      document({
+        id: M05_DOC_OCR_FAILED,
+        title: '全失败扫描.pdf',
+        fileId: M05_FILE_OCR,
+        mimeType: 'application/pdf',
+        sizeBytes: 10240,
+        status: 'FAILED',
+        errorCode: 'KB_OCR_FAILED',
+        errorMessage: 'OCR 识别失败（已脱敏）。',
+        indexedAt: null,
+        parseEngine: 'TESSERACT',
+      }),
+      document({
+        id: M05_DOC_OCR_DISABLED,
+        title: '图片-OCR关闭.png',
+        fileId: M05_FILE_OCR,
+        mimeType: 'image/png',
+        sizeBytes: 9216,
+        status: 'FAILED',
+        errorCode: 'KB_OCR_DISABLED',
+        errorMessage: null,
+        indexedAt: null,
+        parseEngine: 'NONE',
+      }),
+      document({
+        id: M05_DOC_ACL_USERS,
+        title: '销售制度.docx',
+        fileId: M05_FILE_ACL,
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        sizeBytes: 6144,
+        visibility: 'USERS',
+        userIds: [M03_MEMBER_USER_ID],
+        parseEngine: 'PDFBOX',
+      }),
+      document({
+        id: M05_DOC_ACL_DEPT,
+        title: '部门手册.pdf',
+        fileId: M05_FILE_ACL,
+        visibility: 'DEPT',
+        departmentId: M03_SALES_DEPARTMENT_ID,
+      }),
+      document({
+        id: M05_DOC_ACL_CREATOR,
+        title: '李强的方案.docx',
+        fileId: M05_FILE_ACL,
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        visibility: 'USERS',
+        userIds: [M03_MEMBER_USER_ID],
+        creatorUserId: M03_MANAGER_USER_ID,
+        parseEngine: 'PDFBOX',
+      }),
+      document({
+        id: M05_DOC_TENANT,
+        title: '全员公告.pdf',
+        fileId: M05_FILE_ACL,
+      }),
+      document({
+        id: M05_DOC_EXPIRED,
+        title: '过期合同.pdf',
+        fileId: M05_FILE_ACL,
+        status: 'DELETED',
+        deletedAt: '2026-11-01T00:00:00+08:00',
+        deletedReason: 'RETENTION',
+        retentionExpiresAt: M05_RETENTION_EXPIRED,
+      }),
+      document({
+        id: M05_DOC_NO_SOURCE,
+        title: '种子语料：行业知识',
+        sourceType: 'SEED',
+        fileId: null,
+        creatorUserId: null,
+        parseEngine: 'NONE',
+      }),
+    ],
+    audit: [],
+  };
+}
+
+/**
+ * 返回账号的有效权限；与 sessionInfo 的员工权限收敛保持一致。
+ *
+ * @param account 登录账号
+ * @returns 权限码数组
+ */
+function m05Permissions(account) {
+  if (!account) {
+    return [];
+  }
+  const isMemberPersona = ['member', 'manager', 'outsider'].includes(account.persona);
+  return isMemberPersona ? MEMBER_PERMISSIONS : (account.permissions ?? []);
+}
+
+/**
+ * 判断账号是否可读取知识库文档（含创建人与租户管理员管理性读取）。
+ *
+ * @param account 登录账号
+ * @param document 文档
+ * @returns 可见返回 true
+ */
+function m05CanSee(account, document) {
+  if (!account || document.tenantId !== account.tenantId || document.status === 'DELETED') {
+    return false;
+  }
+  if (document.creatorUserId && document.creatorUserId === account.userId) {
+    return true;
+  }
+  if (m05Permissions(account).includes('knowledge.acl.manage')) {
+    return true;
+  }
+  if (document.visibility === 'TENANT') {
+    return true;
+  }
+  if (document.visibility === 'DEPT') {
+    const user = state.users.find((item) => item.id === account.userId);
+    const department = findDepartment(document.tenantId, document.departmentId);
+    return department?.status === 'ACTIVE' && user?.departmentId === document.departmentId;
+  }
+  if (document.visibility === 'USERS') {
+    return document.userIds.includes(account.userId);
+  }
+  return false;
+}
+
+/**
+ * 判断账号是否通过自身范围（而非管理性读取）可见文档。
+ *
+ * @param account 登录账号
+ * @param document 文档
+ * @returns 自然可见返回 true
+ */
+function m05NaturallyVisible(account, document) {
+  if (!account) {
+    return false;
+  }
+  if (document.creatorUserId && document.creatorUserId === account.userId) {
+    return true;
+  }
+  if (document.visibility === 'TENANT') {
+    return true;
+  }
+  if (document.visibility === 'DEPT') {
+    const user = state.users.find((item) => item.id === account.userId);
+    const department = findDepartment(document.tenantId, document.departmentId);
+    return department?.status === 'ACTIVE' && user?.departmentId === document.departmentId;
+  }
+  return document.visibility === 'USERS' && document.userIds.includes(account.userId);
+}
+
+/**
+ * 返回文档的 ACL 响应。
+ *
+ * @param document 文档
+ * @returns OpenAPI KnowledgeDocumentAcl
+ */
+function m05AclResponse(document) {
+  const users = [];
+  if (document.visibility === 'USERS') {
+    if (document.creatorUserId) {
+      users.push({
+        userId: document.creatorUserId,
+        displayName: m05DisplayName(document.creatorUserId),
+        creator: true,
+      });
+    }
+    for (const userId of document.userIds) {
+      if (userId !== document.creatorUserId) {
+        users.push({ userId, displayName: m05DisplayName(userId) });
+      }
+    }
+  }
+  return {
+    visibility: document.visibility,
+    departmentId: document.visibility === 'DEPT' ? document.departmentId : null,
+    users,
+    creatorUserId: document.creatorUserId,
+  };
+}
+
+/**
+ * 返回账号展示名；未知账号回退到 ID。
+ *
+ * @param userId 账号 ID
+ * @returns 展示名
+ */
+function m05DisplayName(userId) {
+  return state.users.find((item) => item.id === userId)?.displayName ?? userId;
+}
+
+/**
+ * 构造文档响应；不返回对象 key、存储端点或分块正文。
+ *
+ * @param document 文档
+ * @returns OpenAPI KnowledgeDocument
+ */
+function m05DocumentResponse(document) {
+  return {
+    id: document.id,
+    title: document.title,
+    sourceType: document.sourceType,
+    fileId: document.fileId ?? null,
+    status: document.status,
+    checksum: document.checksum,
+    mimeType: document.mimeType,
+    sizeBytes: document.sizeBytes,
+    errorCode: document.errorCode ?? null,
+    errorMessage: document.errorMessage ?? null,
+    indexedAt: document.indexedAt ?? null,
+    createdAt: document.createdAt,
+    visibility: document.visibility,
+    departmentId: document.visibility === 'DEPT' ? document.departmentId : null,
+    aclUserCount: document.visibility === 'USERS' ? document.userIds.length : 0,
+    parseEngine: document.parseEngine,
+    warnings: document.warnings ?? [],
+    parseSummary: document.parseSummary ?? null,
+    sourceFileAccessLimited: document.sourceFileAccessLimited === true,
+    retentionExpiresAt: document.retentionExpiresAt ?? null,
+    retentionDays: document.retentionDays ?? 180,
+    retentionPolicy: document.retentionPolicy ?? 'DEPLOYMENT_DEFAULT',
+  };
+}
+
+/**
+ * 写入一条 M05 合成审计；只供 E2E 通过控制端点断言动作序列，不代表真实审计实现。
+ *
+ * @param action 审计动作
+ * @param account 操作者
+ * @param document 目标文档
+ * @param extra 附加字段
+ */
+function m05Audit(action, account, document, extra = {}) {
+  state.knowledge.audit.push({
+    action,
+    tenantId: account?.tenantId ?? document?.tenantId ?? M03_TENANT_ACME,
+    actorId: account?.userId ?? null,
+    actorName: account?.displayName ?? '系统',
+    targetId: document?.id ?? null,
+    targetTitle: document?.title ?? null,
+    reason: extra.reason ?? null,
+    result: 'SUCCESS',
+    createdAt: new Date().toISOString(),
+  });
+}
+
+/**
+ * 处理 M05 知识库 API 子集；只实现 E2E 需要的员工端与 ACL 管理路径。
+ *
+ * @param req Node 请求
+ * @param res Node 响应
+ * @param url 解析后的 URL
+ * @param raw 请求体
+ * @param session 当前会话
+ * @returns 是否已处理
+ */
+function handleM05Api(req, res, url, raw, session) {
+  const { pathname, searchParams } = url;
+  const method = req.method ?? 'GET';
+  const account = currentAccount(session);
+  if (!pathname.startsWith('/api/v1/knowledge/documents')) {
+    return false;
+  }
+  if (!account) {
+    writeResult(res, problem(401, 'RICCON-AUTH-401', '未登录', '请先登录后再访问。'));
+    return true;
+  }
+  if (!m05Permissions(account).includes('knowledge.read')) {
+    writeResult(res, problem(403, 'RICCON-AUTH-403', '没有权限', '当前账号没有知识库读取权限。'));
+    return true;
+  }
+
+  // 列表：按 ACL 过滤；管理性读取不返回总数差异，统一只返回可见项。
+  if (pathname === '/api/v1/knowledge/documents' && method === 'GET') {
+    if (scenario === 'm05-list-403') {
+      writeResult(res, problem(403, 'RICCON-AUTH-403', '没有权限', '当前账号没有知识库读取权限。'));
+      return true;
+    }
+    if (scenario === 'm05-list-500') {
+      writeResult(res, problem(500, 'RICCON-COMMON-500', '服务暂不可用', '知识库暂时不可用。'));
+      return true;
+    }
+    const pageNo = Math.max(1, Number.parseInt(searchParams.get('page') ?? '1', 10) || 1);
+    const size = Math.min(
+      100,
+      Math.max(1, Number.parseInt(searchParams.get('size') ?? '20', 10) || 20),
+    );
+    const status = searchParams.get('status');
+    const visible = state.knowledge.documents
+      .filter((document) => m05CanSee(account, document))
+      .filter((document) => !status || document.status === status);
+    if (
+      m05Permissions(account).includes('knowledge.acl.manage') &&
+      visible.some((document) => !m05NaturallyVisible(account, document))
+    ) {
+      m05Audit('knowledge.document.admin_read', account, null, { reason: 'MANAGEMENT_READ' });
+    }
+    const start = (pageNo - 1) * size;
+    const items = visible.slice(start, start + size).map(m05DocumentResponse);
+    writeResult(
+      res,
+      json({
+        page: pageNo,
+        size,
+        total: visible.length,
+        totalPages: visible.length === 0 ? 0 : Math.ceil(visible.length / size),
+        items,
+      }),
+    );
+    return true;
+  }
+
+  // 登记文档：AC-06 端点路径；E2E 只用 API 校验 RBAC 与默认 TENANT。
+  if (pathname === '/api/v1/knowledge/documents' && method === 'POST') {
+    const csrfError = requireCsrf(session, req);
+    if (csrfError) {
+      writeResult(res, csrfError);
+      return true;
+    }
+    if (!m05Permissions(account).includes('knowledge.manage')) {
+      writeResult(res, problem(403, 'RICCON-AUTH-403', '没有权限', '只有租户管理员可以登记文档。'));
+      return true;
+    }
+    const body = readJson(raw);
+    const title = typeof body?.title === 'string' ? body.title.trim() : '';
+    if (!title || typeof body?.fileId !== 'string') {
+      writeResult(res, problem(400, 'RICCON-KB-400', '参数无效', '标题与来源文件不能为空。'));
+      return true;
+    }
+    const created = {
+      id: nextId('knowledge-document'),
+      tenantId: account.tenantId,
+      title,
+      sourceType: 'UPLOAD',
+      fileId: body.fileId,
+      status: 'PENDING',
+      checksum: pseudoSha256(`${title}:${body.fileId}`),
+      mimeType: 'application/pdf',
+      sizeBytes: 1024,
+      errorCode: null,
+      errorMessage: null,
+      indexedAt: null,
+      createdAt: new Date().toISOString(),
+      visibility: body.visibility ?? 'TENANT',
+      departmentId: body.departmentId ?? null,
+      userIds: Array.isArray(body.userIds) ? body.userIds : [],
+      creatorUserId: account.userId,
+      parseEngine: 'PDFBOX',
+      warnings: [],
+      parseSummary: null,
+      sourceFileAccessLimited: false,
+      retentionExpiresAt: M05_RETENTION_EXPIRES,
+      retentionDays: 180,
+      retentionPolicy: 'DEPLOYMENT_DEFAULT',
+      deletedAt: null,
+      deletedReason: null,
+    };
+    state.knowledge.documents.push(created);
+    writeResult(res, json(m05DocumentResponse(created), 202));
+    return true;
+  }
+
+  const aclMatch = /^\/api\/v1\/knowledge\/documents\/([^/]+)\/acl$/.exec(pathname);
+  const downloadMatch = /^\/api\/v1\/knowledge\/documents\/([^/]+)\/download$/.exec(pathname);
+  const reindexMatch = /^\/api\/v1\/knowledge\/documents\/([^/]+)\/reindex$/.exec(pathname);
+  const detailMatch = /^\/api\/v1\/knowledge\/documents\/([^/]+)$/.exec(pathname);
+
+  const resolveDocument = () => {
+    const documentId = decodeURIComponent(
+      (aclMatch ?? downloadMatch ?? reindexMatch ?? detailMatch)?.[1] ?? '',
+    );
+    return state.knowledge.documents.find((document) => document.id === documentId) ?? null;
+  };
+
+  const document = resolveDocument();
+  const isManager = m05Permissions(account).includes('knowledge.acl.manage');
+  const isCreator = document?.creatorUserId === account.userId;
+  // 重复删除幂等：已软删除文档对创建人/租户管理员仍返回 204，且不重复写审计。
+  if (
+    detailMatch &&
+    method === 'DELETE' &&
+    document &&
+    document.tenantId === account.tenantId &&
+    document.status === 'DELETED'
+  ) {
+    if (isManager || isCreator) {
+      res.writeHead(204, { 'Cache-Control': 'no-store' });
+      res.end();
+    } else {
+      writeResult(res, problem(404, 'RICCON-TENANT-404', '文档不存在', '文档不存在或已被删除。'));
+    }
+    return true;
+  }
+  if (!document || !m05CanSee(account, document)) {
+    writeResult(res, problem(404, 'RICCON-TENANT-404', '文档不存在', '文档不存在或已被删除。'));
+    return true;
+  }
+
+  const managementRead = isManager && !m05NaturallyVisible(account, document);
+  if (managementRead) {
+    m05Audit('knowledge.document.admin_read', account, document, { reason: 'MANAGEMENT_READ' });
+  }
+
+  if (aclMatch && method === 'GET') {
+    if (!isManager && !isCreator) {
+      writeResult(
+        res,
+        problem(403, 'RICCON-AUTH-403', '没有权限', '没有读取该文档可见范围的权限。'),
+      );
+      return true;
+    }
+    writeResult(res, json(m05AclResponse(document)));
+    return true;
+  }
+
+  if (aclMatch && method === 'PUT') {
+    const csrfError = requireCsrf(session, req);
+    if (csrfError) {
+      writeResult(res, csrfError);
+      return true;
+    }
+    if (!isManager && !isCreator) {
+      writeResult(
+        res,
+        problem(403, 'RICCON-AUTH-403', '没有权限', '没有修改该文档可见范围的权限。'),
+      );
+      return true;
+    }
+    const body = readJson(raw);
+    const visibility = body?.visibility;
+    if (!['TENANT', 'DEPT', 'USERS'].includes(visibility)) {
+      writeResult(
+        res,
+        problem(400, 'RICCON-KB-400', '可见范围无效', '可见范围必须是 TENANT、DEPT 或 USERS。'),
+      );
+      return true;
+    }
+    if (visibility === 'DEPT') {
+      const department = findDepartment(account.tenantId, body?.departmentId);
+      if (!department || department.status !== 'ACTIVE') {
+        writeResult(res, problem(400, 'RICCON-KB-400', '部门无效', '请选择单个启用部门。'));
+        return true;
+      }
+    }
+    if (visibility === 'USERS') {
+      const userIds = Array.isArray(body?.userIds) ? body.userIds : [];
+      if (userIds.length > 200 || new Set(userIds).size !== userIds.length) {
+        writeResult(res, problem(400, 'RICCON-KB-400', '名单无效', '名单最多 200 人且不能重复。'));
+        return true;
+      }
+      if (
+        userIds.some(
+          (userId) =>
+            !state.users.some((user) => user.id === userId && user.tenantId === account.tenantId),
+        )
+      ) {
+        writeResult(res, problem(400, 'RICCON-KB-400', '账号无效', '名单只能包含本租户账号。'));
+        return true;
+      }
+    }
+    const before = `${document.visibility}:${document.departmentId ?? ''}:${document.userIds.join(',')}`;
+    document.visibility = visibility;
+    document.departmentId = visibility === 'DEPT' ? body.departmentId : null;
+    document.userIds =
+      visibility === 'USERS'
+        ? body.userIds.filter((userId) => userId !== document.creatorUserId)
+        : [];
+    const after = `${document.visibility}:${document.departmentId ?? ''}:${document.userIds.join(',')}`;
+    m05Audit('knowledge.acl.changed', account, document, { reason: 'ACL', before, after });
+    writeResult(res, json(m05DocumentResponse(document)));
+    return true;
+  }
+
+  if (downloadMatch && method === 'GET') {
+    if (scenario === 'm05-download-502') {
+      writeResult(
+        res,
+        problem(502, 'RICCON-KB-502', '源文件读取失败', '源文件读取失败，请稍后重试。'),
+      );
+      return true;
+    }
+    if (!document.fileId) {
+      writeResult(res, problem(404, 'RICCON-KB-404', '没有源文件', '该文档没有可下载的源文件。'));
+      return true;
+    }
+    const body = Buffer.from(`riccon stub knowledge bytes: ${document.title}`);
+    const filename = encodeURIComponent(document.title);
+    res.writeHead(200, {
+      'Content-Type': document.mimeType,
+      'Content-Disposition': `attachment; filename*=UTF-8''${filename}`,
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Length': String(body.length),
+    });
+    res.end(body);
+    return true;
+  }
+
+  if (reindexMatch && method === 'POST') {
+    const csrfError = requireCsrf(session, req);
+    if (csrfError) {
+      writeResult(res, csrfError);
+      return true;
+    }
+    if (!m05Permissions(account).includes('knowledge.manage')) {
+      writeResult(
+        res,
+        problem(403, 'RICCON-AUTH-403', '没有权限', '只有租户管理员可以触发重索引。'),
+      );
+      return true;
+    }
+    if (scenario === 'm05-reindex-503') {
+      writeResult(
+        res,
+        problem(503, 'RICCON-KB-503', '索引不可用', '索引服务暂不可用，请稍后重试。'),
+      );
+      return true;
+    }
+    if (
+      scenario === 'm05-reindex-409' ||
+      document.status === 'DELETED' ||
+      document.status === 'INDEXING'
+    ) {
+      writeResult(res, problem(409, 'RICCON-KB-409', '状态冲突', '文档状态已变化，请刷新后重试。'));
+      return true;
+    }
+    document.status = 'INDEXING';
+    document.errorCode = null;
+    document.errorMessage = null;
+    document.indexedAt = null;
+    m05Audit('knowledge.document.reindexed', account, document, { reason: 'REINDEX' });
+    writeResult(res, json(m05DocumentResponse(document), 202));
+    return true;
+  }
+
+  if (detailMatch && method === 'GET') {
+    writeResult(res, json(m05DocumentResponse(document)));
+    return true;
+  }
+
+  if (detailMatch && method === 'DELETE') {
+    const csrfError = requireCsrf(session, req);
+    if (csrfError) {
+      writeResult(res, csrfError);
+      return true;
+    }
+    if (!isManager && !isCreator) {
+      writeResult(res, problem(403, 'RICCON-AUTH-403', '没有权限', '没有删除该文档的权限。'));
+      return true;
+    }
+    if (document.status !== 'DELETED') {
+      document.status = 'DELETED';
+      document.deletedAt = new Date().toISOString();
+      document.deletedReason = 'USER';
+      m05Audit('knowledge.document.deleted', account, document, { reason: 'USER' });
+    }
+    res.writeHead(204, { 'Cache-Control': 'no-store' });
+    res.end();
+    return true;
+  }
+
+  return false;
+}
+
 function handleApi(req, res, url, raw) {
   const { pathname, searchParams } = url;
   const method = req.method ?? 'GET';
@@ -4091,6 +5047,11 @@ function handleApi(req, res, url, raw) {
   const authError = requireAuth(session);
   if (authError) {
     writeResult(res, authError);
+    return true;
+  }
+
+  // ---------- M05：知识库文档/ACL/下载/删除/重索引 ----------
+  if (handleM05Api(req, res, url, raw, session)) {
     return true;
   }
 
@@ -4699,6 +5660,10 @@ function handleApi(req, res, url, raw) {
       const csrfError = requireCsrf(session, req);
       if (csrfError) {
         writeResult(res, csrfError);
+        return true;
+      }
+      if (scenario === 'm05-quota-429') {
+        writeResult(res, m05QuotaProblem());
         return true;
       }
       writeResult(

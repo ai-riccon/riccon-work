@@ -73,13 +73,15 @@ const FORMAT_UI_CASES = [
     name: '季度数据.xlsx',
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     question: '请概括季度数据里的销售情况',
-    locator: '工作表 销售数据（B2:D8）',
+    locatorType: 'SHEET',
+    locator: '工作表 销售数据!B2:D8',
   },
   {
     format: 'PNG',
     name: '图表.png',
     mimeType: 'image/png',
     question: '请说明图表中的趋势',
+    locatorType: 'PARAGRAPH',
     locator: '第 1 段',
   },
   {
@@ -87,6 +89,7 @@ const FORMAT_UI_CASES = [
     name: '照片.jpeg',
     mimeType: 'image/jpeg',
     question: '请描述照片中的场景',
+    locatorType: 'PARAGRAPH',
     locator: '第 1 段',
   },
 ] as const;
@@ -252,7 +255,15 @@ test.describe('J1 通用问答与文件处理', () => {
       const drawer = page.getByRole('dialog');
       await expect(drawer.getByText('引用详情')).toBeVisible();
       await expect(drawer.getByRole('heading', { name: formatCase.name })).toBeVisible();
-      await expect(drawer.getByText(`定位：${formatCase.locator}`)).toBeVisible();
+      if (formatCase.locatorType === 'SHEET') {
+        // M05 起 Excel 引用详情用表格展示“工作表 + 单元格/区域”，并给出 `工作表!区域` 文案。
+        await expect(drawer.getByTestId('citation-locator')).toContainText('销售数据');
+        await expect(drawer.getByTestId('citation-locator')).toContainText('B2:D8');
+        await expect(drawer.getByTestId('citation-region')).toHaveText('销售数据!B2:D8');
+      } else {
+        await expect(drawer.getByText('定位', { exact: true })).toBeVisible();
+        await expect(drawer.getByText(formatCase.locator, { exact: true })).toBeVisible();
+      }
       await expect(
         drawer.getByText(new RegExp(`演示引用片段：${escapeRegExp(formatCase.name)}`)),
       ).toBeVisible();

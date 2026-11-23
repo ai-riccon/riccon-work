@@ -73,7 +73,9 @@ test.describe('M03 部门与空间共享', () => {
     await expect(membersDrawer.getByText('王敏')).toBeVisible();
 
     await membersDrawer.getByRole('button', { name: '移出成员：王敏' }).click();
-    await expect(membersDrawer.getByRole('list', { name: '部门成员' }).getByText('王敏')).toHaveCount(0);
+    await expect(
+      membersDrawer.getByRole('list', { name: '部门成员' }).getByText('王敏'),
+    ).toHaveCount(0);
 
     await membersDrawer.getByRole('button', { name: '设为负责人：李强' }).click();
     await expect(membersDrawer.getByRole('button', { name: '设为负责人：李强' })).toHaveCount(0);
@@ -93,7 +95,10 @@ test.describe('M03 部门与空间共享', () => {
   }) => {
     await stub.seedM03();
     await loginAs(page, M03_CREDENTIALS.manager, '李强');
-    await expect(page.getByText('知识库为全租户共享，文档级权限在后续版本提供。')).toBeVisible();
+    // M05-AC-06/22：M03 的“全租户共享/文档级权限后续提供”声明已由文档级 ACL 取代。
+    await expect(page.getByText(/知识库按文档可见范围共享/)).toBeVisible();
+    await expect(page.getByText(/创建人始终可见/).first()).toBeVisible();
+    await expect(page.getByText(/文档级权限在后续版本提供/)).toHaveCount(0);
 
     // M03-AC-03/04：切换到部门空间，会话与文件按该空间加载并可继续使用。
     const workspaceSelector = page.getByRole('combobox', { name: '切换工作空间' });
@@ -107,7 +112,9 @@ test.describe('M03 部门与空间共享', () => {
     await expect(page.getByRole('button', { name: /销售部部门会话/ })).toBeVisible();
     await page.getByRole('button', { name: /销售部部门会话/ }).click();
     await expect(page.getByText('销售部本周新增 3 家重点客户，详见客户清单。')).toBeVisible();
-    const departmentFile = page.locator('.chat-file-item').filter({ hasText: '销售部客户清单.pdf' });
+    const departmentFile = page
+      .locator('.chat-file-item')
+      .filter({ hasText: '销售部客户清单.pdf' });
     await expect(departmentFile.getByText('解析成功', { exact: true })).toBeVisible();
 
     const composer = page.getByPlaceholder('输入问题，Enter 发送，Shift+Enter 换行');
@@ -127,7 +134,9 @@ test.describe('M03 部门与空间共享', () => {
     await expect(page.locator('.chat-workspace-select')).toContainText('我的工作空间');
     await expect(page.getByText('销售部本周新增 3 家重点客户，详见客户清单。')).toHaveCount(0);
     await expect(page.getByRole('button', { name: /销售部部门会话/ })).toHaveCount(0);
-    await expect(page.locator('.chat-file-item').filter({ hasText: '销售部客户清单.pdf' })).toHaveCount(0);
+    await expect(
+      page.locator('.chat-file-item').filter({ hasText: '销售部客户清单.pdf' }),
+    ).toHaveCount(0);
 
     await expect(page.getByRole('button', { name: '工作空间共享' })).toBeVisible();
     await page.getByRole('button', { name: '工作空间共享' }).click();
@@ -187,7 +196,8 @@ test.describe('M03 部门与空间共享', () => {
     await page.context().clearCookies();
     await loginAs(page, M03_CREDENTIALS.member, '王敏');
     await expect(page.getByRole('button', { name: '工作空间共享' })).toHaveCount(0);
-    await expect(page.getByText('知识库为全租户共享，文档级权限在后续版本提供。')).toBeVisible();
+    await expect(page.getByText(/知识库按文档可见范围共享/)).toBeVisible();
+    await expect(page.getByText(/文档级权限在后续版本提供/)).toHaveCount(0);
 
     // 知识库引用可跨部门展示，但源文件 404 时只显示文件名与不可访问说明。
     await page.getByRole('button', { name: '新建会话' }).click();
@@ -215,7 +225,7 @@ test.describe('M03 部门与空间共享', () => {
     const citationDialog = page.getByRole('dialog').filter({ hasText: '引用详情' });
     await expect(citationDialog.getByText('引用详情')).toBeVisible();
     await expect(citationDialog.getByText('销售部市场分析.pdf')).toBeVisible();
-    await expect(citationDialog.getByText(/全租户共享/)).toBeVisible();
+    await expect(citationDialog.getByText(/知识库按文档可见范围共享/)).toBeVisible();
     await citationDialog.getByRole('button', { name: '打开原文件' }).click();
     await expect(citationDialog.getByRole('button', { name: '打开原文件' })).toHaveCount(0);
     await expect(citationDialog.getByText('源文件不可访问').first()).toBeVisible();
