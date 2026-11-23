@@ -2,6 +2,7 @@ package com.riccon.worker.connector.service;
 
 import com.riccon.platform.common.tenant.TenantId;
 import com.riccon.platform.domain.contract.EventTypes;
+import com.riccon.platform.domain.knowledge.ConnectorSyncTrigger;
 import com.riccon.platform.domain.knowledge.KnowledgeIndexMode;
 import com.riccon.worker.common.UuidV7;
 import com.riccon.worker.connector.domain.ConnectorRecord;
@@ -18,11 +19,11 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Worker 侧连接器事件发布：索引事件与同步重试事件。
+ * Worker 侧连接器事件发布：索引事件、定时同步与同步重试事件。
  *
- * <p>每个事件在同一短事务内写入 {@code agent_run} 与 {@code agent_run_outbox}，避免只留下孤儿运行。
- * payload 只含 ID/模式/计数，不含对象 key、bucket 或凭据；索引事件使用与 API 相同的幂等键
- * {@code doc:{id}:index:{attempt}} / {@code doc:{id}:delete:{aclVersion}}，重复投递被唯一键收敛。
+ * <p>每个事件在同一短事务内写入 {@code agent_run}、{@code agent_run_outbox} 与发起审计，避免孤儿运行或
+ * “事件已排队但审计缺失”。payload 只含 ID/模式/时间，不含对象 key、bucket 或凭据；事件幂等键与 API 一致，
+ * 重复投递由唯一键收敛。
  */
 @Component
 public class ConnectorEventPublisher {
@@ -33,15 +34,21 @@ public class ConnectorEventPublisher {
     /** JSON 序列化。 */
     private final ObjectMapper objectMapper;
 
+    /** 审计写入。 */
+    private final ConnectorAuditWriter auditWriter;
+
     /**
      * 创建发布器。
      *
      * @param connectorRepository 仓储
      * @param objectMapper JSON 序列化
+     * @param auditWriter 审计写入
      */
-    public ConnectorEventPublisher(ConnectorRepository connectorRepository, ObjectMapper objectMapper) {
+    public ConnectorEventPublisher(
+            ConnectorRepository connectorRepository, ObjectMapper objectMapper, ConnectorAuditWriter auditWriter) {
         this.connectorRepository = Objects.requireNonNull(connectorRepository, "connectorRepository must not be null");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
+        this.auditWriter = Objects.requireNonNull(auditWriter, "auditWriter must not be null");
     }
 
     /**
@@ -88,7 +95,7 @@ public class ConnectorEventPublisher {
      * @param actorId 发起人
      * @param traceId 追踪 ID
      * @param now 事件时间
-     * @return 事件 ID；重复键时返回 {@code null}
+     * @return 事件 ID
      */
     @Transactional
     public UUID enqueueDelete(
@@ -115,7 +122,7 @@ public class ConnectorEventPublisher {
     }
 
     /**
-     * 发布定时同步事件。
+     * 发布定时同步事件；发起审计与事件同事务写入。
      *
      * @param tenantId 租户
      * @param connector 连接器
@@ -128,7 +135,13 @@ public class ConnectorEventPublisher {
      */
     @Transactional
     public UUID enqueueSync(
-            TenantId tenantId, ConnectorRecord connector, UUID syncId, UUID actorId, String traceId, Instant now) {
+            TenantId tenantId,
+            ConnectorRecord connector,
+            UUID syncId,
+            ConnectorSyncTrigger trigger,
+            UUID actorId,
+            String traceId,
+            Instant now) {
         UUID runId = UuidV7.generate();
         UUID eventId = UuidV7.generate();
         Map<String, Object> payload = new LinkedHashMap<>();
@@ -145,16 +158,18 @@ public class ConnectorEventPublisher {
                 toJson(payload),
                 now,
                 now);
+        auditWriter.syncStarted(tenantId, connector.id(), syncId, trigger, traceId);
         return eventId;
     }
 
     /**
-     * 发布同步重试事件，按 1m/5m/15m 的可用时间投递。
+     * 发布同步重试事件，按 1m/5m/15m 的可用时间投递；重试审计与事件同事务写入。
      *
      * @param tenantId 租户
      * @param connector 连接器
      * @param syncId 同步 ID
      * @param attempt 下一次尝试序号（1 开始）
+     * @param reason 失败分类
      * @param availableAt 最早可领取时间
      * @param actorId 发起人
      * @param traceId 追踪 ID
@@ -167,6 +182,7 @@ public class ConnectorEventPublisher {
             ConnectorRecord connector,
             UUID syncId,
             int attempt,
+            String reason,
             Instant availableAt,
             UUID actorId,
             String traceId,
@@ -187,6 +203,7 @@ public class ConnectorEventPublisher {
                 toJson(payload),
                 availableAt,
                 now);
+        auditWriter.syncRetried(tenantId, connector.id(), syncId, attempt, reason, traceId);
         return eventId;
     }
 

@@ -47,9 +47,6 @@ public class ConnectorSyncScheduler {
     /** 事件发布。 */
     private final ConnectorEventPublisher eventPublisher;
 
-    /** 审计。 */
-    private final ConnectorAuditWriter auditWriter;
-
     /** 时钟。 */
     private final Clock clock;
 
@@ -59,19 +56,16 @@ public class ConnectorSyncScheduler {
      * @param connectorRepository 仓储
      * @param properties 配置
      * @param eventPublisher 事件发布
-     * @param auditWriter 审计
      * @param clock 时钟
      */
     public ConnectorSyncScheduler(
             ConnectorRepository connectorRepository,
             ConnectorProperties properties,
             ConnectorEventPublisher eventPublisher,
-            ConnectorAuditWriter auditWriter,
             Clock clock) {
         this.connectorRepository = Objects.requireNonNull(connectorRepository, "connectorRepository must not be null");
         this.properties = Objects.requireNonNull(properties, "properties must not be null");
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher must not be null");
-        this.auditWriter = Objects.requireNonNull(auditWriter, "auditWriter must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
@@ -143,11 +137,11 @@ public class ConnectorSyncScheduler {
             UUID syncId = UuidV7.generate();
             String traceId = "conn-" + syncId.toString().replace("-", "");
             try {
-                eventPublisher.enqueueSync(tenantId, connector, syncId, actorId, traceId, now);
+                eventPublisher.enqueueSync(
+                        tenantId, connector, syncId, ConnectorSyncTrigger.SCHEDULE, actorId, traceId, now);
             } catch (DuplicateKeyException exception) {
                 return false;
             }
-            auditWriter.syncStarted(tenantId, connector.id(), syncId, ConnectorSyncTrigger.SCHEDULE, traceId);
             return true;
         }
     }

@@ -709,9 +709,15 @@ public class ConnectorSyncService {
         }
         try {
             eventPublisher.enqueueRetry(
-                    tenantId, connector, request.syncId(), nextAttempt, now.plus(delay), actorId, traceId, now);
-            auditWriter.syncRetried(
-                    tenantId, connector.id(), request.syncId(), nextAttempt, failureKind.name(), traceId);
+                    tenantId,
+                    connector,
+                    request.syncId(),
+                    nextAttempt,
+                    failureKind.name(),
+                    now.plus(delay),
+                    actorId,
+                    traceId,
+                    now);
         } catch (DuplicateKeyException exception) {
             // 同一 syncId 的重试事件已存在；保持幂等。
         }
