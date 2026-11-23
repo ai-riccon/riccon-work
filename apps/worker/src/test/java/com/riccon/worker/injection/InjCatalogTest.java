@@ -19,7 +19,8 @@ class InjCatalogTest {
     @Test
     @DisplayName("INJ-001..012 编号连续且每条只有一条")
     void catalog_hasStableTwelveIds() {
-        List<String> ids = InjectionSamples.ALL.stream().map(InjectionSample::id).toList();
+        List<String> ids =
+                InjectionSamples.ALL.stream().map(InjectionSample::id).toList();
 
         assertThat(ids)
                 .containsExactly(
@@ -32,14 +33,18 @@ class InjCatalogTest {
     @Test
     @DisplayName("样本覆盖 Excel 单元格/隐藏表/公式与 OCR 中英文")
     void catalog_coversExcelOcrAndLocales() {
-        assertThat(InjectionSamples.ALL.stream().map(InjectionSample::surface).collect(java.util.stream.Collectors.toSet()))
+        assertThat(InjectionSamples.ALL.stream()
+                        .map(InjectionSample::surface)
+                        .collect(java.util.stream.Collectors.toSet()))
                 .containsAll(Set.of(
                         InjectionSurface.XLSX_VISIBLE_CELL,
                         InjectionSurface.XLSX_HIDDEN_SHEET,
                         InjectionSurface.XLSX_FORMULA_CELL,
                         InjectionSurface.OCR_LINE,
                         InjectionSurface.OCR_FORGED_BOUNDARY));
-        assertThat(InjectionSamples.ALL.stream().map(InjectionSample::locale).collect(java.util.stream.Collectors.toSet()))
+        assertThat(InjectionSamples.ALL.stream()
+                        .map(InjectionSample::locale)
+                        .collect(java.util.stream.Collectors.toSet()))
                 .contains("zh-CN", "en", "zh-en");
         assertThat(InjectionSamples.ALL.stream()
                         .filter(sample -> sample.locale().startsWith("zh"))

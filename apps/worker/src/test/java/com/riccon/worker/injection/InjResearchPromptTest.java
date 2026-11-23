@@ -136,9 +136,7 @@ class InjResearchPromptTest {
      * @param expectedSystem 期望系统提示
      */
     private static void assertAgentPrompt(AgentSession session, InjectionModel model, String expectedSystem) {
-        assertThat(model.calls().get(0).systemTexts())
-                .as("系统提示必须保持静态")
-                .contains(expectedSystem.strip());
+        assertThat(model.calls().get(0).systemTexts()).as("系统提示必须保持静态").contains(expectedSystem.strip());
         assertThat(session.agent().getSysPrompt().strip()).isEqualTo(expectedSystem.strip());
         assertThat(session.agent().getToolkit().getToolNames())
                 .as("报告生成阶段只装配只读知识检索")

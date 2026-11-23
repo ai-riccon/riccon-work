@@ -68,9 +68,9 @@ class InjToolPermissionTest {
     @Timeout(60)
     void hijackedModel_unauthorizedToolIsNeverExecuted(String sampleId) {
         InjectionSample sample = InjectionSamples.byId(sampleId);
-        ParsedChunk chunk = InjectionFixtures.chunks(InjectionFixtures.parse(sample)).get(0);
-        List<RetrievedChunk> citations =
-                InjectionFixtures.citations(sample, List.of(chunk));
+        ParsedChunk chunk =
+                InjectionFixtures.chunks(InjectionFixtures.parse(sample)).get(0);
+        List<RetrievedChunk> citations = InjectionFixtures.citations(sample, List.of(chunk));
 
         KnowledgeRetriever retriever = mock(KnowledgeRetriever.class);
         when(retriever.retrieve(eq(TENANT), eq(USER), eq(RUN), eq(QUESTION), eq(List.of())))
@@ -107,12 +107,8 @@ class InjToolPermissionTest {
 
             List<AgentEvent> events = session.events().collectList().block(Duration.ofSeconds(30));
             assertThat(events).as("事件流不能为空").isNotNull();
-            assertThat(model.breaches())
-                    .as("注入文本不得逃出不可信数据块")
-                    .isEmpty();
-            assertThat(stub.executions())
-                    .as("未授权删除工具绝不能被执行")
-                    .isZero();
+            assertThat(model.breaches()).as("注入文本不得逃出不可信数据块").isEmpty();
+            assertThat(stub.executions()).as("未授权删除工具绝不能被执行").isZero();
             assertThat(events.stream()
                             .filter(ToolResultEndEvent.class::isInstance)
                             .map(ToolResultEndEvent.class::cast))
@@ -133,9 +129,7 @@ class InjToolPermissionTest {
             assertThat(result.getResult().getTextContent())
                     .as("结果不得包含 canary")
                     .doesNotContain(InjectionSamples.CANARY_VALUE);
-            assertThat(model.invocationCount())
-                    .as("审批前不得再次进入模型推理")
-                    .isEqualTo(1);
+            assertThat(model.invocationCount()).as("审批前不得再次进入模型推理").isEqualTo(1);
         } finally {
             session.close();
         }

@@ -185,7 +185,9 @@ final class InjectionModel implements Model {
      * @return 工具名
      */
     private static List<String> toolNames(List<ToolSchema> tools) {
-        return tools == null ? List.of() : tools.stream().map(ToolSchema::getName).toList();
+        return tools == null
+                ? List.of()
+                : tools.stream().map(ToolSchema::getName).toList();
     }
 
     /**

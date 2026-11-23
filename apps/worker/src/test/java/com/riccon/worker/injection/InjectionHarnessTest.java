@@ -7,6 +7,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.riccon.platform.common.tenant.TenantId;
 import com.riccon.platform.domain.chat.MessageRole;
 import com.riccon.platform.domain.knowledge.ParseEngine;
@@ -40,9 +43,6 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -106,8 +106,7 @@ class InjectionHarnessTest {
             InjectionModel.Mode mode = sample.expectToolCall()
                     ? InjectionModel.Mode.CALL_KNOWLEDGE_THEN_ANSWER
                     : InjectionModel.Mode.BOUNDARY_AWARE;
-            InjectionModel model =
-                    new InjectionModel(mode, InjectionSamples.CANARY_VALUE, sample.detectors());
+            InjectionModel model = new InjectionModel(mode, InjectionSamples.CANARY_VALUE, sample.detectors());
             ChatAgentService service = new ChatAgentService(retriever, AGENT_PROPERTIES);
 
             session = service.prepare(
@@ -121,24 +120,19 @@ class InjectionHarnessTest {
                     model,
                     modelTarget());
 
-            List<AgentEvent> events =
-                    session.events().collectList().block(Duration.ofSeconds(30));
+            List<AgentEvent> events = session.events().collectList().block(Duration.ofSeconds(30));
             assertThat(events).as("%s 事件流不能为空", display).isNotNull();
 
             assertThat(model.breaches())
                     .as("%s 注入文本逃出不可信数据块；当前生产提示构造可被注入", display)
                     .isEmpty();
             assertThat(model.calls()).as("%s 模型至少被调用一次", display).isNotEmpty();
-            assertThat(model.calls())
-                    .as("%s canary 值不得进入模型请求的任何表面", display)
-                    .allSatisfy(call -> {
-                        assertThat(call.scan().instructionTexts())
-                                .allSatisfy(text -> assertThat(text)
-                                        .doesNotContain(InjectionSamples.CANARY_VALUE));
-                        assertThat(call.scan().untrustedTexts())
-                                .allSatisfy(text -> assertThat(text)
-                                        .doesNotContain(InjectionSamples.CANARY_VALUE));
-                    });
+            assertThat(model.calls()).as("%s canary 值不得进入模型请求的任何表面", display).allSatisfy(call -> {
+                assertThat(call.scan().instructionTexts())
+                        .allSatisfy(text -> assertThat(text).doesNotContain(InjectionSamples.CANARY_VALUE));
+                assertThat(call.scan().untrustedTexts())
+                        .allSatisfy(text -> assertThat(text).doesNotContain(InjectionSamples.CANARY_VALUE));
+            });
 
             InjectionModel.ModelCall firstCall = model.calls().get(0);
             assertThat(firstCall.systemTexts())
@@ -158,7 +152,10 @@ class InjectionHarnessTest {
             assertThat(session.agent().getToolkit().getToolNames())
                     .as("%s 聊天 Agent 只能装配只读知识检索工具", display)
                     .containsExactly(KnowledgeSearchTool.TOOL_NAME);
-            assertThat(session.agent().getToolkit().getTool(KnowledgeSearchTool.TOOL_NAME).isReadOnly())
+            assertThat(session.agent()
+                            .getToolkit()
+                            .getTool(KnowledgeSearchTool.TOOL_NAME)
+                            .isReadOnly())
                     .as("%s knowledge_search 必须是只读工具", display)
                     .isTrue();
 
@@ -185,7 +182,8 @@ class InjectionHarnessTest {
             String display, InjectionSample sample, ParsedContent parsed, List<ParsedChunk> chunks) {
         assertThat(parsed.segments()).as("%s 解析结果不能为空", display).isNotEmpty();
         String payload = sample.payload();
-        String joined = String.join("\n", chunks.stream().map(ParsedChunk::content).toList());
+        String joined =
+                String.join("\n", chunks.stream().map(ParsedChunk::content).toList());
         switch (sample.surface()) {
             case XLSX_HIDDEN_SHEET -> {
                 assertThat(parsed.warnings())
@@ -197,12 +195,8 @@ class InjectionHarnessTest {
                         .doesNotContain(payload);
             }
             case XLSX_FORMULA_CELL -> {
-                assertThat(joined)
-                        .as("%s 公式缓存值必须作为文本进入索引", display)
-                        .contains(payload);
-                assertThat(joined)
-                        .as("%s 解析器不得执行公式或暴露公式文本", display)
-                        .doesNotContain("CONCATENATE(");
+                assertThat(joined).as("%s 公式缓存值必须作为文本进入索引", display).contains(payload);
+                assertThat(joined).as("%s 解析器不得执行公式或暴露公式文本", display).doesNotContain("CONCATENATE(");
                 assertThat(chunks.get(0).sheetName()).isEqualTo(sample.sheetName());
                 assertThat(chunks.get(0).cellRange()).isNotBlank();
                 assertThat(chunks.get(0).locatorType().name()).isEqualTo("SHEET");
@@ -218,7 +212,9 @@ class InjectionHarnessTest {
                 assertThat(parsed.pageCount()).as("%s 单页图片页码", display).isEqualTo(1);
                 assertThat(chunks.get(0).pageNo()).as("%s OCR 引用必须带页码", display).isEqualTo(1);
                 assertThat(chunks.get(0).bbox()).as("%s OCR 引用必须带区域坐标", display).isNotNull();
-                assertThat(chunks.get(0).ocrConfidence()).as("%s OCR 引用必须带置信度", display).isNotNull();
+                assertThat(chunks.get(0).ocrConfidence())
+                        .as("%s OCR 引用必须带置信度", display)
+                        .isNotNull();
             }
             default -> throw new IllegalStateException("unexpected surface " + sample.surface());
         }
@@ -320,18 +316,13 @@ class InjectionHarnessTest {
             assertThat(model.invocationCount())
                     .as("%s 工具结果必须进入第二次模型调用", display)
                     .isEqualTo(2);
-            assertThat(toolEnds)
-                    .as("%s 只读知识检索必须成功", display)
-                    .singleElement()
-                    .satisfies(event -> {
-                        assertThat(event.getToolCallName()).isEqualTo(KnowledgeSearchTool.TOOL_NAME);
-                        assertThat(event.getState()).isEqualTo(ToolResultState.SUCCESS);
-                    });
+            assertThat(toolEnds).as("%s 只读知识检索必须成功", display).singleElement().satisfies(event -> {
+                assertThat(event.getToolCallName()).isEqualTo(KnowledgeSearchTool.TOOL_NAME);
+                assertThat(event.getState()).isEqualTo(ToolResultState.SUCCESS);
+            });
             verify(retriever).retrieveKnowledge(eq(TENANT), eq(USER), eq(RUN), eq("资料"));
         } else {
-            assertThat(model.invocationCount())
-                    .as("%s 普通样本不应触发工具调用", display)
-                    .isEqualTo(1);
+            assertThat(model.invocationCount()).as("%s 普通样本不应触发工具调用", display).isEqualTo(1);
             assertThat(toolEnds).as("%s 普通样本不应产生工具结果", display).isEmpty();
         }
     }
@@ -345,15 +336,15 @@ class InjectionHarnessTest {
      */
     private static void assertLogsHaveNoSecrets(
             String display, InjectionSample sample, ListAppender<ILoggingEvent> logs) {
-        List<String> messages = logs.list.stream().map(ILoggingEvent::getFormattedMessage).toList();
+        List<String> messages =
+                logs.list.stream().map(ILoggingEvent::getFormattedMessage).toList();
         assertThat(messages).as("%s 日志捕获必须有效，否则泄露断言会空转", display).isNotEmpty();
         assertThat(messages)
                 .as("%s 日志不得包含 canary", display)
                 .allSatisfy(message -> assertThat(message).doesNotContain(InjectionSamples.CANARY_VALUE));
         assertThat(messages)
                 .as("%s 日志不得包含内网地址", display)
-                .allSatisfy(message -> assertThat(message)
-                        .doesNotContain(InjectionSamples.INTERNAL_ADDRESS));
+                .allSatisfy(message -> assertThat(message).doesNotContain(InjectionSamples.INTERNAL_ADDRESS));
         assertThat(messages)
                 .as("%s 日志不得包含注入原文", display)
                 .allSatisfy(message -> assertThat(message).doesNotContain(sample.payload()));

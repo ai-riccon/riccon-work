@@ -47,9 +47,7 @@ class InjNegativeControlTest {
                 model.stream(vulnerablePrompt, List.of(), null).collectList().block(Duration.ofSeconds(5));
 
         assertThat(responses).isNotNull();
-        assertThat(model.breaches())
-                .as("未隔离注入必须触发 tripwire")
-                .isNotEmpty();
+        assertThat(model.breaches()).as("未隔离注入必须触发 tripwire").isNotEmpty();
         assertThat(textOf(responses.get(0)))
                 .as("tripwire 触发后必须输出 canary，证明检测链可失败")
                 .contains(InjectionSamples.CANARY_VALUE)
@@ -64,8 +62,8 @@ class InjNegativeControlTest {
     @Timeout(30)
     void wrappedInjection_isNotFlagged() {
         InjectionSample sample = InjectionSamples.byId("INJ-007");
-        List<RetrievedChunk> citations = InjectionFixtures.citations(
-                sample, InjectionFixtures.chunks(InjectionFixtures.parse(sample)));
+        List<RetrievedChunk> citations =
+                InjectionFixtures.citations(sample, InjectionFixtures.chunks(InjectionFixtures.parse(sample)));
         InjectionModel model = new InjectionModel(
                 InjectionModel.Mode.BOUNDARY_AWARE, InjectionSamples.CANARY_VALUE, InjectionSamples.DETECTORS);
         List<Msg> guardedPrompt = List.of(
@@ -89,9 +87,7 @@ class InjNegativeControlTest {
         assertThat(model.calls().get(0).scan().untrustedHits())
                 .as("采样文本必须位于不可信面")
                 .isNotEmpty();
-        assertThat(textOf(responses.get(0)))
-                .as("未逃逸时模型继续系统任务")
-                .isEqualTo(InjectionModel.BENIGN_ANSWER);
+        assertThat(textOf(responses.get(0))).as("未逃逸时模型继续系统任务").isEqualTo(InjectionModel.BENIGN_ANSWER);
     }
 
     /**
