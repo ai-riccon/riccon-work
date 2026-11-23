@@ -66,7 +66,7 @@ const OIDC_ISSUER = `http://127.0.0.1:${OIDC_PORT}/realms/${OIDC_REALM}`;
 const OIDC_PROVIDER_NAME = "Alpha 测试企业 IdP";
 
 /** Worker 启动时校验的 Flyway 期望版本；API 必须先迁移到这里再起 Worker。 */
-const FLYWAY_EXPECTED_VERSION = 12;
+const FLYWAY_EXPECTED_VERSION = 14;
 
 /** M05 knowledge 场景默认规模；环境变量可覆盖，报告只记录实际写入值。 */
 const KNOWLEDGE_DEFAULTS = {
@@ -1288,7 +1288,7 @@ function uuidFromHex(hex) {
  * 构造知识库语料 SQL：部门、5000 文档、10 万 chunk 与 USERS ACL。
  *
  * 文档可见性分布：4400 TENANT + 500 DEPT + 50 USERS（成员可见）+ 50 USERS（仅管理员）。
- * 20% 文档的每个 chunk 都含检索词，命中约 2 万 chunk；LIKE 仍需扫描 10 万行，
+ * 20% 文档的每个 chunk 都含检索词，命中约 2 万 chunk；V14 FULLTEXT 使用 ngram 索引，
  * 与 ACL EXISTS 一起构成检索 p95 的测量口径。
  *
  * @param {object} input 参数
@@ -1512,7 +1512,7 @@ function summarizeRetrieval(samples) {
   return {
     source: "mysql.slow_log (long_query_time=0.001s, log_output=TABLE)",
     statement:
-      "AgentContextJdbc.search: knowledge_chunk.content LIKE / knowledge_document.title LIKE + ACL 谓词",
+      "AgentContextJdbc.search: FULLTEXT MATCH(knowledge_chunk.content / knowledge_document.title) AGAINST + ACL 谓词（兼容旧 LIKE 过滤）",
     samples: samples.length,
     p50Ms: percentile(values, 50),
     p95Ms: percentile(values, 95),
@@ -1579,7 +1579,7 @@ function readRetrievalSamples() {
 SELECT query_time, rows_examined
   FROM mysql.slow_log
  WHERE sql_text LIKE '%knowledge_chunk%'
-   AND sql_text LIKE '%LIKE%'
+   AND (sql_text LIKE '%AGAINST%' OR sql_text LIKE '%LIKE%')
  ORDER BY start_time;`).stdout;
   const lines = output.trim().split("\n").filter(Boolean);
   if (lines.length <= 1) {
@@ -1976,7 +1976,7 @@ async function runKnowledgePerf(context) {
       "首字 p95 ≤3s、稳态 JSON API（列表/详情/ACL 读/ACL 写）p95 ≤500ms、50 并发。",
       "首字用 retrieval p95 + 服务端模型首字 p95 估算；m05_chat_submit_ttfb_ms 因 k6 整段缓冲只作参考，不作为首字阈值。",
       "下载是流式代理，单独记录 m05_download_ms，不并入 JSON API p95。",
-      "检索 p95 来自 MySQL slow_log 中 AgentContextJdbc LIKE + ACL 谓词的实际执行时间；不含网络与结果映射。",
+      "检索 p95 来自 MySQL slow_log 中 AgentContextJdbc FULLTEXT MATCH + ACL 谓词的实际执行时间；不含网络与结果映射。",
       "slow_log 在 API/Worker 建连前开启（long_query_time=0.001s）；它会给测试栈带来额外写开销，结果偏保守。",
       "M05 不启用连接器分支。",
     ],
@@ -2021,7 +2021,7 @@ async function runKnowledgePerf(context) {
     decision: report.m05.retrieval.decision,
     notes: [
       "PERF-M05-001：首字/API/ACL 写/检索量测；PERF-M05-002：索引延迟（无 OCR 与 OCR 单页）。",
-      "OpenSearch 使用 v2 索引并核对别名目标与 bbox/acl mapping 字段；检索仍以 MySQL LIKE + ACL 为准。",
+      "OpenSearch 使用 v2 索引并核对别名目标与 bbox/acl mapping 字段；检索仍以 MySQL FULLTEXT + ACL 为准。",
       "检索 >500ms 时 status 为 passed-with-decision（ADR-0023 §9 未预设通过阈值）；设置 PERF_M05_SEARCH_ENFORCE=1 可按 500ms 硬失败。",
       "OCR 不可用时 ocr.measured=false，不把未执行当通过。",
     ],
@@ -2623,7 +2623,7 @@ async function runPerf() {
     knowledge: knowledgeResult?.matrix ?? null,
     notes: [
       knowledgePerf
-        ? "M05 knowledge：MySQL + OpenSearch + RustFS 启动；OpenSearch 只做可重建索引，检索仍以 MySQL LIKE + ACL 为准。"
+        ? "M05 knowledge：MySQL + OpenSearch + RustFS 启动；OpenSearch 只做可重建索引，检索仍以 MySQL FULLTEXT + ACL 为准。"
         : "perf 模式只启动 MySQL 与假模型/API/Worker；OpenSearch 与 Web 未启动，主机规格见 env.host。",
       "每个降级模式独立一次 k6 运行并在前后重置 fake provider key 场景与 key 健康，避免 401 失效/冷却掩盖降级。",
       "配额场景会通过开关 GET/PUT 临时打开 quotaEnforcementEnabled，并把租户/用户日限额设为已用+1；结束后恢复开关与两级限额原值。",
