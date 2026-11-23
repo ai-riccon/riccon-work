@@ -1,0 +1,39 @@
+# command: LOCK="${TMPDIR:-/tmp}/riccon-maven.lock"; while ! mkdir "$LOCK" 2>/dev/null; do sleep 5; done; trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT; ./mvnw -q -T1C -pl apps/worker -am test -Dtest='XlsxDocumentParser*Test,DocumentParserTest' -Dsurefire.failIfNoSpecifiedTests=false
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-23T11:28:47.767+08:00
+# finished_at: 2026-11-23T11:28:55.919+08:00
+# duration_ms: 8151
+# exit_code: 1
+
+# --- stdout ---
+[ERROR] COMPILATION ERROR : 
+[ERROR] /Users/ricky/Documents/projects/riccon-work/apps/worker/src/main/java/com/riccon/worker/agent/persistence/AgentContextJdbc.java:[125,9] 无法将类 com.riccon.worker.agent.persistence.AgentContextJdbc中的方法 appendAclPredicate应用到给定类型;
+  需要: java.lang.StringBuilder,java.util.Map<java.lang.String,java.lang.Object>,com.riccon.platform.common.tenant.TenantId,java.util.UUID,boolean
+  找到:    java.lang.StringBuilder,java.util.Map<java.lang.String,java.lang.Object>,com.riccon.platform.common.tenant.TenantId,java.util.UUID,boolean,boolean
+  原因: 实际参数列表和形式参数列表长度不同
+[ERROR] /Users/ricky/Documents/projects/riccon-work/apps/worker/src/main/java/com/riccon/worker/agent/persistence/AgentContextJdbc.java:[360,9] 无法将类 com.riccon.worker.agent.persistence.AgentContextJdbc中的方法 appendAclPredicate应用到给定类型;
+  需要: java.lang.StringBuilder,java.util.Map<java.lang.String,java.lang.Object>,com.riccon.platform.common.tenant.TenantId,java.util.UUID,boolean
+  找到:    java.lang.StringBuilder,java.util.Map<java.lang.String,java.lang.Object>,com.riccon.platform.common.tenant.TenantId,java.util.UUID,boolean,boolean
+  原因: 实际参数列表和形式参数列表长度不同
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.15.0:compile (default-compile) on project riccon-worker: Compilation failure: Compilation failure: 
+[ERROR] /Users/ricky/Documents/projects/riccon-work/apps/worker/src/main/java/com/riccon/worker/agent/persistence/AgentContextJdbc.java:[125,9] 无法将类 com.riccon.worker.agent.persistence.AgentContextJdbc中的方法 appendAclPredicate应用到给定类型;
+[ERROR]   需要: java.lang.StringBuilder,java.util.Map<java.lang.String,java.lang.Object>,com.riccon.platform.common.tenant.TenantId,java.util.UUID,boolean
+[ERROR]   找到:    java.lang.StringBuilder,java.util.Map<java.lang.String,java.lang.Object>,com.riccon.platform.common.tenant.TenantId,java.util.UUID,boolean,boolean
+[ERROR]   原因: 实际参数列表和形式参数列表长度不同
+[ERROR] /Users/ricky/Documents/projects/riccon-work/apps/worker/src/main/java/com/riccon/worker/agent/persistence/AgentContextJdbc.java:[360,9] 无法将类 com.riccon.worker.agent.persistence.AgentContextJdbc中的方法 appendAclPredicate应用到给定类型;
+[ERROR]   需要: java.lang.StringBuilder,java.util.Map<java.lang.String,java.lang.Object>,com.riccon.platform.common.tenant.TenantId,java.util.UUID,boolean
+[ERROR]   找到:    java.lang.StringBuilder,java.util.Map<java.lang.String,java.lang.Object>,com.riccon.platform.common.tenant.TenantId,java.util.UUID,boolean,boolean
+[ERROR]   原因: 实际参数列表和形式参数列表长度不同
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+[ERROR] 
+[ERROR] After correcting the problems, you can resume the build with the command
+[ERROR]   mvn <args> -rf :riccon-worker
+
+# --- stderr ---
+
