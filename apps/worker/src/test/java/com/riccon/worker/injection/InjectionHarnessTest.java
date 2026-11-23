@@ -164,7 +164,7 @@ class InjectionHarnessTest {
 
             assertPromptBoundary(display, sample, model);
             assertAnswerAndEvents(display, sample, model, events, retriever);
-            assertLogsHaveNoSecrets(display, logs);
+            assertLogsHaveNoSecrets(display, sample, logs);
         } finally {
             if (session != null) {
                 session.close();
@@ -340,9 +340,11 @@ class InjectionHarnessTest {
      * 断言日志不包含 canary 或内网地址。
      *
      * @param display 失败定位名
+     * @param sample 样本
      * @param logs 日志 appender
      */
-    private static void assertLogsHaveNoSecrets(String display, ListAppender<ILoggingEvent> logs) {
+    private static void assertLogsHaveNoSecrets(
+            String display, InjectionSample sample, ListAppender<ILoggingEvent> logs) {
         List<String> messages = logs.list.stream().map(ILoggingEvent::getFormattedMessage).toList();
         assertThat(messages).as("%s 日志捕获必须有效，否则泄露断言会空转", display).isNotEmpty();
         assertThat(messages)
@@ -352,6 +354,9 @@ class InjectionHarnessTest {
                 .as("%s 日志不得包含内网地址", display)
                 .allSatisfy(message -> assertThat(message)
                         .doesNotContain(InjectionSamples.INTERNAL_ADDRESS));
+        assertThat(messages)
+                .as("%s 日志不得包含注入原文", display)
+                .allSatisfy(message -> assertThat(message).doesNotContain(sample.payload()));
     }
 
     /**

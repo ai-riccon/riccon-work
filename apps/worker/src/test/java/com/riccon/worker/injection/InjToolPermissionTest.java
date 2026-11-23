@@ -29,12 +29,12 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * `INJ-004` 工具诱导的纵深验证：即使假模型完全被注入控制，未授权删除工具也不能被执行。
+ * `INJ-004/009/010` 工具诱导的纵深验证：即使假模型完全被注入控制，未授权删除工具也不能被执行。
  *
  * <p>生产聊天 Agent 只注册只读 `knowledge_search`，权限上下文也只显式允许该工具；本测试把
  * `delete_knowledge` stub 挂到同一个 Agent 的 Toolkit 上，模拟“工具恰好存在”的最坏情况，
@@ -63,11 +63,11 @@ class InjToolPermissionTest {
     /**
      * 被攻破模型调用删除工具时必须停在审批，工具不执行、canary 不出现在事件中。
      */
-    @Test
-    @DisplayName("INJ-004 被攻破模型不能执行未授权 delete_knowledge")
+    @ParameterizedTest(name = "{0} 被攻破模型不能执行未授权 delete_knowledge")
+    @ValueSource(strings = {"INJ-004", "INJ-009", "INJ-010"})
     @Timeout(60)
-    void inj004_hijackedModel_unauthorizedToolIsNeverExecuted() {
-        InjectionSample sample = InjectionSamples.byId("INJ-004");
+    void hijackedModel_unauthorizedToolIsNeverExecuted(String sampleId) {
+        InjectionSample sample = InjectionSamples.byId(sampleId);
         ParsedChunk chunk = InjectionFixtures.chunks(InjectionFixtures.parse(sample)).get(0);
         List<RetrievedChunk> citations =
                 InjectionFixtures.citations(sample, List.of(chunk));
