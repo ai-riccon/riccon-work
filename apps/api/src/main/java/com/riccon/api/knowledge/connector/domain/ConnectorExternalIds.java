@@ -28,10 +28,9 @@ public final class ConnectorExternalIds {
             return "";
         }
         String value = externalId;
-        int first = value.lastIndexOf('/');
-        if (first > 0) {
-            int second = value.lastIndexOf('/', first - 1);
-            value = second >= 0 ? value.substring(second + 1) : value.substring(first + 1);
+        String[] segments = externalId.split("/");
+        if (segments.length >= 2) {
+            value = segments[segments.length - 2] + "/" + segments[segments.length - 1];
         }
         if (value.length() > MAX_DISPLAY_LENGTH) {
             value = value.substring(value.length() - MAX_DISPLAY_LENGTH);

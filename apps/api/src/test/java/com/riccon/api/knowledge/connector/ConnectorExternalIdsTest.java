@@ -15,6 +15,7 @@ class ConnectorExternalIdsTest {
         assertThat(ConnectorExternalIds.display(null)).isNull();
         assertThat(ConnectorExternalIds.display("")).isEmpty();
         assertThat(ConnectorExternalIds.display("plain.pdf")).isEqualTo("plain.pdf");
+        assertThat(ConnectorExternalIds.display("a/b")).isEqualTo("a/b");
         assertThat(ConnectorExternalIds.display("a/b/c.pdf")).isEqualTo("b/c.pdf");
         String longSegment = "x".repeat(80) + ".pdf";
         String display = ConnectorExternalIds.display("a/" + longSegment);

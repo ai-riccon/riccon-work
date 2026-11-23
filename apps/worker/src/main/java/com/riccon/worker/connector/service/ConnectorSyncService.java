@@ -4,6 +4,7 @@ import com.riccon.platform.common.tenant.TenantId;
 import com.riccon.platform.domain.knowledge.ConnectorItemStatus;
 import com.riccon.platform.domain.knowledge.ConnectorStatus;
 import com.riccon.platform.domain.knowledge.ConnectorSyncStatus;
+import com.riccon.platform.domain.knowledge.KnowledgeDocumentStatus;
 import com.riccon.worker.common.UuidV7;
 import com.riccon.worker.connector.config.ConnectorProperties;
 import com.riccon.worker.connector.domain.ConnectorContentTypes;
@@ -42,13 +43,11 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.awscore.AwsRequestOverrideConfiguration;
 import software.amazon.awssdk.core.exception.SdkClientException;
-import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
@@ -94,11 +93,20 @@ public class ConnectorSyncService {
     /** 事件发布。 */
     private final ConnectorEventPublisher eventPublisher;
 
-    /** 审计。 */
-    private final ConnectorAuditWriter auditWriter;
-
     /** 终态收尾短事务。 */
     private final ConnectorSyncCompletionService completionService;
+
+    /** 平台对象存储写入；源客户端只读。 */
+    private final ConnectorObjectWriter objectWriter;
+
+    /** 临时文件工厂。 */
+    private final ConnectorTempFileFactory tempFileFactory;
+
+    /** 文档+条目+索引事件短事务。 */
+    private final ConnectorDocumentWriteService documentWriteService;
+
+    /** 删除传播短事务。 */
+    private final ConnectorDeletePropagationService deletePropagationService;
 
     /** 指标。 */
     private final ConnectorMetrics metrics;
@@ -114,7 +122,6 @@ public class ConnectorSyncService {
      * @param credentials 凭据解密
      * @param clientFactory S3 客户端工厂
      * @param eventPublisher 事件发布
-     * @param auditWriter 审计
      * @param metrics 指标
      * @param clock 时钟
      */
@@ -124,8 +131,11 @@ public class ConnectorSyncService {
             ConnectorCredentials credentials,
             ConnectorS3ClientFactory clientFactory,
             ConnectorEventPublisher eventPublisher,
-            ConnectorAuditWriter auditWriter,
             ConnectorSyncCompletionService completionService,
+            ConnectorObjectWriter objectWriter,
+            ConnectorTempFileFactory tempFileFactory,
+            ConnectorDocumentWriteService documentWriteService,
+            ConnectorDeletePropagationService deletePropagationService,
             ConnectorMetrics metrics,
             Clock clock) {
         this.connectorRepository = Objects.requireNonNull(connectorRepository, "connectorRepository must not be null");
@@ -133,8 +143,13 @@ public class ConnectorSyncService {
         this.credentials = Objects.requireNonNull(credentials, "credentials must not be null");
         this.clientFactory = Objects.requireNonNull(clientFactory, "clientFactory must not be null");
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher must not be null");
-        this.auditWriter = Objects.requireNonNull(auditWriter, "auditWriter must not be null");
         this.completionService = Objects.requireNonNull(completionService, "completionService must not be null");
+        this.objectWriter = Objects.requireNonNull(objectWriter, "objectWriter must not be null");
+        this.tempFileFactory = Objects.requireNonNull(tempFileFactory, "tempFileFactory must not be null");
+        this.documentWriteService =
+                Objects.requireNonNull(documentWriteService, "documentWriteService must not be null");
+        this.deletePropagationService =
+                Objects.requireNonNull(deletePropagationService, "deletePropagationService must not be null");
         this.metrics = Objects.requireNonNull(metrics, "metrics must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
@@ -151,7 +166,18 @@ public class ConnectorSyncService {
     public ConnectorSyncResult synchronize(
             TenantId tenantId, ConnectorRecord connector, ConnectorSyncRequest request, String traceId) {
         Instant startedAt = clock.instant();
-        connectorRepository.markSyncStarted(tenantId, connector.id(), startedAt);
+        if (connectorRepository.markSyncStarted(tenantId, connector.id(), startedAt) == 0) {
+            // 受理后连接器已被删除或已不属于该租户：中止，不写终态/审计，也不新增文档。
+            LOG.info("connector.sync.aborted connectorId={} reason=not_syncable", connector.id());
+            return new ConnectorSyncResult(
+                    ConnectorSyncStatus.ERROR,
+                    false,
+                    new ConnectorSyncSummary(0, 0, 0, 0, 0, 0, false),
+                    ConnectorErrorCodes.CONFIG,
+                    ConnectorFailureKind.CONFIG,
+                    false,
+                    0);
+        }
         // sync.started 在同步发起处写：API 手动受理、Worker 定时调度各一次；执行处不重复写。
         ConnectorEndpointConfig endpoint = properties.registry() == null
                 ? null
@@ -282,6 +308,12 @@ public class ConnectorSyncService {
                 state = state.withFailure(failure.errorCode, failure.kind, failure.retryable);
                 break;
             }
+            boolean truncated = Boolean.TRUE.equals(response.isTruncated());
+            String nextToken = response.nextContinuationToken();
+            if (truncated && (nextToken == null || nextToken.isBlank())) {
+                state = state.withComplete(false).withError(ConnectorErrorCodes.TRUNCATED);
+                break;
+            }
             for (S3Object object : response.contents()) {
                 Instant now = clock.instant();
                 if (budget.expired(now)) {
@@ -295,6 +327,9 @@ public class ConnectorSyncService {
                 ConnectorObject listed = new ConnectorObject(
                         object.key(), truncateVersion(object.eTag()), object.size() == null ? 0 : object.size());
                 processObject(tenantId, connector, client, budget, state, listed, actorId, traceId);
+                if (state.errorCode != null) {
+                    break;
+                }
                 if (budget.truncated()) {
                     state = state.withComplete(false);
                     if (state.errorCode == null) {
@@ -309,7 +344,7 @@ public class ConnectorSyncService {
             if (state.errorCode != null || budget.truncated()) {
                 break;
             }
-            continuation = Boolean.TRUE.equals(response.isTruncated()) ? response.nextContinuationToken() : null;
+            continuation = truncated ? nextToken : null;
         } while (continuation != null);
         state.scanned = budget.scanned();
         if (state.complete) {
@@ -340,6 +375,14 @@ public class ConnectorSyncService {
             UUID actorId,
             String traceId) {
         Instant now = clock.instant();
+        if (!connectorRepository.isSyncable(tenantId, connector.id())) {
+            // 同步过程中连接器被删除或租户被停用：停止处理，不再新增文档。
+            state.complete = false;
+            state.errorCode = ConnectorErrorCodes.CONFIG;
+            state.failureKind = ConnectorFailureKind.CONFIG;
+            state.retryable = false;
+            return;
+        }
         String key = object.key();
         String extension = ConnectorContentTypes.extension(key);
         boolean supported =
@@ -384,6 +427,9 @@ public class ConnectorSyncService {
         } catch (DownloadFailure failure) {
             connectorRepository.markItemFailed(tenantId, item.id(), failure.errorCode, object.etag(), now);
             state.failed++;
+        } catch (ConnectorObjectWriter.ObjectWriteException failure) {
+            connectorRepository.markItemFailed(tenantId, item.id(), failure.errorCode(), object.etag(), now);
+            state.failed++;
         } catch (RuntimeException exception) {
             LOG.warn(
                     "connector.sync.object_failed connectorId={} documentId={} errorCode={} exception={}",
@@ -417,6 +463,7 @@ public class ConnectorSyncService {
                 && document != null
                 && document.active()
                 && Objects.equals(item.externalVersion(), object.etag())) {
+            ensureIndexEvent(tenantId, connector, document, actorId, traceId, now);
             connectorRepository.touchItem(tenantId, item.id(), object.etag(), now);
             return;
         }
@@ -424,6 +471,7 @@ public class ConnectorSyncService {
         try {
             if (document != null && document.active()) {
                 if (downloaded.checksum().equals(document.checksum())) {
+                    ensureIndexEvent(tenantId, connector, document, actorId, traceId, now);
                     connectorRepository.markItemSynced(
                             tenantId,
                             item.id(),
@@ -435,21 +483,16 @@ public class ConnectorSyncService {
                 }
                 String objectKey = ConnectorContentTypes.objectKey(
                         tenantId.value(), document.row().documentId(), document.createdAt());
-                writeObject(client, connector, objectKey, downloaded.path(), extension);
-                connectorRepository.updateDocumentContent(
+                objectWriter.write(objectKey, downloaded.path(), ConnectorContentTypes.mimeType(extension));
+                documentWriteService.updateDocument(
                         tenantId,
-                        document.row().documentId(),
-                        downloaded.checksum(),
-                        downloaded.sizeBytes(),
-                        ConnectorContentTypes.mimeType(extension),
-                        now);
-                connectorRepository.markItemSynced(
-                        tenantId, item.id(), document.row().documentId(), downloaded.checksum(), object.etag(), now);
-                publishIndex(
-                        tenantId,
-                        connector.id(),
+                        item.id(),
                         document.row().documentId(),
                         document.aclVersion(),
+                        downloaded.checksum(),
+                        ConnectorContentTypes.mimeType(extension),
+                        downloaded.sizeBytes(),
+                        object.etag(),
                         actorId,
                         traceId,
                         now);
@@ -458,7 +501,7 @@ public class ConnectorSyncService {
             }
             UUID documentId = UuidV7.generate();
             String objectKey = ConnectorContentTypes.objectKey(tenantId.value(), documentId, now);
-            writeObject(client, connector, objectKey, downloaded.path(), extension);
+            objectWriter.write(objectKey, downloaded.path(), ConnectorContentTypes.mimeType(extension));
             int retentionDays = connectorRepository
                     .findTenant(tenantId)
                     .map(ConnectorTenantInfo::retentionDays)
@@ -497,26 +540,8 @@ public class ConnectorSyncService {
             UUID actorId,
             String traceId) {
         for (ConnectorItemRecord item : connectorRepository.findUnseen(tenantId, connector.id(), startedAt)) {
-            if (connectorRepository.markItemDeleted(tenantId, item.id(), clock.instant()) == 0) {
-                continue;
-            }
-            state.deleted++;
-            if (item.documentId() == null) {
-                continue;
-            }
-            LoadedDocument document = loadDocument(tenantId, item.documentId());
-            if (document == null || !document.active()) {
-                continue;
-            }
-            Instant now = clock.instant();
-            if (connectorRepository.softDeleteDocument(tenantId, item.documentId(), now) == 0) {
-                continue;
-            }
-            auditWriter.documentDeleted(tenantId, item.documentId(), document.visibility(), traceId);
-            try {
-                eventPublisher.enqueueDelete(tenantId, item.documentId(), document.aclVersion(), actorId, traceId, now);
-            } catch (DuplicateKeyException exception) {
-                // API 删除连接器时可能已投递同名 DELETE 事件；唯一键已保证幂等。
+            if (deletePropagationService.propagate(tenantId, item, actorId, traceId, clock.instant())) {
+                state.deleted++;
             }
         }
     }
@@ -528,7 +553,7 @@ public class ConnectorSyncService {
             S3Client client, ConnectorRecord connector, ConnectorObject object, ConnectorSyncBudget budget) {
         Path temp = null;
         try {
-            temp = Files.createTempFile("riccon-connector-", ".tmp");
+            temp = tempFileFactory.create();
             GetObjectRequest request = GetObjectRequest.builder()
                     .bucket(connector.config().bucket())
                     .key(object.key())
@@ -551,6 +576,10 @@ public class ConnectorSyncService {
             }
             String checksum = sha256Hex(temp);
             return new Download(temp, checksum, size);
+        } catch (DownloadFailure failure) {
+            // 超限/总量/校验失败也必须清理临时文件。
+            deleteQuietly(temp);
+            throw failure;
         } catch (S3Exception exception) {
             deleteQuietly(temp);
             throw new DownloadFailure(
@@ -570,26 +599,23 @@ public class ConnectorSyncService {
     }
 
     /**
-     * 写入服务端派生 key 的对象。
+     * 文档仍为 PENDING 且没有排队索引事件时补投一次，恢复上次事件失败留下的状态。
      */
-    private void writeObject(
-            S3Client client, ConnectorRecord connector, String objectKey, Path path, String extension) {
-        try {
-            client.putObject(
-                    PutObjectRequest.builder()
-                            .bucket(connector.config().bucket())
-                            .key(objectKey)
-                            .contentType(ConnectorContentTypes.mimeType(extension))
-                            .build(),
-                    RequestBody.fromFile(path));
-        } catch (S3Exception exception) {
-            throw new DownloadFailure(
-                    exception.statusCode() == 401 || exception.statusCode() == 403
-                            ? ConnectorErrorCodes.AUTH
-                            : ConnectorErrorCodes.OBJECT_FAILED);
-        } catch (SdkClientException exception) {
-            throw new DownloadFailure(ConnectorErrorCodes.OBJECT_FAILED);
+    private void ensureIndexEvent(
+            TenantId tenantId,
+            ConnectorRecord connector,
+            LoadedDocument document,
+            UUID actorId,
+            String traceId,
+            Instant now) {
+        if (document.row().status() != KnowledgeDocumentStatus.PENDING) {
+            return;
         }
+        if (connectorRepository.hasPendingIndexEvent(tenantId, document.row().documentId())) {
+            return;
+        }
+        publishIndex(
+                tenantId, connector.id(), document.row().documentId(), document.aclVersion(), actorId, traceId, now);
     }
 
     /**
@@ -622,6 +648,17 @@ public class ConnectorSyncService {
             ConnectorFailureKind failureKind,
             boolean retryable,
             String traceId) {
+        if (!connectorRepository.isSyncable(tenantId, connector.id())) {
+            LOG.info("connector.sync.aborted connectorId={} reason=deleted_or_tenant_inactive", connector.id());
+            return new ConnectorSyncResult(
+                    ConnectorSyncStatus.ERROR,
+                    false,
+                    new ConnectorSyncSummary(0, 0, 0, 0, 0, 0, false),
+                    ConnectorErrorCodes.CONFIG,
+                    ConnectorFailureKind.CONFIG,
+                    false,
+                    0);
+        }
         Instant finishedAt = clock.instant();
         ConnectorSyncStatus status;
         if (state.errorCode != null && failureKind != ConnectorFailureKind.NONE) {

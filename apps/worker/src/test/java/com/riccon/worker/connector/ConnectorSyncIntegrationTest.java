@@ -1,23 +1,38 @@
 package com.riccon.worker.connector;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.when;
 
 import com.riccon.platform.common.crypto.CredentialEnvelope;
 import com.riccon.platform.common.tenant.TenantContext;
 import com.riccon.platform.common.tenant.TenantId;
 import com.riccon.platform.domain.contract.EventTypes;
+import com.riccon.platform.domain.file.FileFormat;
 import com.riccon.worker.WorkerIntegrationTestBase;
 import com.riccon.worker.connector.config.ConnectorProperties;
+import com.riccon.worker.connector.domain.ConnectorContentTypes;
 import com.riccon.worker.connector.domain.ConnectorErrorCodes;
+import com.riccon.worker.connector.service.ConnectorS3ClientFactory;
 import com.riccon.worker.connector.service.ConnectorSyncHandler;
 import com.riccon.worker.connector.service.ConnectorSyncScheduler;
+import com.riccon.worker.connector.service.ConnectorTempFileFactory;
 import com.riccon.worker.crypto.service.MasterKeyProvider;
+import com.riccon.worker.parse.domain.FileRecord;
+import com.riccon.worker.parse.service.S3FileContentReader;
 import com.riccon.worker.run.domain.ClaimedOutboxEvent;
 import com.riccon.worker.support.ExternalTestServices;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -26,8 +41,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.model.S3Object;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
@@ -49,6 +70,9 @@ class ConnectorSyncIntegrationTest extends WorkerIntegrationTestBase {
     /** 凭据用途。 */
     private static final String PURPOSE = "connector-credential";
 
+    /** 源桶；必须与平台 StorageProperties.bucket() 不同。 */
+    private static final String SOURCE_BUCKET = BUCKET + "-source";
+
     /** 同步处理器。 */
     @Autowired
     private ConnectorSyncHandler handler;
@@ -69,6 +93,18 @@ class ConnectorSyncIntegrationTest extends WorkerIntegrationTestBase {
     @Autowired
     private MeterRegistry meterRegistry;
 
+    /** 平台对象读取器，验证 B7b 可按平台桶读取连接器对象。 */
+    @Autowired
+    private S3FileContentReader contentReader;
+
+    /** 源客户端工厂 spy，用于模拟截断/同步中删除。 */
+    @MockitoSpyBean
+    private ConnectorS3ClientFactory clientFactory;
+
+    /** 临时文件工厂 spy，用于断言失败清理。 */
+    @MockitoSpyBean
+    private ConnectorTempFileFactory tempFileFactory;
+
     /**
      * 注入连接器配置。
      *
@@ -84,6 +120,18 @@ class ConnectorSyncIntegrationTest extends WorkerIntegrationTestBase {
         registry.add("riccon.connector.sync-interval-minutes", () -> "60");
         registry.add("riccon.connector.path-style", () -> "true");
         registry.add("riccon.connector.default-region", () -> "us-east-1");
+    }
+
+    /** 每个测试确保源桶存在；源桶与平台桶分离。 */
+    @org.junit.jupiter.api.BeforeEach
+    void ensureSourceBucket() {
+        try {
+            s3Client.createBucket(builder -> builder.bucket(SOURCE_BUCKET));
+        } catch (S3Exception exception) {
+            if (exception.statusCode() != 409) {
+                throw exception;
+            }
+        }
     }
 
     @Test
@@ -121,6 +169,25 @@ class ConnectorSyncIntegrationTest extends WorkerIntegrationTestBase {
         }
         assertThat(documents.stream().map(row -> row.get("title")).toList())
                 .containsExactlyInAnyOrder("a.pdf", "b.txt");
+        for (Map<String, Object> document : documents) {
+            UUID documentId = com.riccon.worker.persistence.UuidBinary.fromBytes((byte[]) document.get("id"));
+            Instant createdAt = ((LocalDateTime) document.get("created_at")).toInstant(ZoneOffset.UTC);
+            String objectKey = ConnectorContentTypes.objectKey(tenant, documentId, createdAt);
+            byte[] stored = contentReader.read(
+                    TenantId.of(tenant),
+                    new FileRecord(
+                            documentId,
+                            (String) document.get("title"),
+                            FileFormat.PDF,
+                            (String) document.get("mime_type"),
+                            ((Number) document.get("size_bytes")).longValue(),
+                            objectKey));
+            assertThat(new String(stored, StandardCharsets.UTF_8)).isIn("pdf-a", "txt-b");
+        }
+        assertThat(s3Client.listObjectsV2(
+                                builder -> builder.bucket(SOURCE_BUCKET).prefix("tenants/"))
+                        .contents())
+                .isEmpty();
 
         List<Map<String, Object>> items = items(tenant, connector);
         assertThat(items).hasSize(4);
@@ -520,6 +587,111 @@ class ConnectorSyncIntegrationTest extends WorkerIntegrationTestBase {
                 .hasSize(1);
     }
 
+    @Test
+    void truncatedWithoutToken_marksIncompleteAndDoesNotDelete() {
+        String tenant = uniqueTenant("conn");
+        data.createTenant(tenant);
+        UUID user = data.createUser(tenant);
+        String prefix = uniquePrefix("truncated");
+        UUID connector = createConnector(tenant, user, prefix, List.of(), List.of(), false);
+        put(prefix + "a.pdf", "a");
+        put(prefix + "b.pdf", "b");
+        put(prefix + "c.pdf", "c");
+        sync(tenant, connector, 0);
+        assertThat(documents(tenant, connector)).hasSize(3);
+
+        S3Client sourceClient = mock(S3Client.class);
+        when(sourceClient.listObjectsV2(any(ListObjectsV2Request.class)))
+                .thenReturn(ListObjectsV2Response.builder()
+                        .contents(S3Object.builder()
+                                .key(prefix + "a.zip")
+                                .eTag("e")
+                                .size(1L)
+                                .build())
+                        .isTruncated(true)
+                        .build());
+        doReturn(sourceClient).when(clientFactory).build(any(), any(), any());
+        try {
+            sync(tenant, connector, 0);
+        } finally {
+            reset(clientFactory);
+        }
+
+        Map<String, Object> state = connectorState(tenant, connector);
+        assertThat(state.get("last_sync_status")).isEqualTo("PARTIAL");
+        assertThat(booleanValue(state.get("last_sync_complete"))).isZero();
+        assertThat(state.get("last_error_code")).isEqualTo(ConnectorErrorCodes.TRUNCATED);
+        assertThat(documents(tenant, connector).stream()
+                        .filter(row -> row.get("deleted_at") != null)
+                        .count())
+                .isZero();
+        assertThat(items(tenant, connector).stream()
+                        .filter(row -> "DELETED".equals(row.get("status")))
+                        .count())
+                .isZero();
+    }
+
+    @Test
+    void connectorDeletedDuringSync_stopsBeforeCreatingMoreDocuments() {
+        String tenant = uniqueTenant("conn");
+        data.createTenant(tenant);
+        UUID user = data.createUser(tenant);
+        String prefix = uniquePrefix("deleted-mid");
+        UUID connector = createConnector(tenant, user, prefix, List.of(), List.of(), false);
+        put(prefix + "a.pdf", "a");
+
+        S3Client sourceClient = mock(S3Client.class);
+        when(sourceClient.listObjectsV2(any(ListObjectsV2Request.class))).thenAnswer(invocation -> {
+            jdbcClient
+                    .sql("UPDATE kb_connector SET deleted_at=NOW(6) WHERE tenant_id=:tenant AND id=:id")
+                    .param("tenant", tenant)
+                    .param("id", com.riccon.worker.persistence.UuidBinary.toBytes(connector))
+                    .update();
+            return ListObjectsV2Response.builder()
+                    .contents(S3Object.builder()
+                            .key(prefix + "a.pdf")
+                            .eTag("e")
+                            .size(1L)
+                            .build())
+                    .isTruncated(false)
+                    .build();
+        });
+        doReturn(sourceClient).when(clientFactory).build(any(), any(), any());
+        try {
+            sync(tenant, connector, 0);
+        } finally {
+            reset(clientFactory);
+        }
+
+        assertThat(documents(tenant, connector)).isEmpty();
+        Map<String, Object> state = connectorState(tenant, connector);
+        assertThat(state.get("last_sync_started_at")).isNotNull();
+        assertThat(state.get("last_sync_status")).isNull();
+    }
+
+    @Test
+    void totalBytesLimit_cleansTempFile() throws Exception {
+        String tenant = uniqueTenant("conn");
+        data.createTenant(tenant);
+        UUID user = data.createUser(tenant);
+        String prefix = uniquePrefix("temp-clean");
+        UUID connector = createConnector(tenant, user, prefix, List.of(), List.of(), false);
+        put(prefix + "a.pdf", "1234");
+        Path temp = Files.createTempFile("connector-temp-test-", ".tmp");
+        doReturn(temp).when(tempFileFactory).create();
+        ReflectionTestUtils.setField(properties, "maxTotalBytes", 1L);
+        try {
+            sync(tenant, connector, 0);
+        } finally {
+            reset(tempFileFactory);
+            ReflectionTestUtils.setField(properties, "maxTotalBytes", 2L * 1024 * 1024 * 1024);
+        }
+        assertThat(Files.exists(temp)).isFalse();
+        assertThat(documents(tenant, connector)).isEmpty();
+        assertThat(connectorState(tenant, connector).get("last_error_code"))
+                .isEqualTo(ConnectorErrorCodes.TOTAL_BYTES_LIMIT);
+    }
+
     /**
      * 创建连接器并写入信封加密凭据。
      */
@@ -555,7 +727,7 @@ class ConnectorSyncIntegrationTest extends WorkerIntegrationTestBase {
             String secretAccessKey) {
         UUID connectorId = com.riccon.worker.persistence.UuidBinary.newV7();
         ObjectNode config = JSON.createObjectNode();
-        config.put("bucket", BUCKET);
+        config.put("bucket", SOURCE_BUCKET);
         config.put("prefix", prefix);
         config.put("region", "us-east-1");
         if (!includeExtensions.isEmpty()) {
@@ -655,13 +827,13 @@ class ConnectorSyncIntegrationTest extends WorkerIntegrationTestBase {
     /** 写入对象。 */
     private void put(String key, String content) {
         s3Client.putObject(
-                builder -> builder.bucket(BUCKET).key(key).contentType("application/pdf"),
+                builder -> builder.bucket(SOURCE_BUCKET).key(key).contentType("application/pdf"),
                 RequestBody.fromBytes(content.getBytes(StandardCharsets.UTF_8)));
     }
 
     /** 删除对象。 */
     private void delete(String key) {
-        s3Client.deleteObject(builder -> builder.bucket(BUCKET).key(key));
+        s3Client.deleteObject(builder -> builder.bucket(SOURCE_BUCKET).key(key));
     }
 
     /** 读取连接器状态。 */
@@ -684,7 +856,7 @@ class ConnectorSyncIntegrationTest extends WorkerIntegrationTestBase {
         return jdbcClient
                 .sql("""
                         SELECT id, title, source_type, file_id, connector_id, checksum, mime_type, size_bytes,
-                               status, visibility, deleted_at
+                               status, visibility, created_at, deleted_at
                           FROM knowledge_document
                          WHERE tenant_id=:tenant AND connector_id=:connector
                          ORDER BY created_at ASC, id ASC
