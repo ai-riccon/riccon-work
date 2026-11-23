@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0852",
+  "task_id": "TASK-0169",
+  "command": "LOCK=\"${TMPDIR:-/tmp}/riccon-maven.lock\"; while ! mkdir \"$LOCK\" 2>/dev/null; do sleep 5; done; trap 'rmdir \"$LOCK\" 2>/dev/null || true' EXIT; ./mvnw -q -T1C -pl apps/worker,apps/api -am test -Dtest='KnowledgeIndexModesIntegrationTest,KnowledgeIndexV2MigrationTest,ChunkRegionPersistenceIntegrationTest,ParsePersistenceIntegrationTest,ParseSummaryJsonTest,KnowledgeDocumentParseShapeTest' -Dsurefire.failIfNoSpecifiedTests=false",
+  "manual": false,
+  "commit": "ca6dfd942f57c3fa742949ad0ea75fdd65160505",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0169/EV-0852-2026-11-23T14-00-59-977+08-00-lock-tmpdir-tmp-riccon-maven-lock-while-mkdir-lo.log",
+  "output_sha256": "6aa6601309a2c6d79445f2caec5e0fb57aa6b8283bb68105f1d7622b7aa77927",
+  "output_bytes": 21175,
+  "agent": "riccon/verifier",
+  "cwd": "/private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-b7-verify-wt",
+  "started_at": "2026-11-23T13:59:02.001+08:00",
+  "finished_at": "2026-11-23T14:00:57.296+08:00",
+  "duration_ms": 115293,
+  "note": "独立验证：索引 v2/模式/parse/bbox；隔离 worktree ca6dfd9（主树有并行 WIP），6 个测试类定向回归",
+  "recorded_at": "2026-11-23T14:00:59.980+08:00"
+}

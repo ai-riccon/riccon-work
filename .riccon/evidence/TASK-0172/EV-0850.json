@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0850",
+  "task_id": "TASK-0172",
+  "command": "LOCK=\"${TMPDIR:-/tmp}/riccon-maven.lock\"; while ! mkdir \"$LOCK\" 2>/dev/null; do sleep 5; done; trap 'rmdir \"$LOCK\" 2>/dev/null || true' EXIT; rm -rf apps/worker/target/surefire-reports; ./mvnw -q -T1C -pl apps/worker -am test -Dtest='*Injection*Test,*Inj*Test' -Dsurefire.failIfNoSpecifiedTests=false; code=$?; echo \"--- injection surefire summary ---\"; grep -h -o \"<testsuite[^>]*\" apps/worker/target/surefire-reports/TEST-com.riccon.worker.injection.*.xml 2>/dev/null | sed 's/ xmlns[^ ]*//g; s/ version=\"[^\"]*\"//'; exit $code",
+  "manual": false,
+  "commit": "0161c6e6a5664330f84727cd473c2ec8e67d8d12",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0172/EV-0850-2026-11-23T13-52-43-857+08-00-lock-tmpdir-tmp-riccon-maven-lock-while-mkdir-lo.log",
+  "output_sha256": "55e4afa56726146c307b23561fc2ce2611bdc9a7531cab9b3f9097eceb8c912c",
+  "output_bytes": 5445,
+  "agent": "riccon/verifier",
+  "cwd": "/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-task-0172-verify-wt",
+  "started_at": "2026-11-23T13:52:09.175+08:00",
+  "finished_at": "2026-11-23T13:52:43.387+08:00",
+  "duration_ms": 34211,
+  "note": "独立验证：INJ-001..012 注入隔离/工具面（隔离 worktree 0161c6e）",
+  "recorded_at": "2026-11-23T13:52:43.861+08:00"
+}

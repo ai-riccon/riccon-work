@@ -1,0 +1,14 @@
+# probe: riccon.worker.opensearch.index-version env binding (TASK-0169)
+# classpath: apps/worker/target/classes + worker test dependencies
+# probe sets a URL under the same prefix so the binder instantiates OpenSearchProperties; then observes indexVersion
+--- RICCON_WORKER_OPENSEARCH_URL set; RICCON_OPENSEARCH_INDEX_VERSION=v2 ---
+BOUND_INDEX_VERSION=v1
+ENV_OPENSEARCH_INDEX_VERSION=v2
+ENV_WORKER_OPENSEARCH_INDEX_VERSION=null
+--- RICCON_WORKER_OPENSEARCH_URL set; RICCON_WORKER_OPENSEARCH_INDEX_VERSION=v9 ---
+BOUND_INDEX_VERSION=v9
+ENV_OPENSEARCH_INDEX_VERSION=null
+ENV_WORKER_OPENSEARCH_INDEX_VERSION=v9
+--- observation ---
+documented RICCON_OPENSEARCH_INDEX_VERSION does not bind to riccon.worker.opensearch.index-version (default v1 remains)
+only RICCON_WORKER_OPENSEARCH_INDEX_VERSION binds

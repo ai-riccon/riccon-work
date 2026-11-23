@@ -1,0 +1,114 @@
+# command: LOCK="${TMPDIR:-/tmp}/riccon-maven.lock"; while ! mkdir "$LOCK" 2>/dev/null; do sleep 5; done; trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT; ./mvnw -q -T1C -pl apps/worker,apps/api -am test -Dtest='KnowledgeIndexModesIntegrationTest,KnowledgeIndexV2MigrationTest,ChunkRegionPersistenceIntegrationTest,ParsePersistenceIntegrationTest,ParseSummaryJsonTest,KnowledgeDocumentParseShapeTest' -Dsurefire.failIfNoSpecifiedTests=false
+# cwd: /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-b7-verify-wt
+# started_at: 2026-11-23T13:59:02.001+08:00
+# finished_at: 2026-11-23T14:00:57.296+08:00
+# duration_ms: 115293
+# exit_code: 0
+
+# --- stdout ---
+13:59:33.709 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.parse.service.ParsePersistenceIntegrationTest]: ParsePersistenceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+13:59:34.026 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.parse.service.ParsePersistenceIntegrationTest
+13:59:34.269 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.parse.service.ParsePersistenceIntegrationTest]: ParsePersistenceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+13:59:34.270 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+13:59:34.275 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.parse.service.ParsePersistenceIntegrationTest
+13:59:34.447 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+13:59:34.453 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+13:59:34.497 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+13:59:36.350 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+13:59:36.352 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+13:59:36.388 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+13:59:36.709 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+13:59:37.882 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: c7f21bc1477b3effdb004995487156df1066d56ffeb413b616ee8f0bd6468a9e
+13:59:39.097 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT2.388314S
+13:59:39.123 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+13:59:39.124 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+13:59:39.126 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+13:59:39.127 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+13:59:39.285 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: a2779cfc4ff7dbf508a396e1df6cfc50b57eb25a6d27b5c90e5c936cb7b68c37
+13:59:39.790 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:63396/riccon using query 'SELECT 1'
+13:59:53.459 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT14.331226S
+13:59:53.459 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:63396/riccon)
+13:59:53.463 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Creating container for image: opensearchproject/opensearch:3.9.0
+13:59:53.564 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 is starting: 499fdfad17ee75f23762c414447dcb1532838404af9dfd0e176df44aa4d36488
+13:59:53.941 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /confident_raman: Waiting for 180 seconds for URL: http://localhost:63517/_cluster/health?wait_for_status=yellow&timeout=120s (where port 63517 maps to container port 9200)
+14:00:26.438 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 started in PT32.975354S
+14:00:26.440 [main] INFO tc.rustfs/rustfs:1.0.6 -- Creating container for image: rustfs/rustfs:1.0.6
+14:00:26.617 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 is starting: 70b409208e3d0d6ea474880ba5d8aacf016c969de615235a45f1e3101fae8aa4
+14:00:27.521 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /hungry_bhabha: Waiting for 60 seconds for URL: http://localhost:63649/health (where port 63649 maps to container port 9000)
+14:00:28.544 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 started in PT2.104076S
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-23T14:00:35.894+08:00  INFO 15819 --- [riccon-worker] [           main] .r.w.p.s.ParsePersistenceIntegrationTest : Starting ParsePersistenceIntegrationTest using Java 21.0.13 with PID 15819 (started by ricky in /private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-b7-verify-wt/apps/worker)
+2026-11-23T14:00:35.897+08:00  INFO 15819 --- [riccon-worker] [           main] .r.w.p.s.ParsePersistenceIntegrationTest : The following 1 profile is active: "test"
+2026-11-23T14:00:39.212+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-23T14:00:39.949+08:00  WARN 15819 --- [riccon-worker] [           main] o.a.poi.openxml4j.util.ZipSecureFile     : setting max text size greater than 10485760 can be risky; set to 268435456 chars
+2026-11-23T14:00:46.698+08:00  INFO 15819 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-23T14:00:46.699+08:00  INFO 15819 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-23T14:00:46.723+08:00  INFO 15819 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-23T14:00:46.739+08:00  INFO 15819 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 40 ms
+2026-11-23T14:00:47.077+08:00  INFO 15819 --- [riccon-worker] [           main] .r.w.p.s.ParsePersistenceIntegrationTest : Started ParsePersistenceIntegrationTest in 11.939 seconds (process running for 80.695)
+2026-11-23T14:00:47.222+08:00  INFO 15819 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-23T14:00:47.313+08:00  INFO 15819 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-23T14:00:47.401+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=12 actual=12
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-23T14:00:50.680+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-a-3f8bfc7030 fileId=01a206fe-29ac-784c-92d3-df42120d224b parseId=01a206fe-2a44-7f24-a146-49b753bfca96 chunks=2
+2026-11-23T14:00:50.695+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a206fe-2a93-7ca1-8e5c-6f4324a49adb tenantId=tenant-a-3f8bfc7030 runId=01a206fe-2a52-787a-9d9b-6db0a40ac14f attempts=1
+2026-11-23T14:00:51.649+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-a-0917b8a635 fileId=01a206fe-2f7e-7e8d-88fe-5788e3396c7e parseId=01a206fe-2fa0-7cca-ace4-871eb6e9e485 chunks=1
+2026-11-23T14:00:51.667+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a206fe-2fbc-7b95-8a4c-d6bacd30783a tenantId=tenant-a-0917b8a635 runId=01a206fe-2fb5-748b-8a1c-3414079bf49c attempts=1
+2026-11-23T14:00:51.694+08:00  INFO 15819 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.index.repository.ChunkRegionPersistenceIntegrationTest]: ChunkRegionPersistenceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-23T14:00:51.769+08:00  INFO 15819 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.index.repository.ChunkRegionPersistenceIntegrationTest
+2026-11-23T14:00:51.772+08:00  INFO 15819 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.index.repository.ChunkRegionPersistenceIntegrationTest]: ChunkRegionPersistenceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-23T14:00:51.773+08:00  INFO 15819 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-23T14:00:51.778+08:00  INFO 15819 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.index.repository.ChunkRegionPersistenceIntegrationTest
+2026-11-23T14:00:51.980+08:00  INFO 15819 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.index.service.KnowledgeIndexModesIntegrationTest]: KnowledgeIndexModesIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-23T14:00:52.021+08:00  INFO 15819 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.index.service.KnowledgeIndexModesIntegrationTest
+2026-11-23T14:00:52.022+08:00  INFO 15819 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.index.service.KnowledgeIndexModesIntegrationTest]: KnowledgeIndexModesIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-23T14:00:52.022+08:00  INFO 15819 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-23T14:00:52.025+08:00  INFO 15819 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.index.service.KnowledgeIndexModesIntegrationTest
+2026-11-23T14:00:53.064+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-b-a08f2ae19e documentId=01a206fe-3254-7995-a336-9544c3d09b7f mode=FULL chunks=1 dimensions=64 force=false parseEngine=null
+2026-11-23T14:00:53.075+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a206fe-3268-7afe-9865-fa785e91b9da tenantId=tenant-b-a08f2ae19e runId=01a206fe-3262-7918-9eae-355f7295e54a attempts=1
+2026-11-23T14:00:53.162+08:00  WARN 15819 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a206fe-3686-72a1-810f-94235cae4b1d tenantId=tenant-a-d631539869 runId=01a206fe-3681-7e8d-91d3-d1710f094502 attempts=1 reason=RICCON-TENANT-404: knowledge document not found
+2026-11-23T14:00:53.571+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-a-f622f8e2ff documentId=01a206fe-36d7-7f0b-b98d-002e9fff7fa0 mode=FULL chunks=1 dimensions=64 force=false parseEngine=null
+2026-11-23T14:00:53.582+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a206fe-36e7-7951-9180-95dd7dbfb5f7 tenantId=tenant-a-f622f8e2ff runId=01a206fe-36e3-7a3d-aef2-f72943a0d7d5 attempts=1
+2026-11-23T14:00:53.784+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.delete_completed tenantId=tenant-a-f622f8e2ff documentId=01a206fe-36d7-7f0b-b98d-002e9fff7fa0 chunks=1 status=DELETED
+2026-11-23T14:00:53.803+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a206fe-3876-7b8e-80a8-b05607c55b69 tenantId=tenant-a-f622f8e2ff runId=01a206fe-386f-78ee-95bf-5be59717ae89 attempts=1
+2026-11-23T14:00:53.900+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.delete_completed tenantId=tenant-a-f622f8e2ff documentId=01a206fe-36d7-7f0b-b98d-002e9fff7fa0 chunks=0 status=DELETED
+2026-11-23T14:00:53.914+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a206fe-394d-7f5f-a9dc-418597c9b505 tenantId=tenant-a-f622f8e2ff runId=01a206fe-3947-703e-a124-bd298a8f5066 attempts=1
+2026-11-23T14:00:54.368+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-a-74f767ece9 documentId=01a206fe-39c8-7eca-985f-300fab4d4d74 mode=FULL chunks=2 dimensions=64 force=false parseEngine=null
+2026-11-23T14:00:54.384+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a206fe-39de-7e51-af03-bfb730a602b8 tenantId=tenant-a-74f767ece9 runId=01a206fe-39d9-7131-8943-2ca633f35f43 attempts=1
+2026-11-23T14:00:54.599+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.acl_completed tenantId=tenant-a-74f767ece9 documentId=01a206fe-39c8-7eca-985f-300fab4d4d74 chunks=2 aclVersion=2
+2026-11-23T14:00:54.615+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a206fe-3b9c-79ca-b1d4-d0457c6d4375 tenantId=tenant-a-74f767ece9 runId=01a206fe-3b97-7253-a389-eddf87d2dd76 attempts=1
+2026-11-23T14:00:54.758+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.acl_skipped tenantId=tenant-a-74f767ece9 documentId=01a206fe-39c8-7eca-985f-300fab4d4d74 payloadAclVersion=4 currentAclVersion=5 reason=stale
+2026-11-23T14:00:54.770+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a206fe-3ccb-739d-bf5c-2a5d2baa6383 tenantId=tenant-a-74f767ece9 runId=01a206fe-3cc4-7682-9923-62d5ffd7f392 attempts=1
+2026-11-23T14:00:54.871+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.delete_completed tenantId=tenant-a-3c1ce83671 documentId=01a206fe-3d1a-7f65-b482-3617067e3665 chunks=0 status=DELETED
+2026-11-23T14:00:54.888+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a206fe-3d2f-7cd1-ba49-d085dbd8a0e6 tenantId=tenant-a-3c1ce83671 runId=01a206fe-3d2a-7cea-8e93-08154d858137 attempts=1
+2026-11-23T14:00:54.913+08:00  INFO 15819 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.index.service.KnowledgeIndexV2MigrationTest]: KnowledgeIndexV2MigrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-23T14:00:54.917+08:00  INFO 15819 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.index.service.KnowledgeIndexV2MigrationTest
+2026-11-23T14:00:54.919+08:00  INFO 15819 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.index.service.KnowledgeIndexV2MigrationTest]: KnowledgeIndexV2MigrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-23T14:00:54.920+08:00  INFO 15819 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-23T14:00:54.923+08:00  INFO 15819 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.index.service.KnowledgeIndexV2MigrationTest
+2026-11-23T14:00:55.443+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-a-856d07038e documentId=01a206fe-3dcb-7c03-9891-401c8080d18e mode=FULL chunks=2 dimensions=64 force=false parseEngine=PDFBOX
+2026-11-23T14:00:55.457+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a206fe-3dd9-70eb-8c16-3ae152efc7dd tenantId=tenant-a-856d07038e runId=01a206fe-3dd2-7cbc-a651-524e6efaace8 attempts=1
+2026-11-23T14:00:55.942+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-a-856d07038e documentId=01a206fe-3dcb-7c03-9891-401c8080d18e mode=FULL chunks=2 dimensions=64 force=false parseEngine=PDFBOX
+2026-11-23T14:00:56.440+08:00  INFO 15819 --- [riccon-worker] [           main] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-a-856d07038e documentId=01a206fe-3dcb-7c03-9891-401c8080d18e mode=FULL chunks=2 dimensions=64 force=false parseEngine=PDFBOX
+
+# --- stderr ---
+

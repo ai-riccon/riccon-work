@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0853",
+  "task_id": "TASK-0172",
+  "command": "LOCK=\"${TMPDIR:-/tmp}/riccon-maven.lock\"; while ! mkdir \"$LOCK\" 2>/dev/null; do sleep 5; done; trap 'rmdir \"$LOCK\" 2>/dev/null || true' EXIT; INJ_FILES=\"$(find \"$PWD/apps/worker/src/test/java/com/riccon/worker/injection\" -name '*.java' | sort | paste -sd, -)\"; ./mvnw -q -pl apps/worker spotless:check -DspotlessFiles=\"$INJ_FILES\"; style=$?; echo \"--- spotless injection exit=$style ---\"; if [ $style -ne 0 ]; then exit $style; fi; rm -rf apps/worker/target/surefire-reports; ./mvnw -q -T1C -pl apps/worker -am test -Dtest='*Injection*Test,*Inj*Test' -Dsurefire.failIfNoSpecifiedTests=false; code=$?; echo \"--- injection surefire summary ---\"; grep -h -o \"<testsuite[^>]*\" apps/worker/target/surefire-reports/TEST-com.riccon.worker.injection.*.xml 2>/dev/null | sed 's/ xmlns[^ ]*//g; s/ version=\"[^\"]*\"//'; exit $code",
+  "manual": false,
+  "commit": "a75b6891430aec536d16fc4518290904aa6ff532",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0172/EV-0853-2026-11-23T14-06-40-629+08-00-lock-tmpdir-tmp-riccon-maven-lock-while-mkdir-lo.log",
+  "output_sha256": "d4a1e2ccfd4daf365d6d9003aefd47800d0ec3a2787b2089091d37940ddb9f55",
+  "output_bytes": 5769,
+  "agent": "riccon/verifier",
+  "cwd": "/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-task-0172-verify-wt2",
+  "started_at": "2026-11-23T14:06:09.071+08:00",
+  "finished_at": "2026-11-23T14:06:39.926+08:00",
+  "duration_ms": 30853,
+  "note": "独立复验 a75b689（EV-0852 撞号后重编号）：injection 12 文件 scoped spotless:check + 23 tests；主树 B7 文件不计入本任务",
+  "recorded_at": "2026-11-23T14:06:40.632+08:00"
+}
