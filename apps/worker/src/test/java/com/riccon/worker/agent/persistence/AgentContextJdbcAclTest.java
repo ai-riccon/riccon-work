@@ -296,6 +296,21 @@ class AgentContextJdbcAclTest extends WorkerIntegrationTestBase {
         assertThat(audits).isZero();
     }
 
+    /** 跨租户检索不可见（TenantJdbc 隔离）。 */
+    @Test
+    @DisplayName("跨租户检索无结果")
+    void search_crossTenant_isIsolated() {
+        String tenantA = uniqueTenant("acl-tenant-a");
+        UUID creatorA = seedTenant(tenantA);
+        UUID documentA = createDocument(tenantA, "租户A文档", "TENANT", null, creatorA);
+        insertChunk(tenantA, documentA, "租户A市场数据");
+        markIndexed(tenantA, documentA);
+
+        String tenantB = uniqueTenant("acl-tenant-b");
+        UUID userB = seedTenant(tenantB);
+        assertThat(search(tenantB, userB, false, "市场")).isEmpty();
+    }
+
     /** 标题 FULLTEXT 与英文查询可用；单字查询不退化。 */
     @Test
     @DisplayName("FULLTEXT：标题/英文/单字")
