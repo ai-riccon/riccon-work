@@ -155,7 +155,7 @@ FILTER="$(node scripts/test-shards.mjs --shard 0 --print-test-filter)"
 
 - 分片只跑 `test`，不用 `verify`/`jacoco:report`：分片覆盖率不完整，覆盖率仍由 CI `backend-coverage` 与 verifier 的 canonical gate 采集。`-Djacoco.skip=true` 只关闭采集代理，不改变测试内容与断言。
 - `-Dtest` 用 Surefire 3.5.6 的排除语法（`!FQCN`）：每片运行“除其他 3 片之外的所有类”。未登记到基线的新测试类不会被任何排除列表命中，会在 4 片全部执行，合并时以“重复类/额外类”失败，靠运行时集合校验防漏跑，不依赖源码命名扫描。
-- 迁移、回滚与 schema 版本测试（`V9/V10/V11MigrationTest`、`SchemaVersionCheckerTest` 的 external 分支）仍使用一次性容器，不受热栈影响；迁移冒烟在 `backend-smoke` 用默认 `riccon` 库，不读写 namespace。
+- 迁移、回滚与 schema 版本测试（`V9/V10/V11/V12MigrationTest`、`SchemaVersionCheckerTest` 的 external 分支）仍使用一次性容器，不受热栈影响；迁移冒烟在 `backend-smoke` 用默认 `riccon` 库，不读写 namespace。
 - 本地复用共享热栈时只 `stop`（保留数据卷），不要照抄 CI 的 `down -v`，否则会清空其他 agent 的数据。
 
 ### 分片基线与合并校验（M19 P2）
@@ -221,7 +221,7 @@ node scripts/test-timings.mjs --reports-root "$TMPDIR/empty"
 # 1. 启动测试栈（MySQL 已在 compose 中固定审计触发器所需参数，无需手工 SET GLOBAL）
 docker compose -f deploy/compose/docker-compose.test.yml up -d --wait
 
-# 2. 启动 API（默认端口 8080，连接 13306 的 MySQL；启动时执行 Flyway V1–V11）
+# 2. 启动 API（默认端口 8080，连接 13306 的 MySQL；启动时执行 Flyway V1–V12）
 ./mvnw -q -pl apps/api spring-boot:run
 
 # 3. 启动 Worker（默认端口 8081；M01 无数据库依赖，M02 持久化实现任务加入 JDBC 后需要 MySQL）
@@ -250,13 +250,14 @@ export RICCON_BOOTSTRAP_ADMIN_PASSWORD='<至少 12 位，部署时注入，禁�
 
 ### 迁移与审计触发器
 
-- 迁移只由 `apps/api` 执行；Worker 不包含迁移文件，只校验 `SchemaVersionChecker.EXPECTED_SCHEMA_VERSION`（M10 起为 10）。
+- 迁移只由 `apps/api` 执行；Worker 不包含迁移文件，只校验 `SchemaVersionChecker.EXPECTED_SCHEMA_VERSION`（M05 起为 12）；worker 期望版本与 DB 不一致时拒绝启动（`RICCON-WORKER-001`）。
 - V6 创建 `audit_event` 触发器；若 MySQL 返回 `ERROR 1419`，说明迁移账号缺少 `TRIGGER` 或 `log_bin_trust_function_creators` 未开启。不得删除触发器绕过。
 - 已应用的迁移文件禁止修改；新增迁移同步 `SchemaVersion.EXPECTED`（ADR-0010）。
 - Spring Session 表由 V7 创建，必须保持 `spring.session.jdbc.initialize-schema=never`，禁止应用自动建表。
 - V10（M10，审计查询与导出）新增 `audit_export_request` 表、`audit_event` 两条查询索引（`idx_audit_tenant_action_time`、`idx_audit_tenant_actor_time`）、`audit.export.approve` / `platform.audit.export.approve` 两条权限并回填既有 `TENANT_ADMIN` / `PLATFORM_ADMIN` 角色映射；纯 additive，append-only 触发器不变。生产执行见下文“V10 生产迁移”。
+- V12（M05，知识库纵深）为 additive：新增 `knowledge_document_acl`、`kb_connector`、`kb_connector_item` 三张表，`knowledge_document` 增加 `visibility`/`department_id`/`acl_version`/`parse_*`/`retention_expires_at` 等列与索引；`visibility` 的 `DEFAULT 'TENANT'` 使历史文档保持现状，不执行全表 UPDATE，append-only 触发器不变。
 
-#### 测试栈迁移演练（V1–V11，可复制）
+#### 测试栈迁移演练（V1–V12，可复制）
 
 > **仅测试栈。** 以下参数与凭据只属于 `deploy/compose/docker-compose.test.yml`。生产迁移账号是否具备 `TRIGGER`、是否开启 `log_bin_trust_function_creators`（或改用 DBA 预建触发器）由 M09 决定，禁止直接照搬本节配置。
 
@@ -277,7 +278,7 @@ docker compose -f deploy/compose/docker-compose.test.yml exec -T \
   -e MYSQL_PWD="${RICCON_DB_PASSWORD:-riccon_test_only}" \
   mysql mysql --user=riccon -e "SHOW VARIABLES LIKE 'log_bin_trust_function_creators';"
 
-# 4. 按 Flyway 版本号顺序执行 V1..V11（不能用 shell 字典序：V10 会排到 V2 之前，
+# 4. 按 Flyway 版本号顺序执行 V1..V12（不能用 shell 字典序：V10 会排到 V2 之前，
 #    导致外键引用尚未创建的 app_user）；任一步失败立即中断，不吞错误
 set -euo pipefail
 migrations="$(printf '%s\n' apps/api/src/main/resources/db/migration/V*.sql | sort -V)"
@@ -288,7 +289,7 @@ while IFS= read -r migration; do
     mysql mysql --user=riccon --database=riccon --batch --show-warnings < "${migration}"
 done <<< "${migrations}"
 
-# 5. 校验结构：45 张表（Flyway 口径 46）、2 个触发器、V10 对象
+# 5. 校验结构：48 张表（Flyway 口径 49）、2 个触发器、V10/V12 对象
 docker compose -f deploy/compose/docker-compose.test.yml exec -T \
   -e MYSQL_PWD="${RICCON_DB_PASSWORD:-riccon_test_only}" \
   mysql mysql --user=riccon --database=riccon --batch -e "
@@ -301,7 +302,10 @@ docker compose -f deploy/compose/docker-compose.test.yml exec -T \
      WHERE table_schema='riccon' AND table_name='audit_event'
        AND index_name IN ('idx_audit_tenant_action_time','idx_audit_tenant_actor_time');
     SELECT COUNT(*) AS v10_permissions FROM permission
-     WHERE code IN ('audit.export.approve','platform.audit.export.approve');"
+     WHERE code IN ('audit.export.approve','platform.audit.export.approve');
+    SELECT COUNT(*) AS v12_tables FROM information_schema.tables
+     WHERE table_schema='riccon'
+       AND table_name IN ('knowledge_document_acl','kb_connector','kb_connector_item');"
 
 # 6. 校验 append-only：先插入一行，再验证 UPDATE/DELETE 都被触发器拒绝（两条命令都必须 exit 1）
 docker compose -f deploy/compose/docker-compose.test.yml exec -T \
@@ -331,11 +335,12 @@ docker compose -f deploy/compose/docker-compose.test.yml down -v
 | 检查项                            | 期望                                                                                                     |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `log_bin_trust_function_creators` | `ON`                                                                                                     |
-| 迁移输出                          | V1–V11 逐条无错误；不得出现 `ERROR 1419`                                                                 |
-| `table_count`                     | 45（手工重放不含 `flyway_schema_history`；API 经 Flyway 启动后为 46，与 `ApiApplicationTests` 口径一致） |
+| 迁移输出                          | V1–V12 逐条无错误；不得出现 `ERROR 1419`                                                                 |
+| `table_count`                     | 48（手工重放不含 `flyway_schema_history`；API 经 Flyway 启动后为 49，与 `ApiApplicationTests` 口径一致） |
 | `trigger_count`                   | 2（`trg_audit_event_no_update`、`trg_audit_event_no_delete`）                                            |
 | `v10_tables` / `v10_indexes`      | 1（`audit_export_request`）/ 2（两条 `audit_event` 复合索引）                                            |
 | `v10_permissions`                 | 2（`audit.export.approve`、`platform.audit.export.approve`）                                             |
+| `v12_tables`                      | 3（`knowledge_document_acl`、`kb_connector`、`kb_connector_item`）                                       |
 | UPDATE / DELETE                   | 均 exit 1，`ERROR 1644 (45000): audit_event is append-only`，行仍存在                                    |
 
 手工重放只用于演练与 CI 冒烟，不会写入 `flyway_schema_history`。**不要在同一数据卷上随即启动 API**：Flyway 会因“非空 schema 但无历史表”拒绝迁移；需要继续用 API 验证时先 `down -v` 再 `up -d --wait`。
@@ -639,7 +644,7 @@ node scripts/ops/rewrap-credentials.mjs --apply --via=client
 
 预览/测试环境基线：RPO ≤24h、RTO ≤4h；客户生产可由 SOW 覆盖，覆盖值必须写进交付文档，
 但不得放宽到无备份窗口。`restore-drill` 通过判据：表数一致、触发器 2 个、一行 credential 可解密、
-J1 冒烟通过、`MAX(version)=11`、RTO ≤4h。
+J1 冒烟通过、`MAX(version)=12`、RTO ≤4h。
 
 ```bash
 # 完整演练（推荐）：演练库 riccon_restore_drill 导入源库快照，API 指向演练库后跑 J1
@@ -853,6 +858,81 @@ node scripts/ops/cost-reconcile.mjs --api-base http://127.0.0.1:18080 --tenant t
 - **关闭开关只回退“强制”**，不删除 ACL 数据；重新打开在下一次请求生效。
 - **回滚约束**：ACL 打开后，应用回滚到 M05 前版本、或关闭本开关，都会让 `DEPT`/`USERS` 文档变成本租户全员
   可见，属于安全回归；生产需用户书面同意（ADR-0023 §5.9），默认只允许前向修复（修 ACL 逻辑）。
+
+## M05 本地 OCR 运维（O1b，零出网）
+
+依据 ADR-0023 §4.4/§4.6/§4.7 与 B5 实现（`OcrProperties`/`OcrService`/`TesseractOcrEngine`/`OcrCli`）。
+镜像 `deploy/Dockerfile.worker`（O1a）固定 Tesseract 5.3.4 / Leptonica 1.82.0 / tessdata_fast commit 与
+权重 SHA256；指纹在镜像内 `/opt/riccon/ocr/manifest.json`，经 `/actuator/info` 的 `ocr` 段暴露。
+
+### M05-3 启停与配置
+
+- 开关：`RICCON_OCR_ENABLED`（Spring `riccon.worker.ocr.enabled`，默认 `true`）。关闭后图片/扫描页不 OCR，
+  文档 `FAILED` + `KB_OCR_DISABLED`，原图与文件名保留；worker 不再装配原生引擎。
+  测试 profile（`application-test.yml`）显式 `false`，无 Tesseract 的宿主/CI 跑全量不会失败。
+- 语言：`RICCON_OCR_LANG`（默认 `chi_sim+eng`）。语言包缺失时启动只 WARN、不阻断；识别该文档时
+  `FAILED` + `KB_OCR_LANG_UNAVAILABLE`（UI“不支持该语言”），其他语言/文档不受影响。
+- 引擎：`RICCON_OCR_ENGINE=tesseract`（SPI；当前只有 tesseract）。生产 `RICCON_OCR_ENABLED=true` 且
+  原生库/引擎不可用时 **worker 启动失败**（不允许静默降级成“没有 OCR”）。
+- 资源与超时（默认即生产值，改动前评估）：`RICCON_OCR_MAX_CONCURRENCY=2`、
+  `RICCON_OCR_PAGE_TIMEOUT=30s`、`RICCON_OCR_DOCUMENT_TIMEOUT=600s`、`RICCON_OCR_MAX_PAGES=100`、
+  `RICCON_OCR_MAX_PIXELS=50000000`、`RICCON_OCR_MAX_DECODE_PIXELS=200000000`、
+  `RICCON_OCR_MAX_DECODE_BYTES=67108864`、`RICCON_OCR_MAX_LONG_EDGE=4000`、`RICCON_OCR_PDF_DPI=200`、
+  `RICCON_OCR_LOW_CONFIDENCE=0.60`、`RICCON_OCR_PAGE_LOW_CONFIDENCE=0.45`；
+  `RICCON_OCR_TESSDATA_PATH`/`RICCON_OCR_MANIFEST_PATH` 一般保持镜像默认。OCR 走 outbox `heavy`
+  通道（ADR-0023 §4.4/§7.3），不占 chat 流线程。
+- 排查日志键：启动 `ocr.engine.ready ocr.engine=tesseract ocr.version=... ocr.lang=... ocr.model_hash=...`；
+  运行期 `ocr.page.timeout pageNo=... timeoutMs=...`、`ocr.image.rotate_retry ...`。失败页错误码进入
+  `parse_warnings`（`FAILED_PAGES:[..]`、`LOW_CONFIDENCE_PAGES:[..]`），不新增 status 枚举。
+
+### M05-4 语言包/权重与许可
+
+- 权重来自 `tessdata_fast` 固定 commit `87416418657359cb625c412a48b6e1d6d41c29bd`，
+  `chi_sim.traineddata`/`eng.traineddata` 的 SHA256 固定在 `deploy/Dockerfile.worker` 构建参数并在构建期
+  校验；`eng` 覆盖发行版数据，`osd` 由 `tesseract-ocr` 包提供。
+- 升级权重 = 改 Dockerfile 的 `TESSDATA_FAST_REF` 与两个 SHA256 → 重建镜像 → 同步 `NOTICE` 的 commit/哈希
+  → 跑 `scripts/ops/ocr-check` → 核对 `/actuator/info`。**禁止**手工 `docker cp` 权重进运行中容器
+  （重启即丢失，且与 manifest 不一致）。
+- 许可：Tesseract/Leptonica/tessdata 为 Apache-2.0/BSD-2-Clause；Tess4J/Lept4J/JNA/jai-imageio-core/
+  commons-io 见仓库根 `NOTICE`；不得引入公有云 OCR SDK（ADR-0023 §4.1，M05-AC-05 零出网）。
+
+### M05-5 `scripts/ops/ocr-check`（O1b / SEC-KB-001）
+
+一条命令在 `--network none` 一次性容器内只跑 `OcrCli` + `deploy/ocr/sample.png`：不启动 Spring、
+MySQL、OpenSearch 或对象存储，不使用宿主机 Tesseract，只依赖 docker 与该镜像。
+
+```bash
+# 默认：镜像 riccon-worker-ocr:o1a + deploy/ocr/sample.png
+scripts/ops/ocr-check
+
+# 镜像在 B5 之后重建（自带 OcrCli）时同样是这一条
+docker build -f deploy/Dockerfile.worker -t riccon-worker-ocr:o1b .
+scripts/ops/ocr-check --image riccon-worker-ocr:o1b
+
+# O1a 镜像早于 B5（/app/app.jar 无 OcrCli）时，挂载当前构建产物（与 EV-0840/0842 同一做法）
+scripts/ops/ocr-check --image riccon-worker-ocr:o1a \
+  --jar apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar
+```
+
+断言与失败语义：
+
+- manifest ↔ 镜像 label（engine/tesseract/leptonica/tessdata 引用与权重 SHA256）一致；镜像内权重 SHA256 与
+  manifest 一致；`tesseract --version` 为 5.3.4、leptonica 1.82.0；`--list-langs` 含 `chi_sim`/`eng`/`osd`；
+  运行用户 uid=10001；
+- 零出网证据：容器 `/proc/net/route` 无任何路由（仅表头）；镜像 env 无 DB/OpenSearch/S3 变量；
+- `OcrCli` 输出 `engine=tesseract`、文本 `RICCON OCR 12345`、`averageConfidence > 0`、`bbox` 四元组；
+- 退出码：0 通过；1 断言失败（打印失败步骤与原始输出）；2 用法/环境错误（docker/镜像/jar/fixture）。
+
+M05 gate 证据（`SEC-KB-001`）：把上面任一条命令原样作为 EV 命令，必须 exit 0；脚本的 `--network none`、
+无 DB/S3 变量与无路由断言即零出网证明。
+
+### M05-6 回滚与降级
+
+- 用户可见回滚：`RICCON_OCR_ENABLED=false` + 重启 worker。之后上传的图片/扫描件按 `KB_OCR_DISABLED`
+  失败并保留原图；已索引文档不变；不涉及 DB 回滚（V12 为 additive）。
+- 仅当“引擎不可用但业务必须继续”时使用；ADR-0023 §4.4 要求生产默认开启，关闭须在评审中登记残余风险。
+- 镜像/权重回滚：回到上一版 `-exec.jar` 与镜像 tag（OcrCli 与 manifest 同镜像）；数据库不涉及。
+- ACL 开关关闭/回滚的安全回归与书面同意要求见 `M05-2`（ADR-0023 §5.9），与本开关无关。
 
 ## 生产
 

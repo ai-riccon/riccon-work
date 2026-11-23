@@ -1,0 +1,247 @@
+#!/usr/bin/env bash
+# M05-O1b 零出网 OCR 冒烟：在 `--network none` 一次性容器里只跑 B5 OcrCli + 固定夹具
+# （ADR-0023 §4.7 SEC-KB-001、M05-AC-05、OPS-M05-OCR-01）。
+#
+# 用法：
+#   scripts/ops/ocr-check                          # 默认镜像 riccon-worker-ocr:o1a + deploy/ocr/sample.png
+#   scripts/ops/ocr-check --image riccon-worker:local
+#   scripts/ops/ocr-check --jar apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar
+#   scripts/ops/ocr-check --help
+#
+# 做什么（全部在 --network none 内完成）：
+#   1) 镜像指纹：/opt/riccon/ocr/manifest.json 与镜像 label、镜像内 tesseract/leptonica 版本一致；
+#      chi_sim/eng 权重 SHA256 与 manifest 一致；`tesseract --list-langs` 含 chi_sim/eng/osd；
+#   2) 零出网：容器 /proc/net/route 无任何路由；镜像 env 无 DB/OpenSearch/S3 变量；
+#   3) 运行 OcrCli（不启 Spring/MySQL/OpenSearch/S3），断言非空文本 `RICCON OCR 12345`、
+#      平均置信度 > 0、bbox 四元组存在、engine=tesseract；
+#   4) 任一断言失败即非 0 退出，并打印定位信息（失败步骤 + 原始输出）。
+#
+# 不做什么：
+#   - 不使用宿主机 Tesseract，不依赖 tessdata 宿主机路径；只依赖 docker + O1a 镜像；
+#   - 不启动 compose 栈，不写数据库，不访问网络（容器全部 `--network none`）。
+#
+# 镜像 jar 解析顺序：
+#   1) --jar 显式指定（必须包含 OcrCli）；
+#   2) 镜像内 /app/app.jar 含 OcrCli（镜像在 B5 之后构建时命中）；
+#   3) 本地 apps/worker/target/riccon-worker-*-exec.jar 含 OcrCli（O1a 镜像早于 B5 时的构建产物）。
+#   都找不到时报错并提示重建镜像或传 --jar。
+#
+# 退出码：0 = 全部通过；1 = 断言失败；2 = 用法/环境错误（docker、镜像、jar、fixture）。
+set -euo pipefail
+set -o errtrace
+
+cd "$(dirname "$0")/../.."
+
+readonly DEFAULT_IMAGE="riccon-worker-ocr:o1a"
+readonly DEFAULT_FIXTURE="deploy/ocr/sample.png"
+readonly MANIFEST_PATH="/opt/riccon/ocr/manifest.json"
+readonly TESSDATA_DIR="/usr/share/tesseract-ocr/5/tessdata"
+readonly EXPECTED_TEXT="RICCON OCR 12345"
+
+image="$DEFAULT_IMAGE"
+fixture="$DEFAULT_FIXTURE"
+jar=""
+lang="chi_sim+eng"
+dpi=200
+step=""
+
+usage() {
+  sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+fail() {
+  local code="${2:-1}"
+  printf 'ocr-check: FAIL [%s] %s\n' "${step:-init}" "$1" >&2
+  if [[ -n "${diag:-}" && -f "$diag" ]]; then
+    echo "--- 最近一次捕获输出（$diag）---" >&2
+    tail -n 40 "$diag" >&2 || true
+  fi
+  exit "$code"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --image) image="${2:?--image 需要取值}"; shift 2 ;;
+    --jar) jar="${2:?--jar 需要取值}"; shift 2 ;;
+    --fixture) fixture="${2:?--fixture 需要取值}"; shift 2 ;;
+    --lang) lang="${2:?--lang 需要取值}"; shift 2 ;;
+    --dpi) dpi="${2:?--dpi 需要取值}"; shift 2 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "ocr-check: 未知参数 $1（--help 查看用法）" >&2; exit 2 ;;
+  esac
+done
+
+step="env"
+diag=""
+command -v docker >/dev/null 2>&1 || fail "找不到 docker" 2
+command -v unzip >/dev/null 2>&1 || fail "找不到 unzip（用于核验 jar 内 OcrCli）" 2
+[[ -f "$fixture" ]] || fail "夹具不存在：$fixture" 2
+docker image inspect "$image" >/dev/null 2>&1 || fail "镜像不存在：$image（先 docker build -f deploy/Dockerfile.worker -t $image .）" 2
+[[ "$dpi" =~ ^[0-9]+$ ]] || fail "--dpi 必须是整数" 2
+[[ "$lang" =~ ^[a-z_+0-9]+$ ]] || fail "--lang 只允许 [a-z_+0-9]" 2
+
+work_dir="$(mktemp -d)"
+trap 'rm -rf "$work_dir"' EXIT
+diag="$work_dir/init.txt"
+
+# 容器统一入口：所有 docker run 都强制 --network none，禁止在别处直接 docker run。
+crun() {
+  docker run --rm --network none "$@"
+}
+
+# 每次进入新检查步骤时切换诊断文件，失败时只回显该步骤的原始输出。
+begin_step() {
+  step="$1"
+  diag="$work_dir/$1.txt"
+  : > "$diag"
+}
+
+sha256_of() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  else
+    sha256sum "$1" | awk '{print $1}'
+  fi
+}
+
+manifest_value() {
+  sed -n "s/.*\"$1\":\"\\([^\"]*\\)\".*/\\1/p" "$2"
+}
+
+echo "== ocr-check 参数"
+echo "  image=$image"
+echo "  fixture=$fixture"
+echo "  lang=$lang dpi=$dpi"
+echo "  network=none（所有容器）"
+
+# ---- 1. 镜像指纹与 manifest ----
+begin_step manifest
+crun --entrypoint cat "$image" "$MANIFEST_PATH" > "$work_dir/manifest.json" \
+  || fail "读取镜像内 $MANIFEST_PATH 失败"
+manifest="$work_dir/manifest.json"
+grep -q '"engine":"tesseract"' "$manifest" || fail "manifest engine 不是 tesseract"
+
+engine_version="$(manifest_value engineVersion "$manifest")"
+leptonica_version="$(manifest_value leptonicaVersion "$manifest")"
+tessdata_ref="$(manifest_value tessdata "$manifest")"
+chi_sim_sha="$(manifest_value chi_sim "$manifest")"
+eng_sha="$(manifest_value eng "$manifest")"
+[[ -n "$engine_version" && -n "$leptonica_version" && -n "$tessdata_ref" \
+   && -n "$chi_sim_sha" && -n "$eng_sha" ]] || fail "manifest 字段不完整"
+echo "  ok manifest engine=tesseract engineVersion=$engine_version leptonica=$leptonica_version"
+
+label_engine="$(docker image inspect --format '{{index .Config.Labels "riccon.ocr.engine"}}' "$image")"
+label_tesseract="$(docker image inspect --format '{{index .Config.Labels "riccon.ocr.tesseract.version"}}' "$image")"
+label_leptonica="$(docker image inspect --format '{{index .Config.Labels "riccon.ocr.leptonica.version"}}' "$image")"
+label_tessdata="$(docker image inspect --format '{{index .Config.Labels "riccon.ocr.tessdata"}}' "$image")"
+label_chi="$(docker image inspect --format '{{index .Config.Labels "riccon.ocr.chi_sim.sha256"}}' "$image")"
+label_eng="$(docker image inspect --format '{{index .Config.Labels "riccon.ocr.eng.sha256"}}' "$image")"
+[[ "$label_engine" == "tesseract" ]] || fail "镜像 label riccon.ocr.engine=$label_engine，期望 tesseract"
+[[ "$label_tesseract" == "$engine_version" ]] || fail "label tesseract=$label_tesseract 与 manifest=$engine_version 不一致"
+[[ "$label_leptonica" == "$leptonica_version" ]] || fail "label leptonica=$label_leptonica 与 manifest=$leptonica_version 不一致"
+[[ "$label_tessdata" == "$tessdata_ref" ]] || fail "label tessdata=$label_tessdata 与 manifest=$tessdata_ref 不一致"
+[[ "$label_chi" == "$chi_sim_sha" && "$label_eng" == "$eng_sha" ]] || fail "label 权重哈希与 manifest 不一致"
+echo "  ok 镜像 label 与 manifest 一致（含 tessdata 引用与权重哈希）"
+
+begin_step weights
+actual_chi="$(crun --entrypoint sha256sum "$image" "$TESSDATA_DIR/chi_sim.traineddata" | awk '{print $1}')"
+actual_eng="$(crun --entrypoint sha256sum "$image" "$TESSDATA_DIR/eng.traineddata" | awk '{print $1}')"
+[[ "$actual_chi" == "$chi_sim_sha" ]] || fail "chi_sim.traineddata SHA256=$actual_chi，manifest=$chi_sim_sha"
+[[ "$actual_eng" == "$eng_sha" ]] || fail "eng.traineddata SHA256=$actual_eng，manifest=$eng_sha"
+echo "  ok 权重 SHA256 与 manifest 一致"
+
+begin_step engine
+crun --entrypoint tesseract "$image" --version > "$diag" 2>&1 || fail "镜像内 tesseract --version 失败"
+grep -q "tesseract 5.3.4" "$diag" || fail "tesseract 版本不是 5.3.4（见上）"
+grep -q "leptonica-1.82.0" "$diag" || fail "leptonica 版本不是 1.82.0（见上）"
+echo "  ok tesseract 5.3.4 / leptonica 1.82.0"
+
+crun --entrypoint tesseract "$image" --list-langs > "$diag" 2>&1 || fail "tesseract --list-langs 失败"
+for language in chi_sim eng osd; do
+  grep -qx "$language" "$diag" || fail "语言包缺失：$language"
+done
+echo "  ok 语言包 chi_sim/eng/osd 可用"
+
+begin_step uid
+uid="$(crun --entrypoint id "$image" -u)"
+[[ "$uid" == "10001" ]] || fail "容器 uid=$uid，期望 10001（非 root）"
+echo "  ok 运行用户 uid=10001"
+
+# ---- 2. 零出网证明 ----
+begin_step network
+crun --entrypoint cat "$image" /proc/net/route > "$diag" 2>&1 || fail "读取 /proc/net/route 失败"
+route_lines="$(($(wc -l < "$diag") - 1))"
+[[ "$route_lines" -le 0 ]] || fail "容器内存在 $route_lines 条路由（--network none 未生效）"
+echo "  ok --network none：容器无任何路由（/proc/net/route 仅表头）"
+
+crun --entrypoint env "$image" > "$diag" 2>&1 || fail "读取镜像 env 失败"
+if grep -Eq '^(RICCON_DB_|SPRING_DATASOURCE|SPRING_DATA_|RICCON_OPENSEARCH|OPENSEARCH_|RICCON_S3|AWS_)' "$diag"; then
+  fail "镜像 env 含 DB/OpenSearch/S3 变量（OCR 冒烟不应依赖它们）"
+fi
+echo "  ok 镜像 env 无 DB/OpenSearch/S3 依赖变量"
+
+# ---- 3. 解析 OCR-only jar ----
+begin_step jar
+contains_oc_cli() {
+  local candidate="$1"
+  local listing
+  listing="$(unzip -l "$candidate" 2>/dev/null)" || return 1
+  grep -q "BOOT-INF/classes/com/riccon/worker/ocr/service/OcrCli.class" <<< "$listing"
+}
+
+jar_mount=()
+if [[ -n "$jar" ]]; then
+  [[ -f "$jar" ]] || fail "--jar 不存在：$jar" 2
+  contains_oc_cli "$jar" || fail "--jar 内没有 OcrCli：$jar" 2
+  jar_abs="$(cd "$(dirname "$jar")" && pwd)/$(basename "$jar")"
+  jar_mount=(-v "$jar_abs:/app/app.jar:ro")
+  jar_desc="$jar_abs（--jar）"
+else
+  crun --entrypoint cat "$image" /app/app.jar > "$work_dir/image-app.jar" \
+    || fail "读取镜像内 /app/app.jar 失败"
+  if contains_oc_cli "$work_dir/image-app.jar"; then
+    jar_desc="镜像内 /app/app.jar"
+  else
+    local_jar=""
+    for candidate in apps/worker/target/riccon-worker-*-exec.jar; do
+      [[ -f "$candidate" ]] || continue
+      if contains_oc_cli "$candidate"; then
+        local_jar="$candidate"
+        break
+      fi
+    done
+    [[ -n "$local_jar" ]] || fail "镜像 /app/app.jar 不含 OcrCli（O1a 早于 B5）：重建镜像后重跑，或传 --jar apps/worker/target/riccon-worker-*-exec.jar" 2
+    jar_abs="$(cd "$(dirname "$local_jar")" && pwd)/$(basename "$local_jar")"
+    jar_mount=(-v "$jar_abs:/app/app.jar:ro")
+    jar_desc="$jar_abs（本地构建产物；镜像 jar 早于 B5）"
+  fi
+fi
+jar_sha="$(sha256_of "${jar_abs:-$work_dir/image-app.jar}")"
+echo "  ok OcrCli jar：$jar_desc"
+echo "     sha256=$jar_sha"
+
+# ---- 4. 跑 OcrCli（无 Spring、无 DB、无网络）----
+begin_step ocr
+crun ${jar_mount[@]+"${jar_mount[@]}"} \
+  -v "$(cd "$(dirname "$fixture")" && pwd)/$(basename "$fixture"):/ocr/fixture.png:ro" \
+  --entrypoint java "$image" \
+  -Dloader.main=com.riccon.worker.ocr.service.OcrCli \
+  -cp /app/app.jar \
+  org.springframework.boot.loader.launch.PropertiesLauncher \
+  /ocr/fixture.png --lang "$lang" --dpi "$dpi" > "$diag" 2>&1 || fail "OcrCli 退出非 0（见上）"
+
+grep -q "^engine=tesseract$" "$diag" || fail "OcrCli 未输出 engine=tesseract"
+grep -qF "$EXPECTED_TEXT" "$diag" || fail "未识别出期望文本：$EXPECTED_TEXT"
+grep -Eq 'bbox=[0-9]+,[0-9]+,[0-9]+,[0-9]+' "$diag" || fail "缺少 bbox 四元组"
+grep -Eq '^line=[0-9]+ confidence=[0-9.]+ bbox=' "$diag" || fail "缺少行置信度/bbox 行"
+
+confidence="$(sed -n 's/^averageConfidence=//p' "$diag" | head -n 1)"
+[[ -n "$confidence" ]] || fail "缺少 averageConfidence"
+awk -v value="$confidence" 'BEGIN { exit !(value + 0 > 0) }' || fail "averageConfidence=$confidence 不大于 0"
+blocks="$(sed -n 's/^blocks=//p' "$diag" | head -n 1)"
+[[ "${blocks:-0}" -ge 1 ]] || fail "blocks=$blocks，期望 >=1"
+
+echo "  ok engine=tesseract text=\"$EXPECTED_TEXT\" averageConfidence=$confidence blocks=$blocks"
+echo "  ok bbox 存在：$(sed -n 's/^line=[0-9]* confidence=[0-9.]* bbox=//p' "$diag" | head -n 1)"
+
+echo "ocr-check: OK image=$image jar=$jar_desc lang=$lang text=\"$EXPECTED_TEXT\" averageConfidence=$confidence"

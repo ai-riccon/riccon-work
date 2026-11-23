@@ -4,8 +4,10 @@
 // 做什么：
 //   1) 用 `mysqldump --single-transaction` 从源库（默认 riccon）导出一致性快照（含触发器）；
 //   2) 导入到同实例的**一次性演练库**（名字必须以 `riccon_restore_` 开头），不改源库；
-//   3) 结构判据：表数一致、审计触发器 2 个、`MAX(flyway_schema_history.version)=11`、
+//   3) 结构判据：表数一致、审计触发器 2 个、`MAX(flyway_schema_history.version)=12`、
 //      `tenant_data_key`/`provider_credential` 非空；
+//      （V12 为 additive：新增 `knowledge_document_acl`、`kb_connector`、`kb_connector_item` 三张表，
+//       49 张表 = 48 业务/基础设施表 + `flyway_schema_history`；备份/恢复脚本不感知表清单）
 //   4) 可解密判据：复用 `scripts/ops/rewrap-credentials.mjs --verify-only --database <演练库>`，
 //      在恢复库上解包 DEK 并解密一行凭据、重算 fingerprint（不打印明文）；
 //   5) J1 冒烟（可选但完整演练必须）：`--api-base` 指向已连接演练库的 API，登录 + 提交 1 个 CHAT run；
@@ -41,8 +43,8 @@ const COMPOSE_FILE = "deploy/compose/docker-compose.test.yml";
 /** 演练库名前缀；只允许在此前缀内 DROP/CREATE。 */
 const TARGET_PREFIX = "riccon_restore_";
 
-/** 预期 schema 版本（V11）。 */
-const EXPECTED_SCHEMA_VERSION = 11;
+/** 预期 schema 版本（V12，M05 知识库纵深）。 */
+const EXPECTED_SCHEMA_VERSION = 12;
 
 /** 审计触发器数量（append-only 两个）。 */
 const EXPECTED_TRIGGERS = 2;
@@ -773,16 +775,16 @@ function selfTest() {
   const report = buildReport({
     options: { source: "riccon", target: "riccon_restore_drill" },
     source: {
-      tables: 46,
+      tables: 49,
       triggers: 2,
-      schemaVersion: 11,
+      schemaVersion: 12,
       dataKeys: 1,
       credentials: 2,
     },
     restored: {
-      tables: 46,
+      tables: 49,
       triggers: 2,
-      schemaVersion: 11,
+      schemaVersion: 12,
       dataKeys: 1,
       credentials: 2,
     },
@@ -795,16 +797,16 @@ function selfTest() {
   const broken = buildReport({
     options: { source: "riccon", target: "riccon_restore_drill" },
     source: {
-      tables: 46,
+      tables: 49,
       triggers: 2,
-      schemaVersion: 11,
+      schemaVersion: 12,
       dataKeys: 1,
       credentials: 2,
     },
     restored: {
-      tables: 45,
+      tables: 48,
       triggers: 1,
-      schemaVersion: 10,
+      schemaVersion: 11,
       dataKeys: 0,
       credentials: 0,
     },
@@ -965,7 +967,7 @@ async function main() {
   ) {
     throw new Error(
       `源库 ${options.source} 未初始化：tables=${sourceStructure.tables} MAX(version)=${sourceStructure.schemaVersion}；` +
-        "先由 apps/api 跑 Flyway V1–V11 并完成 M04 种子，再执行恢复演练（空库演练不算通过）",
+        "先由 apps/api 跑 Flyway V1–V12 并完成 M04 种子，再执行恢复演练（空库演练不算通过）",
     );
   }
   const dumped = dump(options);
