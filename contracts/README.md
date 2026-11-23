@@ -2,9 +2,11 @@
 
 本目录是 Riccon 跨部署物、跨模块的公开契约唯一事实源：REST API、内部 Worker API、异步事件与流式事件。实现与契约必须在同一变更中更新；契约冲突时以本目录和 ADR 为准，不允许“代码先跑、文档后补”。
 
-当前版本：`1.4.0-m05`（M05 知识库纵深：Excel/OCR、文档级 ACL、下载/引用/删除/重索引）。上一版本 `1.3.0-m04`（M04 模型网关纵深），再上一版本 `1.2.0-m10`；同一 `/api/v1` 内只做向后兼容增量。
+当前版本：`1.5.0-m05b`（M05b 知识库连接器：S3 兼容目录、凭据托管、连接测试、手动/固定周期同步、同步条目）。上一版本 `1.4.0-m05`（M05 知识库纵深：Excel/OCR、文档级 ACL、下载/引用/删除/重索引），再上一版本 `1.3.0-m04`（M04 模型网关纵深）与 `1.2.0-m10`；同一 `/api/v1` 内只做向后兼容增量。
 
-**M05 交付（`1.4.0-m05`）**：文档级 ACL（`PUT/GET /api/v1/knowledge/documents/{documentId}/acl`）、软删除（`DELETE /api/v1/knowledge/documents/{documentId}`）、服务端流式下载（`GET .../download`）、重索引（`POST .../reindex?force=`）；`KnowledgeDocument` 增加可见范围/解析/保留字段；`Citation`/`ArtifactCitation` 增加 `bbox`/`ocrConfidence`/`sourceStatus`。外部连接器契约（`1.5.0-m05b`）由 M05b 单独交付，不在本版本出现。M04 单模块 48h 与 18 条 AC 的交付口径保持不变，历史见 `docs/PRODUCT.md` §10。
+**M05 交付（`1.4.0-m05`）**：文档级 ACL（`PUT/GET /api/v1/knowledge/documents/{documentId}/acl`）、软删除（`DELETE /api/v1/knowledge/documents/{documentId}`）、服务端流式下载（`GET .../download`）、重索引（`POST .../reindex?force=`）；`KnowledgeDocument` 增加可见范围/解析/保留字段；`Citation`/`ArtifactCitation` 增加 `bbox`/`ocrConfidence`/`sourceStatus`。M04 单模块 48h 与 18 条 AC 的交付口径保持不变，历史见 `docs/PRODUCT.md` §10。
+
+**M05b 交付（`1.5.0-m05b`）**：S3 兼容目录连接器列表/创建/更新/软删除（`GET/POST /api/v1/knowledge/connectors`、`PATCH/DELETE .../{connectorId}`）、凭据只写不读与掩码（`PUT .../credential`）、连接测试（`POST .../test`）、手动同步 202（`POST .../sync`，并发 409）与同步条目分页（`GET .../items`）；`KnowledgeDocument` 增加 `connectorId`/`externalId`，`sourceType` 增加 `CONNECTOR`；新增 `Connector`、`ConnectorCreate/Update`、`ConnectorCredential`、`ConnectorItemPage` 等 schema。连接器导入文档复用 M05 文档 ACL、下载与引用遮蔽语义，不新增第二套文档权限。
 
 ## 1. 目录
 
@@ -86,15 +88,33 @@ contracts/
 
 - 认证：会话 Cookie `RICCON_SESSION`（HttpOnly、SameSite=Lax、非本地 Secure）；不使用 JWT。
 - OIDC：每租户 1 个 IdP，授权码 + PKCE + nonce；授权入口/回调是顶层 302 导航；不保存或回传 access/refresh/ID token。登出按 DEC-0017 A：本地先失效，配置 end-session 时自动顶层导航结束 IdP 会话（ADR-0019）。
-- CSRF：所有非安全方法带 `X-CSRF-TOKEN`；令牌来自 `GET /api/v1/auth/csrf` 或登录响应。M04 的 10 个写端点（provider PUT、model PATCH、routing PUT、credential POST/rotate/disable/enable、switches PUT、tenant/user quota PUT）全部显式声明 `CsrfToken`。
+- CSRF：所有非安全方法带 `X-CSRF-TOKEN`；令牌来自 `GET /api/v1/auth/csrf` 或登录响应。M04 的 10 个写端点（provider PUT、model PATCH、routing PUT、credential POST/rotate/disable/enable、switches PUT、tenant/user quota PUT）全部显式声明 `CsrfToken`；M05/M05b 的 ACL、删除、重索引、连接器创建/更新/删除/凭据/测试/同步同样全部显式声明 `CsrfToken`。
 - 租户：只从会话主体派生；忽略请求体/查询/请求头中的 `tenantId`。
 - 分页：`page` 从 1 开始，`size` 默认 20、最大 100；禁止无界查询。审计查询另有 `page ≤ 200`、时间跨度 ≤ 180 天。
 - 错误：RFC 9457 `application/problem+json`，至少 `type/title/status/code/traceId`；
-  跨租户与跨部门对象统一 404 `RICCON-TENANT-404`；部门/空间成员冲突使用 `RICCON-DEPT-409`；OIDC 绑定冲突使用 `RICCON-OIDC-409`；审计查询/导出使用 `RICCON-AUDIT-*`；模型配置使用 `RICCON-MODEL-400/409`；配额使用 `RICCON-QUOTA-429/503`；成本查询使用 `RICCON-COST-400/503`；知识库 ACL/下载/重索引使用 `RICCON-KB-400/404/409/502/503`（无源文件 `RICCON-KB-404` 只在 ACL 通过后出现，不替代不可见时的 `RICCON-TENANT-404`；源文件读取失败为 `RICCON-KB-502`）。429 用 `code` 判别：`RICCON-QUOTA-429` → `QuotaExceededProblem`；`RICCON-RATE-429`/`RICCON-QUEUE-429` → `RateLimitedProblem`。
+  跨租户与跨部门对象统一 404 `RICCON-TENANT-404`；部门/空间成员冲突使用 `RICCON-DEPT-409`；OIDC 绑定冲突使用 `RICCON-OIDC-409`；审计查询/导出使用 `RICCON-AUDIT-*`；模型配置使用 `RICCON-MODEL-400/409`；配额使用 `RICCON-QUOTA-429/503`；成本查询使用 `RICCON-COST-400/503`；知识库 ACL/下载/重索引/连接器使用 `RICCON-KB-400/404/409/502/503`（无源文件 `RICCON-KB-404` 只在 ACL 通过后出现，不替代不可见时的 `RICCON-TENANT-404`；源文件读取失败为 `RICCON-KB-502`；连接器跨租户统一 `RICCON-TENANT-404`，同租户非管理员 `RICCON-AUTH-403`）。429 用 `code` 判别：`RICCON-QUOTA-429` → `QuotaExceededProblem`；`RICCON-RATE-429`/`RICCON-QUEUE-429` → `RateLimitedProblem`。
 - 下载：工作空间业务文件由服务端校验归属后签发预签名 URL，TTL ≤ 300 秒；URL 绑定对象 key。知识库文档下载（M05）是例外：`GET /api/v1/knowledge/documents/{documentId}/download` 每次请求重判文档 ACL，由 API 流式代理返回，`Content-Type` 为文档 `mimeType`，`Content-Disposition` 使用 `filename*=UTF-8''`（RFC 5987），不返回对象 key、预签名 URL 或存储端点；对象存储读取失败返回 502 `RICCON-KB-502`，响应不含桶名/key/存储端点；原工作空间路径仍只按空间谓词判定。审计导出是另一例外：CSV 由 API 流式生成，不写对象存储、无预签名 URL，只有申请人可在批准有效期内下载；平台租户自身导出 M10 不支持（403）。
-- 幂等：`Idempotency-Key` 用于创建报告任务、审批决定、重试；同一主体重复请求返回既有结果。审计导出审批使用状态条件更新，不做幂等重放。模型路由/开关使用 `version` 乐观锁；凭据新增/轮换不承诺 `Idempotency-Key`，由 HMAC fingerprint 唯一键与状态机兜底。
+- 幂等：`Idempotency-Key` 用于创建报告任务、审批决定、重试；同一主体重复请求返回既有结果。审计导出审批使用状态条件更新，不做幂等重放。模型路由/开关使用 `version` 乐观锁；凭据新增/轮换不承诺 `Idempotency-Key`，由 HMAC fingerprint 唯一键与状态机兜底。连接器创建/立即同步可选 `Idempotency-Key`；连接器凭据 `PUT` 为覆盖写（轮换），不做幂等重放。
 - 模型网关：端点只来自部署允许列表，没有端点创建 API；`PUT /api/v1/admin/model-providers/{providerId}` 只改展示名，`baseUrl`/`environmentLabel`/`protocol` 写入返回 400；`apiKey` 只进不出，响应只返回 `maskedHint`；路由/开关保存后下一次请求生效。员工 `/models` 使用 `EmployeeModel`（无价格字段）；平台用 `AdminModel`。
 - 配额/成本：配额按请求数、租户+用户、日+月、`Asia/Shanghai`；超限用 `QuotaExceededProblem`（`RICCON-QUOTA-429`）；成本金额用 6 位小数字符串。平台 `PlatformCostReport` **不含**用户字段，租户 `TenantCostReport` 含用户明细；`unbucketedCalls` 显式呈现 `cost_day NULL`。
+
+### 4.1 连接器（M05b）
+
+| 方法   | 路径                                                    | 权限                         | 说明                                                                                   |
+| ------ | ------------------------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------- |
+| GET    | `/api/v1/knowledge/connectors`                          | `knowledge.connector.read`   | 分页列表；不含凭据、端点 URL、对象 key                                                 |
+| POST   | `/api/v1/knowledge/connectors`                          | `knowledge.connector.manage` | 创建；必须显式 `defaultVisibility`，默认 `PAUSED`，凭据可选写入；同名 409              |
+| PATCH  | `/api/v1/knowledge/connectors/{connectorId}`            | 同上                         | 部分更新配置/可见范围/端点/`scheduleEnabled`/`status`；不支持改 type 或自定义 cron     |
+| DELETE | `/api/v1/knowledge/connectors/{connectorId}`            | 同上                         | 软删除；`documents=KEEP`（默认）/`SOFT_DELETE`；凭据密文 30 天后由 M09 置空            |
+| PUT    | `/api/v1/knowledge/connectors/{connectorId}/credential` | 同上                         | 只写不读；响应只返回 `credentialMaskedHint`，轮换为覆盖写入                            |
+| POST   | `/api/v1/knowledge/connectors/{connectorId}/test`       | 同上                         | 连接测试（`ListObjectsV2`、`max-keys=1`），中文分类原因；失败仍 200 且 `success=false` |
+| POST   | `/api/v1/knowledge/connectors/{connectorId}/sync`       | 同上                         | 202 受理；并发同步 409；实际同步由 Worker heavy 通道执行                               |
+| GET    | `/api/v1/knowledge/connectors/{connectorId}/items`      | `knowledge.connector.read`   | 分页同步条目；无原文、无 bucket/端点；`externalId` 只显示末段                          |
+
+- 错误码：`RICCON-KB-400`（可见范围/端点/配置/凭据非法）、`RICCON-TENANT-404`（跨租户或不存在）、`RICCON-AUTH-403`（同租户非管理员）、`RICCON-KB-409`（同名、并发同步或状态冲突）、`RICCON-KB-503`（连接器功能未启用或同步/测试服务不可用）。
+- 调度：只支持“立即同步 + 部署固定周期 + `scheduleEnabled`”，周期由 `RICCON_CONNECTOR_SYNC_INTERVAL_MINUTES` 计算，不存 per-connector cron，也没有独立调度端点。
+- 同步状态：`status`（`ACTIVE`/`PAUSED`/`ERROR`）、`lastSyncStatus`（`SUCCESS`/`PARTIAL`/`ERROR`）、`lastSyncComplete`、`lastSyncSummary` 与 `lastErrorCode` 由连接器详情返回；只有 `lastSyncComplete=true` 才传播源端删除。
+- 数据边界：响应不含凭据明文/密文/DEK、端点 URL、bucket 全名或对象 key 全文；连接器导入文档的 `sourceType=CONNECTOR`，`fileId` 为空、`connectorId`/`externalId` 非空。
 
 ## 5. 安全边界
 
@@ -104,9 +124,10 @@ contracts/
 - 模型网关：`platform.model.manage` 写路由/模型/key/开关；`platform.model.read` 读目录；`quota.read`/`cost.read` 租户只读；`platform.quota.manage`/`platform.cost.read` 平台；员工只有 `model.read`。平台成本/配额端点不返回用户明细；租户端点不接受 `tenantId`。
 - Worker 不接受浏览器 Cookie，不提供通用 CRUD 或管理接口；内部调用使用 HMAC-SHA256 短期令牌。
 - 契约中不得出现真实密钥、token、租户真实数据或 PII；示例使用 `tenant-a`、`user-0001` 等占位符。
-- 审计哈希链、MFA、平台跨租户审计明细、租户 BYO 模型凭据、模型价格编辑、多币种/账单对账、MCP 注册与凭据托管（M07）、外部知识库连接器（M05b）、引用页图渲染/框选、物理对象与分块清理（M09）不在 M05 契约中定义；
-  `openapi.yaml` 的 `x-riccon-deferred` 记录后置范围。M05 已交付文档级 ACL/OCR 引用定位，`knowledge-acl-ocr` deferred 已移除；连接器契约由 M05b 在 `1.5.0-m05b` 增补。
+- 审计哈希链、MFA、平台跨租户审计明细、租户 BYO 模型凭据、模型价格编辑、多币种/账单对账、MCP 注册与凭据托管（M07）、引用页图渲染/框选、物理对象与分块清理（M09）不在本契约中定义；
+  `openapi.yaml` 的 `x-riccon-deferred` 记录后置范围。M05 已交付文档级 ACL/OCR 引用定位，`knowledge-acl-ocr` deferred 已移除；M05b 已交付连接器契约（`1.5.0-m05b`），不存在 `knowledge-connectors` deferred。
 - 知识库 ACL：`knowledge.read` 控制入口，`knowledge.acl.manage`（当前仅 `TENANT_ADMIN`）控制 ACL/删除/重索引；创建人是服务层资源例外，不是角色授权。不可见/跨租户统一 404，已可见但无管理能力 403；租户管理员绕过 ACL 的管理性读取写 `knowledge.document.admin_read` 审计；平台管理员不读取租户文档内容。
+- 连接器：`knowledge.connector.read` 控制列表/条目，`knowledge.connector.manage` 控制创建/更新/删除/凭据/测试/同步；当前仅 `TENANT_ADMIN` 持有。端点只来自部署允许列表，连接器只存 `endpointId`，不能提交任意 URL、查询串或重定向；响应/日志/审计不返回凭据明文/密文/DEK、端点 URL、bucket 全名或对象 key 全文；跨租户 `connectorId` 统一 404，同租户非管理员 403。
 
 ## 6. 校验
 
@@ -124,7 +145,9 @@ ruby -e "require 'yaml'; YAML.load_file('contracts/openapi.yaml'); YAML.load_fil
 
 M04 契约测试位置（B2 交付）：`apps/api/src/test/java/com/riccon/api/contract/ModelContract108aTest`（模型/路由/凭据/开关 schema）与 `ModelContract108bTest`（配额/成本 schema）；三个模型端点的运行时响应形状由 `apps/api/src/test/java/com/riccon/api/model/catalog/ModelCatalogApiTest` 断言。
 
-M05 契约测试位置（B2 交付）：`apps/api/src/test/java/com/riccon/api/contract/KnowledgeContractM05Test`，每个 M05 operationId 一个用例（`putKnowledgeDocumentAcl`/`getKnowledgeDocumentAcl`/`deleteKnowledgeDocument`/`downloadKnowledgeDocument`/`reindexKnowledgeDocument`、`getKnowledgeDocument`/`createKnowledgeDocument`/`listKnowledgeDocuments` 的 schema 与文案），并校验 `Citation`/`ArtifactCitation` 的 `bbox`/`ocrConfidence`/`sourceStatus`。运行命令：
+M05 契约测试位置（B2 交付）：`apps/api/src/test/java/com/riccon/api/contract/KnowledgeContractM05Test`，每个 M05 operationId 一个用例（`putKnowledgeDocumentAcl`/`getKnowledgeDocumentAcl`/`deleteKnowledgeDocument`/`downloadKnowledgeDocument`/`reindexKnowledgeDocument`、`getKnowledgeDocument`/`createKnowledgeDocument`/`listKnowledgeDocuments` 的 schema 与文案），并校验 `Citation`/`ArtifactCitation` 的 `bbox`/`ocrConfidence`/`sourceStatus`。
+
+M05b 契约测试位置（B2b 交付）：`apps/api/src/test/java/com/riccon/api/contract/ConnectorContractM05bTest`，8 个连接器 operationId 各一个用例（`listConnectors`/`createConnector`/`updateConnector`/`deleteConnector`/`putConnectorCredential`/`testConnector`/`syncConnector`/`listConnectorItems`），并校验 `Connector`/`ConnectorCreate`/`ConnectorUpdate`/`ConnectorCredential`/`ConnectorItemPage`/`KnowledgeDocument` 连接器字段。运行命令：
 
 ```bash
 ./mvnw -q -T1C -pl apps/api -am test -Dtest='*Contract*Test' -Dsurefire.failIfNoSpecifiedTests=false
@@ -132,7 +155,8 @@ M05 契约测试位置（B2 交付）：`apps/api/src/test/java/com/riccon/api/c
 
 ## 7. 所有者与变更流程
 
-- 公开 REST 与事件：`riccon/architect` 起草，`riccon/product` 确认语义，`riccon/verifier` 核对实现。M05 实现期 `contracts/openapi.yaml` 与 `contracts/README.md` 由 **M05-B2 独占写入**（`1.4.0-m05`：ACL/下载/删除/重索引/解析/引用字段与 `KnowledgeContractM05Test`）；M05b 的连接器契约 `1.5.0-m05b` 由 **M05b-B2b 独占写入**；其他任务只读或向对应 B2 提变更请求。
+- 公开 REST 与事件：`riccon/architect` 起草，`riccon/product` 确认语义，`riccon/verifier` 核对实现。M05 实现期 `contracts/openapi.yaml` 与 `contracts/README.md` 由 **M05-B2 独占写入**（`1.4.0-m05`：ACL/下载/删除/重索引/解析/引用字段与 `KnowledgeContractM05Test`）；M05b 的连接器契约 `1.5.0-m05b` 由 **M05b-B2b 独占写入**（连接器 CRUD/凭据/test/sync/items 与 `ConnectorContractM05bTest`），B2b 完成后其他任务只读或向 B2b 提变更请求。
+- **M05b-B6 实现边界**：B6 只实现 `apps/api/src/main/java/com/riccon/api/knowledge/connector/**` 与 `apps/worker/src/main/java/**/connector/**` 的端点/同步/凭据逻辑，必须按本契约的路径、权限、错误码与 schema 落地；不得修改 `contracts/**`，不得继续把连接器标为 deferred 或返回 404 占位。契约与实现冲突时以 `contracts/openapi.yaml` 和 ADR-0023 §7.4 为准，由 B2b 评估变更。
 - 内部 API：`riccon/architect` 与 `riccon/builder`（worker）共同维护；安全声明变更必须同步威胁模型。
 - 破坏性变更：ADR + 版本升级 + 迁移说明 + 回滚方案；生产发布由用户批准。
 - 任何契约变更必须同步 `platform-domain` 的常量（`EventTypes`、`AuditActions`、`PermissionCodes`）与迁移 CHECK 值。
