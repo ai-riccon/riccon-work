@@ -93,17 +93,11 @@ function createStubControl(request: APIRequestContext): StubControl {
 /**
  * 框架告警文本白名单。
  *
- * 当前只放行 M05 知识库详情解析警告列表触发的 antd `List` 弃用告警：
- * - 来源：`apps/web/src/pages/knowledge/components/knowledge-detail.tsx` 的 `<List data-testid="knowledge-warning-list">`；
- * - 版本：antd 6.7.1 在 6.6.0 起把 `List` 标记 deprecated，并在 `console.error` 输出固定文案；
- * - 原因：该告警不是运行时错误，但会让 console 守卫把整条 M05 用例判红；
- * - 移除条件：owner `riccon/builder-kb-web` 在 M05 gate 前把 `List` 替换为 `Listy` 后删除本项。
- *
- * 网络错误不走这里，由下方的 URL+状态码匹配处理。
+ * 当前为空：/chat、/research、/admin、/login 页面在修复 antd 6 Alert 属性与 Umi MFSU
+ * 互操作问题后不应出现任何框架 console.error。若未来必须放行，必须在此写明来源、版本、
+ * 原因与移除条件，禁止在用例里临时屏蔽。网络错误不走这里，由下方的 URL+状态码匹配处理。
  */
-const CONSOLE_ERROR_ALLOWLIST: RegExp[] = [
-  /^Warning: \[antd: List\] The `List` component is deprecated/,
-];
+const CONSOLE_ERROR_ALLOWLIST: RegExp[] = [];
 
 /**
  * 已知可接受的网络错误白名单。
