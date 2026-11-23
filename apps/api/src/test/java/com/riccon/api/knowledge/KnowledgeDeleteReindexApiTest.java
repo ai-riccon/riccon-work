@@ -112,6 +112,12 @@ class KnowledgeDeleteReindexApiTest extends KnowledgeAclTestSupport {
         assertThat(defaultPayload.path("force").asBoolean()).isFalse();
         assertThat(defaultPayload.path("mode").asText()).isEqualTo("FULL");
         assertThat(defaultPayload.path("reason").asText()).isEqualTo("REINDEX");
+        List<AuditRow> firstAudit =
+                documentAudit(AuditActions.KNOWLEDGE_DOCUMENT_REINDEXED, fixture.tenant(), documentId);
+        assertThat(firstAudit).hasSize(1);
+        JsonNode firstDetails = JSON.readTree(firstAudit.get(0).details());
+        assertThat(firstDetails.path("force").asBoolean()).isFalse();
+        assertThat(firstDetails.path("status").asText()).isEqualTo("PENDING");
 
         // 已有 PENDING 事件时再次重索引 -> 409，不重复投递。
         ApiTestClient.ApiResponse duplicate = reindex(fixture.admin(), documentId, null);
@@ -164,6 +170,9 @@ class KnowledgeDeleteReindexApiTest extends KnowledgeAclTestSupport {
         assertThat(reindex(outsider, usersDoc.path("id").asText(), null).status())
                 .isEqualTo(404);
         assertThat(reindex(foreign.admin(), tenantDoc.path("id").asText(), null).status())
+                .isEqualTo(404);
+        assertThat(reindex(fixture.platform(), tenantDoc.path("id").asText(), null)
+                        .status())
                 .isEqualTo(404);
     }
 

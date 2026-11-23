@@ -92,6 +92,29 @@ class KnowledgeAuditFailClosedTest extends KnowledgeAclTestSupport {
                 .isZero();
     }
 
+    /** 重索引审计失败 -> 500，不投递新的索引事件。 */
+    @Test
+    @DisplayName("reindexed 审计失败不投递事件")
+    void reindex_auditFailureDoesNotEnqueue() {
+        failAction(AuditActions.KNOWLEDGE_DOCUMENT_REINDEXED);
+        TenantFixture fixture = tenantFixture();
+        JsonNode document = createDocument(fixture, "审计失败重索引", null, null, null);
+        String documentId = document.path("id").asText();
+        markIndexEventsDone(fixture.tenant(), documentId);
+
+        ApiTestClient.ApiResponse response = client.post(
+                "/api/v1/knowledge/documents/" + documentId + "/reindex",
+                client.jsonBody(),
+                fixture.admin().sessionCookie(),
+                fixture.admin().csrfToken(),
+                Map.of());
+        assertThat(response.status()).isEqualTo(500);
+        assertThat(documentEvents(fixture.tenant(), documentId).stream()
+                        .filter(event -> event.idempotencyKey().contains(":index:"))
+                        .count())
+                .isEqualTo(1);
+    }
+
     /** 管理员下载审计失败 -> 500，不打开源文件流。 */
     @Test
     @DisplayName("admin_read(DOWNLOAD) 审计失败使下载失败")
@@ -108,6 +131,25 @@ class KnowledgeAuditFailClosedTest extends KnowledgeAclTestSupport {
                 Map.of());
         assertThat(response.status()).isEqualTo(500);
         assertThat(client.json(response).path("code").asText()).isEqualTo("RICCON-COMMON-500");
+    }
+
+    /**
+     * 把文档索引事件标记为 DONE，模拟 Worker 已处理。
+     *
+     * @param tenant 租户
+     * @param documentId 文档 ID
+     */
+    private void markIndexEventsDone(String tenant, String documentId) {
+        jdbcClient
+                .sql("""
+                        UPDATE agent_run_outbox SET status = 'DONE'
+                         WHERE tenant_id = :tenantId
+                           AND JSON_UNQUOTE(JSON_EXTRACT(payload, '$.documentId')) = :documentId
+                           AND status IN ('PENDING', 'DISPATCHED')
+                        """)
+                .param("tenantId", tenant)
+                .param("documentId", documentId)
+                .update();
     }
 
     /**

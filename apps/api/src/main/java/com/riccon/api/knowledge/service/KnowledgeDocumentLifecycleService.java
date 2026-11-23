@@ -134,6 +134,7 @@ public class KnowledgeDocumentLifecycleService {
      * @param documentId 文档 ID
      * @param force 是否整本重做
      * @param traceId 追踪 ID
+     * @param requestId 请求 ID
      * @return 当前文档
      * @throws NotFoundException 文档不可见或跨租户
      * @throws ForbiddenException 文档可见但缺少 {@code knowledge.manage}
@@ -141,7 +142,8 @@ public class KnowledgeDocumentLifecycleService {
      * @throws KnowledgeIndexUnavailableException 索引队列不可用
      */
     @Transactional
-    public KnowledgeDocumentResponse reindex(KnowledgeActor actor, UUID documentId, boolean force, String traceId) {
+    public KnowledgeDocumentResponse reindex(
+            KnowledgeActor actor, UUID documentId, boolean force, String traceId, String requestId) {
         TenantId tenantId = TenantId.of(actor.tenantId());
         var scope = knowledgeRepository.resolveScope(tenantId, actor, aclProperties.enforcementEnabled());
         if (!knowledgeRepository.lockVisibleIdIncludingDeleted(tenantId, documentId, scope)) {
@@ -162,6 +164,9 @@ public class KnowledgeDocumentLifecycleService {
             throw new KnowledgeConflictException("document is already being indexed");
         }
         Instant now = clock.instant();
+        // 先写审计再投递事件：审计失败直接回滚，不留下“已受理但不可查”的部分结果。
+        auditService.append(KnowledgeAuditEvents.reindexed(
+                now, actor.tenantId(), actor.userId(), documentId, force, document.status(), traceId, requestId));
         int attempt = knowledgeRepository.nextIndexAttempt(tenantId, documentId);
         try {
             indexEvents.enqueue(

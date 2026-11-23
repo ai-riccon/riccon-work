@@ -68,6 +68,44 @@ class KnowledgeRetentionTest extends KnowledgeAclTestSupport {
                 .isEqualTo(90);
     }
 
+    /** 历史 NULL 行固定按 180 天，不受租户策略调低影响；响应同样返回 180。 */
+    @Test
+    @DisplayName("历史 NULL 保留：固定 180 天且不追溯")
+    void retention_historicalNullUsesDeploymentDefault() {
+        TenantFixture fixture = tenantFixture();
+        UUID adminId = actorId(fixture.admin());
+        jdbcClient
+                .sql("UPDATE tenant SET retention_days = 90 WHERE id = :tenantId")
+                .param("tenantId", fixture.tenant())
+                .update();
+
+        String historical150 = insertHistoricalNullDocument(
+                fixture.tenant(), "历史150天", adminId, Instant.now().minus(Duration.ofDays(150)));
+        String historical181 = insertHistoricalNullDocument(
+                fixture.tenant(), "历史181天", adminId, Instant.now().minus(Duration.ofDays(181)));
+        JsonNode newDocument = createDocument(fixture, "新策略90天", null, null, null);
+
+        retentionJob.expireDaily();
+
+        Map<String, Object> kept = documentRow(fixture.tenant(), historical150);
+        assertThat(kept.get("status")).isEqualTo("PENDING");
+        assertThat(kept.get("deleted_at")).isNull();
+        JsonNode response = client.json(getDocument(fixture.admin(), historical150));
+        assertThat(response.path("retentionDays").asInt()).isEqualTo(180);
+        assertThat(response.path("retentionPolicy").asText()).isEqualTo("DEPLOYMENT_DEFAULT");
+
+        Map<String, Object> expired = documentRow(fixture.tenant(), historical181);
+        assertThat(expired.get("status")).isEqualTo("DELETED");
+        assertThat(expired.get("deleted_at")).isNotNull();
+        List<AuditRow> audits = documentAudit(AuditActions.KNOWLEDGE_DOCUMENT_DELETED, fixture.tenant(), historical181);
+        assertThat(audits).hasSize(1);
+        assertThat(JSON.readTree(audits.get(0).details()).path("reason").asText())
+                .isEqualTo("RETENTION");
+
+        assertThat(newDocument.path("retentionDays").asInt()).isEqualTo(90);
+        assertThat(newDocument.path("retentionPolicy").asText()).isEqualTo("TENANT_POLICY");
+    }
+
     /** 到期清理覆盖 INDEXED/INDEXING/FAILED/PENDING；仅已索引或已有分块的发索引 DELETE。 */
     @Test
     @DisplayName("到期清理：状态覆盖、索引 DELETE 边界与幂等")
@@ -149,6 +187,37 @@ class KnowledgeRetentionTest extends KnowledgeAclTestSupport {
                 .filter(event -> event.idempotencyKey().contains(":delete:"))
                 .count();
         assertThat(deleteEvents).isEqualTo(expectDeleteEvent ? 1 : 0);
+    }
+
+    /**
+     * 插入历史 NULL retention 文档。
+     *
+     * @param tenant 租户
+     * @param title 标题
+     * @param creator 创建人
+     * @param createdAt 创建时间
+     * @return 文档 ID
+     */
+    private String insertHistoricalNullDocument(String tenant, String title, UUID creator, Instant createdAt) {
+        UUID documentId = UuidV7.generate(createdAt);
+        jdbcClient
+                .sql("""
+                        INSERT INTO knowledge_document (
+                            tenant_id, id, title, source_type, file_id, checksum, mime_type, size_bytes,
+                            status, created_by, created_at, updated_at, retention_expires_at
+                        ) VALUES (
+                            :tenantId, :id, :title, 'SEED', NULL, :checksum, 'text/plain', 4,
+                            'PENDING', :createdBy, :createdAt, :createdAt, NULL
+                        )
+                        """)
+                .param("tenantId", tenant)
+                .param("id", BinaryUuids.toBytes(documentId))
+                .param("title", title)
+                .param("checksum", "0".repeat(64))
+                .param("createdBy", BinaryUuids.toBytes(creator))
+                .param("createdAt", Timestamp.from(createdAt))
+                .update();
+        return documentId.toString();
     }
 
     /**

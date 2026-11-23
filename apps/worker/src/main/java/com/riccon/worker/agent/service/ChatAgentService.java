@@ -78,7 +78,7 @@ public class ChatAgentService {
         if (history.isEmpty()) {
             throw new AgentException(AgentException.INVALID, false, "conversation history is empty");
         }
-        List<RetrievedChunk> citations = retriever.retrieve(tenantId, query, fileIds);
+        List<RetrievedChunk> citations = retriever.retrieve(tenantId, userId, runId, query, fileIds);
         List<Msg> messages = new ArrayList<>();
         int last = history.size() - 1;
         for (int index = 0; index < history.size(); index++) {
@@ -103,7 +103,7 @@ public class ChatAgentService {
             }
         }
         Toolkit toolkit = new Toolkit();
-        toolkit.registerAgentTool(new KnowledgeSearchTool(tenantId, retriever, properties));
+        toolkit.registerAgentTool(new KnowledgeSearchTool(tenantId, userId, runId, retriever, properties));
         PermissionContextState permissionContext = PermissionContextState.builder()
                 .addAllowRule(
                         KnowledgeSearchTool.TOOL_NAME,

@@ -1,6 +1,5 @@
 package com.riccon.api.knowledge.repository;
 
-import com.riccon.api.knowledge.domain.KnowledgeTenantRetention;
 import com.riccon.api.knowledge.persistence.KnowledgeRetentionJdbc;
 import java.util.List;
 import java.util.Objects;
@@ -27,13 +26,11 @@ public class KnowledgeRetentionRepository {
     }
 
     /**
-     * 查询启用租户及保留天数。
+     * 查询启用租户。
      *
-     * @return 租户保留配置
+     * @return 租户代码
      */
-    public List<KnowledgeTenantRetention> findActiveTenants() {
-        return retentionJdbc.findActiveTenants().stream()
-                .map(tenant -> new KnowledgeTenantRetention(tenant.tenantId(), tenant.retentionDays()))
-                .toList();
+    public List<String> findActiveTenants() {
+        return retentionJdbc.findActiveTenants();
     }
 }

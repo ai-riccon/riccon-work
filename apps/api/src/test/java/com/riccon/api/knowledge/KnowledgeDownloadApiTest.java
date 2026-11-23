@@ -67,6 +67,30 @@ class KnowledgeDownloadApiTest extends KnowledgeAclTestSupport {
         assertThat(download(foreign.admin(), documentId).status()).isEqualTo(404);
     }
 
+    /** 软删除文档与平台管理员下载统一 404（不泄露存在性）。 */
+    @Test
+    @DisplayName("下载：软删除与平台管理员统一 404")
+    void download_softDeletedAndPlatformAdmin_returnTenant404() {
+        TenantFixture fixture = tenantFixture();
+        JsonNode document = createDocument(fixture, "已删除下载", null, null, null);
+        String documentId = document.path("id").asText();
+        assertThat(client.delete(
+                                "/api/v1/knowledge/documents/" + documentId,
+                                fixture.admin().sessionCookie(),
+                                fixture.admin().csrfToken())
+                        .status())
+                .isEqualTo(204);
+        assertThat(download(fixture.admin(), documentId).status()).isEqualTo(404);
+        assertThat(client.json(download(fixture.admin(), documentId))
+                        .path("code")
+                        .asText())
+                .isEqualTo("RICCON-TENANT-404");
+
+        JsonNode live = createDocument(fixture, "平台管理员不可见", null, null, null);
+        assertThat(download(fixture.platform(), live.path("id").asText()).status())
+                .isEqualTo(404);
+    }
+
     /** ACL 通过但无源文件返回 RICCON-KB-404；源文件软删除同样。 */
     @Test
     @DisplayName("下载：无源文件与已删除源文件返回 RICCON-KB-404")

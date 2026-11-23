@@ -27,26 +27,17 @@ public class KnowledgeRetentionJdbc {
     }
 
     /**
-     * 查询全部启用租户及其保留天数。
+     * 查询全部启用租户。
      *
-     * @return 租户保留配置
+     * <p>保留任务只按租户上下文执行；历史 NULL 行固定 180 天，不读取当前租户策略。
+     *
+     * @return 租户代码
      */
-    public List<TenantRetention> findActiveTenants() {
-        return jdbcClient
-                .sql("""
-                        SELECT id, retention_days FROM tenant
+    public List<String> findActiveTenants() {
+        return jdbcClient.sql("""
+                        SELECT id FROM tenant
                          WHERE status = 'ACTIVE'
                          ORDER BY id ASC
-                        """)
-                .query((rs, rowNum) -> new TenantRetention(rs.getString("id"), rs.getInt("retention_days")))
-                .list();
+                        """).query(String.class).list();
     }
-
-    /**
-     * 租户保留配置。
-     *
-     * @param tenantId 租户代码
-     * @param retentionDays 保留天数
-     */
-    public record TenantRetention(String tenantId, int retentionDays) {}
 }

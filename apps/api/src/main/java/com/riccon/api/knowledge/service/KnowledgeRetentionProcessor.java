@@ -75,14 +75,16 @@ public class KnowledgeRetentionProcessor {
     /**
      * 清理指定租户的到期文档。
      *
+     * <p>历史 {@code retention_expires_at IS NULL} 行固定按创建后 180 天计算，不使用当前租户策略，
+     * 避免策略调低后追溯删除升级前文档（ADR-0023 第 10 节）。
+     *
      * @param tenantId 当前租户
-     * @param retentionDays 当前租户保留天数
      * @return 实际软删除的文档数
      */
     @Transactional
-    public int expireTenant(TenantId tenantId, int retentionDays) {
+    public int expireTenant(TenantId tenantId) {
         Instant now = clock.instant();
-        Instant createdCutoff = now.minus(Duration.ofDays(retentionDays));
+        Instant createdCutoff = now.minus(Duration.ofDays(KnowledgeDocumentRecord.DEFAULT_RETENTION_DAYS));
         int expired = 0;
         for (int batch = 0; batch < MAX_BATCHES; batch++) {
             List<KnowledgeDocumentRecord> documents =

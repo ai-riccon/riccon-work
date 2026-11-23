@@ -1,6 +1,5 @@
 package com.riccon.api.knowledge.service;
 
-import com.riccon.api.knowledge.domain.KnowledgeTenantRetention;
 import com.riccon.api.knowledge.repository.KnowledgeRetentionRepository;
 import com.riccon.platform.common.tenant.TenantContext;
 import com.riccon.platform.common.tenant.TenantId;
@@ -45,15 +44,13 @@ public class KnowledgeRetentionJob {
     /** 每日 03:00 北京时间清理到期文档；单租户失败只记录并继续其他租户。 */
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Shanghai")
     public void expireDaily() {
-        List<KnowledgeTenantRetention> tenants = retentionRepository.findActiveTenants();
-        for (KnowledgeTenantRetention tenant : tenants) {
+        List<String> tenants = retentionRepository.findActiveTenants();
+        for (String tenant : tenants) {
             try {
-                TenantContext.callWithTenant(
-                        TenantId.of(tenant.tenantId()),
-                        () -> processor.expireTenant(TenantId.of(tenant.tenantId()), tenant.retentionDays()));
+                TenantContext.callWithTenant(TenantId.of(tenant), () -> processor.expireTenant(TenantId.of(tenant)));
             } catch (RuntimeException exception) {
                 // 批量任务按租户隔离失败：审计/队列故障会在本租户回滚，下一次调度重试，不静默标记成功。
-                LOG.error("knowledge.retention.failed tenantId={} retryable=true", tenant.tenantId(), exception);
+                LOG.error("knowledge.retention.failed tenantId={} retryable=true", tenant, exception);
             }
         }
     }

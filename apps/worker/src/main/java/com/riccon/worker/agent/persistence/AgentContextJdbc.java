@@ -18,6 +18,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -42,13 +43,19 @@ public class AgentContextJdbc {
     /** 租户数据访问层。 */
     private final TenantJdbc tenantJdbc;
 
+    /** 文档级 ACL 强制开关；与 API 的 {@code RICCON_KB_ACL_ENFORCEMENT_ENABLED} 同源。 */
+    private final boolean aclEnforcementEnabled;
+
     /**
      * 创建检索访问。
      *
      * @param tenantJdbc 租户数据访问层
+     * @param aclEnforcementEnabled 是否启用文档级 ACL；关闭时谓词退化为租户级（ADR-0023 第 5.8 节）
      */
-    public AgentContextJdbc(TenantJdbc tenantJdbc) {
+    public AgentContextJdbc(
+            TenantJdbc tenantJdbc, @Value("${riccon.kb.acl.enforcement-enabled:false}") boolean aclEnforcementEnabled) {
         this.tenantJdbc = Objects.requireNonNull(tenantJdbc, "tenantJdbc must not be null");
+        this.aclEnforcementEnabled = aclEnforcementEnabled;
     }
 
     /**
@@ -114,7 +121,7 @@ public class AgentContextJdbc {
             params.put(parameter, "%" + terms.get(index) + "%");
         }
         sql.append(")");
-        appendAclPredicate(sql, params, tenantId, actorUserId, unrestricted);
+        appendAclPredicate(sql, params, tenantId, actorUserId, unrestricted, aclEnforcementEnabled);
         sql.append(" ORDER BY c.document_id, c.ordinal LIMIT :candidateLimit");
         params.put("candidateLimit", candidateLimit);
 
@@ -303,6 +310,78 @@ public class AgentContextJdbc {
     }
 
     /**
+     * 判断用户是否持有 {@code knowledge.acl.manage}（当前仅 TENANT_ADMIN）。
+     *
+     * <p>由服务端查询角色/权限，不信任客户端输入；用于决定检索是否走管理性读取。
+     *
+     * @param tenantId 租户
+     * @param userId 用户
+     * @return 持有管理权限时返回 {@code true}
+     */
+    public boolean isKnowledgeAclManager(TenantId tenantId, UUID userId) {
+        Long count = tenantJdbc
+                .queryOne(tenantId, """
+                        SELECT COUNT(*)
+                          FROM user_role ur
+                          JOIN role_permission rp
+                            ON rp.tenant_id = ur.tenant_id
+                           AND rp.role_id = ur.role_id
+                         WHERE ur.tenant_id = :tenantId
+                           AND ur.user_id = :userId
+                           AND rp.permission_code = 'knowledge.acl.manage'
+                        """, Map.of("userId", UuidBinary.toBytes(userId)), (rs, rowNum) -> rs.getLong(1))
+                .orElse(0L);
+        return count > 0;
+    }
+
+    /**
+     * 判断文档是否按 ACL 对用户可见（管理性读取审计使用）。
+     *
+     * @param tenantId 租户
+     * @param actorUserId 用户
+     * @param documentId 文档
+     * @return 按 ACL 可见时返回 {@code true}
+     */
+    public boolean isVisibleByAcl(TenantId tenantId, UUID actorUserId, UUID documentId) {
+        StringBuilder sql = new StringBuilder("""
+                SELECT d.id, d.tenant_id
+                  FROM knowledge_document d
+                 WHERE d.tenant_id = :tenantId
+                   AND d.id = :documentId
+                   AND d.deleted_at IS NULL
+                """);
+        Map<String, Object> params = new HashMap<>();
+        params.put("documentId", UuidBinary.toBytes(documentId));
+        appendAclPredicate(sql, params, tenantId, actorUserId, false, aclEnforcementEnabled);
+        return tenantJdbc
+                .queryOne(tenantId, sql.toString(), params, (rs, rowNum) -> rs.getBytes("id"))
+                .isPresent();
+    }
+
+    /**
+     * 读取文档 ACL 摘要（管理性 SEARCH 审计使用）。
+     *
+     * @param tenantId 租户
+     * @param documentId 文档
+     * @return 摘要；文档不存在时为空
+     */
+    public Optional<AclSummary> findAclSummary(TenantId tenantId, UUID documentId) {
+        return tenantJdbc.queryOne(
+                tenantId,
+                """
+                SELECT d.visibility,
+                       (SELECT COUNT(*) FROM knowledge_document_acl a
+                         WHERE a.tenant_id = d.tenant_id AND a.document_id = d.id) AS acl_user_count
+                  FROM knowledge_document d
+                 WHERE d.tenant_id = :tenantId
+                   AND d.id = :documentId
+                """,
+                Map.of("documentId", UuidBinary.toBytes(documentId)),
+                (rs, rowNum) -> new AclSummary(
+                        KnowledgeVisibility.valueOf(rs.getString("visibility")), rs.getLong("acl_user_count")));
+    }
+
+    /**
      * 追加文档 ACL 谓词。
      *
      * <p>没有 actor 时只允许 {@code TENANT} 文档，避免旧调用方在 M05 后静默读到收窄文档；有 actor 时解析其
@@ -315,8 +394,13 @@ public class AgentContextJdbc {
      * @param unrestricted 是否管理性读取
      */
     private void appendAclPredicate(
-            StringBuilder sql, Map<String, Object> params, TenantId tenantId, UUID actorUserId, boolean unrestricted) {
-        if (unrestricted) {
+            StringBuilder sql,
+            Map<String, Object> params,
+            TenantId tenantId,
+            UUID actorUserId,
+            boolean unrestricted,
+            boolean enforcementEnabled) {
+        if (!enforcementEnabled || unrestricted) {
             return;
         }
         if (actorUserId == null) {
@@ -453,6 +537,14 @@ public class AgentContextJdbc {
             String sheetName,
             String cellRange,
             Integer paragraphNo) {}
+
+    /**
+     * 文档 ACL 摘要。
+     *
+     * @param visibility 可见范围
+     * @param aclUserCount 显式授权人数
+     */
+    public record AclSummary(KnowledgeVisibility visibility, long aclUserCount) {}
 
     /**
      * 账号部门解析结果。

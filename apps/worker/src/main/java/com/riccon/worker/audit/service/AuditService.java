@@ -421,6 +421,45 @@ public class AuditService {
      * @param outcome 结果
      * @param details 白名单字段
      */
+    /**
+     * 管理员检索绕过文档 ACL 的管理性读取审计（M05 U8）。
+     *
+     * @param tenantId 租户
+     * @param actorUserId 管理员
+     * @param documentId 命中文档
+     * @param visibility 文档可见范围
+     * @param aclUserCount 显式授权人数
+     * @param resultCount 本次检索结果数
+     * @param traceId 运行追踪 ID
+     */
+    public void knowledgeAdminSearch(
+            TenantId tenantId,
+            UUID actorUserId,
+            UUID documentId,
+            String visibility,
+            long aclUserCount,
+            long resultCount,
+            String traceId) {
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("scope", "SEARCH");
+        details.put("documentId", documentId.toString());
+        details.put("visibility", visibility);
+        details.put("aclUserCount", aclUserCount);
+        details.put("resultCount", resultCount);
+        details.put("reason", "MANAGEMENT_READ");
+        append(
+                tenantId,
+                AuditActorType.USER,
+                actorUserId.toString(),
+                traceId,
+                null,
+                AuditActions.KNOWLEDGE_DOCUMENT_ADMIN_READ,
+                AuditTargetType.KNOWLEDGE_DOCUMENT,
+                documentId.toString(),
+                AuditOutcome.SUCCESS,
+                details);
+    }
+
     private void append(
             TenantId tenantId,
             AuditActorType actorType,

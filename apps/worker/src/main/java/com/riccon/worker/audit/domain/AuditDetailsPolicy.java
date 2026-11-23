@@ -1,6 +1,7 @@
 package com.riccon.worker.audit.domain;
 
 import com.riccon.platform.domain.audit.AuditActions;
+import com.riccon.platform.domain.knowledge.KnowledgeVisibility;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,7 +42,11 @@ public final class AuditDetailsPolicy {
             // 401/403 自动失效；以 tenant_id=platform、actor_type=SYSTEM 写入，只含掩码。
             Map.entry(
                     AuditActions.MODEL_CREDENTIAL_INVALIDATED,
-                    Set.of("providerId", "credentialId", "maskedHint", "reason")));
+                    Set.of("providerId", "credentialId", "maskedHint", "reason")),
+            // M05 U8：管理员检索绕过文档 ACL 时写入；不写标题、片段、正文或名单。
+            Map.entry(
+                    AuditActions.KNOWLEDGE_DOCUMENT_ADMIN_READ,
+                    Set.of("scope", "documentId", "visibility", "aclUserCount", "resultCount", "reason")));
 
     /**
      * 允许 JSON null 的动作级键；M04 Worker 写入的动作没有 nullable 字段，保留空表以与 API 侧
@@ -110,6 +115,39 @@ public final class AuditDetailsPolicy {
                 throw new IllegalArgumentException("audit detail key is not allowed for " + action + ": " + key);
             }
             validateValue(key, entry.getValue(), nullable.contains(key), arrays.contains(key));
+        }
+        validateRequiredDetails(action, safeDetails);
+    }
+
+    /**
+     * 校验 SEARCH 管理性读取的必填键与封闭枚举。
+     *
+     * <p>Worker 只写 {@code scope=SEARCH}；documentId/visibility/resultCount 必填，reason 固定
+     * {@code MANAGEMENT_READ}。缺键、类型错误或未知枚举值 fail-closed。
+     *
+     * @param action 审计动作
+     * @param details 已通过白名单校验的字段
+     */
+    private static void validateRequiredDetails(String action, Map<String, Object> details) {
+        if (!AuditActions.KNOWLEDGE_DOCUMENT_ADMIN_READ.equals(action)) {
+            return;
+        }
+        if (!"SEARCH".equals(details.get("scope"))) {
+            throw new IllegalArgumentException("worker admin_read scope must be SEARCH");
+        }
+        if (!"MANAGEMENT_READ".equals(details.get("reason"))) {
+            throw new IllegalArgumentException("admin_read reason must be MANAGEMENT_READ");
+        }
+        if (!(details.get("documentId") instanceof String documentId) || documentId.isBlank()) {
+            throw new IllegalArgumentException("admin_read documentId is required");
+        }
+        if (!(details.get("visibility") instanceof String visibility)
+                || java.util.Arrays.stream(KnowledgeVisibility.values())
+                        .noneMatch(value -> value.name().equals(visibility))) {
+            throw new IllegalArgumentException("admin_read visibility is invalid");
+        }
+        if (!(details.get("resultCount") instanceof Number resultCount) || resultCount.longValue() < 0) {
+            throw new IllegalArgumentException("admin_read resultCount must be a non-negative number");
         }
     }
 

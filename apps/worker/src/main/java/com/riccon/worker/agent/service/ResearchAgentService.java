@@ -69,14 +69,14 @@ public class ResearchAgentService {
             McpToolHandle handle,
             Model model,
             ModelTarget target) {
-        List<RetrievedChunk> citations = retriever.retrieveKnowledge(tenantId, topic);
+        List<RetrievedChunk> citations = retriever.retrieveKnowledge(tenantId, userId, runId, topic);
         String prompt = "调研主题：" + topic + "\n"
                 + (citations.isEmpty()
                         ? "（未检索到知识库资料）"
                         : UntrustedData.fromCitations(citations, properties.maxChunkChars()))
                 + "\n请判断是否需要调用工具获取外部数据。";
         Toolkit toolkit = new Toolkit();
-        toolkit.registerAgentTool(new KnowledgeSearchTool(tenantId, retriever, properties));
+        toolkit.registerAgentTool(new KnowledgeSearchTool(tenantId, userId, runId, retriever, properties));
         toolkit.registerAgentTool(new SchemaOnlyTool(
                 handle.tool().name(),
                 handle.tool().description() == null ? "外部只读工具" : handle.tool().description(),
@@ -125,7 +125,7 @@ public class ResearchAgentService {
             String toolResult,
             Model model,
             ModelTarget target) {
-        List<RetrievedChunk> citations = retriever.retrieveKnowledge(tenantId, topic);
+        List<RetrievedChunk> citations = retriever.retrieveKnowledge(tenantId, userId, runId, topic);
         String prompt = "调研主题：" + topic + "\n"
                 + (citations.isEmpty()
                         ? "（未检索到知识库资料）"
@@ -134,7 +134,7 @@ public class ResearchAgentService {
                 + UntrustedData.fromToolResult("approved-tool", toolResult, properties.maxChunkChars())
                 + "\n请基于以上资料撰写报告正文。";
         Toolkit toolkit = new Toolkit();
-        toolkit.registerAgentTool(new KnowledgeSearchTool(tenantId, retriever, properties));
+        toolkit.registerAgentTool(new KnowledgeSearchTool(tenantId, userId, runId, retriever, properties));
         PermissionContextState permissionContext = PermissionContextState.builder()
                 .addAllowRule(
                         KnowledgeSearchTool.TOOL_NAME,

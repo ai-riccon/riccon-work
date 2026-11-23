@@ -4,6 +4,7 @@ import com.riccon.platform.domain.audit.AuditActions;
 import com.riccon.platform.domain.knowledge.ConnectorStatus;
 import com.riccon.platform.domain.knowledge.ConnectorSyncTrigger;
 import com.riccon.platform.domain.knowledge.ConnectorType;
+import com.riccon.platform.domain.knowledge.KnowledgeDocumentStatus;
 import com.riccon.platform.domain.knowledge.KnowledgeVisibility;
 import java.util.List;
 import java.util.Map;
@@ -200,6 +201,7 @@ public final class AuditDetailsPolicy {
             Map.entry(
                     AuditActions.KNOWLEDGE_DOCUMENT_ADMIN_READ,
                     Set.of("scope", "documentId", "visibility", "aclUserCount", "resultCount", "reason")),
+            Map.entry(AuditActions.KNOWLEDGE_DOCUMENT_REINDEXED, Set.of("documentId", "force", "status")),
             // M05b 连接器生命周期：只写配置定位、状态与计数；bucket/prefix 是管理员配置，
             // 不是对象内容；凭据动作只写 key ID 与掩码。
             Map.entry(
@@ -343,6 +345,7 @@ public final class AuditDetailsPolicy {
                             Set.of("MANAGEMENT_READ"),
                             "visibility",
                             visibilityValues())),
+            Map.entry(AuditActions.KNOWLEDGE_DOCUMENT_REINDEXED, Map.of("status", documentStatusValues())),
             Map.entry(AuditActions.KNOWLEDGE_CONNECTOR_CREATED, connectorEnums()),
             Map.entry(AuditActions.KNOWLEDGE_CONNECTOR_UPDATED, connectorEnums()),
             Map.entry(AuditActions.KNOWLEDGE_CONNECTOR_DELETED, connectorEnums()),
@@ -430,6 +433,18 @@ public final class AuditDetailsPolicy {
      * @param details 已通过白名单类型校验的字段
      */
     private static void validateRequiredDetails(String action, Map<String, Object> details) {
+        if (AuditActions.KNOWLEDGE_DOCUMENT_REINDEXED.equals(action)) {
+            if (!(details.get("documentId") instanceof String documentId) || documentId.isBlank()) {
+                throw new IllegalArgumentException("audit detail key is required: documentId");
+            }
+            if (!(details.get("force") instanceof Boolean)) {
+                throw new IllegalArgumentException("audit detail value must be a boolean: force");
+            }
+            if (!(details.get("status") instanceof String status) || status.isBlank()) {
+                throw new IllegalArgumentException("audit detail key is required: status");
+            }
+            return;
+        }
         if (!AuditActions.KNOWLEDGE_DOCUMENT_ADMIN_READ.equals(action)) {
             return;
         }
@@ -448,6 +463,9 @@ public final class AuditDetailsPolicy {
         }
         if (!"LIST".equals(scope) && details.get("documentId") == null) {
             throw new IllegalArgumentException("audit detail key is required for scope=" + scope + ": documentId");
+        }
+        if (!"LIST".equals(scope) && details.get("visibility") == null) {
+            throw new IllegalArgumentException("audit detail key is required for scope=" + scope + ": visibility");
         }
     }
 
@@ -483,6 +501,15 @@ public final class AuditDetailsPolicy {
      */
     private static int arrayLimit(String action, String key) {
         return ARRAY_LIMITS.getOrDefault(action, Map.of()).getOrDefault(key, DEFAULT_MAX_ARRAY_ELEMENTS);
+    }
+
+    /** 返回知识库文档状态枚举名集合，供重索引审计校验使用。 */
+    private static Set<String> documentStatusValues() {
+        java.util.List<String> values = new java.util.ArrayList<>();
+        for (KnowledgeDocumentStatus status : KnowledgeDocumentStatus.values()) {
+            values.add(status.name());
+        }
+        return Set.copyOf(values);
     }
 
     /** 返回知识库可见范围枚举名集合，供封闭枚举校验使用。 */

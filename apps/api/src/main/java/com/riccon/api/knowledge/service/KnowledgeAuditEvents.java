@@ -6,6 +6,7 @@ import com.riccon.platform.domain.audit.AuditActions;
 import com.riccon.platform.domain.audit.AuditActorType;
 import com.riccon.platform.domain.audit.AuditOutcome;
 import com.riccon.platform.domain.audit.AuditTargetType;
+import com.riccon.platform.domain.knowledge.KnowledgeDocumentStatus;
 import com.riccon.platform.domain.knowledge.KnowledgeVisibility;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -170,6 +171,46 @@ public final class KnowledgeAuditEvents {
                 AuditActorType.USER,
                 actorId.toString(),
                 AuditActions.KNOWLEDGE_ACL_CHANGED,
+                documentId,
+                traceId,
+                requestId,
+                details);
+    }
+
+    /**
+     * 构造重索引审计。
+     *
+     * @param now 事件时间
+     * @param tenantId 租户
+     * @param actorId 操作者
+     * @param documentId 文档 ID
+     * @param force 是否整本重做
+     * @param status 受理时文档状态
+     * @param traceId 追踪 ID
+     * @param requestId 请求 ID，可空
+     * @return 审计事件
+     */
+    public static AuditEvent reindexed(
+            Instant now,
+            String tenantId,
+            UUID actorId,
+            UUID documentId,
+            boolean force,
+            KnowledgeDocumentStatus status,
+            String traceId,
+            String requestId) {
+        Objects.requireNonNull(documentId, "documentId must not be null");
+        Objects.requireNonNull(status, "status must not be null");
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("documentId", documentId.toString());
+        details.put("force", force);
+        details.put("status", status.name());
+        return event(
+                now,
+                tenantId,
+                AuditActorType.USER,
+                actorId.toString(),
+                AuditActions.KNOWLEDGE_DOCUMENT_REINDEXED,
                 documentId,
                 traceId,
                 requestId,

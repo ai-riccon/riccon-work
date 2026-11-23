@@ -35,7 +35,8 @@ class KnowledgeRetrieverIntegrationTest extends WorkerIntegrationTestBase {
         markIndexed(tenant, documentId);
 
         List<RetrievedChunk> chunks = TenantContext.callWithTenant(
-                TenantId.of(tenant), () -> retriever.retrieve(TenantId.of(tenant), "市场", List.of()));
+                TenantId.of(tenant),
+                () -> retriever.retrieve(TenantId.of(tenant), user, UUID.randomUUID(), "市场", List.of()));
 
         assertThat(chunks).isNotEmpty();
         assertThat(chunks.get(0).title()).isEqualTo("市场报告");
@@ -56,7 +57,8 @@ class KnowledgeRetrieverIntegrationTest extends WorkerIntegrationTestBase {
         markIndexed(tenant, documentId);
 
         List<RetrievedChunk> chunks = TenantContext.callWithTenant(
-                TenantId.of(tenant), () -> retriever.retrieve(TenantId.of(tenant), "市场", List.of(fileId)));
+                TenantId.of(tenant),
+                () -> retriever.retrieve(TenantId.of(tenant), user, UUID.randomUUID(), "市场", List.of(fileId)));
 
         assertThat(chunks).hasSizeGreaterThanOrEqualTo(2);
         assertThat(chunks.get(0).sourceType().name()).isEqualTo("FILE");
@@ -77,7 +79,8 @@ class KnowledgeRetrieverIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(userA).isNotNull();
 
         assertThatThrownBy(() -> TenantContext.callWithTenant(
-                        tenantA, () -> retriever.retrieve(tenantA, "内容", List.of(foreignFile))))
+                        tenantA,
+                        () -> retriever.retrieve(tenantA, userA, UUID.randomUUID(), "内容", List.of(foreignFile))))
                 .isInstanceOf(AgentException.class)
                 .satisfies(error ->
                         assertThat(((AgentException) error).errorCode()).isEqualTo(AgentException.NOT_FOUND));
@@ -92,13 +95,86 @@ class KnowledgeRetrieverIntegrationTest extends WorkerIntegrationTestBase {
         UUID fileId = createParsedFile(tenant, workspaceId, user, "资料", "正文");
 
         List<RetrievedChunk> chunks = TenantContext.callWithTenant(
-                TenantId.of(tenant), () -> retriever.retrieve(TenantId.of(tenant), " ", List.of(fileId)));
+                TenantId.of(tenant),
+                () -> retriever.retrieve(TenantId.of(tenant), user, UUID.randomUUID(), " ", List.of(fileId)));
 
         assertThat(chunks).hasSize(1);
         assertThat(chunks.get(0).sourceType().name()).isEqualTo("FILE");
         assertThat(TenantContext.callWithTenant(
-                        TenantId.of(tenant), () -> retriever.retrieveKnowledge(TenantId.of(tenant), "")))
+                        TenantId.of(tenant),
+                        () -> retriever.retrieveKnowledge(TenantId.of(tenant), user, UUID.randomUUID(), "")))
                 .isEmpty();
+    }
+
+    /** ACL 强制关闭时谓词退化为租户级（M03 灰度语义）。 */
+    @Test
+    void retrieve_whenAclEnforcementDisabled_ignoresDocumentAcl() {
+        String tenant = uniqueTenant("tenant-a");
+        UUID creator = seedTenant(tenant);
+        UUID reader = createUser(tenant);
+        UUID departmentId = createDepartment(tenant, creator, "OFF-DEPT");
+        UUID documentId = data.createKnowledgeDocument(tenant, "关闭ACL的部门文档", null, creator);
+        jdbcClient
+                .sql("""
+                        UPDATE knowledge_document
+                           SET visibility = 'DEPT', department_id = :departmentId
+                         WHERE tenant_id = :tenantId AND id = :id
+                        """)
+                .param("departmentId", UuidBinary.toBytes(departmentId))
+                .param("tenantId", tenant)
+                .param("id", UuidBinary.toBytes(documentId))
+                .update();
+        data.createKnowledgeChunk(tenant, documentId, 1, "关闭开关的市场数据", 1);
+        markIndexed(tenant, documentId);
+
+        List<RetrievedChunk> hits = TenantContext.callWithTenant(
+                TenantId.of(tenant),
+                () -> retriever.retrieveKnowledge(TenantId.of(tenant), reader, UUID.randomUUID(), "市场"));
+        assertThat(hits).extracting(RetrievedChunk::knowledgeDocumentId).contains(documentId);
+    }
+
+    /**
+     * 创建部门。
+     *
+     * @param tenant 租户
+     * @param creator 创建人
+     * @param name 部门名
+     * @return 部门 ID
+     */
+    private UUID createDepartment(String tenant, UUID creator, String name) {
+        UUID departmentId = UuidBinary.newV7();
+        jdbcClient
+                .sql("""
+                        INSERT INTO department (tenant_id, id, name, manager_user_id, status, created_by)
+                        VALUES (:tenantId, :id, :name, NULL, 'ACTIVE', :createdBy)
+                        """)
+                .param("tenantId", tenant)
+                .param("id", UuidBinary.toBytes(departmentId))
+                .param("name", name)
+                .param("createdBy", UuidBinary.toBytes(creator))
+                .update();
+        return departmentId;
+    }
+
+    /**
+     * 创建唯一用户名的启用账号。
+     *
+     * @param tenant 租户
+     * @return 账号 ID
+     */
+    private UUID createUser(String tenant) {
+        UUID userId = UuidBinary.newV7();
+        jdbcClient
+                .sql("""
+                        INSERT INTO app_user (tenant_id, id, username, display_name, status, auth_source)
+                        VALUES (:tenantId, :id, :username, :displayName, 'ACTIVE', 'LOCAL')
+                        """)
+                .param("tenantId", tenant)
+                .param("id", UuidBinary.toBytes(userId))
+                .param("username", "user-" + userId)
+                .param("displayName", "Test User")
+                .update();
+        return userId;
     }
 
     /** 创建租户与用户。 */

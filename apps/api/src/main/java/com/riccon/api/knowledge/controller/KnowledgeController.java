@@ -265,7 +265,11 @@ public class KnowledgeController {
             HttpServletRequest request) {
         validateIdempotencyKey(idempotencyKey);
         return lifecycleService.reindex(
-                actor(authentication), documentId, parseForce(force), RequestContext.traceId(request));
+                actor(authentication),
+                documentId,
+                parseForce(force),
+                RequestContext.traceId(request),
+                RequestContext.requestId(request));
     }
 
     /**

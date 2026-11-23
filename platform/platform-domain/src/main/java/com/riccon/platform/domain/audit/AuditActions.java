@@ -115,6 +115,8 @@ public interface AuditActions {
     String KNOWLEDGE_ACL_CHANGED = "knowledge.acl.changed";
     /** 管理员绕过文档 ACL 的管理性读取（M05 U8；不含标题、片段与正文）。 */
     String KNOWLEDGE_DOCUMENT_ADMIN_READ = "knowledge.document.admin_read";
+    /** 重建知识库索引（M05 AC-16；只写文档 ID、force 与结果状态，不含原文）。 */
+    String KNOWLEDGE_DOCUMENT_REINDEXED = "knowledge.document.reindexed";
 
     /** 创建知识库连接器（M05b）。 */
     String KNOWLEDGE_CONNECTOR_CREATED = "knowledge.connector.created";

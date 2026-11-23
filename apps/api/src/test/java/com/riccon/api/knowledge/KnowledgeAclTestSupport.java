@@ -82,6 +82,22 @@ abstract class KnowledgeAclTestSupport extends FileApiTestSupport {
     }
 
     /**
+     * 把账号移出部门。
+     *
+     * @param platform 平台管理员会话
+     * @param tenant 租户代码
+     * @param departmentId 部门 ID
+     * @param userId 账号 ID
+     */
+    protected void removeDepartmentMember(LoginSession platform, String tenant, UUID departmentId, UUID userId) {
+        ApiTestClient.ApiResponse response = client.delete(
+                "/api/v1/admin/tenants/" + tenant + "/departments/" + departmentId + "/members/" + userId,
+                platform.sessionCookie(),
+                platform.csrfToken());
+        assertThat(response.status()).as(response.body()).isEqualTo(204);
+    }
+
+    /**
      * 种子并登录一个指定角色的账号。
      *
      * @param platform 平台管理员会话

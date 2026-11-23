@@ -28,6 +28,12 @@ class UntrustedDataAndToolTest {
 
     private static final TenantId TENANT = TenantId.of("tenant-a");
 
+    /** 测试用户。 */
+    private static final UUID USER = UUID.randomUUID();
+
+    /** 测试运行。 */
+    private static final UUID RUN = UUID.randomUUID();
+
     /** 引用数据块包含序号、定位并替换伪造边界。 */
     @Test
     void fromCitations_wrapsAndSanitizes() {
@@ -74,8 +80,9 @@ class UntrustedDataAndToolTest {
     @Test
     void knowledgeTool_returnsFormattedResults() {
         KnowledgeRetriever retriever = mock(KnowledgeRetriever.class);
-        when(retriever.retrieveKnowledge(eq(TENANT), any())).thenReturn(List.of(chunk()));
-        KnowledgeSearchTool tool = new KnowledgeSearchTool(TENANT, retriever, new AgentProperties(2, 5, 5, 2000, 60));
+        when(retriever.retrieveKnowledge(eq(TENANT), eq(USER), eq(RUN), any())).thenReturn(List.of(chunk()));
+        KnowledgeSearchTool tool =
+                new KnowledgeSearchTool(TENANT, USER, RUN, retriever, new AgentProperties(2, 5, 5, 2000, 60));
 
         ToolResultBlock result = tool.callAsync(param("市场")).block(Duration.ofSeconds(5));
 
@@ -91,8 +98,9 @@ class UntrustedDataAndToolTest {
     @Test
     void knowledgeTool_noHits_returnsHint() {
         KnowledgeRetriever retriever = mock(KnowledgeRetriever.class);
-        when(retriever.retrieveKnowledge(any(), any())).thenReturn(List.of());
-        KnowledgeSearchTool tool = new KnowledgeSearchTool(TENANT, retriever, new AgentProperties(2, 5, 5, 2000, 60));
+        when(retriever.retrieveKnowledge(any(), any(), any(), any())).thenReturn(List.of());
+        KnowledgeSearchTool tool =
+                new KnowledgeSearchTool(TENANT, USER, RUN, retriever, new AgentProperties(2, 5, 5, 2000, 60));
 
         ToolResultBlock result = tool.callAsync(param(null)).block(Duration.ofSeconds(5));
 

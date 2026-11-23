@@ -11,6 +11,7 @@ import io.agentscope.core.tool.ToolCallParam;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -37,6 +38,12 @@ public class KnowledgeSearchTool implements AgentTool {
     /** 租户上下文在构造时显式捕获。 */
     private final TenantId tenantId;
 
+    /** 当前 run 的用户；检索 ACL 与 SEARCH 审计使用。 */
+    private final UUID actorUserId;
+
+    /** 运行 ID；作为审计关联 ID。 */
+    private final UUID runId;
+
     /** 检索服务。 */
     private final KnowledgeRetriever retriever;
 
@@ -47,11 +54,16 @@ public class KnowledgeSearchTool implements AgentTool {
      * 创建知识库检索工具。
      *
      * @param tenantId 租户
+     * @param actorUserId 当前 run 的用户
+     * @param runId 运行 ID
      * @param retriever 检索服务
      * @param properties Agent 配置
      */
-    public KnowledgeSearchTool(TenantId tenantId, KnowledgeRetriever retriever, AgentProperties properties) {
+    public KnowledgeSearchTool(
+            TenantId tenantId, UUID actorUserId, UUID runId, KnowledgeRetriever retriever, AgentProperties properties) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId must not be null");
+        this.actorUserId = Objects.requireNonNull(actorUserId, "actorUserId must not be null");
+        this.runId = Objects.requireNonNull(runId, "runId must not be null");
         this.retriever = Objects.requireNonNull(retriever, "retriever must not be null");
         this.properties = Objects.requireNonNull(properties, "properties must not be null");
     }
@@ -91,7 +103,7 @@ public class KnowledgeSearchTool implements AgentTool {
         String query =
                 param.getInput() == null ? "" : String.valueOf(param.getInput().get("query"));
         return Mono.fromCallable(() -> TenantContext.callWithTenant(tenantId, () -> {
-                    List<RetrievedChunk> chunks = retriever.retrieveKnowledge(tenantId, query);
+                    List<RetrievedChunk> chunks = retriever.retrieveKnowledge(tenantId, actorUserId, runId, query);
                     return ToolResultBlock.of(
                             param.getToolUseBlock().getId(),
                             TOOL_NAME,

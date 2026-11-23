@@ -139,6 +139,13 @@ class KnowledgeAclApiTest extends KnowledgeAclTestSupport {
         assertThat(getDocument(fixture.member(), documentId).status()).isEqualTo(200);
         assertThat(getDocument(other, documentId).status()).isEqualTo(404);
 
+        // 成员移出部门后下一请求即 404；重新加入后恢复。
+        removeDepartmentMember(fixture.platform(), fixture.tenant(), deptA, actorId(fixture.member()));
+        assertThat(documentIds(listDocuments(fixture.member()))).doesNotContain(documentId);
+        assertThat(getDocument(fixture.member(), documentId).status()).isEqualTo(404);
+        addDepartmentMember(fixture.platform(), fixture.tenant(), deptA, actorId(fixture.member()));
+        assertThat(getDocument(fixture.member(), documentId).status()).isEqualTo(200);
+
         disableDepartment(fixture.platform(), fixture.tenant(), deptA);
         assertThat(documentIds(listDocuments(fixture.member()))).doesNotContain(documentId);
         assertThat(getDocument(fixture.member(), documentId).status()).isEqualTo(404);
@@ -194,6 +201,27 @@ class KnowledgeAclApiTest extends KnowledgeAclTestSupport {
                 tenantDocId,
                 Map.of("visibility", "USERS", "userIds", List.of(memberId.toString(), memberId.toString()))));
         assertBadRequest(putAcl(fixture.admin(), tenantDocId, Map.of("visibility", "PUBLIC")));
+
+        // 恰好 200 人应通过；201 人已在上方拒绝。
+        List<String> twoHundred = new ArrayList<>();
+        for (int index = 0; index < 200; index++) {
+            twoHundred.add(seedLocalUser(
+                            fixture.tenant(),
+                            "acl200" + index
+                                    + UUID.randomUUID()
+                                            .toString()
+                                            .replace("-", "")
+                                            .substring(0, 6),
+                            TEST_PASSWORD,
+                            List.of("MEMBER"),
+                            actorId(fixture.platform()))
+                    .toString());
+        }
+        ApiTestClient.ApiResponse maxUsers =
+                putAcl(fixture.admin(), tenantDocId, Map.of("visibility", "USERS", "userIds", twoHundred));
+        assertThat(maxUsers.status()).as(maxUsers.body()).isEqualTo(200);
+        assertThat(client.json(maxUsers).path("aclUserCount").asLong()).isEqualTo(200);
+        assertThat(aclRowCount(fixture.tenant(), tenantDocId)).isEqualTo(200);
 
         // 停用部门不能作为 DEPT 目标。
         disableDepartment(fixture.platform(), fixture.tenant(), deptA);

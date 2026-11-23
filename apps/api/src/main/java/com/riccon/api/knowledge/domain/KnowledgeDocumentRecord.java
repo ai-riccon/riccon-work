@@ -103,12 +103,13 @@ public record KnowledgeDocumentRecord(
      * @return 保留策略来源
      */
     public KnowledgeRetentionPolicy retentionPolicy(int tenantRetentionDays) {
+        if (retentionExpiresAt == null) {
+            // 历史 NULL 行按 ADR-0023 第 10 节固定为创建后 180 天，不随当前租户策略变化。
+            return KnowledgeRetentionPolicy.DEPLOYMENT_DEFAULT;
+        }
         KnowledgeRetentionPolicy base = tenantRetentionDays == DEFAULT_RETENTION_DAYS
                 ? KnowledgeRetentionPolicy.DEPLOYMENT_DEFAULT
                 : KnowledgeRetentionPolicy.TENANT_POLICY;
-        if (retentionExpiresAt == null) {
-            return base;
-        }
         Instant policyExpiry = createdAt.plus(Duration.ofDays(tenantRetentionDays));
         return retentionExpiresAt.equals(policyExpiry) ? base : KnowledgeRetentionPolicy.EXPLICIT;
     }
@@ -121,7 +122,8 @@ public record KnowledgeDocumentRecord(
      */
     public int retentionDays(int tenantRetentionDays) {
         if (retentionExpiresAt == null) {
-            return tenantRetentionDays;
+            // 历史 NULL 行固定 180 天；当前租户策略只影响新建文档。
+            return DEFAULT_RETENTION_DAYS;
         }
         long seconds = Duration.between(createdAt, retentionExpiresAt).getSeconds();
         long days = Math.max(

@@ -233,7 +233,7 @@ public class AgentRunRequestedHandler implements OutboxEventHandler {
             List<RetrievedChunk> hits;
             String querySha256 = Digests.sha256Hex(task.topic());
             try {
-                hits = retriever.retrieveKnowledge(tenantId, task.topic());
+                hits = retriever.retrieveKnowledge(tenantId, run.userId(), runId, task.topic());
             } catch (RuntimeException ex) {
                 repository.finishStage(
                         tenantId,
