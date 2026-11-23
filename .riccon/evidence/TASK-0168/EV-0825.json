@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0825",
+  "task_id": "TASK-0168",
+  "command": "./mvnw -q -T1C -pl apps/worker -am test && ./mvnw -q -T1C -DskipTests -pl apps/worker -am package && docker run --rm --network none -v \"$PWD/apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar:/app/app.jar:ro\" -v \"$PWD/deploy/ocr:/ocr:ro\" --entrypoint java riccon-worker-ocr:o1a -Dloader.main=com.riccon.worker.ocr.service.OcrCli -cp /app/app.jar org.springframework.boot.loader.launch.PropertiesLauncher /ocr/sample.png --lang chi_sim+eng --dpi 200",
+  "manual": false,
+  "commit": "be1155d3078a874570cb2c259f5922bc4d290775",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0168/EV-0825-2026-11-23T11-22-20-553+08-00-mvnw-q-t1c-pl-apps-worker-am-test-mvnw-q-t1c-dsk.log",
+  "output_sha256": "f232206a47c9b0684a7980689822712dc70d7ea1995adefd6345b4c1624d673c",
+  "output_bytes": 261918,
+  "agent": "riccon/builder-kb-ocr",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-23T11:19:47.600+08:00",
+  "finished_at": "2026-11-23T11:22:19.734+08:00",
+  "duration_ms": 152132,
+  "note": "M05-B5：OCR SPI/Tesseract/扫描 PDF/四态/资源/OcrCli；worker 全量+镜像零出网",
+  "recorded_at": "2026-11-23T11:22:20.558+08:00"
+}
