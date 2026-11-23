@@ -133,8 +133,11 @@ riccon:
       password: ${RICCON_OPENSEARCH_PASSWORD:}
       connect-timeout: 2s
       request-timeout: 30s
-      index-prefix: riccon-kb
-      index-version: v1
+      # ADR-0023 §7.1 使用 RICCON_OPENSEARCH_INDEX_VERSION / RICCON_OPENSEARCH_INDEX_PREFIX；
+      # 占位符让 ADR 键真正生效。环境变量优先级高于 application.yml，因此 Spring 的
+      # RICCON_WORKER_OPENSEARCH_INDEX_VERSION / RICCON_WORKER_OPENSEARCH_INDEX_PREFIX 仍可覆盖。
+      index-prefix: ${RICCON_OPENSEARCH_INDEX_PREFIX:riccon-kb}
+      index-version: ${RICCON_OPENSEARCH_INDEX_VERSION:v1}
     embedding:
       # M02 使用确定性哈希向量占位；真实模型接入在后续任务替换 EmbeddingModel Bean。
       dimensions: 64
