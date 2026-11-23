@@ -582,12 +582,12 @@ class V10MigrationTest {
                 .hasMessageContaining("append-only");
     }
 
-    /** fresh install：V1–V12 后 RoleDefinitions 的每条权限都能在字典中找到并用于角色创建。 */
+    /** fresh install：V1–V13 后 RoleDefinitions 的每条权限都能在字典中找到并用于角色创建。 */
     @Test
-    @DisplayName("空库 V1–V12 后 RoleDefinitions 权限字典完整")
+    @DisplayName("空库 V1–V13 后 RoleDefinitions 权限字典完整")
     void freshDatabase_bootstrapCoversRoleDefinitions() {
         assertThat(flywayLatest(freshUrl, "root").info().current().getVersion().getVersion())
-                .isEqualTo("12");
+                .isEqualTo("13");
         assertThat(count(fresh, """
                         SELECT COUNT(*) FROM information_schema.TABLES
                          WHERE TABLE_SCHEMA = :schema AND TABLE_NAME = 'audit_export_request'

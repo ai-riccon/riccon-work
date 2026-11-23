@@ -184,8 +184,7 @@ public class ArtifactService {
                 artifactRepository.listVersions(tenantId, artifact.id(), page.size(), page.offset());
         Map<UUID, List<ArtifactCitationSnapshot>> citations = artifactRepository.citationsByVersionIds(
                 tenantId, versions.stream().map(ArtifactVersionSnapshot::id).toList());
-        List<ArtifactVersionResponse> items = versions.stream()
-                .map(version -> withCitations(tenantId, actor.userId(), version, citations))
+        List<ArtifactVersionResponse> items = withCitationsBatch(tenantId, actor.userId(), versions, citations).stream()
                 .map(ArtifactVersionResponse::from)
                 .toList();
         return new ArtifactVersionPageResponse(page.page(), page.size(), total, page.totalPages(total), items);
@@ -385,21 +384,45 @@ public class ArtifactService {
             UUID viewerId,
             ArtifactVersionSnapshot version,
             Map<UUID, List<ArtifactCitationSnapshot>> citations) {
-        return new ArtifactVersionSnapshot(
-                version.id(),
-                version.artifactId(),
-                version.version(),
-                version.storageKey(),
-                version.contentType(),
-                version.sizeBytes(),
-                version.sha256(),
-                version.summary(),
-                version.createdAt(),
-                withStatus(tenantId, viewerId, citations.getOrDefault(version.id(), List.of())));
+        return withCitations(version, withStatus(tenantId, viewerId, citations.getOrDefault(version.id(), List.of())));
     }
 
     /**
-     * 批量计算引用可用性并回填快照。
+     * 为多个版本批量补齐引用与可用性。
+     *
+     * <p>版本列表页一次请求只按全部文档 ID / 分块 ID 查询一次，避免每个版本重复执行 ACL 与分块查询
+     * （REV-TASK-0197-001 F-002）。
+     *
+     * @param tenantId 当前租户
+     * @param viewerId 当前账号
+     * @param versions 版本列表
+     * @param citations 版本 ID 到引用列表的映射
+     * @return 带引用与可用性的版本列表
+     */
+    private List<ArtifactVersionSnapshot> withCitationsBatch(
+            TenantId tenantId,
+            UUID viewerId,
+            List<ArtifactVersionSnapshot> versions,
+            Map<UUID, List<ArtifactCitationSnapshot>> citations) {
+        if (versions.isEmpty()) {
+            return List.of();
+        }
+        List<ArtifactCitationSnapshot> allCitations =
+                citations.values().stream().flatMap(List::stream).toList();
+        Map<UUID, CitationSourceState> states = resolveStates(tenantId, viewerId, allCitations);
+        Map<UUID, CitationRegion> regions = resolveRegions(tenantId, allCitations);
+        List<ArtifactVersionSnapshot> resolved = new ArrayList<>(versions.size());
+        for (ArtifactVersionSnapshot version : versions) {
+            List<ArtifactCitationSnapshot> versionCitations = citations.getOrDefault(version.id(), List.of()).stream()
+                    .map(citation -> applySource(citation, states, regions))
+                    .toList();
+            resolved.add(withCitations(version, versionCitations));
+        }
+        return List.copyOf(resolved);
+    }
+
+    /**
+     * 批量计算引用可用性与分块区域并回填快照。
      *
      * @param tenantId 当前租户
      * @param viewerId 当前账号
@@ -411,31 +434,92 @@ public class ArtifactService {
         if (citations.isEmpty()) {
             return List.of();
         }
+        Map<UUID, CitationSourceState> states = resolveStates(tenantId, viewerId, citations);
+        Map<UUID, CitationRegion> regions = resolveRegions(tenantId, citations);
+        List<ArtifactCitationSnapshot> resolved = new ArrayList<>(citations.size());
+        for (ArtifactCitationSnapshot citation : citations) {
+            resolved.add(applySource(citation, states, regions));
+        }
+        return List.copyOf(resolved);
+    }
+
+    /**
+     * 批量读取引用文档状态。
+     *
+     * @param tenantId 当前租户
+     * @param viewerId 当前账号
+     * @param citations 引用列表
+     * @return 文档 ID 到状态的映射
+     */
+    private Map<UUID, CitationSourceState> resolveStates(
+            TenantId tenantId, UUID viewerId, List<ArtifactCitationSnapshot> citations) {
         Set<UUID> documentIds = new LinkedHashSet<>();
         for (ArtifactCitationSnapshot citation : citations) {
             if (citation.sourceType() == ArtifactSourceType.KNOWLEDGE && citation.knowledgeDocumentId() != null) {
                 documentIds.add(citation.knowledgeDocumentId());
             }
         }
-        Map<UUID, CitationSourceState> states = citationStatusRepository.findStates(tenantId, viewerId, documentIds);
+        return citationStatusRepository.findStates(tenantId, viewerId, documentIds);
+    }
+
+    /**
+     * 批量读取引用分块区域。
+     *
+     * @param tenantId 当前租户
+     * @param citations 引用列表
+     * @return 分块 ID 到区域的映射
+     */
+    private Map<UUID, CitationRegion> resolveRegions(TenantId tenantId, List<ArtifactCitationSnapshot> citations) {
         Set<UUID> chunkIds = new LinkedHashSet<>();
         for (ArtifactCitationSnapshot citation : citations) {
             if (citation.chunkId() != null) {
                 chunkIds.add(citation.chunkId());
             }
         }
-        Map<UUID, CitationRegion> regions = citationRegionRepository.findRegions(tenantId, chunkIds);
-        List<ArtifactCitationSnapshot> resolved = new ArrayList<>(citations.size());
-        for (ArtifactCitationSnapshot citation : citations) {
-            CitationSourceStatus status = CitationSourceStatus.AVAILABLE;
-            if (citation.sourceType() == ArtifactSourceType.KNOWLEDGE && citation.knowledgeDocumentId() != null) {
-                CitationSourceState state = states.get(citation.knowledgeDocumentId());
-                status = state == null ? CitationSourceStatus.NO_ACCESS : state.statusFor(citation.sourceVersion());
-            }
-            CitationRegion region = citation.chunkId() == null ? null : regions.get(citation.chunkId());
-            resolved.add(citation.withSourceStatus(status).withRegion(region));
+        return citationRegionRepository.findRegions(tenantId, chunkIds);
+    }
+
+    /**
+     * 计算单条引用的状态与区域。
+     *
+     * @param citation 引用
+     * @param states 文档状态映射
+     * @param regions 分块区域映射
+     * @return 带状态与区域的引用
+     */
+    private static ArtifactCitationSnapshot applySource(
+            ArtifactCitationSnapshot citation,
+            Map<UUID, CitationSourceState> states,
+            Map<UUID, CitationRegion> regions) {
+        CitationSourceStatus status = CitationSourceStatus.AVAILABLE;
+        if (citation.sourceType() == ArtifactSourceType.KNOWLEDGE && citation.knowledgeDocumentId() != null) {
+            CitationSourceState state = states.get(citation.knowledgeDocumentId());
+            status = state == null ? CitationSourceStatus.NO_ACCESS : state.statusFor(citation.sourceVersion());
         }
-        return List.copyOf(resolved);
+        CitationRegion region = citation.chunkId() == null ? null : regions.get(citation.chunkId());
+        return citation.withSourceStatus(status).withRegion(region);
+    }
+
+    /**
+     * 复制版本并替换引用清单。
+     *
+     * @param version 版本
+     * @param citations 已计算状态与区域的引用
+     * @return 新版本
+     */
+    private static ArtifactVersionSnapshot withCitations(
+            ArtifactVersionSnapshot version, List<ArtifactCitationSnapshot> citations) {
+        return new ArtifactVersionSnapshot(
+                version.id(),
+                version.artifactId(),
+                version.version(),
+                version.storageKey(),
+                version.contentType(),
+                version.sizeBytes(),
+                version.sha256(),
+                version.summary(),
+                version.createdAt(),
+                citations);
     }
 
     /**
