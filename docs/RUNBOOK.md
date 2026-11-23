@@ -155,7 +155,7 @@ FILTER="$(node scripts/test-shards.mjs --shard 0 --print-test-filter)"
 
 - 分片只跑 `test`，不用 `verify`/`jacoco:report`：分片覆盖率不完整，覆盖率仍由 CI `backend-coverage` 与 verifier 的 canonical gate 采集。`-Djacoco.skip=true` 只关闭采集代理，不改变测试内容与断言。
 - `-Dtest` 用 Surefire 3.5.6 的排除语法（`!FQCN`）：每片运行“除其他 3 片之外的所有类”。未登记到基线的新测试类不会被任何排除列表命中，会在 4 片全部执行，合并时以“重复类/额外类”失败，靠运行时集合校验防漏跑，不依赖源码命名扫描。
-- 迁移、回滚与 schema 版本测试（`V9/V10/V11/V12MigrationTest`、`SchemaVersionCheckerTest` 的 external 分支）仍使用一次性容器，不受热栈影响；迁移冒烟在 `backend-smoke` 用默认 `riccon` 库，不读写 namespace。
+- 迁移、回滚与 schema 版本测试（`V9/V10/V11/V12/V13/V14MigrationTest`、`SchemaVersionCheckerTest` 的 external 分支）仍使用一次性容器，不受热栈影响；迁移冒烟在 `backend-smoke` 用默认 `riccon` 库，不读写 namespace。
 - 本地复用共享热栈时只 `stop`（保留数据卷），不要照抄 CI 的 `down -v`，否则会清空其他 agent 的数据。
 
 ### 分片基线与合并校验（M19 P2）
@@ -221,7 +221,7 @@ node scripts/test-timings.mjs --reports-root "$TMPDIR/empty"
 # 1. 启动测试栈（MySQL 已在 compose 中固定审计触发器所需参数，无需手工 SET GLOBAL）
 docker compose -f deploy/compose/docker-compose.test.yml up -d --wait
 
-# 2. 启动 API（默认端口 8080，连接 13306 的 MySQL；启动时执行 Flyway V1–V12）
+# 2. 启动 API（默认端口 8080，连接 13306 的 MySQL；启动时执行 Flyway V1–V14）
 ./mvnw -q -pl apps/api spring-boot:run
 
 # 3. 启动 Worker（默认端口 8081；M01 无数据库依赖，M02 持久化实现任务加入 JDBC 后需要 MySQL）
@@ -250,14 +250,20 @@ export RICCON_BOOTSTRAP_ADMIN_PASSWORD='<至少 12 位，部署时注入，禁�
 
 ### 迁移与审计触发器
 
-- 迁移只由 `apps/api` 执行；Worker 不包含迁移文件，只校验 `SchemaVersionChecker.EXPECTED_SCHEMA_VERSION`（M05 起为 12）；worker 期望版本与 DB 不一致时拒绝启动（`RICCON-WORKER-001`）。
+- 迁移只由 `apps/api` 执行；Worker 不包含迁移文件，只校验 `SchemaVersionChecker.EXPECTED_SCHEMA_VERSION`（M05 起为 14）；worker 期望版本与 DB 不一致时拒绝启动（`RICCON-WORKER-001`）。
 - V6 创建 `audit_event` 触发器；若 MySQL 返回 `ERROR 1419`，说明迁移账号缺少 `TRIGGER` 或 `log_bin_trust_function_creators` 未开启。不得删除触发器绕过。
 - 已应用的迁移文件禁止修改；新增迁移同步 `SchemaVersion.EXPECTED`（ADR-0010）。
 - Spring Session 表由 V7 创建，必须保持 `spring.session.jdbc.initialize-schema=never`，禁止应用自动建表。
 - V10（M10，审计查询与导出）新增 `audit_export_request` 表、`audit_event` 两条查询索引（`idx_audit_tenant_action_time`、`idx_audit_tenant_actor_time`）、`audit.export.approve` / `platform.audit.export.approve` 两条权限并回填既有 `TENANT_ADMIN` / `PLATFORM_ADMIN` 角色映射；纯 additive，append-only 触发器不变。生产执行见下文“V10 生产迁移”。
 - V12（M05，知识库纵深）为 additive：新增 `knowledge_document_acl`、`kb_connector`、`kb_connector_item` 三张表，`knowledge_document` 增加 `visibility`/`department_id`/`acl_version`/`parse_*`/`retention_expires_at` 等列与索引；`visibility` 的 `DEFAULT 'TENANT'` 使历史文档保持现状，不执行全表 UPDATE，append-only 触发器不变。
+- V13（M05 B9，引用分块关联）为 additive：`artifact_citation` 增加可空 `chunk_id BINARY(16)` 与
+  `idx_artifact_citation_chunk (tenant_id, chunk_id)`；不建外键、不回填历史引用（历史行 `chunk_id=NULL`，
+  读取时按缺失处理）。回滚顺序见迁移文件头（先删索引、再删列、最后删 history 13）。
+- V14（M05 B7b，知识库 FULLTEXT 检索，DEC-0038=A）为 additive：为 `knowledge_chunk.content`、
+  `knowledge_document.title` 建 InnoDB FULLTEXT ngram 索引（`ft_knowledge_chunk_content`、
+  `ft_knowledge_document_title`）；只加索引、不改列、不回填。锁与回滚见下文“V14 FULLTEXT 检索迁移”。
 
-#### 测试栈迁移演练（V1–V12，可复制）
+#### 测试栈迁移演练（V1–V14，可复制）
 
 > **仅测试栈。** 以下参数与凭据只属于 `deploy/compose/docker-compose.test.yml`。生产迁移账号是否具备 `TRIGGER`、是否开启 `log_bin_trust_function_creators`（或改用 DBA 预建触发器）由 M09 决定，禁止直接照搬本节配置。
 
@@ -278,7 +284,7 @@ docker compose -f deploy/compose/docker-compose.test.yml exec -T \
   -e MYSQL_PWD="${RICCON_DB_PASSWORD:-riccon_test_only}" \
   mysql mysql --user=riccon -e "SHOW VARIABLES LIKE 'log_bin_trust_function_creators';"
 
-# 4. 按 Flyway 版本号顺序执行 V1..V12（不能用 shell 字典序：V10 会排到 V2 之前，
+# 4. 按 Flyway 版本号顺序执行 V1..V14（不能用 shell 字典序：V10 会排到 V2 之前，
 #    导致外键引用尚未创建的 app_user）；任一步失败立即中断，不吞错误
 set -euo pipefail
 migrations="$(printf '%s\n' apps/api/src/main/resources/db/migration/V*.sql | sort -V)"
@@ -289,7 +295,7 @@ while IFS= read -r migration; do
     mysql mysql --user=riccon --database=riccon --batch --show-warnings < "${migration}"
 done <<< "${migrations}"
 
-# 5. 校验结构：48 张表（Flyway 口径 49）、2 个触发器、V10/V12 对象
+# 5. 校验结构：48 张表（Flyway 口径 49）、2 个触发器、V10/V12/V13/V14 对象
 docker compose -f deploy/compose/docker-compose.test.yml exec -T \
   -e MYSQL_PWD="${RICCON_DB_PASSWORD:-riccon_test_only}" \
   mysql mysql --user=riccon --database=riccon --batch -e "
@@ -305,7 +311,12 @@ docker compose -f deploy/compose/docker-compose.test.yml exec -T \
      WHERE code IN ('audit.export.approve','platform.audit.export.approve');
     SELECT COUNT(*) AS v12_tables FROM information_schema.tables
      WHERE table_schema='riccon'
-       AND table_name IN ('knowledge_document_acl','kb_connector','kb_connector_item');"
+       AND table_name IN ('knowledge_document_acl','kb_connector','kb_connector_item');
+    SELECT COUNT(*) AS v13_citation_chunk FROM information_schema.columns
+     WHERE table_schema='riccon' AND table_name='artifact_citation' AND column_name='chunk_id';
+    SELECT COUNT(*) AS v14_ft_indexes FROM information_schema.statistics
+     WHERE table_schema='riccon'
+       AND index_name IN ('ft_knowledge_chunk_content','ft_knowledge_document_title');"
 
 # 6. 校验 append-only：先插入一行，再验证 UPDATE/DELETE 都被触发器拒绝（两条命令都必须 exit 1）
 docker compose -f deploy/compose/docker-compose.test.yml exec -T \
@@ -335,12 +346,14 @@ docker compose -f deploy/compose/docker-compose.test.yml down -v
 | 检查项                            | 期望                                                                                                     |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `log_bin_trust_function_creators` | `ON`                                                                                                     |
-| 迁移输出                          | V1–V12 逐条无错误；不得出现 `ERROR 1419`                                                                 |
-| `table_count`                     | 48（手工重放不含 `flyway_schema_history`；API 经 Flyway 启动后为 49，与 `ApiApplicationTests` 口径一致） |
+| 迁移输出                          | V1–V14 逐条无错误；不得出现 `ERROR 1419`                                                                 |
+| `table_count`                     | 48（手工重放不含 `flyway_schema_history`；API 经 Flyway 启动后为 49；V13/V14 只加列与索引，不新增表） |
 | `trigger_count`                   | 2（`trg_audit_event_no_update`、`trg_audit_event_no_delete`）                                            |
 | `v10_tables` / `v10_indexes`      | 1（`audit_export_request`）/ 2（两条 `audit_event` 复合索引）                                            |
 | `v10_permissions`                 | 2（`audit.export.approve`、`platform.audit.export.approve`）                                             |
 | `v12_tables`                      | 3（`knowledge_document_acl`、`kb_connector`、`kb_connector_item`）                                       |
+| `v13_citation_chunk`              | 1（`artifact_citation.chunk_id` 可空列）                                                                 |
+| `v14_ft_indexes`                  | 2（`ft_knowledge_chunk_content`、`ft_knowledge_document_title`，ngram）                                  |
 | UPDATE / DELETE                   | 均 exit 1，`ERROR 1644 (45000): audit_event is append-only`，行仍存在                                    |
 
 手工重放只用于演练与 CI 冒烟，不会写入 `flyway_schema_history`。**不要在同一数据卷上随即启动 API**：Flyway 会因“非空 schema 但无历史表”拒绝迁移；需要继续用 API 验证时先 `down -v` 再 `up -d --wait`。
@@ -348,6 +361,36 @@ docker compose -f deploy/compose/docker-compose.test.yml down -v
 CI 的 `backend-smoke` job 使用同一个 compose 文件做冒烟（`.github/workflows/ci.yml` 的“迁移冒烟”步骤），按 Flyway 版本号顺序（`sort -V`）重放全部 `V*.sql`；本 job 只跑迁移冒烟与 `spotless:check`，不跑构建与全量测试（canonical `./mvnw -q -T1C verify jacoco:report` 由 CI `backend-coverage` 与 verifier gate 跑）。表数不写死：期望值从 `apps/api/src/main/resources/db/migration/V*.sql` 的 `CREATE TABLE` 数量推导，并额外断言 V10 表、索引、权限与 append-only 触发器。
 
 > 合同 `commands.run` 引用 `deploy/compose/docker-compose.dev.yml`，该文件由后续 ops 任务建立；M01 用测试栈替代。不要在 M01 中创建生产/预览编排。
+
+#### V14 FULLTEXT 检索迁移（M05 B7b，DEC-0038=A）
+
+- 目的：替换 `AgentContextJdbc.search` 原先的 leading-wildcard `LIKE '%term%'`（全表扫描）。V14 为
+  `knowledge_chunk.content` 与 `knowledge_document.title` 建 InnoDB FULLTEXT **ngram** 索引
+  （`ft_knowledge_chunk_content`、`ft_knowledge_document_title`），MySQL 默认 token size 2（中文二元组、
+  英文双字符）。只加索引、不改列、不回填；历史行建索引后即可检索。
+- 检索形态：两条固定批量 FULLTEXT 查询（正文/标题），各自带租户 + 文档状态 + ACL 谓词与 `LIMIT`，
+  合并去重后按“词面分与归一化 `MATCH` 相关分取较大值”排序；不是逐文档查询，无 N+1。
+  OpenSearch 不参与授权（ADR-0023 §5.4/§5.5）。
+- **锁与写阻塞**：MySQL 8.4 创建 FULLTEXT 只允许 `ALGORITHM=INPLACE, LOCK=SHARED`（`LOCK=NONE` 会报
+  1846）。执行期间允许并发读、**阻塞写入**；生产必须在维护窗口内执行，实际耗时随 `knowledge_chunk`
+  行数增长，需在客户数据量上测量（M09），本迁移**不声明**已量测生产时长。
+- 迁移后验证：`information_schema.statistics` 存在两条 `ft_*` 索引（见“测试栈迁移演练”的
+  `v14_ft_indexes=2`）；检索 SQL 使用 `MATCH(...) AGAINST` 且仍带 ACL 谓词。
+- 性能（V14 真实栈复测，EV-0922：100k chunk / 50 VU / 45s）：检索 p95 **73.4 ms**（p50 27.3 ms、
+  max 273 ms、762 样本、avgRowsExamined 1105），对比 `LIKE` 基线 p95 7000 ms（`perf-m05-matrix.json`）；
+  预算 500 ms 内，无需额外决策。
+- 回滚（仅回滚窗口，顺序不能反）：先停新 Worker → 删两条索引 → 删 history 14 → 启动 expected=13 的旧 Worker。
+
+  ```sql
+  ALTER TABLE knowledge_chunk DROP INDEX ft_knowledge_chunk_content, ALGORITHM=INPLACE, LOCK=NONE;
+  ALTER TABLE knowledge_document DROP INDEX ft_knowledge_document_title, ALGORITHM=INPLACE, LOCK=NONE;
+  DELETE FROM flyway_schema_history WHERE version = '14';
+  ```
+
+  回滚后检索退回 `LIKE`（仍可用，只是慢）；不删除数据。V13 回滚见迁移文件头注释
+  （先删 `idx_artifact_citation_chunk`、再删 `chunk_id`、最后删 history 13）。
+- 与索引 v2（OpenSearch）是两条独立路径：V14 只加速 MySQL 检索；别名切换/回切见
+  “M05 索引 v2 部署与重灌”。
 
 ## 验证
 
@@ -644,7 +687,7 @@ node scripts/ops/rewrap-credentials.mjs --apply --via=client
 
 预览/测试环境基线：RPO ≤24h、RTO ≤4h；客户生产可由 SOW 覆盖，覆盖值必须写进交付文档，
 但不得放宽到无备份窗口。`restore-drill` 通过判据：表数一致、触发器 2 个、一行 credential 可解密、
-J1 冒烟通过、`MAX(version)=12`、RTO ≤4h。
+J1 冒烟通过、`MAX(version)=14`、RTO ≤4h（`restore-drill.mjs` 的 `EXPECTED_SCHEMA_VERSION=14`；V13/V14 为 additive，脚本只核对版本与表数，不感知对象清单）。
 
 ```bash
 # 完整演练（推荐）：演练库 riccon_restore_drill 导入源库快照，API 指向演练库后跑 J1
@@ -934,7 +977,7 @@ M05 gate 证据（`SEC-KB-001`）：EV 命令必须包含 `docker build … -t r
 ### M05-6 回滚与降级
 
 - 用户可见回滚：`RICCON_OCR_ENABLED=false` + 重启 worker。之后上传的图片/扫描件按 `KB_OCR_DISABLED`
-  失败并保留原图；已索引文档不变；不涉及 DB 回滚（V12 为 additive）。
+  失败并保留原图；已索引文档不变；不涉及 DB 回滚（V12–V14 均为 additive）。
 - 仅当“引擎不可用但业务必须继续”时使用；ADR-0023 §4.4 要求生产默认开启，关闭须在评审中登记残余风险。
 - 镜像/权重回滚：回到上一版 `-exec.jar` 与镜像 tag（OcrCli 与 manifest 同镜像）；数据库不涉及。
 - ACL 开关关闭/回滚的安全回归与书面同意要求见 `M05-2`（ADR-0023 §5.9），与本开关无关。

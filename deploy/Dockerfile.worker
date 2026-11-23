@@ -115,4 +115,9 @@ WORKDIR /app
 
 EXPOSE 8081
 
+# 存活探针：worker 在 8081 暴露 /actuator/health，返回 {"status":"UP"} 才健康；
+# 端口未监听/非 UP 即 unhealthy（不是恒 true）。curl+grep 来自运行时基础镜像，不额外装包。
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+  CMD curl -fsS http://127.0.0.1:8081/actuator/health | grep -q '"status":"UP"'
+
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
