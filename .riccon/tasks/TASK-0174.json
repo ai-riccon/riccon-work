@@ -4,10 +4,11 @@
   "module_id": "M05",
   "title": "M05-O1a OCR 镜像/权重/CI/SBOM",
   "owner": "riccon/ops",
-  "status": "review",
+  "status": "done",
   "write_scope": [
     "deploy/**",
-    "NOTICE"
+    "NOTICE",
+    ".github/workflows/**"
   ],
   "acceptance": [
     "worker 镜像含 Tesseract/Leptonica/tessdata，版本/哈希指纹；SBOM/NOTICE；CI 安装",
@@ -23,7 +24,15 @@
   ],
   "blocker": null,
   "created_at": "2026-11-22T19:25:26.428+08:00",
-  "updated_at": "2026-11-23T10:00:14.479+08:00",
-  "baseline_commit": "e8e61cf",
-  "end_commit": "aca2f0a"
+  "updated_at": "2026-11-23T10:01:47.716+08:00",
+  "baseline_commit": "e00ce64",
+  "end_commit": "aca2f0a",
+  "scope_amendment": {
+    "at": "2026-11-23T02:01:45.808Z",
+    "by": "riccon/lead",
+    "reason": "派单明确允许 CI 配置；原 write_scope 漏列 .github/workflows/**，builder 把 CI 提交放在 baseline 之前规避范围检查。补录后 baseline 前移到 e8e61cf 的父提交 e00ce64，使 CI+镜像两个提交都在可核对区间。",
+    "added": [
+      ".github/workflows/**"
+    ]
+  }
 }
