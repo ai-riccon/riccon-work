@@ -96,6 +96,27 @@ class AgentContextJdbcAclTest extends WorkerIntegrationTestBase {
         assertThat(search(tenant, other, false, "市场")).isEmpty();
     }
 
+    /** USERS 文档撤销后下一次检索立即失效（零等待，不依赖索引重灌）。 */
+    @Test
+    @DisplayName("USERS 撤销后下一次检索立即失效")
+    void search_usersDocument_revocationTakesEffectOnNextSearch() {
+        String tenant = uniqueTenant("acl-revoke");
+        UUID creator = seedTenant(tenant);
+        UUID authorized = createUser(tenant);
+        UUID documentId = createDocument(tenant, "撤销文档", "USERS", null, creator);
+        insertAcl(tenant, documentId, authorized);
+        insertChunk(tenant, documentId, "撤销市场数据");
+        markIndexed(tenant, documentId);
+
+        assertThat(search(tenant, authorized, false, "市场"))
+                .extracting(RetrievedChunk::knowledgeDocumentId)
+                .contains(documentId);
+
+        deleteAcl(tenant, documentId, authorized);
+
+        assertThat(search(tenant, authorized, false, "市场")).isEmpty();
+    }
+
     /** 兼容入口没有 actor，fail-closed 只返回 TENANT 文档。 */
     @Test
     @DisplayName("兼容入口只返回 TENANT 文档")
@@ -550,6 +571,25 @@ class AgentContextJdbcAclTest extends WorkerIntegrationTestBase {
                 .sql("""
                         INSERT INTO knowledge_document_acl (tenant_id, document_id, user_id, granted_by)
                         VALUES (:tenantId, :documentId, :userId, NULL)
+                        """)
+                .param("tenantId", tenant)
+                .param("documentId", UuidBinary.toBytes(documentId))
+                .param("userId", UuidBinary.toBytes(userId))
+                .update();
+    }
+
+    /**
+     * 删除显式 ACL（模拟撤销授权）。
+     *
+     * @param tenant 租户
+     * @param documentId 文档
+     * @param userId 用户
+     */
+    private void deleteAcl(String tenant, UUID documentId, UUID userId) {
+        jdbcClient
+                .sql("""
+                        DELETE FROM knowledge_document_acl
+                         WHERE tenant_id = :tenantId AND document_id = :documentId AND user_id = :userId
                         """)
                 .param("tenantId", tenant)
                 .param("documentId", UuidBinary.toBytes(documentId))
