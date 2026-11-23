@@ -48,7 +48,7 @@ public class KnowledgeJdbc {
                 AND fp.file_id = d.file_id
                 AND fp.status = 'FAILED') AS failed_at,
             d.visibility, d.department_id, d.acl_version, d.parse_engine, d.parse_warnings, d.parse_summary,
-            d.retention_expires_at, d.deleted_at,
+            d.retention_expires_at, d.deleted_at, d.connector_id, d.external_id,
             (SELECT COUNT(*) FROM knowledge_document_acl a
               WHERE a.tenant_id = d.tenant_id AND a.document_id = d.id) AS acl_user_count,
             w.visibility AS source_visibility, w.department_id AS source_department_id
@@ -574,7 +574,9 @@ public class KnowledgeJdbc {
                 toInstant(rs.getObject("retention_expires_at", LocalDateTime.class)),
                 sourceFileAccessLimited(visibility, departmentId, sourceVisibility, sourceDepartmentId),
                 rs.getLong("acl_user_count"),
-                toInstant(rs.getObject("deleted_at", LocalDateTime.class)));
+                toInstant(rs.getObject("deleted_at", LocalDateTime.class)),
+                toUuid(rs.getBytes("connector_id")),
+                rs.getString("external_id"));
     }
 
     /**

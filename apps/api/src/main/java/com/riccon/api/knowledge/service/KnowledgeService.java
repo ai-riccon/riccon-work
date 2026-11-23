@@ -252,6 +252,8 @@ public class KnowledgeService {
                 now.plus(Duration.ofDays(tenantRetentionDays)),
                 false,
                 acl.userIds().size(),
+                null,
+                null,
                 null);
         knowledgeRepository.insert(tenantId, document);
         aclRepository.replace(tenantId, documentId, acl.userIds(), actor.userId(), now);

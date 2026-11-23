@@ -40,6 +40,8 @@ import java.util.UUID;
  * @param sourceFileAccessLimited 文档可见集合是否宽于源文件空间
  * @param aclUserCount {@code USERS} 显式授权人数，不含创建人
  * @param deletedAt 软删除时间；未删除为空
+ * @param connectorId 来源连接器；仅 {@code CONNECTOR} 非空
+ * @param externalId 连接器源对象 key；仅库内比对/排障，响应只返回截断值
  */
 public record KnowledgeDocumentRecord(
         UUID id,
@@ -65,7 +67,69 @@ public record KnowledgeDocumentRecord(
         Instant retentionExpiresAt,
         boolean sourceFileAccessLimited,
         long aclUserCount,
-        Instant deletedAt) {
+        Instant deletedAt,
+        UUID connectorId,
+        String externalId) {
+
+    /**
+     * 兼容 M02–M05 旧签名的构造器；连接器字段为空。
+     *
+     * <p>M05 既有代码与测试仍使用旧签名；新增连接器字段不要求大面积改动。连接器导入路径必须使用
+     * canonical 构造器显式传入 {@code connectorId}/{@code externalId}。
+     */
+    public KnowledgeDocumentRecord(
+            UUID id,
+            String title,
+            KnowledgeSourceType sourceType,
+            UUID fileId,
+            String checksum,
+            String mimeType,
+            long sizeBytes,
+            KnowledgeDocumentStatus status,
+            String errorCode,
+            String errorMessage,
+            Instant indexedAt,
+            Instant failedAt,
+            UUID createdBy,
+            Instant createdAt,
+            KnowledgeVisibility visibility,
+            UUID departmentId,
+            int aclVersion,
+            ParseEngine parseEngine,
+            List<String> warnings,
+            KnowledgeParseSummary parseSummary,
+            Instant retentionExpiresAt,
+            boolean sourceFileAccessLimited,
+            long aclUserCount,
+            Instant deletedAt) {
+        this(
+                id,
+                title,
+                sourceType,
+                fileId,
+                checksum,
+                mimeType,
+                sizeBytes,
+                status,
+                errorCode,
+                errorMessage,
+                indexedAt,
+                failedAt,
+                createdBy,
+                createdAt,
+                visibility,
+                departmentId,
+                aclVersion,
+                parseEngine,
+                warnings,
+                parseSummary,
+                retentionExpiresAt,
+                sourceFileAccessLimited,
+                aclUserCount,
+                deletedAt,
+                null,
+                null);
+    }
 
     /** 部署默认保留天数（合同 data.retention）。 */
     public static final int DEFAULT_RETENTION_DAYS = 180;
