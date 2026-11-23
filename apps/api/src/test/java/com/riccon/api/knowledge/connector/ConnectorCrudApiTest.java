@@ -222,6 +222,33 @@ class ConnectorCrudApiTest extends ConnectorApiTestSupport {
     }
 
     @Test
+    @DisplayName("DEPT→TENANT：未显式带部门时清空，显式部门在 TENANT 下拒绝")
+    void patchConnector_switchesVisibilityAndClearsDepartment() {
+        ConnectorFixture fixture = connectorFixture();
+        ApiTestClient.ApiResponse department = client.post(
+                "/api/v1/admin/tenants/" + fixture.tenant() + "/departments",
+                client.jsonBody("name", "DEPT-CONN"),
+                fixture.platform().sessionCookie(),
+                fixture.platform().csrfToken(),
+                Map.of());
+        assertThat(department.status()).as(department.body()).isEqualTo(201);
+        String departmentId = client.json(department).path("id").asText();
+        String name = "conn-" + UUID.randomUUID().toString().substring(0, 8);
+        JsonNode created =
+                json(createConnector(fixture.admin(), name, "DEPT", UUID.fromString(departmentId), false, null), 201);
+        String connectorId = created.path("id").asText();
+        assertThat(created.path("defaultDepartmentId").asText()).isEqualTo(departmentId);
+
+        JsonNode updated =
+                json(patchConnector(fixture.admin(), connectorId, "{\"defaultVisibility\":\"TENANT\"}"), 200);
+        assertThat(updated.path("defaultVisibility").asText()).isEqualTo("TENANT");
+        assertThat(updated.path("defaultDepartmentId").isNull()).isTrue();
+        assertThat(patchConnector(fixture.admin(), connectorId, "{\"defaultDepartmentId\":\"" + departmentId + "\"}")
+                        .status())
+                .isEqualTo(400);
+    }
+
+    @Test
     @DisplayName("删除 KEEP：连接器软删除、文档保留、二次删除幂等")
     void deleteConnector_keepDocuments() {
         ConnectorFixture fixture = connectorFixture();

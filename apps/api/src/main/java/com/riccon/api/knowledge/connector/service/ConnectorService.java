@@ -361,6 +361,12 @@ public class ConnectorService {
      */
     private static UUID resolveDepartment(
             ConnectorRecord current, UpdateCommand command, KnowledgeVisibility visibility) {
+        if (command.defaultVisibility() != null
+                && visibility != KnowledgeVisibility.DEPT
+                && !command.departmentProvided()) {
+            // 从 DEPT 切回 TENANT 时未显式带 defaultDepartmentId：按契约清空部门。
+            return null;
+        }
         UUID departmentId =
                 command.departmentProvided() ? command.defaultDepartmentId() : current.defaultDepartmentId();
         if (visibility == KnowledgeVisibility.DEPT) {
