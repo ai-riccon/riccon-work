@@ -240,6 +240,7 @@ public class KnowledgeService {
                 null,
                 null,
                 null,
+                null,
                 actor.userId(),
                 now,
                 acl.visibility(),

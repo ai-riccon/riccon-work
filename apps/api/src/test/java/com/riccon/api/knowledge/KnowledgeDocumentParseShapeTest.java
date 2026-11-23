@@ -74,6 +74,7 @@ class KnowledgeDocumentParseShapeTest {
                 null,
                 null,
                 Instant.parse("2026-11-23T04:00:00Z"),
+                null,
                 UUID.randomUUID(),
                 Instant.parse("2026-11-23T03:00:00Z"),
                 KnowledgeVisibility.TENANT,

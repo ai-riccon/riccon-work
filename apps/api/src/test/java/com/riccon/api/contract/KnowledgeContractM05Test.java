@@ -153,6 +153,7 @@ class KnowledgeContractM05Test {
                         "parseEngine",
                         "warnings",
                         "parseSummary",
+                        "failedAt",
                         "sourceFileAccessLimited",
                         "retentionExpiresAt",
                         "retentionDays",
@@ -177,6 +178,12 @@ class KnowledgeContractM05Test {
         assertThat(OpenApiContract.map(properties.get("sourceFileAccessLimited"))
                         .get("type"))
                 .isEqualTo("boolean");
+        Map<String, Object> failedAt = OpenApiContract.map(properties.get("failedAt"));
+        assertThat(OpenApiContract.required(schema)).doesNotContain("failedAt");
+        assertThat(String.valueOf(failedAt.get("type"))).contains("null");
+        assertThat(failedAt.get("format")).isEqualTo("date-time");
+        assertThat(String.valueOf(failedAt.get("description"))).contains("FAILED", "finished_at", "updated_at");
+
         Map<String, Object> retentionExpiresAt = OpenApiContract.map(properties.get("retentionExpiresAt"));
         assertThat(String.valueOf(retentionExpiresAt.get("type"))).contains("null");
         assertThat(retentionExpiresAt.get("format")).isEqualTo("date-time");

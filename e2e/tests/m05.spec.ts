@@ -648,6 +648,33 @@ test.describe('M05 知识库纵深', () => {
     await expect(noSource.getByTestId('citation-download')).toHaveCount(0);
   });
 
+  test('E2E-M05-09 失败时间与保留策略不追溯明示', async ({ page, stub }) => {
+    await stub.seedM05();
+    await loginAs(page, M03_CREDENTIALS.tenantAdmin, '王芳');
+    const drawer = await openKnowledge(page);
+
+    // FAILED 文档显示固定失败时间（+08:00）与重试入口；不出现堆栈。
+    await openDocument(drawer, '损坏数据.xlsx');
+    const failedDetail = drawer.getByTestId('knowledge-detail');
+    await expect(failedDetail.getByTestId('knowledge-failed-at')).toContainText(
+      '失败时间：2026-11-23 18:30:00 +08:00',
+    );
+    await expect(failedDetail.getByTestId('knowledge-retry')).toBeVisible();
+    await expect(failedDetail.getByText(/java\.|Exception|at com\./)).toHaveCount(0);
+
+    // 详情始终明示保留策略不追溯；非 FAILED 文档不显示失败时间。
+    await expect(failedDetail.getByTestId('knowledge-retention-note')).toContainText(
+      '保留策略变更仅影响新文档和新的到期计算，不追溯历史文档',
+    );
+    await openDocument(drawer, '销售数据.xlsx');
+    await expect(
+      drawer.getByTestId('knowledge-detail').getByTestId('knowledge-failed-at'),
+    ).toHaveCount(0);
+    await expect(drawer.getByTestId('knowledge-retention-note')).toContainText(
+      '默认 180 天，租户策略可覆盖',
+    );
+  });
+
   test('E2E-M05-03b 新文档登记、空/错误态与 ACL 表单影响提示', async ({
     page,
     stub,

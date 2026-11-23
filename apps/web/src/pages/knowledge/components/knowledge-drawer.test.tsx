@@ -59,6 +59,7 @@ function makeDocument(overrides: Partial<KnowledgeDocument> = {}): KnowledgeDocu
     sizeBytes: 2048,
     createdAt: '2026-11-23T10:00:00+08:00',
     indexedAt: '2026-11-23T10:05:00+08:00',
+    failedAt: null,
     visibility: 'TENANT',
     departmentId: null,
     aclUserCount: 0,
@@ -264,6 +265,10 @@ describe('知识库详情与 ACL', () => {
     expect(screen.getByText('王敏')).toBeVisible();
     expect(screen.getAllByText('识别成功').length).toBeGreaterThan(0);
     expect(screen.getByText(/到期 2027-05-22/)).toBeVisible();
+    expect(screen.getByTestId('knowledge-retention-note')).toHaveTextContent(
+      '保留策略变更仅影响新文档和新的到期计算，不追溯历史文档',
+    );
+    expect(screen.queryByTestId('knowledge-failed-at')).not.toBeInTheDocument();
   });
 
   it('部门范围显示部门名；USERS 名单只显示摘要', async () => {
@@ -464,6 +469,7 @@ describe('解析状态与重试', () => {
       status: 'FAILED',
       errorCode: 'KB_PARSE_CORRUPT',
       errorMessage: 'at java.lang.Reader.read(Reader.java:1)',
+      failedAt: '2026-11-23T18:30:00+08:00',
     });
     const api = makeKnowledgeApi({
       listDocuments: vi.fn(async () => pageOf([document])),
@@ -474,6 +480,9 @@ describe('解析状态与重试', () => {
     expect(await screen.findByText('解析失败')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '查看文档：销售数据.xlsx' }));
     expect(await screen.findByText(/文件损坏或格式不合法/)).toBeVisible();
+    expect(screen.getByTestId('knowledge-failed-at')).toHaveTextContent(
+      '失败时间：2026-11-23 18:30:00 +08:00',
+    );
     expect(screen.queryByText(/java\.lang/)).not.toBeInTheDocument();
 
     fireEvent.click(await screen.findByTestId('knowledge-retry'));

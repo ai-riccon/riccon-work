@@ -8,6 +8,8 @@ import com.riccon.platform.domain.knowledge.KnowledgeDocumentStatus;
 import com.riccon.platform.domain.knowledge.KnowledgeVisibility;
 import com.riccon.platform.domain.knowledge.ParseEngine;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,6 +30,7 @@ import java.util.UUID;
  * @param errorCode 失败错误码
  * @param errorMessage 脱敏失败原因
  * @param indexedAt 索引完成时间
+ * @param failedAt 最近一次失败时间（+08:00）；仅 FAILED 非空
  * @param createdAt 创建时间
  * @param visibility 可见范围
  * @param departmentId 可见部门
@@ -52,6 +55,7 @@ public record KnowledgeDocumentResponse(
         String errorCode,
         String errorMessage,
         Instant indexedAt,
+        OffsetDateTime failedAt,
         Instant createdAt,
         KnowledgeVisibility visibility,
         UUID departmentId,
@@ -84,6 +88,7 @@ public record KnowledgeDocumentResponse(
                 document.errorCode(),
                 document.errorMessage(),
                 document.indexedAt(),
+                offset(document.failedAt()),
                 document.createdAt(),
                 document.visibility(),
                 document.departmentId(),
@@ -95,5 +100,15 @@ public record KnowledgeDocumentResponse(
                 document.retentionExpiresAt(),
                 document.retentionDays(tenantRetentionDays),
                 document.retentionPolicy(tenantRetentionDays));
+    }
+
+    /**
+     * 将 UTC 失败时间转换为团队时区偏移。
+     *
+     * @param value UTC 时间
+     * @return 带 +08:00 偏移的时间或 {@code null}
+     */
+    private static OffsetDateTime offset(Instant value) {
+        return value == null ? null : value.atOffset(ZoneOffset.ofHours(8));
     }
 }

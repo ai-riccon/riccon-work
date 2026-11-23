@@ -42,6 +42,11 @@ public class KnowledgeJdbc {
     private static final String SELECT_COLUMNS = """
             d.id, d.title, d.source_type, d.file_id, d.checksum, d.mime_type, d.size_bytes, d.status,
             d.error_code, d.error_message, d.indexed_at, d.created_by, d.created_at,
+            d.updated_at,
+            (SELECT MAX(fp.finished_at) FROM file_parse fp
+              WHERE fp.tenant_id = d.tenant_id
+                AND fp.file_id = d.file_id
+                AND fp.status = 'FAILED') AS failed_at,
             d.visibility, d.department_id, d.acl_version, d.parse_engine, d.parse_warnings, d.parse_summary,
             d.retention_expires_at, d.deleted_at,
             (SELECT COUNT(*) FROM knowledge_document_acl a
@@ -540,6 +545,11 @@ public class KnowledgeJdbc {
         UUID departmentId = toUuid(rs.getBytes("department_id"));
         String sourceVisibility = rs.getString("source_visibility");
         UUID sourceDepartmentId = toUuid(rs.getBytes("source_department_id"));
+        KnowledgeDocumentStatus status = KnowledgeDocumentStatus.valueOf(rs.getString("status"));
+        Instant updatedAt = toInstant(rs.getObject("updated_at", LocalDateTime.class));
+        Instant parseFailedAt = toInstant(rs.getObject("failed_at", LocalDateTime.class));
+        Instant failedAt =
+                status == KnowledgeDocumentStatus.FAILED ? (parseFailedAt != null ? parseFailedAt : updatedAt) : null;
         return new KnowledgeDocumentRecord(
                 BinaryUuids.fromBytes(rs.getBytes("id")),
                 rs.getString("title"),
@@ -548,10 +558,11 @@ public class KnowledgeJdbc {
                 rs.getString("checksum"),
                 rs.getString("mime_type"),
                 rs.getLong("size_bytes"),
-                KnowledgeDocumentStatus.valueOf(rs.getString("status")),
+                status,
                 rs.getString("error_code"),
                 rs.getString("error_message"),
                 toInstant(rs.getObject("indexed_at", LocalDateTime.class)),
+                failedAt,
                 toUuid(rs.getBytes("created_by")),
                 toInstant(rs.getObject("created_at", LocalDateTime.class)),
                 visibility,

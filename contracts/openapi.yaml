@@ -5154,6 +5154,12 @@ components:
         indexedAt:
           type: [string, "null"]
           format: date-time
+        failedAt:
+          type: [string, "null"]
+          format: date-time
+          description: |
+            最近一次解析/OCR/索引失败时间（ISO 8601 带 +08:00）；仅 `status=FAILED` 时非空，
+            非 FAILED 为 null/省略。来源优先为文件解析失败的 `finished_at`，缺失时回退知识库文档 `updated_at`。
         createdAt:
           type: string
           format: date-time

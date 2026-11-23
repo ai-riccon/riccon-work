@@ -27,6 +27,7 @@ import java.util.UUID;
  * @param errorCode 失败错误码
  * @param errorMessage 脱敏失败原因
  * @param indexedAt 索引完成时间
+ * @param failedAt 最近一次解析/索引失败时间；仅 FAILED 非空
  * @param createdBy 添加人
  * @param createdAt 创建时间
  * @param visibility 可见范围
@@ -52,6 +53,7 @@ public record KnowledgeDocumentRecord(
         String errorCode,
         String errorMessage,
         Instant indexedAt,
+        Instant failedAt,
         UUID createdBy,
         Instant createdAt,
         KnowledgeVisibility visibility,

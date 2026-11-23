@@ -148,6 +148,9 @@ const M05_FILE_ACL = 'c5c5c5c5-c5c5-45c5-85c5-000000000003';
 const M05_RETENTION_EXPIRES = '2027-05-22T10:00:00+08:00';
 const M05_RETENTION_EXPIRED = '2026-11-01T00:00:00+08:00';
 
+/** M05 失败文档的固定失败时间；用于详情“失败时间”断言。 */
+const M05_FAILED_AT = '2026-11-23T18:30:00+08:00';
+
 /**
  * E2E 登录账号表；key 为 `tenantCode/username`。
  *
@@ -4289,6 +4292,7 @@ function seedM05State() {
     errorCode: null,
     errorMessage: null,
     indexedAt: createdAt,
+    failedAt: null,
     createdAt,
     visibility: 'TENANT',
     departmentId: null,
@@ -4378,6 +4382,7 @@ function seedM05State() {
         errorCode: 'KB_PARSE_CORRUPT',
         errorMessage: 'at java.util.zip.ZipFile.read(ZipFile.java:1)',
         indexedAt: null,
+        failedAt: M05_FAILED_AT,
         parseEngine: 'POI',
       }),
       document({
@@ -4431,6 +4436,7 @@ function seedM05State() {
         errorCode: 'KB_OCR_FAILED',
         errorMessage: 'OCR 识别失败（已脱敏）。',
         indexedAt: null,
+        failedAt: M05_FAILED_AT,
         parseEngine: 'TESSERACT',
       }),
       document({
@@ -4443,6 +4449,7 @@ function seedM05State() {
         errorCode: 'KB_OCR_DISABLED',
         errorMessage: null,
         indexedAt: null,
+        failedAt: M05_FAILED_AT,
         parseEngine: 'NONE',
       }),
       document({
@@ -4628,6 +4635,7 @@ function m05DocumentResponse(document) {
     errorCode: document.errorCode ?? null,
     errorMessage: document.errorMessage ?? null,
     indexedAt: document.indexedAt ?? null,
+    failedAt: document.status === 'FAILED' ? (document.failedAt ?? null) : null,
     createdAt: document.createdAt,
     visibility: document.visibility,
     departmentId: document.visibility === 'DEPT' ? document.departmentId : null,
@@ -4778,6 +4786,7 @@ function handleM05Api(req, res, url, raw, session) {
       errorCode: null,
       errorMessage: null,
       indexedAt: null,
+      failedAt: null,
       createdAt: new Date().toISOString(),
       visibility: body.visibility ?? 'TENANT',
       departmentId: body.departmentId ?? null,

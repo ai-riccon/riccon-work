@@ -62,6 +62,8 @@ export interface KnowledgeDocument {
   errorCode?: string | null;
   errorMessage?: string | null;
   indexedAt?: string | null;
+  /** 最近一次解析/索引失败时间；仅 FAILED 非空。 */
+  failedAt?: string | null;
   createdAt: string;
   visibility: KnowledgeVisibility;
   departmentId?: string | null;

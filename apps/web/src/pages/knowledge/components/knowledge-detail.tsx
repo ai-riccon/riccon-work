@@ -447,6 +447,14 @@ export function KnowledgeDetailPanel({
         />
       )}
 
+      <Typography.Paragraph
+        data-testid="knowledge-retention-note"
+        style={{ marginTop: 12 }}
+        type="secondary"
+      >
+        保留策略变更仅影响新文档和新的到期计算，不追溯历史文档；默认 180 天，租户策略可覆盖。
+      </Typography.Paragraph>
+
       <section
         aria-labelledby="knowledge-parse-title"
         className="knowledge-parse-section"
@@ -461,6 +469,16 @@ export function KnowledgeDetailPanel({
           </Tag>
           {ocrConfidence && <Typography.Text type="secondary">{ocrConfidence}</Typography.Text>}
         </Flex>
+        {document.status === 'FAILED' && (
+          <Typography.Paragraph
+            data-testid="knowledge-failed-at"
+            style={{ margin: '4px 0 8px' }}
+            type="secondary"
+          >
+            失败时间：
+            {document.failedAt ? formatOffsetDateTime(document.failedAt) : '未记录'}
+          </Typography.Paragraph>
+        )}
         <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
           {knowledgeParseStateDescription(parseState)}
         </Typography.Paragraph>
