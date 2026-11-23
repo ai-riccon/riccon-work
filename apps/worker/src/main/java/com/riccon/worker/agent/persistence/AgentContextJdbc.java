@@ -10,7 +10,9 @@ import com.riccon.worker.persistence.UuidBinary;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -96,74 +98,42 @@ public class AgentContextJdbc {
         if (terms.isEmpty()) {
             return List.of();
         }
-        StringBuilder sql = new StringBuilder("""
-                SELECT c.id, c.document_id, d.title, c.content, c.locator_type,
-                       c.page_no, c.sheet_name, c.cell_range, c.paragraph_no
-                  FROM knowledge_chunk c
-                  JOIN knowledge_document d
-                    ON d.tenant_id = c.tenant_id
-                   AND d.id = c.document_id
-                 WHERE c.tenant_id = :tenantId
-                   AND d.status = 'INDEXED'
-                   AND d.deleted_at IS NULL
-                   AND (
-                """);
-        Map<String, Object> params = new HashMap<>();
-        for (int index = 0; index < terms.size(); index++) {
-            if (index > 0) {
-                sql.append(" OR ");
-            }
-            String parameter = "term" + index;
-            sql.append("c.content LIKE :")
-                    .append(parameter)
-                    .append(" OR d.title LIKE :")
-                    .append(parameter);
-            params.put(parameter, "%" + terms.get(index) + "%");
-        }
-        sql.append(")");
-        appendAclPredicate(sql, params, tenantId, actorUserId, unrestricted, aclEnforcementEnabled);
-        sql.append(" ORDER BY c.document_id, c.ordinal LIMIT :candidateLimit");
-        params.put("candidateLimit", candidateLimit);
+        String fulltextQuery = query.strip();
+        Map<UUID, Candidate> candidates = new LinkedHashMap<>();
+        // 两条固定批量查询：正文 FULLTEXT 与标题 FULLTEXT。两者都带同一 ACL 谓词并各自 LIMIT，
+        // 合并后去重；不是逐文档查询，不会产生 N+1。正文/标题索引分别命中，避免跨表 OR 退化为扫描。
+        collectCandidates(tenantId, actorUserId, unrestricted, fulltextQuery, candidateLimit, true, candidates);
+        collectCandidates(tenantId, actorUserId, unrestricted, fulltextQuery, candidateLimit, false, candidates);
 
-        List<RetrievedChunk> candidates = tenantJdbc.query(
-                tenantId,
-                sql.toString(),
-                params,
-                (rs, rowNum) -> new RetrievedChunk(
-                        0,
-                        CitationSourceType.KNOWLEDGE,
-                        null,
-                        UuidBinary.fromBytes(rs.getBytes("document_id")),
-                        UuidBinary.fromBytes(rs.getBytes("id")),
-                        LocatorType.valueOf(rs.getString("locator_type")),
-                        (Integer) rs.getObject("page_no"),
-                        rs.getString("sheet_name"),
-                        rs.getString("cell_range"),
-                        (Integer) rs.getObject("paragraph_no"),
-                        rs.getString("title"),
-                        rs.getString("content"),
-                        0.0));
         List<RetrievedChunk> scored = new ArrayList<>();
-        for (RetrievedChunk candidate : candidates) {
-            double score = score(candidate, terms);
-            if (score > 0) {
+        for (Candidate candidate : candidates.values()) {
+            double lexical = score(candidate.chunk(), terms);
+            // MATCH 相关性归一化后与现有词面子串评分取较大值；只靠 ngram 命中但整词未包含时仍保留候选。
+            double fulltext =
+                    candidate.ftScore() <= 0 ? 0.0 : Math.min(1.0, candidate.ftScore() / (candidate.ftScore() + 1.0));
+            double combined = Math.max(lexical, fulltext);
+            if (combined > 0) {
+                RetrievedChunk chunk = candidate.chunk();
                 scored.add(new RetrievedChunk(
-                        candidate.ordinal(),
-                        candidate.sourceType(),
-                        candidate.fileId(),
-                        candidate.knowledgeDocumentId(),
-                        candidate.chunkId(),
-                        candidate.locatorType(),
-                        candidate.pageNo(),
-                        candidate.sheetName(),
-                        candidate.cellRange(),
-                        candidate.paragraphNo(),
-                        candidate.title(),
-                        candidate.content(),
-                        Math.min(1.0, score)));
+                        chunk.ordinal(),
+                        chunk.sourceType(),
+                        chunk.fileId(),
+                        chunk.knowledgeDocumentId(),
+                        chunk.chunkId(),
+                        chunk.locatorType(),
+                        chunk.pageNo(),
+                        chunk.sheetName(),
+                        chunk.cellRange(),
+                        chunk.paragraphNo(),
+                        chunk.title(),
+                        chunk.content(),
+                        combined));
             }
         }
-        scored.sort((left, right) -> Double.compare(right.score(), left.score()));
+        scored.sort(Comparator.comparingDouble(RetrievedChunk::score)
+                .reversed()
+                .thenComparing(RetrievedChunk::knowledgeDocumentId)
+                .thenComparing(RetrievedChunk::chunkId));
         List<RetrievedChunk> result = new ArrayList<>();
         int ordinal = 1;
         for (RetrievedChunk item : scored.subList(0, Math.min(limit, scored.size()))) {
@@ -184,6 +154,85 @@ public class AgentContextJdbc {
         }
         return List.copyOf(result);
     }
+
+    /**
+     * 执行一次 FULLTEXT 候选查询并合并到候选集。
+     *
+     * @param tenantId 租户
+     * @param actorUserId 当前用户；兼容入口可空
+     * @param unrestricted 是否管理性读取
+     * @param fulltextQuery 归一化查询串
+     * @param candidateLimit 候选上限
+     * @param contentColumn 是否匹配正文（false 匹配标题）
+     * @param target 候选集；同一 chunk 保留较高 MATCH 分数
+     */
+    private void collectCandidates(
+            TenantId tenantId,
+            UUID actorUserId,
+            boolean unrestricted,
+            String fulltextQuery,
+            int candidateLimit,
+            boolean contentColumn,
+            Map<UUID, Candidate> target) {
+        String match = contentColumn ? "MATCH(c.content)" : "MATCH(d.title)";
+        StringBuilder sql = new StringBuilder("""
+                SELECT c.id, c.document_id, d.title, c.content, c.locator_type,
+                       c.page_no, c.sheet_name, c.cell_range, c.paragraph_no,
+                """);
+        sql.append(match)
+                .append(" AGAINST(:query IN NATURAL LANGUAGE MODE) AS ft_score")
+                .append("""
+                  FROM knowledge_chunk c
+                  JOIN knowledge_document d
+                    ON d.tenant_id = c.tenant_id
+                   AND d.id = c.document_id
+                 WHERE c.tenant_id = :tenantId
+                   AND d.status = 'INDEXED'
+                   AND d.deleted_at IS NULL
+                   AND
+                """)
+                .append(match)
+                .append(" AGAINST(:query IN NATURAL LANGUAGE MODE)");
+        Map<String, Object> params = new HashMap<>();
+        params.put("query", fulltextQuery);
+        appendAclPredicate(sql, params, tenantId, actorUserId, unrestricted, aclEnforcementEnabled);
+        sql.append(" ORDER BY ft_score DESC, c.document_id ASC, c.ordinal ASC LIMIT :candidateLimit");
+        params.put("candidateLimit", candidateLimit);
+        List<Candidate> rows = tenantJdbc.query(
+                tenantId,
+                sql.toString(),
+                params,
+                (rs, rowNum) -> new Candidate(
+                        new RetrievedChunk(
+                                0,
+                                CitationSourceType.KNOWLEDGE,
+                                null,
+                                UuidBinary.fromBytes(rs.getBytes("document_id")),
+                                UuidBinary.fromBytes(rs.getBytes("id")),
+                                LocatorType.valueOf(rs.getString("locator_type")),
+                                (Integer) rs.getObject("page_no"),
+                                rs.getString("sheet_name"),
+                                rs.getString("cell_range"),
+                                (Integer) rs.getObject("paragraph_no"),
+                                rs.getString("title"),
+                                rs.getString("content"),
+                                0.0),
+                        rs.getDouble("ft_score")));
+        for (Candidate candidate : rows) {
+            target.merge(
+                    candidate.chunk().chunkId(),
+                    candidate,
+                    (existing, incoming) -> existing.ftScore() >= incoming.ftScore() ? existing : incoming);
+        }
+    }
+
+    /**
+     * FULLTEXT 候选。
+     *
+     * @param chunk 分块
+     * @param ftScore MATCH 相关性分数
+     */
+    private record Candidate(RetrievedChunk chunk, double ftScore) {}
 
     /**
      * 读取指定文件的最新成功解析分块。

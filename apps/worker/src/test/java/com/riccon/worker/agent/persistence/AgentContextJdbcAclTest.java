@@ -296,6 +296,28 @@ class AgentContextJdbcAclTest extends WorkerIntegrationTestBase {
         assertThat(audits).isZero();
     }
 
+    /** 标题 FULLTEXT 与英文查询可用；单字查询不退化。 */
+    @Test
+    @DisplayName("FULLTEXT：标题/英文/单字")
+    void search_fulltextSupportsTitleEnglishAndShortQuery() {
+        String tenant = uniqueTenant("acl-ft");
+        UUID creator = seedTenant(tenant);
+        UUID titleDoc = createDocument(tenant, "市场标题", "TENANT", null, creator);
+        insertChunk(tenant, titleDoc, "与查询词无关的正文");
+        markIndexed(tenant, titleDoc);
+        UUID englishDoc = createDocument(tenant, "英文文档", "TENANT", null, creator);
+        insertChunk(tenant, englishDoc, "market growth and customer demand");
+        markIndexed(tenant, englishDoc);
+
+        assertThat(search(tenant, creator, false, "市场"))
+                .extracting(RetrievedChunk::knowledgeDocumentId)
+                .contains(titleDoc);
+        assertThat(search(tenant, creator, false, "market"))
+                .extracting(RetrievedChunk::knowledgeDocumentId)
+                .contains(englishDoc);
+        assertThat(search(tenant, creator, false, "市")).isEmpty();
+    }
+
     /**
      * 执行检索。
      *

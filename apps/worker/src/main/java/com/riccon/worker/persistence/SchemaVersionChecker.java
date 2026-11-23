@@ -32,9 +32,13 @@ import org.springframework.stereotype.Component;
  * 新 Worker；V11 之后不得重启旧 Worker（回滚窗口以
  * {@code RICCON_WORKER_SCHEMA_VALIDATION_ENABLED=false} 启动并登记工单，仅 M04 前最后一个版本）。
  *
- * <p>M05-B9（TASK-0197）：期望版本升到 13。V13 为 {@code artifact_citation} 增加可空
- * {@code chunk_id} 逻辑引用与租户索引，Worker 写入报告引用时需要该列；因此不得在 V12 库上接收任务。
- * 回滚顺序：停新 Worker → 应用 V13 回滚 SQL（删索引、删列）→ 删除 history 13 → 启动旧 Worker（expected=12）。
+ * <p>M05-B9（TASK-0197）：V13 为 {@code artifact_citation} 增加可空 {@code chunk_id} 逻辑引用与租户索引；
+ * Worker 写入报告引用时需要该列，因此不得在 V12 库上接收任务。
+ *
+ * <p>M05-B3b（TASK-0198）：期望版本升到 14。V14 为 {@code knowledge_chunk.content} 与
+ * {@code knowledge_document.title} 增加 ngram FULLTEXT 索引；Worker 的检索查询依赖这些索引，
+ * 不得在 V13 库上接收任务。回滚顺序：停新 Worker → 应用 V14 回滚 SQL（删两个 FULLTEXT 索引）→
+ * 删除 history 14 → 启动旧 Worker（expected=13）。
  *
  * <p>回滚窗口：校验关闭时必须输出一次固定 WARN {@value #VALIDATION_DISABLED_WARN_CODE}，文案含
  * {@code schema validation disabled}，供 B10 RUNBOOK 的启动日志断言识别；校验启用时绝不输出该 WARN，
@@ -47,8 +51,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class SchemaVersionChecker implements ApplicationRunner {
 
-    /** 期望的 schema 最大版本，对应 {@code apps/api/src/main/resources/db/migration/V1..V13}。 */
-    public static final int EXPECTED_SCHEMA_VERSION = 13;
+    /** 期望的 schema 最大版本，对应 {@code apps/api/src/main/resources/db/migration/V1..V14}。 */
+    public static final int EXPECTED_SCHEMA_VERSION = 14;
 
     /** 稳定错误码前缀，启动失败日志只输出版本与错误码，不输出连接串。 */
     public static final String ERROR_CODE = "RICCON-WORKER-001";

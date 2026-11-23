@@ -59,10 +59,10 @@ class SchemaVersionCheckerTest {
         return container;
     }
 
-    /** 锁定 M05-B9 的 schema 期望版本；升级迁移必须与 Worker 常量在同一提交更新。 */
+    /** 锁定 M05-B3b 的 schema 期望版本；升级迁移必须与 Worker 常量在同一提交更新。 */
     @Test
-    void expectedSchemaVersion_isLockedAtV13() {
-        assertThat(SchemaVersionChecker.EXPECTED_SCHEMA_VERSION).isEqualTo(13);
+    void expectedSchemaVersion_isLockedAtV14() {
+        assertThat(SchemaVersionChecker.EXPECTED_SCHEMA_VERSION).isEqualTo(14);
     }
 
     /** 匹配期望版本时返回实际版本。 */
