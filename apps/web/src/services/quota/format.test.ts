@@ -5,6 +5,8 @@ import {
   findQuotaWindow,
   formatQuotaCount,
   formatQuotaLimit,
+  formatQuotaResetRelative,
+  formatQuotaResetText,
   formatQuotaTime,
   quotaLimitSourceLabel,
   quotaRemainingText,
@@ -91,6 +93,18 @@ describe('配额格式', () => {
 
     expect(describeQuotaError(new Error('boom'), 'platform-load')).toBe(
       '配额操作未完成，请稍后重试。',
+    );
+  });
+});
+
+describe('配额重置相对时间（M05-AC-18）', () => {
+  const now = new Date('2026-11-23T10:00:00+08:00');
+
+  it('配额页同时显示绝对时间与“还有 X 小时/天”', () => {
+    expect(formatQuotaResetRelative('2026-11-23T13:00:00+08:00', now)).toBe('还有 3 小时');
+    expect(formatQuotaResetRelative('2026-11-25T11:00:00+08:00', now)).toBe('还有 2 天');
+    expect(formatQuotaResetText('2026-11-23T13:00:00+08:00', now)).toBe(
+      '2026-11-23 13:00:00 +08:00（还有 3 小时）',
     );
   });
 });

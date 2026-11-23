@@ -1,3 +1,4 @@
+import { citationLocatorText } from '@/services/knowledge/citation';
 import type {
   Approval,
   ApprovalStatus,
@@ -695,18 +696,14 @@ export function citationLocatorLabel(citation: {
   locatorType?: 'PAGE' | 'SHEET' | 'PARAGRAPH' | null;
   pageNo?: number | null;
   sheetName?: string | null;
+  cellRange?: string | null;
   paragraphNo?: number | null;
+  sourceStatus?: 'AVAILABLE' | 'NO_ACCESS' | 'DELETED' | 'UPDATED' | null;
 }): string {
-  switch (citation.locatorType) {
-    case 'PAGE':
-      return citation.pageNo ? `第 ${citation.pageNo} 页` : '页码未知';
-    case 'SHEET':
-      return citation.sheetName ? `工作表 ${citation.sheetName}` : '工作表未知';
-    case 'PARAGRAPH':
-      return citation.paragraphNo ? `第 ${citation.paragraphNo} 段` : '段落未知';
-    default:
-      return '定位未知';
-  }
+  return citationLocatorText({
+    ...citation,
+    sourceStatus: citation.sourceStatus ?? 'AVAILABLE',
+  });
 }
 
 /**

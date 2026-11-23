@@ -1,3 +1,4 @@
+import { describeQuotaExceeded } from './quota-detail';
 import type { ProblemDetail } from './types';
 
 /**
@@ -143,9 +144,14 @@ export async function toApiError(response: Response): Promise<ApiError> {
  *
  * @param error 任意异常
  * @param fallback 未识别异常的兜底文案
+ * @param now 当前时间；用于 429 相对重置时间，测试可注入固定时钟
  * @returns 面向用户的中文消息
  */
-export function describeApiError(error: unknown, fallback = '操作失败，请稍后重试。'): string {
+export function describeApiError(
+  error: unknown,
+  fallback = '操作失败，请稍后重试。',
+  now: Date = new Date(),
+): string {
   if (!(error instanceof ApiError)) {
     return fallback;
   }
@@ -168,6 +174,11 @@ export function describeApiError(error: unknown, fallback = '操作失败，请�
     case 415:
       return '不支持的文件格式，请上传 PDF、DOCX、XLSX、PNG 或 JPEG。';
     case 429:
+      // M05-AC-17：配额超限必须透传限额类型与重置时间，并补充相对剩余时间；
+      // 其他 429（登录限流、队列背压）继续保持通用频繁提示。
+      if (error.code === 'RICCON-QUOTA-429') {
+        return describeQuotaExceeded(error.problem, now);
+      }
       return '请求过于频繁，请稍后重试。';
     default:
       if (error.status >= 500) {

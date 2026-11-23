@@ -25,7 +25,7 @@ import {
   findQuotaWindow,
   formatQuotaCount,
   formatQuotaLimit,
-  formatQuotaTime,
+  formatQuotaResetText,
   hasQuotaPermission,
   quotaApi as defaultQuotaApi,
   quotaLimitSourceLabel,
@@ -241,7 +241,7 @@ export default function QuotasPage({ api = defaultQuotaApi }: QuotasPageProps) {
       width: 210,
       render: (_value: unknown, record: PlatformQuotaRow) => (
         <span className="quotas-cell-wrap">
-          {formatQuotaTime(findQuotaWindow(record.windows, kind)?.resetsAt)}
+          {formatQuotaResetText(findQuotaWindow(record.windows, kind)?.resetsAt)}
         </span>
       ),
     })),
@@ -292,7 +292,7 @@ export default function QuotasPage({ api = defaultQuotaApi }: QuotasPageProps) {
       width: 210,
       render: (_value: unknown, record: UserQuota) => (
         <span className="quotas-cell-wrap">
-          {formatQuotaTime(findQuotaWindow(record.windows, kind)?.resetsAt)}
+          {formatQuotaResetText(findQuotaWindow(record.windows, kind)?.resetsAt)}
         </span>
       ),
     })),
@@ -501,7 +501,7 @@ export default function QuotasPage({ api = defaultQuotaApi }: QuotasPageProps) {
                         {
                           key: 'reset',
                           label: '重置时间',
-                          children: formatQuotaTime(state.resetsAt),
+                          children: formatQuotaResetText(state.resetsAt),
                         },
                       ]}
                       size="small"

@@ -1,4 +1,5 @@
 import {
+  BookOutlined,
   FileExcelOutlined,
   FileImageOutlined,
   FilePdfOutlined,
@@ -19,13 +20,11 @@ import {
   Alert,
   Avatar,
   Button,
-  Drawer,
   Empty,
   Flex,
   Result,
   Select,
   Skeleton,
-  Space,
   Spin,
   Tag,
   Typography,
@@ -39,10 +38,19 @@ import type { ChatMessage, Citation, WorkspaceFile } from '@/services/api/types'
 import { authStore, useAuth } from '@/services/auth/auth-store';
 import { identityProviderSummary } from '@/services/auth/identity-provider';
 import {
-  citationSourceLabel,
   conversationLabel,
+  formatCitationListLabel,
   formatCitationLocator,
 } from '@/services/chat/message-utils';
+import {
+  KNOWLEDGE_PERMISSIONS,
+  hasKnowledgePermission,
+  isCitationMasked,
+  toCitationView,
+} from '@/services/knowledge';
+import type { KnowledgeApi, KnowledgeUserDirectory } from '@/services/knowledge';
+import { CitationDetailDrawer } from '@/pages/knowledge/components/citation-detail-drawer';
+import { KnowledgeDrawer } from '@/pages/knowledge/components/knowledge-drawer';
 import {
   FILE_ACCEPT,
   MAX_FILES_PER_CONVERSATION,
@@ -68,6 +76,10 @@ export interface ChatPageProps {
   navigate?: (to: string, options?: { replace?: boolean }) => void;
   /** 解析状态轮询间隔；测试可缩短。 */
   pollIntervalMs?: number;
+  /** M05 知识库能力；测试可注入，生产使用默认同源客户端。 */
+  knowledgeApi?: KnowledgeApi;
+  /** ACL 编辑所需的用户目录；测试可注入。 */
+  knowledgeUserDirectory?: KnowledgeUserDirectory;
 }
 
 /** Bubble 状态基础色。 */
@@ -101,6 +113,8 @@ export default function ChatPage({
   managementApi: injectedManagementApi,
   navigate: injectedNavigate,
   pollIntervalMs,
+  knowledgeApi,
+  knowledgeUserDirectory,
 }: ChatPageProps) {
   const umiNavigate = useNavigate();
   const navigate = injectedNavigate ?? umiNavigate;
@@ -109,6 +123,7 @@ export default function ChatPage({
   const managementApi = injectedManagementApi ?? (supportsWorkspaceManagement(api) ? api : null);
   const management = useWorkspaceManagement(managementApi, auth.session);
   const [sharingOpen, setSharingOpen] = useState(false);
+  const [knowledgeOpen, setKnowledgeOpen] = useState(false);
   const [input, setInput] = useState('');
   const [activeCitation, setActiveCitation] = useState<Citation | null>(null);
   const [citationError, setCitationError] = useState<string | null>(null);
@@ -412,6 +427,19 @@ export default function ChatPage({
                 onClick={() => setSharingOpen(true)}
               >
                 工作空间共享
+              </Button>
+            )}
+            {hasKnowledgePermission(auth.session.permissions, KNOWLEDGE_PERMISSIONS.read) && (
+              <Button
+                aria-label="知识库"
+                data-testid="knowledge-entry"
+                icon={<BookOutlined />}
+                onClick={() => {
+                  setActiveCitation(null);
+                  setKnowledgeOpen(true);
+                }}
+              >
+                知识库
               </Button>
             )}
             <Button
@@ -770,58 +798,30 @@ export default function ChatPage({
         </main>
       )}
 
-      <Drawer
-        destroyOnHidden
+      <CitationDetailDrawer
+        citation={activeCitation ? toCitationView(activeCitation) : null}
+        fileDownloading={false}
+        fileError={citationError}
+        fileUnavailable={citationFileUnavailable}
+        knowledgeApi={knowledgeApi}
         onClose={() => setActiveCitation(null)}
-        open={Boolean(activeCitation)}
-        size="min(480px, 92vw)"
-        title="引用详情"
-      >
-        {activeCitation && (
-          <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-            <div>
-              <Typography.Text type="secondary">来源</Typography.Text>
-              <Typography.Title level={4} style={{ margin: '4px 0 0' }}>
-                {activeCitation.title}
-              </Typography.Title>
-            </div>
-            <Typography.Text>
-              类型：{citationSourceLabel(activeCitation)}；定位：
-              {formatCitationLocator(activeCitation)}
-            </Typography.Text>
-            <div>
-              <Typography.Text strong>片段</Typography.Text>
-              <Typography.Paragraph className="citation-snippet">
-                {activeCitation.snippet}
-              </Typography.Paragraph>
-            </div>
-            {activeCitation.sourceType === 'KNOWLEDGE' && (
-              <Alert
-                showIcon
-                description={KNOWLEDGE_SHARING_NOTICE}
-                title="知识库来源"
-                type="info"
-              />
-            )}
-            {citationError && (
-              <Alert showIcon description={citationError} title="无法打开原文件" type="error" />
-            )}
-            {activeCitation.fileId && !citationFileUnavailable && (
-              <Button
-                onClick={() => {
-                  void handleOpenFile();
-                }}
-                type="primary"
-              >
-                打开原文件
-              </Button>
-            )}
-            {citationFileUnavailable && (
-              <Typography.Text type="secondary">源文件不可访问</Typography.Text>
-            )}
-          </Space>
-        )}
-      </Drawer>
+        onOpenFile={
+          activeCitation?.fileId
+            ? () => {
+                void handleOpenFile();
+              }
+            : undefined
+        }
+      />
+
+      <KnowledgeDrawer
+        api={knowledgeApi}
+        departments={management.manageableDepartments}
+        onClose={() => setKnowledgeOpen(false)}
+        open={knowledgeOpen}
+        session={auth.session}
+        userDirectory={knowledgeUserDirectory}
+      />
 
       {sharingOpen && managementApi && (
         <WorkspaceSharingDrawer
@@ -938,8 +938,9 @@ function AssistantBubble({
                   size="small"
                   type="link"
                 >
-                  <span aria-hidden="true">[{citation.ordinal}] </span>
-                  {citation.title} · {formatCitationLocator(citation)}
+                  {formatCitationListLabel(citation)}
+                  {!isCitationMasked(toCitationView(citation)) &&
+                    ` · ${formatCitationLocator(citation)}`}
                 </Button>
               </li>
             ))}
@@ -963,7 +964,13 @@ function AssistantBubble({
       )}
 
       {message.status === 'FAILED' && (
-        <div className="message-error" role="alert">
+        <div
+          className="message-error"
+          data-testid={
+            message.error?.code === 'RICCON-QUOTA-429' ? 'chat-quota-429' : 'chat-message-error'
+          }
+          role="alert"
+        >
           <Typography.Text type="danger">
             {message.error?.message ?? '回答生成失败，请重试。'}
           </Typography.Text>

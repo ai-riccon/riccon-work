@@ -141,6 +141,44 @@ describe('报告任务列表页', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
+  it('创建报告遇到 RICCON-QUOTA-429 时透传限额类型与重置时间（M05-AC-17）', async () => {
+    const resetsAt = new Date(Date.now() + 3 * 3_600_000).toISOString();
+    const api = createFakeApi({
+      createResearchTask: vi.fn(async () => {
+        throw new ApiError('quota exceeded', {
+          status: 429,
+          code: 'RICCON-QUOTA-429',
+          problem: {
+            type: 'about:blank',
+            title: '配额超限',
+            status: 429,
+            code: 'RICCON-QUOTA-429',
+            traceId: 'trace-quota',
+            detail: '已达日限额，请稍后恢复。',
+            scopeType: 'TENANT',
+            window: 'DAILY',
+            resetsAt,
+          },
+        });
+      }),
+    });
+    const { navigate } = renderPage(api);
+
+    await screen.findByText('还没有报告任务；在左侧输入主题创建第一个任务。');
+    fireEvent.change(
+      screen.getByPlaceholderText('例如：2026 年中国企业协同办公市场规模与竞争格局'),
+      { target: { value: '2026 年配额测试调研' } },
+    );
+    await selectGrantedTool();
+    fireEvent.click(screen.getByRole('button', { name: /创建报告任务/ }));
+
+    expect(await screen.findByText(/已达日限额/)).toBeVisible();
+    expect(screen.getByText(/还有 [23] 小时/)).toBeVisible();
+    expect(screen.getByText(/\+08:00/)).toBeVisible();
+    expect(screen.queryByText('请求过于频繁，请稍后重试。')).not.toBeInTheDocument();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it('创建失败后修改主题会更换幂等键，避免返回旧任务', async () => {
     let attempts = 0;
     const api = createFakeApi({

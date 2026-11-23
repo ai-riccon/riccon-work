@@ -261,6 +261,7 @@ export default function ResearchListPage({
 
       {controller.actionError && (
         <Alert
+          data-testid="research-action-error"
           showIcon
           closable
           description={controller.actionError}

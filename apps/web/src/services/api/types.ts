@@ -333,6 +333,12 @@ export interface Citation {
   sheetName?: string | null;
   cellRange?: string | null;
   paragraphNo?: number | null;
+  /** 页内/图片像素区域；M05 新增，页图渲染由后续模块承接。 */
+  bbox?: BoundingBox | null;
+  /** OCR 块置信度（0–1）；仅 OCR 来源携带。 */
+  ocrConfidence?: number | null;
+  /** 引用可用性；缺省按 `AVAILABLE` 处理。 */
+  sourceStatus?: CitationSourceStatus;
   title: string;
   snippet: string;
   score?: number | null;
@@ -391,7 +397,28 @@ export interface ProblemDetail {
   field?: string | null;
   /** 稳定原因码；只在字段级错误出现，例如 `ENDPOINT_NOT_ALLOWED`、`DUPLICATE_CREDENTIAL`。 */
   reason?: string | null;
+  /** 配额超限维度；仅 `RICCON-QUOTA-429` 携带。 */
+  scopeType?: 'TENANT' | 'USER' | null;
+  /** 配额超限窗口；仅 `RICCON-QUOTA-429` 携带。 */
+  window?: 'DAILY' | 'MONTHLY' | null;
+  /** 生效限额；仅 `RICCON-QUOTA-429` 携带，不直接展示给员工。 */
+  limit?: number | null;
+  /** 拒绝时已用量；仅 `RICCON-QUOTA-429` 携带，不直接展示给员工。 */
+  used?: number | null;
+  /** 配额重置时间（ISO 8601 带偏移）；仅 `RICCON-QUOTA-429` 携带。 */
+  resetsAt?: string | null;
 }
+
+/** 页内/图片像素区域，对应 OpenAPI `BoundingBox`。 */
+export interface BoundingBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** 引用可用性，对应 OpenAPI `CitationSourceStatus`。 */
+export type CitationSourceStatus = 'AVAILABLE' | 'NO_ACCESS' | 'DELETED' | 'UPDATED';
 
 /** SSE 事件名。 */
 export type ChatEventType =
@@ -640,7 +667,12 @@ export interface ArtifactCitation {
   locatorType?: LocatorType | null;
   pageNo?: number | null;
   sheetName?: string | null;
+  /** Excel 引用区域（如 `B2:D10`）；整表片段为整表范围。 */
+  cellRange?: string | null;
   paragraphNo?: number | null;
+  bbox?: BoundingBox | null;
+  ocrConfidence?: number | null;
+  sourceStatus?: CitationSourceStatus;
 }
 
 /** 产物版本，对应 OpenAPI `ArtifactVersion`；正文在对象存储中。 */

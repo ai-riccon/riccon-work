@@ -57,6 +57,33 @@ describe('API 错误', () => {
     expect(describeApiError(new ApiError('x', { status: 500, code: 'A' }))).toContain('暂时不可用');
   });
 
+  it('429 + RICCON-QUOTA-429 透传 detail 并补充相对与绝对重置时间（M05-AC-17/18）', async () => {
+    const error = await toApiError(
+      new Response(
+        JSON.stringify({
+          type: 'about:blank',
+          title: '配额超限',
+          status: 429,
+          code: 'RICCON-QUOTA-429',
+          traceId: 'trace-quota',
+          detail: '已达日限额，2026-11-23T13:00:00+08:00后恢复。',
+          scopeType: 'TENANT',
+          window: 'DAILY',
+          limit: 100,
+          used: 100,
+          resetsAt: '2026-11-23T13:00:00+08:00',
+        }),
+        { status: 429, headers: { 'Content-Type': 'application/problem+json' } },
+      ),
+    );
+
+    const message = describeApiError(error, '操作失败', new Date('2026-11-23T10:00:00+08:00'));
+    expect(message).toContain('已达日限额');
+    expect(message).toContain('还有 3 小时');
+    expect(message).toContain('2026-11-23 13:00:00 +08:00');
+    expect(message).not.toBe('请求过于频繁，请稍后重试。');
+  });
+
   it('503 + RICCON-MODEL-503 优先使用 ProblemDetail detail（M04-AC-05）', async () => {
     const error = await toApiError(
       problemResponse(503, 'RICCON-MODEL-503', '模型服务暂不可用，请稍后重试。'),

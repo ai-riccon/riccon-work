@@ -1,0 +1,119 @@
+/**
+ * 知识库列表/详情/ACL 与引用详情的响应式样式。
+ *
+ * 约束：375px 下不产生页面横向滚动；表格列按断点隐藏，详情面板单列；
+ * 焦点可见，长标题/名单使用换行而不是撑宽容器。
+ */
+.knowledge-drawer .ant-drawer-body {
+  padding: 16px;
+}
+
+.knowledge-layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+  min-width: 0;
+}
+
+.knowledge-list-pane,
+.knowledge-detail-pane {
+  min-width: 0;
+}
+
+.knowledge-detail-pane {
+  border-left: 1px solid #f0f0f0;
+  padding-left: 16px;
+}
+
+.knowledge-parse-section,
+.knowledge-acl-section {
+  margin-top: 16px;
+}
+
+.knowledge-acl-editor {
+  margin-top: 12px;
+}
+
+.knowledge-list-pane .ant-table-cell,
+.knowledge-detail-pane .ant-descriptions-item-content {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.knowledge-list-pane .ant-table-wrapper {
+  max-width: 100%;
+}
+
+.citation-locator-table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  width: 100%;
+}
+
+.citation-locator-table th,
+.citation-locator-table td {
+  border: 1px solid #d9d9d9;
+  padding: 8px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.citation-locator-row {
+  background: #fffbe6;
+  outline: 2px solid #faad14;
+}
+
+.citation-locator-row mark {
+  background: #ffe58f;
+  padding: 0 2px;
+}
+
+.citation-snippet mark {
+  background: #ffe58f;
+  padding: 0 2px;
+}
+
+.knowledge-drawer button:focus-visible,
+.knowledge-drawer a:focus-visible,
+.citation-locator-table:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+  .knowledge-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .knowledge-detail-pane {
+    border-left: none;
+    border-top: 1px solid #f0f0f0;
+    padding-left: 0;
+    padding-top: 16px;
+  }
+
+  .knowledge-drawer .ant-drawer-body {
+    padding: 12px;
+  }
+
+  .knowledge-list-pane .ant-table-cell {
+    padding: 8px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* 375px 窄屏把可见范围收进详情；列表保留标题、状态与操作，避免横向滚动。 */
+  .knowledge-visibility-column {
+    display: none;
+  }
+}
+
+@media (max-width: 375px) {
+  .knowledge-drawer .ant-drawer-header-title {
+    min-width: 0;
+  }
+
+  .knowledge-drawer .ant-drawer-title {
+    overflow-wrap: anywhere;
+  }
+}

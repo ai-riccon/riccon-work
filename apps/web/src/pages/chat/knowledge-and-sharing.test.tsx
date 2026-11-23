@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { WorkspaceManagementApi } from '@/services/api/client';
 import { ApiError } from '@/services/api/errors';
 import type { Citation, Department, SessionInfo } from '@/services/api/types';
+import type { KnowledgeApi, KnowledgeDocument, KnowledgeUserDirectory } from '@/services/knowledge';
 import { authStore } from '@/services/auth/auth-store';
 import {
   DEMO_SESSION,
@@ -205,13 +206,13 @@ describe('工作空间共享入口与知识库明示', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: '示例会话' }));
     fireEvent.click(await screen.findByRole('button', { name: /其他部门上传的报告\.pdf/ }));
-    fireEvent.click(await screen.findByRole('button', { name: '打开原文件' }));
+    fireEvent.click(await screen.findByRole('button', { name: /打开原文件/ }));
 
     await waitFor(() => {
       expect(screen.getByText(SOURCE_FILE_UNAVAILABLE)).toBeVisible();
     });
     expect(screen.getByText('源文件不可访问')).toBeVisible();
-    expect(screen.queryByRole('button', { name: '打开原文件' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /打开原文件/ })).not.toBeInTheDocument();
     openSpy.mockRestore();
   });
 });
@@ -253,5 +254,90 @@ describe('员工端所属部门', () => {
     expect(await screen.findByText('租户管理员')).toBeVisible();
     expect(screen.queryByText('所属部门：')).not.toBeInTheDocument();
     expect(screen.queryByText(/所属部门：销售部/)).not.toBeInTheDocument();
+  });
+});
+
+/** 带知识库读取权限的会话。 */
+const KNOWLEDGE_SESSION: SessionInfo = {
+  ...DEMO_SESSION,
+  permissions: [
+    ...DEMO_SESSION.permissions,
+    'knowledge.read',
+    'knowledge.manage',
+    'knowledge.acl.manage',
+  ],
+};
+
+/** 构造知识库文档。 */
+function makeKnowledgeDocument(): KnowledgeDocument {
+  return {
+    id: 'doc-1',
+    title: '销售数据.xlsx',
+    sourceType: 'UPLOAD',
+    fileId: 'file-1',
+    status: 'INDEXED',
+    checksum: 'a'.repeat(64),
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    sizeBytes: 1024,
+    createdAt: '2026-11-23T10:00:00+08:00',
+    visibility: 'USERS',
+    departmentId: null,
+    aclUserCount: 2,
+  };
+}
+
+/** 构造知识库 API 替身。 */
+function makeKnowledgeApi(): KnowledgeApi {
+  return {
+    listDocuments: vi.fn(async () => pageOf([makeKnowledgeDocument()])),
+    getDocument: vi.fn(async () => makeKnowledgeDocument()),
+    getDocumentAcl: vi.fn(async () => ({
+      visibility: 'USERS' as const,
+      departmentId: null,
+      creatorUserId: 'user-1',
+      users: [
+        { userId: 'user-1', displayName: '演示员工', creator: true },
+        { userId: 'user-2', displayName: '王敏' },
+      ],
+    })),
+    updateDocumentAcl: vi.fn(async () => makeKnowledgeDocument()),
+    reindexDocument: vi.fn(async () => makeKnowledgeDocument()),
+    deleteDocument: vi.fn(async () => undefined),
+    downloadDocument: vi.fn(async () => ({ blob: new Blob(['hello']), filename: '销售数据.xlsx' })),
+    documentDownloadPath: (id: string) => `/api/v1/knowledge/documents/${id}/download`,
+  };
+}
+
+/** 构造用户目录替身。 */
+function makeKnowledgeUserDirectory(): KnowledgeUserDirectory {
+  return { listUsers: vi.fn(async () => []) };
+}
+
+describe('工作空间知识库入口', () => {
+  it('有 knowledge.read 时可打开知识库并看到 ACL 摘要', async () => {
+    authStore.reset();
+    authStore.setAuthenticated(KNOWLEDGE_SESSION);
+    render(
+      withProviders(
+        <ChatPage
+          api={createFakeApi({
+            listConversations: vi.fn(async () => pageOf([makeConversation()])),
+            getConversation: vi.fn(async () => makeDetail([])),
+          })}
+          knowledgeApi={makeKnowledgeApi()}
+          knowledgeUserDirectory={makeKnowledgeUserDirectory()}
+          managementApi={makeManagementApi([makeDepartment()])}
+          navigate={vi.fn()}
+          pollIntervalMs={10}
+        />,
+      ),
+    );
+
+    fireEvent.click(await screen.findByTestId('knowledge-entry'));
+
+    expect(await screen.findByText('销售数据.xlsx')).toBeVisible();
+    expect(screen.getByText('指定用户：2 人（创建人始终可见）')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '查看文档：销售数据.xlsx' }));
+    expect((await screen.findAllByText('王敏')).length).toBeGreaterThan(0);
   });
 });

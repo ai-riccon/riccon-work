@@ -1,6 +1,9 @@
 import { DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
 import { Alert, Button, Card, Empty, Skeleton, Space, Typography } from 'antd';
 import { useState } from 'react';
+import { citationListLabel, isCitationMasked, toCitationView } from '@/services/knowledge';
+import type { CitationView } from '@/services/knowledge';
+import { CitationDetailDrawer } from '@/pages/knowledge/components/citation-detail-drawer';
 import type { ArtifactSourceType, ResearchTaskDetail } from '@/services/api/types';
 import { formatBytes } from '@/services/files/file-validation';
 import {
@@ -303,6 +306,7 @@ interface CitationListProps {
  */
 function CitationList({ detail, highlightedAnchor, onLocate }: CitationListProps) {
   const citations = detail.artifact?.currentVersionDetail?.citations ?? [];
+  const [activeCitation, setActiveCitation] = useState<CitationView | null>(null);
   if (citations.length === 0) {
     return (
       <section aria-labelledby="artifact-citations-title" className="artifact-citations">
@@ -325,11 +329,13 @@ function CitationList({ detail, highlightedAnchor, onLocate }: CitationListProps
       <ol className="artifact-citation-list">
         {citations.map((citation) => {
           const target = artifactCitationTarget(citation, detail);
+          const view = toCitationView(citation);
+          const masked = isCitationMasked(view);
           return (
             <li key={`citation-${citation.ordinal}`}>
               <div className="artifact-citation-header">
                 <Typography.Text strong>
-                  [{citation.ordinal}] {citation.title}
+                  {masked ? citationListLabel(view) : `[${citation.ordinal}] ${citation.title}`}
                 </Typography.Text>
                 <StatusTag tone={artifactSourceTone(citation.sourceType)}>
                   {artifactSourceLabel(citation.sourceType)}
@@ -337,9 +343,20 @@ function CitationList({ detail, highlightedAnchor, onLocate }: CitationListProps
                 <Typography.Text type="secondary">{citationLocatorLabel(citation)}</Typography.Text>
                 {!target.exact && <StatusTag tone="warning">未精确匹配</StatusTag>}
               </div>
-              <Typography.Paragraph className="artifact-citation-snippet">
-                {citation.snippet}
-              </Typography.Paragraph>
+              {!masked && (
+                <Typography.Paragraph className="artifact-citation-snippet">
+                  {citation.snippet}
+                </Typography.Paragraph>
+              )}
+              <Button
+                aria-label={`查看引用详情：${citationListLabel(view)}`}
+                data-testid={`artifact-citation-${citation.ordinal}`}
+                onClick={() => setActiveCitation(view)}
+                size="small"
+                type="link"
+              >
+                查看引用详情
+              </Button>
               <Button onClick={() => onLocate(target.anchorId)} size="small" type="link">
                 在时间线中查看引用 {citation.ordinal} · {target.label}
               </Button>
@@ -352,6 +369,7 @@ function CitationList({ detail, highlightedAnchor, onLocate }: CitationListProps
           提示：点击“在时间线中查看”可高亮对应阶段。
         </Typography.Text>
       )}
+      <CitationDetailDrawer citation={activeCitation} onClose={() => setActiveCitation(null)} />
     </section>
   );
 }

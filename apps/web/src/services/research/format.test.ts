@@ -481,16 +481,24 @@ describe('J2 展示规则', () => {
     });
   });
 
-  it('引用定位文案覆盖页码、工作表、段落与未知', () => {
+  it('引用定位文案覆盖页码、工作表、段落、遮蔽与未知', () => {
     expect(citationLocatorLabel({ locatorType: 'PAGE', pageNo: 3 })).toBe('第 3 页');
-    expect(citationLocatorLabel({ locatorType: 'PAGE' })).toBe('页码未知');
+    expect(citationLocatorLabel({ locatorType: 'PAGE' })).toBe('页码未标注');
+    expect(
+      citationLocatorLabel({
+        locatorType: 'SHEET',
+        sheetName: '销售数据',
+        cellRange: 'B2:D10',
+      }),
+    ).toBe('工作表 销售数据!B2:D10');
     expect(citationLocatorLabel({ locatorType: 'SHEET', sheetName: '销售数据' })).toBe(
       '工作表 销售数据',
     );
-    expect(citationLocatorLabel({ locatorType: 'SHEET' })).toBe('工作表未知');
+    expect(citationLocatorLabel({ locatorType: 'SHEET' })).toBe('工作表未标注');
     expect(citationLocatorLabel({ locatorType: 'PARAGRAPH', paragraphNo: 4 })).toBe('第 4 段');
-    expect(citationLocatorLabel({ locatorType: 'PARAGRAPH' })).toBe('段落未知');
-    expect(citationLocatorLabel({})).toBe('定位未知');
+    expect(citationLocatorLabel({ locatorType: 'PARAGRAPH' })).toBe('段落未标注');
+    expect(citationLocatorLabel({ sourceStatus: 'NO_ACCESS' })).toBe('定位不可见');
+    expect(citationLocatorLabel({})).toBe('位置未标注');
   });
 
   it('正文类型与下载文件名符合预览与导出约束', () => {

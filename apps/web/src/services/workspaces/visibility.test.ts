@@ -4,6 +4,7 @@ import {
   canManageWorkspace,
   isReadOnlyWorkspace,
   isTenantAdminSession,
+  KNOWLEDGE_SHARING_NOTICE,
   manageableDepartments,
   workspaceVisibilityLabel,
 } from './visibility';
@@ -92,5 +93,15 @@ describe('空间可见性辅助', () => {
     expect(isTenantAdminSession(['TENANT_ADMIN'], [])).toBe(true);
     expect(isTenantAdminSession(['MEMBER'], ['workspace.write'])).toBe(true);
     expect(isTenantAdminSession(['MEMBER'], ['workspace.read'])).toBe(false);
+  });
+});
+
+describe('知识库共享文案（M05）', () => {
+  it('声明文档级可见范围与创建人始终可见，不保留过期口径', () => {
+    expect(KNOWLEDGE_SHARING_NOTICE).toContain('文档可见范围');
+    expect(KNOWLEDGE_SHARING_NOTICE).toContain('创建人始终可见');
+    expect(KNOWLEDGE_SHARING_NOTICE).toContain('源文件下载能力');
+    expect(KNOWLEDGE_SHARING_NOTICE).not.toContain('后续版本');
+    expect(KNOWLEDGE_SHARING_NOTICE).not.toContain('全租户共享');
   });
 });

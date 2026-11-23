@@ -1,10 +1,13 @@
 import { ApiError, describeApiError } from '@/services/api/errors';
+import { formatOffsetDateTime } from '@/services/api/quota-detail';
 import type {
   PlatformQuotaRow,
   QuotaLimitSource,
   QuotaWindowKind,
   QuotaWindowState,
 } from './types';
+
+export { formatQuotaResetRelative, formatQuotaResetText } from '@/services/api/quota-detail';
 
 /** 配额窗口中文名；页面统一使用“日/月”，与 AC-11/ADR-0022 文案一致。 */
 const WINDOW_LABELS: Record<QuotaWindowKind, string> = {
@@ -130,28 +133,7 @@ export function quotaTenantLabel(row: Pick<PlatformQuotaRow, 'tenantName' | 'ten
  * @returns 例如 `2026-12-01 00:00:00 +08:00`
  */
 export function formatQuotaTime(value: string | null | undefined): string {
-  if (!value) {
-    return '—';
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '—';
-  }
-  const parts = new Intl.DateTimeFormat('zh-CN', {
-    timeZone: 'Asia/Shanghai',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(date);
-  const pick = (type: Intl.DateTimeFormatPartTypes): string =>
-    parts.find((part) => part.type === type)?.value ?? '';
-  return `${pick('year')}-${pick('month')}-${pick('day')} ${pick('hour')}:${pick(
-    'minute',
-  )}:${pick('second')} +08:00`;
+  return formatOffsetDateTime(value);
 }
 
 /**

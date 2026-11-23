@@ -146,7 +146,7 @@ describe('配额页', () => {
     expect(screen.getAllByText('已用 40 / 不限').length).toBeGreaterThan(0);
     expect(screen.getByText('来源：显式设置')).toBeVisible();
     expect(screen.getByText('来源：明确不限')).toBeVisible();
-    expect(screen.getAllByText('2026-11-22 00:00:00 +08:00').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/2026-11-22 00:00:00 \+08:00/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/不展示租户内用户明细/).length).toBeGreaterThan(0);
     expect(api.listPlatformQuotas).toHaveBeenCalledWith({ page: 1, size: 20 });
     expect(api.getTenantQuota).not.toHaveBeenCalled();
@@ -289,7 +289,7 @@ describe('配额页', () => {
     expect(screen.getAllByText('部署默认').length).toBeGreaterThan(0);
     expect(screen.getAllByText('显式设置').length).toBeGreaterThan(0);
     expect(screen.getByText('剩余 988')).toBeVisible();
-    expect(screen.getAllByText('2026-12-01 00:00:00 +08:00').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/2026-12-01 00:00:00 \+08:00/).length).toBeGreaterThan(0);
     expect(screen.getByText(/用户用量（只读）/)).toBeVisible();
     expect(screen.queryByRole('button', { name: /调整限额/ })).not.toBeInTheDocument();
     expect(screen.getByText('只读')).toBeVisible();

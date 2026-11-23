@@ -1,4 +1,10 @@
 import type { ChatMessage, Citation, ConversationDetail, Message } from '@/services/api/types';
+import {
+  citationListLabel,
+  citationSourceText,
+  citationLocatorText,
+  toCitationView,
+} from '@/services/knowledge/citation';
 
 /**
  * 把服务端消息转换为前端展示模型。
@@ -95,21 +101,20 @@ export function mergeCitations(existing: Citation[], incoming: Citation[]): Cita
  * 生成引用定位文案。
  *
  * @param citation 引用
- * @returns 例如 `第 3 页`、`工作表 销售数据（B2:D8）`
+ * @returns 例如 `第 3 页`、`工作表 销售数据!B2:D8`
  */
 export function formatCitationLocator(citation: Citation): string {
-  switch (citation.locatorType) {
-    case 'PAGE':
-      return citation.pageNo ? `第 ${citation.pageNo} 页` : '页码未标注';
-    case 'SHEET': {
-      const sheet = citation.sheetName ? `工作表 ${citation.sheetName}` : '工作表未标注';
-      return citation.cellRange ? `${sheet}（${citation.cellRange}）` : sheet;
-    }
-    case 'PARAGRAPH':
-      return citation.paragraphNo ? `第 ${citation.paragraphNo} 段` : '段落未标注';
-    default:
-      return '位置未标注';
-  }
+  return citationLocatorText(toCitationView(citation));
+}
+
+/**
+ * 生成引用列表按钮文案；不可访问/已删除时遮蔽原标题。
+ *
+ * @param citation 引用
+ * @returns 例如 `[1] 季度报告.pdf` 或 `[2] 该引用不可访问`
+ */
+export function formatCitationListLabel(citation: Citation): string {
+  return citationListLabel(toCitationView(citation));
 }
 
 /**
@@ -119,7 +124,7 @@ export function formatCitationLocator(citation: Citation): string {
  * @returns `文件` 或 `知识库`
  */
 export function citationSourceLabel(citation: Citation): string {
-  return citation.sourceType === 'FILE' ? '文件' : '知识库';
+  return citationSourceText(toCitationView(citation));
 }
 
 /**

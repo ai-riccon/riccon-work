@@ -5,6 +5,7 @@ import {
   conversationLabel,
   createClientMessageId,
   findQuestionForRetry,
+  formatCitationListLabel,
   formatCitationLocator,
   mapMessageStatus,
   mergeCitations,
@@ -89,13 +90,28 @@ describe('引用与标题', () => {
       formatCitationLocator(
         citation({ locatorType: 'SHEET', sheetName: '销售', cellRange: 'B2:D8' }),
       ),
-    ).toBe('工作表 销售（B2:D8）');
+    ).toBe('工作表 销售!B2:D8');
     expect(formatCitationLocator(citation({ locatorType: 'PARAGRAPH', paragraphNo: 5 }))).toBe(
       '第 5 段',
     );
     expect(formatCitationLocator(citation({ locatorType: undefined }))).toBe('位置未标注');
     expect(formatCitationLocator(citation({ locatorType: 'PAGE', pageNo: null }))).toBe(
       '页码未标注',
+    );
+  });
+
+  it('不可访问/已删除引用遮蔽标题与定位', () => {
+    const masked = citation({
+      sourceType: 'KNOWLEDGE',
+      title: '',
+      snippet: '',
+      locatorType: undefined,
+      sourceStatus: 'NO_ACCESS',
+    });
+    expect(formatCitationLocator(masked)).toBe('定位不可见');
+    expect(formatCitationListLabel(masked)).toBe('[1] 该引用不可访问');
+    expect(formatCitationListLabel(citation({ sourceStatus: 'DELETED', title: '' }))).toBe(
+      '[1] 源文档已删除',
     );
   });
 
