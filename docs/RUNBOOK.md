@@ -946,20 +946,28 @@ M05 gate 证据（`SEC-KB-001`）：EV 命令必须包含 `docker build … -t r
 
 ### M05-7 索引版本键与默认值
 
-- 绑定前缀是 `riccon.worker.opensearch`（`OpenSearchProperties`），因此**真正生效**的环境变量是
-  `RICCON_WORKER_OPENSEARCH_INDEX_VERSION`（等价 `--riccon.worker.opensearch.index-version=v2`）。
-- **已知不一致（gate 风险）**：ADR-0023 §7.1 与 `IT-KB-113` 注释里写的 `RICCON_OPENSEARCH_INDEX_VERSION`
-  当前**不会生效**——`application.yml` 的 `index-version` 是字面量 `v1`，且绑定前缀含 `worker`；只设该键会
-  静默继续用 v1，重灌脚本随后会因“目标索引不存在”失败（fail-closed），但 E2E/gate 可能在 v1 上假绿。
-  修复需把 `application.yml` 的 `index-version` 改成 `${RICCON_OPENSEARCH_INDEX_VERSION:v1}`（B7/架构改动，
-  不在 ops 写范围）；在此之前，gate 与部署一律使用 `RICCON_WORKER_OPENSEARCH_INDEX_VERSION`，并用索引名确认。
-- 默认 `v1`（`application.yml`）：新写入落在 `riccon-kb-v1-{tenant}`，别名 `riccon-kb-{tenant}` 仍指 v1。
+- **ADR 键（首选）**：`RICCON_OPENSEARCH_INDEX_VERSION`（默认 `v1`）与 `RICCON_OPENSEARCH_INDEX_PREFIX`
+  （默认 `riccon-kb`）。自 `7c199c1` 起 `application.yml` 使用
+  `${RICCON_OPENSEARCH_INDEX_VERSION:v1}` / `${RICCON_OPENSEARCH_INDEX_PREFIX:riccon-kb}` 占位符，
+  这两个键已真正生效（ADR-0023 §7.1 口径）。
+- **Spring 前缀键仍可覆盖**：`RICCON_WORKER_OPENSEARCH_INDEX_VERSION` /
+  `RICCON_WORKER_OPENSEARCH_INDEX_PREFIX`（环境变量优先级高于 `application.yml`），等价
+  `--riccon.worker.opensearch.index-version=…`。两套键同时设置时以 worker 前缀键为准；发布单与脚本只允许
+  用其中一套，避免版本歧义。
+- 默认值：`index-version=v1`、`index-prefix=riccon-kb` → 新写入落在 `riccon-kb-v1-{tenant}`，别名
+  `riccon-kb-{tenant}` 仍指 v1。设置 `RICCON_OPENSEARCH_INDEX_VERSION=v2` 后新写入落在
+  `riccon-kb-v2-{tenant}`；设置前缀时 Worker 与重灌脚本必须同时改（脚本读 `RICCON_OPENSEARCH_INDEX_PREFIX`）。
+- 启动后核对实际索引（gate 前必做）：
+
+  ```bash
+  curl -fsS "$RICCON_OPENSEARCH_URL/_cat/indices/riccon-kb-*?v&h=index,docs.count,store.size"
+  ```
 - `ensureIndex` **不会**自动把别名从 v1 切到 v2：它只创建目标版本索引，并在别名不存在时建立别名；
   切换必须由重灌脚本完成，避免灰度期读写指向不同版本。
 - 只有 Worker 读写 OpenSearch（API 只读 MySQL 元数据），所以该键只需在 Worker 生效；迁移期不要让
   “写 v2、读 v1”同时存在（本仓库当前检索走 MySQL 关键词，OpenSearch 用于索引一致性/后续向量检索）。
-- 索引前缀默认 `riccon-kb`：重灌脚本读 `RICCON_OPENSEARCH_INDEX_PREFIX`，而 Worker 的 `index-prefix`
-  是 `application.yml` 字面量；只改一处会导致脚本找不到 Worker 写入的索引，不要单独调整前缀。
+- 索引前缀默认 `riccon-kb`：Worker 与重灌脚本都读 `RICCON_OPENSEARCH_INDEX_PREFIX`（`7c199c1` 起
+  Worker 侧也走占位符），但仍要保证两处同值；只改一处会导致脚本找不到 Worker 写入的索引。
 
 ### M05-8 重灌与别名切换（`reindex-knowledge`）
 
@@ -968,7 +976,7 @@ M05 gate 证据（`SEC-KB-001`）：EV 命令必须包含 `docker build … -t r
 1. 先用 v2 启动 Worker（同一实例即可，先切配置后重灌）：
 
    ```bash
-   RICCON_WORKER_OPENSEARCH_INDEX_VERSION=v2 ./mvnw -q -pl apps/worker spring-boot:run
+   RICCON_OPENSEARCH_INDEX_VERSION=v2 ./mvnw -q -pl apps/worker spring-boot:run
    # 容器/镜像部署同理：把该环境变量写进 Worker 的 env
    ```
 
@@ -1015,17 +1023,34 @@ curl -fsS "$RICCON_OPENSEARCH_URL/_cat/indices/riccon-kb-*?v&h=index,docs.count,
 
 ### M05-9 gate 取证与回滚边界
 
-- **M05 gate 必须在 v2 索引下取证**：Worker 以 `RICCON_WORKER_OPENSEARCH_INDEX_VERSION=v2` 启动、重灌完成、
-  别名指向 `riccon-kb-v2-{tenant}`；`IT-KB-113`/检索与 J1/J2 证据在 v2 上跑。v1 缺 v2 mapping 字段
-  （`visibility`/`department_id`/`acl_version`/`source_type`/`connector_id`/`ocr_confidence`/`bbox_*`），
-  只在 v1 上通过不得判 gate pass。
+- **M05 gate 必须在 v2 索引下取证**：用 ADR 键启动 Worker 并重灌，别名必须指向 v2；`IT-KB-113`/检索与
+  J1/J2 证据都在 v2 上跑。v1 缺 v2 mapping 字段（`visibility`/`department_id`/`acl_version`/`source_type`/
+  `connector_id`/`ocr_confidence`/`bbox_*`），只在 v1 上通过不得判 gate pass。
+
+  ```bash
+  # 1) 以 v2 启动 Worker（ADR 键；worker 前缀键等价，二选一）
+  RICCON_OPENSEARCH_INDEX_VERSION=v2 ./mvnw -q -pl apps/worker spring-boot:run
+
+  # 2) 重灌并切别名（见 M05-8）
+  node scripts/ops/reindex-knowledge.mjs --all-tenants --apply
+
+  # 3) 别名必须全部指向 v2 索引
+  curl -fsS "$RICCON_OPENSEARCH_URL/_cat/aliases/riccon-kb-*?v&h=alias,index"
+
+  # 4) v2 mapping 必须含新字段（以 tenant-alpha 为例）
+  mapping="$(curl -fsS "$RICCON_OPENSEARCH_URL/riccon-kb-v2-tenant-alpha/_mapping")"
+  for field in visibility department_id acl_version source_type connector_id ocr_confidence \
+      bbox_x bbox_y bbox_w bbox_h; do
+    grep -q "\"$field\"" <<< "$mapping" || { echo "mapping 缺少 $field"; exit 1; }
+  done
+  ```
 - **索引回滚/回切 v1**（别名级，秒级完成，v1 未删除）：
   `node scripts/ops/reindex-knowledge.mjs --tenant <t> --apply --alias-only --index-version v1`
   （全租户用 `--all-tenants`）。v1 至少保留 7 天（ADR-0023 §7.1）后再丢弃 v2 索引。
 - **边界（与 ACL 回滚分开）**：索引回切只改 OpenSearch 命中，不改变文档 ACL、不放宽可见性；ACL 开关关闭或
   应用回滚属于安全回归，见 `M05-2`（ADR-0023 §5.9）。两者不得合并成一次回滚操作。
 - 回滚后同样要验证：别名只有一个 v1 目标、v2 索引不再被引用、J1 检索可用；索引回滚不需要重启 Worker
-  （`--alias-only` 只动 OpenSearch），但若同时改回 `RICCON_WORKER_OPENSEARCH_INDEX_VERSION=v1` 则需重启。
+  （`--alias-only` 只动 OpenSearch），但若同时把 `RICCON_OPENSEARCH_INDEX_VERSION` 改回 `v1` 则需重启 Worker。
 - 测试栈（`deploy/compose/docker-compose.test.yml`）只跑 MySQL/OpenSearch/RustFS 三个依赖，不起 API/Worker，
   因此 v2 开关由启动 Worker 的环境决定；**生产默认保持 v1**，由运维在发布单里显式设置。
 
