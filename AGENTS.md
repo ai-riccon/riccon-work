@@ -60,6 +60,10 @@ product:
     - id: M05
       title: "知识库纵深"
       goal: "Excel/图片/OCR、文档级 ACL、1 个外部连接器"
+      status: done
+    - id: M25
+      title: "M05b S3 连接器"
+      goal: "1 个 S3/OSS 兼容目录连接器：端点允许列表、凭据托管/掩码、首次/增量同步、删除传播、固定周期、引用/索引/Web/安全/perf"
       status: planned
     - id: M06
       title: "编排 Studio"
