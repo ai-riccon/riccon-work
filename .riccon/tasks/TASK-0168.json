@@ -11,7 +11,13 @@
     "apps/worker/src/main/java/com/riccon/worker/parse/service/JpegDocumentParser.java",
     "apps/worker/src/main/java/com/riccon/worker/parse/service/PdfDocumentParser.java",
     "apps/worker/src/main/java/com/riccon/worker/parse/service/FileContentExtractor.java",
-    "apps/worker/src/main/java/com/riccon/worker/parse/service/TextChunker.java"
+    "apps/worker/src/main/java/com/riccon/worker/parse/service/TextChunker.java",
+    "pom.xml",
+    "apps/worker/pom.xml",
+    "apps/worker/src/main/resources/application.yml",
+    "apps/worker/src/test/java/com/riccon/worker/ocr/**",
+    "apps/worker/src/test/java/com/riccon/worker/parse/service/**",
+    "apps/worker/src/test/resources/**"
   ],
   "acceptance": [
     "Tesseract SPI + OcrCli；bbox/置信度/EXIF/扫描 PDF；像素/页/超时上限",
@@ -22,5 +28,18 @@
   "tools_used": [],
   "blocker": null,
   "created_at": "2026-11-22T19:25:24.836+08:00",
-  "updated_at": "2026-11-23T10:02:04.852+08:00"
+  "updated_at": "2026-11-23T10:02:04.852+08:00",
+  "scope_amendment": {
+    "at": "2026-11-23T02:02:22.999Z",
+    "by": "riccon/lead",
+    "reason": "B5 需要新增 Tess4J(Apache-2.0) 依赖、OCR 开关配置键与 OCR/chunker 测试资源；ADR §12.1 原 scope 漏列 pom/application.yml/test resources。O1a 已提供 Tesseract 5.3.4 镜像与 fixture。",
+    "added": [
+      "pom.xml",
+      "apps/worker/pom.xml",
+      "apps/worker/src/main/resources/application.yml",
+      "apps/worker/src/test/java/com/riccon/worker/ocr/**",
+      "apps/worker/src/test/java/com/riccon/worker/parse/service/**",
+      "apps/worker/src/test/resources/**"
+    ]
+  }
 }
