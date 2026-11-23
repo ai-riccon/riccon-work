@@ -10,7 +10,17 @@
     "apps/api/src/main/java/com/riccon/api/file/storage/**",
     "apps/worker/src/main/java/com/riccon/worker/agent/persistence/AgentContextJdbc.java",
     "apps/api/src/test/java/com/riccon/api/knowledge/**",
-    "apps/worker/src/test/java/com/riccon/worker/agent/persistence/**"
+    "apps/worker/src/test/java/com/riccon/worker/agent/persistence/**",
+    "apps/worker/src/main/java/com/riccon/worker/agent/repository/**",
+    "apps/worker/src/main/java/com/riccon/worker/agent/service/**",
+    "apps/worker/src/main/java/com/riccon/worker/research/service/**",
+    "apps/worker/src/main/java/com/riccon/worker/audit/**",
+    "apps/worker/src/test/java/com/riccon/worker/agent/**",
+    "apps/worker/src/test/java/com/riccon/worker/research/**",
+    "apps/worker/src/test/java/com/riccon/worker/audit/**",
+    "platform/platform-domain/src/main/java/com/riccon/platform/domain/audit/**",
+    "apps/api/src/main/java/com/riccon/api/audit/**",
+    "apps/api/src/test/java/com/riccon/api/audit/**"
   ],
   "acceptance": [
     "ACL TENANT/DEPT/USERS、创建人隐式可见、403/404 矩阵、U8 admin_read 审计",
@@ -20,7 +30,9 @@
     "ACL 判定顺序按 ADR §5.4：先按租户+ACL 谓词取文档，不可见统一 404；可见但非创建人/非 knowledge.acl.manage 才 403（REV-TASK-0165-001 F-001）"
   ],
   "evidence": [
-    "EV-0821"
+    "EV-0821",
+    "EV-0822",
+    "EV-0823"
   ],
   "tools_used": [
     "serena",
@@ -28,15 +40,23 @@
   ],
   "blocker": null,
   "created_at": "2026-11-22T19:25:24.308+08:00",
-  "updated_at": "2026-11-23T10:59:05.504+08:00",
+  "updated_at": "2026-11-23T11:12:14.140+08:00",
   "baseline_commit": "5c230e4",
   "scope_amendment": {
-    "at": "2026-11-23T02:59:04.685Z",
+    "at": "2026-11-23T03:21:26.857Z",
     "by": "riccon/lead",
-    "reason": "B3 实现需要新增 ACL/下载/删除/保留的 API 测试与 worker ACL 测试；原 scope 只列生产路径。提交区间 5c230e4..dbef7ba 共 50 文件，逐项核对均为本任务知识库/文件存储/AgentContextJdbc 及对应测试，无 B4/B5 文件。",
+    "reason": "REV-TASK-0166-001 P1 修复需要把 actor/ACL 贯通到 worker 生产检索链、补 U8 SEARCH 审计、在平台审计词汇/API 策略增加 reindex 动作，并修正历史 NULL 保留语义；原 scope 仅覆盖 API knowledge/file storage/AgentContextJdbc。",
     "added": [
-      "apps/api/src/test/java/com/riccon/api/knowledge/**",
-      "apps/worker/src/test/java/com/riccon/worker/agent/persistence/**"
+      "apps/worker/src/main/java/com/riccon/worker/agent/repository/**",
+      "apps/worker/src/main/java/com/riccon/worker/agent/service/**",
+      "apps/worker/src/main/java/com/riccon/worker/research/service/**",
+      "apps/worker/src/main/java/com/riccon/worker/audit/**",
+      "apps/worker/src/test/java/com/riccon/worker/agent/**",
+      "apps/worker/src/test/java/com/riccon/worker/research/**",
+      "apps/worker/src/test/java/com/riccon/worker/audit/**",
+      "platform/platform-domain/src/main/java/com/riccon/platform/domain/audit/**",
+      "apps/api/src/main/java/com/riccon/api/audit/**",
+      "apps/api/src/test/java/com/riccon/api/audit/**"
     ]
   },
   "evidence_note": "EV-0821 在隔离 worktree（同 commit dbef7ba）录制后仅回灌 EV JSON/日志；主树 dirty=false 不成立时属流程例外，已由 Lead 批准。",
