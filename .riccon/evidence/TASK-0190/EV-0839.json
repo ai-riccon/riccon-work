@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0839",
+  "task_id": "TASK-0190",
+  "command": "LOCK=\"${TMPDIR:-/tmp}/riccon-maven.lock\"; while ! mkdir \"$LOCK\" 2>/dev/null; do sleep 5; done; trap 'rmdir \"$LOCK\" 2>/dev/null || true' EXIT; ./mvnw -q -T1C -pl apps/api -am test -Dtest='*Contract*Test' -Dsurefire.failIfNoSpecifiedTests=false && ./mvnw -q -pl apps/api spotless:check && git diff --check",
+  "manual": false,
+  "commit": "7ad975d667990ceab03c4395e84bda0d42df4df2",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0190/EV-0839-2026-11-23T12-10-50-466+08-00-lock-tmpdir-tmp-riccon-maven-lock-while-mkdir-lo.log",
+  "output_sha256": "a4ded786494f2b62aa3948b19b8719d41c71c80db2fbec2f62f975ebbd828f60",
+  "output_bytes": 566,
+  "agent": "riccon/builder-kb-contract",
+  "cwd": "/private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/opencode/riccon-0190-wt",
+  "started_at": "2026-11-23T12:10:13.727+08:00",
+  "finished_at": "2026-11-23T12:10:50.040+08:00",
+  "duration_ms": 36312,
+  "note": "download 502/Content-Type/Content-Disposition 契约对齐；隔离 worktree 取证（主树被 TASK-0191 WIP 占用，Lead 已批准例外）",
+  "recorded_at": "2026-11-23T12:10:50.468+08:00"
+}
