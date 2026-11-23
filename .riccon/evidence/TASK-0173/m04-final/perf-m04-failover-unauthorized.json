@@ -1,0 +1,150 @@
+{
+  "scenario": "failover",
+  "failureMode": "unauthorized",
+  "generatedAt": "2026-11-23T11:04:02.049Z",
+  "baseUrl": "http://127.0.0.1:18080",
+  "env": {
+    "generatedAt": "2026-11-23T11:01:32.074Z",
+    "mode": "perf",
+    "host": {
+      "platform": "darwin 24.6.0",
+      "arch": "x64",
+      "cpus": 12,
+      "cpuModel": "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz",
+      "memoryBytes": 17179869184,
+      "memoryGiB": 16,
+      "loadAverage": [
+        3.27,
+        6.44,
+        10.49
+      ],
+      "node": "v26.13.0"
+    },
+    "images": {
+      "compose": [
+        "opensearchproject/opensearch:3.9.0",
+        "rustfs/rustfs:1.0.6",
+        "mysql:8.4.13"
+      ],
+      "started": [
+        "mysql:8.4.13"
+      ]
+    },
+    "k6Version": "k6 v2.4.0 (commit/dd9395906d, go1.26.11, darwin/amd64)",
+    "scriptSha256": "3bf686bd9b23bed18c5f10704e62de15c96da0450e3b880b028b6cd88b971fe7",
+    "chatMaxStreams": 50,
+    "dbPoolSize": 50,
+    "fakeModel": 1,
+    "deploymentMode": "DEMO",
+    "ocr": {
+      "available": false,
+      "exitCode": 4,
+      "engine": "tesseract",
+      "language": "chi_sim+eng",
+      "sample": "deploy/ocr/sample.png",
+      "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
+      "probedAt": "2026-11-23T19:01:30+08:00"
+    },
+    "startCommand": "node scripts/real-stack/run.mjs --mode=perf",
+    "startupCommands": [
+      "java -jar apps/api/target/riccon-api-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/MASTER_KEY_ID/FINGERPRINT_PEPPER/BILLING_CURRENCY/QUOTA_DEFAULT_*/DB_POOL)",
+      "java -jar apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/CHAT_MAX_STREAMS/DB_POOL_SIZE/MODEL_FIRST_TOKEN_TIMEOUT/PRE_FIRST_TOKEN_BUDGET)",
+      "node scripts/real-stack/fake-model.mjs --scenario ok --chunk-count 6"
+    ],
+    "perfProfile": {
+      "chatMaxStreams": 50,
+      "dbPoolSize": 50,
+      "dbPoolFloor": 25,
+      "fakeModel": 1,
+      "connectTimeout": "500ms",
+      "firstTokenTimeout": "1000ms",
+      "preFirstTokenBudget": "2500ms",
+      "maxAttempts": 3,
+      "retryDelays": "50ms,100ms",
+      "duration": "20s"
+    },
+    "openSearch": "excluded (perf mode; 2C4Gi sandbox 不足，主机规格见 host)",
+    "perfM05": null
+  },
+  "thresholds": {
+    "m04_first_token_ms": [
+      "p(95)<3000"
+    ],
+    "m04_api_ms": [
+      "p(95)<500"
+    ],
+    "m04_degraded_success": [
+      "rate>0.99"
+    ]
+  },
+  "metrics": {
+    "m04_chat_submit_ttfb_ms": {
+      "avg": 2894.142290849673,
+      "min": 310.795,
+      "med": 3132.215,
+      "p(90)": 3399.6814999999997,
+      "p(95)": 3422.86075,
+      "max": 3472.686,
+      "count": 306
+    },
+    "m04_run_detail_ms": {
+      "count": 306,
+      "avg": 60.81372549019608,
+      "min": 33,
+      "med": 58,
+      "p(90)": 72,
+      "p(95)": 80,
+      "max": 126
+    },
+    "m04_api_ms": {
+      "min": 32.412,
+      "med": 58.019999999999996,
+      "p(90)": 71.90100000000001,
+      "p(95)": 79.63,
+      "max": 125.884,
+      "count": 306,
+      "avg": 60.557882352941185
+    },
+    "iterations": {
+      "count": 306,
+      "rate": 13.233280506884809
+    },
+    "http_req_duration": {
+      "max": 3597.112,
+      "count": 762,
+      "avg": 1417.736872703411,
+      "min": 32.412,
+      "med": 88.28,
+      "p(90)": 3448.7114,
+      "p(95)": 3519.6291
+    },
+    "m04_degraded_success": {
+      "passes": 306,
+      "fails": 0,
+      "rate": 1
+    },
+    "http_req_failed": {
+      "passes": 0,
+      "fails": 762,
+      "rate": 0
+    },
+    "m04_chat_stream_ms": {
+      "max": 3597,
+      "count": 306,
+      "avg": 3025.545751633987,
+      "min": 491,
+      "med": 3263.5,
+      "p(90)": 3526.5,
+      "p(95)": 3551.5
+    },
+    "m04_first_token_ms": {
+      "max": 83,
+      "count": 306,
+      "avg": 27.61764705882353,
+      "min": 21,
+      "med": 27,
+      "p(90)": 31.5,
+      "p(95)": 35
+    }
+  }
+}

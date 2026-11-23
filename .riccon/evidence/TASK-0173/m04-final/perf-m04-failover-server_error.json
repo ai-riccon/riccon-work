@@ -1,0 +1,150 @@
+{
+  "scenario": "failover",
+  "failureMode": "server_error",
+  "generatedAt": "2026-11-23T11:03:12.994Z",
+  "baseUrl": "http://127.0.0.1:18080",
+  "env": {
+    "generatedAt": "2026-11-23T11:01:32.074Z",
+    "mode": "perf",
+    "host": {
+      "platform": "darwin 24.6.0",
+      "arch": "x64",
+      "cpus": 12,
+      "cpuModel": "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz",
+      "memoryBytes": 17179869184,
+      "memoryGiB": 16,
+      "loadAverage": [
+        3.27,
+        6.44,
+        10.49
+      ],
+      "node": "v26.13.0"
+    },
+    "images": {
+      "compose": [
+        "opensearchproject/opensearch:3.9.0",
+        "rustfs/rustfs:1.0.6",
+        "mysql:8.4.13"
+      ],
+      "started": [
+        "mysql:8.4.13"
+      ]
+    },
+    "k6Version": "k6 v2.4.0 (commit/dd9395906d, go1.26.11, darwin/amd64)",
+    "scriptSha256": "3bf686bd9b23bed18c5f10704e62de15c96da0450e3b880b028b6cd88b971fe7",
+    "chatMaxStreams": 50,
+    "dbPoolSize": 50,
+    "fakeModel": 1,
+    "deploymentMode": "DEMO",
+    "ocr": {
+      "available": false,
+      "exitCode": 4,
+      "engine": "tesseract",
+      "language": "chi_sim+eng",
+      "sample": "deploy/ocr/sample.png",
+      "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
+      "probedAt": "2026-11-23T19:01:30+08:00"
+    },
+    "startCommand": "node scripts/real-stack/run.mjs --mode=perf",
+    "startupCommands": [
+      "java -jar apps/api/target/riccon-api-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/MASTER_KEY_ID/FINGERPRINT_PEPPER/BILLING_CURRENCY/QUOTA_DEFAULT_*/DB_POOL)",
+      "java -jar apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/CHAT_MAX_STREAMS/DB_POOL_SIZE/MODEL_FIRST_TOKEN_TIMEOUT/PRE_FIRST_TOKEN_BUDGET)",
+      "node scripts/real-stack/fake-model.mjs --scenario ok --chunk-count 6"
+    ],
+    "perfProfile": {
+      "chatMaxStreams": 50,
+      "dbPoolSize": 50,
+      "dbPoolFloor": 25,
+      "fakeModel": 1,
+      "connectTimeout": "500ms",
+      "firstTokenTimeout": "1000ms",
+      "preFirstTokenBudget": "2500ms",
+      "maxAttempts": 3,
+      "retryDelays": "50ms,100ms",
+      "duration": "20s"
+    },
+    "openSearch": "excluded (perf mode; 2C4Gi sandbox 不足，主机规格见 host)",
+    "perfM05": null
+  },
+  "thresholds": {
+    "m04_first_token_ms": [
+      "p(95)<3000"
+    ],
+    "m04_api_ms": [
+      "p(95)<500"
+    ],
+    "m04_degraded_success": [
+      "rate>0.99"
+    ]
+  },
+  "metrics": {
+    "m04_api_ms": {
+      "min": 43.231,
+      "med": 69.453,
+      "p(90)": 90.5964,
+      "p(95)": 102.2274,
+      "max": 158.198,
+      "count": 259,
+      "avg": 72.6321505791506
+    },
+    "iterations": {
+      "count": 259,
+      "rate": 10.59434348775932
+    },
+    "m04_first_token_ms": {
+      "avg": 34.00772200772201,
+      "min": 22,
+      "med": 30,
+      "p(90)": 39,
+      "p(95)": 46,
+      "max": 281,
+      "count": 259
+    },
+    "http_req_duration": {
+      "max": 4541.965,
+      "count": 668,
+      "avg": 1654.7285344311379,
+      "min": 43.231,
+      "med": 109.0595,
+      "p(90)": 4043.8154,
+      "p(95)": 4326.2558
+    },
+    "m04_chat_submit_ttfb_ms": {
+      "max": 4372.797,
+      "count": 259,
+      "avg": 3415.7998185328183,
+      "min": 501.541,
+      "med": 3602.391,
+      "p(90)": 4195.2992,
+      "p(95)": 4259.5965
+    },
+    "m04_degraded_success": {
+      "rate": 1,
+      "passes": 259,
+      "fails": 0
+    },
+    "http_req_failed": {
+      "passes": 0,
+      "fails": 668,
+      "rate": 0
+    },
+    "m04_chat_stream_ms": {
+      "p(95)": 4418.2,
+      "max": 4543,
+      "count": 259,
+      "avg": 3579.5984555984555,
+      "min": 712,
+      "med": 3748,
+      "p(90)": 4353.6
+    },
+    "m04_run_detail_ms": {
+      "avg": 72.98841698841699,
+      "min": 43,
+      "med": 70,
+      "p(90)": 91,
+      "p(95)": 102.1,
+      "max": 158,
+      "count": 259
+    }
+  }
+}

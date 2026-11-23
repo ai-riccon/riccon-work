@@ -1,0 +1,142 @@
+{
+  "scenario": "first_token",
+  "failureMode": null,
+  "generatedAt": "2026-11-23T11:02:47.223Z",
+  "baseUrl": "http://127.0.0.1:18080",
+  "env": {
+    "generatedAt": "2026-11-23T11:01:32.074Z",
+    "mode": "perf",
+    "host": {
+      "platform": "darwin 24.6.0",
+      "arch": "x64",
+      "cpus": 12,
+      "cpuModel": "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz",
+      "memoryBytes": 17179869184,
+      "memoryGiB": 16,
+      "loadAverage": [
+        3.27,
+        6.44,
+        10.49
+      ],
+      "node": "v26.13.0"
+    },
+    "images": {
+      "compose": [
+        "opensearchproject/opensearch:3.9.0",
+        "rustfs/rustfs:1.0.6",
+        "mysql:8.4.13"
+      ],
+      "started": [
+        "mysql:8.4.13"
+      ]
+    },
+    "k6Version": "k6 v2.4.0 (commit/dd9395906d, go1.26.11, darwin/amd64)",
+    "scriptSha256": "3bf686bd9b23bed18c5f10704e62de15c96da0450e3b880b028b6cd88b971fe7",
+    "chatMaxStreams": 50,
+    "dbPoolSize": 50,
+    "fakeModel": 1,
+    "deploymentMode": "DEMO",
+    "ocr": {
+      "available": false,
+      "exitCode": 4,
+      "engine": "tesseract",
+      "language": "chi_sim+eng",
+      "sample": "deploy/ocr/sample.png",
+      "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
+      "probedAt": "2026-11-23T19:01:30+08:00"
+    },
+    "startCommand": "node scripts/real-stack/run.mjs --mode=perf",
+    "startupCommands": [
+      "java -jar apps/api/target/riccon-api-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/MASTER_KEY_ID/FINGERPRINT_PEPPER/BILLING_CURRENCY/QUOTA_DEFAULT_*/DB_POOL)",
+      "java -jar apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/CHAT_MAX_STREAMS/DB_POOL_SIZE/MODEL_FIRST_TOKEN_TIMEOUT/PRE_FIRST_TOKEN_BUDGET)",
+      "node scripts/real-stack/fake-model.mjs --scenario ok --chunk-count 6"
+    ],
+    "perfProfile": {
+      "chatMaxStreams": 50,
+      "dbPoolSize": 50,
+      "dbPoolFloor": 25,
+      "fakeModel": 1,
+      "connectTimeout": "500ms",
+      "firstTokenTimeout": "1000ms",
+      "preFirstTokenBudget": "2500ms",
+      "maxAttempts": 3,
+      "retryDelays": "50ms,100ms",
+      "duration": "20s"
+    },
+    "openSearch": "excluded (perf mode; 2C4Gi sandbox 不足，主机规格见 host)",
+    "perfM05": null
+  },
+  "thresholds": {
+    "m04_first_token_ms": [
+      "p(95)<3000"
+    ],
+    "m04_api_ms": [
+      "p(95)<500"
+    ]
+  },
+  "metrics": {
+    "http_req_failed": {
+      "rate": 0,
+      "passes": 0,
+      "fails": 622
+    },
+    "iterations": {
+      "count": 236,
+      "rate": 9.819559764170789
+    },
+    "m04_first_token_ms": {
+      "count": 236,
+      "avg": 47.08474576271186,
+      "min": 25,
+      "med": 33,
+      "p(90)": 51,
+      "p(95)": 73,
+      "max": 509
+    },
+    "http_req_duration": {
+      "med": 196.846,
+      "p(90)": 4385.3879,
+      "p(95)": 5033.4995499999995,
+      "max": 5187.286,
+      "count": 622,
+      "avg": 1776.732413183279,
+      "min": 37.985
+    },
+    "m04_chat_submit_ttfb_ms": {
+      "min": 1388.071,
+      "med": 4024.7815,
+      "p(90)": 4929.963,
+      "p(95)": 4985.8282500000005,
+      "max": 5041.007,
+      "count": 236,
+      "avg": 3835.124847457629
+    },
+    "m04_api_ms": {
+      "med": 73.5325,
+      "p(90)": 111.79599999999999,
+      "p(95)": 129.91575,
+      "max": 287.735,
+      "count": 236,
+      "avg": 80.94336864406783,
+      "min": 37.985
+    },
+    "m04_chat_stream_ms": {
+      "p(90)": 5078,
+      "p(95)": 5128.5,
+      "max": 5187,
+      "count": 236,
+      "avg": 4008.5296610169494,
+      "min": 1648,
+      "med": 4186
+    },
+    "m04_run_detail_ms": {
+      "avg": 81.32203389830508,
+      "min": 38,
+      "med": 74,
+      "p(90)": 112,
+      "p(95)": 131,
+      "max": 288,
+      "count": 236
+    }
+  }
+}

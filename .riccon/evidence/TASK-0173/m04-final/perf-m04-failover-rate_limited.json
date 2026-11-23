@@ -1,0 +1,150 @@
+{
+  "scenario": "failover",
+  "failureMode": "rate_limited",
+  "generatedAt": "2026-11-23T11:03:37.361Z",
+  "baseUrl": "http://127.0.0.1:18080",
+  "env": {
+    "generatedAt": "2026-11-23T11:01:32.074Z",
+    "mode": "perf",
+    "host": {
+      "platform": "darwin 24.6.0",
+      "arch": "x64",
+      "cpus": 12,
+      "cpuModel": "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz",
+      "memoryBytes": 17179869184,
+      "memoryGiB": 16,
+      "loadAverage": [
+        3.27,
+        6.44,
+        10.49
+      ],
+      "node": "v26.13.0"
+    },
+    "images": {
+      "compose": [
+        "opensearchproject/opensearch:3.9.0",
+        "rustfs/rustfs:1.0.6",
+        "mysql:8.4.13"
+      ],
+      "started": [
+        "mysql:8.4.13"
+      ]
+    },
+    "k6Version": "k6 v2.4.0 (commit/dd9395906d, go1.26.11, darwin/amd64)",
+    "scriptSha256": "3bf686bd9b23bed18c5f10704e62de15c96da0450e3b880b028b6cd88b971fe7",
+    "chatMaxStreams": 50,
+    "dbPoolSize": 50,
+    "fakeModel": 1,
+    "deploymentMode": "DEMO",
+    "ocr": {
+      "available": false,
+      "exitCode": 4,
+      "engine": "tesseract",
+      "language": "chi_sim+eng",
+      "sample": "deploy/ocr/sample.png",
+      "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
+      "probedAt": "2026-11-23T19:01:30+08:00"
+    },
+    "startCommand": "node scripts/real-stack/run.mjs --mode=perf",
+    "startupCommands": [
+      "java -jar apps/api/target/riccon-api-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/MASTER_KEY_ID/FINGERPRINT_PEPPER/BILLING_CURRENCY/QUOTA_DEFAULT_*/DB_POOL)",
+      "java -jar apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/CHAT_MAX_STREAMS/DB_POOL_SIZE/MODEL_FIRST_TOKEN_TIMEOUT/PRE_FIRST_TOKEN_BUDGET)",
+      "node scripts/real-stack/fake-model.mjs --scenario ok --chunk-count 6"
+    ],
+    "perfProfile": {
+      "chatMaxStreams": 50,
+      "dbPoolSize": 50,
+      "dbPoolFloor": 25,
+      "fakeModel": 1,
+      "connectTimeout": "500ms",
+      "firstTokenTimeout": "1000ms",
+      "preFirstTokenBudget": "2500ms",
+      "maxAttempts": 3,
+      "retryDelays": "50ms,100ms",
+      "duration": "20s"
+    },
+    "openSearch": "excluded (perf mode; 2C4Gi sandbox 不足，主机规格见 host)",
+    "perfM05": null
+  },
+  "thresholds": {
+    "m04_first_token_ms": [
+      "p(95)<3000"
+    ],
+    "m04_api_ms": [
+      "p(95)<500"
+    ],
+    "m04_degraded_success": [
+      "rate>0.99"
+    ]
+  },
+  "metrics": {
+    "m04_first_token_ms": {
+      "p(90)": 33.400000000000034,
+      "p(95)": 38.19999999999999,
+      "max": 159,
+      "count": 317,
+      "avg": 28.63722397476341,
+      "min": 20,
+      "med": 26
+    },
+    "m04_chat_submit_ttfb_ms": {
+      "p(95)": 3344.7214,
+      "max": 3434.447,
+      "count": 317,
+      "avg": 2833.774413249211,
+      "min": 298.416,
+      "med": 3043.936,
+      "p(90)": 3314.2804
+    },
+    "m04_chat_stream_ms": {
+      "min": 426,
+      "med": 3173,
+      "p(90)": 3438.4,
+      "p(95)": 3474.4,
+      "max": 3565,
+      "count": 317,
+      "avg": 2961.069400630915
+    },
+    "m04_api_ms": {
+      "min": 27.793,
+      "med": 55.679,
+      "p(90)": 72.39560000000002,
+      "p(95)": 81.32759999999998,
+      "max": 138.078,
+      "count": 317,
+      "avg": 58.15662460567824
+    },
+    "m04_run_detail_ms": {
+      "med": 56,
+      "p(90)": 73,
+      "p(95)": 81.39999999999998,
+      "max": 138,
+      "count": 317,
+      "avg": 58.435331230283914,
+      "min": 28
+    },
+    "iterations": {
+      "count": 317,
+      "rate": 13.643485481007321
+    },
+    "http_req_failed": {
+      "rate": 0,
+      "passes": 0,
+      "fails": 784
+    },
+    "m04_degraded_success": {
+      "rate": 1,
+      "passes": 317,
+      "fails": 0
+    },
+    "http_req_duration": {
+      "avg": 1388.3946160714304,
+      "min": 27.793,
+      "med": 85.718,
+      "p(90)": 3373.3147,
+      "p(95)": 3428.6934499999998,
+      "max": 3564.82,
+      "count": 784
+    }
+  }
+}
