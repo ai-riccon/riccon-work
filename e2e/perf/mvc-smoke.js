@@ -59,7 +59,7 @@ const m05DocumentId = __ENV.PERF_M05_DOC_ID || '';
 const m05AclDocumentId = __ENV.PERF_M05_ACL_DOC_ID || '';
 const m05HiddenDocumentId = __ENV.PERF_M05_HIDDEN_DOC_ID || '';
 const m05DownloadDocumentId = __ENV.PERF_M05_DOWNLOAD_DOC_ID || '';
-const m05Query = __ENV.PERF_M05_QUERY || 'PERFKNOW';
+const m05Query = __ENV.PERF_M05_QUERY || 'QXZJKW';
 const m05AclUserIds = (() => {
   try {
     const parsed = JSON.parse(__ENV.PERF_M05_ACL_USER_IDS || '[]');

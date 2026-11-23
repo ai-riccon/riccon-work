@@ -78,8 +78,11 @@ const KNOWLEDGE_DEFAULTS = {
   backlogUploads: 6,
 };
 
-/** M05 语料中的稳定检索词；20% 文档（每篇 20 chunk）包含该词。 */
-const KNOWLEDGE_QUERY = process.env.PERF_M05_QUERY ?? "PERFKNOW";
+/** M05 语料中的稳定检索词；V14 ngram 需要二元组足够独特的词，避免常见 bigram 命中全表。 */
+const KNOWLEDGE_QUERY = process.env.PERF_M05_QUERY ?? "QXZJKW";
+
+/** 含检索词的文档间隔；默认每 100 篇命中 1%（1000 chunk），代表选择性关键词查询。 */
+const KNOWLEDGE_MATCH_EVERY = Number(process.env.PERF_M05_MATCH_EVERY ?? 100);
 
 /** 证据文件。 */
 const SEED_FILE = path.join(evidenceDir, "real-stack-seed.json");
@@ -692,7 +695,7 @@ function buildEnvSnapshot(context) {
               chunksPerDocument:
                 context.knowledgeDataset?.chunksPerDocument ?? null,
               query: KNOWLEDGE_QUERY,
-              matchRatio: "20% 文档包含检索词（每篇全部 20 chunk）",
+              matchRatio: `每 ${KNOWLEDGE_MATCH_EVERY} 篇文档命中（默认 1% chunk）`,
             },
             concurrency: {
               knowledgeVus: KNOWLEDGE_DEFAULTS.knowledgeVus,
@@ -1288,8 +1291,8 @@ function uuidFromHex(hex) {
  * 构造知识库语料 SQL：部门、5000 文档、10 万 chunk 与 USERS ACL。
  *
  * 文档可见性分布：4400 TENANT + 500 DEPT + 50 USERS（成员可见）+ 50 USERS（仅管理员）。
- * 20% 文档的每个 chunk 都含检索词，命中约 2 万 chunk；V14 FULLTEXT 使用 ngram 索引，
- * 与 ACL EXISTS 一起构成检索 p95 的测量口径。
+ * 每 `matchEvery` 篇文档的全部 chunk 含检索词；默认 1%（1000 chunk）。V14 FULLTEXT
+ * 使用 ngram 索引，与 ACL EXISTS 一起构成检索 p95 的测量口径。
  *
  * @param {object} input 参数
  * @param {string} input.adminUserId 管理员账号 ID
@@ -1298,6 +1301,8 @@ function uuidFromHex(hex) {
  * @param {string} input.departmentId 部门 ID
  * @param {number} input.documents 文档数
  * @param {number} input.chunksPerDocument 每文档 chunk 数
+ * @param {string} input.queryToken 检索词
+ * @param {number} input.matchEvery 含检索词的文档间隔
  * @returns {string} SQL
  */
 function buildKnowledgeSeedSql(input) {
@@ -1330,7 +1335,7 @@ UPDATE app_user SET department_id = ${departmentId}
     } else if (index > 4900) {
       visibility = "USERS";
     }
-    const title = `知识库性能语料 文档 ${index}${index % 10 === 0 ? " PERFKNOW" : ""}`;
+    const title = `知识库性能语料 文档 ${index}${index % input.matchEvery === 0 ? ` ${input.queryToken}` : ""}`;
     return `(${tenant}, ${docId(index)}, ${sqlString(title)}, 'SEED', NULL, SHA2(CONCAT('perf-knowledge-', ${index}), 256), 'text/plain', 1024, 'INDEXED', NOW(6), ${adminId}, NOW(6), NOW(6), '${visibility}', ${department}, NULL, 1, DATE_ADD(NOW(6), INTERVAL 180 DAY))`;
   };
 
@@ -1356,10 +1361,10 @@ ${rows.join(",\n")};`);
     const end = Math.min(input.documents, start + 1999);
     const rows = [];
     for (let index = start; index <= end; index += 1) {
-      const withTerm = index % 5 === 0;
+      const withTerm = index % input.matchEvery === 0;
       for (let ordinal = 1; ordinal <= input.chunksPerDocument; ordinal += 1) {
         chunkSequence += 1;
-        const content = `PERF-M05 语料 chunk ${index}-${ordinal} ${withTerm ? "PERFKNOW " : ""}协同办公 市场调研 数据`;
+        const content = `PERF-M05 语料 chunk ${index}-${ordinal} ${withTerm ? `${input.queryToken} ` : ""}协同办公 市场调研 数据`;
         rows.push(
           `(${tenant}, UNHEX('${chunkIdHex(chunkSequence)}'), ${docId(index)}, ${ordinal}, 'PARAGRAPH', NULL, NULL, NULL, ${ordinal}, ${sqlString(content)}, 16, NOW(6))`,
         );
@@ -1414,6 +1419,9 @@ function seedKnowledgeDataset(seedState) {
       `PERF_M05_DOCS/PERF_M05_CHUNKS_PER_DOC invalid: ${documents}/${chunksPerDocument}`,
     );
   }
+  if (!(KNOWLEDGE_MATCH_EVERY >= 1)) {
+    throw new Error(`PERF_M05_MATCH_EVERY invalid: ${KNOWLEDGE_MATCH_EVERY}`);
+  }
   const departmentId = uuidFromHex(deterministicHex(1_900_000));
   const sql = buildKnowledgeSeedSql({
     adminUserId: seedState.userIds.alphaAdmin,
@@ -1422,6 +1430,8 @@ function seedKnowledgeDataset(seedState) {
     departmentId,
     documents,
     chunksPerDocument,
+    queryToken: KNOWLEDGE_QUERY,
+    matchEvery: KNOWLEDGE_MATCH_EVERY,
   });
   const startedAt = Date.now();
   runSql(sql, { repoRoot });
@@ -1434,14 +1444,18 @@ function seedKnowledgeDataset(seedState) {
          WHERE c.tenant_id='tenant-alpha' AND d.title LIKE '知识库性能语料%') AS chunks,
        (SELECT COUNT(*) FROM knowledge_chunk c JOIN knowledge_document d
           ON d.tenant_id=c.tenant_id AND d.id=c.document_id
-         WHERE c.tenant_id='tenant-alpha' AND c.content LIKE '%PERFKNOW%') AS matching_chunks;`,
+         WHERE c.tenant_id='tenant-alpha' AND c.content LIKE ${sqlString(`%${KNOWLEDGE_QUERY}%`)}) AS matching_chunks;`,
     { repoRoot },
   ).stdout.trim();
+  const matchDocuments = Math.ceil(documents / KNOWLEDGE_MATCH_EVERY);
   return {
     dataset: {
       documents,
       chunks: documents * chunksPerDocument,
       chunksPerDocument,
+      matchEvery: KNOWLEDGE_MATCH_EVERY,
+      matchDocuments,
+      matchingChunks: matchDocuments * chunksPerDocument,
       departmentId,
       seedMs,
       countsRaw: counts,
@@ -1909,8 +1923,10 @@ async function runKnowledgePerf(context) {
       },
       departmentId: seeded.dataset.departmentId,
       query: KNOWLEDGE_QUERY,
-      matchDocuments: "20%（每篇全部 chunk 含检索词）",
-      matchingChunks: "约 2 万（10 万 chunk 中）",
+      matchEvery: seeded.dataset.matchEvery,
+      matchDocuments: seeded.dataset.matchDocuments,
+      matchingChunks: seeded.dataset.matchingChunks,
+      matchRatio: `${((seeded.dataset.matchDocuments / seeded.dataset.documents) * 100).toFixed(1)}% 文档`,
       seedMs: seeded.dataset.seedMs,
       countsRaw: seeded.dataset.countsRaw,
       note: "直插 SQL 只用于列表/检索/ACL 数据规模；索引与下载仍走真实上传→解析→索引→对象存储路径",
