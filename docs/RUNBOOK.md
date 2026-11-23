@@ -47,7 +47,7 @@ docker compose -f deploy/compose/docker-compose.test.yml down -v
 
 测试凭据通过环境变量覆盖：`RICCON_DB_PASSWORD`、`RICCON_DB_ROOT_PASSWORD`、`RICCON_S3_ACCESS_KEY`、`RICCON_S3_SECRET_KEY`。默认值只用于本地测试，禁止用于任何共享环境。
 
-M05b 连接器出网演练另有专用 internal 网络与探针（`--profile connector-egress`，默认不启动、默认零出网），见「M05b 连接器出网与运维（O2a）」；它不改变上面的启动/停止命令与现有服务定义。
+M05b 连接器出网演练另有专用 internal 网络与探针（`--profile connector-egress`，默认不启动、默认零出网），见「M05b 连接器出网与运维（O2a）」；它不改变上面的启动/停止命令与现有服务定义。注意 profile-only 网络**不会**被普通 `down -v` 清理，演练后必须按「M05b-3」带 `--profile connector-egress` 清理。
 
 ### 热测试栈与受影响测试（M12，可选）
 
@@ -1152,8 +1152,16 @@ curl -fsS "$RICCON_OPENSEARCH_URL/_cat/indices/riccon-kb-*?v&h=index,docs.count,
 | 无 query       | 带查询串的 URL 拒绝                                                                       |
 | 无重定向       | 不跟随 3xx；S3 客户端禁用区域/跨域自动重定向，或对每个 `Location` 重做同一校验            |
 | 永不允许       | 解析后的 IP 命中 `169.254.0.0/16`（云元数据）、`::1`、`fe80::/10` 即拒绝                  |
-| RFC1918        | 仅当端点本身在允许列表中显式列出时放行；主机名解析到 RFC1918 视为拒绝（防 DNS rebinding） |
+| RFC1918        | 仅当端点本身在允许列表中显式列出时放行；未列入 allowlist 的主机名/重定向目标解析到 RFC1918 一律拒绝（防 DNS rebinding） |
 | 不接受任意 URL | 连接器只能引用允许列表内的 `endpoint_id`                                                  |
+
+- **私网解析正例**：allowlist 中显式列出的端点允许解析到 RFC1918。本地测试 RustFS `object-storage`
+  （`allowHttp=true`、`production=false`）在 compose 内解析为 `172.x.x.x` 属预期，**仅限本地测试**；
+  生产条目必须 `https` + `allowHttp=false` + `production=true`，私网地址只在客户内网且逐条列入 allowlist 时使用。
+- **反例**：未在 allowlist 中的主机名（或重定向目标）解析到 RFC1918 一律拒绝，避免 DNS rebinding 把已校验
+  端点换成内网地址。
+- B6 必须补“私网 DNS 正例/反例”测试（对照 M04 `ManagedEndpointPolicyTest`）：显式私网端点放行、
+  allowlist 外主机名解析到 RFC1918 被拒。本节不写 Java 代码。
 
 本节配置只定义“端点集合 + 网络底座”。上表失败的错误码、审计与重试归 B6（ADR-0023 §6.6）；
 **运维不得通过放宽 allowlist（例如临时加 `0.0.0.0/0`、`169.254.169.254` 或关闭 TLS 校验）绕过故障**。
@@ -1165,8 +1173,10 @@ curl -fsS "$RICCON_OPENSEARCH_URL/_cat/indices/riccon-kb-*?v&h=index,docs.count,
 `riccon-test-net` 与 MySQL/OpenSearch/RustFS 定义未改；探针不接入依赖服务。
 
 ```bash
-# 1) compose 可解析（只读，不影响运行中的测试栈）
-docker compose -f deploy/compose/docker-compose.test.yml config >/dev/null; echo "config exit=$?"
+# 1) compose 可解析，含 profile 内的探针与 internal 网络（只读，不影响运行中的测试栈）
+docker compose --profile connector-egress -f deploy/compose/docker-compose.test.yml config >/dev/null
+echo "config exit=$?"
+# 期望：exit 0；config 输出包含 connector-egress-probe 与 internal: true 的 riccon-connector-egress
 
 # 2) 与合同 sandbox 同参数的零出网探针：/proc/net/route 只有表头，外部地址不可达
 docker run --rm --network none --read-only --cap-drop ALL --user 10001:10001 \
@@ -1181,8 +1191,15 @@ docker compose -p riccon-o2a-egress --profile connector-egress \
   -f deploy/compose/docker-compose.test.yml run --rm --no-deps connector-egress-probe
 # 期望：末行 connector-egress-probe: PASS，exit 0
 
-# 4) 清理演练网络（容器已由 --rm 删除）
-docker compose -p riccon-o2a-egress -f deploy/compose/docker-compose.test.yml down --remove-orphans
+# 4) 清理演练网络（容器已由 --rm 删除；必须带同一 profile，否则 profile-only 网络会残留）
+docker compose -p riccon-o2a-egress --profile connector-egress \
+  -f deploy/compose/docker-compose.test.yml down --remove-orphans
+# 断言网络已删除；残留时打印 FAIL 且命令退出码 1
+if docker network inspect riccon-o2a-egress_riccon-connector-egress >/dev/null 2>&1; then
+  echo "FAIL: 演练网络仍存在"; false
+else
+  echo "OK: 演练网络已删除"
+fi
 ```
 
 判据与边界：
@@ -1195,10 +1212,11 @@ docker compose -p riccon-o2a-egress -f deploy/compose/docker-compose.test.yml do
   NetworkPolicy（默认 deny egress，仅放行允许列表中的 FQDN/IP + 端口与 DNS）或客户防火墙实现。
   M09 交付前，生产发布单必须把“无 NetworkPolicy”登记为 release blocker，不得靠“没配置”假设安全。
 
-验证记录（2026-11-24，基线 `c3c8d2c`，Docker 29.9.3 / Compose v5.7.1）：第 1 步 exit 0；第 2 步路由表仅表头、
-`external connect exit=1`；第 3 步 `connector-egress-probe: PASS`、exit 0；第 4 步 exit 0。合同命令
-`bash scripts/sandbox.sh` 也在改动后 exit 0，MySQL/OpenSearch/RustFS 均 healthy，说明新增网络与探针不影响
-`commands.sandbox` 与既有测试栈。
+验证记录（2026-11-24，基线 `c3c8d2c`，Docker 29.9.3 / Compose v5.7.1）：第 1 步（带 profile）exit 0，
+config 含探针与 `internal: true` 网络；第 2 步路由表仅表头、`external connect exit=1`；第 3 步
+`connector-egress-probe: PASS`、exit 0；第 4 步 `down` exit 0 且网络断言输出 `OK: 演练网络已删除`（exit 0）。
+合同命令 `bash scripts/sandbox.sh` 也在改动后 exit 0，MySQL/OpenSearch/RustFS 均 healthy，说明新增网络与探针
+不影响 `commands.sandbox` 与既有测试栈。
 
 ### M05b-4 开关与回滚
 
@@ -1218,7 +1236,8 @@ docker compose -p riccon-o2a-egress -f deploy/compose/docker-compose.test.yml do
 ### M05b-5 同步失败、超时与凭据交接（O2b/M09）
 
 - **观测**（B6 实现）：指标 `riccon_connector_sync_failures_total{reason=auth|network}`；`last_error_code` 取
-  `KB_CONNECTOR_AUTH`/`UNREACHABLE`/`TIMEOUT`/`CREDENTIAL`；审计 `knowledge.connector.sync.started`/
+  `KB_CONNECTOR_AUTH`/`KB_CONNECTOR_UNREACHABLE`/`KB_CONNECTOR_TIMEOUT`/`KB_CONNECTOR_CREDENTIAL`；
+  审计 `knowledge.connector.sync.started`/
   `sync.completed`/`sync.failed`/`sync.retried`；日志只含 `connectorId`，不含 `externalId`、对象 key、
   bucket 全名或凭据。
 - **处置**：
