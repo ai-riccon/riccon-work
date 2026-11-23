@@ -1,0 +1,252 @@
+
+> riccon-work@0.1.0 test /Users/ricky/.local/share/opencode/worktree/eeee64/task-0170-evidence-2
+> node apps/web/scripts/test.mjs -- --coverage
+
+
+ RUN  v5.1.0 /Users/ricky/.local/share/opencode/worktree/eeee64/task-0170-evidence-2/apps/web
+      Coverage enabled with v8
+
+ ❯ src/pages/chat/components/workspace-sharing-drawer.test.tsx (13 tests | 1 failed) 70372ms
+   ❯ 工作空间共享抽屉 (8)
+     × 创建部门空间成功后更新列表并提示 17087ms
+ ❯ src/pages/admin/tenants/departments/index.test.tsx (13 tests | 1 failed) 66451ms
+   ❯ 平台管理员部门管理页 (13)
+     × 成员抽屉支持加入、移交负责人，并保护当前负责人不被移出 10732ms
+ ❯ src/pages/admin/costs/index.test.tsx (13 tests | 1 failed) 89085ms
+   ❯ 成本页 (13)
+     × 平台管理员按租户聚合：6 位金额/2 位展示、固定文案、未定价/未知/未分桶单列 18840ms
+ ❯ src/pages/knowledge/components/knowledge-drawer.test.tsx (21 tests | 1 failed) 116719ms
+   ❯ 知识库详情与 ACL (8)
+     × 保存 DEPT 范围：必须选择部门，提交整体替换 16250ms
+
+ Test Files  4 failed | 63 passed (67)
+      Tests  4 failed | 580 passed (584)
+   Start at  15:02:32
+   Duration  182.42s (tests 56%, import 29%, environment 9%, setup 4%, transform 1%, worker 1%)
+
+     Import  621 modules were evaluated 6516 times · 539.87s total, 29% of tracked time
+             ~11.10s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
+
+ ELIFECYCLE  Test failed. See above for more details.
+stderr | src/pages/chat/components/workspace-sharing-drawer.test.tsx
+Warning: [antdx: XNotification] Notification API is not supported in this environment.
+
+stderr | src/pages/admin/tenants/departments/index.test.tsx
+Warning: [antdx: XNotification] Notification API is not supported in this environment.
+
+stderr | src/pages/admin/costs/index.test.tsx
+Warning: [antdx: XNotification] Notification API is not supported in this environment.
+
+stderr | src/pages/knowledge/components/knowledge-drawer.test.tsx
+Warning: [antdx: XNotification] Notification API is not supported in this environment.
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/pages/admin/costs/index.test.tsx > 成本页 > 平台管理员按租户聚合：6 位金额/2 位展示、固定文案、未定价/未知/未分桶单列
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/pages/admin/costs/index.test.tsx:236:3
+    234|   });
+    235|
+    236|   it('平台管理员按租户聚合：6 位金额/2 位展示、固定文案、未定价/未知/未分桶单列', async () => {
+       |   ^
+    237|     const api = createCostApi();
+    238|     renderPage(api);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/pages/knowledge/components/knowledge-drawer.test.tsx > 知识库详情与 ACL > 保存 DEPT 范围：必须选择部门，提交整体替换
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/pages/knowledge/components/knowledge-drawer.test.tsx:278:3
+    276|   });
+    277|
+    278|   it('保存 DEPT 范围：必须选择部门，提交整体替换', async () => {
+       |   ^
+    279|     const departments = [makeDepartment()];
+    280|     const api = makeKnowledgeApi({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/pages/chat/components/workspace-sharing-drawer.test.tsx > 工作空间共享抽屉 > 创建部门空间成功后更新列表并提示
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/pages/chat/components/workspace-sharing-drawer.test.tsx:157:3
+    155|   });
+    156|
+    157|   it('创建部门空间成功后更新列表并提示', async () => {
+       |   ^
+    158|     const created = makeSpace({ id: 'workspace-new', name: '新建空间' });
+    159|     const api = makeApi({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  src/pages/admin/tenants/departments/index.test.tsx > 平台管理员部门管理页 > 成员抽屉支持加入、移交负责人，并保护当前负责人不被移出
+AssertionError: expected "vi.fn()" to be called with arguments: [ 'tenant-a', 'dept-sales', 'user-3' ]
+
+Number of calls: 0
+
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"css-dev-only-do-not-override-pbsm9t ant-app css-var-root"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"ant-pro-page-container"[39m
+          [33mdata-testid[39m=[32m"pro-page-container"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-page-header ant-pro-page-container-warp-page-header ant-page-header-ghost"[39m
+            [33mdata-testid[39m=[32m"pro-page-header"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-page-header-heading"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-page-header-heading-left"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"ant-page-header-heading-title"[39m
+                  [33mtitle[39m=[32m"部门管理"[39m
+                [36m>[39m
+                  [0m部门管理[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"ant-page-header-heading-sub-title"[39m
+                [36m>[39m
+                  [36m<span>[39m
+                    [0m目标租户：[0m
+                    [0m示例企业[0m
+                    [0m；只管理组织元数据，不读取租户业务内容。[0m
+                  [36m</span>[39m
+                [36m</span>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"ant-pro-grid-content"[39m
+            [33mdata-testid[39m=[32m"pro-grid-content"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ant-pro-grid-content-children"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"ant-pro-page-container-children-container"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"department-admin-page"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-flex css-var-_r_20_ ant-flex-wrap-wrap ant-flex-align-center ant-flex-justify-space-between"[39m
+                    [33mstyle[39m=[32m"gap: 8px;"[39m
+                  [36m>[39m
+                    [36m<a[39m
+                      [33mclass[39m=[32m"department-back-link"[39m
+                      [33mhref[39m=[32m"/admin/tenants"[39m
+                    [36m>[39m
+                      [0m返回租户列表[0m
+                    [36m</a>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"ant-flex css-var-_r_20_ ant-flex-wrap-wrap"[39m
+                      [33mstyle[39m=[32m"gap: 8px;"[39m
+                    [36m>[39m
+                      [36m<button[39m
+                        [33mclass[39m=[32m"ant-btn css-var-_r_20_ ant-btn-default ant-btn-color-default ant-btn-variant-outlined"[39m
+                        [33mtype[39m=[32m"button"[39m
+                      [36m>[39m
+                        [36m<span>[39m
+                          [0m刷 新[0m
+                        [36m</span>[39m
+                      [36m</button>[39m
+                      [36m<button[39m
+                        [33mclass[39m=[32m"ant-btn css-var-_r_20_ ant-btn-primary ant-btn-color-primary ant-btn-variant-solid"[39m
+                        [33mtype[39m=[32m"button"[39m
+                      [36m>[39m
+                        [36m<span>[39m
+                          [0m创建部门[0m
+                        [36m</span>[39m
+                      [36m</button>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-flex css-var-_r_20_ ant-flex-align-stretch ant-flex-vertical"[39m
+                    [33mstyle[39m=[32m"gap: 12px;"[39m
+                  [36m/>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"ant-flex css-var-_r_20_ ant-flex-align-stretch ant-flex-vertical"[39m
+                    [33mstyle[39m=[32m"gap: 12px;"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"ant-typography ant-typography-secondary css-var-_r_20_"[39m
+                    [36m>[39m
+                      [0m共 [0m
+                      [0m1[0m
+                      [0m 个部门，启用 [0m
+                      [0m1[0m
+                      [0m [0m
+                      [0m个。停用只冻结状态，不移除成员归属； 重新启用后原成员关系恢复。[0m
+                    [36m</span>[39m
+                    [36m<ul[39m
+                      [33maria-label[39m=[32m"部门列表"[39m
+                      [33mclass[39m=[32m"department-list"[39m
+                    [36m>[39m
+                      [36m<li[39m
+                        [33mclass[39m=[32m"department-list-item"[39m
+                      [36m>[39m
+                        [36m<div[39m
+                          [33mclass[39m=[32m"department-list-main"[39m
+                        [36m>[39m
+                          [36m<span[39m
+                            [33mclass[39m=[32m"ant-typography css-var-_r_20_"[39m
+                          [36m>[39m
+                            [36m<strong>[39m
+                              [0m销售部[0m
+                            [36m</strong>[39m
+                          [36m</span>[39m
+                          [36m<span[39m
+                            [33mclass[39m=[32m"ant-tag ant-tag-filled ant-tag-green css-var-_r_20_"[39m
+                            [33mstyle[39m=[32m"color: rgb(35, 120, 4); background: rgb(246, 255, 237); border-color: rgb(183, 235, 143);"[39m
+                          [36m>[39m
+                            [0m启用[0m
+                          [36m</span>[39m
+                          [36m<span[39m
+                            [33mclass[39m=[32m"ant-typography css-var-_r_20_"[39m
+                          [36m>[39m
+                            [0m成员 [0m
+                            [0m2[0m
+                            [0m 人[0m
+                          [36m</span>[39m
+                          [36m<span[39m
+                            [33mclass[39m=[32m"ant-typography ant-typography-secondary css-var-_r_20_"[39m
+                          [36m>[39m
+                            [0m负责人：[0m
+                            [0m李强[0m
+                          [36m</span>[39m
+                        [36m</div>[39m
+                        [36m<div[39m
+                          [33mclass[39m=[32m"ant-flex css-var-_r_20_ ant-flex-wrap-wrap"[39m
+                          [33mstyle[39m=[32m"gap: 8px;"[39m
+                        [36m>[39m
+                          [36m<button[39m
+                            [33maria-label[39m=[32m"成员管理：销售部"[39m
+  ...
+ ❯ src/pages/admin/tenants/departments/index.test.tsx:337:45
+    335|     fireEvent.click(within(drawer).getByRole('button', { name: '加入部门' …
+    336|     await waitFor(() => {
+    337|       expect(api.addTenantDepartmentMember).toHaveBeenCalledWith(
+       |                                             ^
+    338|         'tenant-a',
+    339|         'dept-sales',
+ ❯ runWithExpensiveErrorDiagnosticsDisabled ../../node_modules/.pnpm/@testing-library+dom@10.4.2/node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback ../../node_modules/.pnpm/@testing-library+dom@10.4.2/node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback ../../node_modules/.pnpm/@testing-library+dom@10.4.2/node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+recorded EV-0863 for TASK-0170 (exit 1, 13138 bytes)

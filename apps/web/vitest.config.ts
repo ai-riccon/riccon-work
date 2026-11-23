@@ -29,8 +29,13 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['config/**/*.test.ts', 'src/**/*.test.{ts,tsx}'],
     // 覆盖率插桩后 jsdom 首屏渲染明显变慢；统一放宽单测超时，避免把插桩开销误报为产品失败。
+    // 该超时只吸收插桩开销，不放宽任何断言；根因仍由下面的 worker 上限控制。
     testTimeout: 15_000,
     hookTimeout: 15_000,
+    // 并发上限（TASK-0196）：默认 worker 数在覆盖率插桩 + jsdom + antd 下会让少数重页面用例
+    // 因 CPU 争抢超过 15s；固定 4 个 worker 让合同命令 `pnpm -w test -- --coverage` 可复现。
+    // 这是资源上限，不是 retry/skip/断言放宽；TASK-0160 的 asyncUtilTimeout 3s 保持不变。
+    maxWorkers: 4,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
