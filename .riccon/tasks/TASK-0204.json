@@ -7,11 +7,16 @@
   "status": "planned",
   "write_scope": [
     "apps/api/src/main/java/com/riccon/api/knowledge/connector/**",
-    "apps/worker/src/main/java/**/connector/**"
+    "apps/api/src/test/java/com/riccon/api/knowledge/connector/**",
+    "apps/worker/src/main/java/**/connector/**",
+    "apps/worker/src/test/java/**/connector/**"
   ],
   "acceptance": [
-    "端点允许列表、凭据加密/掩码、首次/增量、删除传播、固定周期 scheduleEnabled、并发同步 409、审计 fail-closed",
-    "真实 S3/OSS 兼容栈测试；无凭据/原文泄露"
+    "连接器 CRUD（defaultVisibility 必填、scheduleEnabled、软删除 documents=KEEP|SOFT_DELETE）、凭据只写不读/信封加密/掩码、test 只读 ListObjectsV2、sync 202 且并发 409；契约 1.5.0-m05b 真实实现，不以 404/deferred 占位",
+    "S3 同步：首次全量、ETag/checksum 增量、未变化只更新 last_seen_at、仅完整 list 传播删除、tombstone 复用 generation+1、单对象/总量/超时/类型白名单限制、部分失败 PARTIAL、重试退避与 last_sync_* 字段",
+    "端点只来自 RICCON_CONNECTOR_ENDPOINTS allowlist；SSRF 校验复用 M04（HTTPS/allowHttp、无 userinfo/query/redirect、禁 169.254/::1/fe80、RFC1918 仅显式 allowlist；主机名/重定向解析到未列入的 RFC1918 一律拒绝）；补私网 DNS 正/反例测试",
+    "审计 knowledge.connector.* 同事务 fail-closed，details 白名单，无凭据/正文/externalId 全量；租户停用时 API 拒绝、worker 再校验",
+    "真实 S3/OSS 兼容栈（RustFS）测试通过；无凭据/原文泄露；scheduleEnabled/next_sync_at 条件领取；不实现 B7b 索引分支，不改 contracts/**"
   ],
   "evidence": [],
   "tools_used": [],
