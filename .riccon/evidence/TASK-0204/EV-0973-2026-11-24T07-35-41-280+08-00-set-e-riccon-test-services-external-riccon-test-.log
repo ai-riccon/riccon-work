@@ -1,0 +1,396 @@
+# command: set -e; RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=builder-b6 ./mvnw -q -T1C -pl apps/api -am -Dtest='ConnectorCrudApiTest,ConnectorCredentialSyncApiTest,ConnectorDocumentReadApiTest,ConnectorExternalIdsTest,KnowledgeAclApiTest,KnowledgeDeleteReindexApiTest,KnowledgeDownloadApiTest' -Dsurefire.failIfNoSpecifiedTests=false test
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-24T07:34:00.974+08:00
+# finished_at: 2026-11-24T07:35:40.399+08:00
+# duration_ms: 99423
+# exit_code: 0
+
+# --- stdout ---
+07:34:28.226 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.KnowledgeDownloadApiTest]: KnowledgeDownloadApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+07:34:28.565 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.KnowledgeDownloadApiTest
+07:34:28.769 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.KnowledgeDownloadApiTest]: KnowledgeDownloadApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+07:34:28.770 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.KnowledgeAclTestSupport]: KnowledgeAclTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+07:34:28.770 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.FileApiTestSupport]: FileApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+07:34:28.771 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiStorageIntegrationTestSupport]: ApiStorageIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+07:34:28.772 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+07:34:28.775 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.KnowledgeDownloadApiTest
+07:34:28.923 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+07:34:28.927 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-24T07:34:32.000+08:00  INFO 3144 --- [riccon-api] [           main] c.r.a.k.KnowledgeDownloadApiTest         : Starting KnowledgeDownloadApiTest using Java 21.0.13 with PID 3144 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-24T07:34:32.002+08:00  INFO 3144 --- [riccon-api] [           main] c.r.a.k.KnowledgeDownloadApiTest         : The following 1 profile is active: "test"
+2026-11-24T07:34:35.181+08:00  INFO 3144 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-24T07:34:35.212+08:00  INFO 3144 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-24T07:34:35.212+08:00  INFO 3144 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-24T07:34:35.295+08:00  INFO 3144 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 3251 ms
+2026-11-24T07:34:35.690+08:00  INFO 3144 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-24T07:34:35.731+08:00  INFO 3144 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-24T07:34:35.774+08:00  INFO 3144 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://127.0.0.1:13306/riccon_test_builder_b6_api?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-24T07:34:36.032+08:00  INFO 3144 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 14 migrations (execution time 00:00.078s)
+2026-11-24T07:34:36.065+08:00  INFO 3144 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_test_builder_b6_api`: 14
+2026-11-24T07:34:36.071+08:00  INFO 3144 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Schema `riccon_test_builder_b6_api` is up to date. No migration necessary.
+2026-11-24T07:34:36.802+08:00  INFO 3144 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-24T07:34:37.119+08:00  INFO 3144 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-24T07:34:37.120+08:00  INFO 3144 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-24T07:34:37.120+08:00  INFO 3144 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-24T07:34:37.120+08:00  INFO 3144 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-24T07:34:37.386+08:00  WARN 3144 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist is empty; mode=DEMO allowLegacyEndpoints=true
+2026-11-24T07:34:37.388+08:00  INFO 3144 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=0
+2026-11-24T07:34:37.443+08:00  INFO 3144 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-test, previousKey=true, fingerprintPepper=true
+2026-11-24T07:34:38.038+08:00  INFO 3144 --- [riccon-api] [           main] c.r.a.k.c.config.ConnectorProperties     : connector endpoint allowlist loaded; enabled=false endpoints=0 syncIntervalMinutes=60
+2026-11-24T07:34:39.849+08:00  INFO 3144 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-24T07:34:39.962+08:00  INFO 3144 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 58906 (http) with context path '/'
+2026-11-24T07:34:39.980+08:00  INFO 3144 --- [riccon-api] [           main] c.r.a.k.KnowledgeDownloadApiTest         : Started KnowledgeDownloadApiTest in 8.598 seconds (process running for 13.802)
+2026-11-24T07:34:40.101+08:00  WARN 3144 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin skipped: platform admin already exists
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-24T07:34:41.431+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-24T07:34:41.432+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-24T07:34:41.434+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-11-24T07:34:44.721+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.file.service.FileService    : file.uploaded tenantId=t4768f478fbbc fileId=01a20ac3-0c70-7d6d-8cae-bbc09b1cab4a sizeBytes=48 format=PDF
+2026-11-24T07:34:45.127+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.file.service.FileService    : file.uploaded tenantId=t4768f478fbbc fileId=01a20ac3-0e6d-736f-93cc-f52eb03fd1f2 sizeBytes=48 format=PDF
+2026-11-24T07:34:46.374+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.file.service.FileService    : file.uploaded tenantId=ta90b581a7ff0 fileId=01a20ac3-134f-7e15-937a-61c9e2ae9fc2 sizeBytes=48 format=PDF
+2026-11-24T07:34:46.575+08:00  INFO 3144 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=24c7c8c9-39e1-4d72-a7b7-2e33b9bc5e1d path=/api/v1/knowledge/documents/01a20ac3-13a0-771b-ad6b-3749ee1b40a0/download
+2026-11-24T07:34:46.639+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=db2fcb79-ba1d-47c8-b109-01cf568cb696 path=/api/v1/knowledge/documents/01a20ac3-13a0-771b-ad6b-3749ee1b40a0/download
+2026-11-24T07:34:46.711+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.file.service.FileService    : file.uploaded tenantId=ta90b581a7ff0 fileId=01a20ac3-149d-77fb-8913-6409faae9a3c sizeBytes=48 format=PDF
+2026-11-24T07:34:46.843+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=7a7aa2dd-d9de-41e6-aa0e-731e175abdea path=/api/v1/knowledge/documents/01a20ac3-14f8-710c-9b6f-321715cd8f3a/download
+2026-11-24T07:34:47.873+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-404 traceId=f4c18238-4490-48bc-b2fa-524832ec832e path=/api/v1/knowledge/documents/01a20ac3-191e-7afd-b636-879d9f1c88d6/download
+2026-11-24T07:34:47.940+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.file.service.FileService    : file.uploaded tenantId=td8670c5bf6d3 fileId=01a20ac3-1969-7843-9e0d-34bb74af7048 sizeBytes=48 format=PDF
+2026-11-24T07:34:48.061+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-404 traceId=a9706c96-48ea-4d32-bc36-ae1c3eb5f2d6 path=/api/v1/knowledge/documents/01a20ac3-19bb-7b34-99d4-bb118eb86094/download
+2026-11-24T07:34:50.762+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.file.service.FileService    : file.uploaded tenantId=t6f5e9785ef7d fileId=01a20ac3-246b-723c-9a75-529792b059d4 sizeBytes=48 format=PDF
+2026-11-24T07:34:50.945+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=7cb855d2-2b3c-4665-9e36-4e50c456a5f7 path=/api/v1/knowledge/documents/01a20ac3-24c5-7481-abb6-6d0e278f167b/download
+2026-11-24T07:34:50.994+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=a75d5c4e-6f14-4a37-8f4d-e300f73ec8eb path=/api/v1/knowledge/documents/01a20ac3-24c5-7481-abb6-6d0e278f167b/download
+2026-11-24T07:34:52.039+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tca628a8889c7 fileId=01a20ac3-296e-7488-b7d9-96098207c5ed sizeBytes=48 format=PDF
+2026-11-24T07:34:53.188+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.file.service.FileService    : file.uploaded tenantId=t617661c223f9 fileId=01a20ac3-2de9-728d-a68a-9b49bb315731 sizeBytes=48 format=PDF
+2026-11-24T07:34:53.368+08:00 ERROR 3144 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request failed code=RICCON-KB-502 traceId=f171505d-12e1-48d6-ac3f-8151a718e264 path=/api/v1/knowledge/documents/01a20ac3-2e3b-7fb0-a7e6-078d96778a57/download
+
+com.riccon.api.knowledge.service.KnowledgeDownloadFailedException: source storage is unavailable
+	at com.riccon.api.knowledge.service.KnowledgeDownloadService.prepare(KnowledgeDownloadService.java:139) ~[classes/:na]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:359) ~[spring-aop-7.0.10.jar:7.0.10]
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:190) ~[spring-aop-7.0.10.jar:7.0.10]
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:158) ~[spring-aop-7.0.10.jar:7.0.10]
+	at org.springframework.transaction.interceptor.TransactionInterceptor$1.proceedWithInvocation(TransactionInterceptor.java:133) ~[spring-tx-7.0.10.jar:7.0.10]
+	at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:371) ~[spring-tx-7.0.10.jar:7.0.10]
+	at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:130) ~[spring-tx-7.0.10.jar:7.0.10]
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:179) ~[spring-aop-7.0.10.jar:7.0.10]
+	at org.springframework.aop.framework.CglibAopProxy$DynamicAdvisedInterceptor.intercept(CglibAopProxy.java:714) ~[spring-aop-7.0.10.jar:7.0.10]
+	at com.riccon.api.knowledge.service.KnowledgeDownloadService$$SpringCGLIB$$0.prepare(<generated>) ~[classes/:na]
+	at com.riccon.api.knowledge.controller.KnowledgeController.download(KnowledgeController.java:232) ~[classes/:na]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:252) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:184) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:117) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:934) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:853) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:86) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:963) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:866) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1000) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.doGet(FrameworkServlet.java:892) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:622) ~[tomcat-embed-core-11.0.27.jar:6.1]
+	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:874) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:710) ~[tomcat-embed-core-11.0.27.jar:6.1]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:132) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:59) ~[tomcat-embed-websocket-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:108) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.FilterChainProxy.lambda$doFilterInternal$2(FilterChainProxy.java:235) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$FilterObservation$SimpleFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:491) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:353) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator.lambda$wrapSecured$0(ObservationFilterChainDecorator.java:84) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:131) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.intercept.AuthorizationFilter.doFilter(AuthorizationFilter.java:101) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:126) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:120) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:132) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:86) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AnonymousAuthenticationFilter.doFilter(AnonymousAuthenticationFilter.java:101) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter.doFilter(SecurityContextHolderAwareRequestFilter.java:181) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:246) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:240) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter.doFilterInternal(OAuth2AuthorizationRequestRedirectFilter.java:195) ~[spring-security-oauth2-client-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.csrf.CsrfFilter.doFilterInternal(CsrfFilter.java:118) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at com.riccon.api.web.OriginCheckFilter.doFilterInternal(OriginCheckFilter.java:53) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:91) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:76) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at com.riccon.api.auth.controller.TenantContextFilter.doFilterInternal(TenantContextFilter.java:159) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$0(ObservationFilterChainDecorator.java:336) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:237) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:195) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.ServletRequestPathFilter.doFilter(ServletRequestPathFilter.java:52) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.config.annotation.web.configuration.WebSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebSecurityConfiguration.java:317) ~[spring-security-config-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.session.web.http.SessionRepositoryFilter.doFilterInternal(SessionRepositoryFilter.java:143) ~[spring-session-core-4.1.1.jar:4.1.1]
+	at org.springframework.session.web.http.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:82) ~[spring-session-core-4.1.1.jar:4.1.1]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:110) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:199) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at com.riccon.api.web.TraceIdFilter.doFilterInternal(TraceIdFilter.java:52) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:164) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:77) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:540) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:86) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:71) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:347) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:411) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:71) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:1308) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:2202) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:74) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:947) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:481) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:74) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+
+2026-11-24T07:34:53.408+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.knowledge.KnowledgeDeleteReindexApiTest]: KnowledgeDeleteReindexApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:34:53.410+08:00  INFO 3144 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.KnowledgeDeleteReindexApiTest
+2026-11-24T07:34:53.411+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.knowledge.KnowledgeDeleteReindexApiTest]: KnowledgeDeleteReindexApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:34:53.412+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.knowledge.KnowledgeAclTestSupport]: KnowledgeAclTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:34:53.412+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.FileApiTestSupport]: FileApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:34:53.413+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiStorageIntegrationTestSupport]: ApiStorageIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:34:53.413+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:34:53.417+08:00  INFO 3144 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.KnowledgeDeleteReindexApiTest
+2026-11-24T07:34:55.777+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-8] c.riccon.api.file.service.FileService    : file.uploaded tenantId=t3a78649bd130 fileId=01a20ac3-3809-7145-b640-be5cd72539f6 sizeBytes=48 format=PDF
+2026-11-24T07:34:55.903+08:00  INFO 3144 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.file.service.FileService    : file.uploaded tenantId=t3a78649bd130 fileId=01a20ac3-3887-76ff-8cd3-de91b1275c85 sizeBytes=48 format=PDF
+2026-11-24T07:34:56.014+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=f81bc6b4-8511-4e33-942a-57b17b6fb988 path=/api/v1/knowledge/documents/01a20ac3-38d3-7e09-a352-f4d21a4dbf95
+2026-11-24T07:34:56.057+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=149307d0-283e-4afd-8e31-78cc831938d7 path=/api/v1/knowledge/documents/01a20ac3-38d3-7e09-a352-f4d21a4dbf95
+2026-11-24T07:34:56.098+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=b17a2a37-5c1e-46b9-9ce8-6b68ca750d13 path=/api/v1/knowledge/documents/01a20ac3-3856-7879-8a53-273a1f7e93ed
+2026-11-24T07:34:56.136+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=53d401cd-efd1-495e-b093-cfcfcb652f5e path=/api/v1/knowledge/documents/01a20ac3-3856-7879-8a53-273a1f7e93ed
+2026-11-24T07:34:58.391+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.file.service.FileService    : file.uploaded tenantId=td275efdd5143 fileId=01a20ac3-423e-7b29-bbe3-0ed0738111ae sizeBytes=48 format=PDF
+2026-11-24T07:34:58.506+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.file.service.FileService    : file.uploaded tenantId=td275efdd5143 fileId=01a20ac3-42b5-7086-966b-f6aac2661d76 sizeBytes=48 format=PDF
+2026-11-24T07:34:58.627+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=65fc28f4-e4d3-42e1-b73e-4147fcdc1ca5 path=/api/v1/knowledge/documents/01a20ac3-4288-7dbe-9cb8-d4ef2b0bf6a2/reindex
+2026-11-24T07:34:58.667+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=ef03a869-f18f-4df1-9b9d-5e8250056dee path=/api/v1/knowledge/documents/01a20ac3-42fc-7c36-b591-5c2b1c529a75/reindex
+2026-11-24T07:34:58.718+08:00  INFO 3144 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=2c8f98ff-4011-40a4-9e18-69e551486eda path=/api/v1/knowledge/documents/01a20ac3-4288-7dbe-9cb8-d4ef2b0bf6a2/reindex
+2026-11-24T07:34:58.768+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=c55308ba-e94c-4d32-92a1-c73a6fba9751 path=/api/v1/knowledge/documents/01a20ac3-4288-7dbe-9cb8-d4ef2b0bf6a2/reindex
+2026-11-24T07:34:59.788+08:00  INFO 3144 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.file.service.FileService    : file.uploaded tenantId=tc3de2a27ccc0 fileId=01a20ac3-47b3-728d-a8fb-d55b1fc2000f sizeBytes=48 format=PDF
+2026-11-24T07:34:59.954+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=609eed20-371d-4796-a789-ca14b016fa3f path=/api/v1/knowledge/documents/01a20ac3-4804-7afb-8dbf-65bb4bf5beb0
+2026-11-24T07:35:01.047+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.file.service.FileService    : file.uploaded tenantId=te331b9ffc6bd fileId=01a20ac3-4ca1-76f1-8051-f96c53e3eead sizeBytes=48 format=PDF
+2026-11-24T07:35:01.222+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-409 traceId=d5136e8b-0797-4755-88e2-b8a72a2f92c8 path=/api/v1/knowledge/documents/01a20ac3-4ce6-7a39-9735-792bf528512c/reindex
+2026-11-24T07:35:01.353+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-409 traceId=0c2a85db-49f9-488a-8684-8046c531de58 path=/api/v1/knowledge/documents/01a20ac3-4ce6-7a39-9735-792bf528512c/reindex
+2026-11-24T07:35:01.454+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-409 traceId=e5ee5c39-5147-4424-bbfc-142802b221d3 path=/api/v1/knowledge/documents/01a20ac3-4ce6-7a39-9735-792bf528512c/reindex
+2026-11-24T07:35:01.511+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.file.service.FileService    : file.uploaded tenantId=te331b9ffc6bd fileId=01a20ac3-4e71-7237-83bf-c7d2801b5f6b sizeBytes=48 format=PDF
+2026-11-24T07:35:01.618+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=16fc0e12-7e3d-4aae-92db-8b87792ad877 path=/api/v1/knowledge/documents/01a20ac3-4ebc-7e85-be9e-d59a74b958ea/reindex
+2026-11-24T07:35:01.642+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.knowledge.KnowledgeAclApiTest]: KnowledgeAclApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:35:01.643+08:00  INFO 3144 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.KnowledgeAclApiTest
+2026-11-24T07:35:01.644+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.knowledge.KnowledgeAclApiTest]: KnowledgeAclApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:35:01.644+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.knowledge.KnowledgeAclTestSupport]: KnowledgeAclTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:35:01.644+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.FileApiTestSupport]: FileApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:35:01.644+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiStorageIntegrationTestSupport]: ApiStorageIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:35:01.645+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:35:01.647+08:00  INFO 3144 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.KnowledgeAclApiTest
+2026-11-24T07:35:04.391+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.file.service.FileService    : file.uploaded tenantId=t1967214c86ad fileId=01a20ac3-599c-7831-ac2d-39adb7bfdc3d sizeBytes=48 format=PDF
+2026-11-24T07:35:04.636+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.file.service.FileService    : file.uploaded tenantId=t1967214c86ad fileId=01a20ac3-5a8c-7a27-b165-4219e96735ce sizeBytes=48 format=PDF
+2026-11-24T07:35:04.837+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=288f3d21-b379-4426-8553-97f1e7d1cde8 path=/api/v1/knowledge/documents/01a20ac3-5a24-71f0-9bf8-73ba067c56ba/acl
+2026-11-24T07:35:04.965+08:00  INFO 3144 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=b2dbc0bd-9d00-4081-93ac-a8905f522248 path=/api/v1/knowledge/documents/01a20ac3-5b17-7b6b-bb3c-e2240aaaa058/acl
+2026-11-24T07:35:06.209+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=ade8896f-2076-42df-b654-4f020a0c8cc9 path=/api/v1/knowledge/documents/01a20ac3-5a24-71f0-9bf8-73ba067c56ba
+2026-11-24T07:35:06.258+08:00  INFO 3144 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=5116e387-fd43-4d48-9c5c-d153ac9f34fa path=/api/v1/knowledge/documents/01a20ac3-5a24-71f0-9bf8-73ba067c56ba/acl
+2026-11-24T07:35:06.307+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=bb710ba6-147c-4b07-9a25-8f698a3c6367 path=/api/v1/knowledge/documents/01a20ac3-5a24-71f0-9bf8-73ba067c56ba
+2026-11-24T07:35:06.363+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=adaa28a1-f682-43c4-9f09-30c11df553fe path=/api/v1/knowledge/documents/01a20ac3-5a24-71f0-9bf8-73ba067c56ba/acl
+2026-11-24T07:35:06.435+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=6c4d7c1d-69a4-4967-a060-c1d5310d8ae7 path=/api/v1/knowledge/documents/01a20ac3-5a24-71f0-9bf8-73ba067c56ba/acl
+2026-11-24T07:35:06.486+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=f4f49d62-31aa-43df-bc60-93a9db96d333 path=/api/v1/knowledge/documents/01a20ac3-5a24-71f0-9bf8-73ba067c56ba/acl
+2026-11-24T07:35:06.552+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=1e8c80e2-19ba-4dfa-af66-dbdd8e009a4d path=/api/v1/knowledge/documents/01a20ac3-5a24-71f0-9bf8-73ba067c56ba/acl
+2026-11-24T07:35:06.642+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=1957718b-9711-4f5a-96b3-8f4bf861e7be path=/api/v1/knowledge/documents/01a20ac3-5a24-71f0-9bf8-73ba067c56ba/acl
+2026-11-24T07:35:06.735+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=60de22bb-a4b6-44a7-82e0-1eb76d2cff11 path=/api/v1/knowledge/documents/01a20ac3-5a24-71f0-9bf8-73ba067c56ba/acl
+2026-11-24T07:35:06.812+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=2cfd6f66-8a8f-4aba-8127-9e44b801ee59 path=/api/v1/knowledge/documents/01a20ac3-5a24-71f0-9bf8-73ba067c56ba/acl
+2026-11-24T07:35:06.891+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=24e7d29c-96bd-4688-b439-d8a532db8396 path=/api/v1/knowledge/documents/01a20ac3-5a24-71f0-9bf8-73ba067c56ba/acl
+2026-11-24T07:35:06.970+08:00  INFO 3144 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=db4b6e16-641a-4722-a5da-3293c1aa0cf4 path=/api/v1/knowledge/documents/01a20ac3-5a24-71f0-9bf8-73ba067c56ba/acl
+2026-11-24T07:35:07.060+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=db9956cc-b309-4b48-9e0d-0fe1883cdff6 path=/api/v1/knowledge/documents/01a20ac3-5a24-71f0-9bf8-73ba067c56ba/acl
+2026-11-24T07:35:11.498+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=1ea82d7b-6c4b-4045-8e9b-d264e522294e path=/api/v1/knowledge/documents/01a20ac3-5a24-71f0-9bf8-73ba067c56ba/acl
+2026-11-24T07:35:11.609+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=c3335611-5d05-43a7-a07a-fd973cf621af path=/api/v1/knowledge/documents/01a20ac3-5a24-71f0-9bf8-73ba067c56ba
+2026-11-24T07:35:11.659+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=6dbaab75-58ec-462c-ae53-0458e16b5182 path=/api/v1/knowledge/documents/01a20ac3-5a24-71f0-9bf8-73ba067c56ba/reindex
+2026-11-24T07:35:12.670+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.file.service.FileService    : file.uploaded tenantId=t70b9dcbacd4c fileId=01a20ac3-7a04-778d-ac0e-8aaf845dca6d sizeBytes=48 format=PDF
+2026-11-24T07:35:14.133+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-8] c.riccon.api.file.service.FileService    : file.uploaded tenantId=t2da9c2648861 fileId=01a20ac3-7fb4-7e8a-ae6c-79c044870b5f sizeBytes=48 format=PDF
+2026-11-24T07:35:14.371+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=39c685f0-3abf-4095-bdad-533122b8ecbc path=/api/v1/knowledge/documents/01a20ac3-8018-74f3-b197-4611e9e29c41
+2026-11-24T07:35:14.413+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=e24ac40a-afcf-4288-b579-d24f5dcc144e path=/api/v1/knowledge/documents/01a20ac3-8018-74f3-b197-4611e9e29c41
+2026-11-24T07:35:14.538+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=de5f0f41-f0fc-447c-9ce8-f188f10ee1c4 path=/api/v1/knowledge/documents/01a20ac3-8018-74f3-b197-4611e9e29c41/acl
+2026-11-24T07:35:14.579+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=2e0e740b-0f7b-4bf5-82f8-cd6f67ab231a path=/api/v1/knowledge/documents/01a20ac3-8018-74f3-b197-4611e9e29c41/acl
+2026-11-24T07:35:14.680+08:00  INFO 3144 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=79ce1644-2d05-4ade-a22c-21631e7fcfc5 path=/api/v1/knowledge/documents/01a20ac3-8018-74f3-b197-4611e9e29c41
+2026-11-24T07:35:16.259+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.file.service.FileService    : file.uploaded tenantId=td7fbc61d0e19 fileId=01a20ac3-880c-750b-913b-62cc4257a954 sizeBytes=48 format=PDF
+2026-11-24T07:35:16.475+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=42e03d08-b13a-48dc-8f5a-cbcf8b9ea400 path=/api/v1/knowledge/documents/01a20ac3-8857-74dc-ad34-70dc1c68bf30
+2026-11-24T07:35:16.593+08:00  INFO 3144 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=ee9d0a6c-f69d-4952-9dfb-8c266fd79330 path=/api/v1/knowledge/documents/01a20ac3-8857-74dc-ad34-70dc1c68bf30
+2026-11-24T07:35:16.827+08:00  INFO 3144 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=5a9b7238-4191-4760-9d2b-5f3fdf962b8f path=/api/v1/knowledge/documents/01a20ac3-8857-74dc-ad34-70dc1c68bf30
+2026-11-24T07:35:17.827+08:00  INFO 3144 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.file.service.FileService    : file.uploaded tenantId=t2b2f3cc5e9fb fileId=01a20ac3-8e2b-74ef-889a-b0d4e95938b4 sizeBytes=48 format=PDF
+2026-11-24T07:35:18.089+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorCredentialSyncApiTest]: ConnectorCredentialSyncApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:35:18.173+08:00  INFO 3144 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.connector.ConnectorCredentialSyncApiTest
+2026-11-24T07:35:18.174+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorCredentialSyncApiTest]: ConnectorCredentialSyncApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:35:18.175+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorApiTestSupport]: ConnectorApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:35:18.175+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:35:18.176+08:00  INFO 3144 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.connector.ConnectorCredentialSyncApiTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-24T07:35:18.264+08:00  INFO 3144 --- [riccon-api] [           main] c.r.a.k.c.ConnectorCredentialSyncApiTest : Starting ConnectorCredentialSyncApiTest using Java 21.0.13 with PID 3144 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-24T07:35:18.264+08:00  INFO 3144 --- [riccon-api] [           main] c.r.a.k.c.ConnectorCredentialSyncApiTest : The following 1 profile is active: "test"
+2026-11-24T07:35:19.007+08:00  INFO 3144 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-24T07:35:19.008+08:00  INFO 3144 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-24T07:35:19.008+08:00  INFO 3144 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-24T07:35:19.027+08:00  INFO 3144 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 761 ms
+2026-11-24T07:35:19.063+08:00  INFO 3144 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Starting...
+2026-11-24T07:35:19.077+08:00  INFO 3144 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Start completed.
+2026-11-24T07:35:19.091+08:00  INFO 3144 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://127.0.0.1:13306/riccon_test_builder_b6_api?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-24T07:35:19.143+08:00  INFO 3144 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 14 migrations (execution time 00:00.026s)
+2026-11-24T07:35:19.162+08:00  INFO 3144 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_test_builder_b6_api`: 14
+2026-11-24T07:35:19.165+08:00  INFO 3144 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Schema `riccon_test_builder_b6_api` is up to date. No migration necessary.
+2026-11-24T07:35:19.586+08:00  INFO 3144 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-24T07:35:19.651+08:00  INFO 3144 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-24T07:35:19.651+08:00  INFO 3144 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-24T07:35:19.651+08:00  INFO 3144 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-24T07:35:19.651+08:00  INFO 3144 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-24T07:35:19.673+08:00  WARN 3144 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist is empty; mode=DEMO allowLegacyEndpoints=true
+2026-11-24T07:35:19.673+08:00  INFO 3144 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=0
+2026-11-24T07:35:19.680+08:00  INFO 3144 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-test, previousKey=true, fingerprintPepper=true
+2026-11-24T07:35:19.738+08:00  INFO 3144 --- [riccon-api] [           main] c.r.a.k.c.config.ConnectorProperties     : connector endpoint allowlist loaded; enabled=true endpoints=2 syncIntervalMinutes=60
+2026-11-24T07:35:20.029+08:00  INFO 3144 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-24T07:35:20.050+08:00  INFO 3144 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 59042 (http) with context path '/'
+2026-11-24T07:35:20.055+08:00  INFO 3144 --- [riccon-api] [           main] c.r.a.k.c.ConnectorCredentialSyncApiTest : Started ConnectorCredentialSyncApiTest in 1.833 seconds (process running for 53.876)
+2026-11-24T07:35:20.057+08:00  WARN 3144 --- [riccon-api] [           main] c.r.api.config.KnowledgeAclStartupCheck  : RICCON-KB-001 knowledge acl enforcement disabled; DEPT/USERS documents are visible to all tenant members until RICCON_KB_ACL_ENFORCEMENT_ENABLED=true (ADR-0023 5.8)
+2026-11-24T07:35:20.062+08:00  WARN 3144 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin skipped: platform admin already exists
+2026-11-24T07:35:20.073+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-1] o.a.c.c.C.[Tomcat-1].[localhost].[/]     : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-24T07:35:20.074+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-24T07:35:20.075+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-11-24T07:35:22.098+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-409 traceId=ac902bca-778d-4ae2-abf9-1480e3d39547 path=/api/v1/knowledge/connectors/01a20ac3-9e93-7d2b-a0e1-b34f700b18a5/sync
+2026-11-24T07:35:23.053+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=5e2fac66-8778-4b6f-aa80-9b074ac62086 path=/api/v1/knowledge/connectors/01a20ac3-a28d-7315-8505-d8a1ddd1ba02/credential
+2026-11-24T07:35:23.079+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=3a2cc533-de86-4dd5-9b8f-0ce5f2540521 path=/api/v1/knowledge/connectors/01a20ac3-a28d-7315-8505-d8a1ddd1ba02/credential
+2026-11-24T07:35:24.536+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorDocumentReadApiTest]: ConnectorDocumentReadApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:35:24.538+08:00  INFO 3144 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.connector.ConnectorDocumentReadApiTest
+2026-11-24T07:35:24.539+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorDocumentReadApiTest]: ConnectorDocumentReadApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:35:24.539+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorApiTestSupport]: ConnectorApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:35:24.539+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:35:24.541+08:00  INFO 3144 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.connector.ConnectorDocumentReadApiTest
+2026-11-24T07:35:25.540+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorCrudApiTest]: ConnectorCrudApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:35:25.541+08:00  INFO 3144 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+2026-11-24T07:35:25.542+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorCrudApiTest]: ConnectorCrudApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:35:25.542+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorApiTestSupport]: ConnectorApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:35:25.542+08:00  INFO 3144 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T07:35:25.543+08:00  INFO 3144 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+2026-11-24T07:35:26.447+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=b2976787-05ba-4e2b-baa3-98e81425d7d4 path=/api/v1/knowledge/connectors
+2026-11-24T07:35:26.474+08:00  INFO 3144 --- [riccon-api] [-auto-2-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=d7435d7a-fa6a-4ba4-ad19-9a7ccb6e8d1a path=/api/v1/knowledge/connectors
+2026-11-24T07:35:26.503+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=8bb4bf97-37f5-4bf6-9015-e3b0c3077466 path=/api/v1/knowledge/connectors/01a20ac3-afcf-7144-98df-1746c23fd627/items
+2026-11-24T07:35:27.372+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=9c8fa796-f85a-4b65-b86a-97321dc32c69 path=/api/v1/knowledge/connectors/01a20ac3-afcf-7144-98df-1746c23fd627
+2026-11-24T07:35:27.407+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=c698f438-6901-43de-8336-d98990943ee8 path=/api/v1/knowledge/connectors/01a20ac3-afcf-7144-98df-1746c23fd627
+2026-11-24T07:35:27.436+08:00  INFO 3144 --- [riccon-api] [-auto-2-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=76c31f9a-0a52-4ab1-91d8-7ce59cc8be27 path=/api/v1/knowledge/connectors/01a20ac3-afcf-7144-98df-1746c23fd627/test
+2026-11-24T07:35:27.469+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=9893e054-9fb0-4b52-9ebb-f234e9553ad8 path=/api/v1/knowledge/connectors/01a20ac3-afcf-7144-98df-1746c23fd627/sync
+2026-11-24T07:35:27.504+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=ab01118a-f13c-4d12-aec1-af0889b2db8f path=/api/v1/knowledge/connectors/01a20ac3-afcf-7144-98df-1746c23fd627/items
+2026-11-24T07:35:28.470+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=8cc7a4c3-8b9e-4137-9b50-d15a26275954 path=/api/v1/knowledge/connectors/01a20ac3-b779-7836-a874-b0e3343b7133
+2026-11-24T07:35:29.355+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=9824a209-c3d5-4c40-8cca-46405b835db9 path=/api/v1/knowledge/connectors
+2026-11-24T07:35:29.384+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=3e63e594-0a6b-41d2-90d8-5fab4cc25844 path=/api/v1/knowledge/connectors
+2026-11-24T07:35:29.474+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-409 traceId=39794afa-a90c-41d8-95d8-cb4db5af8b3c path=/api/v1/knowledge/connectors
+2026-11-24T07:35:29.512+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=8ebc2b77-aacb-43f9-b010-ab1ca9f21160 path=/api/v1/knowledge/connectors
+2026-11-24T07:35:31.590+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=cba1f1f8-b174-4ad2-9d6e-d35a6dd91d16 path=/api/v1/knowledge/connectors/01a20ac3-c3bd-7766-84a5-a3e42faedfaf
+2026-11-24T07:35:32.537+08:00  INFO 3144 --- [riccon-api] [-auto-2-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=dd28cf71-de04-4fba-966a-90c52d173463 path=/api/v1/knowledge/connectors/01a20ac3-c76d-74f3-ba6b-93364c599081
+2026-11-24T07:35:32.564+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-400 traceId=41a86576-bead-4774-a1e0-d484bd79a7f9 path=/api/v1/knowledge/connectors/01a20ac3-c76d-74f3-ba6b-93364c599081
+2026-11-24T07:35:34.463+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-KB-409 traceId=9a363a4c-a628-48f0-8d4b-ab682fe71d9d path=/api/v1/knowledge/connectors/01a20ac3-cf17-7de2-9587-9680cb417eca
+2026-11-24T07:35:35.554+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=cf6b5107-faad-4791-a783-905cd541d55d path=/api/v1/knowledge/connectors
+2026-11-24T07:35:35.577+08:00  INFO 3144 --- [riccon-api] [-auto-2-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=35ef705f-3875-49e6-ae5c-743e08858b79 path=/api/v1/knowledge/connectors
+2026-11-24T07:35:35.598+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=63d13fbd-57f8-4807-82bf-841958b21613 path=/api/v1/knowledge/connectors/db3e09be-ca3d-4f1e-ae47-8a33faf26009
+2026-11-24T07:35:35.621+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=cfb5a1a0-a6ab-495f-bdc0-ab7a84edcf62 path=/api/v1/knowledge/connectors/db3e09be-ca3d-4f1e-ae47-8a33faf26009
+2026-11-24T07:35:35.643+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=04c6c636-a9cc-4621-8151-faf2829e8274 path=/api/v1/knowledge/connectors/db3e09be-ca3d-4f1e-ae47-8a33faf26009/credential
+2026-11-24T07:35:35.664+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=4279ee29-851a-47cf-8863-2c3305c46acc path=/api/v1/knowledge/connectors/db3e09be-ca3d-4f1e-ae47-8a33faf26009/test
+2026-11-24T07:35:35.685+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=ffe20e09-0001-4e98-9cd0-77a86bb2ef22 path=/api/v1/knowledge/connectors/db3e09be-ca3d-4f1e-ae47-8a33faf26009/sync
+2026-11-24T07:35:35.707+08:00  INFO 3144 --- [riccon-api] [o-auto-2-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=240efb92-518d-44c2-b531-d2a1f5c24787 path=/api/v1/knowledge/connectors/db3e09be-ca3d-4f1e-ae47-8a33faf26009/items
+
+# --- stderr ---
+
