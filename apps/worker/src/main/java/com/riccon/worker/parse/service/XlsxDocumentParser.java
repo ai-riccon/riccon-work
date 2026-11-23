@@ -220,8 +220,7 @@ public class XlsxDocumentParser implements DocumentParser {
                     state.warn(ParseWarningCodes.SHEETS_TRUNCATED);
                 }
                 SheetCollector collector = new SheetCollector(sheetName, indexContent, limits, state);
-                parseSheetXml(
-                        sheetStream, styles, sharedStrings, info.use1904(), collector, limits.maxChars());
+                parseSheetXml(sheetStream, styles, sharedStrings, info.use1904(), collector, limits.maxChars());
                 collector.endSheet();
                 state.addSheet(collector.summary());
                 visibleIndex++;
@@ -316,8 +315,7 @@ public class XlsxDocumentParser implements DocumentParser {
             int maxCellChars)
             throws IOException, SAXException, ParserConfigurationException {
         XMLReader xmlReader = XMLHelper.newXMLReader();
-        xmlReader.setContentHandler(
-                new SheetXmlHandler(styles, sharedStrings, use1904, collector, maxCellChars));
+        xmlReader.setContentHandler(new SheetXmlHandler(styles, sharedStrings, use1904, collector, maxCellChars));
         xmlReader.parse(new InputSource(sheetStream));
     }
 
