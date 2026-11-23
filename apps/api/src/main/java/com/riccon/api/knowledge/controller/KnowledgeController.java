@@ -2,7 +2,9 @@ package com.riccon.api.knowledge.controller;
 
 import com.riccon.api.auth.service.AuthService;
 import com.riccon.api.error.BadRequestException;
+import com.riccon.api.error.ForbiddenException;
 import com.riccon.api.identity.domain.CurrentUser;
+import com.riccon.api.identity.domain.PlatformTenant;
 import com.riccon.api.identity.domain.RequirePermission;
 import com.riccon.api.identity.domain.RicconPrincipal;
 import com.riccon.api.identity.dto.PageQuery;
@@ -50,8 +52,9 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
  *
  * <p>读取要求 {@code knowledge.read}；登记要求 {@code knowledge.manage}。M05 起 ACL GET/PUT、删除与重索引
  * 的资源判定顺序是“先按租户 + ACL 谓词取文档，不可见统一 404；可见但非创建人且无管理能力才 403”
- * （ADR-0023 第 5.4 节、REV-TASK-0165-001 F-001）。因此这些端点的路由门统一为 {@code knowledge.read}，
- * 管理能力在服务层按文档判定；{@code x-riccon-permission} 仍描述业务能力语义。
+ * （ADR-0023 第 5.4 节、REV-TASK-0165-001 F-001）。知识读端点因此不设路由级 {@code knowledge.read}
+ * 注释，而在 {@link #actor(Authentication)} 统一校验权限；平台管理员（无租户知识权限）可到达服务层并按
+ * 跨租户统一 404 返回，避免存在性探测。{@code x-riccon-permission} 仍描述业务能力语义。
  *
  * <p>下载由服务端流式代理，每次请求重判 ACL；不返回对象 key、预签名 URL 或存储端点。
  */
@@ -113,7 +116,6 @@ public class KnowledgeController {
      * @return 文档分页
      */
     @GetMapping
-    @RequirePermission(PermissionCodes.KNOWLEDGE_READ)
     public KnowledgeDocumentPageResponse list(
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
@@ -160,7 +162,6 @@ public class KnowledgeController {
      * @return 文档
      */
     @GetMapping("/{documentId}")
-    @RequirePermission(PermissionCodes.KNOWLEDGE_READ)
     public KnowledgeDocumentResponse get(
             @PathVariable UUID documentId, Authentication authentication, HttpServletRequest request) {
         KnowledgeActor actor = actor(authentication);
@@ -176,7 +177,6 @@ public class KnowledgeController {
      * @return ACL
      */
     @GetMapping("/{documentId}/acl")
-    @RequirePermission(PermissionCodes.KNOWLEDGE_READ)
     public KnowledgeDocumentAclResponse getAcl(@PathVariable UUID documentId, Authentication authentication) {
         return aclService.get(actor(authentication), documentId);
     }
@@ -191,7 +191,6 @@ public class KnowledgeController {
      * @return 更新后的文档
      */
     @PutMapping("/{documentId}/acl")
-    @RequirePermission(PermissionCodes.KNOWLEDGE_READ)
     public KnowledgeDocumentResponse putAcl(
             @PathVariable UUID documentId,
             @RequestBody KnowledgeDocumentAclUpdate body,
@@ -214,7 +213,6 @@ public class KnowledgeController {
      */
     @DeleteMapping("/{documentId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @RequirePermission(PermissionCodes.KNOWLEDGE_READ)
     public void delete(@PathVariable UUID documentId, Authentication authentication, HttpServletRequest request) {
         lifecycleService.delete(
                 actor(authentication), documentId, RequestContext.traceId(request), RequestContext.requestId(request));
@@ -229,7 +227,6 @@ public class KnowledgeController {
      * @return 源文件字节流
      */
     @GetMapping("/{documentId}/download")
-    @RequirePermission(PermissionCodes.KNOWLEDGE_READ)
     public ResponseEntity<StreamingResponseBody> download(
             @PathVariable UUID documentId, Authentication authentication, HttpServletRequest request) {
         KnowledgeDownload download = downloadService.prepare(
@@ -260,7 +257,6 @@ public class KnowledgeController {
      */
     @PostMapping("/{documentId}/reindex")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    @RequirePermission(PermissionCodes.KNOWLEDGE_READ)
     public KnowledgeDocumentResponse reindex(
             @PathVariable UUID documentId,
             @RequestParam(required = false) String force,
@@ -281,6 +277,12 @@ public class KnowledgeController {
     private KnowledgeActor actor(Authentication authentication) {
         RicconPrincipal principal = AuthenticationSupport.requirePrincipal(authentication);
         CurrentUser current = authService.loadCurrentUser(principal);
+        // 平台管理员没有租户知识库权限，但按 ADR-0023 5.4 持有租户文档 ID 时必须返回统一 404；
+        // 因此知识读端点不设路由级 knowledge.read 门，由服务层先按租户/ACL 取文档。
+        if (!current.hasPermission(PermissionCodes.KNOWLEDGE_READ)
+                && !PlatformTenant.ID.equals(principal.tenantId())) {
+            throw new ForbiddenException(PermissionCodes.KNOWLEDGE_READ);
+        }
         return new KnowledgeActor(
                 principal.userId(),
                 principal.tenantId(),

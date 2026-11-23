@@ -168,6 +168,9 @@ class KnowledgeAclApiTest extends KnowledgeAclTestSupport {
         TenantFixture otherTenant = tenantFixture();
         assertThat(getDocument(otherTenant.member(), tenantDocId).status()).isEqualTo(404);
         assertThat(getAcl(otherTenant.member(), tenantDocId).status()).isEqualTo(404);
+        // 平台管理员持有租户文档 ID：按跨租户统一 404，不返回 403 造成存在性探测。
+        assertThat(getDocument(fixture.platform(), tenantDocId).status()).isEqualTo(404);
+        assertThat(getAcl(fixture.platform(), tenantDocId).status()).isEqualTo(404);
 
         List<String> tooMany = new ArrayList<>();
         for (int index = 0; index < 201; index++) {
