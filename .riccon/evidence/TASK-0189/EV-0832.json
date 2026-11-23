@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0832",
+  "task_id": "TASK-0189",
+  "command": "LOCK=\"${TMPDIR:-/tmp}/riccon-maven.lock\"; while ! mkdir \"$LOCK\" 2>/dev/null; do sleep 5; done; trap 'rmdir \"$LOCK\" 2>/dev/null || true' EXIT; ./mvnw -q -T1C -pl apps/worker -am test -Dtest='XlsxDocumentParser*Test' -Dsurefire.failIfNoSpecifiedTests=false",
+  "manual": false,
+  "commit": "24cf85b289145ef2c5df96c5df738389558efa07",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0189/EV-0832-2026-11-23T11-54-50-980+08-00-lock-tmpdir-tmp-riccon-maven-lock-while-mkdir-lo.log",
+  "output_sha256": "128f9e513083808d207d2c858453296601e1c42afa15951f4206a32986b58b8c",
+  "output_bytes": 917,
+  "agent": "riccon/builder-kb-excel",
+  "cwd": "/private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-b4-0189-evidence-wt",
+  "started_at": "2026-11-23T11:54:28.123+08:00",
+  "finished_at": "2026-11-23T11:54:50.175+08:00",
+  "duration_ms": 22050,
+  "note": "M05-B4 修复：sst 缺 count/uniqueCount 按实际 <si> 解析；row 缺 r 顺序回退；27 测试（隔离 worktree，同 HEAD）",
+  "recorded_at": "2026-11-23T11:54:50.983+08:00"
+}

@@ -24,14 +24,14 @@ dod_not_applicable:
   - docs
 dod_note: >-
   任务级评审只判 B5 的 OCR 解析链与资源控制；coverage/E2E/a11y/security/perf 属 M05-V1/V2 与 gate。
-  build 由 EV-0825 的 package 与 EV-0830 的 test 编译支撑；tests 由 EV-0830（97 用例）与 EV-0825
+  build 由 EV-0825 的 package 与 EV-0832 的 test 编译支撑；tests 由 EV-0832（97 用例）与 EV-0825
   （worker 全量）支撑。acceptance 因 F-001（P1，资源上限未阻止 OOM）判 false。
 evidence:
   - EV-0825
-  - EV-0830
+  - EV-0832
 reviewed_evidence:
   - EV-0825
-  - EV-0830
+  - EV-0832
 findings:
   - id: F-001
     severity: P1
@@ -161,17 +161,17 @@ findings:
     owner: "riccon/lead"
     due: "M05 gate 前"
     accepted_reason: >-
-      EV-0830 的 commit 是 6c61754、dirty=false，命令与产出的 97 个用例可复核；主树被 B3/B4 WIP 占用时
+      EV-0832 的 commit 是 6c61754、dirty=false，命令与产出的 97 个用例可复核；主树被 B3/B4 WIP 占用时
       用隔离 worktree 取证是已批准的临时方式，但仍是流程例外。Lead 需要在 M05 gate 前统一并行任务的
       取证规范，避免模块评审拿到 worktree/dirty 证据。
-    title: "verifier EV-0830 在隔离 worktree 录制（主树被 B3/B4 WIP 占用）"
+    title: "verifier EV-0832 在隔离 worktree 录制（主树被 B3/B4 WIP 占用）"
     summary: >-
       主树当前 HEAD 8573fcd、34 个 dirty 文件（B3/B4 WIP），无法在 6c61754 上录 dirty=false 证据；
       按任务指示在 `$TMPDIR/riccon-b5-verify-wt` 检出 6c61754，同步 `.riccon` 元数据后运行定向测试并录
-      EV-0830。EV JSON 的 cwd 为 worktree、commit=6c61754、dirty=false；EV JSON/日志已回灌主树
+      EV-0832。EV JSON 的 cwd 为 worktree、commit=6c61754、dirty=false；EV JSON/日志已回灌主树
       `.riccon/evidence/TASK-0168/`。这是流程例外，不是代码缺陷。
     evidence: >-
-      `.riccon/evidence/TASK-0168/EV-0830.json`；`git worktree list`；主树 `git status --porcelain`（34 文件）。
+      `.riccon/evidence/TASK-0168/EV-0832.json`；`git worktree list`；主树 `git status --porcelain`（34 文件）。
   - id: F-007
     severity: P3
     status: accepted
@@ -234,7 +234,7 @@ ADR-0023 §4.4 与 M05-AC-05/SEC-KB-005。另有 P2：`RICCON_OCR_LANG` 因 `lan
 | baseline   | `bb0099f4e4d19873994f6abb6acee45aa8249498`                                                                                               |
 | 任务提交   | `6c61754e9000d9401175674fca7b258b9b29a2af`（code）；`be1155d` 仅为 EV 录制时的 B3 scope amendment 元数据提交                             |
 | 代码 diff  | 41 文件，全部在 Lead 补录后的 write_scope 内（ocr/**、parse/service 5 文件、pom/application.yml、test 资源）                             |
-| 任务级证据 | EV-0825（builder，worker 全量 + package + 镜像内 OcrCli；commit be1155d，dirty=false）；EV-0830（verifier，worktree 6c61754，97 用例）   |
+| 任务级证据 | EV-0825（builder，worker 全量 + package + 镜像内 OcrCli；commit be1155d，dirty=false）；EV-0832（verifier，worktree 6c61754，97 用例）   |
 | 独立探针   | `.riccon/evidence/TASK-0168/probe-2026-11-23-ocr-pdf-oom.*`、`...-lang-binding.log`、`...-chunker-overlap.log`、`...-ocr-nottext-code.*` |
 | 未跑       | 本任务未重复全量 worker（EV-0825 已覆盖；M05-V1/V2 再跑）；coverage/E2E/a11y/security/perf/迁移属模块 gate；O1b 零出网编排属 TASK-0175   |
 
@@ -250,7 +250,7 @@ TASK-0188（Architect，in_progress）收口。
   log 末尾为 `engine=tesseract`、`averageConfidence=0.922`、`blocks=1`、`line=1 ... bbox=57,74,766,54`、
   `text=RICCON OCR 12345`；exit 0、dirty=false、commit be1155d。**注意**：builder 自报的 511 tests
   含 4 个已删除 `OcrLineAssemblerTest` 的 stale surefire 报告，实际约 507，见 F-007。
-- **EV-0830**：`output_sha256=5c02d53e...cc13f` 与日志一致（17,393 bytes）；commit=6c61754、
+- **EV-0832**：`output_sha256=5c02d53e...cc13f` 与日志一致（17,393 bytes）；commit=6c61754、
   dirty=false；命令在隔离 worktree 运行定向测试，13 个 suite/97 tests/0 failure/0 error/0 skip；
   cwd 为 worktree，已按 F-006 记录流程例外。
 
@@ -264,7 +264,7 @@ TASK-0167/TASK-0168 `review`、TASK-0169 之后 `planned`，且没有模块 revi
 ### 独立定向验证
 
 ```bash
-# EV-0830（worktree 6c61754；加锁；含 Ocr*、DocumentParser、PdfDocumentParser、TextChunker、FileParseServiceIntegrationTest）
+# EV-0832（worktree 6c61754；加锁；含 Ocr*、DocumentParser、PdfDocumentParser、TextChunker、FileParseServiceIntegrationTest）
 LOCK="${TMPDIR:-/tmp}/riccon-maven.lock"; while ! mkdir "$LOCK" 2>/dev/null; do sleep 5; done; \
   trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT; \
   ./mvnw -q -T1C -pl apps/worker -am test \
@@ -384,9 +384,9 @@ B5 已把 bbox/confidence 从 `OcrBlock` → `ParsedSegment` → `ParsedChunk` �
 或把校验收紧为 `chunkOverlap < chunkSize/2`；同时给 `chunk_longTextWithNewlines_breaksAtNewline`
 增加总块数/去重断言，避免只断言“块数 >1”。
 
-### F-006（P3 accepted）EV-0830 worktree 流程例外
+### F-006（P3 accepted）EV-0832 worktree 流程例外
 
-主树被 B3/B4 WIP 占用，无法在 6c61754 上录 dirty=false 证据；EV-0830 在隔离 worktree 录制并回灌
+主树被 B3/B4 WIP 占用，无法在 6c61754 上录 dirty=false 证据；EV-0832 在隔离 worktree 录制并回灌
 主树。EV 的 commit/dirty/命令/97 用例可复核，但这是并行取证流程例外，需 Lead 在 M05 gate 前统一
 规范；不能让模块评审把 worktree 证据当成主树 clean 证据。
 
