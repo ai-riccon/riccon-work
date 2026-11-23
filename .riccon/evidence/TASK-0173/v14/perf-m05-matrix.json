@@ -1,0 +1,188 @@
+{
+  "status": "failed",
+  "generatedAt": "2026-11-23T18:56:42+08:00",
+  "phase": {
+    "dataset": "passed",
+    "baselineIndex": "passed",
+    "retrievalCapture": "passed",
+    "openSearch": "passed"
+  },
+  "k6": {
+    "status": 99,
+    "report": ".riccon/evidence/TASK-0173-v14b/perf-m05-knowledge.json",
+    "log": ".riccon/evidence/TASK-0173-v14b/perf-m05-knowledge.log"
+  },
+  "retrieval": {
+    "source": "mysql.slow_log (long_query_time=0.001s, log_output=TABLE)",
+    "statement": "AgentContextJdbc.search: FULLTEXT MATCH(knowledge_chunk.content / knowledge_document.title) AGAINST + ACL 谓词（兼容旧 LIKE 过滤）",
+    "samples": 762,
+    "p50Ms": 27.292,
+    "p95Ms": 73.412,
+    "maxMs": 273.15,
+    "avgRowsExamined": 1105
+  },
+  "budgets": {
+    "firstTokenServerP95Ms": 81,
+    "firstTokenServerBudgetMs": 3000,
+    "firstTokenServerWithinBudget": true,
+    "userFirstTokenEstimatedP95Ms": 154.412,
+    "userFirstTokenBudgetMs": 3000,
+    "userFirstTokenWithinBudget": true,
+    "apiP95Ms": 284.62174999999996,
+    "apiBudgetMs": 500,
+    "apiWithinBudget": true,
+    "aclWriteP95Ms": 4576.75,
+    "aclGetP95Ms": 125.75,
+    "aclBudgetMs": 500,
+    "aclWithinBudget": false,
+    "downloadP95Ms": 216,
+    "indexNoOcrP95Ms": 5409,
+    "indexBudgetMs": 60000,
+    "sseBufferedRequestP95Ms": 5419.927,
+    "note": "首字用 retrieval p95 + 服务端模型首字 p95 估算；k6 对 SSE 整段缓冲，m05_chat_submit_ttfb_ms 不是首字口径"
+  },
+  "indexing": {
+    "noOcr": {
+      "samples": [
+        1525,
+        5409,
+        4304,
+        4942
+      ],
+      "p95Ms": 5409,
+      "budgetMs": 60000,
+      "withinBudget": true
+    },
+    "ocr": {
+      "samples": [],
+      "p95Ms": null,
+      "budgetMs": 120000,
+      "withinBudget": false,
+      "note": "单页样本，非 ADR 的 20 页口径"
+    },
+    "baseline": {
+      "kind": "docx",
+      "fileId": "01a2080c-1ac5-7cd4-9d9c-0309689f1b62",
+      "documentId": "01a2080c-32e9-736a-b54a-bec2578d1676",
+      "parseMs": 5404,
+      "createToIndexedMs": 1525,
+      "totalMs": 7849
+    },
+    "backlog": [
+      {
+        "kind": "docx",
+        "index": 1,
+        "status": "succeeded",
+        "fileId": "01a2080c-5974-7823-b730-3465e770d00a",
+        "documentId": "01a2080c-6d07-7913-a6bd-9436ddab2c9e",
+        "uploadMs": 3876,
+        "parseMs": 1129,
+        "createToIndexedMs": 5409,
+        "totalMs": 10414,
+        "chunkCount": null,
+        "parseEngine": "NONE"
+      },
+      {
+        "kind": "docx",
+        "index": 2,
+        "status": "succeeded",
+        "fileId": "01a2080c-5973-739e-be27-4792072fb59d",
+        "documentId": "01a2080c-6b43-7b37-9cf9-50a949a182ec",
+        "uploadMs": 3930,
+        "parseMs": 614,
+        "createToIndexedMs": 4304,
+        "totalMs": 8848,
+        "chunkCount": null,
+        "parseEngine": "NONE"
+      },
+      {
+        "kind": "docx",
+        "index": 3,
+        "status": "succeeded",
+        "fileId": "01a2080c-5979-7383-965f-23afe99a1b96",
+        "documentId": "01a2080c-6cf8-7165-8e66-56e47a51e2e8",
+        "uploadMs": 3847,
+        "parseMs": 1133,
+        "createToIndexedMs": 4942,
+        "totalMs": 9922,
+        "chunkCount": null,
+        "parseEngine": "NONE"
+      }
+    ],
+    "backlogFailures": [],
+    "backlogDuringLoad": true
+  },
+  "openSearch": {
+    "url": "http://127.0.0.1:19200",
+    "indexVersion": "v2",
+    "prefix": "riccon-kb",
+    "alias": "riccon-kb-tenant-alpha",
+    "aliasTarget": "riccon-kb-v2-tenant-alpha",
+    "mappingFields": [
+      "acl_version",
+      "bbox_h",
+      "bbox_w",
+      "bbox_x",
+      "bbox_y",
+      "cell_range",
+      "chunk_id",
+      "connector_id",
+      "content",
+      "department_id",
+      "document_id",
+      "embedding",
+      "locator_type",
+      "ocr_confidence",
+      "page_no",
+      "paragraph_no",
+      "parse_engine",
+      "sheet_name",
+      "source_type",
+      "tenant_id",
+      "title",
+      "token_count",
+      "visibility"
+    ],
+    "bboxFields": true,
+    "aclFields": true,
+    "checkedAt": "2026-11-23T18:56:42+08:00",
+    "error": null
+  },
+  "openSearchMismatch": false,
+  "load": {
+    "start": [
+      5.92,
+      10.61,
+      13.66
+    ],
+    "peak": 17.68,
+    "end": [
+      16.74,
+      11.66,
+      13.43
+    ],
+    "samples": 106
+  },
+  "ocr": {
+    "probed": {
+      "available": false,
+      "exitCode": 4,
+      "engine": "tesseract",
+      "language": "chi_sim+eng",
+      "sample": "deploy/ocr/sample.png",
+      "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
+      "probedAt": "2026-11-23T18:54:02+08:00"
+    },
+    "measured": false,
+    "samples": [],
+    "note": "宿主 libtesseract 不可用，OCR 未量测；报告不把未执行当通过，需在含 Tesseract 的 worker 镜像/CI 复验"
+  },
+  "decisionRequired": false,
+  "decision": "检索 p95 在 500ms 内，无需额外决策",
+  "notes": [
+    "PERF-M05-001：首字/API/ACL 写/检索量测；PERF-M05-002：索引延迟（无 OCR 与 OCR 单页）。",
+    "OpenSearch 使用 v2 索引并核对别名目标与 bbox/acl mapping 字段；检索仍以 MySQL FULLTEXT + ACL 为准。",
+    "检索 >500ms 时 status 为 passed-with-decision（ADR-0023 §9 未预设通过阈值）；设置 PERF_M05_SEARCH_ENFORCE=1 可按 500ms 硬失败。",
+    "OCR 不可用时 ocr.measured=false，不把未执行当通过。"
+  ]
+}

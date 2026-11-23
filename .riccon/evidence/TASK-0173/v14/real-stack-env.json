@@ -1,0 +1,83 @@
+{
+  "generatedAt": "2026-11-23T10:54:03.673Z",
+  "mode": "perf",
+  "host": {
+    "platform": "darwin 24.6.0",
+    "arch": "x64",
+    "cpus": 12,
+    "cpuModel": "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz",
+    "memoryBytes": 17179869184,
+    "memoryGiB": 16,
+    "loadAverage": [
+      5.92,
+      10.61,
+      13.66
+    ],
+    "node": "v26.13.0"
+  },
+  "images": {
+    "compose": [
+      "mysql:8.4.13",
+      "opensearchproject/opensearch:3.9.0",
+      "rustfs/rustfs:1.0.6"
+    ],
+    "started": [
+      "mysql:8.4.13",
+      "opensearchproject/opensearch:3.9.0",
+      "rustfs/rustfs:1.0.6"
+    ]
+  },
+  "k6Version": "k6 v2.4.0 (commit/dd9395906d, go1.26.11, darwin/amd64)",
+  "scriptSha256": "3bf686bd9b23bed18c5f10704e62de15c96da0450e3b880b028b6cd88b971fe7",
+  "chatMaxStreams": 50,
+  "dbPoolSize": 50,
+  "fakeModel": 1,
+  "deploymentMode": "DEMO",
+  "ocr": {
+    "available": false,
+    "exitCode": 4,
+    "engine": "tesseract",
+    "language": "chi_sim+eng",
+    "sample": "deploy/ocr/sample.png",
+    "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
+    "probedAt": "2026-11-23T18:54:02+08:00"
+  },
+  "startCommand": "node scripts/real-stack/run.mjs --mode=perf",
+  "startupCommands": [
+    "java -jar apps/api/target/riccon-api-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/MASTER_KEY_ID/FINGERPRINT_PEPPER/BILLING_CURRENCY/QUOTA_DEFAULT_*/DB_POOL)",
+    "java -jar apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/CHAT_MAX_STREAMS/DB_POOL_SIZE/MODEL_FIRST_TOKEN_TIMEOUT/PRE_FIRST_TOKEN_BUDGET)",
+    "node scripts/real-stack/fake-model.mjs --scenario ok --chunk-count 6"
+  ],
+  "perfProfile": {
+    "chatMaxStreams": 50,
+    "dbPoolSize": 50,
+    "dbPoolFloor": 25,
+    "fakeModel": 1,
+    "connectTimeout": "500ms",
+    "firstTokenTimeout": "1000ms",
+    "preFirstTokenBudget": "2500ms",
+    "maxAttempts": 3,
+    "retryDelays": "50ms,100ms",
+    "duration": "45s"
+  },
+  "openSearch": "started (perf knowledge; riccon-kb index-version v2, 512m heap)",
+  "perfM05": {
+    "scenario": "knowledge",
+    "dataset": {
+      "documents": 5000,
+      "chunks": 100000,
+      "chunksPerDocument": 20,
+      "query": "QXZJKW",
+      "matchRatio": "每 100 篇文档命中（默认 1% chunk）"
+    },
+    "concurrency": {
+      "knowledgeVus": 50,
+      "aclWriteVus": 1
+    },
+    "duration": "45s",
+    "dbPoolSize": 50,
+    "chatMaxStreams": 50,
+    "fakeModel": 1,
+    "aclEnforcement": true
+  }
+}
