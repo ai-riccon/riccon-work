@@ -902,17 +902,21 @@ node scripts/ops/cost-reconcile.mjs --api-base http://127.0.0.1:18080 --tenant t
 MySQL、OpenSearch 或对象存储，不使用宿主机 Tesseract，只依赖 docker 与该镜像。
 
 ```bash
-# 默认：镜像 riccon-worker-ocr:o1a + deploy/ocr/sample.png
-scripts/ops/ocr-check
-
-# 镜像在 B5 之后重建（自带 OcrCli）时同样是这一条
+# gate 证据（SEC-KB-001）：先用当前 HEAD 重建 B5 之后的 o1b 镜像（自带 OcrCli），再跑断言
 docker build -f deploy/Dockerfile.worker -t riccon-worker-ocr:o1b .
 scripts/ops/ocr-check --image riccon-worker-ocr:o1b
 
-# O1a 镜像早于 B5（/app/app.jar 无 OcrCli）时，挂载当前构建产物（与 EV-0840/0842 同一做法）
+# 本地快速冒烟：脚本默认镜像（o1a 早于 B5，脚本会回退到本地 target jar，不作为 gate）
+scripts/ops/ocr-check
+
+# 历史对照（仅 O1a 证据）：o1a 的 /app/app.jar 不含 OcrCli，需显式挂载当前构建产物
 scripts/ops/ocr-check --image riccon-worker-ocr:o1a \
   --jar apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar
 ```
+
+**镜像 tag 约定**：`riccon-worker-ocr:o1b` = B5 之后重建、`/app/app.jar` 含 `OcrCli`，**M05 gate 只用 o1b**；
+`riccon-worker-ocr:o1a` 仅保留为 O1a 历史证据（镜像构建早于 B5，不含 `OcrCli`），不得用于 gate 或用
+`--jar` 回退冒充 gate 证据。
 
 断言与失败语义：
 
@@ -923,8 +927,9 @@ scripts/ops/ocr-check --image riccon-worker-ocr:o1a \
 - `OcrCli` 输出 `engine=tesseract`、文本 `RICCON OCR 12345`、`averageConfidence > 0`、`bbox` 四元组；
 - 退出码：0 通过；1 断言失败（打印失败步骤与原始输出）；2 用法/环境错误（docker/镜像/jar/fixture）。
 
-M05 gate 证据（`SEC-KB-001`）：把上面任一条命令原样作为 EV 命令，必须 exit 0；脚本的 `--network none`、
-无 DB/S3 变量与无路由断言即零出网证明。
+M05 gate 证据（`SEC-KB-001`）：EV 命令必须包含 `docker build … -t riccon-worker-ocr:o1b .` 与
+`scripts/ops/ocr-check --image riccon-worker-ocr:o1b`，exit 0；脚本的 `--network none`、无 DB/S3 变量与
+无路由断言即零出网证明。o1a 镜像因 `/app/app.jar` 早于 B5，只作历史证据。
 
 ### M05-6 回滚与降级
 
