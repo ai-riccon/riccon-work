@@ -190,8 +190,9 @@ findings:
     owner: "riccon/lead"
     due: "M05 gate 前"
     accepted_reason: >-
-      EV-0849/0852/0855 的命令、commit、dirty 状态与 surefire/spotless 结果为真实；EV-0852/0855 在隔离
-      worktree 的 ca6dfd9/7c199c1 上通过，EV JSON/日志已回灌主树。实际 B7 代码 diff `539cc73..ca6dfd9`
+      EV-0849/0852 的命令、commit、dirty 状态与 surefire 结果为真实；EV-0855 的 commit/dirty/exit/spotless
+      与测试源码已核对（其 10 例计数为 builder 自报，本次独立复跑因锁超时未完成）。EV-0852/0855 在隔离
+      worktree 的 ca6dfd9/7c199c1 上运行，EV JSON/日志已回灌主树。实际 B7 代码 diff `539cc73..ca6dfd9`
       16 个文件全部在 write_scope（含 Lead 补录的 3 条测试 glob）；配置修复 `7c199c1` 是独立的 2 文件
       diff（application.yml + binding test）。Lead 计划把 done 的 scope 区间重绑为
       `baseline=7c199c1^`、`end=7c199c1`，只覆盖配置修复；这是**诚实且可追溯**的做法，因为原 B7 代码
@@ -199,7 +200,7 @@ findings:
       当前 gate 的 task-scope 报错是 HEAD 已前进到 B8/B9/B11 并行提交导致的范围污染，不是 B7 代码失败；
       Lead 需在干净 checkout/按 rebind 后的 end_commit 重跑模块 gate，并在任务卡保留原 ca6dfd9 范围的
       commit_attribution_note，避免历史归因丢失。
-    title: "证据/范围卫生：EV-0849 日志无 surefire 汇总；verifier EV-0852/0855 使用隔离 worktree；当前 gate 的 task-scope 被 B8/B9/B11 并行 WIP 污染"
+    title: "证据/范围卫生：EV-0849 日志无 surefire 汇总；EV-0852（verifier）与 EV-0855（builder）使用隔离 worktree；当前 gate 的 task-scope 被 B8/B9/B11 并行 WIP 污染"
     summary: >-
       EV-0849 命令使用 `-q`，日志只有 Spring/Testcontainers 输出，没有 “Tests run” 行；builder 自报
       11 类 45 用例，评审从 `apps/worker/target/surefire-reports` 与 `apps/api/target/surefire-reports`
@@ -533,8 +534,9 @@ FULL 与 DELETE 并发可重新插入已删文档 chunk/index；`_delete_by_quer
 ### F-007（P3）证据/范围卫生
 
 EV-0849 的 `-q` 日志没有测试汇总；评审用日志时间窗的 11 个 surefire XML 复核 45/0/0/0，EV commit/dirty/exit/SHA
-均一致。主树并行 WIP 使 verifier 只能在 worktree ca6dfd9/7c199c1 录 EV-0852（16/0/0/0）与 EV-0855
-（10/0/0/0 + spotless）。范围重绑为 `baseline=7c199c1^`、`end=7c199c1` 是诚实的：原 B7 代码 range 仍由
+均一致。主树并行 WIP 使 verifier 只能在 worktree ca6dfd9 录 EV-0852（16/0/0/0）；EV-0855 是 builder 在
+worktree 7c199c1 的配置修复证据（builder 自报 10 例 + spotless；本次独立复跑因锁超时未完成，未作为通过依据）。
+范围重绑为 `baseline=7c199c1^`、`end=7c199c1` 是诚实的：原 B7 代码 range 仍由
 REV-001 + EV-0849 覆盖，配置修复单独由 2 文件 diff + EV-0855 覆盖。当前 gate 的 task-scope 把
 B8/B9/B11 并行提交算到 TASK-0169；实际初版 end_commit diff 16 文件全在 scope。Lead 需在干净 checkout/
 按 rebind 后 end_commit 运行模块 gate，并保留原 range 的 commit_attribution_note。
