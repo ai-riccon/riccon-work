@@ -1,0 +1,137 @@
+# command: bash deploy/ocr/verify.sh
+# cwd: /var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-o1a-clean.4NLY9j
+# started_at: 2026-11-23T09:59:28.742+08:00
+# finished_at: 2026-11-23T09:59:37.795+08:00
+# duration_ms: 9052
+# exit_code: 0
+
+# --- stdout ---
+== docker build
+== tesseract --version
+tesseract 5.3.4
+ leptonica-1.82.0
+  libgif 5.2.1 : libjpeg 8d (libjpeg-turbo 2.1.5) : libpng 1.6.43 : libtiff 4.5.1 : zlib 1.3 : libwebp 1.3.2 : libopenjp2 2.5.0
+ Found AVX2
+ Found AVX
+ Found FMA
+ Found SSE4.1
+ Found OpenMP 201511
+ Found libarchive 3.7.2 zlib/1.3 liblzma/5.4.5 bz2lib/1.0.8 liblz4/1.9.4 libzstd/1.5.5
+ Found libcurl/8.5.0 OpenSSL/3.0.13 zlib/1.3 brotli/1.1.0 zstd/1.5.5 libidn2/2.3.7 libpsl/0.21.2 (+libidn2/2.3.7) libssh/0.10.6/openssl/zlib nghttp2/1.59.0 librtmp/2.3 OpenLDAP/2.6.10
+== tesseract --list-langs
+List of available languages in "/usr/share/tesseract-ocr/5/tessdata/" (3):
+chi_sim
+eng
+osd
+== OCR 指纹 manifest
+{"engine":"tesseract","engineVersion":"5.3.4-1build5","leptonicaVersion":"1.82.0-3build4","tessdata":"tessdata_fast@87416418657359cb625c412a48b6e1d6d41c29bd","languages":{"chi_sim":"a5fcb6f0db1e1d6d8522f39db4e848f05984669172e584e8d76b6b3141e1f730","eng":"7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2"}}
+== 非 root
+== 零出网 OCR（--network none）
+RICCON OCR 12345
+== 镜像环境无代理/密钥
+== SBOM（CycloneDX）
+-rw-r--r--@ 1 ricky  staff  615447 Nov 23 09:59 /var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/tmp.7zk4Da8GKY/sbom.cdx.json
+== 许可检查（OCR 组件 + 禁止项）
+OCR 组件：
+  - liblept5 1.82.0 [未声明]
+  - libtesseract5 5.3.4 [Apache-2.0]
+  - tesseract-ocr 5.3.4 [Apache-2.0]
+  - tesseract-ocr-eng 4.1.0 [Apache-2.0]
+  - tesseract-ocr-osd 4.1.0 [Apache-2.0]
+CycloneDX 组件数：344
+许可检查通过：OCR 组件齐全、无 AGPL/SSPL、无公有云 OCR。
+o1a-ok: 镜像可离线 OCR，语言包与许可/SBOM 校验通过
+
+# --- stderr ---
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.worker
+#1 transferring dockerfile: 5.88kB 0.0s done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 1.1s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done
+#3 CACHED
+
+#4 [internal] load metadata for docker.io/library/eclipse-temurin:21.0.13_9-jre-noble@sha256:b4f9d2a0bc273417cf5219b7b832bbf0493ed500b7b57d5001d9f83374659060
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/eclipse-temurin:21.0.13_9-jdk-noble@sha256:bc12ebd88ffa6dda0092940e179365b05aef8d813b867f9df5a1f168c9a44feb
+#5 DONE 0.0s
+
+#6 [tessdata 1/2] FROM docker.io/library/eclipse-temurin:21.0.13_9-jre-noble@sha256:b4f9d2a0bc273417cf5219b7b832bbf0493ed500b7b57d5001d9f83374659060
+#6 resolve docker.io/library/eclipse-temurin:21.0.13_9-jre-noble@sha256:b4f9d2a0bc273417cf5219b7b832bbf0493ed500b7b57d5001d9f83374659060 0.0s done
+#6 DONE 0.0s
+
+#7 [build 1/9] FROM docker.io/library/eclipse-temurin:21.0.13_9-jdk-noble@sha256:bc12ebd88ffa6dda0092940e179365b05aef8d813b867f9df5a1f168c9a44feb
+#7 resolve docker.io/library/eclipse-temurin:21.0.13_9-jdk-noble@sha256:bc12ebd88ffa6dda0092940e179365b05aef8d813b867f9df5a1f168c9a44feb 0.0s done
+#7 DONE 0.0s
+
+#8 [internal] load build context
+#8 transferring context:
+#8 transferring context: 2.06MB 0.1s done
+#8 DONE 0.1s
+
+#9 [build 5/9] COPY pom.xml ./
+#9 CACHED
+
+#10 [build 8/9] COPY apps/worker/ apps/worker/
+#10 CACHED
+
+#11 [build 9/9] RUN --mount=type=cache,target=/root/.m2     ./mvnw -q -T1C -DskipTests -pl apps/worker -am package
+#11 CACHED
+
+#12 [runtime 7/9] COPY --from=build /build/apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar /app/app.jar
+#12 CACHED
+
+#13 [tessdata 2/2] RUN set -eux;     apt-get update;     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends       ca-certificates       curl;     rm -rf /var/lib/apt/lists/*;     mkdir -p /tessdata;     curl -fsSL --retry 3 -o /tessdata/chi_sim.traineddata       "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/chi_sim.traineddata";     echo "a5fcb6f0db1e1d6d8522f39db4e848f05984669172e584e8d76b6b3141e1f730  /tessdata/chi_sim.traineddata" | sha256sum -c -;     curl -fsSL --retry 3 -o /tessdata/eng.traineddata       "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/eng.traineddata";     echo "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2  /tessdata/eng.traineddata" | sha256sum -c -
+#13 CACHED
+
+#14 [build 6/9] COPY platform/ platform/
+#14 CACHED
+
+#15 [runtime 2/9] RUN set -eux;     apt-get update;     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends       tesseract-ocr="5.3.4-1build5"       libtesseract5="5.3.4-1build5"       liblept5="1.82.0-3build4";     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+#15 CACHED
+
+#16 [runtime 3/9] COPY --from=tessdata /tessdata/chi_sim.traineddata /usr/share/tesseract-ocr/5/tessdata/chi_sim.traineddata
+#16 CACHED
+
+#17 [build 4/9] COPY mvnw ./
+#17 CACHED
+
+#18 [runtime 4/9] COPY --from=tessdata /tessdata/eng.traineddata /usr/share/tesseract-ocr/5/tessdata/eng.traineddata
+#18 CACHED
+
+#19 [runtime 6/9] RUN set -eux;     groupadd -g 10001 riccon;     useradd -u 10001 -g 10001 -m -d /home/riccon -s /usr/sbin/nologin riccon;     mkdir -p /app;     chown -R 10001:10001 /app /opt/riccon /usr/share/tesseract-ocr/5/tessdata
+#19 CACHED
+
+#20 [build 3/9] COPY .mvn/ .mvn/
+#20 CACHED
+
+#21 [build 7/9] COPY apps/api/pom.xml apps/api/pom.xml
+#21 CACHED
+
+#22 [runtime 8/9] RUN chown 10001:10001 /app/app.jar
+#22 CACHED
+
+#23 [build 2/9] WORKDIR /build
+#23 CACHED
+
+#24 [runtime 5/9] RUN set -eux;     mkdir -p /opt/riccon/ocr;     printf '{"engine":"tesseract","engineVersion":"%s","leptonicaVersion":"%s","tessdata":"tessdata_fast@%s","languages":{"chi_sim":"%s","eng":"%s"}}\n'       "5.3.4-1build5" "1.82.0-3build4" "87416418657359cb625c412a48b6e1d6d41c29bd" "a5fcb6f0db1e1d6d8522f39db4e848f05984669172e584e8d76b6b3141e1f730" "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2"       > /opt/riccon/ocr/manifest.json
+#24 CACHED
+
+#25 [runtime 9/9] WORKDIR /app
+#25 CACHED
+
+#26 exporting to image
+#26 exporting layers done
+#26 exporting manifest sha256:aee573e1b92a29b48cadb52d11d241ee390415a5b9510c39270c799531683598 done
+#26 exporting config sha256:3f2cc930bad2c1d1cd169a90397532fcdcb8d1a50b71202f164c5d1fd606e6d2 done
+#26 exporting attestation manifest sha256:269900a1142658bc602e41cfd6c45d0fa79033823c8e933c2ff697e39fa2ca19 0.0s done
+#26 exporting manifest list sha256:7f7128f98d6c754d4f014759ddb25f1850c5b8f51cb6f26734823b89299a3d19 0.0s done
+#26 naming to docker.io/library/riccon-worker-ocr:o1a done
+#26 unpacking to docker.io/library/riccon-worker-ocr:o1a done
+#26 DONE 0.1s
