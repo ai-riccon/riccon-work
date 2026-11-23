@@ -145,7 +145,9 @@ describe('知识库展示文案', () => {
     expect(parseEngineLabel(undefined)).toBe('未记录');
     expect(retentionPolicyLabel('TENANT_POLICY')).toBe('租户策略');
     expect(retentionPolicyLabel(undefined)).toBe('未记录');
-    expect(knowledgeRetentionText(makeDocument())).toBe('到期 2027-05-22（保留 180 天，部署默认）');
+    expect(knowledgeRetentionText(makeDocument())).toBe(
+      '到期 2027-05-22 10:00:00 +08:00（保留 180 天，部署默认）',
+    );
     expect(knowledgeRetentionText(makeDocument({ retentionExpiresAt: null }))).toContain(
       '到期时间未记录',
     );

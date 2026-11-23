@@ -1,6 +1,6 @@
 import { ApiError } from '@/services/api/errors';
 import type { Department } from '@/services/api/types';
-import { formatDate } from '@/services/api/time';
+import { formatOffsetDateTime } from '@/services/api/time';
 import type {
   KnowledgeDocument,
   KnowledgeDocumentStatus,
@@ -486,7 +486,7 @@ export function knowledgeRetentionText(
   const days = document.retentionDays ? `保留 ${document.retentionDays} 天` : '保留策略未记录';
   const policy = retentionPolicyLabel(document.retentionPolicy);
   const expires = document.retentionExpiresAt
-    ? `到期 ${formatDate(document.retentionExpiresAt)}`
+    ? `到期 ${formatOffsetDateTime(document.retentionExpiresAt)}`
     : '到期时间未记录';
   return `${expires}（${days}，${policy}）`;
 }
