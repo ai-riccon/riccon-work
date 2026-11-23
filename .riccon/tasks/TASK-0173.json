@@ -4,7 +4,7 @@
   "module_id": "M05",
   "title": "M05-B11 perf knowledge 场景与检索量测",
   "owner": "riccon/builder-kb-perf",
-  "status": "review",
+  "status": "done",
   "write_scope": [
     "e2e/perf/mvc-smoke.js",
     "scripts/real-stack/run.mjs"
@@ -28,9 +28,14 @@
     "maven",
     "codegraph"
   ],
-  "blocker": "RESIDUAL（owner lead/architect，M09/perf 后续）：ACL 写 p95 4577ms >500ms，根因 tenant quota 行锁争用；检索 p95 73.4ms 已达标（EV-0922），不阻塞本 perf 任务",
+  "blocker": null,
   "created_at": "2026-11-22T19:25:26.170+08:00",
-  "updated_at": "2026-11-23T19:05:07.907+08:00",
+  "updated_at": "2026-11-23T19:06:20.483+08:00",
   "baseline_commit": "f45d53c",
-  "end_commit": "f4a1b04"
+  "end_commit": "f4a1b04",
+  "residual": {
+    "owner": "riccon/lead + riccon/architect",
+    "due": "M09/perf 后续",
+    "reason": "ACL 写 p95 4577ms >500ms，根因 QuotaJdbc tenant 行锁争用；检索 p95 73.4ms 已达标，不阻塞本 perf 任务。"
+  }
 }
