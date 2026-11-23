@@ -17,9 +17,9 @@
 - M10 gate：代码最终提交 `a88d003`，gate pass（REV-M10-001，29 条 reviewed_evidence；DEC-0018 将上限从 12h 提高到 20h）；V1 TASK-0083 done
 - M15 补丁（fixes M10）：后端 `08e0fc6`（EV-0449）、前端 `4538d8c`（EV-0450）、a11y `c4ebd3e`（EV-0478）；TASK-0084/0085/0087/0086 done，gate pass（REV-M15-001）；代码证据 EV-0482..0486、EV-0488 在 `864b0a7`，docs EV-0489 在 `de33ed8`（EV-0487 为中间失败，不引用）
 - M04：`feature`，gate pass（REV-M04-005，2026-11-21；18 条 AC 全 pass）；证据 EV-0675/0676/0677/0681/0682..0686/0687/0689、EV-0669、EV-0640；Product 预验收见「M04 模型网关纵深（gate pass 后 Product 预验收）」
-- 验收日期：2026-11-19（M10 初次）、2026-11-20（M15 后复验）、2026-11-20（M18 回溯与最终全量）、2026-11-21（M04 gate 后）、2026-11-22（M19 gate 后）、2026-11-22（M21 合并后）、2026-11-23（M23/M24 gate 后）、2026-11-24（M05 预验收 pass）
-- 验收人：Product（M03/M10/M15 预验收；M02 回溯预验收；M04 预验收；M19/M21 预验收；M23/M24 预验收；M05 预验收 pass）；用户（M03/M10 accepted；M02/M18 回溯 accepted，DEC-0025；M04 最终验收 `accepted`，DEC-0027；M19 合并批准，DEC-0030；M23/M24 无新增用户可见 AC，最终验收 `pending`；M05 最终验收 `pending`）
-- 参考：REV-M13-001、REV-M03-001、REV-M03-V1-002、REV-M10-001、REV-M15-001、REV-M10-ARCH-002、REV-M10-OPS-001、M10-OPS-DRILL、REV-TASK-0033-002、REV-TASK-0037/0039/0041/0043/0045、REV-TASK-0065-002/0068/0069/0071/0076；M18 回溯：REV-M01-002、REV-M02-004、REV-M03-002、REV-M10-002、REV-M12-002、REV-M13-002、REV-M15-002、REV-M18-REVALIDATION-001；M04：REV-M04-005、REV-TASK-0115-002、TASK-0116/TASK-0139；M19：REV-M19-001、EV-0716/0721/0723/0724；M21：EV-0725、CI run 44965051297、merge `1434733`；M23：REV-M23-001、EV-0770/0814..0817、DEC-0036；M24：REV-M24-001、REV-TASK-0157-001、EV-0771/0775/0783/0786/0794/0795/0796/0797/0798/0802/0804/0807/0808..0813；M05：REV-TASK-0177-001、REV-M05-002（final/pass；旧 gate 段落待收口）、TASK-0176 回执、TASK-0202、EV-0924..0929/0934..0938、EV-0939..0951、EV-0952/0953、EV-0954/0955/0958/0959、DEC-0037/0038
+- 验收日期：2026-11-19（M10 初次）、2026-11-20（M15 后复验）、2026-11-20（M18 回溯与最终全量）、2026-11-21（M04 gate 后）、2026-11-22（M19 gate 后）、2026-11-22（M21 合并后）、2026-11-23（M23/M24 gate 后）、2026-11-24（M05 预验收 pass）、2026-11-24（M23/M24 用户最终验收，DEC-0040）
+- 验收人：Product（M03/M10/M15 预验收；M02 回溯预验收；M04 预验收；M19/M21 预验收；M23/M24 预验收；M05 预验收 pass）；用户（M03/M10 accepted；M02/M18 回溯 accepted，DEC-0025；M04 最终验收 `accepted`，DEC-0027；M19 合并批准，DEC-0030；M23/M24 无新增用户可见 AC，最终验收 `accepted`（DEC-0040）；M05 最终验收 `pending`）
+- 参考：REV-M13-001、REV-M03-001、REV-M03-V1-002、REV-M10-001、REV-M15-001、REV-M10-ARCH-002、REV-M10-OPS-001、M10-OPS-DRILL、REV-TASK-0033-002、REV-TASK-0037/0039/0041/0043/0045、REV-TASK-0065-002/0068/0069/0071/0076；M18 回溯：REV-M01-002、REV-M02-004、REV-M03-002、REV-M10-002、REV-M12-002、REV-M13-002、REV-M15-002、REV-M18-REVALIDATION-001；M04：REV-M04-005、REV-TASK-0115-002、TASK-0116/TASK-0139；M19：REV-M19-001、EV-0716/0721/0723/0724；M21：EV-0725、CI run 44965051297、merge `1434733`；M23：REV-M23-001、EV-0770/0814..0817、DEC-0036；M24：REV-M24-001、REV-TASK-0157-001、EV-0771/0775/0783/0786/0794/0795/0796/0797/0798/0802/0804/0807/0808..0813；M05：REV-TASK-0177-001、REV-M05-002（final/pass；旧 gate 段落待收口）、TASK-0176 回执、TASK-0202、EV-0924..0929/0934..0938、EV-0939..0951、EV-0952/0953、EV-0954/0955/0958/0959、DEC-0037/0038；M23/M24 用户最终验收：DEC-0040
 
 ## 模块关系与验收状态
 
@@ -35,8 +35,8 @@
 - **M04**：`feature`，done；gate pass（REV-M04-005，2026-11-21；18 条 AC 全 pass，F-001..F-005/F-011 fixed，P2/P3 残余登记）；Product 预验收 `pass`（with residual：R-M04-01 P2 员工侧配额 429 文案、R-M04-02/03 P3，以及 Verifier F-006/F-008/F-009/F-010/F-012/F-013），见「M04 模型网关纵深（gate pass 后 Product 预验收）」；用户最终验收 `accepted`（DEC-0027，A；with residual，R-M04-01/02/03 转 M05），见「用户最终验收（M04）」。
 - **M19**：`fix`，done；gate pass（REV-M19-001，2026-11-22；14.3h/16h）；9 个任务全部 done；Product 预验收 `pass`（with residual F-001..F-005，见「M19 测试基础设施与全量测试提速（gate pass 后 Product 预验收）」）；用户最终验收 `accepted`（DEC-0030=A，2026-11-22）；PR #1 已合并（merge commit `1434733`）；不改变产品 AC/API/DB/UX/部署行为。M21（fix M19）修复合并前最终 CI 暴露的 `ModelFailoverIntegrationTest` 时序 flake，属于同一交付的稳定性修复，Product 预验收 `pass`（见「M21（fix M19）：ModelFailover 时序 flake 修复（合并后 Product 预验收）」）。
 - **M21**：`fix`，`fixes_module=M19`；TASK-0150（`2bee040`）只改 `ModelFailoverIntegrationTest`，复用 `holdAfterFirstContent` 闸门消除首字前 503/502 竞态；EV-0725（定向 10×17 + Worker 全量 356/0/0/0）、CI run 44965051297（shard2 17/0/0/0、merge 196/1115/0/0/0）、merge `1434733`；Product 预验收 `pass`（无用户可见 AC，无产品/UX/API/DB 变更）；用户验收引用 DEC-0030，无需额外验收。
-- **M23**：`fix`，`fixes_module=M13`；gate pass（REV-M23-001，`state.gate` 2026-11-23T09:23:26+08:00；DEC-0036=A 接受排队时间 overrun，不改 DEC-0035 的 6h 执行预算）；TASK-0163 done；Product 预验收 `pass`（with residual F-001..F-003，见「M23（fix M13）：部门字段契约对齐（gate pass 后 Product 预验收）」）；用户最终验收 `pending`（内部修复，无新增用户可见 AC；DEC-0036 仅接受排队时间，不是产品验收）。
-- **M24**：`fix`，`fixes_module=M04`，同时关闭 M20/M22 前置残余；gate pass（REV-M24-001；`gate check --module M24` 2026-11-23T09:20 PASS）；9 个任务全部 done；Product 预验收 `pass`（with residual F-001..F-006，见「M24（fix M04/M20/M22）：M05 gate 前置残余（gate pass 后 Product 预验收）」）；用户最终验收 `pending`（内部修复，无新增用户可见 AC）。
+- **M23**：`fix`，`fixes_module=M13`；gate pass（REV-M23-001，`state.gate` 2026-11-23T09:23:26+08:00；DEC-0036=A 接受排队时间 overrun，不改 DEC-0035 的 6h 执行预算）；TASK-0163 done；Product 预验收 `pass`（with residual F-001..F-003，见「M23（fix M13）：部门字段契约对齐（gate pass 后 Product 预验收）」）；用户最终验收 `accepted`（DEC-0040，2026-11-24；内部修复，无新增用户可见 AC；P3 residual F-001..F-003 保留，不声称修复）；DEC-0036 仅接受排队时间，不是产品验收。
+- **M24**：`fix`，`fixes_module=M04`，同时关闭 M20/M22 前置残余；gate pass（REV-M24-001；`gate check --module M24` 2026-11-23T09:20 PASS）；9 个任务全部 done；Product 预验收 `pass`（with residual F-001..F-006，见「M24（fix M04/M20/M22）：M05 gate 前置残余（gate pass 后 Product 预验收）」）；用户最终验收 `accepted`（DEC-0040，2026-11-24；内部修复，无新增用户可见 AC；P3 residual F-001..F-006 保留，不声称修复）。
 - **M05**：`feature`，`review_pending`；DEC-0034=A 批准 M05=Excel + OCR + 文档级 ACL + M04 429（M05b S3 连接器另立模块）；DEC-0037=A 接受 ACL=true 下 gate/验收与生产回滚约束；DEC-0038=A 选择 MySQL FULLTEXT（V14）。V1 TASK-0176 done（EV-0924..0929/0934..0938），V2 TASK-0177 done（REV-TASK-0177-001，EV-0939..0951），收口 TASK-0200/0201（EV-0952/0953），TASK-0202 修复 R-M05-06/07（EV-0954/0955/0958/0959）；Product 预验收 `pass`（with residual R-M05-01..05；R-M05-06/07 fixed，见「M05 知识库纵深（Product 预验收：pass）」）。`state.gate` 2026-11-24T00:49 仍为 fail（检查时 REV-M05-001 草稿、verdict fail，EV-0952/0953 docs 证据被判 placeholder）；Verifier 已将 review 更新为 `REV-M05-002` final/pass（head `823bfc0`；正文末尾旧 gate 段落待收口），Lead 需以定稿 review 重跑 gate 后才能 done，Product 结论为 pass。用户最终验收 `pending`。
 
 ## 验收标准（M03，M13 补丁后）
@@ -486,7 +486,7 @@ M02 是用户可见 MVC 模块，但 2026-11-18 关闭时没有 `product_accepta
 
 - **Product 结论**：`pass`（with residual F-001..F-003）。后端的部门字段、未分配 `null`、停用部门名称与四态用户结果均有可复核证据；未发现 P0/P1 或新的用户可见缺口；三条 P3 分别是 E2E 保真度、前端依赖收敛与任务级评审流程，均有 owner/due，不改变 M13 已验收结论。
 - **明确不声称**：四态 E2E 已仅凭会话字段证明（F-001）；前端名称/停用状态已不依赖 `/departments`（F-002）；TASK-0163 有任务级独立 review（F-003）；M23 改变了 M03/M13 的用户可见行为；用户已最终验收。
-- **边界**：本结论不是用户最终验收；Product 不检查实现细节、安全边界、并发或测试充分性，这些由 REV-M23-001 负责。用户最终验收 `pending`；DEC-0036 仅接受排队时间，不是产品验收。
+- **边界**：本结论不是用户最终验收；Product 不检查实现细节、安全边界、并发或测试充分性，这些由 REV-M23-001 负责。用户最终验收 `accepted`（DEC-0040，2026-11-24）；DEC-0036 仅接受排队时间，不是产品验收；P3 residual 保留。
 
 ## M24（fix M04/M20/M22）：M05 gate 前置残余（gate pass 后 Product 预验收）
 
@@ -520,7 +520,7 @@ M02 是用户可见 MVC 模块，但 2026-11-18 关闭时没有 `product_accepta
 
 - **Product 结论**：`pass`（with residual F-001..F-006）。M24 是内部修复，不改变 M04/M20/M22 已验收 AC 的用户可见结果；9 个任务全部 done，债务逐条 fixed 或 accepted，无 open P0/P1；全量 build/test+coverage/E2E/a11y/security/lint 与真实栈 2×11/11 均可复核；失败 EV 保留，未用 retry 掩盖 flake。
 - **明确不声称**：跨进程 HTTP 轮换 E2E 已覆盖（F-001）；无明文扫描已覆盖全部响应/日志（F-002）；CODING-STANDARDS 映射已补齐（F-003，已过期）；3s 全局等待不会掩盖慢回归（F-004）；真实栈顺序约定已消除（F-005）；M04 F-008 的生产 pass-through 已修复或已降级（F-006；仍为 M04 P2 accepted）；M24 改变了产品 AC/API/DB/UX/部署行为；用户已最终验收。
-- **边界**：本结论不是用户最终验收；Product 不检查实现细节、安全边界、并发或测试充分性，这些由 REV-M24-001 负责。用户最终验收 `pending`；M24 无新增用户可见 AC，建议 Lead 在 closeout 中引用既有 M04 DEC-0027、M20 DEC-0033、M22 DEC-0031，无需新增用户决策。
+- **边界**：本结论不是用户最终验收；Product 不检查实现细节、安全边界、并发或测试充分性，这些由 REV-M24-001 负责。用户最终验收 `accepted`（DEC-0040，2026-11-24）；M24 无新增用户可见 AC，既有 M04 DEC-0027、M20 DEC-0033、M22 DEC-0031 继续引用；P3 residual 保留。
 
 ## M05 知识库纵深（Product 预验收：pass（with residual R-M05-01..05）；gate 待 Lead 收口）
 
