@@ -8,6 +8,11 @@
   "write_scope": [
     "apps/api/src/main/java/com/riccon/api/knowledge/connector/**",
     "apps/api/src/test/java/com/riccon/api/knowledge/connector/**",
+    "apps/api/src/main/java/com/riccon/api/knowledge/domain/KnowledgeSourceType.java",
+    "apps/api/src/main/java/com/riccon/api/knowledge/domain/KnowledgeDocumentRecord.java",
+    "apps/api/src/main/java/com/riccon/api/knowledge/dto/KnowledgeDocumentResponse.java",
+    "apps/api/src/main/java/com/riccon/api/knowledge/persistence/KnowledgeJdbc.java",
+    "apps/api/src/main/java/com/riccon/api/knowledge/service/KnowledgeService.java",
     "apps/worker/src/main/java/**/connector/**",
     "apps/worker/src/test/java/**/connector/**"
   ],
@@ -16,7 +21,9 @@
     "S3 同步：首次全量、ETag/checksum 增量、未变化只更新 last_seen_at、仅完整 list 传播删除、tombstone 复用 generation+1、单对象/总量/超时/类型白名单限制、部分失败 PARTIAL、重试退避与 last_sync_* 字段",
     "端点只来自 RICCON_CONNECTOR_ENDPOINTS allowlist；SSRF 校验复用 M04（HTTPS/allowHttp、无 userinfo/query/redirect、禁 169.254/::1/fe80、RFC1918 仅显式 allowlist；主机名/重定向解析到未列入的 RFC1918 一律拒绝）；补私网 DNS 正/反例测试",
     "审计 knowledge.connector.* 同事务 fail-closed，details 白名单，无凭据/正文/externalId 全量；租户停用时 API 拒绝、worker 再校验",
-    "真实 S3/OSS 兼容栈（RustFS）测试通过；无凭据/原文泄露；scheduleEnabled/next_sync_at 条件领取；不实现 B7b 索引分支，不改 contracts/**"
+    "真实 S3/OSS 兼容栈（RustFS）测试通过；无凭据/原文泄露；scheduleEnabled/next_sync_at 条件领取；不实现 B7b 索引分支，不改 contracts/**",
+    "知识库文档列表/详情对 CONNECTOR 源返回 connectorId 与仅末段展示的 externalId；KnowledgeSourceType 含 CONNECTOR；读路径不因 CONNECTOR 抛异常",
+    "finishSync 与 sync.completed/sync.failed 审计在同一短事务内 fail-closed；长同步过程本身不包大事务"
   ],
   "evidence": [],
   "tools_used": [],
