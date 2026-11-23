@@ -364,6 +364,25 @@ test.describe('M05 知识库纵深', () => {
     expect(outsiderDownload.status).toBe(404);
     expect(outsiderDownload.text).not.toContain('销售制度');
 
+    // 平台管理员：无知识库入口；直接访问租户文档详情/ACL 统一 404，不泄露标题。
+    await page.context().clearCookies();
+    await loginAs(page, M03_CREDENTIALS.platformAdmin, '赵蕾');
+    await expect(page.getByTestId('knowledge-entry')).toHaveCount(0);
+    const platformDetail = await knowledgeRequest(
+      page,
+      'GET',
+      `/api/v1/knowledge/documents/${DOC.aclUsers}`,
+    );
+    expect(platformDetail.status).toBe(404);
+    expect(platformDetail.text).not.toContain('销售制度');
+    const platformAcl = await knowledgeRequest(
+      page,
+      'GET',
+      `/api/v1/knowledge/documents/${DOC.aclUsers}/acl`,
+    );
+    expect(platformAcl.status).toBe(404);
+    expect(platformAcl.text).not.toContain('销售制度');
+
     // 创建人李强不在 USERS 名单：仍可见并可下载。
     await page.context().clearCookies();
     await loginAs(page, M03_CREDENTIALS.manager, '李强');

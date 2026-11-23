@@ -4685,6 +4685,11 @@ function handleM05Api(req, res, url, raw, session) {
     writeResult(res, problem(401, 'RICCON-AUTH-401', '未登录', '请先登录后再访问。'));
     return true;
   }
+  // 平台管理员没有租户知识权限；持有租户文档 ID 时也必须统一 404，不泄露存在性。
+  if (account.persona === 'platform-admin') {
+    writeResult(res, problem(404, 'RICCON-TENANT-404', '文档不存在', '文档不存在或已被删除。'));
+    return true;
+  }
   if (!m05Permissions(account).includes('knowledge.read')) {
     writeResult(res, problem(403, 'RICCON-AUTH-403', '没有权限', '当前账号没有知识库读取权限。'));
     return true;
