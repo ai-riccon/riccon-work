@@ -799,6 +799,61 @@ node scripts/ops/cost-reconcile.mjs --api-base http://127.0.0.1:18080 --tenant t
 - **CI perf job 是唯一发布门禁**：nightly 定期 + 发布前必跑；本地 `--mode=perf` 只算预检，不得替代 CI/nightly。
   job 定义见 `.github/workflows/ci.yml` 的 `perf-m04`，产物上传 `perf-m04-matrix.json` 与各场景日志。
 
+## M05 知识库纵深运维（保留任务与 ACL 开关）
+
+依据 ADR-0023 §5.8/§10 与 B3 实现：`KnowledgeRetentionJob`/`KnowledgeRetentionProcessor`（API）、
+`KnowledgeAclProperties`/`KnowledgeAclStartupCheck`（API）与 `AgentContextJdbc`（Worker）。
+本节只记录**已实现**行为，不承诺物理清理。
+
+### M05-1 保留到期任务（API 每日 03:00）
+
+- **调度**：API 内 `@Scheduled(cron = "0 0 3 * * *", zone = "Asia/Shanghai")`，每日 **03:00（北京时间）**；
+  按启用租户逐个执行，每租户独立事务。某租户失败只记
+  `knowledge.retention.failed tenantId=... retryable=true` 并继续下一个租户，本租户下次调度重试。
+- **选中条件**（`KnowledgeJdbc.findExpired`）：`deleted_at IS NULL` 且
+  `status IN ('INDEXED','INDEXING','FAILED','PENDING')`，并满足到期：
+  `retention_expires_at <= now`，或 `retention_expires_at IS NULL` 时 `created_at <= now - 180 天`。
+- **历史 NULL 行**：固定按 `created_at + 180 天` 计算（`DEFAULT_RETENTION_DAYS=180`，合同 `data.retention`），
+  **不回溯 UPDATE**。租户 `tenant.retention_days` 只在**新建文档**时快照为
+  `retention_expires_at = created_at + retention_days`；此后调整租户策略不改变已有文档
+  （ADR-0023 §10、Product AC-21）。
+- **批量**：500 行/批，单次调度每租户最多 20 批（≤10 000 行），按 `created_at ASC, id ASC` 推进；
+  异常数据不会导致无限循环。
+- **动作**：只做软删除（`deleted_at`），审计 `knowledge.document.deleted`（`reason=RETENTION`，actor=SYSTEM）
+  与业务同事务；审计失败整体回滚，该租户下次重试。已索引或已有分块的文档额外投递 `mode=DELETE` 清理
+  OpenSearch 索引；`PENDING`/`FAILED` 且无分块只软删除，不产生无效 DELETE。
+- **多实例幂等**：条件更新 `softDelete(tenant_id, id, now)` 只让一个实例计数成功。
+- **不物理删除**：分块、对象存储与连接器 tombstone 的物理清理由 M09 维护任务承接（软删除后 30 天恢复窗口），
+  当前为 **release blocker**。在此之前不要手工 `DELETE` 业务表或对象绕过恢复窗口。
+- **无启用账号的租户**：索引 DELETE 会被跳过并记
+  `knowledge.retention.index_cleanup_skipped reason=no_active_user`（事件需要有效 run 归属），需 M09 兜底。
+- **观测**：成功 `knowledge.retention.expired tenantId=... documents=N`（N>0 才输出）；
+  失败 `knowledge.retention.failed ... retryable=true`；审计按 `action=knowledge.document.deleted` +
+  `reason=RETENTION` 查询。
+- **到期验证**（不实际等 180 天）：直接更新 `retention_expires_at` 或用注入 `Clock` 构造过期行，再触发一次
+  `expireDaily`；口径见 `IT-KB-111`（`KnowledgeRetentionTest`）。
+
+### M05-2 文档级 ACL 开关（API + Worker 同键）
+
+- **键**：`RICCON_KB_ACL_ENFORCEMENT_ENABLED`（Spring `riccon.kb.acl.enforcement-enabled`），默认 **false**。
+  API（`KnowledgeAclProperties`）与 Worker（`AgentContextJdbc` 构造注入）读**同一键**，两处必须同值。
+- **`false`（首次部署默认，现状）**：ACL 谓词不追加，列表/详情/下载与 Worker 检索/引用全部退化为租户级——
+  **本租户任何启用成员都能看到本租户的 `DEPT`/`USERS` 文档内容**（含 J1 问答引用）。因此该模式只允许非敏感
+  测试文档，**禁止生产数据**。API 启动输出固定 WARN `RICCON-KB-001`，暴露
+  `riccon_kb_acl_enforcement_disabled=1`（Micrometer `riccon.kb.acl.enforcement.disabled`）。
+- **`true`**：`TENANT` 本租户全员可见；`DEPT` 仅文档所属部门**启用**成员（部门停用即失效）；
+  `USERS` 仅创建人与 `knowledge_document_acl` 显式授权账号。管理性读取（`TENANT_ADMIN`）绕过 ACL 并写
+  `admin_read` 审计。Worker 无 actor 的兼容入口在强制开启时只返回 `TENANT` 文档。
+- **切换步骤**（两处同时改，缺一不可）：
+  1. 同时把 API 与 Worker 的部署环境变量设为同一值（`true` 或 `false`）；
+  2. **重启 API 与 Worker**——配置在启动时读取，API 的 gauge 只在启动注册一次；
+  3. 验证：API 启动日志**无** `RICCON-KB-001`，`riccon_kb_acl_enforcement_disabled` 为 `0`；再用 `DEPT`/`USERS`
+     文档分别以同部门、他部门、被授权、未授权账号核对列表、详情、下载与 J1 检索引用，四处结果一致；
+  4. M05 gate 必须在 `true` 下取证；`false` 下不得判 pass。
+- **关闭开关只回退“强制”**，不删除 ACL 数据；重新打开在下一次请求生效。
+- **回滚约束**：ACL 打开后，应用回滚到 M05 前版本、或关闭本开关，都会让 `DEPT`/`USERS` 文档变成本租户全员
+  可见，属于安全回归；生产需用户书面同意（ADR-0023 §5.9），默认只允许前向修复（修 ACL 逻辑）。
+
 ## 生产
 
 M09 交付。发布前必须满足 T4 要求：
