@@ -3566,3 +3566,371 @@ org.springframework.http.converter.HttpMessageNotWritableException: No converter
 2026-11-23T15:04:46.164+08:00  INFO 75473 --- [riccon-worker] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete
 2026-11-23T15:04:46.224+08:00  INFO 75473 --- [riccon-worker] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
 2026-11-23T15:04:46.257+08:00  INFO 75473 --- [riccon-worker] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-23T15:08:17.547+08:00  INFO 80164 --- [riccon-worker] [           main] com.riccon.worker.WorkerApplication      : Starting WorkerApplication v0.1.0-SNAPSHOT using Java 21.0.13 with PID 80164 (/Users/ricky/Documents/projects/riccon-work/apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar started by ricky in /Users/ricky/Documents/projects/riccon-work)
+2026-11-23T15:08:17.556+08:00  INFO 80164 --- [riccon-worker] [           main] com.riccon.worker.WorkerApplication      : No active profile set, falling back to 1 default profile: "default"
+2026-11-23T15:08:23.044+08:00  INFO 80164 --- [riccon-worker] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 18081 (http)
+2026-11-23T15:08:23.096+08:00  INFO 80164 --- [riccon-worker] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-23T15:08:23.096+08:00  INFO 80164 --- [riccon-worker] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-23T15:08:23.197+08:00  INFO 80164 --- [riccon-worker] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 5464 ms
+2026-11-23T15:08:24.637+08:00  INFO 80164 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=2
+2026-11-23T15:08:26.971+08:00  WARN 80164 --- [riccon-worker] [           main] o.a.poi.openxml4j.util.ZipSecureFile     : setting max text size greater than 10485760 can be risky; set to 268435456 chars
+2026-11-23T15:08:32.753+08:00  INFO 80164 --- [riccon-worker] [           main] c.r.w.run.service.OutboxLaneScheduler    : outbox.lane.scheduler.started lanes=[DEFAULT, HEAVY] heavyConcurrency=2 defaultMaxProcessing=PT30M heavyMaxProcessing=PT1H5M
+2026-11-23T15:08:34.135+08:00  INFO 80164 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-23T15:08:34.242+08:00  INFO 80164 --- [riccon-worker] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 18081 (http) with context path '/'
+2026-11-23T15:08:34.256+08:00  INFO 80164 --- [riccon-worker] [           main] com.riccon.worker.WorkerApplication      : Started WorkerApplication in 18.514 seconds (process running for 20.335)
+2026-11-23T15:08:34.395+08:00  INFO 80164 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-23T15:08:34.627+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-23T15:08:34.627+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-23T15:08:34.629+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-11-23T15:08:34.799+08:00  INFO 80164 --- [riccon-worker] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@3ef04239
+2026-11-23T15:08:34.805+08:00  INFO 80164 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-23T15:08:34.854+08:00  INFO 80164 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=12 actual=12
+2026-11-23T15:08:50.504+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-alpha fileId=01a2073c-65b6-76df-8a60-f715a0fb5701 parseId=01a2073c-65b6-797d-b659-be0c98eec6c3 chunks=4
+2026-11-23T15:08:50.520+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073c-65b6-70e8-8277-03da0064a891 tenantId=tenant-alpha runId=01a2073c-65b6-7a76-813e-21610ff72aaf attempts=1
+2026-11-23T15:08:50.521+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.w.run.service.OutboxLaneScheduler    : outbox.lane.poll.completed lane=heavy worker=1 processed=1
+2026-11-23T15:08:51.932+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-3] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-alpha documentId=01a2073c-6ee7-746d-bcd4-bddb3e9fd09f mode=FULL chunks=4 dimensions=64 force=false parseEngine=NONE
+2026-11-23T15:08:51.943+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-3] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073c-6ee7-7438-b8db-f6427df68cc2 tenantId=tenant-alpha runId=01a2073c-6ee7-7daa-8134-51a4b92e6777 attempts=1
+2026-11-23T15:08:51.943+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-3] c.r.w.run.service.OutboxLaneScheduler    : outbox.lane.poll.completed lane=heavy worker=1 processed=1
+2026-11-23T15:08:57.072+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-6] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:08:57.322+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-7] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:08:57.346+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-5] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:08:57.555+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-8] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:08:57.798+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-10] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:08:57.929+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:08:57.992+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:08:58.025+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:08:58.288+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:08:58.464+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:08:58.785+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-12] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:08:58.915+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-11] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:08:59.754+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:00.489+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-14] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:01.090+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:01.285+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-6] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:01.332+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-5] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:01.687+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:01.861+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:02.053+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-8] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:02.152+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-10] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:02.328+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-alpha fileId=01a2073c-8182-7af0-86c3-e909ff9ffa97 parseId=01a2073c-8182-79f6-9c38-00d8d13fcbee chunks=4
+2026-11-23T15:09:02.353+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-alpha fileId=01a2073c-8198-7682-8c68-b13ea40822ff parseId=01a2073c-8198-71b4-87fc-17af20bcd1b8 chunks=4
+2026-11-23T15:09:02.374+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073c-8182-78b3-b5cd-47d27606c0d5 tenantId=tenant-alpha runId=01a2073c-8182-7bec-ad83-1414aeebe540 attempts=1
+2026-11-23T15:09:02.426+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073c-8198-75b8-a368-1682d79649fd tenantId=tenant-alpha runId=01a2073c-8198-78c7-ae57-4bd0288b09a8 attempts=1
+2026-11-23T15:09:02.426+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.w.run.service.OutboxLaneScheduler    : outbox.lane.poll.completed lane=heavy worker=1 processed=1
+2026-11-23T15:09:02.669+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-alpha fileId=01a2073c-8183-732b-a4ff-b2ed7a43d249 parseId=01a2073c-8183-7629-81cb-0bd4636041e7 chunks=4
+2026-11-23T15:09:02.698+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:02.730+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073c-8183-7573-9500-1413f290d20e tenantId=tenant-alpha runId=01a2073c-8183-7ea9-bc0b-6b0a77d91bd2 attempts=1
+2026-11-23T15:09:02.744+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-12] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:03.175+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-11] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:03.348+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-alpha fileId=01a2073c-8186-767b-93f1-1d978a072870 parseId=01a2073c-8186-7de3-b205-4840cc400991 chunks=4
+2026-11-23T15:09:03.505+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073c-8186-775b-95f5-7dbcceb9c302 tenantId=tenant-alpha runId=01a2073c-8186-718a-a340-08aeebe29df1 attempts=1
+2026-11-23T15:09:03.542+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-7] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:03.623+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:03.891+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-alpha fileId=01a2073c-8186-7c6d-9406-8b51ba72bc5c parseId=01a2073c-8186-746f-a944-27521a1d6f2b chunks=4
+2026-11-23T15:09:03.994+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073c-8186-7cde-87e4-51dca369a72a tenantId=tenant-alpha runId=01a2073c-8186-75ec-b167-2de220a28ecf attempts=1
+2026-11-23T15:09:04.275+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:04.521+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:04.639+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.w.parse.service.FileParseService     : file.parse.completed tenantId=tenant-alpha fileId=01a2073c-8197-7d88-a270-8270068dec95 parseId=01a2073c-8197-7f76-950a-c7c767165349 chunks=4
+2026-11-23T15:09:04.792+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073c-8197-7355-b609-991583b06632 tenantId=tenant-alpha runId=01a2073c-8197-7a22-aed4-ff9813999d41 attempts=1
+2026-11-23T15:09:04.793+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.w.run.service.OutboxLaneScheduler    : outbox.lane.poll.completed lane=heavy worker=0 processed=5
+2026-11-23T15:09:04.824+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-6] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:04.858+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-14] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:05.394+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:05.445+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-10] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:05.544+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-5] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:06.161+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:06.224+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-12] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:06.382+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-11] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:06.743+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-8] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:06.820+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:07.420+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:07.860+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:07.953+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-6] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:08.172+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:08.302+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-7] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:08.722+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-5] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:08.774+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-14] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:08.985+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:09.098+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-12] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:09.445+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-10] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:09.661+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-8] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:09.819+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:10.227+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:10.356+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:10.730+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-11] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:10.855+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:10.995+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-6] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:11.295+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:11.513+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-alpha documentId=01a2073c-9ee9-7ec9-b7a4-466076d876ad mode=FULL chunks=4 dimensions=64 force=false parseEngine=NONE
+2026-11-23T15:09:11.568+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073c-9ee9-79a8-95d9-96c108cde7be tenantId=tenant-alpha runId=01a2073c-9ee9-7bc2-a99e-b032f1df4f9a attempts=1
+2026-11-23T15:09:11.907+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-14] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:12.033+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-12] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:12.098+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-7] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:12.276+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:12.309+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-alpha documentId=01a2073c-9fee-7423-b7bd-dbcf1de97444 mode=FULL chunks=4 dimensions=64 force=false parseEngine=NONE
+2026-11-23T15:09:12.359+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073c-9fee-7c47-9761-d10edc60ecb5 tenantId=tenant-alpha runId=01a2073c-9fee-7f92-ae70-3676ec07c8be attempts=1
+2026-11-23T15:09:12.469+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-10] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:12.666+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:13.220+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-alpha documentId=01a2073c-a017-745c-89d1-de3a2d39b36a mode=FULL chunks=4 dimensions=64 force=false parseEngine=NONE
+2026-11-23T15:09:13.271+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-8] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:13.328+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073c-a017-7fd9-8b1a-2922d6b274bc tenantId=tenant-alpha runId=01a2073c-a017-7d59-b660-a4bb693da839 attempts=1
+2026-11-23T15:09:13.572+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-11] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:13.708+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-5] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:13.944+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:14.007+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:14.178+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-alpha documentId=01a2073c-a1eb-7675-a54b-e728b6209f53 mode=FULL chunks=4 dimensions=64 force=false parseEngine=NONE
+2026-11-23T15:09:14.291+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073c-a1eb-7635-aaa1-57aacbf3301e tenantId=tenant-alpha runId=01a2073c-a1eb-7901-ace5-d904cf442b41 attempts=1
+2026-11-23T15:09:14.302+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:14.694+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-7] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:14.890+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-6] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:15.043+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-alpha documentId=01a2073c-a4e0-728a-bad5-f85598c56847 mode=FULL chunks=4 dimensions=64 force=false parseEngine=NONE
+2026-11-23T15:09:15.260+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:15.309+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073c-a4e0-7994-ac9a-35f92648387f tenantId=tenant-alpha runId=01a2073c-a4e0-7fa3-adab-d5996683683e attempts=1
+2026-11-23T15:09:15.429+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-12] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:15.842+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:15.951+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:16.244+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-10] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:16.276+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.completed tenantId=tenant-alpha documentId=01a2073c-a6af-764d-9a23-73178f295a2a mode=FULL chunks=4 dimensions=64 force=false parseEngine=NONE
+2026-11-23T15:09:16.406+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073c-a6af-7873-8691-c647939ffa89 tenantId=tenant-alpha runId=01a2073c-a6af-7229-8570-1cc98a818be7 attempts=1
+2026-11-23T15:09:16.729+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-8] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:17.170+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:17.253+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.acl_completed tenantId=tenant-alpha documentId=00000000-0000-0000-0000-0000001e97a5 chunks=20 aclVersion=2
+2026-11-23T15:09:17.274+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:17.373+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073c-b673-7944-a1e3-323cbc3d0785 tenantId=tenant-alpha runId=01a2073c-b673-77f1-9727-cff558076d6c attempts=1
+2026-11-23T15:09:17.373+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.w.run.service.OutboxLaneScheduler    : outbox.lane.poll.completed lane=heavy worker=0 processed=7
+2026-11-23T15:09:17.728+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-5] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:17.947+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-7] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:18.082+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:18.263+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-14] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:18.710+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:18.918+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-6] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:19.090+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-11] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:19.742+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:19.779+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-12] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:19.803+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-10] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:20.490+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:20.674+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:20.719+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.acl_completed tenantId=tenant-alpha documentId=00000000-0000-0000-0000-0000001e97a5 chunks=20 aclVersion=3
+2026-11-23T15:09:20.886+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-8] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:20.892+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073c-c08e-7614-b399-9940dc277d10 tenantId=tenant-alpha runId=01a2073c-c08e-7281-b18a-82fbbaa32031 attempts=1
+2026-11-23T15:09:20.892+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.w.run.service.OutboxLaneScheduler    : outbox.lane.poll.completed lane=heavy worker=0 processed=1
+2026-11-23T15:09:21.022+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-5] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:21.285+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:21.772+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-7] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:21.937+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:22.497+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-6] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:22.759+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-14] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:22.824+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:23.027+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-11] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:23.060+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-10] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:23.370+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:23.398+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:23.606+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-5] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:23.878+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-12] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:23.946+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-8] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:24.235+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:24.301+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:24.740+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:24.855+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-7] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:25.086+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-14] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:25.086+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-6] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:25.410+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-11] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:25.419+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:25.426+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-10] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:25.686+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:25.824+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:26.343+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-5] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:26.442+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-8] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:26.622+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-12] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:27.022+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:27.083+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-15] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:27.112+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:27.461+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:27.512+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-7] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:27.945+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-14] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:28.011+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-3] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.acl_completed tenantId=tenant-alpha documentId=00000000-0000-0000-0000-0000001e97a5 chunks=20 aclVersion=4
+2026-11-23T15:09:28.172+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-3] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073c-e314-7835-a645-8d7fa8b626c2 tenantId=tenant-alpha runId=01a2073c-e314-73e5-a610-061a4f653beb attempts=1
+2026-11-23T15:09:28.173+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-3] c.r.w.run.service.OutboxLaneScheduler    : outbox.lane.poll.completed lane=heavy worker=1 processed=1
+2026-11-23T15:09:28.230+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-11] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:28.804+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-10] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:29.078+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:29.529+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:29.570+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-6] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:29.580+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-8] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:29.943+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:30.159+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:30.270+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-12] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:30.492+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:30.653+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-15] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:31.008+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-5] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:31.246+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:31.839+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-11] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:31.942+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-14] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:32.168+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:32.468+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:32.525+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-7] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:33.248+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:33.499+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-10] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:33.640+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-6] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:34.131+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:34.154+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-15] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:34.274+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-8] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:34.653+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:34.814+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:34.939+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.acl_completed tenantId=tenant-alpha documentId=00000000-0000-0000-0000-0000001e97a5 chunks=20 aclVersion=5
+2026-11-23T15:09:35.087+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073c-fe6a-72b3-994d-0966ab983136 tenantId=tenant-alpha runId=01a2073c-fe6a-77b0-9c7e-0b8bdafcfdf2 attempts=1
+2026-11-23T15:09:35.087+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.w.run.service.OutboxLaneScheduler    : outbox.lane.poll.completed lane=heavy worker=0 processed=1
+2026-11-23T15:09:35.309+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-12] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:35.345+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-5] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:35.567+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:35.995+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-14] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:36.045+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-11] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:36.663+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:36.770+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:37.131+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-10] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:37.178+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:37.710+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:37.853+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-8] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:37.936+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-15] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:38.110+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:38.189+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:38.272+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-7] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:38.496+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-14] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:38.594+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-6] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:39.017+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-11] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:39.134+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-12] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:39.169+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:39.413+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-5] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:39.554+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:39.687+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-10] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:40.037+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:40.054+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:40.411+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-15] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:40.677+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-14] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:40.796+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-7] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:41.062+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:41.200+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-2] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.acl_completed tenantId=tenant-alpha documentId=00000000-0000-0000-0000-0000001e97a5 chunks=20 aclVersion=6
+2026-11-23T15:09:41.274+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:41.340+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-2] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073d-1f25-7293-8445-f5e1f29ad5da tenantId=tenant-alpha runId=01a2073d-1f25-7a29-8e47-0fb358ed6182 attempts=1
+2026-11-23T15:09:41.340+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-2] c.r.w.run.service.OutboxLaneScheduler    : outbox.lane.poll.completed lane=heavy worker=1 processed=1
+2026-11-23T15:09:41.342+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-6] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:41.557+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-11] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:41.621+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-12] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:41.674+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-8] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:41.674+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-5] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:42.156+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:42.308+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:42.362+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-10] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:42.658+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-15] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:42.704+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:42.950+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-14] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:43.135+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:43.272+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:43.424+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-6] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:43.473+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:43.882+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-12] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:44.217+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-11] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:44.359+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-7] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:44.679+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-8] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:45.044+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-5] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:45.102+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:45.599+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-10] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:45.888+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-15] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:46.234+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:46.342+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:46.604+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:46.869+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:47.326+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:47.513+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-6] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:47.868+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-14] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:48.293+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-7] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:48.337+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-8] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:48.620+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:48.806+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.acl_completed tenantId=tenant-alpha documentId=00000000-0000-0000-0000-0000001e97a5 chunks=20 aclVersion=7
+2026-11-23T15:09:48.870+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073d-35df-7f2c-a05d-aced9c46f79f tenantId=tenant-alpha runId=01a2073d-35df-7f97-ba98-26958d4e81c1 attempts=1
+2026-11-23T15:09:48.870+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.w.run.service.OutboxLaneScheduler    : outbox.lane.poll.completed lane=heavy worker=1 processed=1
+2026-11-23T15:09:49.005+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-11] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:49.207+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-15] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:49.303+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-5] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:49.475+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:50.140+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:50.222+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:50.309+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-12] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:50.451+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:51.043+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-14] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:51.052+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-10] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:52.175+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-8] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:52.360+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:52.436+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:52.501+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:52.718+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-12] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:52.808+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-15] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:52.854+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-6] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:53.071+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-11] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:53.251+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-7] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:53.522+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:53.525+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-5] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:53.630+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-14] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:54.091+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-10] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:54.371+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:54.723+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:54.873+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:55.252+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:55.365+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:55.692+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-6] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:55.868+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-11] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:56.312+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-12] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:56.429+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:56.451+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-15] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:56.867+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-7] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:57.076+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-14] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:57.091+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.acl_completed tenantId=tenant-alpha documentId=00000000-0000-0000-0000-0000001e97a5 chunks=20 aclVersion=8
+2026-11-23T15:09:57.240+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073d-521a-7ec2-a926-e31cdb46bf82 tenantId=tenant-alpha runId=01a2073d-521a-7afd-b4ba-33ac3ac583c6 attempts=1
+2026-11-23T15:09:57.240+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-4] c.r.w.run.service.OutboxLaneScheduler    : outbox.lane.poll.completed lane=heavy worker=1 processed=1
+2026-11-23T15:09:57.411+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-8] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:58.040+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:58.321+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:58.738+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:59.139+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:59.254+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:59.412+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-6] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:59.438+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-12] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:59.703+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-2] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:09:59.953+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-10] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:10:00.031+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-5] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:10:00.095+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-14] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:10:00.485+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-8] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:10:00.605+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-15] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:10:00.727+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-9] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:10:01.026+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-7] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:10:01.036+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-1] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:10:01.153+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-2] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.acl_completed tenantId=tenant-alpha documentId=00000000-0000-0000-0000-0000001e97a5 chunks=20 aclVersion=9
+2026-11-23T15:10:01.213+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-2] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073d-7051-77ee-a372-fc769fd6bde4 tenantId=tenant-alpha runId=01a2073d-7051-7d3e-b712-ea0bb6fdd28e attempts=1
+2026-11-23T15:10:01.213+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-2] c.r.w.run.service.OutboxLaneScheduler    : outbox.lane.poll.completed lane=heavy worker=0 processed=1
+2026-11-23T15:10:01.343+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-13] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:10:01.653+08:00  INFO 80164 --- [riccon-worker] [o-18081-exec-11] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:10:01.803+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-4] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:10:01.820+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-3] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:10:01.937+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.acl_completed tenantId=tenant-alpha documentId=00000000-0000-0000-0000-0000001e97a5 chunks=20 aclVersion=10
+2026-11-23T15:10:01.962+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073d-829f-76c9-9245-e7aa4238c493 tenantId=tenant-alpha runId=01a2073d-829f-7fde-a306-fef7abfd1c64 attempts=1
+2026-11-23T15:10:01.962+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-1] c.r.w.run.service.OutboxLaneScheduler    : outbox.lane.poll.completed lane=heavy worker=1 processed=1
+2026-11-23T15:10:02.109+08:00  INFO 80164 --- [riccon-worker] [io-18081-exec-6] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-23T15:10:02.767+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-2] c.r.w.i.service.KnowledgeIndexService    : knowledge.index.acl_completed tenantId=tenant-alpha documentId=00000000-0000-0000-0000-0000001e97a5 chunks=20 aclVersion=11
+2026-11-23T15:10:02.784+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-2] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a2073d-8641-7c47-b0b1-6856754a733d tenantId=tenant-alpha runId=01a2073d-8641-7db5-baf1-e9c9e00628a6 attempts=1
+2026-11-23T15:10:02.784+08:00  INFO 80164 --- [riccon-worker] [ riccon-sched-2] c.r.w.run.service.OutboxLaneScheduler    : outbox.lane.poll.completed lane=heavy worker=1 processed=1
+2026-11-23T15:10:05.351+08:00  INFO 80164 --- [riccon-worker] [m-shutdown-hook] i.a.c.shutdown.GracefulShutdownManager   : Graceful shutdown initiated, 0 active request(s), timeout=infinite
+2026-11-23T15:10:05.354+08:00  INFO 80164 --- [riccon-worker] [m-shutdown-hook] i.a.c.m.transport.HttpTransportFactory   : Shutting down 0 managed HttpTransport(s)
+2026-11-23T15:10:05.359+08:00  INFO 80164 --- [riccon-worker] [ionShutdownHook] o.s.boot.tomcat.GracefulShutdown         : Commencing graceful shutdown. Waiting for active requests to complete
+2026-11-23T15:10:07.374+08:00  INFO 80164 --- [riccon-worker] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete
+2026-11-23T15:10:07.391+08:00  INFO 80164 --- [riccon-worker] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-11-23T15:10:07.404+08:00  INFO 80164 --- [riccon-worker] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
