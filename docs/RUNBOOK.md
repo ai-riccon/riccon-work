@@ -939,6 +939,96 @@ M05 gate 证据（`SEC-KB-001`）：EV 命令必须包含 `docker build … -t r
 - 镜像/权重回滚：回到上一版 `-exec.jar` 与镜像 tag（OcrCli 与 manifest 同镜像）；数据库不涉及。
 - ACL 开关关闭/回滚的安全回归与书面同意要求见 `M05-2`（ADR-0023 §5.9），与本开关无关。
 
+## M05 索引 v2 部署与重灌（B7）
+
+依据 ADR-0023 §7.1 与 B7 实现（`OpenSearchIndexClient`、`scripts/ops/reindex-knowledge.mjs`）。
+索引按租户隔离：`riccon-kb-v1-{tenant}` / `riccon-kb-v2-{tenant}`，统一别名 `riccon-kb-{tenant}`。
+
+### M05-7 索引版本键与默认值
+
+- 绑定前缀是 `riccon.worker.opensearch`（`OpenSearchProperties`），因此**真正生效**的环境变量是
+  `RICCON_WORKER_OPENSEARCH_INDEX_VERSION`（等价 `--riccon.worker.opensearch.index-version=v2`）。
+- **已知不一致（gate 风险）**：ADR-0023 §7.1 与 `IT-KB-113` 注释里写的 `RICCON_OPENSEARCH_INDEX_VERSION`
+  当前**不会生效**——`application.yml` 的 `index-version` 是字面量 `v1`，且绑定前缀含 `worker`；只设该键会
+  静默继续用 v1，重灌脚本随后会因“目标索引不存在”失败（fail-closed），但 E2E/gate 可能在 v1 上假绿。
+  修复需把 `application.yml` 的 `index-version` 改成 `${RICCON_OPENSEARCH_INDEX_VERSION:v1}`（B7/架构改动，
+  不在 ops 写范围）；在此之前，gate 与部署一律使用 `RICCON_WORKER_OPENSEARCH_INDEX_VERSION`，并用索引名确认。
+- 默认 `v1`（`application.yml`）：新写入落在 `riccon-kb-v1-{tenant}`，别名 `riccon-kb-{tenant}` 仍指 v1。
+- `ensureIndex` **不会**自动把别名从 v1 切到 v2：它只创建目标版本索引，并在别名不存在时建立别名；
+  切换必须由重灌脚本完成，避免灰度期读写指向不同版本。
+- 只有 Worker 读写 OpenSearch（API 只读 MySQL 元数据），所以该键只需在 Worker 生效；迁移期不要让
+  “写 v2、读 v1”同时存在（本仓库当前检索走 MySQL 关键词，OpenSearch 用于索引一致性/后续向量检索）。
+- 索引前缀默认 `riccon-kb`：重灌脚本读 `RICCON_OPENSEARCH_INDEX_PREFIX`，而 Worker 的 `index-prefix`
+  是 `application.yml` 字面量；只改一处会导致脚本找不到 Worker 写入的索引，不要单独调整前缀。
+
+### M05-8 重灌与别名切换（`reindex-knowledge`）
+
+前置：
+
+1. 先用 v2 启动 Worker（同一实例即可，先切配置后重灌）：
+
+   ```bash
+   RICCON_WORKER_OPENSEARCH_INDEX_VERSION=v2 ./mvnw -q -pl apps/worker spring-boot:run
+   # 容器/镜像部署同理：把该环境变量写进 Worker 的 env
+   ```
+
+2. Worker 正在消费 `heavy` 通道（`KNOWLEDGE_INDEX`）；数据库与 OpenSearch 可达
+   （测试栈 `RICCON_OPENSEARCH_URL=http://127.0.0.1:19200`）；
+3. 每个目标租户至少有 1 个 `ACTIVE` 账号（事件需要 `agent_run` 归属），否则脚本按失败处理。
+
+步骤（默认 dry-run，逐租户推进）：
+
+```bash
+# 1) dry-run：只打印计划（文档数、目标索引、别名动作），不写库、不改别名
+node scripts/ops/reindex-knowledge.mjs --tenant tenant-alpha
+
+# 2) 正式重灌 + 校验 + 原子切别名（脚本默认 --index-version v2）
+node scripts/ops/reindex-knowledge.mjs --tenant tenant-alpha --apply \
+  --report .riccon/evidence/<TASK>/reindex-v2.json
+
+# 3) 全租户（可重复执行；--attempt 固定时幂等）
+node scripts/ops/reindex-knowledge.mjs --all-tenants --apply \
+  --report .riccon/evidence/<TASK>/reindex-v2.json
+
+# 4) 只切别名（不重灌；用于重灌已完成或分批切换）
+node scripts/ops/reindex-knowledge.mjs --tenant tenant-alpha --apply --alias-only --index-version v2
+```
+
+行为与安全边界：
+
+- 只写 outbox（`riccon.knowledge.index.requested.v1`，`mode=FULL`、`reason=BACKFILL_V2`、幂等键
+  `doc:{id}:index:{attempt}`），不直接写业务表，不打印正文/密码/凭据；
+- 等待本次 attempt 的全部事件到达 `DONE`（默认总超时 90 分钟；`DEAD` 或无进展即失败）；
+- **先校验、后切别名**：逐租户对比 MySQL 分块数与 v2 索引文档数/分块 ID（`--max-verify-chunks` 默认
+  50000，超出只比计数）。任一项不符 → 该租户失败、**不切别名**；目标索引不存在 → 直接失败，不会切到空索引；
+- 别名切换使用 `_aliases` 的 add/remove 原子动作，切换后回读确认别名只剩目标版本；
+- 任一租户失败 → 退出 1；用法/环境不完整 → 退出 2；dry-run 只打印计划。
+
+验证（切换后逐租户核对）：
+
+```bash
+# 别名应只指向 riccon-kb-v2-{tenant}
+curl -fsS "$RICCON_OPENSEARCH_URL/_alias/riccon-kb-tenant-alpha"
+# v1/v2 索引与文档数（v1 保留供回滚）
+curl -fsS "$RICCON_OPENSEARCH_URL/_cat/indices/riccon-kb-*?v&h=index,docs.count,store.size"
+```
+
+### M05-9 gate 取证与回滚边界
+
+- **M05 gate 必须在 v2 索引下取证**：Worker 以 `RICCON_WORKER_OPENSEARCH_INDEX_VERSION=v2` 启动、重灌完成、
+  别名指向 `riccon-kb-v2-{tenant}`；`IT-KB-113`/检索与 J1/J2 证据在 v2 上跑。v1 缺 v2 mapping 字段
+  （`visibility`/`department_id`/`acl_version`/`source_type`/`connector_id`/`ocr_confidence`/`bbox_*`），
+  只在 v1 上通过不得判 gate pass。
+- **索引回滚/回切 v1**（别名级，秒级完成，v1 未删除）：
+  `node scripts/ops/reindex-knowledge.mjs --tenant <t> --apply --alias-only --index-version v1`
+  （全租户用 `--all-tenants`）。v1 至少保留 7 天（ADR-0023 §7.1）后再丢弃 v2 索引。
+- **边界（与 ACL 回滚分开）**：索引回切只改 OpenSearch 命中，不改变文档 ACL、不放宽可见性；ACL 开关关闭或
+  应用回滚属于安全回归，见 `M05-2`（ADR-0023 §5.9）。两者不得合并成一次回滚操作。
+- 回滚后同样要验证：别名只有一个 v1 目标、v2 索引不再被引用、J1 检索可用；索引回滚不需要重启 Worker
+  （`--alias-only` 只动 OpenSearch），但若同时改回 `RICCON_WORKER_OPENSEARCH_INDEX_VERSION=v1` 则需重启。
+- 测试栈（`deploy/compose/docker-compose.test.yml`）只跑 MySQL/OpenSearch/RustFS 三个依赖，不起 API/Worker，
+  因此 v2 开关由启动 Worker 的环境决定；**生产默认保持 v1**，由运维在发布单里显式设置。
+
 ## 生产
 
 M09 交付。发布前必须满足 T4 要求：
