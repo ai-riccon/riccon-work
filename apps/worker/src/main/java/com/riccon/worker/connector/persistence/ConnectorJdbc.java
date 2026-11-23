@@ -137,6 +137,32 @@ public class ConnectorJdbc {
     }
 
     /**
+     * 在文档写入事务内锁定连接器并确认租户 ACTIVE；连接器已删除或租户停用时无行。
+     *
+     * <p>用于关闭 {@code isSyncable} 与文档插入之间的 check-then-act 窗口；锁持有到事务提交。
+     *
+     * @param tenantId 租户
+     * @param connectorId 连接器 ID
+     * @return 命中时返回连接器 ID
+     */
+    public Optional<UUID> lockSyncableConnector(TenantId tenantId, UUID connectorId) {
+        return tenantJdbc.queryOne(
+                tenantId,
+                """
+                SELECT c.id
+                  FROM kb_connector c
+                  JOIN tenant t ON t.id = c.tenant_id
+                 WHERE c.tenant_id = :tenantId
+                   AND c.id = :connectorId
+                   AND c.deleted_at IS NULL
+                   AND t.status = 'ACTIVE'
+                 FOR UPDATE
+                """,
+                Map.of("connectorId", UuidBinary.toBytes(connectorId)),
+                (rs, rowNum) -> UuidBinary.fromBytes(rs.getBytes("id")));
+    }
+
+    /**
      * 标记同步开始；失败也由后续 finish 写结束时间。
      *
      * @param tenantId 租户
@@ -249,17 +275,19 @@ public class ConnectorJdbc {
      * @param connectorId 连接器 ID
      * @param dueAt 扫描到的到期时间
      * @param nextAt 下一次同步时间
+     * @param now 本次领取时间；用于 updated_at，不能写未来时间
      * @return 领取成功返回 true
      */
-    public boolean claimDue(TenantId tenantId, UUID connectorId, Instant dueAt, Instant nextAt) {
+    public boolean claimDue(TenantId tenantId, UUID connectorId, Instant dueAt, Instant nextAt, Instant now) {
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("connectorId", UuidBinary.toBytes(connectorId));
         params.put("dueAt", toDatabase(dueAt));
         params.put("nextAt", toDatabase(nextAt));
+        params.put("now", toDatabase(now));
         return tenantJdbc.update(tenantId, """
                 UPDATE kb_connector
                    SET next_sync_at = :nextAt,
-                       updated_at = :nextAt
+                       updated_at = :now
                  WHERE tenant_id = :tenantId
                    AND id = :connectorId
                    AND status = 'ACTIVE'
@@ -681,6 +709,29 @@ public class ConnectorJdbc {
                    AND id = :documentId
                    AND deleted_at IS NULL
                 """, Map.of("documentId", UuidBinary.toBytes(documentId), "now", toDatabase(now)));
+    }
+
+    /**
+     * 判断指定文档+ACL 版本的删除索引事件是否已存在。
+     *
+     * @param tenantId 租户
+     * @param documentId 文档 ID
+     * @param aclVersion ACL 版本
+     * @return 已存在返回 true
+     */
+    public boolean hasDeleteIndexEvent(TenantId tenantId, UUID documentId, int aclVersion) {
+        Long count = tenantJdbc
+                .queryOne(
+                        tenantId,
+                        """
+                        SELECT COUNT(*) FROM agent_run_outbox
+                         WHERE tenant_id = :tenantId
+                           AND idempotency_key = :key
+                        """,
+                        Map.of("key", "doc:" + documentId + ":delete:" + aclVersion),
+                        (rs, rowNum) -> rs.getLong(1))
+                .orElse(0L);
+        return count > 0;
     }
 
     /**

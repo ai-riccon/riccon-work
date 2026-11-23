@@ -41,8 +41,8 @@ public class ConnectorCredentials {
     /** DEK 长度。 */
     private static final int DEK_BYTES = 32;
 
-    /** 掩码最短可展示长度。 */
-    private static final int MIN_MASK_LENGTH = 8;
+    /** 掩码最短可展示长度；短于此长度不暴露前后缀。 */
+    private static final int MIN_MASK_LENGTH = 12;
 
     /** 进程级安全随机源。 */
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -144,7 +144,9 @@ public class ConnectorCredentials {
     }
 
     /**
-     * 计算掩码：前 4 位 + 省略号 + 后 3 位；过短时只返回 {@code ****}。
+     * 计算掩码：长度 ≥12 时返回前 4 位 + 省略号 + 后 3 位；过短时只返回 {@code ****}。
+     *
+     * <p>短 key 若保留 7/8 个字符会接近明文，统一不展示前后缀。
      *
      * @param accessKeyId 访问键
      * @return 掩码

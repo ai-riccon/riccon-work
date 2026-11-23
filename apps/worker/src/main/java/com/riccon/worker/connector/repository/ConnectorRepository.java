@@ -49,6 +49,11 @@ public class ConnectorRepository {
         return connectorJdbc.findTenant(tenantId);
     }
 
+    /** 事务内锁定可同步连接器。 */
+    public Optional<UUID> lockSyncableConnector(TenantId tenantId, UUID connectorId) {
+        return connectorJdbc.lockSyncableConnector(tenantId, connectorId);
+    }
+
     /** 判断连接器是否仍可同步（未删除且租户 ACTIVE）。 */
     public boolean isSyncable(TenantId tenantId, UUID connectorId) {
         return connectorJdbc.isSyncable(tenantId, connectorId);
@@ -90,8 +95,8 @@ public class ConnectorRepository {
     }
 
     /** 条件领取到期连接器。 */
-    public boolean claimDue(TenantId tenantId, UUID connectorId, Instant dueAt, Instant nextAt) {
-        return connectorJdbc.claimDue(tenantId, connectorId, dueAt, nextAt);
+    public boolean claimDue(TenantId tenantId, UUID connectorId, Instant dueAt, Instant nextAt, Instant now) {
+        return connectorJdbc.claimDue(tenantId, connectorId, dueAt, nextAt, now);
     }
 
     /** 是否存在排队/处理中的同步事件。 */
@@ -212,6 +217,11 @@ public class ConnectorRepository {
     /** 是否已有排队/处理中的索引事件。 */
     public boolean hasPendingIndexEvent(TenantId tenantId, UUID documentId) {
         return connectorJdbc.hasPendingIndexEvent(tenantId, documentId);
+    }
+
+    /** 删除索引事件是否已存在。 */
+    public boolean hasDeleteIndexEvent(TenantId tenantId, UUID documentId, int aclVersion) {
+        return connectorJdbc.hasDeleteIndexEvent(tenantId, documentId, aclVersion);
     }
 
     /** 下一次索引尝试号。 */

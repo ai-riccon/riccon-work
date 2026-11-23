@@ -135,6 +135,71 @@ class ConnectorDocumentWriteServiceIntegrationTest extends WorkerIntegrationTest
                 .isEqualTo(1);
     }
 
+    @Test
+    void createDocument_deletedConnectorRollsBackBeforeInsert() {
+        String tenant = uniqueTenant("conn-write-lock");
+        data.createTenant(tenant);
+        UUID user = data.createUser(tenant);
+        UUID connectorId = com.riccon.worker.persistence.UuidBinary.newV7();
+        jdbcClient
+                .sql("""
+                        INSERT INTO kb_connector (
+                            tenant_id, id, name, type, status, endpoint_id, config, default_visibility,
+                            schedule_enabled, created_by, created_at, updated_at, deleted_at
+                        ) VALUES (
+                            :tenant, :id, :name, 'S3', 'PAUSED', 'local-rustfs', :config,
+                            'TENANT', FALSE, :createdBy, NOW(6), NOW(6), NOW(6)
+                        )
+                        """)
+                .param("tenant", tenant)
+                .param("id", com.riccon.worker.persistence.UuidBinary.toBytes(connectorId))
+                .param("name", "write-lock-" + connectorId.toString().substring(0, 8))
+                .param("config", JSON.writeValueAsString(Map.of("bucket", BUCKET, "prefix", "x/")))
+                .param("createdBy", com.riccon.worker.persistence.UuidBinary.toBytes(user))
+                .update();
+        UUID itemId = com.riccon.worker.persistence.UuidBinary.newV7();
+        jdbcClient
+                .sql("""
+                        INSERT INTO kb_connector_item (
+                            tenant_id, id, connector_id, external_id, external_id_hash, external_version,
+                            generation, status, last_seen_at, created_at, updated_at
+                        ) VALUES (
+                            :tenant, :id, :connectorId, 'a.pdf', :hash, 'etag',
+                            1, 'PENDING', NOW(6), NOW(6), NOW(6)
+                        )
+                        """)
+                .param("tenant", tenant)
+                .param("id", com.riccon.worker.persistence.UuidBinary.toBytes(itemId))
+                .param("connectorId", com.riccon.worker.persistence.UuidBinary.toBytes(connectorId))
+                .param("hash", sha256("a.pdf"))
+                .update();
+        Instant now = Instant.now();
+        try (TenantContext.TenantScope ignored = TenantContext.open(TenantId.of(tenant))) {
+            assertThatThrownBy(() -> writeService.createDocument(
+                            TenantId.of(tenant),
+                            itemId,
+                            com.riccon.worker.persistence.UuidBinary.newV7(),
+                            "a.pdf",
+                            connectorId,
+                            "a.pdf",
+                            "a".repeat(64),
+                            "application/pdf",
+                            1,
+                            KnowledgeVisibility.TENANT,
+                            null,
+                            user,
+                            now.plusSeconds(180L * 24 * 3600),
+                            "etag",
+                            user,
+                            "trace",
+                            now))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("not syncable");
+        }
+        assertThat(documentCount(tenant)).isZero();
+        assertThat(itemStatus(tenant, itemId)).isEqualTo("PENDING");
+    }
+
     private long documentCount(String tenant) {
         return jdbcClient
                 .sql("SELECT COUNT(*) FROM knowledge_document WHERE tenant_id=:tenant")

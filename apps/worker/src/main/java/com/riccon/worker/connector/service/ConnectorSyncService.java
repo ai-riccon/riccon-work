@@ -310,10 +310,6 @@ public class ConnectorSyncService {
             }
             boolean truncated = Boolean.TRUE.equals(response.isTruncated());
             String nextToken = response.nextContinuationToken();
-            if (truncated && (nextToken == null || nextToken.isBlank())) {
-                state = state.withComplete(false).withError(ConnectorErrorCodes.TRUNCATED);
-                break;
-            }
             for (S3Object object : response.contents()) {
                 Instant now = clock.instant();
                 if (budget.expired(now)) {
@@ -340,6 +336,11 @@ public class ConnectorSyncService {
                     }
                     break;
                 }
+            }
+            if (truncated && (nextToken == null || nextToken.isBlank())) {
+                // 当前页已确认对象先处理；页尾发现截断且无 token 才标记不完整并跳过删除传播。
+                state = state.withComplete(false).withError(ConnectorErrorCodes.TRUNCATED);
+                break;
             }
             if (state.errorCode != null || budget.truncated()) {
                 break;
@@ -486,6 +487,7 @@ public class ConnectorSyncService {
                 objectWriter.write(objectKey, downloaded.path(), ConnectorContentTypes.mimeType(extension));
                 documentWriteService.updateDocument(
                         tenantId,
+                        connector.id(),
                         item.id(),
                         document.row().documentId(),
                         document.aclVersion(),
@@ -506,8 +508,9 @@ public class ConnectorSyncService {
                     .findTenant(tenantId)
                     .map(ConnectorTenantInfo::retentionDays)
                     .orElse(DEFAULT_RETENTION_DAYS);
-            connectorRepository.insertDocument(
+            documentWriteService.createDocument(
                     tenantId,
+                    item.id(),
                     documentId,
                     ConnectorContentTypes.title(object.key()),
                     connector.id(),
@@ -519,10 +522,10 @@ public class ConnectorSyncService {
                     connector.defaultDepartmentId(),
                     connector.createdBy(),
                     now.plus(Duration.ofDays(retentionDays)),
+                    object.etag(),
+                    actorId,
+                    traceId,
                     now);
-            connectorRepository.markItemSynced(
-                    tenantId, item.id(), documentId, downloaded.checksum(), object.etag(), now);
-            publishIndex(tenantId, connector.id(), documentId, 1, actorId, traceId, now);
             state.created++;
         } finally {
             deleteQuietly(downloaded.path());
