@@ -1,9 +1,9 @@
 {
   "status": "failed",
-  "generatedAt": "2026-11-23T06:15:14.120Z",
+  "generatedAt": "2026-11-23T06:58:03.908Z",
   "mode": "perf",
   "env": {
-    "generatedAt": "2026-11-23T06:13:10.634Z",
+    "generatedAt": "2026-11-23T06:53:38.891Z",
     "mode": "perf",
     "host": {
       "platform": "darwin 24.6.0",
@@ -16,9 +16,9 @@
     },
     "images": {
       "compose": [
+        "rustfs/rustfs:1.0.6",
         "mysql:8.4.13",
-        "opensearchproject/opensearch:3.9.0",
-        "rustfs/rustfs:1.0.6"
+        "opensearchproject/opensearch:3.9.0"
       ],
       "started": [
         "mysql:8.4.13",
@@ -27,7 +27,7 @@
       ]
     },
     "k6Version": "k6 v2.4.0 (commit/dd9395906d, go1.26.11, darwin/amd64)",
-    "scriptSha256": "46f002aa10c57dc933434c80d9bbd16194ef468b5fa25632371b38254afe5f2c",
+    "scriptSha256": "34576882ca83c9d8e991de2307c4415c7169b7bd20241f860dd197b943fa1ebc",
     "chatMaxStreams": 50,
     "dbPoolSize": 50,
     "fakeModel": 1,
@@ -39,7 +39,7 @@
       "language": "chi_sim+eng",
       "sample": "deploy/ocr/sample.png",
       "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
-      "probedAt": "2026-11-23T14:13:09+08:00"
+      "probedAt": "2026-11-23T14:53:34+08:00"
     },
     "startCommand": "node scripts/real-stack/run.mjs --mode=perf",
     "startupCommands": [
@@ -73,7 +73,7 @@
         "knowledgeVus": 50,
         "aclWriteVus": 1
       },
-      "duration": "10s",
+      "duration": "60s",
       "dbPoolSize": 50,
       "chatMaxStreams": 50,
       "fakeModel": 1,
@@ -112,6 +112,7 @@
   "phases": {
     "compose": "passed",
     "objectStorage": "passed",
+    "retrievalCapture": "enabled",
     "migration": "passed",
     "fingerprint": "passed",
     "seed": "passed",
@@ -122,11 +123,11 @@
   "runs": [],
   "knowledge": {
     "status": "failed",
-    "generatedAt": "2026-11-23T14:15:14+08:00",
+    "generatedAt": "2026-11-23T14:58:03+08:00",
     "phase": {
       "dataset": "passed",
       "baselineIndex": "passed",
-      "retrievalCapture": "failed"
+      "retrievalCapture": "passed"
     },
     "k6": {
       "status": 99,
@@ -134,21 +135,45 @@
       "log": ".riccon/evidence/TASK-0173/perf-m05-knowledge.log"
     },
     "retrieval": {
-      "source": "mysql.slow_log (long_query_time=0, log_output=TABLE)",
+      "source": "mysql.slow_log (long_query_time=0.001s, log_output=TABLE)",
       "statement": "AgentContextJdbc.search: knowledge_chunk.content LIKE / knowledge_document.title LIKE + ACL 谓词",
-      "samples": 0,
-      "p50Ms": null,
-      "p95Ms": null,
-      "maxMs": null,
-      "avgRowsExamined": null
+      "samples": 183,
+      "p50Ms": 2000,
+      "p95Ms": 3000,
+      "maxMs": 5000,
+      "avgRowsExamined": 100180.6
+    },
+    "budgets": {
+      "firstTokenServerP95Ms": 358.40000000000003,
+      "firstTokenServerBudgetMs": 3000,
+      "firstTokenServerWithinBudget": true,
+      "userFirstTokenP95Ms": 15688.5512,
+      "userFirstTokenBudgetMs": 3000,
+      "userFirstTokenWithinBudget": false,
+      "apiP95Ms": 747.75025,
+      "apiBudgetMs": 500,
+      "apiWithinBudget": false,
+      "aclWriteP95Ms": 10554.349999999999,
+      "aclGetP95Ms": 339.54999999999995,
+      "aclBudgetMs": 500,
+      "aclWithinBudget": false,
+      "downloadP95Ms": 626.7000000000003,
+      "indexNoOcrP95Ms": 12184,
+      "indexBudgetMs": 60000,
+      "note": "首字同时记录服务端模型首字与用户可感知 SSE TTFB；后者包含 Worker 排队与检索，是 AC-20 的严格口径"
     },
     "indexing": {
       "noOcr": {
         "samples": [
-          1429,
-          7828
+          2274,
+          7801,
+          8723,
+          10087,
+          11978,
+          11830,
+          12184
         ],
-        "p95Ms": 7828,
+        "p95Ms": 12184,
         "budgetMs": 60000,
         "withinBudget": true
       },
@@ -161,24 +186,84 @@
       },
       "baseline": {
         "kind": "docx",
-        "fileId": "01a2070a-f6c2-7662-8135-e0fef75c3623",
-        "documentId": "01a2070b-0033-72ea-b2f4-a01c8960ae08",
-        "parseMs": 1921,
-        "createToIndexedMs": 1429,
-        "totalMs": 3909
+        "fileId": "01a20731-4ce2-7ad8-8b25-c15fc30181ff",
+        "documentId": "01a20731-5e6c-7c93-a08d-f158f128a542",
+        "parseMs": 2998,
+        "createToIndexedMs": 2274,
+        "totalMs": 6943
       },
       "backlog": [
         {
           "kind": "docx",
           "index": 1,
-          "fileId": "01a2070b-12a5-7cad-8be9-f95e44ef43b6",
-          "documentId": "01a2070b-2961-7508-a12c-8606a5e291c5",
-          "uploadMs": 5002,
-          "parseMs": 780,
-          "createToIndexedMs": 7828,
-          "totalMs": 13610,
+          "fileId": "01a20731-7794-7998-beba-1f93ef261d35",
+          "documentId": "01a20731-896d-708f-8cbf-4619151c4da0",
+          "uploadMs": 2012,
+          "parseMs": 2722,
+          "createToIndexedMs": 7801,
+          "totalMs": 12535,
           "chunkCount": null,
-          "parseEngine": null
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 2,
+          "fileId": "01a20731-7743-7470-83e2-0d914e9eba1c",
+          "documentId": "01a20731-82a0-7497-89f4-b633c6404d7d",
+          "uploadMs": 2057,
+          "parseMs": 1003,
+          "createToIndexedMs": 8723,
+          "totalMs": 11783,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 3,
+          "fileId": "01a20731-7748-7384-bba2-673917518892",
+          "documentId": "01a20731-848d-720a-a23a-d6c87b8b52d2",
+          "uploadMs": 1989,
+          "parseMs": 1515,
+          "createToIndexedMs": 10087,
+          "totalMs": 13591,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 4,
+          "fileId": "01a20731-7749-7ced-9e66-c31db8ce977a",
+          "documentId": "01a20731-8508-7714-9691-3a3e1c64257e",
+          "uploadMs": 1972,
+          "parseMs": 1618,
+          "createToIndexedMs": 11978,
+          "totalMs": 15568,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 5,
+          "fileId": "01a20731-7933-76d1-9f83-8bb39c3e8fc0",
+          "documentId": "01a20731-9279-75a8-8edc-85774dc2595b",
+          "uploadMs": 2070,
+          "parseMs": 3835,
+          "createToIndexedMs": 11830,
+          "totalMs": 17735,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 6,
+          "fileId": "01a20731-7753-719e-8754-d13ca5d2d6c0",
+          "documentId": "01a20731-86a5-7ec6-84a5-8fb4ada60f70",
+          "uploadMs": 1955,
+          "parseMs": 2144,
+          "createToIndexedMs": 12184,
+          "totalMs": 16283,
+          "chunkCount": null,
+          "parseEngine": "NONE"
         }
       ],
       "backlogDuringLoad": true
@@ -191,7 +276,7 @@
         "language": "chi_sim+eng",
         "sample": "deploy/ocr/sample.png",
         "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
-        "probedAt": "2026-11-23T14:13:09+08:00"
+        "probedAt": "2026-11-23T14:53:34+08:00"
       },
       "measured": false,
       "samples": [],

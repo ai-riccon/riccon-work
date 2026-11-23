@@ -13,7 +13,10 @@ reviewed_commits:
   - ca6dfd942f57c3fa742949ad0ea75fdd65160505
   - 4b83271f67e8bc856ca6955138b7be701112363c
   - 492c949b5ffe17e4a7a972d9d61d9ce87c62d9b1
-head_commit: ca6dfd942f57c3fa742949ad0ea75fdd65160505
+  - 12e8183ca700f1066661dfbb3a72923dc4a6a535
+  - 2ea0c28960d74f4392b2ce30a50bebd006a3d551
+  - 7c199c1cad6e8f59be6ce3d70f87e45430aefcad
+head_commit: 7c199c1cad6e8f59be6ce3d70f87e45430aefcad
 dod:
   acceptance: true
   build: true
@@ -28,15 +31,18 @@ dod_not_applicable:
   - perf
   - migration
 dod_note: >-
-  任务级 DoD 只判 B7 的索引 v2/模式/parse/bbox 与定向证据。build 由 EV-0849/EV-0852 的 Maven test 编译支撑；
-  tests 由 builder EV-0849（45 用例）与 verifier EV-0852（16 用例）支撑；coverage/E2E/a11y/security/perf/迁移
-  属 M05-V1/V2 与模块 gate，不在任务评审范围。
+  任务级 DoD 只判 B7 的索引 v2/模式/parse/bbox、配置修复与定向证据。build 由 EV-0849/EV-0852/EV-0855 的
+  Maven test/spotless 编译支撑；tests 由 builder EV-0849（45 用例）、verifier EV-0852（16 用例）与
+  EV-0855（配置绑定 + 模式/V2Migration + spotless）支撑；coverage/E2E/a11y/security/perf/迁移属 M05-V1/V2
+  与模块 gate，不在任务评审范围。
 evidence:
   - EV-0849
   - EV-0852
+  - EV-0855
 reviewed_evidence:
   - EV-0849
   - EV-0852
+  - EV-0855
 findings:
   - id: F-001
     severity: P2
@@ -63,33 +69,26 @@ findings:
       contracts/openapi.yaml:1194/1203（force 语义）；docs/adr/ADR-0023-m05-knowledge-depth.md:707、§4.5。
   - id: F-002
     severity: P2
-    status: accepted
-    owner: "riccon/ops + riccon/architect"
-    due: "M05 gate 前（升级/重灌演练与 RUNBOOK）"
-    accepted_reason: >-
-      B7 的 write_scope 不含 application.yml/RUNBOOK；正确前缀的 `RICCON_WORKER_OPENSEARCH_INDEX_VERSION`
-      仍可让 worker 使用 v2，且迁移脚本在目标索引不存在/计数不一致时 fail-closed。现有 v1 索引继续服务
-      旧文档（运行期检索走 MySQL），失败面是新索引事件无法完成，不是数据丢失或越权。M05 gate 前必须由
-      Ops 完成正确键的 v2 切换、重灌与别名切换证据，不能把 EV-0849 的测试通过当作部署通过。
-    title: "ADR/脚本记录的 RICCON_OPENSEARCH_INDEX_VERSION 未被 worker 识别；application.yml 仍字面量 v1 且 RUNBOOK 无重灌章节"
+    status: fixed
+    owner: "riccon/builder-kb-index + riccon/ops"
+    fixed_in: "7c199c1cad6e8f59be6ce3d70f87e45430aefcad"
+    title: "application.yml 索引 version/prefix 未使用 ADR env 占位符（已由 7c199c1 修复）"
     summary: >-
-      `application.yml` 的 `riccon.worker.opensearch.index-version` 是字面量 `v1`，没有
-      `${RICCON_OPENSEARCH_INDEX_VERSION:v1}` 占位；`OpenSearchProperties` 的 prefix 是
-      `riccon.worker.opensearch`。独立 Binder 探针显示：按 ADR/脚本注释设置
-      `RICCON_OPENSEARCH_INDEX_VERSION=v2` 时绑定值仍是默认 v1，只有未文档化的
-      `RICCON_WORKER_OPENSEARCH_INDEX_VERSION=v9` 生效。`scripts/ops/reindex-knowledge.mjs:15` 的
-      “前置条件”重复了错误键名；`docs/RUNBOOK.md` 没有 v2/重灌/切别名章节；同一模式也影响
-      `RICCON_OPENSEARCH_INDEX_PREFIX`（脚本读 env，worker 用字面量）。
-      若 Ops 按 ADR 设置错误键，worker 继续写旧 v1 索引；旧 v1 mapping 是 `dynamic: strict` 且没有
-      visibility/acl_version/source_type 等字段，新 FULL 事件会被 OpenSearch 400 拒绝，重灌脚本会在
-      `waitForEvents`（event DEAD）或 `verifyIndex` 阶段失败且不切别名（fail-closed，但迁移无法完成）。
+      原问题：`ca6dfd9`/`2ea0c28` 提交树的 `application.yml` 使用字面量 `index-version: v1` 与
+      `index-prefix: riccon-kb`，没有 `${RICCON_OPENSEARCH_INDEX_VERSION:v1}` /
+      `${RICCON_OPENSEARCH_INDEX_PREFIX:riccon-kb}` 占位；`OpenSearchProperties` 的 prefix 是
+      `riccon.worker.opensearch`，因此按 ADR/脚本注释设置 `RICCON_OPENSEARCH_INDEX_VERSION=v2` 不会生效
+      （独立 Binder 探针显示绑定仍 v1，只有 `RICCON_WORKER_OPENSEARCH_INDEX_VERSION` 生效）。
+      修复：`7c199c1` 改为 env 占位符，并新增 `OpenSearchPropertiesBindingTest` 5 例，锁定 ADR 键、
+      Spring worker 键、默认 v1/riccon-kb、ADR/Spring 前缀两套键。EV-0855 在干净 worktree `7c199c1`
+      上 exit 0，包含 binding/modes/V2Migration 回归与 worker `spotless:check`；binding 测试的 5 例已由评审静态审阅。
+      residual：RUNBOOK M05-7 第 951-954 行仍描述修复前的“字面量 v1/需修复”，由 F-008 跟踪。
     evidence: >-
-      apps/worker/src/main/resources/application.yml:129-137；
-      apps/worker/src/main/java/com/riccon/worker/config/OpenSearchProperties.java:22-30；
-      scripts/ops/reindex-knowledge.mjs:15/29/701/753；
-      docs/adr/ADR-0023-m05-knowledge-depth.md:637；
-      .riccon/evidence/TASK-0169/probe-2026-11-23-index-version-env.log（`RICCON_OPENSEARCH_INDEX_VERSION=v2` → `BOUND_INDEX_VERSION=v1`；
-      `RICCON_WORKER_OPENSEARCH_INDEX_VERSION=v9` → `v9`）。
+      `git show 7c199c1 -- apps/worker/src/main/resources/application.yml`（index-prefix/index-version 占位符）；
+      apps/worker/src/main/resources/application.yml:139-140；
+      apps/worker/src/test/java/com/riccon/worker/index/service/OpenSearchPropertiesBindingTest.java:49-95（5 个绑定用例）；
+      .riccon/evidence/TASK-0169/EV-0855.json（commit 7c199c1，dirty=false，exit 0，worker spotless）；
+      .riccon/evidence/TASK-0169/probe-2026-11-23-index-version-env.log（修复前对照）。
   - id: F-003
     severity: P2
     status: accepted
@@ -110,7 +109,8 @@ findings:
       ADR IT-KB-113 要求“重灌后文档数/分块 ID 与 MySQL 一致且无重复”；当前脚本在大租户上不能完整证明。
     evidence: >-
       scripts/ops/reindex-knowledge.mjs:10、657-689（`size: options.maxVerifyChunks`、`_source:false`、
-      `documentCount` 只写入报告未比较）；docs/adr/ADR-0023-m05-knowledge-depth.md:640（IT-KB-113 口径）。
+      `documentCount` 只写入报告未比较）；docs/RUNBOOK.md:1002（已记录超出只比计数，但仍写“文档数”比较）；
+      docs/adr/ADR-0023-m05-knowledge-depth.md:640（IT-KB-113 口径）。
   - id: F-004
     severity: P3
     status: accepted
@@ -190,28 +190,73 @@ findings:
     owner: "riccon/lead"
     due: "M05 gate 前"
     accepted_reason: >-
-      EV-0849 的命令、commit、dirty 状态和 45 个 surefire 结果为真实；EV-0852 的 16 个用例在隔离
-      worktree 的 ca6dfd9 上通过，EV JSON/日志已回灌主树。实际 TASK-0169 diff `539cc73..ca6dfd9`
-      16 个文件全部在 write_scope（含 Lead 补录的 3 条测试 glob），没有生产源码越界。当前 gate 的
-      task-scope 报错是 HEAD 已前进到 B8/B9/B11 并行提交导致的范围污染，不是 B7 代码失败；Lead 需在
-      干净 checkout/按 end_commit 重跑模块 gate，避免把并行任务算到 TASK-0169。
-    title: "证据/范围卫生：EV-0849 日志无 surefire 汇总；verifier EV-0852 使用隔离 worktree；当前 gate 的 task-scope 被 B8/B9/B11 并行 WIP 污染"
+      EV-0849/0852/0855 的命令、commit、dirty 状态与 surefire/spotless 结果为真实；EV-0852/0855 在隔离
+      worktree 的 ca6dfd9/7c199c1 上通过，EV JSON/日志已回灌主树。实际 B7 代码 diff `539cc73..ca6dfd9`
+      16 个文件全部在 write_scope（含 Lead 补录的 3 条测试 glob）；配置修复 `7c199c1` 是独立的 2 文件
+      diff（application.yml + binding test）。Lead 计划把 done 的 scope 区间重绑为
+      `baseline=7c199c1^`、`end=7c199c1`，只覆盖配置修复；这是**诚实且可追溯**的做法，因为原 B7 代码
+      范围仍由 REV-001 + EV-0849 覆盖，配置修复由 EV-0855 + `OpenSearchPropertiesBindingTest` 单独覆盖。
+      当前 gate 的 task-scope 报错是 HEAD 已前进到 B8/B9/B11 并行提交导致的范围污染，不是 B7 代码失败；
+      Lead 需在干净 checkout/按 rebind 后的 end_commit 重跑模块 gate，并在任务卡保留原 ca6dfd9 范围的
+      commit_attribution_note，避免历史归因丢失。
+    title: "证据/范围卫生：EV-0849 日志无 surefire 汇总；verifier EV-0852/0855 使用隔离 worktree；当前 gate 的 task-scope 被 B8/B9/B11 并行 WIP 污染"
     summary: >-
       EV-0849 命令使用 `-q`，日志只有 Spring/Testcontainers 输出，没有 “Tests run” 行；builder 自报
       11 类 45 用例，评审从 `apps/worker/target/surefire-reports` 与 `apps/api/target/surefire-reports`
       中 13:48–13:50 的 11 个 XML 汇总得到 45 tests/0 failures/0 errors/0 skipped，与 EV-0849 的 commit
-      ca6dfd9、dirty=false、exit 0、log SHA-256 1ac109… 一致。主树在评审期间已出现 B8/B9/B11 并行
-      WIP（HEAD 492c949 及未提交文件），无法在主树录制 dirty=false 的定向复验，因此 EV-0852 在
-      `$TMPDIR/riccon-b7-verify-wt`（detached ca6dfd9）运行 6 个测试类 16 用例 0/0/0，并把 EV JSON/日志
-      回灌主树 `.riccon/evidence/TASK-0169/`。`riccon gate check --module M05` 当前
-      `task-scope:TASK-0169` 列出 B8/B9/B11 文件，实际 `git diff --name-status 539cc73..ca6dfd9`
-      只有 16 个 B7 文件；这是 gate 使用当前 HEAD/工作树而非任务 end_commit 的流程问题。
+      ca6dfd9、dirty=false、exit 0、log SHA-256 1ac109… 一致。主树在评审期间出现 B8/B9/B11 并行 WIP
+      （HEAD 2ea0c28/595120e 及未提交文件），无法在主树录制 dirty=false 的定向复验，因此 EV-0852 在
+      `$TMPDIR/riccon-b7-verify-wt`（detached ca6dfd9）运行 6 个测试类 16 用例 0/0/0，EV-0855 在 builder
+      worktree 7c199c1 运行配置修复 + spotless。`riccon gate check --module M05` 当前 `task-scope:TASK-0169` 列出
+      B8/B9/B11 文件，实际 `git diff --name-status 539cc73..ca6dfd9` 只有 16 个 B7 文件；这是 gate 使用
+      当前 HEAD/工作树而非任务 end_commit 的流程问题。范围重绑是诚实的：原 range 由初版 EV/评审覆盖，
+      7c199c1 配置修复单独成段，不是把原始 B7 改动藏进新 range。
     evidence: >-
       .riccon/evidence/TASK-0169/EV-0849.json 与 EV-0849 日志（SHA-256 1ac109…，45 tests 汇总自 surefire XML）；
       .riccon/evidence/TASK-0169/EV-0852.json 与日志（SHA-256 6aa660…，16 tests/0/0/0，worktree ca6dfd9）；
-      git diff --name-status 539cc73..ca6dfd9（16 文件）；
-      git log 492c949/4b83271/8ead4b4；
-      `riccon gate check --module M05 --json`（2026-11-23T14:15:16+08:00，task-scope 列出 B8/B9/B11 文件）。
+      .riccon/evidence/TASK-0169/EV-0855.json 与日志（commit 7c199c1，配置修复/spotless）；
+      git diff --name-status 539cc73..ca6dfd9（16 文件）；git diff 7c199c1^..7c199c1（2 文件）；
+      git log 7c199c1/2ea0c28/4b83271/8ead4b4；
+      `riccon gate check --module M05 --json`（2026-11-23T14:57:00+08:00，task-scope 列出 B8/B9/B11 文件；
+      TASK-0193 已 done，仍无模块 review）。
+  - id: F-008
+    severity: P3
+    status: accepted
+    owner: "riccon/ops + riccon/architect"
+    due: "M05 gate 前"
+    accepted_reason: >-
+      代码修复已由 `7c199c1` 提交并由 EV-0855 验证；RUNBOOK 第 951-954 行仍写“index-version 是字面量
+      v1/修复需改 application.yml”，这是修复前的历史描述，和当前提交树（7c199c1 起已是占位符）不一致。
+      只影响运维文档准确性与部署指引，不改变代码/部署行为；Ops/Architect 在 M05-7 注明“7c199c1 已修复”即可。
+    title: "RUNBOOK M05-7 仍保留 F-002 修复前的“已知不一致/需修复”措辞"
+    summary: >-
+      `docs/RUNBOOK.md:947-955` 的 M05-7 仍写着 `application.yml` 的 `index-version` 是字面量 `v1`，并建议
+      “修复需把 ... 改成 `${RICCON_OPENSEARCH_INDEX_VERSION:v1}`”。这个建议已经由 `7c199c1` 落地并通过
+      `OpenSearchPropertiesBindingTest`/EV-0855 验证；文档若不同步，会让运维误以为仍需额外改动或误用旧键。
+    evidence: >-
+      docs/RUNBOOK.md:947-955（M05-7 旧表述）；git show 7c199c1 -- apps/worker/src/main/resources/application.yml；
+      apps/worker/src/test/java/com/riccon/worker/index/service/OpenSearchPropertiesBindingTest.java；
+      .riccon/evidence/TASK-0169/EV-0855.json（配置绑定与 spotless）。
+  - id: F-009
+    severity: P3
+    status: accepted
+    owner: "riccon/builder-kb-index"
+    due: "M05 gate 前"
+    accepted_reason: >-
+      EV-0855 在干净环境通过；只有“默认 v1”用例依赖宿主环境。M05 gate/V1 若在 shell 中导出
+      `RICCON_OPENSEARCH_INDEX_VERSION` 或 `RICCON_WORKER_OPENSEARCH_INDEX_VERSION=v2` 跑全量测试，
+      `ApplicationContextRunner` 的 StandardEnvironment 会看到该变量，默认用例会误失败。生产代码已修复，
+      只需在测试中移除/隔离相关 env 键（或用独立 `MockEnvironment`/`withPropertyValues`）；属于 gate 假红风险。
+    title: "OpenSearchPropertiesBindingTest 的默认 v1 用例未隔离宿主环境，gate 导出 v2 时可能误失败"
+    summary: >-
+      `OpenSearchPropertiesBindingTest` 用 `ApplicationContextRunner`（默认 `AnnotationConfigApplicationContext`
+      + `StandardEnvironment`）加载真实 `application.yml`；`defaults_areV1AndRicconKb` 没有屏蔽进程的
+      `RICCON_OPENSEARCH_INDEX_VERSION` / `RICCON_WORKER_OPENSEARCH_INDEX_VERSION`。若 M05 gate 在 v2 环境跑
+      全量测试，默认断言会得到 v2 而失败（生产配置正确，失败是测试隔离问题）。建议在测试初始化器里移除
+      这两个环境键，或显式构造不含宿主 env 的 Environment。
+    evidence: >-
+      apps/worker/src/test/java/com/riccon/worker/index/service/OpenSearchPropertiesBindingTest.java:40-44、69-78；
+      EV-0855（干净 worktree）；docs/RUNBOOK.md:1016-1026（M05 gate 必须使用 v2 索引）。
 created_at: "2026-11-23T14:12:00+08:00"
 ---
 
@@ -219,7 +264,8 @@ created_at: "2026-11-23T14:12:00+08:00"
 
 ## 一页摘要
 
-**verdict：pass（任务级）**。B7 的代码在 `ca6dfd9` 上完成了三组核心交付：
+**verdict：pass（任务级）**。B7 的代码在 `ca6dfd9` 上完成三组核心交付，配置修复在 `7c199c1` 完成并由
+EV-0855 验证：
 
 1. **索引 v2/别名**：mapping 含 ADR §7.1 的 `visibility/department_id/acl_version/source_type/connector_id/ocr_confidence/bbox_*`，
    `dynamic: strict`，索引名 `riccon-kb-v2-{tenant}`，别名 `riccon-kb-{tenant}`；`ensureIndex` 只创建目标版本索引，
@@ -232,20 +278,29 @@ created_at: "2026-11-23T14:12:00+08:00"
    读回；`ParseSummaryJsonTest`、`ParsePersistenceIntegrationTest`、`ChunkRegionPersistenceIntegrationTest`、
    `KnowledgeDocumentParseShapeTest` 覆盖。
 
-没有 P0/P1。**3 个 P2 accepted**：`force=false` 实际整本重解析（F-001）、v2 部署 env/RUNBOOK 未接通（F-002）、
-重灌脚本大租户 ID 校验缺口（F-003）。**4 个 P3 accepted**：FileChunkRegionRepository 归属（F-004）、
-FULL/脚本测试缺口（F-005）、并发/非事务/过期诊断字段（F-006）、证据与 gate 范围卫生（F-007）。
+没有 P0/P1。**F-002 已 fixed**（`7c199c1` + EV-0855 + `OpenSearchPropertiesBindingTest`）。仍有 **2 个 P2
+accepted**：`force=false` 实际整本重解析（F-001）、重灌脚本大租户 ID 校验缺口（F-003）；**6 个 P3 accepted**：
+FileChunkRegionRepository 归属（F-004）、FULL/脚本测试缺口（F-005）、并发/非事务/过期诊断字段（F-006）、
+证据与 gate 范围卫生（F-007）、RUNBOOK M05-7 旧措辞（F-008）、binding 测试 env 隔离（F-009）。
 
 **任务级 pass 不等于 M05 模块 gate/AC 完成**：F-001 影响 M05-AC-04 的 `force=false` 语义，模块 review 必须标
-`pass (with residual)`；F-002 是升级部署的 gate 前置；B9 的引用读取/sourceStatus、B8 的 UI、E2E/a11y、全量
-contract/coverage/E2E/perf/迁移由 M05-V1/V2 承接。
+`pass (with residual)`；F-002 的代码修复已完成，但真实 v2 重灌/别名切换仍由 Ops 在 M05 gate 前执行；B9 的
+引用读取/sourceStatus、B8 的 UI、E2E/a11y、全量 contract/coverage/E2E/perf/迁移由 M05-V1/V2 承接。
 
 ## 1. 评审对象与依据
 
 - 任务：TASK-0169（M05-B7），高风险（索引/ACL 一致性/重灌），owner `riccon/builder-kb-index`，状态 `review`。
-- baseline：`539cc731e396cc2c7597036fa54bbb6df18049f1`；代码提交：`ca6dfd942f57c3fa742949ad0ea75fdd65160505`；
-  任务卡在 `4b83271` 补录测试 scope；`492c949` 只格式化 `KnowledgeIndexModesIntegrationTest`（2 行空白，无功能变化）。
-- B7 生产代码在 `ca6dfd9..HEAD` 没有变化；`492c949` 只是测试格式。
+- 初版 B7：baseline `539cc731e396cc2c7597036fa54bbb6df18049f1`，代码提交
+  `ca6dfd942f57c3fa742949ad0ea75fdd65160505`；`4b83271` 补录测试 scope；`492c949` 只格式化
+  `KnowledgeIndexModesIntegrationTest`（2 行空白，无功能变化）。
+- 配置修复：`7c199c1cad6e8f59be6ce3d70f87e45430aefcad`（`application.yml` 占位符 + `OpenSearchPropertiesBindingTest`
+  5 例），由 EV-0855 取证；binding 测试的 5 个用例已由评审静态审阅。
+- 评审期间 Ops/Lead 新增 `TASK-0193`（索引 v2 部署/重灌 RUNBOOK，commit `12e8183`；EV-0854 只做
+  grep/diff/contract），Lead 在 `2ea0c28` 把 application.yml 追加进 TASK-0169 scope。
+- **范围重绑计划**：Lead 计划把 done 的 `baseline/end` 重绑为 `baseline=7c199c1^`、`end=7c199c1`，只覆盖
+  配置修复。评审认为这是诚实的做法：原 B7 代码 range 仍由 REV-001 + EV-0849 覆盖，配置修复 diff 只有
+  2 文件（application.yml + binding test），由 EV-0855 单独覆盖；任务卡应同时保留原 `ca6dfd9` 范围的
+  `commit_attribution_note`，避免历史归因被新 range 抹掉。
 - 依据：ADR-0023 §7.1/§7.3/§5.5/§4.3/§10/§11.2（IT-KB-113）；PRODUCT M05-AC-02/03/04/07/08/15/21/22；
   `contracts/openapi.yaml` 1.4.0-m05（reindex/force、parseSummary、Citation bbox/sourceStatus）；
   V12 DDL；REV-TASK-0167-001 F-001、REV-TASK-0168-001 F-004；`docs/ARCHITECTURE.md` M05 异步与索引段。
@@ -265,8 +320,9 @@ contract/coverage/E2E/perf/迁移由 M05-V1/V2 承接。
   一次 `POST /_aliases` 提交；测试在真实 OpenSearch 上 v1→v2→v1 两次切换均通过，切换前后目标断言唯一。
 - **重灌脚本**：`scripts/ops/reindex-knowledge.mjs` 按 `status='INDEXED'` 写 FULL 事件、等待 DONE、按租户
   verify（计数/ID）后切别名；`--alias-only --index-version v1` 支持回切。`--self-test` 通过。
-  设计上 `v1` 保留 7 天、运行期检索不依赖 OpenSearch，符合 ADR；但脚本的验证能力有缺口（F-003），
-  部署 env 未接通（F-002）。
+  设计上 `v1` 保留 7 天、运行期检索不依赖 OpenSearch，符合 ADR；脚本的验证能力有缺口（F-003）；
+  RUNBOOK 已由 TASK-0193 补齐（`12e8183`），application.yml 的占位符修复已由 `7c199c1` 提交并验证（F-002 fixed）；
+  RUNBOOK M05-7 的旧措辞仍需同步（F-008）。
 
 ### 2.2 FULL / ACL_ONLY / DELETE
 
@@ -308,7 +364,8 @@ parse_summary`；`FileParseService` 在文件解析成功后调用 `updateParseM
   `ChunkRegionPersistenceIntegrationTest` 断言 OCR chunk 四列 + 置信度、文本 chunk NULL、读回一致。
 - `FileChunkRegionRepository.updateRegions` 在 `FileRepository.replaceChunks` 之后按 `parse_id + ordinal` 补
   `file_chunk` 区域；文本分块跳过；`ChunkRegionPersistenceIntegrationTest` 断言 ordinal 1 写入、ordinal 2 NULL。
-- B9（TASK-0171，planned）尚未读取这些列；B7 只保证数据可供 B9 读取。引用详情 API/UI 仍是模块 residual。
+- B9（TASK-0171）在评审期间由 planned 转 in_progress，尚未读取这些列；B7 只保证数据可供 B9 读取。
+  引用详情 API/UI 仍是模块 residual。
 
 ### 2.5 sourceStatus 不入索引
 
@@ -329,7 +386,10 @@ source_type/connector_id/parse_engine/bbox/ocr_confidence` 等诊断字段。`Ag
   - `apps/worker/src/test/java/com/riccon/worker/parse/service/ParsePersistenceIntegrationTest.java`
   - `apps/api/src/test/java/com/riccon/api/knowledge/KnowledgeDocumentParseShapeTest.java`
   - `scripts/ops/reindex-knowledge.mjs`
-    没有迁移、配置、前端、契约文件越界。
+    已评审的 16 文件没有迁移、配置、前端、契约文件越界。配置修复 `7c199c1` 单独为 2 文件 diff
+    （`application.yml` + `OpenSearchPropertiesBindingTest`），任务卡已在 scope_amendment 追加
+    `application.yml`；EV-0855 在该提交上取证。范围重绑时应在任务卡保留原 `ca6dfd9` 范围的
+    `commit_attribution_note`，避免丢失历史归因。
 
 ### 2.7 测试对旧实现的回归力
 
@@ -359,7 +419,7 @@ source_type/connector_id/parse_engine/bbox/ocr_confidence` 等诊断字段。`Ag
 
 ### 3.2 EV-0852（verifier，独立）
 
-- 环境：主树在评审期间出现 B8/B9/B11 并行 WIP（HEAD 492c949 及未提交文件），为保持 `dirty=false` 和
+- 环境：主树在评审期间出现 B8/B9/B11 并行 WIP（HEAD 2ea0c28 及未提交文件），为保持 `dirty=false` 和
   `ca6dfd9` 代码，使用 `$TMPDIR/riccon-b7-verify-wt` detached ca6dfd9；复制 `.riccon` 元数据后运行 6 个测试类。
 - 结果：`commit=ca6dfd9`、`dirty=false`、`exit_code=0`、`output_bytes=21175`、`output_sha256=6aa66013...77927`；
   surefire 汇总 **16 tests / 0 failures / 0 errors / 0 skipped**（Modes 4、V2Migration 1、ChunkRegion 2、
@@ -367,21 +427,34 @@ source_type/connector_id/parse_engine/bbox/ocr_confidence` 等诊断字段。`Ag
   `.riccon/evidence/TASK-0169/EV-0852-surefire-summary.txt`。
 - EV JSON/日志已回灌主树 `.riccon/evidence/TASK-0169/`。worktree 是验证环境例外（F-007），不是主树代码缺陷。
 
-### 3.3 里程碑/门禁
+### 3.3 EV-0855（builder，配置修复）
 
-- `riccon gate check --module M05 --json`（2026-11-23T14:15:16+08:00）`ok=false`：
-  TASK-0169 仍 review、TASK-0170/0171/0173 in_progress、TASK-0176/0177/0193 未 done、无模块 review；这是模块未收口。
-  `task-scope:TASK-0169` 当前列出 B8/B9/B11 文件，是 HEAD 已前进导致的**范围污染**，不是
-  `539cc73..ca6dfd9` 的真实 diff（真实 diff 16 文件全在 scope）；Lead 需在干净 checkout/按 `end_commit`
-  重跑模块 gate。任务级 verdict 不替代模块 gate。
+- EV-0855：`commit=7c199c1`、`dirty=false`、`exit_code=0`，命令运行
+  `OpenSearchPropertiesBindingTest,KnowledgeIndexModesIntegrationTest,KnowledgeIndexV2MigrationTest` 后
+  worker `spotless:check`；builder worktree 为 `$TMPDIR/riccon-task-0169-config-wt`。日志因 `-q` 无汇总，
+  需用 surefire/独立 EV 复核。
+- verifier 独立复跑尝试：在 `$TMPDIR/riccon-b7-config-verify-wt` detached `7c199c1` 运行同一组合，
+  因 Maven 锁等待超过 10 分钟超时未完成，**未作为通过依据**；F-002 以 EV-0855、binding 测试静态审阅与
+  原 EV-0852 的 B7 回归为依据。
+- `OpenSearchPropertiesBindingTest` 5 例锁定：ADR `RICCON_OPENSEARCH_INDEX_VERSION=v2` → v2；
+  `RICCON_WORKER_OPENSEARCH_INDEX_VERSION=v2` 覆盖；默认 v1/riccon-kb；ADR/Spring 前缀两套键。
+  测试直接加载真实 `application.yml`，不是只测常量，能对“按 ADR 设置却跑 v1”的旧实现失败。
+
+### 3.4 里程碑/门禁
+
+- `riccon gate check --module M05 --json`（2026-11-23T14:57:00+08:00）`ok=false`：
+  TASK-0169 仍 review、TASK-0170/0171/0173 in_progress、TASK-0176/0177 planned、无模块 review；这是模块未收口。
+  TASK-0193 已 done，不再出现在失败列表。`task-scope:TASK-0169` 当前列出 B8/B9/B11 文件，是 HEAD 已前进
+  导致的**范围污染**，不是 `539cc73..ca6dfd9` 的真实 diff（真实 diff 16 文件全在 scope）；Lead 需在干净
+  checkout/按 `end_commit` 重跑模块 gate。任务级 verdict 不替代模块 gate。
 
 ## 4. 结论对照（任务 acceptance）
 
-| #   | 验收原文（TASK-0169.acceptance）                                                                                                                                   | 结论                      | 证据/残余                                                                                                                                        |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | mapping v2、FULL/ACL_ONLY/DELETE、别名切换/回切；IT-KB-113                                                                                                         | **pass**                  | 静态 §2.1–2.2；`KnowledgeIndexV2MigrationTest`、`KnowledgeIndexModesIntegrationTest`；EV-0849/0852；残余 F-002 v2 部署 env、F-003 脚本大租户校验 |
-| 2   | ACL_ONLY 不替换分块；重灌幂等；无跨租户写入                                                                                                                        | **pass**                  | ACL_ONLY chunk_id 不变/旧版本跳过；V2Migration 重复重灌计数/ID 一致；Modes cross-tenant DELETE DEAD；EV-0849/0852                                |
-| 3   | 持久化 parse_engine/parse_warnings/parse_summary；knowledge_chunk/file_chunk bbox/ocr_confidence；worker ParseSummary 与 API KnowledgeParseSheetSummary shape 对齐 | **pass（with residual）** | ParsePersistence/ChunkRegion/ParseSummaryJson/KnowledgeDocumentParseShape 测试；F-005 只测 FileParseService 路径；B9 读取/UI 未实现              |
+| #   | 验收原文（TASK-0169.acceptance）                                                                                                                                   | 结论                      | 证据/残余                                                                                                                                          |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | mapping v2、FULL/ACL_ONLY/DELETE、别名切换/回切；IT-KB-113                                                                                                         | **pass**                  | 静态 §2.1–2.2；`KnowledgeIndexV2MigrationTest`、`KnowledgeIndexModesIntegrationTest`；EV-0849/0852/0855；F-002 已 fixed；残余 F-003 脚本大租户校验 |
+| 2   | ACL_ONLY 不替换分块；重灌幂等；无跨租户写入                                                                                                                        | **pass**                  | ACL_ONLY chunk_id 不变/旧版本跳过；V2Migration 重复重灌计数/ID 一致；Modes cross-tenant DELETE DEAD；EV-0849/0852                                  |
+| 3   | 持久化 parse_engine/parse_warnings/parse_summary；knowledge_chunk/file_chunk bbox/ocr_confidence；worker ParseSummary 与 API KnowledgeParseSheetSummary shape 对齐 | **pass（with residual）** | ParsePersistence/ChunkRegion/ParseSummaryJson/KnowledgeDocumentParseShape 测试；F-005 只测 FileParseService 路径；B9 读取/UI 未实现                |
 
 ## 5. AC 对账（M05 段，任务级不做模块 pass）
 
@@ -411,22 +484,29 @@ source_type/connector_id/parse_engine/bbox/ocr_confidence` 等诊断字段。`Ag
 **影响**：重试仍可补齐缺失页且幂等，不产生重复文档/引用；但 chunk_id 全量变化，与契约“不重复已成功页”
 不符。M05 gate 前要么实现，要么由 Lead 明确修订契约并在模块 review 保留 AC-04 residual。
 
-### F-002（P2）v2 部署开关未接通
+### F-002（P2 → fixed）v2 部署开关未接通
 
-**观察**：`application.yml` 字面量 `index-version: v1`，没有 env 占位；Binder 探针显示 ADR/脚本写的
-`RICCON_OPENSEARCH_INDEX_VERSION=v2` 不生效（绑定仍 v1），只有 `RICCON_WORKER_OPENSEARCH_INDEX_VERSION`
-生效。`scripts/ops/reindex-knowledge.mjs:15` 重复错误键名；`docs/RUNBOOK.md` 没有重灌/切别名章节。
-旧 v1 索引的 strict mapping 不包含新增字段，新 FULL 事件会 400，重灌 verify 失败且不切别名。
+**原观察**：`ca6dfd9`/`2ea0c28` 提交树中 `application.yml` 仍是字面量 `index-version: v1`，Binder 探针显示
+ADR/脚本写的 `RICCON_OPENSEARCH_INDEX_VERSION=v2` 不生效（绑定仍 v1），只有
+`RICCON_WORKER_OPENSEARCH_INDEX_VERSION` 生效；旧 v1 strict mapping 缺新增字段，新 FULL 事件会 400，
+重灌 wait/verify 失败且不切别名。
 
-**期望**：Ops/Architect 在 `application.yml` 增加 `${RICCON_OPENSEARCH_INDEX_VERSION:v1}`（或明确使用
-`RICCON_WORKER_OPENSEARCH_INDEX_VERSION`），更新 RUNBOOK 的“v2 切换/重灌/回切/7 天保留”步骤，并在 M05 gate
-前用真实测试栈执行一次重灌与别名切换，记录 EV；不能把 EV-0849 的内部 service 测试当作部署证据。
+**修复**：`7c199c1` 把 `application.yml` 改为
+`index-prefix: ${RICCON_OPENSEARCH_INDEX_PREFIX:riccon-kb}`、
+`index-version: ${RICCON_OPENSEARCH_INDEX_VERSION:v1}`，新增 `OpenSearchPropertiesBindingTest` 5 例：
+ADR version 键、Spring worker version 键、默认 v1/riccon-kb、ADR/Spring prefix 键。EV-0855 在干净 worktree
+`7c199c1` 上 exit 0（含 binding/modes/V2Migration 回归与 worker spotless）；binding 测试 5 例已静态审阅。`git show 7c199c1 -- ...application.yml` 与测试文件均已核对。
+
+**残余**：RUNBOOK M05-7 的旧“已知不一致/需修复”措辞需同步（F-008）；真实 v1→v2 重灌/别名切换仍需 Ops 在
+M05 gate 前执行，不能把 EV-0855 的单元/集成测试当作真实重灌。F-002 代码问题本身 fixed。
 
 ### F-003（P2）重灌脚本大租户校验缺口
 
 **观察**：`verifyIndex` 使用 `_search size=maxVerifyChunks`（默认 50000），超过 OpenSearch 默认
 `max_result_window=10000` 时 10k–50k 分块直接 400；>50k 只计数不比较 ID；`_source:false` 未比较
 `document_id`，`documentCount` 未与索引文档数比较。ADR IT-KB-113 要求文档数/分块 ID 一致且无重复。
+评审期间 RUNBOOK M05-8（`docs/RUNBOOK.md:1002`）已记录 `--max-verify-chunks` 默认 50000 与“超出只比计数”，
+但仍写“对比 MySQL 分块数与 v2 索引文档数/分块 ID”，与脚本实际未比较文档数/`document_id` 不一致。
 
 **期望**：用 PIT/scroll/分页拉取 ID，或先按 `document_id` 聚合比较文档数；设置 `maxVerifyChunks` 与
 OpenSearch `max_result_window` 一致并写文档；大租户至少保留计数 + 文档数 + 抽样/全量 ID 的可配置策略。
@@ -439,9 +519,9 @@ index 包。类注释说明是 B7 write_scope 的临时放置；没有 ArchUnit 
 
 ### F-005（P3）FULL/脚本测试缺口
 
-`ParsePersistenceIntegrationTest` 只覆盖 `FileParseService` 写 parse__；`KnowledgeIndexServiceIntegrationTest`
+`ParsePersistenceIntegrationTest` 只覆盖 `FileParseService` 写 `parse_*`；`KnowledgeIndexServiceIntegrationTest`
 没有断言 FULL 后三列值；`reindex-knowledge.mjs` 只有纯函数 self-test，未连 MySQL/OpenSearch。建议 V1/V2 增加
-一条 FULL 文件文档 parse__ 断言和脚本 dry-run/DB 用例；否则这两条链路的回归可能漏检。
+一条 FULL 文件文档 `parse_*` 断言和脚本 dry-run/DB 用例；否则这两条链路的回归可能漏检。
 
 ### F-006（P3）并发/非事务/过期诊断字段
 
@@ -453,19 +533,38 @@ FULL 与 DELETE 并发可重新插入已删文档 chunk/index；`_delete_by_quer
 ### F-007（P3）证据/范围卫生
 
 EV-0849 的 `-q` 日志没有测试汇总；评审用日志时间窗的 11 个 surefire XML 复核 45/0/0/0，EV commit/dirty/exit/SHA
-均一致。主树并行 WIP 使 verifier 只能在 worktree ca6dfd9 录 EV-0852（16/0/0/0，已回灌）。当前 gate 的
-task-scope 把 B8/B9/B11 并行提交算到 TASK-0169；实际 end_commit diff 16 文件全在 scope。Lead 需在干净
-checkout/按 end_commit 运行模块 gate，并统一后续任务的主树/工作树取证口径。
+均一致。主树并行 WIP 使 verifier 只能在 worktree ca6dfd9/7c199c1 录 EV-0852（16/0/0/0）与 EV-0855
+（10/0/0/0 + spotless）。范围重绑为 `baseline=7c199c1^`、`end=7c199c1` 是诚实的：原 B7 代码 range 仍由
+REV-001 + EV-0849 覆盖，配置修复单独由 2 文件 diff + EV-0855 覆盖。当前 gate 的 task-scope 把
+B8/B9/B11 并行提交算到 TASK-0169；实际初版 end_commit diff 16 文件全在 scope。Lead 需在干净 checkout/
+按 rebind 后 end_commit 运行模块 gate，并保留原 range 的 commit_attribution_note。
+
+### F-008（P3）RUNBOOK M05-7 旧措辞未同步
+
+`docs/RUNBOOK.md:951-954` 仍写 `application.yml` 的 `index-version` 是字面量 v1、建议改成占位符；该修复
+已由 `7c199c1` 落地并由 EV-0855 验证。文档若不更新，会误导运维重复修改或误用旧键。仅文档同步，
+不改变代码/部署行为；Ops/Architect 在 M05-7 注明“7c199c1 已修复”即可。
+
+### F-009（P3）binding 测试默认用例未隔离宿主 env
+
+`OpenSearchPropertiesBindingTest` 的 `defaults_areV1AndRicconKb` 通过 `ApplicationContextRunner`
+（默认 `StandardEnvironment`）加载真实 `application.yml`，但没有移除宿主进程的
+`RICCON_OPENSEARCH_INDEX_VERSION` / `RICCON_WORKER_OPENSEARCH_INDEX_VERSION`；M05 gate 在 v2 环境跑全量测试时
+该默认断言会误失败。生产配置修复本身正确（EV-0855），只需测试隔离 env 键；作为 P3 accepted 跟踪，避免把
+gate 假红当成 v2 配置回归。
 
 ## 7. 未验证 / 不适用
 
 - **全量合同 build/lint/typecheck/coverage/E2E/a11y/security/perf/迁移**未在任务级运行；由 M05-V1/V2 在最终
-  提交上执行，本评审的 EV-0849/0852 只是定向 worker/api 测试。
+  提交上执行，本评审的 EV-0849/0852/0855 只是定向 worker/api 测试。
 - **真实 v1→v2 部署/重灌**未在 compose 测试栈执行：只做了 Testcontainers 内 v2 客户端/服务测试、脚本
-  `--self-test` 与 Binder env 探针。F-002/F-003 需要 Ops/V1/V2 在真实栈补证。
+  `--self-test` 与 `OpenSearchPropertiesBindingTest`/Binder 探针。F-002 的代码修复已由 7c199c1 提交并
+  由 EV-0855 验证，但真实重灌/别名切换仍需 Ops 在 M05 gate 前执行；F-003 需要修正脚本/记录大租户限制。
 - **B9 引用读取/sourceStatus**未实现：B7 只证明 bbox/ocr_confidence 可持久化/读回；AC-07/引用 UI 不能由本
   任务判 pass。
-- **100k chunk/50 并发/大租户**未跑：F-003 的脚本 ID 校验和 M05-AC-20 性能预算需 V2/Perf 任务。
+- **100k chunk/50 并发/大租户**：TASK-0173 已有 100k chunk 的 perf 证据，但 `perf-m04-matrix.json` 的
+  `openSearch` 是 `index-version v1`，且 `knowledge.retrievalCapture=failed`（`samples=0`），不能作为
+  M05-AC-20 或 v2 迁移通过证据；V2/Perf 必须在 v2 索引下重跑。F-003 的脚本 ID 校验也需大租户补证。
 - **并发故障注入**未跑：F-006 的 FULL/ACL_ONLY/DELETE 竞态只做静态分析和检索过滤核对，没有线程/故障注入测试。
 - **v1 保留 7 天清理**未实现：脚本只切别名，没有自动删除 v1；由 Ops/M09 运维策略处理。
 - **`reindex-knowledge.mjs` 真实 DB/OpenSearch 集成**未跑：F-005。
@@ -474,15 +573,19 @@ checkout/按 end_commit 运行模块 gate，并统一后续任务的主树/工�
 
 ## 8. 需 Lead/Ops 处理与下一步
 
-| 项          | 动作                                                                                                                                               |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| F-001       | Lead 确认：B5 增加页级解析或 V1 在重灌时按页保留成功 chunk；否则在 OpenAPI/ADR 明确改为“整本重做”并重开 AC-04。                                    |
-| F-002       | Ops/Architect：修正 env 键或 YAML 占位，RUNBOOK 增加 v2 切换/重灌/回切/7 天保留；M05 gate 前在测试栈运行 `reindex-knowledge.mjs --apply` 并录 EV。 |
-| F-003       | builder-kb-index：把 `verifyIndex` 改为 PIT/scroll/分页并比较文档数/document_id；或用 `--max-verify-chunks` + 文档数校验形成明确策略。             |
-| F-004/F-005 | Architect/verifier：B7 之后移仓库或写归属说明；V1/V2 补 FULL parse_* 与脚本集成测试。                                                              |
-| F-006       | builder/architect：评估每文档锁/版本回读；至少修正“原子”措辞并在 RUNBOOK 写 DELETE 最终一致性残余。                                                |
-| F-007       | Lead：在干净 checkout 按 end_commit 重跑 `gate check`；不要把 B8/B9/B11 并行提交算作 TASK-0169 越界；统一后续 EV 取证口径。                        |
-| B9/B8/V1/V2 | 引用 sourceStatus/bbox UI、E2E、a11y、contract、perf、迁移回滚由后续任务完成；模块 review 必须把这些写成 residual。                                |
+| 项          | 动作                                                                                                                                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| F-001       | Lead 确认：B5 增加页级解析或 V1 在重灌时按页保留成功 chunk；否则在 OpenAPI/ADR 明确改为“整本重做”并重开 AC-04。                                                                                        |
+| F-002       | 代码修复已 fixed（7c199c1/EV-0855）。Ops/Architect：按计划重绑 `baseline=7c199c1^`、`end=7c199c1` 并保留原 ca6dfd9 归因；M05 gate 前在测试栈运行 `reindex-knowledge.mjs --apply` 并录 dirty=false EV。 |
+| F-008       | Ops/Architect：把 RUNBOOK M05-7 第 951-954 行改为“7c199c1 已修复”，保留 workaround/升级说明；文档-only。                                                                                               |
+| F-009       | builder-kb-index：binding 测试的默认用例移除/隔离宿主 `RICCON_OPENSEARCH_INDEX_VERSION`/`RICCON_WORKER_OPENSEARCH_INDEX_VERSION`，避免 M05 gate v2 环境假红。                                          |
+| F-003       | builder-kb-index：把 `verifyIndex` 改为 PIT/scroll/分页并比较文档数/document_id；或用 `--max-verify-chunks` + 文档数校验形成明确策略。                                                                 |
+| F-004/F-005 | Architect/verifier：B7 之后移仓库或写归属说明；V1/V2 补 FULL parse_* 与脚本集成测试。                                                                                                                  |
+| F-006       | builder/architect：评估每文档锁/版本回读；至少修正“原子”措辞并在 RUNBOOK 写 DELETE 最终一致性残余。                                                                                                    |
+| F-007       | Lead：在干净 checkout 按 end_commit 重跑 `gate check`；不要把 B8/B9/B11 并行提交算作 TASK-0169 越界；统一后续 EV 取证口径。                                                                            |
+| B9/B8/V1/V2 | 引用 sourceStatus/bbox UI、E2E、a11y、contract、perf、迁移回滚由后续任务完成；模块 review 必须把这些写成 residual。                                                                                    |
 
-**任务状态建议**：保持 `review`；本评审不修改任务/模块状态。任务级 verdict=pass，但 M05 gate 仍应失败
-（任务未 done、模块未评审、F-002 部署前置未完成）。
+**任务状态建议**：保持 `review`；本评审不修改任务/模块状态。**F-002 fixed、无 P0/P1，任务可从 verifier
+角度 done**，前提是 Lead 完成计划中的范围重绑（`baseline=7c199c1^`、`end=7c199c1`，保留原 ca6dfd9 归因）
+并把 EV-0855 列入证据；M05 模块 gate 仍应失败（任务未 done、模块未评审、F-001/F-003 accepted 与真实
+v2 重灌/Ops 文档同步尚未完成）。

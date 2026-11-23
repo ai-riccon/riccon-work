@@ -1,10 +1,10 @@
 {
   "scenario": "knowledge",
   "failureMode": null,
-  "generatedAt": "2026-11-23T06:15:13.003Z",
+  "generatedAt": "2026-11-23T06:58:01.867Z",
   "baseUrl": "http://127.0.0.1:18080",
   "env": {
-    "generatedAt": "2026-11-23T06:13:10.634Z",
+    "generatedAt": "2026-11-23T06:53:38.891Z",
     "mode": "perf",
     "host": {
       "platform": "darwin 24.6.0",
@@ -17,9 +17,9 @@
     },
     "images": {
       "compose": [
+        "rustfs/rustfs:1.0.6",
         "mysql:8.4.13",
-        "opensearchproject/opensearch:3.9.0",
-        "rustfs/rustfs:1.0.6"
+        "opensearchproject/opensearch:3.9.0"
       ],
       "started": [
         "mysql:8.4.13",
@@ -28,7 +28,7 @@
       ]
     },
     "k6Version": "k6 v2.4.0 (commit/dd9395906d, go1.26.11, darwin/amd64)",
-    "scriptSha256": "46f002aa10c57dc933434c80d9bbd16194ef468b5fa25632371b38254afe5f2c",
+    "scriptSha256": "34576882ca83c9d8e991de2307c4415c7169b7bd20241f860dd197b943fa1ebc",
     "chatMaxStreams": 50,
     "dbPoolSize": 50,
     "fakeModel": 1,
@@ -40,7 +40,7 @@
       "language": "chi_sim+eng",
       "sample": "deploy/ocr/sample.png",
       "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
-      "probedAt": "2026-11-23T14:13:09+08:00"
+      "probedAt": "2026-11-23T14:53:34+08:00"
     },
     "startCommand": "node scripts/real-stack/run.mjs --mode=perf",
     "startupCommands": [
@@ -74,7 +74,7 @@
         "knowledgeVus": 50,
         "aclWriteVus": 1
       },
-      "duration": "10s",
+      "duration": "60s",
       "dbPoolSize": 50,
       "chatMaxStreams": 50,
       "fakeModel": 1,
@@ -87,6 +87,9 @@
     ],
     "m05_first_token_ok": [
       "rate>0.99"
+    ],
+    "m05_chat_submit_ttfb_ms": [
+      "p(95)<3000"
     ],
     "m05_api_ms": [
       "p(95)<500"
@@ -101,13 +104,16 @@
       "rate>0.99"
     ],
     "m05_acl_get_ok": [
-      "rate>0.99"
+      "rate==1"
     ],
     "m05_acl_write_ms": [
       "p(95)<500"
     ],
     "m05_acl_write_ok": [
       "rate==1"
+    ],
+    "m05_acl_get_ms": [
+      "p(95)<500"
     ],
     "m05_download_ok": [
       "rate>0.99"
@@ -120,140 +126,167 @@
     ]
   },
   "metrics": {
-    "m05_acl_write_ok": {
-      "rate": 0,
-      "passes": 0,
-      "fails": 5
+    "m05_detail_ms": {
+      "min": 66,
+      "med": 242,
+      "p(90)": 429,
+      "p(95)": 549.5,
+      "max": 1051,
+      "count": 183,
+      "avg": 279.2568306010929
     },
     "m05_chat_citations": {
       "rate": 1,
-      "passes": 61,
+      "passes": 183,
+      "fails": 0
+    },
+    "m05_chat_submit_ttfb_ms": {
+      "avg": 12592.01654098361,
+      "min": 2642.714,
+      "med": 13147.021,
+      "p(90)": 15222.810800000001,
+      "p(95)": 15688.5512,
+      "max": 16345.752,
+      "count": 183
+    },
+    "m05_run_detail_ms": {
+      "med": 236,
+      "p(90)": 484.2000000000001,
+      "p(95)": 620.9000000000002,
+      "max": 901,
+      "count": 183,
+      "avg": 273.75409836065575,
+      "min": 59
+    },
+    "m05_denied_404": {
+      "rate": 1,
+      "passes": 183,
+      "fails": 0
+    },
+    "m05_acl_get_ok": {
+      "rate": 1,
+      "passes": 10,
+      "fails": 0
+    },
+    "m05_list_ms": {
+      "max": 1457,
+      "count": 183,
+      "avg": 454.3333333333333,
+      "min": 114,
+      "med": 406,
+      "p(90)": 691.4000000000001,
+      "p(95)": 853.4000000000001
+    },
+    "m05_acl_write_ms": {
+      "avg": 4400.5,
+      "min": 83,
+      "med": 2497.5,
+      "p(90)": 10141.699999999999,
+      "p(95)": 10554.349999999999,
+      "max": 10967,
+      "count": 10
+    },
+    "iterations": {
+      "count": 193,
+      "rate": 2.6490735606413223
+    },
+    "m05_api_ms": {
+      "max": 1456.652,
+      "count": 366,
+      "avg": 366.461256830601,
+      "min": 64.963,
+      "med": 335.1125,
+      "p(90)": 612.569,
+      "p(95)": 747.75025
+    },
+    "m05_chat_stream_ms": {
+      "count": 183,
+      "avg": 13575.437158469946,
+      "min": 3295,
+      "med": 13956,
+      "p(90)": 16477.6,
+      "p(95)": 16809.5,
+      "max": 17669
+    },
+    "m05_api_ok": {
+      "rate": 1,
+      "passes": 366,
+      "fails": 0
+    },
+    "m05_first_token_ok": {
+      "rate": 1,
+      "passes": 183,
+      "fails": 0
+    },
+    "http_req_duration": {
+      "max": 17668.553,
+      "count": 1481,
+      "avg": 2199.811852126943,
+      "min": 22.803,
+      "med": 347.843,
+      "p(90)": 12372.669,
+      "p(95)": 14596.749
+    },
+    "m05_acl_write_ok": {
+      "rate": 1,
+      "passes": 10,
+      "fails": 0
+    },
+    "m05_acl_get_ms": {
+      "count": 10,
+      "avg": 181.3,
+      "min": 69,
+      "med": 157,
+      "p(90)": 330.09999999999997,
+      "p(95)": 339.54999999999995,
+      "max": 349
+    },
+    "m05_download_ms": {
+      "max": 1240,
+      "count": 183,
+      "avg": 319.4972677595628,
+      "min": 67,
+      "med": 282,
+      "p(90)": 503.20000000000016,
+      "p(95)": 626.7000000000003
+    },
+    "m05_detail_ok": {
+      "rate": 1,
+      "passes": 183,
       "fails": 0
     },
     "http_req_failed": {
-      "passes": 188,
-      "fails": 465,
-      "rate": 0.2879019908116386
-    },
-    "m05_list_ok": {
-      "rate": 1,
-      "passes": 61,
-      "fails": 0
-    },
-    "m05_chat_stream_ms": {
-      "p(95)": 11031,
-      "max": 11538,
-      "count": 61,
-      "avg": 8687.934426229509,
-      "min": 4746,
-      "med": 9118,
-      "p(90)": 10893
-    },
-    "m05_api_ok": {
-      "rate": 0.6666666666666666,
-      "passes": 122,
-      "fails": 61
-    },
-    "m05_denied_404": {
-      "rate": 0,
-      "passes": 0,
-      "fails": 61
-    },
-    "m05_detail_ok": {
-      "fails": 0,
-      "rate": 1,
-      "passes": 61
-    },
-    "m05_first_token_ok": {
-      "fails": 0,
-      "rate": 1,
-      "passes": 61
-    },
-    "m05_download_ms": {
-      "p(95)": 241,
-      "max": 357,
-      "count": 61,
-      "avg": 114.45901639344262,
-      "min": 28,
-      "med": 98,
-      "p(90)": 194
-    },
-    "m05_acl_get_ok": {
-      "passes": 0,
-      "fails": 61,
-      "rate": 0
+      "rate": 0.24713031735313978,
+      "passes": 366,
+      "fails": 1115
     },
     "m04_api_ms": {
-      "p(90)": 286.889,
-      "p(95)": 333.51,
-      "max": 526.585,
-      "count": 61,
-      "avg": 171.14532786885252,
-      "min": 51.468,
-      "med": 145.755
+      "count": 183,
+      "avg": 273.4807923497269,
+      "min": 58.533,
+      "med": 235.452,
+      "p(90)": 484.61660000000006,
+      "p(95)": 620.5642000000003,
+      "max": 900.708
     },
     "m05_first_token_ms": {
-      "min": 28,
-      "med": 61,
-      "p(90)": 227,
-      "p(95)": 277,
-      "max": 404,
-      "count": 61,
-      "avg": 99.08196721311475
-    },
-    "m05_run_detail_ms": {
-      "avg": 171.47540983606558,
-      "min": 52,
-      "med": 146,
-      "p(90)": 287,
-      "p(95)": 333,
-      "max": 527,
-      "count": 61
+      "count": 183,
+      "avg": 132.8306010928962,
+      "min": 29,
+      "med": 98,
+      "p(90)": 231.80000000000007,
+      "p(95)": 358.40000000000003,
+      "max": 581
     },
     "m05_download_ok": {
-      "rate": 0,
-      "passes": 0,
-      "fails": 61
+      "rate": 1,
+      "passes": 183,
+      "fails": 0
     },
-    "m05_acl_write_ms": {
-      "avg": 200,
-      "min": 128,
-      "med": 207,
-      "p(90)": 240.2,
-      "p(95)": 250.6,
-      "max": 261,
-      "count": 5
-    },
-    "m05_api_ms": {
-      "med": 116.82650000000001,
-      "p(90)": 251.60490000000004,
-      "p(95)": 302.3837,
-      "max": 486.679,
-      "count": 244,
-      "avg": 143.3727704918033,
-      "min": 30.716
-    },
-    "iterations": {
-      "count": 66,
-      "rate": 3.308893478446695
-    },
-    "http_req_duration": {
-      "avg": 1186.8318055130173,
-      "min": 27.339,
-      "med": 159.704,
-      "p(90)": 4802.2974,
-      "p(95)": 9045.463999999998,
-      "max": 11537.638,
-      "count": 653
-    },
-    "m05_chat_submit_ttfb_ms": {
-      "min": 3408.569,
-      "med": 8852.776,
-      "p(90)": 10407.144,
-      "p(95)": 10593.754,
-      "max": 11064.106,
-      "count": 61,
-      "avg": 8109.241704918031
+    "m05_list_ok": {
+      "fails": 0,
+      "rate": 1,
+      "passes": 183
     }
   },
   "m05": {
@@ -261,15 +294,15 @@
     "documentId": "00000000-0000-0000-0000-0000001e8481",
     "aclDocumentId": "00000000-0000-0000-0000-0000001e97a5",
     "hiddenDocumentId": "00000000-0000-0000-0000-0000001e97d7",
-    "downloadDocumentId": "01a2070b-0033-72ea-b2f4-a01c8960ae08",
+    "downloadDocumentId": "01a20731-5e6c-7c93-a08d-f158f128a542",
     "aclUserCount": 2,
     "concurrency": {
       "knowledgeVus": 50,
       "aclWriteVus": 1
     },
-    "duration": "10s",
+    "duration": "60s",
     "note": "检索 p95 由 scripts/real-stack/run.mjs 从 MySQL slow_log 汇总后写回报告；k6 只负责并发与首字/API/ACL/下载指标",
-    "generatedAt": "2026-11-23T14:15:14+08:00",
+    "generatedAt": "2026-11-23T14:58:03+08:00",
     "dataset": {
       "documents": 5000,
       "chunks": 100000,
@@ -284,7 +317,7 @@
       "query": "PERFKNOW",
       "matchDocuments": "20%（每篇全部 chunk 含检索词）",
       "matchingChunks": "约 2 万（10 万 chunk 中）",
-      "seedMs": 6334,
+      "seedMs": 26766,
       "countsRaw": "documents\tchunks\tmatching_chunks\n5000\t100000\t20000",
       "note": "直插 SQL 只用于列表/检索/ACL 数据规模；索引与下载仍走真实上传→解析→索引→对象存储路径"
     },
@@ -306,7 +339,7 @@
         "language": "chi_sim+eng",
         "sample": "deploy/ocr/sample.png",
         "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
-        "probedAt": "2026-11-23T14:13:09+08:00"
+        "probedAt": "2026-11-23T14:53:34+08:00"
       },
       "measured": false,
       "samples": [],
@@ -315,10 +348,15 @@
     "indexing": {
       "noOcr": {
         "samples": [
-          1429,
-          7828
+          2274,
+          7801,
+          8723,
+          10087,
+          11978,
+          11830,
+          12184
         ],
-        "p95Ms": 7828,
+        "p95Ms": 12184,
         "budgetMs": 60000,
         "withinBudget": true
       },
@@ -331,39 +369,118 @@
       },
       "baseline": {
         "kind": "docx",
-        "fileId": "01a2070a-f6c2-7662-8135-e0fef75c3623",
-        "documentId": "01a2070b-0033-72ea-b2f4-a01c8960ae08",
-        "parseMs": 1921,
-        "createToIndexedMs": 1429,
-        "totalMs": 3909
+        "fileId": "01a20731-4ce2-7ad8-8b25-c15fc30181ff",
+        "documentId": "01a20731-5e6c-7c93-a08d-f158f128a542",
+        "parseMs": 2998,
+        "createToIndexedMs": 2274,
+        "totalMs": 6943
       },
       "backlog": [
         {
           "kind": "docx",
           "index": 1,
-          "fileId": "01a2070b-12a5-7cad-8be9-f95e44ef43b6",
-          "documentId": "01a2070b-2961-7508-a12c-8606a5e291c5",
-          "uploadMs": 5002,
-          "parseMs": 780,
-          "createToIndexedMs": 7828,
-          "totalMs": 13610,
+          "fileId": "01a20731-7794-7998-beba-1f93ef261d35",
+          "documentId": "01a20731-896d-708f-8cbf-4619151c4da0",
+          "uploadMs": 2012,
+          "parseMs": 2722,
+          "createToIndexedMs": 7801,
+          "totalMs": 12535,
           "chunkCount": null,
-          "parseEngine": null
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 2,
+          "fileId": "01a20731-7743-7470-83e2-0d914e9eba1c",
+          "documentId": "01a20731-82a0-7497-89f4-b633c6404d7d",
+          "uploadMs": 2057,
+          "parseMs": 1003,
+          "createToIndexedMs": 8723,
+          "totalMs": 11783,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 3,
+          "fileId": "01a20731-7748-7384-bba2-673917518892",
+          "documentId": "01a20731-848d-720a-a23a-d6c87b8b52d2",
+          "uploadMs": 1989,
+          "parseMs": 1515,
+          "createToIndexedMs": 10087,
+          "totalMs": 13591,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 4,
+          "fileId": "01a20731-7749-7ced-9e66-c31db8ce977a",
+          "documentId": "01a20731-8508-7714-9691-3a3e1c64257e",
+          "uploadMs": 1972,
+          "parseMs": 1618,
+          "createToIndexedMs": 11978,
+          "totalMs": 15568,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 5,
+          "fileId": "01a20731-7933-76d1-9f83-8bb39c3e8fc0",
+          "documentId": "01a20731-9279-75a8-8edc-85774dc2595b",
+          "uploadMs": 2070,
+          "parseMs": 3835,
+          "createToIndexedMs": 11830,
+          "totalMs": 17735,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 6,
+          "fileId": "01a20731-7753-719e-8754-d13ca5d2d6c0",
+          "documentId": "01a20731-86a5-7ec6-84a5-8fb4ada60f70",
+          "uploadMs": 1955,
+          "parseMs": 2144,
+          "createToIndexedMs": 12184,
+          "totalMs": 16283,
+          "chunkCount": null,
+          "parseEngine": "NONE"
         }
       ],
       "backlogDuringLoad": true
     },
     "retrieval": {
-      "source": "mysql.slow_log (long_query_time=0, log_output=TABLE)",
+      "source": "mysql.slow_log (long_query_time=0.001s, log_output=TABLE)",
       "statement": "AgentContextJdbc.search: knowledge_chunk.content LIKE / knowledge_document.title LIKE + ACL 谓词",
-      "samples": 0,
-      "p50Ms": null,
-      "p95Ms": null,
-      "maxMs": null,
-      "avgRowsExamined": null,
+      "samples": 183,
+      "p50Ms": 2000,
+      "p95Ms": 3000,
+      "maxMs": 5000,
+      "avgRowsExamined": 100180.6,
       "budgetMs": 500,
       "decisionRequired": true,
       "decision": "检索 p95 未证明 ≤500ms：需在 M05 gate 前决定 (a) MySQL FULLTEXT/覆盖索引，(b) OpenSearch 两阶段 ACL 复核，(c) 用户批准单独检索预算（ADR-0023 §9）"
+    },
+    "budgets": {
+      "firstTokenServerP95Ms": 358.40000000000003,
+      "firstTokenServerBudgetMs": 3000,
+      "firstTokenServerWithinBudget": true,
+      "userFirstTokenP95Ms": 15688.5512,
+      "userFirstTokenBudgetMs": 3000,
+      "userFirstTokenWithinBudget": false,
+      "apiP95Ms": 747.75025,
+      "apiBudgetMs": 500,
+      "apiWithinBudget": false,
+      "aclWriteP95Ms": 10554.349999999999,
+      "aclGetP95Ms": 339.54999999999995,
+      "aclBudgetMs": 500,
+      "aclWithinBudget": false,
+      "downloadP95Ms": 626.7000000000003,
+      "indexNoOcrP95Ms": 12184,
+      "indexBudgetMs": 60000,
+      "note": "首字同时记录服务端模型首字与用户可感知 SSE TTFB；后者包含 Worker 排队与检索，是 AC-20 的严格口径"
     },
     "thresholds": {
       "m05_first_token_ms": [
@@ -371,6 +488,9 @@
       ],
       "m05_first_token_ok": [
         "rate>0.99"
+      ],
+      "m05_chat_submit_ttfb_ms": [
+        "p(95)<3000"
       ],
       "m05_api_ms": [
         "p(95)<500"
@@ -385,13 +505,16 @@
         "rate>0.99"
       ],
       "m05_acl_get_ok": [
-        "rate>0.99"
+        "rate==1"
       ],
       "m05_acl_write_ms": [
         "p(95)<500"
       ],
       "m05_acl_write_ok": [
         "rate==1"
+      ],
+      "m05_acl_get_ms": [
+        "p(95)<500"
       ],
       "m05_download_ok": [
         "rate>0.99"
@@ -405,8 +528,10 @@
     },
     "notes": [
       "首字 p95 ≤3s、稳态 JSON API（列表/详情/ACL 读/ACL 写）p95 ≤500ms、50 并发。",
+      "首字同时记录服务端模型首字（m05_first_token_ms）与用户可感知 SSE TTFB（m05_chat_submit_ttfb_ms）；后者包含 Worker 排队与检索，是 AC-20 的严格口径。",
       "下载是流式代理，单独记录 m05_download_ms，不并入 JSON API p95。",
       "检索 p95 来自 MySQL slow_log 中 AgentContextJdbc LIKE + ACL 谓词的实际执行时间；不含网络与结果映射。",
+      "slow_log 在 API/Worker 建连前开启（long_query_time=0.001s）；它会给测试栈带来额外写开销，结果偏保守。",
       "M05 不启用连接器分支。"
     ]
   }
