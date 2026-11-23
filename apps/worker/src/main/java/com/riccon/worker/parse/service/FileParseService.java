@@ -5,6 +5,8 @@ import com.riccon.platform.common.tenant.TenantId;
 import com.riccon.platform.domain.contract.EventTypes;
 import com.riccon.platform.domain.file.ParseStatus;
 import com.riccon.platform.domain.research.RunKind;
+import com.riccon.worker.index.repository.FileChunkRegionRepository;
+import com.riccon.worker.index.repository.KnowledgeRepository;
 import com.riccon.worker.parse.domain.FileParseRecord;
 import com.riccon.worker.parse.domain.FileRecord;
 import com.riccon.worker.parse.domain.ParseException;
@@ -46,6 +48,12 @@ public class FileParseService implements OutboxEventHandler {
     /** 文本切分器。 */
     private final TextChunker textChunker;
 
+    /** 文件分块 OCR 区域/置信度持久化。 */
+    private final FileChunkRegionRepository fileChunkRegionRepository;
+
+    /** 知识库文档解析元数据写入。 */
+    private final KnowledgeRepository knowledgeRepository;
+
     /** payload 解析器。 */
     private final EventPayloadParser payloadParser;
 
@@ -55,16 +63,23 @@ public class FileParseService implements OutboxEventHandler {
      * @param fileRepository 文件仓库
      * @param contentExtractor 内容抽取器
      * @param textChunker 文本切分器
+     * @param fileChunkRegionRepository 分块区域持久化
+     * @param knowledgeRepository 知识库解析元数据写入
      * @param payloadParser payload 解析器
      */
     public FileParseService(
             FileRepository fileRepository,
             FileContentExtractor contentExtractor,
             TextChunker textChunker,
+            FileChunkRegionRepository fileChunkRegionRepository,
+            KnowledgeRepository knowledgeRepository,
             EventPayloadParser payloadParser) {
         this.fileRepository = Objects.requireNonNull(fileRepository, "fileRepository must not be null");
         this.contentExtractor = Objects.requireNonNull(contentExtractor, "contentExtractor must not be null");
         this.textChunker = Objects.requireNonNull(textChunker, "textChunker must not be null");
+        this.fileChunkRegionRepository =
+                Objects.requireNonNull(fileChunkRegionRepository, "fileChunkRegionRepository must not be null");
+        this.knowledgeRepository = Objects.requireNonNull(knowledgeRepository, "knowledgeRepository must not be null");
         this.payloadParser = Objects.requireNonNull(payloadParser, "payloadParser must not be null");
     }
 
@@ -119,6 +134,12 @@ public class FileParseService implements OutboxEventHandler {
                 throw ParseException.unprocessable("file has no extractable text", null);
             }
             fileRepository.replaceChunks(tenantId, fileId, parseId, chunks);
+            // OCR/扫描件分块在落库后再补区域与置信度；文本型 PDF/DOCX/Excel 没有区域，跳过更新。
+            fileChunkRegionRepository.updateRegions(tenantId, parseId, chunks);
+            // 文件解析先于文档索引完成时，把结构元数据补充到引用该文件、尚未索引完成的文档；
+            // 已 INDEXED 文档由索引事件用同一次解析结果刷新，避免元数据与分块来自不同版本。
+            knowledgeRepository.updateParseMetadataForFile(
+                    tenantId, fileId, content.parseEngine(), content.warnings(), content.summary());
             fileRepository.markSucceeded(
                     tenantId, parseId, fileId, content.pageCount(), content.sheetCount(), chunks.size());
             LOG.info(
