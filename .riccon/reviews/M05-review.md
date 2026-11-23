@@ -1,5 +1,5 @@
 ---
-review_id: REV-M05-001
+review_id: REV-M05-002
 module_id: M05
 verifier: riccon/verifier
 reviewer:
@@ -8,17 +8,14 @@ reviewer:
   model: opencode-go/deepseek-v4.1-flash
   independent: true
 review_kind: module
-review_status: draft_waiting_fix
-product_preacceptance_status: changes-requested
-product_preacceptance_findings:
-  - R-M05-06
-  - R-M05-07
-draft_note: >-
-  等待 TASK-0202 修复后定稿。Product 预验收当前为 changes-requested（R-M05-06 失败时间缺失 P1、
-  R-M05-07 保留策略不追溯界面明示 P2）；TASK-0202 完成、代码（API/Web/E2E）变化后，Lead 通知补评，
-  再更新 head_commit/reviewed_commits/reviewed_evidence（含 TASK-0202 的 EV）并重跑 gate。当前工作树
-  已有 TASK-0202 的未提交实现（API/Web/E2E/契约），本评审只针对 HEAD eaa0adf，未评 dirty 代码。
-head_commit: eaa0adf6359fdf2303f4e45aa5d542527879f82a
+review_status: final
+previous_review: REV-M05-001
+supersedes: REV-M05-001
+product_preacceptance_status: pending
+product_preacceptance_note: >-
+  截至本评审，Product 正在重新预验收（R-M05-06/R-M05-07 已由 TASK-0202 修复并 done；Product
+  预验收结果未在本 review 中记录）。模块 done 需 Product 预验收 pass；本评审只是技术验收。
+head_commit: 823bfc0a4bf719044a88b8aa97adac62895d2a20
 reviewed_commits:
   - 8c5781c9048befdc1911fc9738503ea938a44f38
   - c384c3579caf3725f6830d5460211844bf939e71
@@ -32,9 +29,12 @@ reviewed_commits:
   - 0e13e942ff90b5dd33c7064c6ed651a3df503c3f
   - 4f923ff
   - eaa0adf6359fdf2303f4e45aa5d542527879f82a
-verdict: fail
+  - b7b8c45
+  - 028a2ce
+  - 823bfc0a4bf719044a88b8aa97adac62895d2a20
+verdict: pass
 dod:
-  acceptance: false
+  acceptance: true
   build: true
   tests: true
   coverage: true
@@ -48,6 +48,10 @@ dod_evidence:
     - EV-0943
     - EV-0951
     - EV-0953
+    - EV-0954
+    - EV-0955
+    - EV-0959
+    - EV-0960
   build:
     - EV-0940
   tests:
@@ -57,8 +61,7 @@ dod_evidence:
   e2e:
     - EV-0943
   docs:
-    - EV-0952
-    - EV-0953
+    - EV-0960
   evidence:
     - EV-0939
     - EV-0940
@@ -71,33 +74,36 @@ dod_evidence:
     - EV-0951
     - EV-0952
     - EV-0953
+    - EV-0954
+    - EV-0955
+    - EV-0956
+    - EV-0957
+    - EV-0958
+    - EV-0959
+    - EV-0960
 findings:
   - id: F-001
     severity: P1
-    status: open
+    status: fixed
     owner: "riccon/builder-kb-index + riccon/builder-kb-web"
-    due: "TASK-0202 修复；修复后重跑定向与全量证据、补评模块 review"
-    title: "AC-15 要求的“失败时间”在 Worker/API/UI 均缺失，文档详情只显示创建时间和索引完成时间"
+    due: "fixed in b7b8c45（TASK-0202）"
+    title: "AC-15 失败时间已补：API failedAt（file_parse.finished_at 优先、updated_at 回退、+08:00）、Web knowledge-failed-at、E2E-M05-09"
     evidence: >-
-      docs/PRODUCT.md:565（AC-15 原文“显示可读原因…失败时间与重试入口”）；
-      apps/worker/src/main/java/com/riccon/worker/index/repository/KnowledgeRepository.java:177-190（markFailed 只写 status/error_code/error_message，不写失败时间）；
-      apps/api/src/main/java/com/riccon/api/knowledge/dto/KnowledgeDocumentResponse.java:43-70（无 failedAt 字段）；
-      apps/web/src/pages/knowledge/components/knowledge-detail.tsx:416-425（只显示“创建时间”和“索引完成”，无“失败时间”）；
-      e2e/tests/m05.spec.ts:413-480（E2E-M05-05 断言删除/重索引/403/404/409/503，不断言失败时间）；
-      工作树中未提交的 Product 预验收草稿 docs/ACCEPTANCE.md（2026-11-24，R-M05-06）同样判定 changes-requested。
+      apps/api/src/main/java/com/riccon/api/knowledge/dto/KnowledgeDocumentResponse.java:33、58、91；
+      apps/api/src/main/java/com/riccon/api/knowledge/persistence/KnowledgeJdbc.java:49、550-565；
+      apps/web/src/pages/knowledge/components/knowledge-detail.tsx:474；
+      e2e/tests/m05.spec.ts:651-675（E2E-M05-09）；contracts/openapi.yaml:5157；
+      EV-0954（KnowledgeFailedAtApiTest/契约/解析形态）、EV-0959（E2E 52/52）、EV-0960（docs/contract）。
   - id: F-002
     severity: P2
-    status: open
-    owner: "riccon/builder-kb-web + riccon/lead"
-    due: "M05 gate 前（补界面文案/说明，或由 Lead/用户书面接受该子句不适用）"
-    title: "AC-21 要求保留策略变更“不追溯旧文档、界面明示”，当前 UI 无策略变更入口也无“不追溯”说明"
+    status: fixed
+    owner: "riccon/builder-kb-web"
+    due: "fixed in b7b8c45（TASK-0202）"
+    title: "AC-21 保留策略不追溯界面明示已补：knowledge-retention-note + E2E-M05-09"
     evidence: >-
-      docs/PRODUCT.md:571（AC-21 原文“…不追溯旧文档，仅新文档/新到期计算按新策略，界面明示”）；
-      apps/web/src/pages/knowledge/components/knowledge-detail.tsx:426-430（仅显示保留天数/到期/策略来源）；
-      `grep -rn "不追溯|策略变更" apps/web/src/pages/knowledge apps/web/src/services/knowledge` 无命中；
-      apps/web/src/pages/admin/tenants/index.tsx:112 只显示“审计保留 N 天”，无编辑入口；
-      EV-0924 的 KnowledgeRetentionTest 证明后端不追溯行为，但不构成“界面明示”证据；
-      工作树中未提交的 Product 预验收草稿 R-M05-07 同样判定 changes-requested。
+      apps/web/src/pages/knowledge/components/knowledge-detail.tsx:451；
+      e2e/tests/m05.spec.ts:651-675（E2E-M05-09 断言“保留策略变更仅影响新文档和新的到期计算，不追溯历史文档”）；
+      EV-0955（web 597/coverage）、EV-0959（E2E 52/52）。
   - id: F-003
     severity: P2
     status: accepted
@@ -187,13 +193,13 @@ findings:
     severity: P3
     status: accepted
     owner: "riccon/architect + riccon/lead"
-    due: "M05 Product 预验收前 / M05b 前"
+    due: "M05 Product 预验收后 / M05b 前"
     accepted_reason: >-
-      ADR-0023、RUNBOOK、CODING-STANDARDS 已按 V14/FULLTEXT/HEALTHCHECK 收口（EV-0952/0953），
+      ADR-0023、RUNBOOK、CODING-STANDARDS 已按 V14/FULLTEXT/HEALTHCHECK 收口（EV-0952/0953/0960），
       但 ARCHITECTURE.md 仍写迁移 V2–V12、THREAT-MODEL/ARCHITECTURE 仍写 INJ-001..012“未建/未覆盖”、
       application-test.yml 仍写 V1–V11，ADR-0023 状态仍为 proposed、Architect 可行性在 PRODUCT
-      评审表仍 pending。均为文档/治理漂移，不影响运行时代码与已通过的行为；需在 Product 预验收或
-      M05b 前同步，避免 M09 按旧迁移口径评估。
+      评审表仍 pending。均为文档/治理漂移，不影响运行时代码与已通过的行为；需在 M05b 前同步，避免
+      M09 按旧迁移口径评估。
     title: "文档漂移：ARCHITECTURE 迁移仍 V2–V12、INJ harness 文档仍称未建、ADR-0023 仍 proposed、application-test 注释 V1–V11"
     evidence: "docs/ARCHITECTURE.md:130、373、432-436；docs/security/THREAT-MODEL.md:522/627/861；apps/api/src/test/resources/application-test.yml:2；docs/adr/ADR-0023-m05-knowledge-depth.md:3；docs/PRODUCT.md 评审状态表 Architect 可行性 pending；REV-TASK-0172-001 F-002、REV-TASK-0180-001 F-002、REV-TASK-0197-002 F-004"
   - id: F-011
@@ -206,11 +212,24 @@ findings:
       `FE-QUOTA-RELATIVE-001` 作为验收线索，但仓库中没有以这些 ID 命名的测试类/方法，实际覆盖在
       XlsxDocumentParserTest、PdfDocumentParserTest、ImageDocumentParserTest、OcrServiceTest、
       KnowledgeIndexModesIntegrationTest、M05TenantIsolationTest、M05DepartmentIsolationTest、
-      M05AclSecurityMatrixTest、M05AclAuditOrderTest、M05 契约测试与 E2E-M05-01..08 中。
-      行为覆盖存在，缺口是“AC → 测试 ID → 报告路径”的可追溯映射；不影响本轮失败结论，但应在
+      M05AclSecurityMatrixTest、M05AclAuditOrderTest、M05 契约测试与 E2E-M05-01..09 中。
+      行为覆盖存在，缺口是“AC → 测试 ID → 报告路径”的可追溯映射；不影响本轮结论，但应在
       M05b 前补登记，避免后续重复/漏登记。
     title: "AC 测试线索 ID 未与真实测试类/方法建立可追溯映射（IT-KB-*、IT-WORKER-*、FE-QUOTA-*）"
     evidence: "docs/PRODUCT.md:551-572、709；docs/adr/ADR-0023-m05-knowledge-depth.md:889-912；`grep -rn IT-KB-101 apps e2e` 仅 docs/ADR 命中；实际测试类见 §4/§2"
+  - id: F-012
+    severity: P3
+    status: accepted
+    owner: "riccon/verifier + riccon/lead"
+    due: "M05b / 下次 maintenance"
+    accepted_reason: >-
+      TASK-0202 修复后的 b7b8c45 没有重跑合同全量 Maven `verify`（EV-0939 全量在 c1bd0e7：API 772 +
+      worker 579）；但改动面由 EV-0954（API 契约/KnowledgeFailedAtApiTest/解析形态定向）、EV-0955
+      （web 全量 597/coverage 87.19/80.73）、EV-0956 typecheck、EV-0957 lint、EV-0958 a11y 18/18、
+      EV-0959 E2E 52/52 覆盖，worker 未改。风险是未重跑其他 API 回归，属证据范围 residual；建议
+      M05b 或下次全量时补一次 b7b8c45 之后的合同 test/coverage。
+    title: "TASK-0202 后未在 b7b8c45 重跑合同全量 Maven verify（全量 EV-0939 在 c1bd0e7）"
+    evidence: "EV-0939（c1bd0e7 全量）；EV-0954/0955/0956/0957/0958/0959（b7b8c45 定向与 web/E2E）"
 reviewed_task_reviews:
   - REV-TASK-0164-001
   - REV-TASK-0165-001
@@ -337,42 +356,51 @@ reviewed_evidence:
   - EV-0931
   - EV-0932
   - EV-0933
-notes: "【草稿·等待 TASK-0202 修复后定稿】M05 独立技术评审：35/35 任务 done；合同 build/lint/typecheck/test+coverage/E2E/a11y/security 与真实栈 29/29 全绿，EV 哈希/commit/dirty 已核对。技术 verdict 为 fail：AC-15 缺少“失败时间”（P1，Worker/API/UI/E2E 均无 failedAt），AC-21 缺少“策略变更不追溯/界面明示”（P2 open）；这不是 Product 主观偏好，而是可复现的代码/契约/UI/E2E 缺口。Product 预验收当前 changes-requested（R-M05-06/R-M05-07），TASK-0202 修复前模块不得 done；本评审不替代 Product 预验收或用户最终验收。ACL 写 p95 4.33–4.58s 为 P2 accepted 技术残余，仍待用户显式接受。"
-created_at: "2026-11-24T00:47:17+08:00"
+  - EV-0954
+  - EV-0955
+  - EV-0956
+  - EV-0957
+  - EV-0958
+  - EV-0959
+  - EV-0960
+notes: >-
+  REV-M05-002 技术定稿：M05 35/35 任务 + TASK-0202 修复 done；R-M05-06/07 fixed（failedAt +
+  knowledge-failed-at + retention-note + E2E-M05-09）。合同 build/lint/typecheck/test+coverage/
+  E2E/a11y/security 与真实栈 29/29 全绿；EV-0954..0960 在 b7b8c45/823bfc0，dirty=false。技术
+  verdict pass；ACL 写 p95 4.33–4.58s 为 P2 accepted residual，需用户最终验收显式接受。Product
+  预验收正在重新进行（pending）；模块 done 需 Product pass，用户 `accepted` 前不启动 M05b。本评审
+  是独立技术验收，不替代 Product 预验收或用户最终验收。gate 预期 pass（仅技术 gate）。
+created_at: "2026-11-24T01:32:00+08:00"
 ---
 
-# REV-M05-001：M05 知识库纵深模块独立评审
+# REV-M05-002：M05 知识库纵深模块独立评审（定稿）
 
-> **评审状态：草稿，等待 TASK-0202 修复后定稿。**
-> Product 预验收当前为 **changes-requested**（R-M05-06 失败时间缺失 P1、R-M05-07 保留策略不追溯界面
-> 明示 P2）；Lead 已建 TASK-0202 修复，尚未完成、尚无 EV。本文件是技术评审草稿，**不是** Product
-> 预验收 pass，也不表示模块可以 done；TASK-0202 修复后由 Lead 通知补评，届时更新
-> `head_commit`/`reviewed_commits`/`reviewed_evidence`（含 TASK-0202 的 EV）并重跑 gate。
+> **Product 预验收：pending（Product 正在重新预验收）。** R-M05-06（失败时间 P1）与 R-M05-07
+> （保留策略界面明示 P2）已由 TASK-0202 修复并 done（b7b8c45）；Product 尚未在本评审中确认 pass。
+> 本文件是**技术验收**，技术 verdict 为 pass；模块 done 仍需 Product 预验收 pass，用户 `accepted`
+> 前不启动 M05b。本评审不写 Product pass，也不替代用户最终验收。
 
 ## 结论
 
-**技术 verdict：fail（1 条 P1、1 条 P2 open；无 P0；其余 P2/P3 为 accepted 残余）。**
+**技术 verdict：pass（R-M05-06/07 fixed；无 P0/P1 open；P2/P3 残余均 accepted）。**
 
-M05 的 35 个任务全部 done，合同全量 build/lint/typecheck/test+coverage/E2E/a11y/security 与真实栈
-29/29 均可复核，EV 的 commit、dirty、日志哈希也一致。但验收标准本身未被完全满足：
+M05 的 35 个任务全部 done，TASK-0202（AC-15 失败时间 + AC-21 保留策略明示）已修复并 done。
+合同全量 build/lint/typecheck/test+coverage/E2E/a11y/security 与真实栈 29/29 均可复核，EV 的
+commit、dirty、日志哈希一致。关键闭环：
 
-- **AC-15（P0）failed**：原文要求解析/OCR 失败时文档详情显示“失败时间”。当前 Worker
-  `markFailed` 只写 status/error_code/error_message，不写失败时间；API `KnowledgeDocumentResponse`
-  没有 `failedAt`；前端只显示“创建时间”和“索引完成”。E2E-M05-05 也没有失败时间断言。这是用户可见
-  的 P1 缺口，不能以“原因和重试入口已通过”替代；它是代码/契约/UI/E2E 的客观缺口，不是 Product
-  主观偏好。
-- **AC-21（P0）failed（子句）**：保留数据行为（默认 180 天、到期/软删除、索引 DELETE、状态覆盖）
-  通过，但“策略变更不追溯旧文档、界面明示”没有 UI 入口或说明文案；`KnowledgeRetentionTest`
-  只证明后端行为，不能替代“界面明示”。按 P2 open 跟踪，需补文案或书面接受该子句不适用。
+- **AC-15 fixed**：TASK-0202 增加 `KnowledgeDocument.failedAt`（FAILED 时 `file_parse.finished_at`
+  优先、`updated_at` 回退，+08:00）、API `failedAt`、Web `knowledge-failed-at`、E2E-M05-09；
+  EV-0954/EV-0959/EV-0960 通过。先前 P1 关闭。
+- **AC-21 fixed**：Web 增加 `knowledge-retention-note`（“保留策略变更仅影响新文档和新的到期计算，
+  不追溯历史文档”），E2E-M05-09 断言；EV-0955/EV-0959 通过。先前 P2 关闭。
+- **AC-20 pass（with residual F-003）**：检索 p95 97.5ms、首字 201.5ms、API 386.8ms、索引 7.7s、
+  下载 301ms 达标；ACL 写 p95 4.33–4.58s > 500ms 为 quota 租户行锁 residual，P2 accepted，
+  仍需用户最终验收显式接受。
 
-Product 预验收当前为 **changes-requested**：工作树中未提交的 Product 草稿（`docs/ACCEPTANCE.md`，
-2026-11-24）给出 R-M05-06（P1）与 R-M05-07（P2），与本次独立核对一致；Lead 已建 **TASK-0202**
-修复，但尚未完成、尚无 EV。因此 M05 不能标记 done；TASK-0202 修复后需重跑定向与全量证据、补评
-本模块 review，再由 Product 重新预验收；Product `pass` 后才可模块 done，用户 `accepted` 前不启动
-M05b。
-
-本评审是独立技术验收，**不替代** Product 预验收或用户最终验收；M05 状态、Product/用户验收与 gate
-重跑由 Lead 处理。本文件当前为草稿，正式定稿以 TASK-0202 修复后的补评为准。
+Product 预验收当前 **pending**：R-M05-06/R-M05-07 已修复并 done，但 Product 正在重新预验收；
+本评审未记录 Product pass。M05 模块 done 需 Product 预验收 pass；这是技术 gate 之外的产品门。
+本评审是独立技术验收，**不替代** Product 预验收或用户最终验收；M05 状态、Product/用户验收与
+gate 重跑由 Lead 处理。
 
 ## 1. 范围与基线
 
@@ -380,21 +408,19 @@ M05b。
   文档级 ACL（TENANT/DEPT/USERS + U8 管理性读取）、delete/reindex、保留、429 文案、三页 a11y；
   M05b（S3 连接器）不在本模块。
 - 任务：`.riccon/modules/M05.json` 的 35 个任务全部 done（TASK-0164..0201，含 V1/V2、O1a/O1b、
-  docs/ops 收口任务）。Product 预验收后 Lead 已建 **TASK-0202**（`status=ready`，owner
-  `riccon/builder-kb-web`，`evidence=[]`）修复 R-M05-06/07；TASK-0202 当前尚未完成、尚无 EV，
-  因此不在 `reviewed_task_reviews`/`reviewed_evidence` 中；修复后补评时更新。
-- 代码基线：全量合同证据录制于 `c1bd0e7`（EV-0939..0944）；之后 `c1bd0e7..HEAD` 的代码变更只有
-  `deploy/Dockerfile.worker`（HEALTHCHECK）与 `docs/`，没有 `apps/`、`platform/`、`contracts/` 源码
-  变更（`git diff --name-status c1bd0e7..HEAD -- . ':(exclude).riccon'`）。当前 HEAD 为 `eaa0adf`
-  （`4f923ff`/`eaa0adf` 只新增 Product changes-requested 记录与 TASK-0202 任务卡）。
-- 真实栈最终证据 EV-0951 在 `f8b6211`；docs EV-0952 在 `e42ee16`；security/HEALTHCHECK EV-0953 在
-  `f4c4399`。三者都是 HEAD 的祖先，dirty=false。
-- 当前工作树已有 TASK-0202 的未提交实现（`KnowledgeDocumentResponse`/`KnowledgeJdbc`/`KnowledgeService`/
-  `knowledge-detail.tsx`/`contracts/openapi.yaml`/`e2e/tests/m05.spec.ts` 等）；按 Lead 指示，本评审
-  只针对 HEAD `eaa0adf`（TASK-0202 修复前）给出草稿结论，**不评 dirty 代码**；TASK-0202 提交后
-  再更新 `head_commit`/`reviewed_commits`/`reviewed_evidence` 并补评。
-- 工作树当前有一份未提交的 `docs/ACCEPTANCE.md` Product 预验收草稿（由 Product 并行写入）；本评审
-  只读取、不修改它，也不把它当作唯一事实源——F-001/F-002 已用代码与 E2E 独立复核。
+  docs/ops 收口任务）。Product changes-requested 后 Lead 建 **TASK-0202**（owner
+  `riccon/builder-kb-web`），修复 R-M05-06/07，已 done（`b7b8c45`），evidence 为
+  EV-0954..EV-0960；TASK-0202 没有单独任务级 review（按 Lead 要求 `reviewed_task_reviews` 保持
+  12 个，模块 review 直接复核其 EV）。
+- 代码基线：全量合同证据 EV-0939..EV-0944 录制于 `c1bd0e7`；TASK-0202 修复提交 `b7b8c45`
+  （`KnowledgeDocument.failedAt`/API/Web/OpenAPI/E2E-M05-09）；`028a2ce`/`823bfc0` 是
+  TASK-0202 证据与 closeout（.riccon）。当前 HEAD 为 `823bfc0`。`b7b8c45` 后的代码变更只有
+  TASK-0202 修复面，没有其他 `apps/`/`platform/`/`contracts/` 变更。
+- 真实栈最终证据 EV-0951 在 `f8b6211`；security/HEALTHCHECK EV-0953 在 `f4c4399`；TASK-0202
+  的 EV-0954..0959 在 `b7b8c45`（dirty=false）；docs EV-0960 在 `823bfc0`（clean worktree，
+  dirty=false）。这些 commit 都是 HEAD 的祖先。
+- 工作树当前有一份未提交的 `docs/ACCEPTANCE.md` Product 预验收草稿（Product 正在重新预验收）；
+  本评审只读取、不修改它；Product 的最终 pass 由 Product/Lead 记录，本 review 不写 Product pass。
 
 ## 2. 全量证据（EV 完整性已核对）
 
@@ -410,6 +436,12 @@ M05b。
 | OCR 零出网                    | exit 0；O1b 镜像 `--network none`，uid 10001，语言包/权重/bbox 全通过                                                      | **EV-0946**        |
 | 迁移/restore                  | exit 0；schema 14、49 表、2 触发器、RTO 12.4s；partial（无主密钥/J1）                                                      | **EV-0948**        |
 | 真实栈 full                   | exit 0；**29/29**，J1/J2/M03/M10/M04/security/m04/m03 全 passed                                                            | **EV-0951**        |
+| TASK-0202 API 定向            | exit 0；KnowledgeContractM05Test、KnowledgeFailedAtApiTest、KnowledgeDocumentParseShapeTest                                | **EV-0954**        |
+| TASK-0202 web 全量/coverage   | exit 0；69 文件/**597** 用例；Statements 87.31%、Branches **80.73%**、Lines **87.19%**                                     | **EV-0955**        |
+| TASK-0202 typecheck / lint    | exit 0                                                                                                                     | EV-0956 / EV-0957  |
+| TASK-0202 a11y                | exit 0；**18 passed**                                                                                                      | **EV-0958**        |
+| TASK-0202 E2E                 | exit 0；**52 passed**（新增 E2E-M05-09）                                                                                   | **EV-0959**        |
+| TASK-0202 docs                | exit 0；clean worktree、无 `; echo`；CODING-STANDARDS/ADR/合同校验                                                         | **EV-0960**        |
 | perf（AC-20）                 | **exit 1（预期）**；检索 p95 97.516ms、首字 201.5ms、API 386.8ms、索引 7.7s、下载 301ms；**ACL 写 4330.25ms**              | EV-0947 / EV-0922  |
 | 失败证据保留                  | EV-0927/0928（V1 E2E/a11y 旧期望失败）、EV-0945（DS-0026）、EV-0949（宿主缺 libtesseract）、EV-0950（3 条 M04 stale 期望） | 保留，不作通过证据 |
 
@@ -419,7 +451,7 @@ M05b。
 | ----------- | -----: | -----: | ----- | ---------------------------------------- |
 | apps/api    | 92.78% | 76.29% | 80/70 | pass                                     |
 | apps/worker | 85.84% | 70.01% | 80/70 | pass（仅高于 branch 门槛 0.01pp，见 §6） |
-| apps/web    | 87.19% | 80.71% | 80/70 | pass                                     |
+| apps/web    | 87.19% | 80.73% | 80/70 | pass（EV-0955，TASK-0202 后）            |
 
 补充核对：
 
@@ -430,58 +462,64 @@ M05b。
   EV-0953 的 trivy 表为 0/0/0。
 - 所有 `dod_evidence` EV 的 JSON、日志哈希、commit、dirty 与 `# command`/`# exit_code` 头均一致；
   commit 均为 HEAD 祖先。
+- **证据范围说明**：TASK-0202 修复后没有在 `b7b8c45` 重跑合同全量 Maven `verify`（EV-0939 全量在
+  `c1bd0e7`：API 772 + worker 579）；改动面由 EV-0954（API 定向）、EV-0955（web 全量 597/coverage）、
+  EV-0956 typecheck、EV-0957 lint、EV-0958 a11y、EV-0959 E2E 52/52 覆盖，worker 未改。见 F-012
+  P3 accepted；建议 M05b 或下次全量补一次 `b7b8c45` 之后的合同 test/coverage。
 
 ## 3. AC 对账（M05 段）
 
-| AC            | 结果                               | 证据与说明                                                                                                                                                                                                                                                                                                                   |
-| ------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M05-AC-01     | **pass**                           | E2E-M05-01 断言多表/空表/隐藏表警告/单表截断/损坏文件原因与重试/旧 .xls 拒绝；XlsxDocumentParserTest 27/27、PDF/资源上限相关测试通过。E2E 为 stub UI，解析器由集成/单测覆盖；AC-15 的失败时间单列。                                                                                                                          |
-| M05-AC-02     | **pass**                           | E2E-M05-01 断言 `citation-locator`/`citation-region=销售数据!B2:D10`/`citation-snippet`；E2E-M05-08 断言无源文件提示且片段/定位仍可见；定位摘要表用 `mark` 高亮，符合 P6=A。                                                                                                                                                 |
-| M05-AC-03     | **pass（with residual R-M05-03）** | E2E-M05-02 覆盖 PNG/JPEG/图片型 PDF、四态、bbox、低置信；OcrImagePreprocessorTest 覆盖 EXIF 90/180/270；OCR 关闭显示“识别未启用”。宿主 Tesseract 原生 IT 未跑，真实引擎由 O1b OcrCli 覆盖；不声称宿主 IT 已通过。                                                                                                            |
-| M05-AC-04     | **pass（with residual R-M05-02）** | E2E-M05-02 覆盖高/低置信、部分失败、全部失败、失败页列表、重试状态；OcrServiceTest/IndexModes 测试覆盖幂等与无重复。`force=false` 仍整本重解析，见 F-004；用户结果（补齐、幂等、无重复引用）成立。                                                                                                                           |
-| M05-AC-05     | **pass**                           | EV-0946：O1b 镜像 `--network none`、无路由、uid 10001、无 DB/OpenSearch/S3 env，OCR 出文本/bbox；OcrServiceTest/OcrImagePreprocessorTest 覆盖关闭开关、像素炸弹/畸形图/资源上限；不把宿主 IT 未执行当通过。                                                                                                                  |
-| M05-AC-06     | **pass**                           | E2E-M05-03/03b 断言新文档默认 TENANT、影响确认、未确认不能保存、范围三档、保存后下一次请求生效、U8 `MANAGEMENT_READ` 审计、平台管理员 404、历史文档提示；KnowledgeAclApiTest/AdminReadAuditTest 覆盖 API 与审计。                                                                                                            |
-| M05-AC-07     | **pass**                           | E2E-M05-03 断言列表/详情/下载/创建人/平台 404/旧引用遮蔽；SEC-KB-002/003、TEN-034、DEPT-011/014 由 V2 独立矩阵覆盖；下载为服务端流式代理，不暴露对象 key/预签名。                                                                                                                                                            |
-| M05-AC-08     | **pass**                           | E2E-M05-03 断言 USERS→DEPT、部门切换、下一次请求生效、创建人始终可见；M05AclAuditOrderTest 断言连续三次 ACL 审计顺序与第二次失败不部分生效；DEPT-012/013 覆盖停用/移出。                                                                                                                                                     |
-| M05-AC-09     | **pass（M05 段）**                 | V2 新增 TEN-034..036、DEPT-011..014、SEC-KB-002/003，13 个安全矩阵用例 + AgentContextJdbcAclTest 13 用例全通过、零 skip；跨租户/跨部门/不可见 404、同租户可见无权 403、U8 审计。M05b 的 TEN-037/SEC-CONN-004 不判。                                                                                                          |
-| M05-AC-10..14 | **N/A（M05b）**                    | 连接器配置/同步/凭据/注入 harness 归 M05b；M05 不提供连接器 UI/契约。                                                                                                                                                                                                                                                        |
-| M05-AC-15     | **fail（R-M05-06 / F-001）**       | DELETE/reindex 真实实现、幂等、403/404、409/503 文案均通过（E2E-M05-05、KnowledgeDeleteReindexApiTest）；但 AC-15 明确要求“失败时间”，当前 Worker 不写、API 无 `failedAt`、UI 不显示、E2E 不断言。P1，必须修复后再验收。                                                                                                     |
-| M05-AC-16     | **pass**                           | KnowledgeAdminReadAuditTest、KnowledgeAuditFailClosedTest、KnowledgeRetentionTest 与 E2E-M05-05 覆盖 ACL/U8/删除（USER/RETENTION）/重索引审计、审计失败回滚、无正文/凭据；普通员工无管理审计入口。                                                                                                                           |
-| M05-AC-17     | **pass（关闭 R-M04-01）**          | E2E-M05-06 断言聊天/报告 429 显示日/月限额、+08:00 绝对时间、“还有 X 小时”、下一步，且不再出现通用文案；不泄露 tenant/用量。                                                                                                                                                                                                 |
-| M05-AC-18     | **pass（关闭 R-M04-02）**          | E2E-M05-06 断言相对时间与绝对时间并列；format 单测覆盖小时/天/即将恢复。未单独造月末/年末用例，属于测试样本缺口而非实现依赖日历月。                                                                                                                                                                                          |
-| M05-AC-19     | **pass（with residual）**          | E2E-M05-03b/07 覆盖空/错误/403/解析失败/OCR 关闭/ACL/引用正常/低置信/不可访问/已删除/无源文件；375px、键盘、axe 18/18 通过。知识库列表的“加载”态只在组件实现中以 `aria-busy`/Skeleton 呈现，E2E 未单独断言；真实栈 M05 页面未单列（F-005），不影响 375px/键盘/axe 主结论。                                                   |
-| M05-AC-20     | **pass（with residual R-M05-01）** | EV-0947：检索 97.516ms <500、首字估算 201.5ms <3s、API 386.8ms <500、索引 7.7s <60s、下载 301ms；检索 `decisionRequired=false`，无需 FTS/OpenSearch 决策。**ACL 写 4330.25ms（B11 4576.75ms）>500ms**，F-003 P2 accepted；用户仍需在最终验收中显式接受该 residual，不能静默放宽。OCR 量测 measured=false，不把未执行当通过。 |
-| M05-AC-21     | **fail（R-M05-07 / F-002）**       | 默认 180 天、租户策略覆盖、到期/软删除、四状态、索引 DELETE 边界由 KnowledgeRetentionTest 3/3 与 E2E-M05-08 证明；但“策略变更不追溯、界面明示”没有 UI 文案/入口，`grep 不追溯                                                                                                                                                | 策略变更` 在 knowledge UI 无命中，P2 open。 |
-| M05-AC-22     | **pass（with residual）**          | E2E-M05 51/51、E2E-M03-02 已更新为 ACL 语义、真实栈 29/29；`KnowledgeContractM05Test` 10/10 覆盖 ACL/下载/解析/引用/删除/重索引，端点真实实现无 404/deferred。M05b 段不判；真实栈 M05 知识库 UI 未单列（F-005）。                                                                                                            |
+| AC            | 结果                               | 证据与说明                                                                                                                                                                                                                                                                                                                    |
+| ------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M05-AC-01     | **pass**                           | E2E-M05-01 断言多表/空表/隐藏表警告/单表截断/损坏文件原因与重试/旧 .xls 拒绝；XlsxDocumentParserTest 27/27、PDF/资源上限相关测试通过。E2E 为 stub UI，解析器由集成/单测覆盖；AC-15 的失败时间单列。                                                                                                                           |
+| M05-AC-02     | **pass**                           | E2E-M05-01 断言 `citation-locator`/`citation-region=销售数据!B2:D10`/`citation-snippet`；E2E-M05-08 断言无源文件提示且片段/定位仍可见；定位摘要表用 `mark` 高亮，符合 P6=A。                                                                                                                                                  |
+| M05-AC-03     | **pass（with residual R-M05-03）** | E2E-M05-02 覆盖 PNG/JPEG/图片型 PDF、四态、bbox、低置信；OcrImagePreprocessorTest 覆盖 EXIF 90/180/270；OCR 关闭显示“识别未启用”。宿主 Tesseract 原生 IT 未跑，真实引擎由 O1b OcrCli 覆盖；不声称宿主 IT 已通过。                                                                                                             |
+| M05-AC-04     | **pass（with residual R-M05-02）** | E2E-M05-02 覆盖高/低置信、部分失败、全部失败、失败页列表、重试状态；OcrServiceTest/IndexModes 测试覆盖幂等与无重复。`force=false` 仍整本重解析，见 F-004；用户结果（补齐、幂等、无重复引用）成立。                                                                                                                            |
+| M05-AC-05     | **pass**                           | EV-0946：O1b 镜像 `--network none`、无路由、uid 10001、无 DB/OpenSearch/S3 env，OCR 出文本/bbox；OcrServiceTest/OcrImagePreprocessorTest 覆盖关闭开关、像素炸弹/畸形图/资源上限；不把宿主 IT 未执行当通过。                                                                                                                   |
+| M05-AC-06     | **pass**                           | E2E-M05-03/03b 断言新文档默认 TENANT、影响确认、未确认不能保存、范围三档、保存后下一次请求生效、U8 `MANAGEMENT_READ` 审计、平台管理员 404、历史文档提示；KnowledgeAclApiTest/AdminReadAuditTest 覆盖 API 与审计。                                                                                                             |
+| M05-AC-07     | **pass**                           | E2E-M05-03 断言列表/详情/下载/创建人/平台 404/旧引用遮蔽；SEC-KB-002/003、TEN-034、DEPT-011/014 由 V2 独立矩阵覆盖；下载为服务端流式代理，不暴露对象 key/预签名。                                                                                                                                                             |
+| M05-AC-08     | **pass**                           | E2E-M05-03 断言 USERS→DEPT、部门切换、下一次请求生效、创建人始终可见；M05AclAuditOrderTest 断言连续三次 ACL 审计顺序与第二次失败不部分生效；DEPT-012/013 覆盖停用/移出。                                                                                                                                                      |
+| M05-AC-09     | **pass（M05 段）**                 | V2 新增 TEN-034..036、DEPT-011..014、SEC-KB-002/003，13 个安全矩阵用例 + AgentContextJdbcAclTest 13 用例全通过、零 skip；跨租户/跨部门/不可见 404、同租户可见无权 403、U8 审计。M05b 的 TEN-037/SEC-CONN-004 不判。                                                                                                           |
+| M05-AC-10..14 | **N/A（M05b）**                    | 连接器配置/同步/凭据/注入 harness 归 M05b；M05 不提供连接器 UI/契约。                                                                                                                                                                                                                                                         |
+| M05-AC-15     | **pass（R-M05-06 fixed）**         | DELETE/reindex 真实实现、幂等、403/404、409/503 文案均通过（E2E-M05-05、KnowledgeDeleteReindexApiTest）。TASK-0202 补 `KnowledgeDocument.failedAt`（FAILED 时 `file_parse.finished_at` 优先、`updated_at` 回退，+08:00）、API `failedAt`、Web `knowledge-failed-at` 与 E2E-M05-09；EV-0954/EV-0959/EV-0960 通过，F-001 关闭。 |
+| M05-AC-16     | **pass**                           | KnowledgeAdminReadAuditTest、KnowledgeAuditFailClosedTest、KnowledgeRetentionTest 与 E2E-M05-05 覆盖 ACL/U8/删除（USER/RETENTION）/重索引审计、审计失败回滚、无正文/凭据；普通员工无管理审计入口。                                                                                                                            |
+| M05-AC-17     | **pass（关闭 R-M04-01）**          | E2E-M05-06 断言聊天/报告 429 显示日/月限额、+08:00 绝对时间、“还有 X 小时”、下一步，且不再出现通用文案；不泄露 tenant/用量。                                                                                                                                                                                                  |
+| M05-AC-18     | **pass（关闭 R-M04-02）**          | E2E-M05-06 断言相对时间与绝对时间并列；format 单测覆盖小时/天/即将恢复。未单独造月末/年末用例，属于测试样本缺口而非实现依赖日历月。                                                                                                                                                                                           |
+| M05-AC-19     | **pass（with residual）**          | E2E-M05-03b/07 覆盖空/错误/403/解析失败/OCR 关闭/ACL/引用正常/低置信/不可访问/已删除/无源文件；375px、键盘、axe 18/18 通过。知识库列表的“加载”态只在组件实现中以 `aria-busy`/Skeleton 呈现，E2E 未单独断言；真实栈 M05 页面未单列（F-005），不影响 375px/键盘/axe 主结论。                                                    |
+| M05-AC-20     | **pass（with residual R-M05-01）** | EV-0947：检索 97.516ms <500、首字估算 201.5ms <3s、API 386.8ms <500、索引 7.7s <60s、下载 301ms；检索 `decisionRequired=false`，无需 FTS/OpenSearch 决策。**ACL 写 4330.25ms（B11 4576.75ms）>500ms**，F-003 P2 accepted；用户仍需在最终验收中显式接受该 residual，不能静默放宽。OCR 量测 measured=false，不把未执行当通过。  |
+| M05-AC-21     | **pass（R-M05-07 fixed）**         | 默认 180 天、租户策略覆盖、到期/软删除、四状态、索引 DELETE 边界由 KnowledgeRetentionTest 3/3 与 E2E-M05-08 证明；TASK-0202 增加 `knowledge-retention-note`（“保留策略变更仅影响新文档和新的到期计算，不追溯历史文档”），E2E-M05-09 断言；EV-0955/EV-0959 通过，F-002 关闭。                                                  |
+| M05-AC-22     | **pass（with residual）**          | E2E-M05 51/51（EV-0943）、TASK-0202 后 52/52（EV-0959）、E2E-M03-02 已更新为 ACL 语义、真实栈 29/29；`KnowledgeContractM05Test` 10/10 覆盖 ACL/下载/解析/引用/删除/重索引，端点真实实现无 404/deferred。M05b 段不判；真实栈 M05 知识库 UI 未单列（F-005）。                                                                   |
 
 ## 4. 任务评审覆盖
 
 本模块共有 12 份任务级评审；以下为每个任务的最新 review ID（模块 review 已逐条读取）：
 
-| 任务      | 最新评审            | 结论 | 与模块 review 的对账                                                                                                                                                                                                       |
-| --------- | ------------------- | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| TASK-0164 | `REV-TASK-0164-001` | pass | F-001 角色口径已由 TASK-0182/ADR-0023 §5.6 澄清（`knowledge.manage` 仅 TENANT_ADMIN；创建人是资源关系）；F-005 新旧调度互斥由 TASK-0180 修复；其余 accepted 保留。                                                         |
-| TASK-0165 | `REV-TASK-0165-001` | pass | F-001 ACL 端点门与 404 顺序已由 SEC-KB-002 行为锁定；F-003 下载 502 已由 TASK-0190 修复；契约 prose 残余保留。                                                                                                             |
-| TASK-0166 | `REV-TASK-0166-002` | pass | F-001..F-005 fixed（检索 actor/unrestricted、U8 admin_read、reindex 审计、历史 NULL retention、worker ACL 开关）；F-006 下载 502 已由 TASK-0190 修复；F-008 平台 delete 等 P3 accepted 保留。                              |
-| TASK-0167 | `REV-TASK-0167-001` | pass | F-001 parse_* 写入由 B7 实现；F-002/F-003 由 TASK-0189 修复；F-004 解析 180s/稳定码仍 accepted（F-008）；F-008 测试缺口部分由 TASK-0189/V2 补。                                                                            |
-| TASK-0168 | `REV-TASK-0168-002` | pass | F-001/F-002/F-003/F-005 fixed（OOM、语言绑定、NO_TEXT、TextChunker）；F-008/F-009 P3 accepted（Tesseract 不可中断/DPI）。                                                                                                  |
-| TASK-0169 | `REV-TASK-0169-001` | pass | F-001 force=false 整本重解析 → F-004；F-002 env 占位符已 fixed；F-003 重灌脚本大租户校验 → F-009；其余 P3 accepted。                                                                                                       |
-| TASK-0171 | `REV-TASK-0171-001` | pass | F-001 bbox/ocrConfidence 由 TASK-0197 修复；F-002 N+1 由 TASK-0197 批量修复；F-003..F-005 P3 accepted。                                                                                                                    |
-| TASK-0172 | `REV-TASK-0172-001` | pass | F-001 spotless fixed；F-002 INJ 文档漂移 → F-010；F-003/F-004/F-005 P3/P2 accepted。                                                                                                                                       |
-| TASK-0177 | `REV-TASK-0177-001` | pass | V2 全量验证；F-001 HEALTHCHECK 由 TASK-0200/EV-0953 修复；F-003/F-004 文档由 TASK-0201 修复；F-002 ACL 写 → F-003；F-005 OCR probe → F-005。                                                                               |
-| TASK-0180 | `REV-TASK-0180-001` | pass | F-001 legacy 30m 看门狗 accepted（M05b 前决定）；F-002 application-test 注释 V1–V11 → F-010；F-003/F-004/F-005 P3 accepted。                                                                                               |
-| TASK-0197 | `REV-TASK-0197-002` | pass | F-001/F-002/F-003 fixed；front matter `cross_task_blockers: X-001` 仍写 open，但已由 `REV-TASK-0198-001` F-001/EV-0921 修复并在 EV-0939 全量通过，属过期状态而非 open P1。F-004/F-005/F-006/F-008 accepted → F-010/F-005。 |
-| TASK-0198 | `REV-TASK-0198-001` | pass | X-001 已 fixed（10e8bc8，EV-0921）；F-002/F-003/F-004/F-005/F-006/F-007/F-008 accepted；V14 锁归 M09（F-006）。                                                                                                            |
+| 任务      | 最新评审            | 结论 | 与模块 review 的对账                                                                                                                                                                                                                  |
+| --------- | ------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TASK-0164 | `REV-TASK-0164-001` | pass | F-001 角色口径已由 TASK-0182/ADR-0023 §5.6 澄清（`knowledge.manage` 仅 TENANT_ADMIN；创建人是资源关系）；F-005 新旧调度互斥由 TASK-0180 修复；其余 accepted 保留。                                                                    |
+| TASK-0165 | `REV-TASK-0165-001` | pass | F-001 ACL 端点门与 404 顺序已由 SEC-KB-002 行为锁定；F-003 下载 502 已由 TASK-0190 修复；契约 prose 残余保留。                                                                                                                        |
+| TASK-0166 | `REV-TASK-0166-002` | pass | F-001..F-005 fixed（检索 actor/unrestricted、U8 admin_read、reindex 审计、历史 NULL retention、worker ACL 开关）；F-006 下载 502 已由 TASK-0190 修复；F-008 平台 delete 等 P3 accepted 保留。                                         |
+| TASK-0167 | `REV-TASK-0167-001` | pass | F-001 parse_* 写入由 B7 实现；F-002/F-003 由 TASK-0189 修复；F-004 解析 180s/稳定码仍 accepted（F-008）；F-008 测试缺口部分由 TASK-0189/V2 补。                                                                                       |
+| TASK-0168 | `REV-TASK-0168-002` | pass | F-001/F-002/F-003/F-005 fixed（OOM、语言绑定、NO_TEXT、TextChunker）；F-008/F-009 P3 accepted（Tesseract 不可中断/DPI）。                                                                                                             |
+| TASK-0169 | `REV-TASK-0169-001` | pass | F-001 force=false 整本重解析 → F-004；F-002 env 占位符已 fixed；F-003 重灌脚本大租户校验 → F-009；其余 P3 accepted。                                                                                                                  |
+| TASK-0171 | `REV-TASK-0171-001` | pass | F-001 bbox/ocrConfidence 由 TASK-0197 修复；F-002 N+1 由 TASK-0197 批量修复；F-003..F-005 P3 accepted。                                                                                                                               |
+| TASK-0172 | `REV-TASK-0172-001` | pass | F-001 spotless fixed；F-002 INJ 文档漂移 → F-010；F-003/F-004/F-005 P3/P2 accepted。                                                                                                                                                  |
+| TASK-0177 | `REV-TASK-0177-001` | pass | V2 全量验证；F-001 HEALTHCHECK 由 TASK-0200/EV-0953 修复；F-003/F-004 文档由 TASK-0201 修复；F-002 ACL 写 → F-003；F-005 OCR probe → F-005。                                                                                          |
+| TASK-0180 | `REV-TASK-0180-001` | pass | F-001 legacy 30m 看门狗 accepted（M05b 前决定）；F-002 application-test 注释 V1–V11 → F-010；F-003/F-004/F-005 P3 accepted。                                                                                                          |
+| TASK-0197 | `REV-TASK-0197-002` | pass | F-001/F-002/F-003 fixed；`cross_task_blockers: X-001` 的旧 open 已由 `REV-TASK-0198-001` F-001/EV-0921 修复，并在 EV-0939 全量通过；front matter 的 open 是过期状态，不再是 open P1。F-004/F-005/F-006/F-008 accepted → F-010/F-005。 |
+| TASK-0198 | `REV-TASK-0198-001` | pass | X-001 已 fixed（10e8bc8，EV-0921）；F-002/F-003/F-004/F-005/F-006/F-007/F-008 accepted；V14 锁归 M09（F-006）。                                                                                                                       |
 
 没有任务级评审的任务（B8/B8fix/B11/O1a/O1b/docs 收口等）不触发本模块 `reviewed_task_reviews`
-缺失；TASK-0200/TASK-0201 的产出由 EV-0953/EV-0952 与本次模块 review 直接覆盖。
+缺失；TASK-0200/TASK-0201 的产出由 EV-0953/EV-0952/EV-0960 与本次模块 review 直接覆盖。
+TASK-0202 是 Product 修复任务，没有单独任务级 review（按 Lead 要求保持 12 个）；其 EV-0954..EV-0960
+由本次模块 review 直接复核。
 
 ## 5. Findings
 
 | ID    | 级别   | 状态     | 摘要                                                                 | Owner / due                                     |
 | ----- | ------ | -------- | -------------------------------------------------------------------- | ----------------------------------------------- |
-| F-001 | **P1** | **open** | AC-15“失败时间”在 Worker/API/UI/E2E 均缺失                           | builder-kb-index + builder-kb-web / M05 gate 前 |
-| F-002 | **P2** | **open** | AC-21“策略变更不追溯/界面明示”无 UI 文案或入口                       | builder-kb-web + Lead / M05 gate 前或书面接受   |
+| F-001 | **P1** | **fixed** | AC-15 失败时间已补：API `failedAt` + Web `knowledge-failed-at` + E2E-M05-09 | builder-kb-index + builder-kb-web / fixed in b7b8c45 |
+| F-002 | **P2** | **fixed** | AC-21 保留策略不追溯界面明示已补：`knowledge-retention-note` + E2E-M05-09 | builder-kb-web / fixed in b7b8c45               |
 | F-003 | P2     | accepted | AC-20 ACL 写 p95 4.33–4.58s > 500ms（quota 行锁）                    | Lead + Architect / 用户最终验收前、M05b gate 前 |
 | F-004 | P2     | accepted | force=false 仍整本重解析，未只补缺失页                               | builder-kb-index + Architect / M05b             |
 | F-005 | P3     | accepted | 宿主 Tesseract IT 未跑；真实栈 full 用 OCR 关闭；M05 UI 无真实栈单列 | verifier + ops / M05b                           |
@@ -489,54 +527,44 @@ M05b。
 | F-007 | P2     | accepted | M04 F-008 生产 pass-through 继承                                     | builder-route / M09 前                          |
 | F-008 | P2     | accepted | 解析 180s/稳定码未按 ADR §3.3                                        | Lead + Architect / M05b                         |
 | F-009 | P2     | accepted | 重灌脚本大租户 ID 校验缺口                                           | builder-kb-index / M05b/M09                     |
-| F-010 | P3     | accepted | ARCHITECTURE/THREAT-MODEL/application-test/ADR 状态文档漂移          | Architect + Lead / 预验收前或 M05b              |
+| F-010 | P3     | accepted | ARCHITECTURE/THREAT-MODEL/application-test/ADR 状态文档漂移          | Architect + Lead / M05b                         |
 | F-011 | P3     | accepted | AC 测试线索 ID 与真实测试类无可追溯映射                              | Architect + Lead / M05b                         |
+| F-012 | P3     | accepted | TASK-0202 后未在 b7b8c45 重跑合同全量 Maven verify                   | verifier + Lead / M05b 或下次全量               |
 
-### 5.1 F-001（P1）最小复现与修复要求
+### 5.1 F-001（P1，fixed）AC-15 失败时间
 
-可复现核对：
+b7b8c45 已把 `failedAt` 落到 API 与 UI：
 
-```bash
-# 1) API 响应无 failedAt
-grep -n "failedAt\|failed_at" \
-  apps/api/src/main/java/com/riccon/api/knowledge/dto/KnowledgeDocumentResponse.java
-# 2) Worker markFailed 不写失败时间
-sed -n '177,190p' apps/worker/src/main/java/com/riccon/worker/index/repository/KnowledgeRepository.java
-# 3) 前端只显示创建/索引完成
-sed -n '416,425p' apps/web/src/pages/knowledge/components/knowledge-detail.tsx
-# 4) E2E-M05-05 无失败时间断言
-sed -n '413,480p' e2e/tests/m05.spec.ts
-```
+- `KnowledgeDocumentResponse.java:33、58、91` 增加可选 `failedAt`（+08:00）；
+- `KnowledgeJdbc.java:49、550-565` 以 `file_parse.finished_at` 为优先、`updated_at` 回退；
+- `knowledge-detail.tsx:474` 显示 `knowledge-failed-at`；
+- `contracts/openapi.yaml:5157` 声明 `failedAt`；
+- `e2e/tests/m05.spec.ts:651-675` 的 E2E-M05-09 断言失败时间与 +08:00，且非 FAILED 文档不显示；
+- EV-0954（KnowledgeFailedAtApiTest/契约/解析形态）、EV-0959（E2E 52/52）、EV-0960（docs/contract）
+  均 exit 0、dirty=false。
 
-观察值：`KnowledgeDocumentResponse` 字段只有 `indexedAt`/`createdAt`；`markFailed` 的 UPDATE 只写
-`status/error_code/error_message`；前端显示“创建时间”“索引完成”；E2E 没有“失败时间”文本断言。
-期望值：AC-15 要求“可读原因、**失败时间**与重试入口”。TASK-0202 的 acceptance 允许 `failedAt`
-来自 `updated_at` 或专用字段；若是 `updated_at`，必须证明文档进入 FAILED 后 ACL/可见性等其他
-UPDATE 不会改写它（`knowledge_document.updated_at` 是 `ON UPDATE CURRENT_TIMESTAMP`，ACL 变更会
-碰同一行），否则展示的仍不是稳定失败时间。建议用专用 `failed_at`，或只在失败路径写入且后续
-ACL 变更不更新该列。修复至少包含：
+结论：AC-15 的“失败时间”子句已满足，F-001 关闭。恢复/回退语义（失败后 ACL 变更是否污染
+`updated_at` 回退值）由 EV-0954 的 API 断言与代码路径覆盖；后续若出现失败后 ACL 更新再改写
+`updated_at` 的边界，作为 M05b/维护项复验。
 
-1. Flyway additive 迁移增加 `knowledge_document.failed_at`（或等价显式且稳定的时间戳；不要用会被
-   其他更新覆盖的 `updated_at` 冒充），worker `markFailed` 写入，成功/重新索引时清理；
-2. API `KnowledgeDocumentResponse` 增加 `failedAt`（可选字段）并在契约中登记；
-3. 文档详情显示“失败时间”，失败/部分失败均可见；
-4. E2E-M05-05 或新用例断言该字段（stub 保真 + 真实 API 断言）；
-5. 修复后重跑定向（KnowledgeDeleteReindexApiTest、M05 相关 API/worker 测试、E2E-M05-05）与全量
-   合同 test/coverage/E2E/a11y；新增 EV 后再做 REV-M05-002。
+### 5.2 F-002（P2，fixed）AC-21 保留策略界面明示
 
-### 5.2 F-002（P2）最小复现与修复要求
+b7b8c45 已增加固定说明：
 
-```bash
-grep -rn "不追溯\|策略变更" apps/web/src/pages/knowledge apps/web/src/services/knowledge
-# 无输出；仅 admin/tenants/index.tsx:112 显示“审计保留 N 天”，无编辑入口
-sed -n '426,430p' apps/web/src/pages/knowledge/components/knowledge-detail.tsx
-```
+- `knowledge-detail.tsx:451` 的 `knowledge-retention-note`；
+- 文案为“保留策略变更仅影响新文档和新的到期计算，不追溯历史文档”；
+- E2E-M05-09（`e2e/tests/m05.spec.ts:651-675`）在失败文档与成功文档详情均断言该说明；
+- EV-0955（web 597/coverage）、EV-0959（E2E 52/52）通过。
 
-观察值：详情只显示保留天数/到期/策略来源；没有“策略变更不追溯旧文档”的说明；知识库 UI 没有租户
-保留策略变更入口。期望值：AC-21 的“界面明示”。修复选项：
-A) 在知识库列表或文档详情加固定中文说明（例如“保留策略变更只影响新文档与新的到期计算，不追溯
-已有文档”），并加 web 单测/E2E；B) 若 M05 明确不提供策略变更入口，由 Lead/用户书面接受该子句
-“不适用”，并在 ACCEPTANCE/ADR 记录；不能静默省略。
+结论：AC-21 的“界面明示”子句已满足，F-002 关闭。
+
+### 5.3 F-012（P3，accepted）证据范围
+
+TASK-0202 修复后没有在 `b7b8c45` 重跑合同全量 Maven `verify`；EV-0939（API 772 + worker 579 +
+web 597）在 `c1bd0e7`。修复面由 EV-0954（API 定向 3 类）、EV-0955（web 全量 597/coverage
+87.19/80.73）、EV-0956 typecheck、EV-0957 lint、EV-0958 a11y 18/18、EV-0959 E2E 52/52 覆盖，
+worker 未改。风险是其他 API 回归未在新提交重跑；建议 M05b 或下次全量补一次 `b7b8c45` 之后的
+合同 test/coverage。该残余不改变本轮 AC-15/21 修复与用户可见结论。
 
 ## 6. 残余与未验证
 
