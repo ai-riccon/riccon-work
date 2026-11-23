@@ -239,9 +239,11 @@ platform/platform-architecture-tests/src/test/java/com/riccon/architecture/
 
 - 当前映射（M19 P4a）：
   - `integration`：API 全部 `@SpringBootTest` 基类子类（含文件、研究、配额、成本、审计与安全套件），以及 Worker `WorkerIntegrationTestBase` 子类。
-  - `security`：`DepartmentIsolationTest`、`TenantIsolationSecurityTest`（继承 `SecurityTestSupport`），`TenantIsolationTest`，`ChatScopeApiTest`、`ContentScopeApiTest`，`M04VerifierGatewaySecurityTest`、`M04VerifierProductionEndpointTest`、`M04VerifierSwitchDeltaTest`、`M04V2VerifierBoundaryTest`，`ModelCredentialSecurityTest`、`ModelRoutingAuditSecurityTest`、`PlatformCostTenantFilterTest`；原有 `dept-isolation`/`tenant-isolation` 标签保留。认证/会话功能流（`AuthFlowTest`、`OidcLoginFlowTest`）仍归 `integration`，不强行并入 `security`。
+  - `security`：`DepartmentIsolationTest`、`TenantIsolationSecurityTest`（继承 `SecurityTestSupport`），`TenantIsolationTest`，`ChatScopeApiTest`、`ContentScopeApiTest`，`M04VerifierGatewaySecurityTest`、`M04VerifierProductionEndpointTest`、`M04VerifierSwitchDeltaTest`、`M04V2VerifierBoundaryTest`，`ModelCredentialSecurityTest`、`ModelRoutingAuditSecurityTest`、`PlatformCostTenantFilterTest`、`InFlightCredentialRotationIntegrationTest`（M24/TASK-0157：并发在途 key 轮换，断言无明文）；原有 `dept-isolation`/`tenant-isolation` 标签保留。认证/会话功能流（`AuthFlowTest`、`OidcLoginFlowTest`）仍归 `integration`，不强行并入 `security`。
+  - `security`（M05，承接中）：M05 安全测试以 ADR-0023 §5.11/§11.2 的测试 ID 为唯一口径，当前尚未全部实现，**不得把计划项当成已存在类名**：`SEC-KB-001..005`（OCR 零出网、403/404 矩阵、四处一致、注入、资源耗尽）、`INJ-001..012`（Excel/OCR 注入包装）、`DEPT-011/014`、`TEN-034`、`IT-KB-110/119` 等。落点：TASK-0166 承接 ACL/下载/`admin_read` 与 `IT-KB-110/119`，TASK-0168 承接 `SEC-KB-001`（零出网 `ocr-check`），TASK-0172 承接 `SEC-KB-004` 与 `INJ-001..012`（Excel/OCR；连接器 `SEC-CONN-002` 归 M05b，不在 M05 gate），TASK-0176/0177 在 V1/V2 独立验证整套 M05 越权/安全矩阵。实现完成后把实际类名与本映射同步，在此之前只登记测试 ID 与承接任务。
   - `migration`：上表四个类；它们不继承集成基类，因此只带 `migration`。
   - 其余测试类（含 `platform/**` 的纯单测与 ArchUnit）视为 unit。
+- **维护规则**：新增、重命名或删除测试类，或改变其 `@Tag`/基类继承关系时，必须同时更新本节映射；计划中的测试 ID/任务落点在实现后改为实际类名，禁止只改测试不改本文。
 - 继承规则：
   - JUnit 5/6 的 `@Tag` 是可继承注解：类级标签沿抽象基类多级传递到子类；`@Nested` 继承外层类标签；接口上的标签不继承。新增测试优先继承现有基类，不复制标签。
   - `security` 是叠加标签：安全套件同时具备 `integration`；`-Dgroups=integration` 会包含安全套件。
