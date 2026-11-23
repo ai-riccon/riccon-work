@@ -3,15 +3,19 @@ package com.riccon.worker.agent.persistence;
 import com.riccon.platform.common.tenant.TenantId;
 import com.riccon.platform.domain.chat.CitationSourceType;
 import com.riccon.platform.domain.chat.LocatorType;
+import com.riccon.platform.domain.knowledge.KnowledgeVisibility;
 import com.riccon.worker.agent.domain.RetrievedChunk;
 import com.riccon.worker.persistence.TenantJdbc;
 import com.riccon.worker.persistence.UuidBinary;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -48,7 +52,11 @@ public class AgentContextJdbc {
     }
 
     /**
-     * 关键词检索知识库分块。
+     * 关键词检索知识库分块（系统兼容入口）。
+     *
+     * <p>该入口没有操作者上下文，按 fail-closed 只返回 {@code TENANT} 文档；需要按文档 ACL 检索时必须使用
+     * {@link #search(TenantId, UUID, boolean, String, int, int)}。生产调用方（chat/report/knowledge_search）
+     * 需要把 run 的用户 ID 传入新重载后才会返回 DEPT/USERS 文档。
      *
      * @param tenantId 租户
      * @param query 用户查询
@@ -57,6 +65,26 @@ public class AgentContextJdbc {
      * @return 按分数降序的命中
      */
     public List<RetrievedChunk> search(TenantId tenantId, String query, int candidateLimit, int limit) {
+        return search(tenantId, null, false, query, candidateLimit, limit);
+    }
+
+    /**
+     * 关键词检索知识库分块，并按文档 ACL 过滤。
+     *
+     * <p>谓词与 API 列表/详情/下载共用同一语义（ADR-0023 第 5.4 节）：{@code TENANT} 全员、同启用部门的
+     * {@code DEPT}、创建人或 {@code knowledge_document_acl} 显式授权。{@code unrestricted=true} 只用于
+     * {@code TENANT_ADMIN} 管理性读取；工作线程必须由调用方解析后传入，不能在本类猜测角色。
+     *
+     * @param tenantId 租户
+     * @param actorUserId 当前 run 的用户；为空表示系统兼容入口
+     * @param unrestricted 是否管理性读取
+     * @param query 用户查询
+     * @param candidateLimit 候选上限
+     * @param limit 返回上限
+     * @return 按分数降序的命中
+     */
+    public List<RetrievedChunk> search(
+            TenantId tenantId, UUID actorUserId, boolean unrestricted, String query, int candidateLimit, int limit) {
         List<String> terms = terms(query);
         if (terms.isEmpty()) {
             return List.of();
@@ -85,7 +113,9 @@ public class AgentContextJdbc {
                     .append(parameter);
             params.put(parameter, "%" + terms.get(index) + "%");
         }
-        sql.append(") ORDER BY c.document_id, c.ordinal LIMIT :candidateLimit");
+        sql.append(")");
+        appendAclPredicate(sql, params, tenantId, actorUserId, unrestricted);
+        sql.append(" ORDER BY c.document_id, c.ordinal LIMIT :candidateLimit");
         params.put("candidateLimit", candidateLimit);
 
         List<RetrievedChunk> candidates = tenantJdbc.query(
@@ -273,6 +303,76 @@ public class AgentContextJdbc {
     }
 
     /**
+     * 追加文档 ACL 谓词。
+     *
+     * <p>没有 actor 时只允许 {@code TENANT} 文档，避免旧调用方在 M05 后静默读到收窄文档；有 actor 时解析其
+     * 主部门与部门状态，再追加与 API 相同的四种可见分支。管理性读取不追加谓词，审计由调用方负责。
+     *
+     * @param sql SQL 构造器
+     * @param params 参数映射
+     * @param tenantId 租户
+     * @param actorUserId 当前用户；可空
+     * @param unrestricted 是否管理性读取
+     */
+    private void appendAclPredicate(
+            StringBuilder sql, Map<String, Object> params, TenantId tenantId, UUID actorUserId, boolean unrestricted) {
+        if (unrestricted) {
+            return;
+        }
+        if (actorUserId == null) {
+            sql.append(" AND d.visibility = '")
+                    .append(KnowledgeVisibility.TENANT.name())
+                    .append("'");
+            return;
+        }
+        Optional<DepartmentStatus> department = tenantJdbc.queryOne(
+                tenantId,
+                """
+                SELECT u.department_id AS department_id, d.status AS department_status
+                  FROM app_user u
+                  LEFT JOIN department d
+                    ON d.tenant_id = u.tenant_id
+                   AND d.id = u.department_id
+                 WHERE u.tenant_id = :tenantId
+                   AND u.id = :actorUserId
+                   AND u.status = 'ACTIVE'
+                """,
+                Map.of("actorUserId", UuidBinary.toBytes(actorUserId)),
+                AgentContextJdbc::mapDepartmentStatus);
+        sql.append(" AND (d.visibility = '")
+                .append(KnowledgeVisibility.TENANT.name())
+                .append("'");
+        department
+                .filter(status -> status.departmentId() != null && status.active())
+                .ifPresent(status -> {
+                    sql.append(" OR (d.visibility = '")
+                            .append(KnowledgeVisibility.DEPT.name())
+                            .append("' AND d.department_id = :aclDepartmentId)");
+                    params.put("aclDepartmentId", UuidBinary.toBytes(status.departmentId()));
+                });
+        sql.append(" OR d.created_by = :aclActorUserId")
+                .append(" OR EXISTS (SELECT 1 FROM knowledge_document_acl acl")
+                .append(" WHERE acl.tenant_id = d.tenant_id AND acl.document_id = d.id")
+                .append(" AND acl.user_id = :aclActorUserId))");
+        params.put("aclActorUserId", UuidBinary.toBytes(actorUserId));
+    }
+
+    /**
+     * 映射账号部门与部门状态。
+     *
+     * @param rs 结果集
+     * @param rowNum 行号
+     * @return 部门状态
+     * @throws SQLException 列读取失败
+     */
+    private static DepartmentStatus mapDepartmentStatus(ResultSet rs, int rowNum) throws SQLException {
+        byte[] departmentId = rs.getBytes("department_id");
+        return new DepartmentStatus(
+                departmentId == null ? null : UuidBinary.fromBytes(departmentId),
+                "ACTIVE".equals(rs.getString("department_status")));
+    }
+
+    /**
      * 把查询拆成去重后的关键词。
      *
      * @param query 查询
@@ -353,4 +453,12 @@ public class AgentContextJdbc {
             String sheetName,
             String cellRange,
             Integer paragraphNo) {}
+
+    /**
+     * 账号部门解析结果。
+     *
+     * @param departmentId 主部门；未分配为空
+     * @param active 部门是否启用
+     */
+    private record DepartmentStatus(UUID departmentId, boolean active) {}
 }

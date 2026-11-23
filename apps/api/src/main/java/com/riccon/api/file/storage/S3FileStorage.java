@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
@@ -107,6 +108,21 @@ public class S3FileStorage implements FileStorage {
 
     /** {@inheritDoc} */
     @Override
+    public StorageStream openObject(String tenantId, String key) {
+        ObjectKeys.requireTenantPrefix(tenantId, key);
+        GetObjectRequest request =
+                GetObjectRequest.builder().bucket(properties.bucket()).key(key).build();
+        try {
+            ResponseInputStream<GetObjectResponse> object = s3Client.getObject(request);
+            GetObjectResponse metadata = object.response();
+            return new S3StorageStream(object, metadata.contentType(), metadata.contentLength());
+        } catch (SdkException exception) {
+            throw new StorageReadException("failed to open stored object", exception);
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public URI presignGet(String tenantId, String key, Duration ttl) {
         ObjectKeys.requireTenantPrefix(tenantId, key);
         if (ttl == null || ttl.isNegative() || ttl.isZero() || ttl.compareTo(Duration.ofSeconds(300)) > 0) {
@@ -133,6 +149,60 @@ public class S3FileStorage implements FileStorage {
         } catch (RuntimeException exception) {
             // 补偿删除失败不覆盖业务异常；对象由 M09 清理任务按前缀兜底。
             LOG.warn("storage.compensation.delete_failed tenantId={} key={}", tenantId, key, exception);
+        }
+    }
+
+    /**
+     * S3 流式句柄。
+     *
+     * <p>只封装 SDK 的 {@link ResponseInputStream}，关闭时释放 HTTP 连接；不暴露 key 或端点。
+     */
+    private static final class S3StorageStream implements StorageStream {
+
+        /** SDK 对象流。 */
+        private final ResponseInputStream<GetObjectResponse> object;
+
+        /** 存储侧 MIME。 */
+        private final String contentType;
+
+        /** 对象字节数。 */
+        private final Long contentLength;
+
+        /**
+         * 创建流式句柄。
+         *
+         * @param object SDK 对象流
+         * @param contentType MIME
+         * @param contentLength 字节数
+         */
+        private S3StorageStream(ResponseInputStream<GetObjectResponse> object, String contentType, Long contentLength) {
+            this.object = object;
+            this.contentType = contentType;
+            this.contentLength = contentLength;
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public java.io.InputStream inputStream() {
+            return object;
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public String contentType() {
+            return contentType;
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public Long contentLength() {
+            return contentLength;
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void close() throws java.io.IOException {
+            object.close();
         }
     }
 }

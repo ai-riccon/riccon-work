@@ -47,6 +47,18 @@ public interface FileStorage {
     StorageObject readObject(String tenantId, String key, long maxBytes);
 
     /**
+     * 以流式句柄打开对象，用于知识库源文件下载代理。
+     *
+     * <p>实现必须校验 key 的租户前缀；读取失败抛出 {@link StorageReadException}。调用方负责关闭返回的
+     * {@link StorageStream}，禁止把对象 key 或存储端点返回给客户端。
+     *
+     * @param tenantId 租户代码
+     * @param key 对象 key，必须带 {@code tenants/{tenantId}/} 前缀
+     * @return 流式句柄
+     */
+    StorageStream openObject(String tenantId, String key);
+
+    /**
      * 尽力删除对象；用于事务回滚补偿，失败只记录日志，不覆盖原始业务异常。
      *
      * @param tenantId 租户代码
