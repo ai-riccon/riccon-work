@@ -1,0 +1,591 @@
+{
+  "scenario": "knowledge",
+  "failureMode": null,
+  "generatedAt": "2026-11-23T07:39:33.983Z",
+  "baseUrl": "http://127.0.0.1:18080",
+  "env": {
+    "generatedAt": "2026-11-23T07:37:24.733Z",
+    "mode": "perf",
+    "host": {
+      "platform": "darwin 24.6.0",
+      "arch": "x64",
+      "cpus": 12,
+      "cpuModel": "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz",
+      "memoryBytes": 17179869184,
+      "memoryGiB": 16,
+      "loadAverage": [
+        10.59,
+        10.93,
+        26.04
+      ],
+      "node": "v26.13.0"
+    },
+    "images": {
+      "compose": [
+        "mysql:8.4.13",
+        "opensearchproject/opensearch:3.9.0",
+        "rustfs/rustfs:1.0.6"
+      ],
+      "started": [
+        "mysql:8.4.13",
+        "opensearchproject/opensearch:3.9.0",
+        "rustfs/rustfs:1.0.6"
+      ]
+    },
+    "k6Version": "k6 v2.4.0 (commit/dd9395906d, go1.26.11, darwin/amd64)",
+    "scriptSha256": "cdbdff983cfff15437fcda35a59a498d451c9bd057bb2855d31fc4c707d8c2df",
+    "chatMaxStreams": 50,
+    "dbPoolSize": 50,
+    "fakeModel": 1,
+    "deploymentMode": "DEMO",
+    "ocr": {
+      "available": false,
+      "exitCode": 4,
+      "engine": "tesseract",
+      "language": "chi_sim+eng",
+      "sample": "deploy/ocr/sample.png",
+      "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
+      "probedAt": "2026-11-23T15:37:23+08:00"
+    },
+    "startCommand": "node scripts/real-stack/run.mjs --mode=perf",
+    "startupCommands": [
+      "java -jar apps/api/target/riccon-api-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/MASTER_KEY_ID/FINGERPRINT_PEPPER/BILLING_CURRENCY/QUOTA_DEFAULT_*/DB_POOL)",
+      "java -jar apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/CHAT_MAX_STREAMS/DB_POOL_SIZE/MODEL_FIRST_TOKEN_TIMEOUT/PRE_FIRST_TOKEN_BUDGET)",
+      "node scripts/real-stack/fake-model.mjs --scenario ok --chunk-count 6"
+    ],
+    "perfProfile": {
+      "chatMaxStreams": 50,
+      "dbPoolSize": 50,
+      "dbPoolFloor": 25,
+      "fakeModel": 1,
+      "connectTimeout": "500ms",
+      "firstTokenTimeout": "1000ms",
+      "preFirstTokenBudget": "2500ms",
+      "maxAttempts": 3,
+      "retryDelays": "50ms,100ms",
+      "duration": "45s"
+    },
+    "openSearch": "started (perf knowledge; riccon-kb index-version v2, 512m heap)",
+    "perfM05": {
+      "scenario": "knowledge",
+      "dataset": {
+        "documents": 5000,
+        "chunks": 100000,
+        "chunksPerDocument": 20,
+        "query": "PERFKNOW",
+        "matchRatio": "20% 文档包含检索词（每篇全部 20 chunk）"
+      },
+      "concurrency": {
+        "knowledgeVus": 50,
+        "aclWriteVus": 1
+      },
+      "duration": "45s",
+      "dbPoolSize": 50,
+      "chatMaxStreams": 50,
+      "fakeModel": 1,
+      "aclEnforcement": true
+    }
+  },
+  "thresholds": {
+    "m05_first_token_ms": [
+      "p(95)<3000"
+    ],
+    "m05_first_token_ok": [
+      "rate>0.99"
+    ],
+    "m05_api_ms": [
+      "p(95)<500"
+    ],
+    "m05_api_ok": [
+      "rate>0.99"
+    ],
+    "m05_list_ok": [
+      "rate>0.99"
+    ],
+    "m05_detail_ok": [
+      "rate>0.99"
+    ],
+    "m05_acl_get_ok": [
+      "rate==1"
+    ],
+    "m05_acl_write_ms": [
+      "p(95)<500"
+    ],
+    "m05_acl_write_ok": [
+      "rate==1"
+    ],
+    "m05_acl_get_ms": [
+      "p(95)<500"
+    ],
+    "m05_download_ok": [
+      "rate>0.99"
+    ],
+    "m05_denied_404": [
+      "rate==1"
+    ],
+    "m05_chat_citations": [
+      "rate>0.99"
+    ]
+  },
+  "metrics": {
+    "m05_run_detail_ms": {
+      "p(90)": 187,
+      "p(95)": 214.5,
+      "max": 581,
+      "count": 291,
+      "avg": 134.94501718213058,
+      "min": 49,
+      "med": 124
+    },
+    "m05_detail_ms": {
+      "count": 291,
+      "avg": 138.7766323024055,
+      "min": 38,
+      "med": 134,
+      "p(90)": 188,
+      "p(95)": 205.5,
+      "max": 420
+    },
+    "m04_api_ms": {
+      "max": 579.824,
+      "count": 291,
+      "avg": 134.65105498281798,
+      "min": 48.922,
+      "med": 124.354,
+      "p(90)": 186.731,
+      "p(95)": 214.2315
+    },
+    "m05_api_ms": {
+      "max": 659.809,
+      "count": 582,
+      "avg": 191.90208762886607,
+      "min": 37.728,
+      "med": 178.261,
+      "p(90)": 302.7695,
+      "p(95)": 345.3081
+    },
+    "m05_detail_ok": {
+      "rate": 1,
+      "passes": 291,
+      "fails": 0
+    },
+    "m05_denied_404": {
+      "rate": 1,
+      "passes": 291,
+      "fails": 0
+    },
+    "m05_chat_submit_ttfb_ms": {
+      "count": 291,
+      "avg": 5772.985312714777,
+      "min": 2404.549,
+      "med": 5866.776,
+      "p(90)": 6657.177,
+      "p(95)": 6895.982,
+      "max": 7651.987
+    },
+    "m05_acl_get_ok": {
+      "fails": 0,
+      "rate": 1,
+      "passes": 6
+    },
+    "m05_acl_get_ms": {
+      "avg": 148.5,
+      "min": 100,
+      "med": 127.5,
+      "p(90)": 208,
+      "p(95)": 212,
+      "max": 216,
+      "count": 6
+    },
+    "iterations": {
+      "count": 297,
+      "rate": 5.717253185939338
+    },
+    "m05_list_ok": {
+      "fails": 0,
+      "rate": 1,
+      "passes": 291
+    },
+    "m05_list_ms": {
+      "avg": 245.4982817869416,
+      "min": 75,
+      "med": 231,
+      "p(90)": 341,
+      "p(95)": 385,
+      "max": 660,
+      "count": 291
+    },
+    "m05_chat_stream_ms": {
+      "p(95)": 7401.5,
+      "max": 8364,
+      "count": 291,
+      "avg": 6198.436426116838,
+      "min": 2927,
+      "med": 6299,
+      "p(90)": 7110
+    },
+    "m05_api_ok": {
+      "rate": 1,
+      "passes": 582,
+      "fails": 0
+    },
+    "m05_first_token_ok": {
+      "rate": 1,
+      "passes": 291,
+      "fails": 0
+    },
+    "m05_acl_write_ok": {
+      "rate": 1,
+      "passes": 6,
+      "fails": 0
+    },
+    "http_req_duration": {
+      "avg": 1023.0798935498425,
+      "min": 25.293,
+      "med": 167.014,
+      "p(90)": 5790.935600000002,
+      "p(95)": 6481.7384,
+      "max": 8363.223,
+      "count": 2217
+    },
+    "m05_download_ok": {
+      "rate": 1,
+      "passes": 291,
+      "fails": 0
+    },
+    "m05_chat_citations": {
+      "rate": 1,
+      "passes": 291,
+      "fails": 0
+    },
+    "http_req_failed": {
+      "rate": 0.2625169147496617,
+      "passes": 582,
+      "fails": 1635
+    },
+    "m05_first_token_ms": {
+      "max": 313,
+      "count": 291,
+      "avg": 56.40549828178694,
+      "min": 24,
+      "med": 49,
+      "p(90)": 76,
+      "p(95)": 96
+    },
+    "m05_acl_write_ms": {
+      "avg": 3654.6666666666665,
+      "min": 3201,
+      "med": 3579,
+      "p(90)": 4150,
+      "p(95)": 4188,
+      "max": 4226,
+      "count": 6
+    },
+    "m05_download_ms": {
+      "max": 644,
+      "count": 291,
+      "avg": 155.56013745704468,
+      "min": 40,
+      "med": 146,
+      "p(90)": 220,
+      "p(95)": 248.5
+    }
+  },
+  "m05": {
+    "query": "PERFKNOW",
+    "documentId": "00000000-0000-0000-0000-0000001e8481",
+    "aclDocumentId": "00000000-0000-0000-0000-0000001e97a5",
+    "hiddenDocumentId": "00000000-0000-0000-0000-0000001e97d7",
+    "downloadDocumentId": "01a20757-bc87-764a-bb78-b7dd74ca01e8",
+    "aclUserCount": 2,
+    "concurrency": {
+      "knowledgeVus": 50,
+      "aclWriteVus": 1
+    },
+    "duration": "45s",
+    "note": "检索 p95 由 scripts/real-stack/run.mjs 从 MySQL slow_log 汇总后写回报告；k6 只负责并发与首字/API/ACL/下载指标",
+    "generatedAt": "2026-11-23T15:39:36+08:00",
+    "dataset": {
+      "documents": 5000,
+      "chunks": 100000,
+      "chunksPerDocument": 20,
+      "visibility": {
+        "tenant": 4400,
+        "department": 500,
+        "usersVisible": 50,
+        "usersHidden": 50
+      },
+      "departmentId": "00000000-0000-0000-0000-0000001cfde0",
+      "query": "PERFKNOW",
+      "matchDocuments": "20%（每篇全部 chunk 含检索词）",
+      "matchingChunks": "约 2 万（10 万 chunk 中）",
+      "seedMs": 5095,
+      "countsRaw": "documents\tchunks\tmatching_chunks\n5000\t100000\t20000",
+      "note": "直插 SQL 只用于列表/检索/ACL 数据规模；索引与下载仍走真实上传→解析→索引→对象存储路径"
+    },
+    "host": {
+      "platform": "darwin 24.6.0",
+      "arch": "x64",
+      "cpus": 12,
+      "cpuModel": "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz",
+      "memoryBytes": 17179869184,
+      "memoryGiB": 16,
+      "loadAverage": [
+        10.59,
+        10.93,
+        26.04
+      ],
+      "node": "v26.13.0"
+    },
+    "hostEnd": {
+      "loadAverage": [
+        24.15,
+        14.33,
+        25.12
+      ],
+      "loadPeak": 25.04,
+      "loadSamples": 108,
+      "measuredAt": "2026-11-23T15:39:36+08:00"
+    },
+    "openSearch": "started (perf knowledge; riccon-kb index-version v2, 512m heap)",
+    "openSearchDetail": {
+      "url": "http://127.0.0.1:19200",
+      "indexVersion": "v2",
+      "prefix": "riccon-kb",
+      "alias": "riccon-kb-tenant-alpha",
+      "aliasTarget": "riccon-kb-v2-tenant-alpha",
+      "mappingFields": [
+        "acl_version",
+        "bbox_h",
+        "bbox_w",
+        "bbox_x",
+        "bbox_y",
+        "cell_range",
+        "chunk_id",
+        "connector_id",
+        "content",
+        "department_id",
+        "document_id",
+        "embedding",
+        "locator_type",
+        "ocr_confidence",
+        "page_no",
+        "paragraph_no",
+        "parse_engine",
+        "sheet_name",
+        "source_type",
+        "tenant_id",
+        "title",
+        "token_count",
+        "visibility"
+      ],
+      "bboxFields": true,
+      "aclFields": true,
+      "checkedAt": "2026-11-23T15:39:36+08:00",
+      "error": null
+    },
+    "openSearchMismatch": false,
+    "ocr": {
+      "probed": {
+        "available": false,
+        "exitCode": 4,
+        "engine": "tesseract",
+        "language": "chi_sim+eng",
+        "sample": "deploy/ocr/sample.png",
+        "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
+        "probedAt": "2026-11-23T15:37:23+08:00"
+      },
+      "measured": false,
+      "samples": [],
+      "note": "宿主 libtesseract 不可用，OCR 未量测；报告不把未执行当通过，需在含 Tesseract 的 worker 镜像/CI 复验"
+    },
+    "indexing": {
+      "noOcr": {
+        "samples": [
+          1470,
+          3939,
+          6227,
+          6651,
+          4852,
+          5904,
+          5397
+        ],
+        "p95Ms": 6651,
+        "budgetMs": 60000,
+        "withinBudget": true
+      },
+      "ocr": {
+        "samples": [],
+        "p95Ms": null,
+        "budgetMs": 120000,
+        "withinBudget": false,
+        "note": "单页样本，非 ADR 的 20 页口径"
+      },
+      "baseline": {
+        "kind": "docx",
+        "fileId": "01a20757-b371-717c-ac58-1c6d4194b27c",
+        "documentId": "01a20757-bc87-764a-bb78-b7dd74ca01e8",
+        "parseMs": 1823,
+        "createToIndexedMs": 1470,
+        "totalMs": 3809
+      },
+      "backlog": [
+        {
+          "kind": "docx",
+          "index": 1,
+          "fileId": "01a20757-cf0c-7c51-9d97-16994d4ecb32",
+          "documentId": "01a20757-e83e-7e29-95d3-15c7e422bbce",
+          "uploadMs": 4039,
+          "parseMs": 2315,
+          "createToIndexedMs": 3939,
+          "totalMs": 10293,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 2,
+          "fileId": "01a20757-cf04-729f-83c4-301f2bc00436",
+          "documentId": "01a20757-e485-7b9d-8c17-799bf5025cb0",
+          "uploadMs": 4101,
+          "parseMs": 1338,
+          "createToIndexedMs": 6227,
+          "totalMs": 11666,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 3,
+          "fileId": "01a20757-cf0a-7dc3-8061-447e97feb91c",
+          "documentId": "01a20757-e7c5-7556-9eb6-0a4042f546c3",
+          "uploadMs": 3993,
+          "parseMs": 2265,
+          "createToIndexedMs": 6651,
+          "totalMs": 12909,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 4,
+          "fileId": "01a20757-cef7-7a15-a4a4-0b5c8789b607",
+          "documentId": "01a20757-e172-7452-a66f-161f43992053",
+          "uploadMs": 3941,
+          "parseMs": 717,
+          "createToIndexedMs": 4852,
+          "totalMs": 9510,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 5,
+          "fileId": "01a20757-cf0a-7a8c-90d1-5ec1c34e5a33",
+          "documentId": "01a20757-e659-79bd-b51b-f968ba4c0a55",
+          "uploadMs": 4092,
+          "parseMs": 1819,
+          "createToIndexedMs": 5904,
+          "totalMs": 11815,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        },
+        {
+          "kind": "docx",
+          "index": 6,
+          "fileId": "01a20757-cf01-7fd7-b5ec-c121a8ed71a3",
+          "documentId": "01a20757-e457-7807-9621-8526789cfea0",
+          "uploadMs": 4078,
+          "parseMs": 1336,
+          "createToIndexedMs": 5397,
+          "totalMs": 10811,
+          "chunkCount": null,
+          "parseEngine": "NONE"
+        }
+      ],
+      "backlogDuringLoad": true
+    },
+    "retrieval": {
+      "source": "mysql.slow_log (long_query_time=0.001s, log_output=TABLE)",
+      "statement": "AgentContextJdbc.search: knowledge_chunk.content LIKE / knowledge_document.title LIKE + ACL 谓词",
+      "samples": 291,
+      "p50Ms": 1664.582,
+      "p95Ms": 2030.3580000000002,
+      "maxMs": 2660.241,
+      "avgRowsExamined": 104138.4,
+      "budgetMs": 500,
+      "decisionRequired": true,
+      "decision": "检索 p95 未证明 ≤500ms：需在 M05 gate 前决定 (a) MySQL FULLTEXT/覆盖索引，(b) OpenSearch 两阶段 ACL 复核，(c) 用户批准单独检索预算（ADR-0023 §9）"
+    },
+    "budgets": {
+      "firstTokenServerP95Ms": 96,
+      "firstTokenServerBudgetMs": 3000,
+      "firstTokenServerWithinBudget": true,
+      "userFirstTokenEstimatedP95Ms": 2126.358,
+      "userFirstTokenBudgetMs": 3000,
+      "userFirstTokenWithinBudget": true,
+      "apiP95Ms": 345.3081,
+      "apiBudgetMs": 500,
+      "apiWithinBudget": true,
+      "aclWriteP95Ms": 4188,
+      "aclGetP95Ms": 212,
+      "aclBudgetMs": 500,
+      "aclWithinBudget": false,
+      "downloadP95Ms": 248.5,
+      "indexNoOcrP95Ms": 6651,
+      "indexBudgetMs": 60000,
+      "sseBufferedRequestP95Ms": 6895.982,
+      "note": "首字用 retrieval p95 + 服务端模型首字 p95 估算；k6 对 SSE 整段缓冲，m05_chat_submit_ttfb_ms 不是首字口径"
+    },
+    "thresholds": {
+      "m05_first_token_ms": [
+        "p(95)<3000"
+      ],
+      "m05_first_token_ok": [
+        "rate>0.99"
+      ],
+      "m05_api_ms": [
+        "p(95)<500"
+      ],
+      "m05_api_ok": [
+        "rate>0.99"
+      ],
+      "m05_list_ok": [
+        "rate>0.99"
+      ],
+      "m05_detail_ok": [
+        "rate>0.99"
+      ],
+      "m05_acl_get_ok": [
+        "rate==1"
+      ],
+      "m05_acl_write_ms": [
+        "p(95)<500"
+      ],
+      "m05_acl_write_ok": [
+        "rate==1"
+      ],
+      "m05_acl_get_ms": [
+        "p(95)<500"
+      ],
+      "m05_download_ok": [
+        "rate>0.99"
+      ],
+      "m05_denied_404": [
+        "rate==1"
+      ],
+      "m05_chat_citations": [
+        "rate>0.99"
+      ]
+    },
+    "notes": [
+      "首字 p95 ≤3s、稳态 JSON API（列表/详情/ACL 读/ACL 写）p95 ≤500ms、50 并发。",
+      "首字用 retrieval p95 + 服务端模型首字 p95 估算；m05_chat_submit_ttfb_ms 因 k6 整段缓冲只作参考，不作为首字阈值。",
+      "下载是流式代理，单独记录 m05_download_ms，不并入 JSON API p95。",
+      "检索 p95 来自 MySQL slow_log 中 AgentContextJdbc LIKE + ACL 谓词的实际执行时间；不含网络与结果映射。",
+      "slow_log 在 API/Worker 建连前开启（long_query_time=0.001s）；它会给测试栈带来额外写开销，结果偏保守。",
+      "M05 不启用连接器分支。",
+      "宿主 1 分钟负载 24.2 高于 CPU 数 12；结果偏保守，复验应在空闲宿主进行"
+    ]
+  }
+}
