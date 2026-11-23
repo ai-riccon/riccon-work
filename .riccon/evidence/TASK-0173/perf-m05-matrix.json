@@ -1,0 +1,85 @@
+{
+  "status": "failed",
+  "generatedAt": "2026-11-23T14:15:14+08:00",
+  "phase": {
+    "dataset": "passed",
+    "baselineIndex": "passed",
+    "retrievalCapture": "failed"
+  },
+  "k6": {
+    "status": 99,
+    "report": ".riccon/evidence/TASK-0173/perf-m05-knowledge.json",
+    "log": ".riccon/evidence/TASK-0173/perf-m05-knowledge.log"
+  },
+  "retrieval": {
+    "source": "mysql.slow_log (long_query_time=0, log_output=TABLE)",
+    "statement": "AgentContextJdbc.search: knowledge_chunk.content LIKE / knowledge_document.title LIKE + ACL 谓词",
+    "samples": 0,
+    "p50Ms": null,
+    "p95Ms": null,
+    "maxMs": null,
+    "avgRowsExamined": null
+  },
+  "indexing": {
+    "noOcr": {
+      "samples": [
+        1429,
+        7828
+      ],
+      "p95Ms": 7828,
+      "budgetMs": 60000,
+      "withinBudget": true
+    },
+    "ocr": {
+      "samples": [],
+      "p95Ms": null,
+      "budgetMs": 120000,
+      "withinBudget": false,
+      "note": "单页样本，非 ADR 的 20 页口径"
+    },
+    "baseline": {
+      "kind": "docx",
+      "fileId": "01a2070a-f6c2-7662-8135-e0fef75c3623",
+      "documentId": "01a2070b-0033-72ea-b2f4-a01c8960ae08",
+      "parseMs": 1921,
+      "createToIndexedMs": 1429,
+      "totalMs": 3909
+    },
+    "backlog": [
+      {
+        "kind": "docx",
+        "index": 1,
+        "fileId": "01a2070b-12a5-7cad-8be9-f95e44ef43b6",
+        "documentId": "01a2070b-2961-7508-a12c-8606a5e291c5",
+        "uploadMs": 5002,
+        "parseMs": 780,
+        "createToIndexedMs": 7828,
+        "totalMs": 13610,
+        "chunkCount": null,
+        "parseEngine": null
+      }
+    ],
+    "backlogDuringLoad": true
+  },
+  "ocr": {
+    "probed": {
+      "available": false,
+      "exitCode": 4,
+      "engine": "tesseract",
+      "language": "chi_sim+eng",
+      "sample": "deploy/ocr/sample.png",
+      "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
+      "probedAt": "2026-11-23T14:13:09+08:00"
+    },
+    "measured": false,
+    "samples": [],
+    "note": "宿主 libtesseract 不可用，OCR 未量测；报告不把未执行当通过，需在含 Tesseract 的 worker 镜像/CI 复验"
+  },
+  "decisionRequired": true,
+  "decision": "检索 p95 未证明 ≤500ms：需在 M05 gate 前决定 (a) MySQL FULLTEXT/覆盖索引，(b) OpenSearch 两阶段 ACL 复核，(c) 用户批准单独检索预算（ADR-0023 §9）",
+  "notes": [
+    "PERF-M05-001：首字/API/ACL 写/检索量测；PERF-M05-002：索引延迟（无 OCR 与 OCR 单页）。",
+    "检索 >500ms 时 status 为 passed-with-decision（ADR-0023 §9 未预设通过阈值）；设置 PERF_M05_SEARCH_ENFORCE=1 可按 500ms 硬失败。",
+    "OCR 不可用时 ocr.measured=false，不把未执行当通过。"
+  ]
+}

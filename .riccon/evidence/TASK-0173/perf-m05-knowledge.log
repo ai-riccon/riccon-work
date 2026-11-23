@@ -1,0 +1,103 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: e2e/perf/mvc-smoke.js
+        output: -
+
+     scenarios: (100.00%) 2 scenarios, 51 max VUs, 1m33s max duration (incl. graceful stop):
+              * knowledge: 50 looping VUs for 10s (exec: knowledgeWorkload, gracefulStop: 30s)
+              * knowledge_acl_write: 5 iterations for each of 1 VUs (maxDuration: 1m0s, exec: knowledgeAclWrite, startTime: 3s, gracefulStop: 30s)
+
+
+running (0m01.0s), 50/51 VUs, 0 complete and 0 interrupted iterations
+knowledge             [  10% ] 50 VUs   01.0s/10s
+knowledge_acl_write • [   0% ] waiting  2.0s
+
+running (0m02.0s), 50/51 VUs, 0 complete and 0 interrupted iterations
+knowledge             [  20% ] 50 VUs   02.0s/10s
+knowledge_acl_write • [   0% ] waiting  1.0s
+
+running (0m03.0s), 50/51 VUs, 0 complete and 0 interrupted iterations
+knowledge             [  30% ] 50 VUs   03.0s/10s
+knowledge_acl_write • [   0% ] waiting  0.0s
+
+running (0m04.0s), 51/51 VUs, 0 complete and 0 interrupted iterations
+knowledge             [  40% ] 50 VUs  04.0s/10s    
+knowledge_acl_write   [   0% ] 1 VUs   0m01.0s/1m0s  0/5 iters, 5 per VU
+time="2026-11-23T14:14:57+08:00" level=error msg="knowledge ACL write failed: status=404 body={\"detail\":\"resource not found\",\"instance\":\"/api/v1/knowledge/documents/00000000-0000-0000-0000-0000001e97a5/acl\",\"status\":404,\"title\":\"Not found\",\"code\":\"RICCON-REQUEST-404\",\"traceId\":\"e56ef00e-002d-44a1-aaad-261564d5127a\"}" source=console
+
+running (0m05.0s), 51/51 VUs, 1 complete and 0 interrupted iterations
+knowledge             [  50% ] 50 VUs  05.0s/10s    
+knowledge_acl_write   [  20% ] 1 VUs   0m02.0s/1m0s  1/5 iters, 5 per VU
+
+running (0m06.0s), 51/51 VUs, 1 complete and 0 interrupted iterations
+knowledge             [  60% ] 50 VUs  06.0s/10s    
+knowledge_acl_write   [  20% ] 1 VUs   0m03.0s/1m0s  1/5 iters, 5 per VU
+time="2026-11-23T14:14:59+08:00" level=error msg="knowledge ACL write failed: status=404 body={\"detail\":\"resource not found\",\"instance\":\"/api/v1/knowledge/documents/00000000-0000-0000-0000-0000001e97a5/acl\",\"status\":404,\"title\":\"Not found\",\"code\":\"RICCON-REQUEST-404\",\"traceId\":\"80f854d1-9729-431d-a288-42232a2a2a8a\"}" source=console
+
+running (0m07.0s), 51/51 VUs, 2 complete and 0 interrupted iterations
+knowledge             [  70% ] 50 VUs  07.0s/10s    
+knowledge_acl_write   [  40% ] 1 VUs   0m04.0s/1m0s  2/5 iters, 5 per VU
+
+running (0m08.0s), 51/51 VUs, 2 complete and 0 interrupted iterations
+knowledge             [  80% ] 50 VUs  08.0s/10s    
+knowledge_acl_write   [  40% ] 1 VUs   0m05.0s/1m0s  2/5 iters, 5 per VU
+time="2026-11-23T14:15:01+08:00" level=error msg="knowledge ACL write failed: status=404 body={\"detail\":\"resource not found\",\"instance\":\"/api/v1/knowledge/documents/00000000-0000-0000-0000-0000001e97a5/acl\",\"status\":404,\"title\":\"Not found\",\"code\":\"RICCON-REQUEST-404\",\"traceId\":\"42a9164a-3f0e-43e3-8383-45cfc898cdb9\"}" source=console
+
+running (0m09.0s), 51/51 VUs, 4 complete and 0 interrupted iterations
+knowledge             [  90% ] 50 VUs  09.0s/10s    
+knowledge_acl_write   [  60% ] 1 VUs   0m06.0s/1m0s  3/5 iters, 5 per VU
+time="2026-11-23T14:15:02+08:00" level=error msg="knowledge ACL write failed: status=404 body={\"detail\":\"resource not found\",\"instance\":\"/api/v1/knowledge/documents/00000000-0000-0000-0000-0000001e97a5/acl\",\"status\":404,\"title\":\"Not found\",\"code\":\"RICCON-REQUEST-404\",\"traceId\":\"4f429b40-a41d-4edb-9591-afe3357766e9\"}" source=console
+
+running (0m10.0s), 51/51 VUs, 15 complete and 0 interrupted iterations
+knowledge             [ 100% ] 50 VUs  10.0s/10s    
+knowledge_acl_write   [  80% ] 1 VUs   0m07.0s/1m0s  4/5 iters, 5 per VU
+
+running (0m11.0s), 50/51 VUs, 16 complete and 0 interrupted iterations
+knowledge           ↓ [ 100% ] 50 VUs  10s          
+knowledge_acl_write   [  80% ] 1 VUs   0m08.0s/1m0s  4/5 iters, 5 per VU
+time="2026-11-23T14:15:04+08:00" level=error msg="knowledge ACL write failed: status=404 body={\"detail\":\"resource not found\",\"instance\":\"/api/v1/knowledge/documents/00000000-0000-0000-0000-0000001e97a5/acl\",\"status\":404,\"title\":\"Not found\",\"code\":\"RICCON-REQUEST-404\",\"traceId\":\"339b1041-bd14-41f2-9824-bd61eae8b157\"}" source=console
+
+running (0m12.0s), 47/51 VUs, 19 complete and 0 interrupted iterations
+knowledge           ↓ [ 100% ] 50 VUs  10s          
+knowledge_acl_write ✓ [ 100% ] 1 VUs   0m08.2s/1m0s  5/5 iters, 5 per VU
+
+running (0m13.0s), 41/51 VUs, 25 complete and 0 interrupted iterations
+knowledge           ↓ [ 100% ] 50 VUs  10s          
+knowledge_acl_write ✓ [ 100% ] 1 VUs   0m08.2s/1m0s  5/5 iters, 5 per VU
+
+running (0m14.0s), 40/51 VUs, 26 complete and 0 interrupted iterations
+knowledge           ↓ [ 100% ] 50 VUs  10s          
+knowledge_acl_write ✓ [ 100% ] 1 VUs   0m08.2s/1m0s  5/5 iters, 5 per VU
+
+running (0m15.0s), 33/51 VUs, 33 complete and 0 interrupted iterations
+knowledge           ↓ [ 100% ] 50 VUs  10s          
+knowledge_acl_write ✓ [ 100% ] 1 VUs   0m08.2s/1m0s  5/5 iters, 5 per VU
+
+running (0m16.0s), 27/51 VUs, 39 complete and 0 interrupted iterations
+knowledge           ↓ [ 100% ] 50 VUs  10s          
+knowledge_acl_write ✓ [ 100% ] 1 VUs   0m08.2s/1m0s  5/5 iters, 5 per VU
+
+running (0m17.0s), 23/51 VUs, 43 complete and 0 interrupted iterations
+knowledge           ↓ [ 100% ] 50 VUs  10s          
+knowledge_acl_write ✓ [ 100% ] 1 VUs   0m08.2s/1m0s  5/5 iters, 5 per VU
+
+running (0m18.0s), 19/51 VUs, 47 complete and 0 interrupted iterations
+knowledge           ↓ [ 100% ] 50 VUs  10s          
+knowledge_acl_write ✓ [ 100% ] 1 VUs   0m08.2s/1m0s  5/5 iters, 5 per VU
+
+running (0m19.0s), 11/51 VUs, 55 complete and 0 interrupted iterations
+knowledge           ↓ [ 100% ] 50 VUs  10s          
+knowledge_acl_write ✓ [ 100% ] 1 VUs   0m08.2s/1m0s  5/5 iters, 5 per VU
+[perf-m05] scenario=knowledge report=/Users/ricky/Documents/projects/riccon-work/.riccon/evidence/TASK-0173/perf-m05-knowledge.json
+
+running (0m19.9s), 00/51 VUs, 66 complete and 0 interrupted iterations
+knowledge           ✓ [ 100% ] 50 VUs  10s          
+knowledge_acl_write ✓ [ 100% ] 1 VUs   0m08.2s/1m0s  5/5 iters, 5 per VU
+time="2026-11-23T14:15:13+08:00" level=error msg="thresholds on metrics 'm05_acl_get_ok, m05_acl_write_ok, m05_api_ok, m05_denied_404, m05_download_ok' have been crossed"

@@ -13,7 +13,8 @@
     "apps/api/src/main/java/com/riccon/api/knowledge/dto/**",
     "apps/worker/src/test/java/com/riccon/worker/index/**",
     "apps/worker/src/test/java/com/riccon/worker/parse/service/ParsePersistenceIntegrationTest.java",
-    "apps/api/src/test/java/com/riccon/api/knowledge/KnowledgeDocumentParseShapeTest.java"
+    "apps/api/src/test/java/com/riccon/api/knowledge/KnowledgeDocumentParseShapeTest.java",
+    "apps/worker/src/main/resources/application.yml"
   ],
   "acceptance": [
     "mapping v2、FULL/ACL_ONLY/DELETE、别名切换/回切；IT-KB-113",
@@ -36,11 +37,12 @@
   "scope_amendment": {
     "at": "2026-11-23T05:53:11.432Z",
     "by": "riccon/lead",
-    "reason": "B7 实现 brief 已列测试范围但任务 JSON 漏列；builder 直接补了 3 条测试 glob。Lead 审计：ca6dfd9 的 45 测试与持久化改动均在 index/parse/API DTO 及对应测试，无越界；接受补录。",
+    "reason": "B7 实现 brief 已列测试范围但任务 JSON 漏列；builder 直接补了 3 条测试 glob。Lead 审计：ca6dfd9 的 45 测试与持久化改动均在 index/parse/API DTO 及对应测试，无越界；接受补录。 追加 application.yml：修复 RICCON_OPENSEARCH_INDEX_VERSION/INDEX_PREFIX 占位符，使 ADR 键生效（TASK-0193 发现 no-op）。",
     "added": [
       "apps/worker/src/test/java/com/riccon/worker/index/**",
       "apps/worker/src/test/java/com/riccon/worker/parse/service/ParsePersistenceIntegrationTest.java",
-      "apps/api/src/test/java/com/riccon/api/knowledge/KnowledgeDocumentParseShapeTest.java"
+      "apps/api/src/test/java/com/riccon/api/knowledge/KnowledgeDocumentParseShapeTest.java",
+      "apps/worker/src/main/resources/application.yml"
     ]
   },
   "baseline_commit": "539cc731e396cc2c7597036fa54bbb6df18049f1",

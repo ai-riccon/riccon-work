@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-23T06:08:29.801Z",
+  "generatedAt": "2026-11-23T06:13:10.634Z",
   "mode": "perf",
   "host": {
     "platform": "darwin 24.6.0",
@@ -12,9 +12,9 @@
   },
   "images": {
     "compose": [
+      "mysql:8.4.13",
       "opensearchproject/opensearch:3.9.0",
-      "rustfs/rustfs:1.0.6",
-      "mysql:8.4.13"
+      "rustfs/rustfs:1.0.6"
     ],
     "started": [
       "mysql:8.4.13",
@@ -23,7 +23,7 @@
     ]
   },
   "k6Version": "k6 v2.4.0 (commit/dd9395906d, go1.26.11, darwin/amd64)",
-  "scriptSha256": "60c8859bc2a4ab2eaa663f7b0ea985a0fb1b07b350aca211dda9c733230c20c4",
+  "scriptSha256": "46f002aa10c57dc933434c80d9bbd16194ef468b5fa25632371b38254afe5f2c",
   "chatMaxStreams": 50,
   "dbPoolSize": 50,
   "fakeModel": 1,
@@ -35,7 +35,7 @@
     "language": "chi_sim+eng",
     "sample": "deploy/ocr/sample.png",
     "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
-    "probedAt": "2026-11-23T14:08:28+08:00"
+    "probedAt": "2026-11-23T14:13:09+08:00"
   },
   "startCommand": "node scripts/real-stack/run.mjs --mode=perf",
   "startupCommands": [
@@ -59,8 +59,8 @@
   "perfM05": {
     "scenario": "knowledge",
     "dataset": {
-      "documents": 1000,
-      "chunks": 20000,
+      "documents": 5000,
+      "chunks": 100000,
       "chunksPerDocument": 20,
       "query": "PERFKNOW",
       "matchRatio": "20% 文档包含检索词（每篇全部 20 chunk）"
