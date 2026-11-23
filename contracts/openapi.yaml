@@ -5671,12 +5671,12 @@ components:
           type: string
           minLength: 1
           maxLength: 255
-          description: 桶名；响应原样返回，日志/审计只记截断摘要。
+          description: 桶名；API 响应向有权限的管理员返回配置；日志不记桶名，审计 details 只记摘要。
         prefix:
           type: string
           maxLength: 1000
           default: ""
-          description: 对象前缀；缺省根前缀。审计 details 只记 ≤200 字符摘要。
+          description: 对象前缀；缺省根前缀。API 响应返回配置；审计 details 只记 ≤200 字符摘要；日志不记对象 key。
         region:
           type: [string, "null"]
           maxLength: 64
@@ -5732,6 +5732,7 @@ components:
           description: 部署允许列表中的端点 ID；不返回端点 URL，也不能提交任意 URL。
         config:
           $ref: "#/components/schemas/ConnectorConfig"
+          description: 连接器配置（含 `bucket`/`prefix`）；只向有权限的管理员返回，日志不记 bucket/对象 key，审计 details 只记 `bucket`/`prefix` 摘要。
         defaultVisibility:
           $ref: "#/components/schemas/ConnectorVisibility"
         defaultDepartmentId:
@@ -5881,7 +5882,9 @@ components:
     ConnectorTestResult:
       type: object
       required: [success, message, testedAt]
-      description: 连接测试结果；失败仍为 200，不返回凭据、对象内容或端点 URL。
+      description: |
+        连接测试结果；失败仍为 200，不返回凭据、对象内容或端点 URL。
+        成功时 `category=null`（可省略）；失败时 `category` 必填且为 `AUTH`/`NETWORK`/`ENDPOINT`/`CONFIG` 之一。
       properties:
         success:
           type: boolean
@@ -5895,6 +5898,20 @@ components:
           type: string
           format: date-time
       additionalProperties: false
+      if:
+        properties:
+          success:
+            const: false
+        required: [success]
+      then:
+        required: [category]
+        properties:
+          category:
+            type: string
+      else:
+        properties:
+          category:
+            type: "null"
     ConnectorSyncAccepted:
       type: object
       required: [syncId, connectorId, status, acceptedAt]
