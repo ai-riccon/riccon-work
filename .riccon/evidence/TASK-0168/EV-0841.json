@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0841",
+  "task_id": "TASK-0168",
+  "command": "./mvnw -q -T1C -pl apps/worker -am test && ./mvnw -q -T1C -DskipTests -pl apps/worker -am package && docker run --rm --network none -v \"$PWD/apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar:/app/app.jar:ro\" -v \"$PWD/deploy/ocr:/ocr:ro\" --entrypoint java riccon-worker-ocr:o1a -Dloader.main=com.riccon.worker.ocr.service.OcrCli -cp /app/app.jar org.springframework.boot.loader.launch.PropertiesLauncher /ocr/sample.png --lang chi_sim+eng --dpi 200",
+  "manual": false,
+  "commit": "8b64cec89197f7bcfade120207a3730c57cbab28",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0168/EV-0841-2026-11-23T12-22-04-571+08-00-mvnw-q-t1c-pl-apps-worker-am-test-mvnw-q-t1c-dsk.log",
+  "output_sha256": "a27960c4a7f70978a08cc89745a3c5d9afc2649e408aaf6f599a63ec8a9618ee",
+  "output_bytes": 269143,
+  "agent": "riccon/builder-kb-ocr",
+  "cwd": "/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-b5-fix-wt2",
+  "started_at": "2026-11-23T12:18:51.319+08:00",
+  "finished_at": "2026-11-23T12:22:03.956+08:00",
+  "duration_ms": 192636,
+  "note": "M05-B5 复评修复：64MB/4000px 解码与渲染预算、language 绑定、KB_NO_TEXT；worker 全量+镜像零出网",
+  "recorded_at": "2026-11-23T12:22:04.575+08:00"
+}
