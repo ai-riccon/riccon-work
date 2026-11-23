@@ -1,0 +1,166 @@
+# command: set -euo pipefail; docker build -f deploy/Dockerfile.worker -t riccon-worker-ocr:o1b .; docker image inspect --format '{{json .Config.Healthcheck}}' riccon-worker-ocr:o1b > /tmp/riccon-hc.json; grep -q "actuator/health" /tmp/riccon-hc.json; trivy fs --scanners vuln,secret,misconfig --skip-dirs node_modules --skip-dirs target --skip-dirs .git --exit-code 1 .; bash scripts/ops/ocr-check --image riccon-worker-ocr:o1b; git diff --check; grep -q "V14" docs/RUNBOOK.md; grep -q "FULLTEXT" docs/RUNBOOK.md; node ~/.config/opencode/riccon/scripts/riccon.mjs contract validate --strict --project .; echo m05-healthcheck-v14-ok
+# cwd: /var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-ops-hc-wt
+# started_at: 2026-11-24T00:27:41.305+08:00
+# finished_at: 2026-11-24T00:28:09.168+08:00
+# duration_ms: 27861
+# exit_code: 0
+
+# --- stdout ---
+
+Report Summary
+
+┌──────────────────────────────────────────────┬────────────┬─────────────────┬─────────┬───────────────────┐
+│                    Target                    │    Type    │ Vulnerabilities │ Secrets │ Misconfigurations │
+├──────────────────────────────────────────────┼────────────┼─────────────────┼─────────┼───────────────────┤
+│ apps/api/pom.xml                             │    pom     │        0        │    -    │         -         │
+├──────────────────────────────────────────────┼────────────┼─────────────────┼─────────┼───────────────────┤
+│ apps/worker/pom.xml                          │    pom     │        0        │    -    │         -         │
+├──────────────────────────────────────────────┼────────────┼─────────────────┼─────────┼───────────────────┤
+│ platform/platform-architecture-tests/pom.xml │    pom     │        0        │    -    │         -         │
+├──────────────────────────────────────────────┼────────────┼─────────────────┼─────────┼───────────────────┤
+│ platform/platform-common/pom.xml             │    pom     │        0        │    -    │         -         │
+├──────────────────────────────────────────────┼────────────┼─────────────────┼─────────┼───────────────────┤
+│ platform/platform-domain/pom.xml             │    pom     │        0        │    -    │         -         │
+├──────────────────────────────────────────────┼────────────┼─────────────────┼─────────┼───────────────────┤
+│ pnpm-lock.yaml                               │    pnpm    │        0        │    -    │         -         │
+├──────────────────────────────────────────────┼────────────┼─────────────────┼─────────┼───────────────────┤
+│ pom.xml                                      │    pom     │        0        │    -    │         -         │
+├──────────────────────────────────────────────┼────────────┼─────────────────┼─────────┼───────────────────┤
+│ deploy/Dockerfile.worker                     │ dockerfile │        -        │    -    │         0         │
+└──────────────────────────────────────────────┴────────────┴─────────────────┴─────────┴───────────────────┘
+Legend:
+- '-': Not scanned
+- '0': Clean (no security findings detected)
+
+== ocr-check 参数
+  image=riccon-worker-ocr:o1b
+  fixture=deploy/ocr/sample.png
+  lang=chi_sim+eng dpi=200
+  network=none（所有容器）
+  ok manifest engine=tesseract engineVersion=5.3.4-1build5 leptonica=1.82.0-3build4
+  ok 镜像 label 与 manifest 一致（含 tessdata 引用与权重哈希）
+  ok 权重 SHA256 与 manifest 一致
+  ok tesseract 5.3.4 / leptonica 1.82.0
+  ok 语言包 chi_sim/eng/osd 可用
+  ok 运行用户 uid=10001
+  ok --network none：容器无任何路由（/proc/net/route 仅表头）
+  ok 镜像 env 无 DB/OpenSearch/S3 依赖变量
+  ok OcrCli jar：镜像内 /app/app.jar
+     sha256=6624d115ffef8aa699667f61025983715ad0b3d5a3284a3f1d6db47bf1d2222c
+  ok engine=tesseract text="RICCON OCR 12345" averageConfidence=0.922 blocks=1
+  ok bbox 存在：57,74,766,54
+ocr-check: OK image=riccon-worker-ocr:o1b jar=镜像内 /app/app.jar lang=chi_sim+eng text="RICCON OCR 12345" averageConfidence=0.922
+Project contract: OK (0 errors, 0 warnings)
+m05-healthcheck-v14-ok
+
+# --- stderr ---
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.worker
+#1 transferring dockerfile: 6.25kB 0.0s done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 2.3s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done
+#3 CACHED
+
+#4 [internal] load metadata for docker.io/library/eclipse-temurin:21.0.13_9-jre-noble@sha256:b4f9d2a0bc273417cf5219b7b832bbf0493ed500b7b57d5001d9f83374659060
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/eclipse-temurin:21.0.13_9-jdk-noble@sha256:bc12ebd88ffa6dda0092940e179365b05aef8d813b867f9df5a1f168c9a44feb
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 DONE 0.0s
+
+#7 [runtime 1/9] FROM docker.io/library/eclipse-temurin:21.0.13_9-jre-noble@sha256:b4f9d2a0bc273417cf5219b7b832bbf0493ed500b7b57d5001d9f83374659060
+#7 resolve docker.io/library/eclipse-temurin:21.0.13_9-jre-noble@sha256:b4f9d2a0bc273417cf5219b7b832bbf0493ed500b7b57d5001d9f83374659060 0.0s done
+#7 DONE 0.0s
+
+#8 [build 1/9] FROM docker.io/library/eclipse-temurin:21.0.13_9-jdk-noble@sha256:bc12ebd88ffa6dda0092940e179365b05aef8d813b867f9df5a1f168c9a44feb
+#8 resolve docker.io/library/eclipse-temurin:21.0.13_9-jdk-noble@sha256:bc12ebd88ffa6dda0092940e179365b05aef8d813b867f9df5a1f168c9a44feb 0.0s done
+#8 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 977.60kB 0.1s
+#6 transferring context: 2.62MB 0.2s done
+#6 DONE 0.2s
+
+#9 [runtime 5/9] RUN set -eux;     mkdir -p /opt/riccon/ocr;     printf '{"engine":"tesseract","engineVersion":"%s","leptonicaVersion":"%s","tessdata":"tessdata_fast@%s","languages":{"chi_sim":"%s","eng":"%s"}}\n'       "5.3.4-1build5" "1.82.0-3build4" "87416418657359cb625c412a48b6e1d6d41c29bd" "a5fcb6f0db1e1d6d8522f39db4e848f05984669172e584e8d76b6b3141e1f730" "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2"       > /opt/riccon/ocr/manifest.json
+#9 CACHED
+
+#10 [build 9/9] RUN --mount=type=cache,target=/root/.m2     ./mvnw -q -T1C -DskipTests -pl apps/worker -am package
+#10 CACHED
+
+#11 [build 6/9] COPY platform/ platform/
+#11 CACHED
+
+#12 [build 7/9] COPY apps/api/pom.xml apps/api/pom.xml
+#12 CACHED
+
+#13 [build 8/9] COPY apps/worker/ apps/worker/
+#13 CACHED
+
+#14 [runtime 3/9] COPY --from=tessdata /tessdata/chi_sim.traineddata /usr/share/tesseract-ocr/5/tessdata/chi_sim.traineddata
+#14 CACHED
+
+#15 [runtime 4/9] COPY --from=tessdata /tessdata/eng.traineddata /usr/share/tesseract-ocr/5/tessdata/eng.traineddata
+#15 CACHED
+
+#16 [build 4/9] COPY mvnw ./
+#16 CACHED
+
+#17 [runtime 6/9] RUN set -eux;     groupadd -g 10001 riccon;     useradd -u 10001 -g 10001 -m -d /home/riccon -s /usr/sbin/nologin riccon;     mkdir -p /app;     chown -R 10001:10001 /app /opt/riccon /usr/share/tesseract-ocr/5/tessdata
+#17 CACHED
+
+#18 [runtime 2/9] RUN set -eux;     apt-get update;     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends       tesseract-ocr="5.3.4-1build5"       libtesseract5="5.3.4-1build5"       liblept5="1.82.0-3build4";     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+#18 CACHED
+
+#19 [build 2/9] WORKDIR /build
+#19 CACHED
+
+#20 [tessdata 2/2] RUN set -eux;     apt-get update;     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends       ca-certificates       curl;     rm -rf /var/lib/apt/lists/*;     mkdir -p /tessdata;     curl -fsSL --retry 3 -o /tessdata/chi_sim.traineddata       "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/chi_sim.traineddata";     echo "a5fcb6f0db1e1d6d8522f39db4e848f05984669172e584e8d76b6b3141e1f730  /tessdata/chi_sim.traineddata" | sha256sum -c -;     curl -fsSL --retry 3 -o /tessdata/eng.traineddata       "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/eng.traineddata";     echo "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2  /tessdata/eng.traineddata" | sha256sum -c -
+#20 CACHED
+
+#21 [build 3/9] COPY .mvn/ .mvn/
+#21 CACHED
+
+#22 [build 5/9] COPY pom.xml ./
+#22 CACHED
+
+#23 [runtime 7/9] COPY --from=build /build/apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar /app/app.jar
+#23 CACHED
+
+#24 [runtime 8/9] RUN chown 10001:10001 /app/app.jar
+#24 CACHED
+
+#25 [runtime 9/9] WORKDIR /app
+#25 CACHED
+
+#26 exporting to image
+#26 exporting layers done
+#26 exporting manifest sha256:26e4a478d41567d7cb68f1e4c821638890c8f7288ca6b6f20524bafa8e27f185 done
+#26 exporting config sha256:93ce522fad13ffa4c0e9af67605dbefbeb37f18066b270effa9b28822d484481 done
+#26 exporting attestation manifest sha256:77663dc530034c73f8d80af94fcad6cf35da9078c3296c036dbf4628a8ce77a3 0.0s done
+#26 exporting manifest list sha256:986d50f242f2737685775633a180c6dc33ebdc4f931ea1fe8bf55d7f7769ae9e 0.0s done
+#26 naming to docker.io/library/riccon-worker-ocr:o1b done
+#26 unpacking to docker.io/library/riccon-worker-ocr:o1b done
+#26 DONE 0.1s
+2026-11-24T00:27:46+08:00	INFO	[vuln] Vulnerability scanning is enabled
+2026-11-24T00:27:46+08:00	INFO	[misconfig] Misconfiguration scanning is enabled
+2026-11-24T00:27:46+08:00	INFO	[checks-client] Using existing checks from cache	path="/Users/ricky/Library/Caches/trivy/policy/content"
+2026-11-24T00:27:47+08:00	INFO	[secret] Secret scanning is enabled
+2026-11-24T00:27:47+08:00	INFO	[secret] If your scanning is slow, please try '--scanners vuln,misconfig' to disable secret scanning
+2026-11-24T00:27:47+08:00	INFO	[secret] Please see https://trivy.dev/docs/v0.76/guide/scanner/secret#recommendation for faster secret detection
+2026-11-24T00:27:48+08:00	WARN	[secret] The size of the scanned file is too large. It is recommended to use `--skip-files` for this file to avoid high memory consumption.	file_path=".riccon/evidence/TASK-0137/real-stack-api.log" size (MB)=12
+2026-11-24T00:27:48+08:00	WARN	[secret] The size of the scanned file is too large. It is recommended to use `--skip-files` for this file to avoid high memory consumption.	file_path=".riccon/evidence/TASK-0137/real-stack-worker.log" size (MB)=11
+2026-11-24T00:27:52+08:00	INFO	[pnpm] Run "pnpm install" to collect the license information of packages	dir="node_modules"
+2026-11-24T00:27:53+08:00	INFO	Suppressing dependencies for development and testing. To display them, try the '--include-dev-deps' flag.
+2026-11-24T00:27:53+08:00	INFO	Number of language-specific files	num=7
+2026-11-24T00:27:53+08:00	INFO	[pnpm] Detecting vulnerabilities...
+2026-11-24T00:27:53+08:00	INFO	[pom] Detecting vulnerabilities...
+2026-11-24T00:27:53+08:00	INFO	Detected config files	num=1
+2026-11-24T00:27:53+08:00	INFO	Some vulnerabilities have been ignored/suppressed. Use the "--show-suppressed" flag to display them.

@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0953",
+  "task_id": "TASK-0200",
+  "command": "set -euo pipefail; docker build -f deploy/Dockerfile.worker -t riccon-worker-ocr:o1b .; docker image inspect --format '{{json .Config.Healthcheck}}' riccon-worker-ocr:o1b > /tmp/riccon-hc.json; grep -q \"actuator/health\" /tmp/riccon-hc.json; trivy fs --scanners vuln,secret,misconfig --skip-dirs node_modules --skip-dirs target --skip-dirs .git --exit-code 1 .; bash scripts/ops/ocr-check --image riccon-worker-ocr:o1b; git diff --check; grep -q \"V14\" docs/RUNBOOK.md; grep -q \"FULLTEXT\" docs/RUNBOOK.md; node ~/.config/opencode/riccon/scripts/riccon.mjs contract validate --strict --project .; echo m05-healthcheck-v14-ok",
+  "manual": false,
+  "commit": "f4c43996e8abd2734bc40722df9d6cda7c4397d2",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0200/EV-0953-2026-11-24T00-28-09-611+08-00-set-euo-pipefail-docker-build-f-deploy-dockerfil.log",
+  "output_sha256": "2c8872b4ac6216217c4ae88a6e49fb23be994e62b0455d0f16688f8224f9a767",
+  "output_bytes": 13246,
+  "agent": "riccon/ops",
+  "cwd": "/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-ops-hc-wt",
+  "started_at": "2026-11-24T00:27:41.305+08:00",
+  "finished_at": "2026-11-24T00:28:09.168+08:00",
+  "duration_ms": 27861,
+  "note": "worker HEALTHCHECK 与 RUNBOOK V14",
+  "recorded_at": "2026-11-24T00:28:09.613+08:00"
+}
