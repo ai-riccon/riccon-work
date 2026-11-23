@@ -248,6 +248,25 @@ class XlsxDocumentParserTest {
     }
 
     /**
+     * 单个超长单元格在 SAX 回调阶段即按文档字符上限截断，避免先撑爆堆。
+     */
+    @Test
+    @DisplayName("单格超长文本按字符上限截断")
+    void parse_singleHugeCell_truncatesAtCharLimit() {
+        byte[] content = workbook(workbook -> workbook.createSheet("数据")
+                .createRow(0)
+                .createCell(0)
+                .setCellValue("0123456789ABCDEFGHIJ"));
+
+        ParsedContent parsed =
+                parse(content, new XlsxDocumentParser.Limits(20, 20_000, 200, 50, 10, 5_000));
+
+        assertThat(parsed.segments()).hasSize(1);
+        assertThat(parsed.segments().get(0).content()).isEqualTo("0123456789");
+        assertThat(parsed.warnings()).containsExactly(ParseWarningCodes.CHARS_TRUNCATED);
+    }
+
+    /**
      * 布尔值输出 TRUE/FALSE，错误值跳过且不导致解析失败。
      */
     @Test

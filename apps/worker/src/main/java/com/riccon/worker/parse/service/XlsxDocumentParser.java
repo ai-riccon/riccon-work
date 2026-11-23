@@ -220,7 +220,8 @@ public class XlsxDocumentParser implements DocumentParser {
                     state.warn(ParseWarningCodes.SHEETS_TRUNCATED);
                 }
                 SheetCollector collector = new SheetCollector(sheetName, indexContent, limits, state);
-                parseSheetXml(sheetStream, styles, sharedStrings, info.use1904(), collector);
+                parseSheetXml(
+                        sheetStream, styles, sharedStrings, info.use1904(), collector, limits.maxChars());
                 collector.endSheet();
                 state.addSheet(collector.summary());
                 visibleIndex++;
@@ -301,6 +302,7 @@ public class XlsxDocumentParser implements DocumentParser {
      * @param sharedStrings 共享字符串表
      * @param use1904 是否使用 1904 日期窗口
      * @param collector 工作表收集器
+     * @param maxCellChars 单单元格文本缓存上限
      * @throws IOException 读取失败
      * @throws SAXException XML 非法
      * @throws ParserConfigurationException SAX 解析器不可用
@@ -310,10 +312,12 @@ public class XlsxDocumentParser implements DocumentParser {
             StylesTable styles,
             ReadOnlySharedStringsTable sharedStrings,
             boolean use1904,
-            SheetCollector collector)
+            SheetCollector collector,
+            int maxCellChars)
             throws IOException, SAXException, ParserConfigurationException {
         XMLReader xmlReader = XMLHelper.newXMLReader();
-        xmlReader.setContentHandler(new SheetXmlHandler(styles, sharedStrings, use1904, collector));
+        xmlReader.setContentHandler(
+                new SheetXmlHandler(styles, sharedStrings, use1904, collector, maxCellChars));
         xmlReader.parse(new InputSource(sheetStream));
     }
 
@@ -711,6 +715,9 @@ public class XlsxDocumentParser implements DocumentParser {
         /** 工作表收集器。 */
         private final SheetCollector collector;
 
+        /** 单单元格文本缓存上限；防止超长单元格在 SAX 回调中先撑爆堆。 */
+        private final int maxCellChars;
+
         /** 下一行的隐式索引。 */
         private int nextRowNum;
 
@@ -756,6 +763,9 @@ public class XlsxDocumentParser implements DocumentParser {
         /** 拼音/注音文本深度；该区域不进入正文。 */
         private int phoneticDepth;
 
+        /** 当前单元格是否因单格上限被截断。 */
+        private boolean cellTruncated;
+
         /**
          * 创建处理器。
          *
@@ -763,16 +773,19 @@ public class XlsxDocumentParser implements DocumentParser {
          * @param sharedStrings 共享字符串表
          * @param use1904 是否使用 1904 日期窗口
          * @param collector 工作表收集器
+         * @param maxCellChars 单单元格文本缓存上限
          */
         SheetXmlHandler(
                 StylesTable styles,
                 ReadOnlySharedStringsTable sharedStrings,
                 boolean use1904,
-                SheetCollector collector) {
+                SheetCollector collector,
+                int maxCellChars) {
             this.styles = styles;
             this.sharedStrings = sharedStrings;
             this.use1904 = use1904;
             this.collector = collector;
+            this.maxCellChars = maxCellChars;
         }
 
         /** {@inheritDoc} */
@@ -831,10 +844,10 @@ public class XlsxDocumentParser implements DocumentParser {
         @Override
         public void characters(char[] chars, int start, int length) {
             if (valueOpen) {
-                cellValue.append(chars, start, length);
+                appendCapped(cellValue, chars, start, length);
             }
             if (textOpen && phoneticDepth == 0) {
-                cellInline.append(chars, start, length);
+                appendCapped(cellInline, chars, start, length);
             }
         }
 
@@ -875,6 +888,7 @@ public class XlsxDocumentParser implements DocumentParser {
             valueOpen = false;
             textOpen = false;
             phoneticDepth = 0;
+            cellTruncated = false;
             cellValue.setLength(0);
             cellInline.setLength(0);
             cellType = attributes.getValue("t");
@@ -890,6 +904,9 @@ public class XlsxDocumentParser implements DocumentParser {
         private void finishCell() {
             if (!rowOpen || rowNum < 0) {
                 return;
+            }
+            if (cellTruncated) {
+                collector.noteCellTruncated();
             }
             String rendered = renderCellValue();
             if (rendered == null) {
@@ -1018,6 +1035,30 @@ public class XlsxDocumentParser implements DocumentParser {
                 return new BigDecimal(raw).toPlainString();
             } catch (NumberFormatException ex) {
                 return raw;
+            }
+        }
+
+        /**
+         * 有上限地追加字符，避免单个超长单元格在进入行带前占用无界内存。
+         *
+         * @param builder 目标缓冲
+         * @param chars SAX 字符块
+         * @param start 起始下标
+         * @param length 长度
+         */
+        private void appendCapped(StringBuilder builder, char[] chars, int start, int length) {
+            if (length <= 0) {
+                return;
+            }
+            int remaining = maxCellChars - builder.length();
+            if (remaining <= 0) {
+                cellTruncated = true;
+                return;
+            }
+            int take = Math.min(length, remaining);
+            builder.append(chars, start, take);
+            if (take < length) {
+                cellTruncated = true;
             }
         }
 
@@ -1235,6 +1276,13 @@ public class XlsxDocumentParser implements DocumentParser {
             rowValues.add(value);
             rowMinCol = Math.min(rowMinCol, col);
             rowMaxCol = Math.max(rowMaxCol, col);
+        }
+
+        /** 单个单元格文本因单格上限被截断。 */
+        void noteCellTruncated() {
+            if (indexContent && !state.indexingStopped()) {
+                state.noteCharsTruncated();
+            }
         }
 
         /**
