@@ -3,6 +3,9 @@ package com.riccon.api.research.service;
 import com.riccon.api.audit.domain.AdditionalAuditActions;
 import com.riccon.api.audit.domain.AuditEvent;
 import com.riccon.api.audit.service.AuditService;
+import com.riccon.api.chat.domain.CitationSourceState;
+import com.riccon.api.chat.domain.CitationSourceStatus;
+import com.riccon.api.chat.repository.CitationStatusRepository;
 import com.riccon.api.config.StorageProperties;
 import com.riccon.api.error.ArtifactContentTooLargeException;
 import com.riccon.api.error.ArtifactContentUnavailableException;
@@ -17,6 +20,7 @@ import com.riccon.api.identity.domain.RicconPrincipal;
 import com.riccon.api.identity.dto.PageQuery;
 import com.riccon.api.research.domain.ArtifactCitationSnapshot;
 import com.riccon.api.research.domain.ArtifactSnapshot;
+import com.riccon.api.research.domain.ArtifactSourceType;
 import com.riccon.api.research.domain.ArtifactVersionSnapshot;
 import com.riccon.api.research.dto.ArtifactContent;
 import com.riccon.api.research.dto.ArtifactDetailResponse;
@@ -35,11 +39,14 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,6 +79,9 @@ public class ArtifactService {
     /** 产物仓储。 */
     private final ArtifactRepository artifactRepository;
 
+    /** 引用源文档状态。 */
+    private final CitationStatusRepository citationStatusRepository;
+
     /** 工作空间可见性。 */
     private final WorkspaceService workspaceService;
 
@@ -91,6 +101,7 @@ public class ArtifactService {
      * 创建产物服务。
      *
      * @param artifactRepository 产物仓储
+     * @param citationStatusRepository 引用源文档状态
      * @param workspaceService 工作空间可见性
      * @param fileStorage 对象存储
      * @param storageProperties 存储配置
@@ -99,12 +110,14 @@ public class ArtifactService {
      */
     public ArtifactService(
             ArtifactRepository artifactRepository,
+            CitationStatusRepository citationStatusRepository,
             WorkspaceService workspaceService,
             FileStorage fileStorage,
             StorageProperties storageProperties,
             AuditService auditService,
             Clock clock) {
         this.artifactRepository = Objects.requireNonNull(artifactRepository, "artifactRepository");
+        this.citationStatusRepository = Objects.requireNonNull(citationStatusRepository, "citationStatusRepository");
         this.workspaceService = Objects.requireNonNull(workspaceService, "workspaceService");
         this.fileStorage = Objects.requireNonNull(fileStorage, "fileStorage");
         this.storageProperties = Objects.requireNonNull(storageProperties, "storageProperties");
@@ -143,7 +156,7 @@ public class ArtifactService {
     public ArtifactDetailResponse get(RicconPrincipal actor, UUID artifactId) {
         TenantId tenantId = TenantId.of(actor.tenantId());
         ArtifactSnapshot artifact = requireVisible(tenantId, artifactId, actor.userId());
-        return detail(tenantId, artifact);
+        return detail(tenantId, artifact, actor.userId());
     }
 
     /**
@@ -164,7 +177,7 @@ public class ArtifactService {
         Map<UUID, List<ArtifactCitationSnapshot>> citations = artifactRepository.citationsByVersionIds(
                 tenantId, versions.stream().map(ArtifactVersionSnapshot::id).toList());
         List<ArtifactVersionResponse> items = versions.stream()
-                .map(version -> withCitations(version, citations))
+                .map(version -> withCitations(tenantId, actor.userId(), version, citations))
                 .map(ArtifactVersionResponse::from)
                 .toList();
         return new ArtifactVersionPageResponse(page.page(), page.size(), total, page.totalPages(total), items);
@@ -184,7 +197,10 @@ public class ArtifactService {
         ArtifactSnapshot artifact = requireVisible(tenantId, artifactId, actor.userId());
         ArtifactVersionSnapshot versionSnapshot = requireVersion(tenantId, artifact.id(), version);
         return ArtifactVersionResponse.from(withCitations(
-                versionSnapshot, artifactRepository.citationsByVersionIds(tenantId, List.of(versionSnapshot.id()))));
+                tenantId,
+                actor.userId(),
+                versionSnapshot,
+                artifactRepository.citationsByVersionIds(tenantId, List.of(versionSnapshot.id()))));
     }
 
     /**
@@ -329,27 +345,38 @@ public class ArtifactService {
      * @param artifact 产物
      * @return 详情
      */
-    private ArtifactDetailResponse detail(TenantId tenantId, ArtifactSnapshot artifact) {
+    private ArtifactDetailResponse detail(TenantId tenantId, ArtifactSnapshot artifact, UUID viewerId) {
         ArtifactVersionSnapshot current = null;
         if (artifact.currentVersion() >= 1) {
             current = artifactRepository
                     .findVersion(tenantId, artifact.id(), artifact.currentVersion())
                     .map(version -> withCitations(
-                            version, artifactRepository.citationsByVersionIds(tenantId, List.of(version.id()))))
+                            tenantId,
+                            viewerId,
+                            version,
+                            artifactRepository.citationsByVersionIds(tenantId, List.of(version.id()))))
                     .orElse(null);
         }
         return ArtifactDetailResponse.from(artifact, current);
     }
 
     /**
-     * 为版本补齐引用。
+     * 为版本补齐引用并计算可用性。
      *
+     * <p>引用状态按当前账号与文档 ACL 重新判定；一次请求内按文档 ID 批量查询，不逐条访问数据库
+     * （ADR-0023 第 5.4 节）。
+     *
+     * @param tenantId 当前租户
+     * @param viewerId 当前账号
      * @param version 版本
      * @param citations 版本 ID 到引用列表的映射
-     * @return 带引用的版本
+     * @return 带引用与可用性的版本
      */
-    private static ArtifactVersionSnapshot withCitations(
-            ArtifactVersionSnapshot version, Map<UUID, List<ArtifactCitationSnapshot>> citations) {
+    private ArtifactVersionSnapshot withCitations(
+            TenantId tenantId,
+            UUID viewerId,
+            ArtifactVersionSnapshot version,
+            Map<UUID, List<ArtifactCitationSnapshot>> citations) {
         return new ArtifactVersionSnapshot(
                 version.id(),
                 version.artifactId(),
@@ -360,7 +387,39 @@ public class ArtifactService {
                 version.sha256(),
                 version.summary(),
                 version.createdAt(),
-                citations.getOrDefault(version.id(), List.of()));
+                withStatus(tenantId, viewerId, citations.getOrDefault(version.id(), List.of())));
+    }
+
+    /**
+     * 批量计算引用可用性并回填快照。
+     *
+     * @param tenantId 当前租户
+     * @param viewerId 当前账号
+     * @param citations 引用列表
+     * @return 带可用性的引用列表
+     */
+    private List<ArtifactCitationSnapshot> withStatus(
+            TenantId tenantId, UUID viewerId, List<ArtifactCitationSnapshot> citations) {
+        if (citations.isEmpty()) {
+            return List.of();
+        }
+        Set<UUID> documentIds = new LinkedHashSet<>();
+        for (ArtifactCitationSnapshot citation : citations) {
+            if (citation.sourceType() == ArtifactSourceType.KNOWLEDGE && citation.knowledgeDocumentId() != null) {
+                documentIds.add(citation.knowledgeDocumentId());
+            }
+        }
+        Map<UUID, CitationSourceState> states = citationStatusRepository.findStates(tenantId, viewerId, documentIds);
+        List<ArtifactCitationSnapshot> resolved = new ArrayList<>(citations.size());
+        for (ArtifactCitationSnapshot citation : citations) {
+            CitationSourceStatus status = CitationSourceStatus.AVAILABLE;
+            if (citation.sourceType() == ArtifactSourceType.KNOWLEDGE && citation.knowledgeDocumentId() != null) {
+                CitationSourceState state = states.get(citation.knowledgeDocumentId());
+                status = state == null ? CitationSourceStatus.NO_ACCESS : state.statusFor(citation.sourceVersion());
+            }
+            resolved.add(citation.withSourceStatus(status));
+        }
+        return List.copyOf(resolved);
     }
 
     /**

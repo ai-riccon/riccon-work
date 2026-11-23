@@ -129,6 +129,8 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(knowledge.knowledgeDocumentId()).isEqualTo(fixture.documentId());
         assertThat(knowledge.titleSnapshot()).isEqualTo("市场资料");
         assertThat(knowledge.paragraphNo()).isEqualTo(1);
+        // 引用创建时写入文档 checksum 快照，用于读取时识别源内容已更新。
+        assertThat(knowledge.sourceVersion()).isEqualTo(sha256("市场资料"));
         ArtifactCitationRecord mcp = citations.get(1);
         assertThat(mcp.ordinal()).isEqualTo(2);
         assertThat(mcp.sourceType()).isEqualTo("MCP");
@@ -502,7 +504,8 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
                         null,
                         null,
                         null,
-                        1)));
+                        1,
+                        null)));
         SavedArtifact saved = tenantCall(
                 fixture.tenant(),
                 () -> artifactWriter.write(

@@ -1,5 +1,6 @@
 package com.riccon.api.research.persistence;
 
+import com.riccon.api.chat.domain.CitationSourceStatus;
 import com.riccon.api.persistence.BinaryUuids;
 import com.riccon.api.persistence.SqlTimestamps;
 import com.riccon.api.persistence.TenantJdbc;
@@ -47,7 +48,7 @@ public class ArtifactJdbc {
     private static final String CITATION_COLUMNS = """
             artifact_version_id, ordinal, source_type, file_id, knowledge_document_id,
             mcp_invocation_id, title_snapshot, snippet, locator_type, page_no,
-            sheet_name, paragraph_no
+            sheet_name, cell_range, paragraph_no, source_version
             """;
 
     /** 工作空间产物列表过滤。 */
@@ -291,7 +292,10 @@ public class ArtifactJdbc {
                 locator == null ? null : LocatorType.valueOf(locator),
                 rs.getObject("page_no", Integer.class),
                 rs.getString("sheet_name"),
-                rs.getObject("paragraph_no", Integer.class));
+                rs.getString("cell_range"),
+                rs.getObject("paragraph_no", Integer.class),
+                rs.getString("source_version"),
+                CitationSourceStatus.AVAILABLE);
         return new CitationRow(BinaryUuids.fromBytes(rs.getBytes("artifact_version_id")), citation);
     }
 

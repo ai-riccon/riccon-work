@@ -9,6 +9,7 @@ import com.riccon.worker.research.domain.ArtifactVersionRecord;
 import com.riccon.worker.research.domain.ReportCitation;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -271,15 +272,16 @@ public class ArtifactJdbc {
         params.put("sheetName", citation.sheetName());
         params.put("cellRange", citation.cellRange());
         params.put("paragraphNo", citation.paragraphNo());
+        params.put("sourceVersion", citation.sourceVersion());
         tenantJdbc.insert(tenantId, """
                 INSERT INTO artifact_citation
                     (tenant_id, id, artifact_version_id, ordinal, source_type, file_id,
                      knowledge_document_id, mcp_invocation_id, title_snapshot, snippet,
-                     locator_type, page_no, sheet_name, cell_range, paragraph_no)
+                     locator_type, page_no, sheet_name, cell_range, paragraph_no, source_version)
                 VALUES
                     (:tenantId, :id, :artifactVersionId, :ordinal, :sourceType, :fileId,
                      :knowledgeDocumentId, :mcpInvocationId, :titleSnapshot, :snippet,
-                     :locatorType, :pageNo, :sheetName, :cellRange, :paragraphNo)
+                     :locatorType, :pageNo, :sheetName, :cellRange, :paragraphNo, :sourceVersion)
                 ON DUPLICATE KEY UPDATE id = id
                 """, params);
     }
@@ -297,7 +299,7 @@ public class ArtifactJdbc {
                 """
                 SELECT id, artifact_version_id, ordinal, source_type, file_id, knowledge_document_id,
                        mcp_invocation_id, title_snapshot, snippet, locator_type, page_no,
-                       sheet_name, cell_range, paragraph_no
+                       sheet_name, cell_range, paragraph_no, source_version
                   FROM artifact_citation
                  WHERE tenant_id = :tenantId
                    AND artifact_version_id = :versionId
@@ -322,7 +324,48 @@ public class ArtifactJdbc {
                         (Integer) rs.getObject("page_no"),
                         rs.getString("sheet_name"),
                         rs.getString("cell_range"),
-                        (Integer) rs.getObject("paragraph_no")));
+                        (Integer) rs.getObject("paragraph_no"),
+                        rs.getString("source_version")));
+    }
+
+    /**
+     * 批量读取知识库文档当前 checksum。
+     *
+     * <p>产物引用落库前一次查询取齐引用涉及文档的版本，写入 {@code source_version} 快照；文档已被删除或跨租户时
+     * 不返回版本，引用保持空版本，由读取时的删除/ACL 判定遮蔽（ADR-0023 第 5.1、5.4 节）。
+     *
+     * @param tenantId 租户
+     * @param documentIds 知识库文档 ID 列表
+     * @return 文档 ID 到 checksum 的映射
+     */
+    public Map<UUID, String> findKnowledgeChecksums(TenantId tenantId, Collection<UUID> documentIds) {
+        if (documentIds == null || documentIds.isEmpty()) {
+            return Map.of();
+        }
+        StringBuilder sql = new StringBuilder(
+                "SELECT id, checksum FROM knowledge_document WHERE tenant_id = :tenantId AND id IN (");
+        Map<String, Object> params = new LinkedHashMap<>();
+        int index = 0;
+        for (UUID documentId : documentIds) {
+            if (index > 0) {
+                sql.append(", ");
+            }
+            String name = "documentId" + index;
+            sql.append(':').append(name);
+            params.put(name, UuidBinary.toBytes(documentId));
+            index++;
+        }
+        sql.append(')');
+        List<Map.Entry<UUID, String>> rows = tenantJdbc.query(
+                tenantId,
+                sql.toString(),
+                params,
+                (rs, rowNum) -> Map.entry(UuidBinary.fromBytes(rs.getBytes("id")), rs.getString("checksum")));
+        Map<UUID, String> checksums = new LinkedHashMap<>(rows.size());
+        for (Map.Entry<UUID, String> row : rows) {
+            checksums.put(row.getKey(), row.getValue());
+        }
+        return checksums;
     }
 
     /**

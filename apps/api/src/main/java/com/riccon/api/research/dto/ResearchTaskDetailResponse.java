@@ -3,7 +3,6 @@ package com.riccon.api.research.dto;
 import com.riccon.api.research.domain.ApprovalSnapshot;
 import com.riccon.api.research.domain.McpInvocationSnapshot;
 import com.riccon.api.research.domain.ResearchTaskSnapshot;
-import com.riccon.api.research.domain.RunStageSnapshot;
 import com.riccon.platform.domain.research.ResearchTaskStatus;
 import com.riccon.platform.domain.research.RunStage;
 import java.time.Instant;
@@ -66,7 +65,7 @@ public record ResearchTaskDetailResponse(
      */
     public static ResearchTaskDetailResponse of(
             ResearchTaskSnapshot task,
-            List<RunStageSnapshot> stages,
+            List<RunStageResponse> stages,
             List<ApprovalSnapshot> approvals,
             List<McpInvocationSnapshot> invocations,
             List<CitationResponse> sources,
@@ -84,7 +83,7 @@ public record ResearchTaskDetailResponse(
                 task.createdAt(),
                 task.startedAt(),
                 task.finishedAt(),
-                stages.stream().map(RunStageResponse::from).toList(),
+                stages,
                 approvals.stream().map(ApprovalResponse::from).toList(),
                 invocations.stream().map(McpInvocationResponse::from).toList(),
                 sources,

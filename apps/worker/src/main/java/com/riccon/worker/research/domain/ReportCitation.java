@@ -22,6 +22,7 @@ import java.util.UUID;
  * @param sheetName 工作表名
  * @param cellRange 单元格范围
  * @param paragraphNo 段落序号
+ * @param sourceVersion 引用时的 knowledge_document.checksum；仅 KNOWLEDGE 引用写入
  */
 public record ReportCitation(
         int ordinal,
@@ -35,4 +36,5 @@ public record ReportCitation(
         Integer pageNo,
         String sheetName,
         String cellRange,
-        Integer paragraphNo) {}
+        Integer paragraphNo,
+        String sourceVersion) {}

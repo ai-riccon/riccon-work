@@ -4,6 +4,7 @@ import com.riccon.api.research.domain.RunStageSnapshot;
 import com.riccon.platform.domain.research.RunStage;
 import com.riccon.platform.domain.research.StageStatus;
 import java.time.Instant;
+import java.util.function.UnaryOperator;
 
 /**
  * 运行阶段响应，对应 OpenAPI {@code RunStageRecord}。
@@ -32,6 +33,22 @@ public record RunStageResponse(
      * @return 响应
      */
     public static RunStageResponse from(RunStageSnapshot stage) {
+        return from(stage, source -> source);
+    }
+
+    /**
+     * 将阶段快照映射为响应，并对阶段详情中的来源应用遮蔽。
+     *
+     * @param stage 阶段快照
+     * @param sourceMapper 来源映射（例如按当前 ACL 计算可用性）
+     * @return 响应
+     */
+    public static RunStageResponse from(RunStageSnapshot stage, UnaryOperator<CitationResponse> sourceMapper) {
+        RunStageDetails details = RunStageDetails.from(stage.details());
+        if (details != null && details.sources() != null && !details.sources().isEmpty()) {
+            details = details.withSources(
+                    details.sources().stream().map(sourceMapper).toList());
+        }
         return new RunStageResponse(
                 stage.stage(),
                 stage.attempt(),
@@ -39,6 +56,6 @@ public record RunStageResponse(
                 stage.errorCode(),
                 stage.startedAt(),
                 stage.finishedAt(),
-                RunStageDetails.from(stage.details()));
+                details);
     }
 }

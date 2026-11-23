@@ -1,5 +1,6 @@
 package com.riccon.api.research.dto;
 
+import com.riccon.api.chat.domain.CitationSourceStatus;
 import com.riccon.api.research.domain.ArtifactCitationSnapshot;
 import com.riccon.api.research.domain.ArtifactSourceType;
 import com.riccon.platform.domain.chat.LocatorType;
@@ -12,6 +13,7 @@ import java.util.UUID;
  * <p>来源在产物生成前来自检索阶段 {@code agent_run_stage.details.sources}，产物生成后改用
  * {@code artifact_citation} 的权威快照；两种来源映射到同一响应，供 J2 时间线在审批前就能展示标题、片段与定位。
  * {@code mcpInvocationId} 是 M02 既有响应字段（ArtifactCitation 兼容），缺失时不输出具体值。
+ * {@code sourceStatus=NO_ACCESS|DELETED} 时标题/片段为空串、定位字段为 {@code null}，遮蔽规则与 J1 一致。
  *
  * @param ordinal 序号，从 1 开始
  * @param sourceType 来源类型
@@ -24,6 +26,7 @@ import java.util.UUID;
  * @param sheetName 工作表名
  * @param cellRange 单元格范围
  * @param paragraphNo 段落号
+ * @param sourceStatus 引用可用性
  * @param title 标题
  * @param snippet 片段摘要；检索阶段没有片段时为空字符串
  * @param score 相关性分数
@@ -40,6 +43,7 @@ public record CitationResponse(
         String sheetName,
         String cellRange,
         Integer paragraphNo,
+        CitationSourceStatus sourceStatus,
         String title,
         String snippet,
         Double score) {
@@ -48,34 +52,36 @@ public record CitationResponse(
     private static final int MAX_SNIPPET_LENGTH = 1000;
 
     /**
-     * 将产物引用快照映射为响应。
+     * 将产物引用快照映射为响应，并按可用性遮蔽。
      *
      * @param citation 引用快照
      * @return 响应
      */
     public static CitationResponse from(ArtifactCitationSnapshot citation) {
         return new CitationResponse(
-                citation.ordinal(),
-                citation.sourceType(),
-                citation.fileId(),
-                citation.knowledgeDocumentId(),
-                null,
-                citation.mcpInvocationId(),
-                citation.locatorType(),
-                citation.pageNo(),
-                citation.sheetName(),
-                null,
-                citation.paragraphNo(),
-                citation.title(),
-                citation.snippet(),
-                null);
+                        citation.ordinal(),
+                        citation.sourceType(),
+                        citation.fileId(),
+                        citation.knowledgeDocumentId(),
+                        null,
+                        citation.mcpInvocationId(),
+                        citation.locatorType(),
+                        citation.pageNo(),
+                        citation.sheetName(),
+                        citation.cellRange(),
+                        citation.paragraphNo(),
+                        citation.sourceStatus(),
+                        citation.title(),
+                        citation.snippet(),
+                        null)
+                .masked();
     }
 
     /**
      * 将任务详情中的既有引用响应转换为统一引用响应。
      *
-     * <p>产物引用与检索来源字段集合不同：前者含 {@code mcpInvocationId}，后者可能有 {@code cellRange}；
-     * 统一响应保留两者可用字段，缺失值为 {@code null}。
+     * <p>产物引用与检索来源字段集合不同：前者含 {@code mcpInvocationId} 与 {@code cellRange}；统一响应保留两者
+     * 可用字段，缺失值为 {@code null}。已遮蔽的响应再次转换保持遮蔽。
      *
      * @param citation 既有引用响应
      * @return 统一引用响应
@@ -91,8 +97,9 @@ public record CitationResponse(
                 citation.locatorType(),
                 citation.pageNo(),
                 citation.sheetName(),
-                null,
+                citation.cellRange(),
                 citation.paragraphNo(),
+                citation.sourceStatus(),
                 citation.title(),
                 citation.snippet(),
                 null);
@@ -135,9 +142,63 @@ public record CitationResponse(
                 asString(source.get("sheetName")),
                 asString(source.get("cellRange")),
                 asInteger(source.get("paragraphNo")),
+                CitationSourceStatus.AVAILABLE,
                 title,
                 snippet == null ? "" : snippet,
                 asDouble(source.get("score")));
+    }
+
+    /**
+     * 复制引用并替换可用性；{@code NO_ACCESS}/{@code DELETED} 时同时遮蔽正文与定位。
+     *
+     * @param status 可用性
+     * @return 新响应
+     */
+    public CitationResponse withSourceStatus(CitationSourceStatus status) {
+        return new CitationResponse(
+                        ordinal,
+                        sourceType,
+                        fileId,
+                        knowledgeDocumentId,
+                        chunkId,
+                        mcpInvocationId,
+                        locatorType,
+                        pageNo,
+                        sheetName,
+                        cellRange,
+                        paragraphNo,
+                        status,
+                        title,
+                        snippet,
+                        score)
+                .masked();
+    }
+
+    /**
+     * 按当前 {@code sourceStatus} 应用遮蔽。
+     *
+     * @return 遮蔽后的响应；{@code AVAILABLE}/{@code UPDATED} 返回自身
+     */
+    private CitationResponse masked() {
+        if (sourceStatus != CitationSourceStatus.NO_ACCESS && sourceStatus != CitationSourceStatus.DELETED) {
+            return this;
+        }
+        return new CitationResponse(
+                ordinal,
+                sourceType,
+                fileId,
+                knowledgeDocumentId,
+                chunkId,
+                mcpInvocationId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                sourceStatus,
+                "",
+                "",
+                score);
     }
 
     /**

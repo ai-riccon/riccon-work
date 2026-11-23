@@ -108,7 +108,8 @@ public class ReportComposer {
                     chunk.pageNo(),
                     chunk.sheetName(),
                     chunk.cellRange(),
-                    chunk.paragraphNo()));
+                    chunk.paragraphNo(),
+                    null));
         }
         if (toolSource != null) {
             citations.add(new ReportCitation(
@@ -120,6 +121,7 @@ public class ReportComposer {
                     "MCP 工具 " + singleLine(toolSource.toolName()),
                     "结果摘要 sha256=" + toolSource.resultSha256() + "，" + toolSource.sizeBytes() + " 字节，耗时 "
                             + toolSource.durationMs() + " ms",
+                    null,
                     null,
                     null,
                     null,

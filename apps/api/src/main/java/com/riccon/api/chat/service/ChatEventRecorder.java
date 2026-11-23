@@ -4,6 +4,7 @@ import com.riccon.api.audit.domain.AdditionalAuditActions;
 import com.riccon.api.audit.domain.AuditEvent;
 import com.riccon.api.audit.service.AuditService;
 import com.riccon.api.chat.domain.CitationRecord;
+import com.riccon.api.chat.domain.CitationSourceStatus;
 import com.riccon.api.chat.repository.MessageRepository;
 import com.riccon.api.common.UuidV7;
 import com.riccon.api.run.repository.RunRepository;
@@ -11,13 +12,16 @@ import com.riccon.platform.common.tenant.TenantId;
 import com.riccon.platform.domain.audit.AuditActorType;
 import com.riccon.platform.domain.audit.AuditOutcome;
 import com.riccon.platform.domain.audit.AuditTargetType;
+import com.riccon.platform.domain.chat.CitationSourceType;
 import com.riccon.platform.domain.chat.MessageStatus;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -95,6 +99,9 @@ public class ChatEventRecorder {
     /**
      * 记录 citation 快照。
      *
+     * <p>知识库引用在同一事务内按文档 ID 批量读取当前 checksum 写入 {@code source_version}，供后续读取识别
+     * “源内容已更新”；FILE 引用不写版本。文档在事件落库前已删除时保持空版本，由读取时的删除标记覆盖。
+     *
      * @param tenantId 租户
      * @param messageId assistant 消息 ID
      * @param citations 已校验的引用
@@ -102,7 +109,17 @@ public class ChatEventRecorder {
     @Transactional
     public void recordCitations(TenantId tenantId, UUID messageId, List<ChatEventValidator.ParsedCitation> citations) {
         Instant now = clock.instant();
+        Set<UUID> documentIds = new LinkedHashSet<>();
         for (ChatEventValidator.ParsedCitation citation : citations) {
+            if (citation.sourceType() == CitationSourceType.KNOWLEDGE && citation.knowledgeDocumentId() != null) {
+                documentIds.add(citation.knowledgeDocumentId());
+            }
+        }
+        Map<UUID, String> sourceVersions = messageRepository.findKnowledgeChecksums(tenantId, documentIds);
+        for (ChatEventValidator.ParsedCitation citation : citations) {
+            String sourceVersion = citation.sourceType() == CitationSourceType.KNOWLEDGE
+                    ? sourceVersions.get(citation.knowledgeDocumentId())
+                    : null;
             CitationRecord record = new CitationRecord(
                     UuidV7.generate(now),
                     citation.ordinal(),
@@ -118,7 +135,9 @@ public class ChatEventRecorder {
                     citation.title(),
                     citation.snippet(),
                     citation.score(),
-                    now);
+                    now,
+                    sourceVersion,
+                    CitationSourceStatus.AVAILABLE);
             messageRepository.insertCitation(tenantId, messageId, record);
         }
     }

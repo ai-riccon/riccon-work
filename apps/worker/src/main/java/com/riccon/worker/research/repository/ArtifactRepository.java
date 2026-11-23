@@ -8,7 +8,9 @@ import com.riccon.worker.research.domain.ReportCitation;
 import com.riccon.worker.research.persistence.ArtifactJdbc;
 import com.riccon.worker.research.persistence.TenantRetentionJdbc;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -189,5 +191,16 @@ public class ArtifactRepository {
      */
     public List<ArtifactCitationRecord> findCitations(TenantId tenantId, UUID versionId) {
         return artifactJdbc.findCitations(tenantId, versionId);
+    }
+
+    /**
+     * 批量读取知识库文档当前 checksum，用于引用版本快照。
+     *
+     * @param tenantId 租户
+     * @param documentIds 文档 ID 列表
+     * @return 文档 ID 到 checksum 的映射
+     */
+    public Map<UUID, String> findKnowledgeChecksums(TenantId tenantId, Collection<UUID> documentIds) {
+        return artifactJdbc.findKnowledgeChecksums(tenantId, documentIds);
     }
 }

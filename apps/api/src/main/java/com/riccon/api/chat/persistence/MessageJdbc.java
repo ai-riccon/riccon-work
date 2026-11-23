@@ -1,6 +1,7 @@
 package com.riccon.api.chat.persistence;
 
 import com.riccon.api.chat.domain.CitationRecord;
+import com.riccon.api.chat.domain.CitationSourceStatus;
 import com.riccon.api.chat.domain.MessageRecord;
 import com.riccon.api.persistence.BinaryUuids;
 import com.riccon.api.persistence.SqlTimestamps;
@@ -16,6 +17,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -131,11 +133,11 @@ public class MessageJdbc {
             INSERT INTO message_citation (
                 tenant_id, id, message_id, ordinal, source_type, file_id, knowledge_document_id,
                 chunk_id, locator_type, page_no, sheet_name, cell_range, paragraph_no,
-                title_snapshot, snippet, score, created_at
+                title_snapshot, snippet, score, created_at, source_version
             ) VALUES (
                 :tenantId, :id, :messageId, :ordinal, :sourceType, :fileId, :knowledgeDocumentId,
                 :chunkId, :locatorType, :pageNo, :sheetName, :cellRange, :paragraphNo,
-                :titleSnapshot, :snippet, :score, :createdAt
+                :titleSnapshot, :snippet, :score, :createdAt, :sourceVersion
             ) ON DUPLICATE KEY UPDATE ordinal = ordinal
             """;
 
@@ -143,7 +145,7 @@ public class MessageJdbc {
     private static final String CITATION_COLUMNS =
             "id, message_id, ordinal, source_type, file_id, knowledge_document_id, chunk_id,"
                     + " locator_type, page_no, sheet_name, cell_range, paragraph_no,"
-                    + " title_snapshot, snippet, score, created_at";
+                    + " title_snapshot, snippet, score, created_at, source_version";
 
     /** 租户守卫数据访问入口。 */
     private final TenantJdbc tenantJdbc;
@@ -373,7 +375,48 @@ public class MessageJdbc {
         params.put("snippet", citation.snippet());
         params.put("score", citation.score());
         params.put("createdAt", SqlTimestamps.toDatabase(citation.createdAt()));
+        params.put("sourceVersion", citation.sourceVersion());
         tenantJdbc.insert(tenantId, INSERT_CITATION, params);
+    }
+
+    /**
+     * 批量读取知识库文档当前 checksum。
+     *
+     * <p>引用落库时一次查询取齐本消息涉及的文档版本，写入 {@code source_version} 快照；文档已被删除或跨租户时
+     * 不返回版本，引用保持空版本（读取时按 {@code DELETED}/{@code NO_ACCESS} 遮蔽）。
+     *
+     * @param tenantId 当前租户
+     * @param documentIds 文档 ID 列表
+     * @return 文档 ID 到 checksum 的映射
+     */
+    public Map<UUID, String> findKnowledgeChecksums(TenantId tenantId, Collection<UUID> documentIds) {
+        if (documentIds == null || documentIds.isEmpty()) {
+            return Map.of();
+        }
+        StringBuilder sql = new StringBuilder(
+                "SELECT id, checksum FROM knowledge_document WHERE tenant_id = :tenantId AND id IN (");
+        Map<String, Object> params = new LinkedHashMap<>();
+        int index = 0;
+        for (UUID documentId : documentIds) {
+            if (index > 0) {
+                sql.append(", ");
+            }
+            String name = "documentId" + index;
+            sql.append(':').append(name);
+            params.put(name, BinaryUuids.toBytes(documentId));
+            index++;
+        }
+        sql.append(')');
+        List<Map.Entry<UUID, String>> rows = tenantJdbc.query(
+                tenantId,
+                sql.toString(),
+                params,
+                (rs, rowNum) -> Map.entry(BinaryUuids.fromBytes(rs.getBytes("id")), rs.getString("checksum")));
+        Map<UUID, String> checksums = new LinkedHashMap<>(rows.size());
+        for (Map.Entry<UUID, String> row : rows) {
+            checksums.put(row.getKey(), row.getValue());
+        }
+        return checksums;
     }
 
     /**
@@ -465,6 +508,8 @@ public class MessageJdbc {
                 rs.getString("title_snapshot"),
                 rs.getString("snippet"),
                 score,
-                SqlTimestamps.toInstant(rs.getObject("created_at", LocalDateTime.class)));
+                SqlTimestamps.toInstant(rs.getObject("created_at", LocalDateTime.class)),
+                rs.getString("source_version"),
+                CitationSourceStatus.AVAILABLE);
     }
 }

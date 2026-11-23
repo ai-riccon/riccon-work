@@ -115,6 +115,33 @@ public record RunStageDetails(
     }
 
     /**
+     * 复制阶段详情并替换来源清单。
+     *
+     * <p>引用可用性按当前账号重新判定后，阶段详情里的 {@code sources} 也必须同步遮蔽，避免时间线泄露标题、
+     * 片段或定位（ADR-0023 第 5.4 节）。
+     *
+     * @param maskedSources 已计算可用性的来源；为空时保持为空
+     * @return 新的阶段详情
+     */
+    public RunStageDetails withSources(List<CitationResponse> maskedSources) {
+        List<CitationResponse> resolved =
+                maskedSources == null || maskedSources.isEmpty() ? null : List.copyOf(maskedSources);
+        return new RunStageDetails(
+                query,
+                querySha256,
+                hitCount,
+                invocationId,
+                toolId,
+                approvalId,
+                paramsPreview,
+                resultSummary,
+                generatedSha256,
+                generatedChars,
+                resolved,
+                extra);
+    }
+
+    /**
      * 解析检索来源数组。
      *
      * @param raw 原始 sources 值

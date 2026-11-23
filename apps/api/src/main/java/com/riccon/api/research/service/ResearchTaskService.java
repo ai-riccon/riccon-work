@@ -3,6 +3,9 @@ package com.riccon.api.research.service;
 import com.riccon.api.audit.domain.AdditionalAuditActions;
 import com.riccon.api.audit.domain.AuditEvent;
 import com.riccon.api.audit.service.AuditService;
+import com.riccon.api.chat.domain.CitationSourceState;
+import com.riccon.api.chat.domain.CitationSourceStatus;
+import com.riccon.api.chat.repository.CitationStatusRepository;
 import com.riccon.api.common.UuidV7;
 import com.riccon.api.error.BadRequestException;
 import com.riccon.api.error.ConflictException;
@@ -15,6 +18,7 @@ import com.riccon.api.quota.service.QuotaAdmissionService;
 import com.riccon.api.research.domain.ApprovalSnapshot;
 import com.riccon.api.research.domain.ArtifactCitationSnapshot;
 import com.riccon.api.research.domain.ArtifactSnapshot;
+import com.riccon.api.research.domain.ArtifactSourceType;
 import com.riccon.api.research.domain.ArtifactVersionSnapshot;
 import com.riccon.api.research.domain.McpInvocationSnapshot;
 import com.riccon.api.research.domain.ResearchTaskSnapshot;
@@ -27,6 +31,7 @@ import com.riccon.api.research.dto.ResearchTaskDetailResponse;
 import com.riccon.api.research.dto.ResearchTaskPageResponse;
 import com.riccon.api.research.dto.ResearchTaskResponse;
 import com.riccon.api.research.dto.RunStageDetails;
+import com.riccon.api.research.dto.RunStageResponse;
 import com.riccon.api.research.repository.ApprovalRepository;
 import com.riccon.api.research.repository.ArtifactRepository;
 import com.riccon.api.research.repository.McpInvocationRepository;
@@ -44,11 +49,14 @@ import com.riccon.platform.domain.research.ResearchTaskStatus;
 import com.riccon.platform.domain.research.RunStage;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,6 +107,9 @@ public class ResearchTaskService {
     /** 产物仓储。 */
     private final ArtifactRepository artifactRepository;
 
+    /** 引用源文档状态。 */
+    private final CitationStatusRepository citationStatusRepository;
+
     /** 工作空间可见性。 */
     private final WorkspaceService workspaceService;
 
@@ -121,6 +132,7 @@ public class ResearchTaskService {
      * @param approvalRepository 审批仓储
      * @param mcpInvocationRepository MCP 调用仓储
      * @param artifactRepository 产物仓储
+     * @param citationStatusRepository 引用源文档状态
      * @param workspaceService 工作空间可见性
      * @param quotaAdmissionService 配额准入
      * @param auditService 审计写入
@@ -134,6 +146,7 @@ public class ResearchTaskService {
             ApprovalRepository approvalRepository,
             McpInvocationRepository mcpInvocationRepository,
             ArtifactRepository artifactRepository,
+            CitationStatusRepository citationStatusRepository,
             WorkspaceService workspaceService,
             QuotaAdmissionService quotaAdmissionService,
             AuditService auditService,
@@ -145,6 +158,7 @@ public class ResearchTaskService {
         this.approvalRepository = Objects.requireNonNull(approvalRepository, "approvalRepository");
         this.mcpInvocationRepository = Objects.requireNonNull(mcpInvocationRepository, "mcpInvocationRepository");
         this.artifactRepository = Objects.requireNonNull(artifactRepository, "artifactRepository");
+        this.citationStatusRepository = Objects.requireNonNull(citationStatusRepository, "citationStatusRepository");
         this.workspaceService = Objects.requireNonNull(workspaceService, "workspaceService");
         this.quotaAdmissionService = Objects.requireNonNull(quotaAdmissionService, "quotaAdmissionService");
         this.auditService = Objects.requireNonNull(auditService, "auditService");
@@ -305,9 +319,10 @@ public class ResearchTaskService {
         List<RunStageSnapshot> stages = runId == null ? List.of() : runStageRepository.listByRun(tenantId, runId);
         List<ApprovalSnapshot> approvals = approvalRepository.listByTask(tenantId, task.id());
         List<McpInvocationSnapshot> invocations = mcpInvocationRepository.listByTask(tenantId, task.id());
-        ArtifactDetailResponse artifact = artifactDetail(tenantId, task.id());
-        List<CitationResponse> sources = resolveSources(stages, artifact);
-        return ResearchTaskDetailResponse.of(task, stages, approvals, invocations, sources, artifact);
+        List<RunStageResponse> stageResponses = stageResponses(tenantId, actor.userId(), stages);
+        ArtifactDetailResponse artifact = artifactDetail(tenantId, task.id(), actor.userId());
+        List<CitationResponse> sources = resolveSources(stageResponses, artifact);
+        return ResearchTaskDetailResponse.of(task, stageResponses, approvals, invocations, sources, artifact);
     }
 
     /**
@@ -339,16 +354,16 @@ public class ResearchTaskService {
     /**
      * 解析任务级来源清单。
      *
-     * <p>产物生成后以 {@code artifact_citation} 为权威快照；产物尚未生成或没有引用时，使用检索阶段
-     * {@code details.sources}，保证 J2 在等待审批时就能展示命中标题、定位与片段（M02-AC-07）。
+     * <p>产物生成后以 {@code artifact_citation} 为权威快照；产物尚未生成或没有引用时，使用已按当前权限遮蔽的
+     * 检索阶段 {@code details.sources}，保证 J2 在等待审批时就能展示命中标题、定位与片段（M02-AC-07）。
      * 两条路径都映射到同一 {@link CitationResponse}，前端无需区分数据来源。
      *
-     * @param stages 当前运行阶段时间线
+     * @param stages 已计算可用性的阶段时间线
      * @param artifact 产物详情；不存在时为 {@code null}
      * @return 来源清单；没有命中时为空列表
      */
     private static List<CitationResponse> resolveSources(
-            List<RunStageSnapshot> stages, ArtifactDetailResponse artifact) {
+            List<RunStageResponse> stages, ArtifactDetailResponse artifact) {
         if (artifact != null && artifact.currentVersionDetail() != null) {
             List<ArtifactCitationResponse> citations =
                     artifact.currentVersionDetail().citations();
@@ -356,32 +371,65 @@ public class ResearchTaskService {
                 return citations.stream().map(CitationResponse::from).toList();
             }
         }
-        return stageSources(stages);
-    }
-
-    /**
-     * 从检索阶段 details.sources 派生来源清单。
-     *
-     * <p>时间线按开始时间升序；重试会产生新的 RETRIEVAL 记录，因此保留最后一次非空结果，避免把失败尝试的
-     * 旧命中与最新结果混在一起。阶段详情由 {@link RunStageDetails} 统一清洗，这里不重复解析原始 JSON。
-     *
-     * @param stages 阶段时间线
-     * @return 来源清单；没有检索命中时为空列表
-     */
-    private static List<CitationResponse> stageSources(List<RunStageSnapshot> stages) {
         List<CitationResponse> latest = List.of();
-        for (RunStageSnapshot stage : stages) {
-            if (stage.stage() != RunStage.RETRIEVAL) {
+        for (RunStageResponse stage : stages) {
+            if (stage.stage() != RunStage.RETRIEVAL || stage.details() == null) {
                 continue;
             }
-            RunStageDetails details = RunStageDetails.from(stage.details());
-            if (details != null
-                    && details.sources() != null
-                    && !details.sources().isEmpty()) {
-                latest = details.sources();
+            List<CitationResponse> sources = stage.details().sources();
+            if (sources != null && !sources.isEmpty()) {
+                latest = sources;
             }
         }
         return latest;
+    }
+
+    /**
+     * 构造阶段时间线，并对每个阶段的检索来源应用同一遮蔽规则。
+     *
+     * <p>先跨阶段收集文档 ID 一次批量读取状态，避免逐阶段、逐条查询；阶段详情原始 JSON 不改写，只在响应映射时
+     * 遮蔽（ADR-0023 第 5.4 节）。
+     *
+     * @param tenantId 当前租户
+     * @param viewerId 当前账号
+     * @param stages 阶段快照
+     * @return 阶段响应
+     */
+    private List<RunStageResponse> stageResponses(TenantId tenantId, UUID viewerId, List<RunStageSnapshot> stages) {
+        if (stages.isEmpty()) {
+            return List.of();
+        }
+        Set<UUID> documentIds = new LinkedHashSet<>();
+        for (RunStageSnapshot stage : stages) {
+            RunStageDetails details = RunStageDetails.from(stage.details());
+            if (details == null || details.sources() == null) {
+                continue;
+            }
+            for (CitationResponse source : details.sources()) {
+                if (source.sourceType() == ArtifactSourceType.KNOWLEDGE && source.knowledgeDocumentId() != null) {
+                    documentIds.add(source.knowledgeDocumentId());
+                }
+            }
+        }
+        Map<UUID, CitationSourceState> states = citationStatusRepository.findStates(tenantId, viewerId, documentIds);
+        return stages.stream()
+                .map(stage -> RunStageResponse.from(stage, source -> withStageStatus(source, states)))
+                .toList();
+    }
+
+    /**
+     * 计算单个检索来源的可用性；检索阶段没有版本快照，不会出现 {@code UPDATED}。
+     *
+     * @param source 来源
+     * @param states 文档状态映射
+     * @return 带可用性与遮蔽的来源
+     */
+    private static CitationResponse withStageStatus(CitationResponse source, Map<UUID, CitationSourceState> states) {
+        if (source.sourceType() != ArtifactSourceType.KNOWLEDGE || source.knowledgeDocumentId() == null) {
+            return source.withSourceStatus(CitationSourceStatus.AVAILABLE);
+        }
+        CitationSourceState state = states.get(source.knowledgeDocumentId());
+        return source.withSourceStatus(state == null ? CitationSourceStatus.NO_ACCESS : state.statusFor(null));
     }
 
     /**
@@ -391,7 +439,7 @@ public class ResearchTaskService {
      * @param taskId 报告任务 ID
      * @return 产物详情
      */
-    private ArtifactDetailResponse artifactDetail(TenantId tenantId, UUID taskId) {
+    private ArtifactDetailResponse artifactDetail(TenantId tenantId, UUID taskId, UUID viewerId) {
         Optional<ArtifactSnapshot> artifact = artifactRepository.findByTask(tenantId, taskId);
         if (artifact.isEmpty()) {
             return null;
@@ -401,7 +449,7 @@ public class ResearchTaskService {
         if (snapshot.currentVersion() >= 1) {
             version = artifactRepository
                     .findVersion(tenantId, snapshot.id(), snapshot.currentVersion())
-                    .map(item -> withCitations(tenantId, item))
+                    .map(item -> withCitations(tenantId, viewerId, item))
                     .orElse(null);
         }
         return ArtifactDetailResponse.from(snapshot, version);
@@ -414,7 +462,7 @@ public class ResearchTaskService {
      * @param version 版本快照
      * @return 带引用的版本快照
      */
-    private ArtifactVersionSnapshot withCitations(TenantId tenantId, ArtifactVersionSnapshot version) {
+    private ArtifactVersionSnapshot withCitations(TenantId tenantId, UUID viewerId, ArtifactVersionSnapshot version) {
         List<ArtifactCitationSnapshot> citations = artifactRepository
                 .citationsByVersionIds(tenantId, List.of(version.id()))
                 .getOrDefault(version.id(), List.of());
@@ -428,7 +476,39 @@ public class ResearchTaskService {
                 version.sha256(),
                 version.summary(),
                 version.createdAt(),
-                citations);
+                withCitationStatus(tenantId, viewerId, citations));
+    }
+
+    /**
+     * 批量计算产物引用可用性。
+     *
+     * @param tenantId 当前租户
+     * @param viewerId 当前账号
+     * @param citations 引用快照
+     * @return 带可用性的引用
+     */
+    private List<ArtifactCitationSnapshot> withCitationStatus(
+            TenantId tenantId, UUID viewerId, List<ArtifactCitationSnapshot> citations) {
+        if (citations.isEmpty()) {
+            return List.of();
+        }
+        Set<UUID> documentIds = new LinkedHashSet<>();
+        for (ArtifactCitationSnapshot citation : citations) {
+            if (citation.sourceType() == ArtifactSourceType.KNOWLEDGE && citation.knowledgeDocumentId() != null) {
+                documentIds.add(citation.knowledgeDocumentId());
+            }
+        }
+        Map<UUID, CitationSourceState> states = citationStatusRepository.findStates(tenantId, viewerId, documentIds);
+        List<ArtifactCitationSnapshot> resolved = new ArrayList<>(citations.size());
+        for (ArtifactCitationSnapshot citation : citations) {
+            CitationSourceStatus status = CitationSourceStatus.AVAILABLE;
+            if (citation.sourceType() == ArtifactSourceType.KNOWLEDGE && citation.knowledgeDocumentId() != null) {
+                CitationSourceState state = states.get(citation.knowledgeDocumentId());
+                status = state == null ? CitationSourceStatus.NO_ACCESS : state.statusFor(citation.sourceVersion());
+            }
+            resolved.add(citation.withSourceStatus(status));
+        }
+        return List.copyOf(resolved);
     }
 
     /**

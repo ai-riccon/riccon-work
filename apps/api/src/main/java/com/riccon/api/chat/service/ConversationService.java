@@ -188,7 +188,7 @@ public class ConversationService {
         TenantId tenantId = TenantId.of(actor.tenantId());
         ConversationRecord conversation = requireAccessible(actor, conversationId);
         List<MessageRecord> messages =
-                messageRepository.listLatest(tenantId, conversation.id(), null, DETAIL_MESSAGE_LIMIT);
+                messageRepository.listLatest(tenantId, conversation.id(), null, DETAIL_MESSAGE_LIMIT, actor.userId());
         return ConversationDetailResponse.from(
                 conversation, messages.stream().map(MessageResponse::from).toList());
     }
@@ -276,7 +276,9 @@ public class ConversationService {
         ConversationRecord conversation = requireAccessible(actor, conversationId);
         long total = messageRepository.countByConversation(tenantId, conversation.id());
         List<MessageResponse> items =
-                messageRepository.listLatest(tenantId, conversation.id(), beforeSeq, page.size()).stream()
+                messageRepository
+                        .listLatest(tenantId, conversation.id(), beforeSeq, page.size(), actor.userId())
+                        .stream()
                         .map(MessageResponse::from)
                         .toList();
         return new MessagePageResponse(page.page(), page.size(), total, page.totalPages(total), items);

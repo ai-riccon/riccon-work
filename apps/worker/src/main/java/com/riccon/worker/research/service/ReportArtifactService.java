@@ -13,8 +13,12 @@ import com.riccon.worker.research.repository.ArtifactRepository;
 import com.riccon.worker.research.service.ArtifactStorage.StoredArtifact;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -110,8 +114,11 @@ public class ReportArtifactService {
                 stored.sha256(),
                 document.summary(),
                 createdBy);
+        // 引用落库前按文档 ID 批量取 checksum，写入 source_version 快照；不逐条查询（ADR-0023 §5.1）。
+        Map<UUID, String> sourceVersions =
+                repository.findKnowledgeChecksums(tenantId, knowledgeDocumentIds(document.citations()));
         for (ReportCitation citation : document.citations()) {
-            repository.insertCitation(tenantId, versionId, citation);
+            repository.insertCitation(tenantId, versionId, withSourceVersion(citation, sourceVersions));
         }
         auditService.artifactSaved(tenantId, traceId, null, artifact.id(), runId, nextVersion);
         ArtifactVersionRecord version = repository
@@ -126,6 +133,51 @@ public class ReportArtifactService {
                 nextVersion,
                 document.citations().size());
         return new SavedArtifact(artifact.id(), version, true);
+    }
+
+    /**
+     * 收集引用涉及的知识库文档 ID。
+     *
+     * @param citations 引用清单
+     * @return 去重后的文档 ID
+     */
+    private static Set<UUID> knowledgeDocumentIds(List<ReportCitation> citations) {
+        Set<UUID> documentIds = new LinkedHashSet<>();
+        for (ReportCitation citation : citations) {
+            if ("KNOWLEDGE".equals(citation.sourceType()) && citation.knowledgeDocumentId() != null) {
+                documentIds.add(citation.knowledgeDocumentId());
+            }
+        }
+        return documentIds;
+    }
+
+    /**
+     * 为知识库引用写入版本快照；FILE/MCP 引用保持空版本。
+     *
+     * @param citation 引用
+     * @param sourceVersions 文档 ID 到当前 checksum 的映射
+     * @return 带版本快照的引用
+     */
+    private static ReportCitation withSourceVersion(ReportCitation citation, Map<UUID, String> sourceVersions) {
+        String sourceVersion =
+                "KNOWLEDGE".equals(citation.sourceType()) ? sourceVersions.get(citation.knowledgeDocumentId()) : null;
+        if (sourceVersion == null) {
+            return citation;
+        }
+        return new ReportCitation(
+                citation.ordinal(),
+                citation.sourceType(),
+                citation.fileId(),
+                citation.knowledgeDocumentId(),
+                citation.mcpInvocationId(),
+                citation.title(),
+                citation.snippet(),
+                citation.locatorType(),
+                citation.pageNo(),
+                citation.sheetName(),
+                citation.cellRange(),
+                citation.paragraphNo(),
+                sourceVersion);
     }
 
     /**
