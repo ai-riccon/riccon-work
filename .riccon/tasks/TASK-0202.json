@@ -4,7 +4,7 @@
   "module_id": "M05",
   "title": "M05 fix：失败时间与保留策略界面明示（R-M05-06/07）",
   "owner": "riccon/builder-kb-web",
-  "status": "ready",
+  "status": "blocked",
   "write_scope": [
     "contracts/**",
     "apps/api/src/main/java/com/riccon/api/knowledge/dto/**",
@@ -22,9 +22,17 @@
     "AC-21 保留策略变更不追溯：界面明示（历史/新文档差异）并有组件/E2E 断言；不改变保留计算",
     "contract tests、API/worker 定向、pnpm -w test --coverage、a11y、e2e 通过；不 retry/skip/放宽"
   ],
-  "evidence": [],
+  "evidence": [
+    "EV-0954",
+    "EV-0955",
+    "EV-0956",
+    "EV-0957",
+    "EV-0958",
+    "EV-0959"
+  ],
   "tools_used": [],
-  "blocker": null,
+  "blocker": "M05 模块为 review_pending；修复任务需 Lead 先将模块转回 building，才能进入 in_progress/review（CLI ERR_MODULE_NOT_BUILDING）。代码与证据已完成于 b7b8c45/EV-0954..0959。",
   "created_at": "2026-11-24T00:42:42.220+08:00",
-  "updated_at": "2026-11-24T00:42:42.503+08:00"
+  "updated_at": "2026-11-24T01:24:45.609+08:00",
+  "baseline_commit": "eaa0adf"
 }
