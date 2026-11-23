@@ -2,7 +2,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/services/api/errors';
-import type { Department, SessionInfo } from '@/services/api/types';
+import type { Department, SessionInfo, WorkspaceFile } from '@/services/api/types';
 import type {
   KnowledgeApi,
   KnowledgeDocument,
@@ -86,6 +86,7 @@ function makeAcl(overrides: Partial<KnowledgeDocumentAcl> = {}): KnowledgeDocume
 function makeKnowledgeApi(overrides: Partial<KnowledgeApi> = {}): KnowledgeApi {
   return {
     listDocuments: vi.fn(async () => pageOf([makeDocument()])),
+    createDocument: vi.fn(async () => makeDocument({ id: 'doc-new' })),
     getDocument: vi.fn(async () => makeDocument()),
     getDocumentAcl: vi.fn(async () => makeAcl()),
     updateDocumentAcl: vi.fn(async () => makeDocument()),
@@ -137,12 +138,14 @@ function renderDrawer(
   session: SessionInfo = ADMIN_SESSION,
   userDirectory: KnowledgeUserDirectory = makeUserDirectory(),
   departments: Department[] = [makeDepartment()],
+  files: WorkspaceFile[] = [makeWorkspaceFile()],
 ) {
   return render(
     withProviders(
       <KnowledgeDrawer
         api={api}
         departments={departments}
+        listWorkspaceFiles={vi.fn(async () => files)}
         onClose={vi.fn()}
         open
         session={session}
@@ -150,6 +153,25 @@ function renderDrawer(
       />,
     ),
   );
+}
+
+/** 构造工作空间文件。 */
+function makeWorkspaceFile(overrides: Partial<WorkspaceFile> = {}): WorkspaceFile {
+  return {
+    id: 'file-1',
+    workspaceId: 'workspace-1',
+    conversationId: 'conversation-1',
+    originalName: '销售数据.xlsx',
+    format: 'XLSX',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    sizeBytes: 2048,
+    sha256: 'a'.repeat(64),
+    status: 'AVAILABLE',
+    parse: null,
+    createdAt: '2026-11-23T10:00:00+08:00',
+    deletedAt: null,
+    ...overrides,
+  };
 }
 
 describe('知识库列表', () => {
@@ -161,6 +183,9 @@ describe('知识库列表', () => {
     expect(screen.getAllByText('租户全员').length).toBeGreaterThan(0);
     expect(screen.getByText('本租户全员可见（创建人始终可见）')).toBeVisible();
     expect(screen.getByText('已索引')).toBeVisible();
+    expect(screen.getByTestId('knowledge-legacy-notice')).toHaveTextContent(
+      '历史文档默认全租户可见，可收紧',
+    );
     expect(screen.getByRole('button', { name: '查看文档：销售数据.xlsx' })).toBeVisible();
   });
 
@@ -301,7 +326,7 @@ describe('知识库详情与 ACL', () => {
         departmentId: 'dept-sales',
       });
     });
-    expect(await screen.findByTestId('knowledge-action-notice')).toHaveTextContent(
+    expect(await screen.findByTestId('knowledge-notice')).toHaveTextContent(
       '可见范围已保存，下一次请求生效。',
     );
   });
@@ -541,5 +566,57 @@ describe('下载与删除', () => {
       expect(api.listDocuments).toHaveBeenCalledTimes(2);
     });
     expect(screen.queryByTestId('knowledge-detail')).not.toBeInTheDocument();
+  });
+});
+
+describe('新文档登记入口', () => {
+  it('租户管理员可登记文档，成功后刷新列表并显示持久提示', async () => {
+    const created = makeDocument({
+      id: 'doc-new',
+      title: '新文档.xlsx',
+      status: 'PENDING',
+    });
+    const api = makeKnowledgeApi({
+      createDocument: vi.fn(async () => created),
+      getDocument: vi.fn(async (documentId: string) =>
+        documentId === created.id ? created : makeDocument(),
+      ),
+      listDocuments: vi
+        .fn()
+        .mockResolvedValueOnce(pageOf([makeDocument()]))
+        .mockResolvedValueOnce(pageOf([created, makeDocument()])),
+    });
+    renderDrawer(api);
+
+    fireEvent.click(await screen.findByTestId('knowledge-create-open'));
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: '源文件' }));
+    fireEvent.click(await screen.findByText(/销售数据\.xlsx · 2 KB/));
+    fireEvent.click(screen.getByRole('checkbox', { name: /我已确认可见范围影响/ }));
+    fireEvent.click(screen.getByTestId('knowledge-create-submit'));
+
+    await waitFor(() => {
+      expect(api.createDocument).toHaveBeenCalledWith(
+        {
+          title: '销售数据',
+          fileId: 'file-1',
+          visibility: 'TENANT',
+        },
+        expect.any(String),
+      );
+    });
+    expect(await screen.findByTestId('knowledge-notice')).toHaveTextContent(
+      '文档已登记并进入解析队列',
+    );
+    await waitFor(() => {
+      expect(api.listDocuments).toHaveBeenCalledTimes(2);
+    });
+    expect(await screen.findByTestId('knowledge-document-title')).toHaveTextContent('新文档.xlsx');
+  });
+
+  it('普通员工不显示登记入口', async () => {
+    renderDrawer(makeKnowledgeApi(), MEMBER_SESSION);
+
+    expect(await screen.findByText('销售数据.xlsx')).toBeVisible();
+    expect(screen.queryByTestId('knowledge-create-open')).not.toBeInTheDocument();
   });
 });

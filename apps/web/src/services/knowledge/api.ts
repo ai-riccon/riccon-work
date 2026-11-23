@@ -2,6 +2,7 @@ import { ApiError, toApiError } from '@/services/api/errors';
 import type {
   KnowledgeDocument,
   KnowledgeDocumentAcl,
+  KnowledgeDocumentCreateRequest,
   KnowledgeDocumentAclUpdate,
   KnowledgeDocumentPage,
   KnowledgeDocumentQuery,
@@ -33,6 +34,11 @@ export interface KnowledgeClientOptions {
 export interface KnowledgeApi {
   /** 按文档 ACL 列出当前账号可见的文档。 */
   listDocuments(query?: KnowledgeDocumentQuery): Promise<KnowledgeDocumentPage>;
+  /** 将已上传文件登记为新文档；保存前需确认可见范围。 */
+  createDocument(
+    input: KnowledgeDocumentCreateRequest,
+    idempotencyKey?: string,
+  ): Promise<KnowledgeDocument>;
   /** 读取单个文档详情；不可见统一 404。 */
   getDocument(documentId: string): Promise<KnowledgeDocument>;
   /** 读取文档 ACL；仅创建人或 `knowledge.acl.manage` 成功。 */
@@ -57,6 +63,8 @@ interface KnowledgeRequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: unknown;
   signal?: AbortSignal;
+  /** 幂等键等附加请求头。 */
+  extraHeaders?: Record<string, string>;
 }
 
 /**
@@ -148,6 +156,24 @@ export class KnowledgeClient implements KnowledgeApi {
       params.set('status', query.status);
     }
     return this.request<KnowledgeDocumentPage>(`/api/v1/knowledge/documents?${params.toString()}`);
+  }
+
+  /**
+   * 将已上传文件登记为知识库文档。
+   *
+   * @param input 标题、文件与可见范围
+   * @param idempotencyKey 可选幂等键
+   * @returns 已受理文档
+   */
+  createDocument(
+    input: KnowledgeDocumentCreateRequest,
+    idempotencyKey?: string,
+  ): Promise<KnowledgeDocument> {
+    return this.request<KnowledgeDocument>('/api/v1/knowledge/documents', {
+      method: 'POST',
+      body: input,
+      ...(idempotencyKey ? { extraHeaders: { 'Idempotency-Key': idempotencyKey } } : {}),
+    });
   }
 
   /**
@@ -315,6 +341,7 @@ export class KnowledgeClient implements KnowledgeApi {
         headers['Content-Type'] = 'application/json';
         body = JSON.stringify(options.body);
       }
+      Object.assign(headers, options.extraHeaders);
 
       const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
         method: options.method ?? 'GET',

@@ -47,7 +47,6 @@ export function SourceList({ sources, knowledgeApi }: SourceListProps) {
           return (
             <li key={`${source.ordinal}-${source.title || 'masked'}`}>
               <Button
-                aria-label={`查看引用详情：${citationListLabel(view)}`}
                 className="research-source-button"
                 data-testid={`research-source-${source.ordinal}`}
                 onClick={() => setActive(view)}

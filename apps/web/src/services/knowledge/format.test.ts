@@ -8,6 +8,8 @@ import {
   hasKnowledgePermission,
 } from './access';
 import {
+  citationStatusTagStyle,
+  describeKnowledgeCreateError,
   describeKnowledgeError,
   formatKnowledgeSize,
   knowledgeAclNameSummary,
@@ -16,12 +18,15 @@ import {
   knowledgeParseState,
   knowledgeParseStateDescription,
   knowledgeParseStateLabel,
+  knowledgeParseStateTagStyle,
   knowledgeRetentionText,
+  knowledgeStatusTagStyle,
   knowledgeSafeErrorMessage,
   knowledgeStatusColor,
   knowledgeStatusLabel,
   knowledgeVisibilityLabel,
   knowledgeVisibilitySummary,
+  knowledgeVisibilityTagStyle,
   knowledgeWarningTexts,
   parseEngineLabel,
   retentionPolicyLabel,
@@ -363,5 +368,45 @@ describe('ACL 名单摘要', () => {
       displayName: `用户${index}`,
     }));
     expect(knowledgeAclNameSummary(many)).toBe('用户0、用户1、用户2、用户3、用户4 等 7 人');
+  });
+});
+
+describe('M05 a11y 配色与登记错误', () => {
+  it('状态/范围/解析/引用 Tag 使用深色文字，不再依赖 antd success/error 低对比预设', () => {
+    expect(knowledgeStatusTagStyle('INDEXED')).toEqual({
+      color: '#237804',
+      background: '#f6ffed',
+      borderColor: '#b7eb8f',
+    });
+    expect(knowledgeStatusTagStyle('FAILED').color).toBe('#a8071a');
+    expect(knowledgeVisibilityTagStyle('TENANT').color).toBe('#0958d9');
+    expect(knowledgeParseStateTagStyle('partial').color).toBe('#ad6800');
+    expect(citationStatusTagStyle('AVAILABLE').color).toBe('#237804');
+    expect(citationStatusTagStyle('DELETED').color).toBe('#a8071a');
+    expect(citationStatusTagStyle('UPDATED').color).toBe('#ad6800');
+  });
+
+  it('登记错误覆盖 400/401/403/404/409/503 与未知异常', () => {
+    expect(
+      describeKnowledgeCreateError(
+        new ApiError('标题不能为空', { status: 400, code: 'RICCON-KB-400' }),
+      ),
+    ).toBe('标题不能为空');
+    expect(describeKnowledgeCreateError(new ApiError('x', { status: 401, code: 'A' }))).toContain(
+      '重新登录',
+    );
+    expect(describeKnowledgeCreateError(new ApiError('x', { status: 403, code: 'A' }))).toContain(
+      '没有登记知识库文档的权限',
+    );
+    expect(describeKnowledgeCreateError(new ApiError('x', { status: 404, code: 'A' }))).toContain(
+      '源文件不存在',
+    );
+    expect(describeKnowledgeCreateError(new ApiError('x', { status: 409, code: 'A' }))).toContain(
+      '已在知识库中',
+    );
+    expect(describeKnowledgeCreateError(new ApiError('x', { status: 503, code: 'A' }))).toContain(
+      '索引服务',
+    );
+    expect(describeKnowledgeCreateError(new Error('boom'))).toContain('未完成');
   });
 });

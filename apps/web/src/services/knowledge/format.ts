@@ -1,5 +1,5 @@
 import { ApiError } from '@/services/api/errors';
-import type { Department } from '@/services/api/types';
+import type { CitationSourceStatus, Department } from '@/services/api/types';
 import { formatOffsetDateTime } from '@/services/api/time';
 import type {
   KnowledgeDocument,
@@ -80,6 +80,98 @@ export function knowledgeStatusColor(
     case 'DELETED':
     default:
       return 'default';
+  }
+}
+
+/** 可访问性安全的 Tag 内联样式；避免 antd 预设 success/error 前景对比度不足（WCAG 2.1 AA）。 */
+export interface KnowledgeTagStyle {
+  color: string;
+  background: string;
+  borderColor: string;
+}
+
+/**
+ * 返回文档状态 Tag 的可访问配色。
+ *
+ * antd 6 filled `success`/`error` 预设色的前景对比度只有 2.2/2.98，
+ * 这里使用更深的文字色（与聊天解析状态一致的配色），不靠颜色单独传达状态。
+ *
+ * @param status 文档状态
+ * @returns 内联样式
+ */
+export function knowledgeStatusTagStyle(status: KnowledgeDocumentStatus): KnowledgeTagStyle {
+  switch (status) {
+    case 'INDEXED':
+      return { color: '#237804', background: '#f6ffed', borderColor: '#b7eb8f' };
+    case 'FAILED':
+      return { color: '#a8071a', background: '#fff1f0', borderColor: '#ffa39e' };
+    case 'INDEXING':
+      return { color: '#0958d9', background: '#e6f4ff', borderColor: '#91caff' };
+    case 'PENDING':
+    case 'DELETED':
+    default:
+      return { color: '#595959', background: '#fafafa', borderColor: '#d9d9d9' };
+  }
+}
+
+/**
+ * 返回可见范围 Tag 的可访问配色。
+ *
+ * @param visibility 可见范围
+ * @returns 内联样式
+ */
+export function knowledgeVisibilityTagStyle(visibility: KnowledgeVisibility): KnowledgeTagStyle {
+  switch (visibility) {
+    case 'TENANT':
+      return { color: '#0958d9', background: '#e6f4ff', borderColor: '#91caff' };
+    case 'DEPT':
+      return { color: '#1d39c4', background: '#f0f5ff', borderColor: '#adc6ff' };
+    case 'USERS':
+    default:
+      return { color: '#531dab', background: '#f9f0ff', borderColor: '#d3adf7' };
+  }
+}
+
+/**
+ * 返回解析状态 Tag 的可访问配色。
+ *
+ * @param state 解析状态
+ * @returns 内联样式
+ */
+export function knowledgeParseStateTagStyle(state: KnowledgeParseState): KnowledgeTagStyle {
+  switch (state) {
+    case 'success':
+      return knowledgeStatusTagStyle('INDEXED');
+    case 'loading':
+      return knowledgeStatusTagStyle('INDEXING');
+    case 'disabled':
+      return knowledgeStatusTagStyle('PENDING');
+    case 'low-confidence':
+    case 'partial':
+    case 'failed':
+    default:
+      return { color: '#ad6800', background: '#fffbe6', borderColor: '#ffe58f' };
+  }
+}
+
+/**
+ * 返回引用可用性 Tag 的可访问配色。
+ *
+ * @param status 引用可用性
+ * @returns 内联样式
+ */
+export function citationStatusTagStyle(
+  status: CitationSourceStatus | undefined,
+): KnowledgeTagStyle {
+  switch (status) {
+    case 'UPDATED':
+      return { color: '#ad6800', background: '#fffbe6', borderColor: '#ffe58f' };
+    case 'NO_ACCESS':
+    case 'DELETED':
+      return knowledgeStatusTagStyle('FAILED');
+    case 'AVAILABLE':
+    default:
+      return knowledgeStatusTagStyle('INDEXED');
   }
 }
 
@@ -512,6 +604,39 @@ export function formatKnowledgeSize(bytes: number): string {
     unit += 1;
   }
   return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unit]}`;
+}
+
+/**
+ * 把新文档登记错误映射为中文原因。
+ *
+ * 400 透传服务端字段校验 detail；403/404/409 使用固定文案，避免泄露对象是否存在。
+ *
+ * @param error 任意异常
+ * @returns 中文原因
+ */
+export function describeKnowledgeCreateError(error: unknown): string {
+  if (!(error instanceof ApiError)) {
+    return '文档登记未完成，请稍后重试。';
+  }
+  if (error.status === 401) {
+    return '登录状态已失效，请重新登录。';
+  }
+  if (error.status === 403) {
+    return '没有登记知识库文档的权限；仅租户管理员可以登记。';
+  }
+  if (error.status === 404) {
+    return '源文件不存在或已被删除，请刷新文件列表后重试。';
+  }
+  if (error.status === 409) {
+    return '该文件已在知识库中，或请求与当前状态冲突；请刷新列表后重试。';
+  }
+  if (error.status === 503) {
+    return '索引服务暂不可用，文档未登记；请稍后重试。';
+  }
+  if (error.status === 400) {
+    return error.message || '登记参数不正确，请检查标题、文件和可见范围。';
+  }
+  return '文档登记未完成，请稍后重试。';
 }
 
 /**

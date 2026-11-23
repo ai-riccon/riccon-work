@@ -290,6 +290,7 @@ function makeKnowledgeDocument(): KnowledgeDocument {
 function makeKnowledgeApi(): KnowledgeApi {
   return {
     listDocuments: vi.fn(async () => pageOf([makeKnowledgeDocument()])),
+    createDocument: vi.fn(async () => makeKnowledgeDocument()),
     getDocument: vi.fn(async () => makeKnowledgeDocument()),
     getDocumentAcl: vi.fn(async () => ({
       visibility: 'USERS' as const,

@@ -1,5 +1,6 @@
-import { BookOutlined, ReloadOutlined } from '@ant-design/icons';
+import { BookOutlined, FileAddOutlined, ReloadOutlined } from '@ant-design/icons';
 import {
+  Alert,
   Button,
   Drawer,
   Empty,
@@ -14,15 +15,17 @@ import {
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Department, SessionInfo } from '@/services/api/types';
+import type { Department, SessionInfo, WorkspaceFile } from '@/services/api/types';
 import { knowledgeUserDirectory as defaultKnowledgeUserDirectory } from '@/services/knowledge';
 import {
   describeKnowledgeError,
   knowledgeParseState,
   knowledgeParseStateLabel,
-  knowledgeStatusColor,
+  KNOWLEDGE_PERMISSIONS,
+  hasKnowledgePermission,
+  knowledgeStatusTagStyle,
   knowledgeStatusLabel,
-  knowledgeVisibilityColor,
+  knowledgeVisibilityTagStyle,
   knowledgeVisibilityLabel,
   knowledgeVisibilitySummary,
 } from '@/services/knowledge';
@@ -33,6 +36,7 @@ import type {
   KnowledgeDocumentStatus,
   KnowledgeUserDirectory,
 } from '@/services/knowledge';
+import { KnowledgeCreateModal } from './knowledge-create-modal';
 import { KnowledgeDetailPanel } from './knowledge-detail';
 import './knowledge.css';
 
@@ -52,6 +56,8 @@ export interface KnowledgeDrawerProps {
   userDirectory?: KnowledgeUserDirectory;
   /** 每页大小；测试可缩短。 */
   pageSize?: number;
+  /** 读取当前工作空间已上传文件；由 J1 页面注入。 */
+  listWorkspaceFiles?: () => Promise<WorkspaceFile[]>;
 }
 
 /** 列表状态筛选可选项。 */
@@ -80,6 +86,7 @@ export function KnowledgeDrawer({
   api = defaultKnowledgeApi,
   userDirectory = defaultKnowledgeUserDirectory,
   pageSize = 10,
+  listWorkspaceFiles = async () => [],
 }: KnowledgeDrawerProps) {
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [total, setTotal] = useState(0);
@@ -90,6 +97,8 @@ export function KnowledgeDrawer({
   const [forbidden, setForbidden] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const loadTokenRef = useRef(0);
 
   const selected = documents.find((document) => document.id === selectedId) ?? null;
@@ -149,6 +158,18 @@ export function KnowledgeDrawer({
     setPage(1);
   };
 
+  /**
+   * 打开文档详情；切换文档时清空上一条成功提示，避免串到另一个文档。
+   *
+   * @param documentId 文档 ID
+   */
+  const openDocument = (documentId: string): void => {
+    setNotice(null);
+    setSelectedId(documentId);
+  };
+
+  const canCreate = hasKnowledgePermission(session?.permissions, KNOWLEDGE_PERMISSIONS.manage);
+
   const columns: TableColumnsType<KnowledgeDocument> = [
     {
       title: '标题',
@@ -161,7 +182,7 @@ export function KnowledgeDrawer({
             {record.title}
           </Typography.Text>
           {record.sourceType === 'SEED' && <Tag>种子</Tag>}
-          {record.errorCode && <Tag color="red">待处理</Tag>}
+          {record.errorCode && <Tag style={knowledgeStatusTagStyle('FAILED')}>待处理</Tag>}
         </Flex>
       ),
     },
@@ -171,7 +192,7 @@ export function KnowledgeDrawer({
       className: 'knowledge-visibility-column',
       render: (_value, record) => (
         <Space orientation="vertical" size={0}>
-          <Tag color={knowledgeVisibilityColor(record.visibility)}>
+          <Tag style={knowledgeVisibilityTagStyle(record.visibility)}>
             {knowledgeVisibilityLabel(record.visibility)}
           </Tag>
           <Typography.Text
@@ -189,7 +210,7 @@ export function KnowledgeDrawer({
       width: 150,
       render: (_value, record) => (
         <Space orientation="vertical" size={0}>
-          <Tag color={knowledgeStatusColor(record.status)}>
+          <Tag style={knowledgeStatusTagStyle(record.status)}>
             {knowledgeStatusLabel(record.status)}
           </Tag>
           {record.status === 'INDEXED' && (
@@ -208,7 +229,7 @@ export function KnowledgeDrawer({
         <Button
           aria-label={`查看文档：${record.title}`}
           data-testid={`knowledge-open-${record.id}`}
-          onClick={() => setSelectedId(record.id)}
+          onClick={() => openDocument(record.id)}
           size="small"
           type="link"
         >
@@ -246,17 +267,55 @@ export function KnowledgeDrawer({
               style={{ minWidth: 140 }}
               value={status}
             />
-            <Button
-              aria-label="刷新知识库列表"
-              data-testid="knowledge-refresh"
-              icon={<ReloadOutlined />}
-              loading={loading}
-              onClick={() => setRefreshToken((token) => token + 1)}
-              size="small"
-            >
-              刷新
-            </Button>
+            <Flex gap={8} wrap>
+              <Button
+                aria-label="刷新知识库列表"
+                data-testid="knowledge-refresh"
+                icon={<ReloadOutlined />}
+                loading={loading}
+                onClick={() => setRefreshToken((token) => token + 1)}
+                size="small"
+              >
+                刷新
+              </Button>
+              {canCreate && (
+                <Button
+                  data-testid="knowledge-create-open"
+                  icon={<FileAddOutlined />}
+                  onClick={() => {
+                    setNotice(null);
+                    setCreateOpen(true);
+                  }}
+                  size="small"
+                  type="primary"
+                >
+                  登记文档
+                </Button>
+              )}
+            </Flex>
           </Flex>
+
+          <Alert
+            data-testid="knowledge-legacy-notice"
+            description="历史文档默认全租户可见，可收紧；新文档默认租户全员，保存前必须确认可见范围影响。"
+            showIcon
+            style={{ marginBottom: 12 }}
+            title="历史文档可见范围"
+            type="info"
+          />
+
+          {notice && (
+            <Alert
+              closable
+              data-testid="knowledge-notice"
+              description={notice}
+              onClose={() => setNotice(null)}
+              showIcon
+              style={{ marginBottom: 12 }}
+              title="操作已生效"
+              type="success"
+            />
+          )}
 
           {forbidden ? (
             <Result
@@ -335,6 +394,7 @@ export function KnowledgeDrawer({
                 setSelectedId(null);
                 setRefreshToken((token) => token + 1);
               }}
+              onNotice={setNotice}
               session={session}
               userDirectory={userDirectory}
             />
@@ -348,6 +408,22 @@ export function KnowledgeDrawer({
           )}
         </section>
       </div>
+
+      <KnowledgeCreateModal
+        api={api}
+        departments={departments}
+        listWorkspaceFiles={listWorkspaceFiles}
+        onClose={() => setCreateOpen(false)}
+        onCreated={(created) => {
+          setCreateOpen(false);
+          setNotice('文档已登记并进入解析队列；下一次列表请求可见。');
+          setSelectedId(created.id);
+          setRefreshToken((token) => token + 1);
+        }}
+        open={createOpen}
+        session={session}
+        userDirectory={userDirectory}
+      />
     </Drawer>
   );
 }

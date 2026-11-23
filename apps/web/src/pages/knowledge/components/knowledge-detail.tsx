@@ -11,7 +11,6 @@ import {
   Descriptions,
   Empty,
   Flex,
-  List,
   Popconfirm,
   Skeleton,
   Space,
@@ -36,9 +35,10 @@ import {
   knowledgeParseStateLabel,
   knowledgeRetentionText,
   knowledgeSafeErrorMessage,
-  knowledgeStatusColor,
+  knowledgeParseStateTagStyle,
+  knowledgeStatusTagStyle,
   knowledgeStatusLabel,
-  knowledgeVisibilityColor,
+  knowledgeVisibilityTagStyle,
   knowledgeVisibilityLabel,
   knowledgeVisibilitySummary,
   knowledgeWarningTexts,
@@ -71,6 +71,8 @@ export interface KnowledgeDetailPanelProps {
   onChanged: () => void;
   /** 删除成功后关闭详情。 */
   onDeleted: () => void;
+  /** 写入持久成功提示；由抽屉统一展示，刷新详情后仍保留。 */
+  onNotice: (message: string) => void;
 }
 
 /**
@@ -91,6 +93,7 @@ export function KnowledgeDetailPanel({
   onBack,
   onChanged,
   onDeleted,
+  onNotice,
 }: KnowledgeDetailPanelProps) {
   const [document, setDocument] = useState<KnowledgeDocument>(initialDocument);
   const [loading, setLoading] = useState(false);
@@ -104,7 +107,6 @@ export function KnowledgeDetailPanel({
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [reindexing, setReindexing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const canLoadAcl = hasKnowledgePermission(session?.permissions, KNOWLEDGE_PERMISSIONS.aclManage);
@@ -171,7 +173,6 @@ export function KnowledgeDetailPanel({
     setEditing(false);
     setDownloadError(null);
     setActionError(null);
-    setActionNotice(null);
     setNotFound(false);
     void loadDetail();
     void loadAcl();
@@ -185,11 +186,10 @@ export function KnowledgeDetailPanel({
   const handleReindex = async (force: boolean): Promise<void> => {
     setReindexing(true);
     setActionError(null);
-    setActionNotice(null);
     try {
       const updated = await api.reindexDocument(document.id, force);
       setDocument(updated);
-      setActionNotice(
+      onNotice(
         force
           ? '已受理整本重做；解析完成前不会产生重复文档或重复引用。'
           : '已受理缺失页补齐；成功后状态会更新。',
@@ -286,12 +286,7 @@ export function KnowledgeDetailPanel({
     <section aria-labelledby="knowledge-detail-title" data-testid="knowledge-detail">
       <Flex align="start" gap={12} justify="space-between" wrap>
         <Flex align="center" gap={8} wrap>
-          <Button
-            aria-label="返回知识库列表"
-            icon={<ArrowLeftOutlined />}
-            onClick={onBack}
-            size="small"
-          >
+          <Button icon={<ArrowLeftOutlined />} onClick={onBack} size="small">
             返回列表
           </Button>
           <Typography.Title
@@ -352,11 +347,11 @@ export function KnowledgeDetailPanel({
               title="确认删除该文档？"
             >
               <Button
-                danger
                 data-testid="knowledge-delete"
                 icon={<DeleteOutlined />}
                 loading={deleting}
                 size="small"
+                style={{ color: '#a8071a', borderColor: '#ffa39e', background: '#fff1f0' }}
               >
                 删除
               </Button>
@@ -373,7 +368,7 @@ export function KnowledgeDetailPanel({
             key: 'status',
             label: '状态',
             children: (
-              <Tag color={knowledgeStatusColor(document.status)} data-testid="knowledge-status">
+              <Tag style={knowledgeStatusTagStyle(document.status)} data-testid="knowledge-status">
                 {knowledgeStatusLabel(document.status)}
               </Tag>
             ),
@@ -383,7 +378,7 @@ export function KnowledgeDetailPanel({
             label: '可见范围',
             children: (
               <Space size={[4, 4]} wrap>
-                <Tag color={knowledgeVisibilityColor(document.visibility)}>
+                <Tag style={knowledgeVisibilityTagStyle(document.visibility)}>
                   {knowledgeVisibilityLabel(document.visibility)}
                 </Tag>
                 <span data-testid="knowledge-visibility">
@@ -461,17 +456,7 @@ export function KnowledgeDetailPanel({
           解析与识别状态
         </Typography.Title>
         <Flex align="center" gap={8} wrap>
-          <Tag
-            color={
-              parseState === 'success'
-                ? 'green'
-                : parseState === 'loading'
-                  ? 'blue'
-                  : parseState === 'disabled'
-                    ? 'default'
-                    : 'orange'
-            }
-          >
+          <Tag style={knowledgeParseStateTagStyle(parseState)}>
             {knowledgeParseStateLabel(parseState)}
           </Tag>
           {ocrConfidence && <Typography.Text type="secondary">{ocrConfidence}</Typography.Text>}
@@ -525,12 +510,11 @@ export function KnowledgeDetailPanel({
         )}
 
         {warnings.length > 0 && (
-          <List
-            data-testid="knowledge-warning-list"
-            dataSource={warnings}
-            renderItem={(warning) => <List.Item>{warning}</List.Item>}
-            size="small"
-          />
+          <ul className="knowledge-warning-list" data-testid="knowledge-warning-list">
+            {warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
         )}
 
         {sheets.length > 0 && (
@@ -543,7 +527,9 @@ export function KnowledgeDetailPanel({
               children: (
                 <Space size={[4, 4]} wrap>
                   <span>范围：{sheet.cellRange ?? '—'}</span>
-                  {sheet.indexed === false && <Tag color="orange">未索引</Tag>}
+                  {sheet.indexed === false && (
+                    <Tag style={knowledgeParseStateTagStyle('partial')}>未索引</Tag>
+                  )}
                   {sheet.indexedRange && sheet.indexedRange !== sheet.cellRange && (
                     <span>已索引：{sheet.indexedRange}</span>
                   )}
@@ -593,16 +579,6 @@ export function KnowledgeDetailPanel({
           type="error"
         />
       )}
-      {actionNotice && (
-        <Alert
-          data-testid="knowledge-action-notice"
-          description={actionNotice}
-          showIcon
-          title="已受理"
-          type="success"
-        />
-      )}
-
       <section
         aria-labelledby="knowledge-acl-title"
         className="knowledge-acl-section"
@@ -676,7 +652,7 @@ export function KnowledgeDetailPanel({
               setDocument(updated);
               setEditing(false);
               setActionError(null);
-              setActionNotice('可见范围已保存，下一次请求生效。');
+              onNotice('可见范围已保存，下一次请求生效。');
               void loadAcl();
               onChanged();
             }}

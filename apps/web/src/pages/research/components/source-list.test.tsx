@@ -30,7 +30,7 @@ describe('J2 检索来源列表', () => {
   it('点击来源打开引用详情，显示工作表区域与命中片段', async () => {
     render(withProviders(<SourceList sources={[makeSource()]} />));
 
-    fireEvent.click(screen.getByRole('button', { name: /查看引用详情：\[1\] 知识库：销售数据/ }));
+    fireEvent.click(screen.getByTestId('research-source-1'));
 
     expect(await screen.findByText('工作表 销售数据!B2:D10')).toBeVisible();
     expect(screen.getByTestId('citation-snippet')).toHaveTextContent(
@@ -58,7 +58,7 @@ describe('J2 检索来源列表', () => {
 
     expect(screen.getByText('该引用不可访问')).toBeVisible();
     expect(screen.queryByText('华东区第三季度销售额同比增长 18%。')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /查看引用详情：\[1\] 该引用不可访问/ }));
+    fireEvent.click(screen.getByTestId('research-source-1'));
     expect(await screen.findByTestId('citation-masked')).toBeVisible();
     expect(screen.queryByTestId('citation-title')).not.toBeInTheDocument();
   });

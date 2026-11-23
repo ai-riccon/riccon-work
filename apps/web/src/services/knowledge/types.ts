@@ -101,6 +101,15 @@ export interface KnowledgeDocumentAclUpdate {
   userIds?: string[];
 }
 
+/** 新文档登记请求，对应 OpenAPI `KnowledgeDocumentCreateRequest`。 */
+export interface KnowledgeDocumentCreateRequest {
+  title: string;
+  fileId: string;
+  visibility?: KnowledgeVisibility;
+  departmentId?: string | null;
+  userIds?: string[];
+}
+
 /** 文档列表查询参数；分页从 1 开始。 */
 export interface KnowledgeDocumentQuery {
   page?: number;

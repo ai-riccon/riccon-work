@@ -315,6 +315,19 @@ export default function ChatPage({
     [controller.activeConversationId, controller.conversations],
   );
 
+  /**
+   * 读取当前工作空间文件，供知识库登记弹窗选择。
+   *
+   * 知识库登记按工作空间文件授权，不依赖某个会话；文件列表由服务端按空间过滤。
+   */
+  const listKnowledgeFiles = useCallback(async () => {
+    if (!controller.workspace) {
+      return [];
+    }
+    const page = await api.listFiles(controller.workspace.id);
+    return page.items;
+  }, [api, controller.workspace]);
+
   const fileCount = controller.files.filter((file) => file.status !== 'DELETED').length;
   const atFileLimit = fileCount >= MAX_FILES_PER_CONVERSATION;
   const canUpload =
@@ -817,6 +830,7 @@ export default function ChatPage({
       <KnowledgeDrawer
         api={knowledgeApi}
         departments={management.manageableDepartments}
+        listWorkspaceFiles={listKnowledgeFiles}
         onClose={() => setKnowledgeOpen(false)}
         open={knowledgeOpen}
         session={auth.session}

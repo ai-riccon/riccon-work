@@ -72,6 +72,63 @@ describe('知识库 API 客户端', () => {
     expect(calls[0].init?.credentials).toBe('same-origin');
   });
 
+  it('登记文档使用 POST + CSRF + Idempotency-Key，并只发送契约字段', async () => {
+    const { fn, calls } = createFetch(() => json(documentPayload(), 202));
+    const client = new KnowledgeClient({
+      baseUrl: '',
+      fetchImpl: fn,
+      csrfTokenProvider: () => 'csrf-1',
+    });
+
+    await client.createDocument(
+      { title: '销售数据', fileId: 'file-1', visibility: 'DEPT', departmentId: 'dept-sales' },
+      'idem-key-1',
+    );
+
+    expect(calls[0].url).toBe('/api/v1/knowledge/documents');
+    expect(calls[0].init?.method).toBe('POST');
+    expect(calls[0].init?.body).toBe(
+      JSON.stringify({
+        title: '销售数据',
+        fileId: 'file-1',
+        visibility: 'DEPT',
+        departmentId: 'dept-sales',
+      }),
+    );
+    const headers = calls[0].init?.headers as Record<string, string>;
+    expect(headers['X-CSRF-TOKEN']).toBe('csrf-1');
+    expect(headers['Idempotency-Key']).toBe('idem-key-1');
+  });
+
+  it('登记 403/404/409 归一为 ApiError，不误报成功', async () => {
+    let attempt = 0;
+    const { fn } = createFetch(() => {
+      attempt += 1;
+      if (attempt <= 2) {
+        return problem(403, 'RICCON-AUTH-403');
+      }
+      if (attempt === 3) {
+        return problem(404, 'RICCON-TENANT-404');
+      }
+      return problem(409, 'RICCON-KB-409');
+    });
+    const client = new KnowledgeClient({
+      baseUrl: '',
+      fetchImpl: fn,
+      csrfTokenProvider: () => 'csrf-1',
+    });
+
+    await expect(client.createDocument({ title: 'forbidden', fileId: 'f1' })).rejects.toMatchObject(
+      { status: 403 },
+    );
+    await expect(client.createDocument({ title: 'missing', fileId: 'f1' })).rejects.toMatchObject({
+      status: 404,
+    });
+    await expect(client.createDocument({ title: 'conflict', fileId: 'f1' })).rejects.toMatchObject({
+      status: 409,
+    });
+  });
+
   it('详情与 ACL 使用契约路径', async () => {
     const { fn, calls } = createFetch((url) => {
       if (url.endsWith('/acl')) {

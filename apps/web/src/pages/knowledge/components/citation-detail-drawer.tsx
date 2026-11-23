@@ -5,6 +5,7 @@ import { knowledgeApi as defaultKnowledgeApi } from '@/services/knowledge';
 import type { KnowledgeApi } from '@/services/knowledge';
 import {
   citationAvailabilityDescription,
+  citationStatusTagStyle,
   citationAvailabilityLabel,
   citationBBoxText,
   citationConfidenceText,
@@ -116,19 +117,10 @@ export function CitationDetailDrawer({
         <Flex align="center" gap={8} wrap>
           <Tag color="blue">{citationSourceText(citation)}</Tag>
           <Typography.Text type="secondary">引用 [{citation.ordinal}]</Typography.Text>
-          <Tag
-            color={
-              citation.sourceStatus === 'NO_ACCESS' || citation.sourceStatus === 'DELETED'
-                ? 'red'
-                : citation.sourceStatus === 'UPDATED'
-                  ? 'orange'
-                  : 'green'
-            }
-            data-testid="citation-status"
-          >
+          <Tag style={citationStatusTagStyle(citation.sourceStatus)} data-testid="citation-status">
             {availability}
           </Tag>
-          {lowConfidence && <Tag color="orange">置信度低</Tag>}
+          {lowConfidence && <Tag style={citationStatusTagStyle('UPDATED')}>置信度低</Tag>}
         </Flex>
 
         {masked ? (
