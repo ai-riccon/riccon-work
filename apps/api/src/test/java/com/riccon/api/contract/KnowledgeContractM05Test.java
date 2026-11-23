@@ -8,23 +8,24 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * M05 知识库深度契约（{@code 1.4.0-m05}）。
+ * M05 知识库深度契约（{@code 1.5.0-m05b}）。
  *
- * <p>读取 {@code contracts/openapi.yaml} 断言：版本为 {@code 1.4.0-m05}；ACL 读取/整体替换、软删除、服务端流式下载与重索引端点
+ * <p>读取 {@code contracts/openapi.yaml} 断言：版本为 {@code 1.5.0-m05b}；ACL 读取/整体替换、软删除、服务端流式下载与重索引端点
  * 存在且权限/CSRF/错误码正确；{@code KnowledgeDocument} 与创建请求的 M05 字段、ACL schema、解析摘要、
  * {@code Citation}/{@code ArtifactCitation} 的 {@code bbox}/{@code ocrConfidence}/{@code sourceStatus} 齐全；
- * 不引入连接器端点或字段。测试只读契约，不调用真实端点（实现由 M05-B3 交付）。
+ * M05b 连接器端点作为 additive 增量存在，{@code KnowledgeDocument} 增加连接器来源字段且 {@code sourceType} 含 {@code CONNECTOR}，
+ * 不以 404/deferred 冒充实现。测试只读契约，不调用真实端点（实现由 M05-B3 / M05b-B6 交付）。
  */
 class KnowledgeContractM05Test {
 
     /** 契约根。 */
     private final Map<String, Object> document = OpenApiContract.load();
 
-    /** 版本、M05 端点集合、非 M05b 范围与既有模块回归面。 */
+    /** 版本、M05 端点集合、M05b additive 范围与既有模块回归面。 */
     @Test
-    @DisplayName("#contract 1.4.0-m05 版本、M05 端点与无连接器")
+    @DisplayName("#contract 1.5.0-m05b 版本、M05 端点与 M05b additive 增量")
     void contractVersionAndScope() {
-        assertThat(OpenApiContract.map(document.get("info")).get("version")).isEqualTo("1.4.0-m05");
+        assertThat(OpenApiContract.map(document.get("info")).get("version")).isEqualTo("1.5.0-m05b");
 
         assertThat(OpenApiContract.operation(document, "/api/v1/knowledge/documents/{documentId}/acl", "get"))
                 .isNotEmpty();
@@ -64,13 +65,31 @@ class KnowledgeContractM05Test {
                     .isNotEmpty();
         }
 
-        Map<String, Object> paths = OpenApiContract.map(document.get("paths"));
-        assertThat(paths.keySet()).noneMatch(path -> path.contains("/knowledge/connectors"));
+        for (String path : List.of(
+                "/api/v1/knowledge/connectors",
+                "/api/v1/knowledge/connectors/{connectorId}",
+                "/api/v1/knowledge/connectors/{connectorId}/credential",
+                "/api/v1/knowledge/connectors/{connectorId}/test",
+                "/api/v1/knowledge/connectors/{connectorId}/sync",
+                "/api/v1/knowledge/connectors/{connectorId}/items")) {
+            Map<String, Object> item = OpenApiContract.pathItem(document, path);
+            assertThat(item).as("M05b additive path: " + path).isNotEmpty();
+            for (String method : List.of("get", "post", "put", "patch", "delete")) {
+                Object operation = item.get(method);
+                if (operation != null) {
+                    assertThat(OpenApiContract.deferred(OpenApiContract.map(operation)))
+                            .as("M05b operation must not be deferred: " + method + " " + path)
+                            .isNull();
+                }
+            }
+        }
+
         Map<String, Object> knowledgeDocument = OpenApiContract.schema(document, "KnowledgeDocument");
-        assertThat(OpenApiContract.propertyNames(knowledgeDocument)).doesNotContain("connectorId", "externalId");
+        assertThat(OpenApiContract.propertyNames(knowledgeDocument)).contains("connectorId", "externalId");
         Map<String, Object> sourceType = OpenApiContract.map(
                 OpenApiContract.map(knowledgeDocument.get("properties")).get("sourceType"));
-        assertThat(OpenApiContract.stringList(sourceType.get("enum"))).containsExactlyInAnyOrder("UPLOAD", "SEED");
+        assertThat(OpenApiContract.stringList(sourceType.get("enum")))
+                .containsExactlyInAnyOrder("UPLOAD", "SEED", "CONNECTOR");
 
         String deferred = String.valueOf(document.get("x-riccon-deferred"));
         assertThat(deferred).doesNotContain("knowledge-acl-ocr").doesNotContain("knowledge-connectors");
@@ -160,6 +179,13 @@ class KnowledgeContractM05Test {
                         "retentionPolicy");
 
         Map<String, Object> properties = OpenApiContract.map(schema.get("properties"));
+        Map<String, Object> connectorId = OpenApiContract.map(properties.get("connectorId"));
+        assertThat(String.valueOf(connectorId.get("type"))).contains("null");
+        assertThat(connectorId.get("format")).isEqualTo("uuid");
+        Map<String, Object> externalId = OpenApiContract.map(properties.get("externalId"));
+        assertThat(String.valueOf(externalId.get("type"))).contains("null");
+        assertThat(String.valueOf(externalId.get("description"))).contains("末段", "对象 key", "bucket");
+        assertThat(OpenApiContract.required(schema)).doesNotContain("connectorId", "externalId");
         assertThat(OpenApiContract.map(properties.get("visibility")).get("$ref"))
                 .isEqualTo("#/components/schemas/KnowledgeVisibility");
         Map<String, Object> departmentId = OpenApiContract.map(properties.get("departmentId"));

@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
   title: Riccon API
-  version: 1.4.0-m05
+  version: 1.5.0-m05b
   description: |
-    Riccon M05 公开 REST 契约（J1 通用问答与文件处理、J2 市场调研报告、部门与空间数据范围、OIDC/SSO、审计查询与导出、模型路由/降级/多 key、配额与成本、知识库文档级 ACL/下载/重索引、Excel/OCR 引用定位）。
+    Riccon M05b 公开 REST 契约（J1 通用问答与文件处理、J2 市场调研报告、部门与空间数据范围、OIDC/SSO、审计查询与导出、模型路由/降级/多 key、配额与成本、知识库文档级 ACL/下载/重索引、Excel/OCR 引用定位、S3 兼容目录连接器）。
 
     ## 认证与会话
     - 内置账号：`tenantCode + username + password`；租户代码即 `tenant.id`。
@@ -52,7 +52,16 @@ info:
     - 引用可用性：`Citation`/`ArtifactCitation` 的 `sourceStatus` 取值 `AVAILABLE`/`NO_ACCESS`（ACL 撤销）/`DELETED`（源文档软删除）/`UPDATED`（源内容版本变化）；`NO_ACCESS`/`DELETED` 时 `title`/`snippet` 为空串、定位字段为 `null`，不返回正文，库内快照仅用于审计/取证。
     - 解析：`parseEngine` 记录 `PDFBOX`/`POI`/`TESSERACT`/`RAPIDOCR`/`NONE`；`warnings[]` 为白名单警告数组，不含原文；`parseSummary` 只含工作表/范围/空表/OCR 置信度等结构元数据。`force=true` 的重索引整本重做，缺省只补缺失页。
     - 保留：文档保留默认 180 天，租户策略可覆盖；`retentionPolicy` 取值 `DEPLOYMENT_DEFAULT`/`TENANT_POLICY`/`EXPLICIT`。软删除与保留到期后不再出现在列表与检索；物理对象与分块清理由 M09 承接，M05 不做物理删除。
-    - 本版本不含外部连接器；连接器契约（`1.5.0-m05b`）由 M05b 单独交付。
+    - 连接器导入文档的保留与删除传播见下节；M05b 只增加连接器端点与字段，不改变 M05 ACL/下载/引用语义。
+
+    ## 外部连接器（M05b）
+    - 连接器类型只有 S3 兼容目录（`type=S3`）；端点只来自部署允许列表 `RICCON_CONNECTOR_ENDPOINTS`，连接器只保存 `endpointId`，不接受任意 URL、查询串或重定向；未允许的端点、`http://` 与云元数据地址一律 400 `RICCON-KB-400` 且不发起连接。
+    - 创建必须显式提供 `defaultVisibility`（`TENANT`/`DEPT`），缺省返回 `RICCON-KB-400`，不依赖数据库默认值；`DEPT` 必须给 `defaultDepartmentId`。新建连接器状态为 `PAUSED`，完成连接测试后由管理员通过 PATCH 显式设为 `ACTIVE`；`ERROR` 由同步结果产生，不能通过 API 写入。
+    - 同步：`POST /api/v1/knowledge/connectors/{connectorId}/sync` 只受理并返回 202，实际同步由 Worker 执行；`scheduleEnabled=true` 时按部署固定周期 `RICCON_CONNECTOR_SYNC_INTERVAL_MINUTES` 计算 `nextSyncAt`，不支持 per-connector cron 或可视化调度。并发同步返回 409 `RICCON-KB-409`。
+    - 连接测试只做一次 `ListObjectsV2`（`max-keys=1`），空 bucket 也算成功；返回 `AUTH`/`NETWORK`/`ENDPOINT`/`CONFIG` 分类的中文原因，不写对象、不返回凭据、不返回端点 URL。
+    - 凭据 `PUT /api/v1/knowledge/connectors/{connectorId}/credential` 只写不读；服务端信封加密，响应/日志/审计只出现 `credentialMaskedHint`（如 `AKIA…7F2`）；轮换为覆盖写入，旧密文不保留。连接器软删除后密文保留 30 天，随后由 M09 维护任务置空。
+    - 同步删除仅在 `lastSyncComplete=true` 时传播；源端重现复用 tombstone（`generation+1`），不撞唯一键；部分/截断/超限一律不删除。连接器导入文档的 `sourceType=CONNECTOR`，`fileId` 为空、`connectorId`/`externalId` 非空；原文下载仍按文档 ACL 与既有下载端点执行。
+    - 权限：读 `knowledge.connector.read`，写 `knowledge.connector.manage`；当前仅 `TENANT_ADMIN` 持有。跨租户 `connectorId` 统一 `404 RICCON-TENANT-404`；同租户非管理员 `403 RICCON-AUTH-403`。
 
     ## 错误
     统一使用 RFC 9457 `application/problem+json`，至少包含 `type/title/status/code/traceId`。
@@ -66,8 +75,8 @@ info:
     事件载荷见 `contracts/events/sse/chat-event.v1.schema.json`；报告进度事件见
     `contracts/events/sse/run-progress.v1.schema.json`。审计导出下载返回 `text/csv`，不是流式事件。
 
-    ## 范围外（M05 后置）
-    MFA、审计哈希链/完整性证明、平台管理员跨租户审计明细、租户 BYO 模型凭据、模型价格编辑、多币种/汇率、账单对账、成本预聚合、外部知识库连接器（M05b）、MCP 注册/凭据托管（M07）、可视化编排（M06）、引用页图渲染/框选、物理对象与分块清理（M09）、知识库共享链接/匿名访问/跨租户共享。
+    ## 范围外（M05b 后）
+    MFA、审计哈希链/完整性证明、平台管理员跨租户审计明细、租户 BYO 模型凭据、模型价格编辑、多币种/汇率、账单对账、成本预聚合、MCP 注册/凭据托管（M07）、可视化编排（M06）、引用页图渲染/框选、物理对象与分块清理（M09）、知识库共享链接/匿名访问/跨租户共享。
   contact:
     name: Riccon 架构组
   license:
@@ -87,7 +96,7 @@ tags:
   - name: Conversations
     description: 会话、消息与流式回答
   - name: Knowledge
-    description: 知识库文档、文档级 ACL、服务端下载与重索引（M05）
+    description: 知识库文档、文档级 ACL、服务端下载、重索引与 S3 兼容目录连接器（M05/M05b）
   - name: Research
     description: 市场调研报告任务与运行时间线
   - name: Approvals
@@ -1225,6 +1234,273 @@ paths:
           $ref: "#/components/responses/KnowledgeConflict"
         "503":
           $ref: "#/components/responses/KnowledgeIndexUnavailable"
+  /api/v1/knowledge/connectors:
+    get:
+      tags: [Knowledge]
+      operationId: listConnectors
+      summary: 列出知识库连接器
+      description: |
+        分页返回本租户连接器列表；不含凭据、端点 URL、对象 key 或对象内容。跨租户连接器不出现。
+        `knowledge.connector.read`（当前仅 `TENANT_ADMIN`）；同租户非管理员返回 403 `RICCON-AUTH-403`。
+      x-riccon-permission: knowledge.connector.read
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: status
+          in: query
+          required: false
+          description: 按连接器状态过滤。
+          schema:
+            $ref: "#/components/schemas/ConnectorStatus"
+        - name: type
+          in: query
+          required: false
+          description: 按连接器类型过滤；M05b 只有 `S3`。
+          schema:
+            $ref: "#/components/schemas/ConnectorType"
+      responses:
+        "200":
+          description: 连接器列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectorPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/KnowledgeForbidden"
+    post:
+      tags: [Knowledge]
+      operationId: createConnector
+      summary: 创建知识库连接器
+      description: |
+        创建 S3 兼容目录连接器，默认状态 `PAUSED`；`defaultVisibility` 必须显式提供（`TENANT` 或 `DEPT`，`DEPT` 必须同时给 `defaultDepartmentId`），
+        缺省返回 400 `RICCON-KB-400`，不依赖数据库默认值。`endpointId` 必须来自部署允许列表，不能提交任意 URL。
+        凭据可选写入，只进不出；响应只返回 `credentialMaskedHint`。名称在租户内唯一（软删除后同名不可重建），冲突返回 409 `RICCON-KB-409`。
+        不支持 per-connector cron；`scheduleEnabled` 只表示是否参与部署固定周期同步。
+      x-riccon-permission: knowledge.connector.manage
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectorCreate"
+      responses:
+        "201":
+          description: 已创建的连接器（不含凭据）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Connector"
+        "400":
+          $ref: "#/components/responses/KnowledgeBadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/KnowledgeForbidden"
+        "409":
+          $ref: "#/components/responses/KnowledgeConflict"
+  /api/v1/knowledge/connectors/{connectorId}:
+    patch:
+      tags: [Knowledge]
+      operationId: updateConnector
+      summary: 更新知识库连接器
+      description: |
+        部分更新配置、默认可见范围、端点与调度开关；不支持修改 `type`、per-connector cron 或直接写入 `ERROR` 状态，未知字段返回 400 `RICCON-KB-400`。
+        显式启用/停用通过 `status=ACTIVE|PAUSED`；`ERROR` 只由同步结果产生，手动同步仍可重试。名称冲突返回 409 `RICCON-KB-409`。
+        跨租户或不存在返回 404 `RICCON-TENANT-404`；同租户非管理员返回 403 `RICCON-AUTH-403`。
+      x-riccon-permission: knowledge.connector.manage
+      parameters:
+        - $ref: "#/components/parameters/ConnectorId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectorUpdate"
+      responses:
+        "200":
+          description: 更新后的连接器（不含凭据）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Connector"
+        "400":
+          $ref: "#/components/responses/KnowledgeBadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/KnowledgeForbidden"
+        "404":
+          $ref: "#/components/responses/KnowledgeNotFound"
+        "409":
+          $ref: "#/components/responses/KnowledgeConflict"
+    delete:
+      tags: [Knowledge]
+      operationId: deleteConnector
+      summary: 软删除知识库连接器
+      description: |
+        软删除连接器并停止后续定时同步；`documents=KEEP`（默认）保留已导入文档，`documents=SOFT_DELETE` 同步软删除已导入文档并投递索引 DELETE。
+        凭据密文保留 30 天供误删恢复，随后由 M09 维护任务置空；不提供在线凭据清除端点。已导入文档的原文不返回对象 key 或 bucket。
+        跨租户或不存在返回 404 `RICCON-TENANT-404`；同租户非管理员返回 403 `RICCON-AUTH-403`。
+      x-riccon-permission: knowledge.connector.manage
+      parameters:
+        - $ref: "#/components/parameters/ConnectorId"
+        - name: documents
+          in: query
+          required: false
+          description: 已导入文档处置；默认 `KEEP`。
+          schema:
+            type: string
+            enum: [KEEP, SOFT_DELETE]
+            default: KEEP
+        - $ref: "#/components/parameters/CsrfToken"
+      responses:
+        "204":
+          description: 已软删除；已导入文档按 `documents` 处置
+        "400":
+          $ref: "#/components/responses/KnowledgeBadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/KnowledgeForbidden"
+        "404":
+          $ref: "#/components/responses/KnowledgeNotFound"
+  /api/v1/knowledge/connectors/{connectorId}/credential:
+    put:
+      tags: [Knowledge]
+      operationId: putConnectorCredential
+      summary: 写入或轮换连接器凭据
+      description: |
+        只写不读：凭据经信封加密入库（`purpose=connector-credential`），响应只返回 `credentialMaskedHint`，不返回明文、密文或 DEK。
+        重复写入即轮换，旧密文不保留；审计 `knowledge.connector.credential.changed` 只含 `credentialKeyId`/`maskedHint`，审计失败则写入失败。
+        凭据只在 Worker 内存中解密使用，API 不调用连接器源。跨租户或不存在返回 404 `RICCON-TENANT-404`；同租户非管理员返回 403 `RICCON-AUTH-403`。
+      x-riccon-permission: knowledge.connector.manage
+      parameters:
+        - $ref: "#/components/parameters/ConnectorId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectorCredential"
+      responses:
+        "200":
+          description: 写入后的连接器（仅掩码）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Connector"
+        "400":
+          $ref: "#/components/responses/KnowledgeBadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/KnowledgeForbidden"
+        "404":
+          $ref: "#/components/responses/KnowledgeNotFound"
+  /api/v1/knowledge/connectors/{connectorId}/test:
+    post:
+      tags: [Knowledge]
+      operationId: testConnector
+      summary: 连接测试
+      description: |
+        使用已托管凭据做一次 `ListObjectsV2`（`max-keys=1`）只读鉴权/连通性测试，空 bucket 也算成功；不写对象、不下载对象、不返回凭据或端点 URL。
+        失败时仍返回 200，`success=false` 且按 `AUTH`/`NETWORK`/`ENDPOINT`/`CONFIG` 分类给中文原因；配置非法返回 400 `RICCON-KB-400`，
+        连接器功能未启用或测试服务不可用返回 503 `RICCON-KB-503`。跨租户或不存在返回 404 `RICCON-TENANT-404`；同租户非管理员返回 403 `RICCON-AUTH-403`。
+      x-riccon-permission: knowledge.connector.manage
+      parameters:
+        - $ref: "#/components/parameters/ConnectorId"
+        - $ref: "#/components/parameters/CsrfToken"
+      responses:
+        "200":
+          description: 连接测试结果（不含凭据）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectorTestResult"
+        "400":
+          $ref: "#/components/responses/KnowledgeBadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/KnowledgeForbidden"
+        "404":
+          $ref: "#/components/responses/KnowledgeNotFound"
+        "503":
+          $ref: "#/components/responses/KnowledgeIndexUnavailable"
+  /api/v1/knowledge/connectors/{connectorId}/sync:
+    post:
+      tags: [Knowledge]
+      operationId: syncConnector
+      summary: 立即同步连接器
+      description: |
+        立即受理一次同步并返回 202，实际同步由 Worker 在 heavy 通道执行；同一连接器的并发同步返回 409 `RICCON-KB-409`，不排队重复同步。
+        成功后由部署固定周期与 `scheduleEnabled` 决定后续同步，不提供 per-connector cron；同步状态、计数与 `lastSyncComplete` 通过连接器详情与 items 查询。
+        连接器功能未启用或同步队列不可用返回 503 `RICCON-KB-503`；跨租户或不存在返回 404 `RICCON-TENANT-404`；同租户非管理员返回 403 `RICCON-AUTH-403`。
+      x-riccon-permission: knowledge.connector.manage
+      parameters:
+        - $ref: "#/components/parameters/ConnectorId"
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "202":
+          description: 已受理同步；不等待同步完成
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectorSyncAccepted"
+        "400":
+          $ref: "#/components/responses/KnowledgeBadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/KnowledgeForbidden"
+        "404":
+          $ref: "#/components/responses/KnowledgeNotFound"
+        "409":
+          $ref: "#/components/responses/KnowledgeConflict"
+        "503":
+          $ref: "#/components/responses/KnowledgeIndexUnavailable"
+  /api/v1/knowledge/connectors/{connectorId}/items:
+    get:
+      tags: [Knowledge]
+      operationId: listConnectorItems
+      summary: 分页查询连接器同步条目
+      description: |
+        分页返回源对象同步状态，不返回对象原文、对象 key 全文或 bucket/端点信息；`externalId` 只返回末段（最后 2 个路径段或 32 字符）。
+        `knowledge.connector.read`（当前仅 `TENANT_ADMIN`）；跨租户或不存在返回 404 `RICCON-TENANT-404`，同租户非管理员返回 403 `RICCON-AUTH-403`。
+      x-riccon-permission: knowledge.connector.read
+      parameters:
+        - $ref: "#/components/parameters/ConnectorId"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: status
+          in: query
+          required: false
+          description: 按同步条目状态过滤。
+          schema:
+            $ref: "#/components/schemas/ConnectorItemStatus"
+      responses:
+        "200":
+          description: 同步条目分页
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectorItemPage"
+        "400":
+          $ref: "#/components/responses/KnowledgeBadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/KnowledgeForbidden"
+        "404":
+          $ref: "#/components/responses/KnowledgeNotFound"
   /api/v1/workspaces/{workspaceId}/research-tasks:
     get:
       tags: [Research]
@@ -3609,6 +3885,13 @@ components:
       schema:
         type: string
         format: uuid
+    ConnectorId:
+      name: connectorId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     UserId:
       name: userId
       in: path
@@ -3820,19 +4103,19 @@ components:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
     KnowledgeBadRequest:
-      description: 知识库请求不合法（`RICCON-KB-400`）：可见范围与 `departmentId`/`userIds` 组合非法、`DEPT` 部门不存在或未启用、`USERS` 超过 200 人、用户不属于本租户或重索引参数非法
+      description: 知识库请求不合法（`RICCON-KB-400`）：可见范围与 `departmentId`/`userIds` 组合非法、`DEPT` 部门不存在或未启用、`USERS` 超过 200 人、用户不属于本租户、重索引参数非法，或连接器 `defaultVisibility` 缺省、`endpointId` 不在部署允许列表、`type` 非 `S3`、配置/凭据字段非法
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
     KnowledgeForbidden:
-      description: 已认证但在该文档上无所需能力（`RICCON-AUTH-403`）：文档已按 ACL 可见，但非创建人且非 `knowledge.acl.manage`，或缺少端点权限；不可见/跨租户仍返回 404
+      description: 已认证但在该文档或连接器上无所需能力（`RICCON-AUTH-403`）：文档已按 ACL 可见但非创建人且非 `knowledge.acl.manage`，或缺少 `knowledge.connector.read`/`knowledge.connector.manage`；不可见/跨租户仍返回 404
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
     KnowledgeNotFound:
-      description: 文档不存在、已软删除、跨租户/跨部门或未授权可见；统一 `RICCON-TENANT-404`，不泄露存在性
+      description: 文档或连接器不存在、已软删除、跨租户/跨部门或未授权可见；统一 `RICCON-TENANT-404`，不泄露存在性
       content:
         application/problem+json:
           schema:
@@ -3844,13 +4127,13 @@ components:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
     KnowledgeConflict:
-      description: 知识库状态冲突（`RICCON-KB-409`）：文档已软删除、正在索引或当前状态不允许该操作
+      description: 知识库状态冲突（`RICCON-KB-409`）：文档已软删除、正在索引或当前状态不允许该操作；连接器名称重复、同一连接器已有进行中的同步或状态不允许该操作
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
     KnowledgeIndexUnavailable:
-      description: 知识库索引队列或索引服务不可用（`RICCON-KB-503`）；不返回部分受理结果
+      description: 知识库索引队列、索引服务或连接器测试/同步服务不可用（`RICCON-KB-503`）；不返回部分受理结果
       content:
         application/problem+json:
           schema:
@@ -5132,10 +5415,19 @@ components:
           type: string
         sourceType:
           type: string
-          enum: [UPLOAD, SEED]
+          enum: [UPLOAD, SEED, CONNECTOR]
+          description: 文档来源；`CONNECTOR` 表示由 S3 兼容目录连接器导入（M05b），此时 `fileId` 为空、`connectorId` 非空。
         fileId:
           type: [string, "null"]
           format: uuid
+        connectorId:
+          type: [string, "null"]
+          format: uuid
+          description: 来源连接器；仅 `sourceType=CONNECTOR` 时非空，不返回连接器端点或 bucket。
+        externalId:
+          type: [string, "null"]
+          maxLength: 1000
+          description: 连接器源对象 ID（仅展示末段：最后 2 个路径段或 32 字符）；完整值只在库内用于比对，不返回对象 key 或 bucket。
         status:
           $ref: "#/components/schemas/KnowledgeDocumentStatus"
         checksum:
@@ -5343,6 +5635,369 @@ components:
             type: string
             format: uuid
       additionalProperties: false
+    ConnectorType:
+      type: string
+      enum: [S3]
+      description: 连接器类型；M05b 只支持 S3 兼容目录，不接受任意 URL 或非允许列表端点。
+    ConnectorVisibility:
+      type: string
+      enum: [TENANT, DEPT]
+      description: 连接器导入文档的默认可见范围；`TENANT` 本租户全员、`DEPT` 单个启用部门。创建必须显式提供，无 `USERS`。
+    ConnectorStatus:
+      type: string
+      enum: [ACTIVE, PAUSED, ERROR]
+      description: "`ACTIVE` 参与定时同步；`PAUSED` 只停定时、仍可手动同步；`ERROR` 表示最近同步失败、仍可手动重试。新建默认 `PAUSED`。"
+    ConnectorTargetStatus:
+      type: string
+      enum: [ACTIVE, PAUSED]
+      description: PATCH 可显式设置的状态；`ERROR` 由同步结果产生，不通过 API 写入。
+    ConnectorSyncStatus:
+      type: string
+      enum: [SUCCESS, PARTIAL, ERROR]
+      description: 最近一次同步结果；失败也写 `lastSyncFinishedAt`。
+    ConnectorItemStatus:
+      type: string
+      enum: [PENDING, SYNCED, SKIPPED, FAILED, DELETED]
+      description: 单个源对象同步状态；`SKIPPED` 含不支持格式或排除规则，`DELETED` 表示源端删除或连接器删除传播。
+    ConnectorTestCategory:
+      type: [string, "null"]
+      enum: [AUTH, NETWORK, ENDPOINT, CONFIG, null]
+      description: 连接测试失败分类；成功时为 `null`。原因文案为中文，不含凭据或端点 URL。
+    ConnectorConfig:
+      type: object
+      required: [bucket]
+      properties:
+        bucket:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: 桶名；响应原样返回，日志/审计只记截断摘要。
+        prefix:
+          type: string
+          maxLength: 1000
+          default: ""
+          description: 对象前缀；缺省根前缀。审计 details 只记 ≤200 字符摘要。
+        region:
+          type: [string, "null"]
+          maxLength: 64
+          description: S3 区域；为空时使用部署默认区域。
+        includeExtensions:
+          type: array
+          maxItems: 8
+          uniqueItems: true
+          description: 允许同步的扩展名；缺省使用部署白名单（`pdf`/`docx`/`xlsx`/`png`/`jpg`/`jpeg`/`txt`/`md`）。
+          items:
+            type: string
+            enum: [pdf, docx, xlsx, png, jpg, jpeg, txt, md]
+        excludeGlobs:
+          type: array
+          maxItems: 50
+          description: 排除的 glob 模式；最多 50 条。
+          items:
+            type: string
+            maxLength: 255
+      additionalProperties: false
+    Connector:
+      type: object
+      required:
+        [
+          id,
+          name,
+          type,
+          status,
+          endpointId,
+          config,
+          defaultVisibility,
+          scheduleEnabled,
+          lastSyncComplete,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        type:
+          $ref: "#/components/schemas/ConnectorType"
+        status:
+          $ref: "#/components/schemas/ConnectorStatus"
+        endpointId:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: 部署允许列表中的端点 ID；不返回端点 URL，也不能提交任意 URL。
+        config:
+          $ref: "#/components/schemas/ConnectorConfig"
+        defaultVisibility:
+          $ref: "#/components/schemas/ConnectorVisibility"
+        defaultDepartmentId:
+          type: [string, "null"]
+          format: uuid
+          description: 仅 `defaultVisibility=DEPT` 时非空；部门须为 `ACTIVE`。
+        credentialMaskedHint:
+          type: [string, "null"]
+          maxLength: 128
+          description: 凭据掩码（如 `AKIA…7F2`）；永不返回明文、密文或 DEK。
+        scheduleEnabled:
+          type: boolean
+          default: false
+          description: 是否参与部署固定周期同步；不代表每次同步都会成功。
+        nextSyncAt:
+          type: [string, "null"]
+          format: date-time
+          description: 下一次定时同步时间（ISO 8601 带偏移）；仅 `scheduleEnabled=true` 且连接器启用时非空。
+        lastSyncStartedAt:
+          type: [string, "null"]
+          format: date-time
+          description: 最近一次同步开始时间；失败也写。
+        lastSyncFinishedAt:
+          type: [string, "null"]
+          format: date-time
+          description: 最近一次同步结束时间；失败也写。
+        lastSyncStatus:
+          oneOf:
+            - $ref: "#/components/schemas/ConnectorSyncStatus"
+            - type: "null"
+        lastSyncComplete:
+          type: boolean
+          default: false
+          description: 最近一次 list 是否完整；只有完整才传播源端删除，部分/截断/超限不删除任何未见对象。
+        lastSuccessAt:
+          type: [string, "null"]
+          format: date-time
+        lastErrorCode:
+          type: [string, "null"]
+          maxLength: 64
+          description: 最近失败码（如 `KB_CONNECTOR_AUTH`/`KB_CONNECTOR_UNREACHABLE`/`KB_CONNECTOR_TIMEOUT`）；不含凭据或对象内容。
+        lastSyncSummary:
+          oneOf:
+            - $ref: "#/components/schemas/ConnectorSyncSummary"
+            - type: "null"
+        createdBy:
+          type: [string, "null"]
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    ConnectorPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Connector"
+    ConnectorCreate:
+      type: object
+      required: [name, type, endpointId, config, defaultVisibility]
+      description: 创建 S3 兼容目录连接器；`defaultVisibility` 必须显式提供，不接受 per-connector cron。
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        type:
+          $ref: "#/components/schemas/ConnectorType"
+        endpointId:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: 部署允许列表中的端点 ID；不在允许列表返回 400 `RICCON-KB-400`。
+        config:
+          $ref: "#/components/schemas/ConnectorConfig"
+        defaultVisibility:
+          $ref: "#/components/schemas/ConnectorVisibility"
+          description: 必须显式提供 `TENANT` 或 `DEPT`；缺省返回 400 `RICCON-KB-400`，不依赖数据库默认值。
+        defaultDepartmentId:
+          type: [string, "null"]
+          format: uuid
+          description: 仅 `defaultVisibility=DEPT` 时必填；部门须 `ACTIVE`。
+        scheduleEnabled:
+          type: boolean
+          default: false
+          description: 是否参与部署固定周期同步；周期由部署配置固定，不是 per-connector cron。
+        credential:
+          oneOf:
+            - $ref: "#/components/schemas/ConnectorCredential"
+            - type: "null"
+          description: 创建时可选写入凭据；只进不出，响应只返回 `credentialMaskedHint`。
+      additionalProperties: false
+    ConnectorUpdate:
+      type: object
+      minProperties: 1
+      description: 部分更新；不支持修改 `type`、per-connector cron 或直接写入 `ERROR` 状态，未知字段返回 400。
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        endpointId:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: 改为部署允许列表中的另一个端点 ID；不在允许列表返回 400。
+        config:
+          $ref: "#/components/schemas/ConnectorConfig"
+        defaultVisibility:
+          $ref: "#/components/schemas/ConnectorVisibility"
+        defaultDepartmentId:
+          type: [string, "null"]
+          format: uuid
+          description: 仅 `defaultVisibility=DEPT` 时非空。
+        scheduleEnabled:
+          type: boolean
+          description: 开启/关闭部署固定周期同步；不改变立即同步能力。
+        status:
+          $ref: "#/components/schemas/ConnectorTargetStatus"
+      additionalProperties: false
+    ConnectorCredential:
+      type: object
+      required: [accessKeyId, secretAccessKey]
+      description: 只写不读的 S3 凭据；服务端信封加密，响应/日志/审计只出现 `credentialMaskedHint`。
+      properties:
+        accessKeyId:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 256
+          description: S3 access key ID；只写不读。
+        secretAccessKey:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 1024
+          description: S3 secret access key；只写不读，日志与审计禁止出现。
+      additionalProperties: false
+    ConnectorTestResult:
+      type: object
+      required: [success, message, testedAt]
+      description: 连接测试结果；失败仍为 200，不返回凭据、对象内容或端点 URL。
+      properties:
+        success:
+          type: boolean
+        category:
+          $ref: "#/components/schemas/ConnectorTestCategory"
+        message:
+          type: string
+          maxLength: 500
+          description: 中文原因（成功/失败）；不含凭据、端点 URL、bucket 全名或对象 key。
+        testedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    ConnectorSyncAccepted:
+      type: object
+      required: [syncId, connectorId, status, acceptedAt]
+      description: 同步受理结果；不等待同步完成，状态通过连接器详情与 items 查询。
+      properties:
+        syncId:
+          type: string
+          format: uuid
+        connectorId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, RUNNING]
+        acceptedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    ConnectorSyncSummary:
+      type: object
+      required: [scanned, created, updated, skipped, failed, deleted, complete]
+      description: 最近一次同步计数；`complete=false` 时不得传播删除。
+      properties:
+        scanned:
+          type: integer
+          format: int64
+          minimum: 0
+        created:
+          type: integer
+          format: int64
+          minimum: 0
+        updated:
+          type: integer
+          format: int64
+          minimum: 0
+        skipped:
+          type: integer
+          format: int64
+          minimum: 0
+        failed:
+          type: integer
+          format: int64
+          minimum: 0
+        deleted:
+          type: integer
+          format: int64
+          minimum: 0
+        complete:
+          type: boolean
+          description: list 是否完整；只有完整才传播删除。
+      additionalProperties: false
+    ConnectorItem:
+      type: object
+      required: [id, externalId, status, generation, createdAt, updatedAt]
+      description: 连接器源对象同步状态；不返回对象原文、对象 key 全文或 bucket/端点信息。
+      properties:
+        id:
+          type: string
+          format: uuid
+        externalId:
+          type: string
+          maxLength: 512
+          description: 源对象 ID 展示值；只返回末段（最后 2 个路径段或 32 字符），完整值只在库内用于比对。
+        externalVersion:
+          type: [string, "null"]
+          maxLength: 255
+          description: ETag/version；用于增量同步，不保证跨源端稳定。
+        status:
+          $ref: "#/components/schemas/ConnectorItemStatus"
+        documentId:
+          type: [string, "null"]
+          format: uuid
+          description: 对应知识库文档；`SKIPPED`/`FAILED`/`DELETED` 时可为空或保留历史文档引用。
+        generation:
+          type: integer
+          minimum: 1
+          description: 同一 `externalId` 的删除-重现代数；复用 tombstone 时 +1。
+        errorCode:
+          type: [string, "null"]
+          maxLength: 64
+        lastSeenAt:
+          type: [string, "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        deletedAt:
+          type: [string, "null"]
+          format: date-time
+      additionalProperties: false
+    ConnectorItemPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/ConnectorItem"
     ResearchTask:
       type: object
       required: [id, workspaceId, topic, status, createdAt]
