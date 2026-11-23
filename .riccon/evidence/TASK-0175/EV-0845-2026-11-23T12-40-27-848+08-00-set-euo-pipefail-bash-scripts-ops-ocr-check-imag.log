@@ -1,0 +1,31 @@
+# command: set -euo pipefail; bash scripts/ops/ocr-check --image riccon-worker-ocr:o1a; git diff --check; grep -q "ocr-check" docs/RUNBOOK.md; grep -q "12" scripts/ops/restore-drill.mjs; node ~/.config/opencode/riccon/scripts/riccon.mjs contract validate --strict --project .; echo o1b-ok
+# cwd: /var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-ops-o1b-wt
+# started_at: 2026-11-23T12:40:13.077+08:00
+# finished_at: 2026-11-23T12:40:27.462+08:00
+# duration_ms: 14384
+# exit_code: 0
+
+# --- stdout ---
+== ocr-check 参数
+  image=riccon-worker-ocr:o1a
+  fixture=deploy/ocr/sample.png
+  lang=chi_sim+eng dpi=200
+  network=none（所有容器）
+  ok manifest engine=tesseract engineVersion=5.3.4-1build5 leptonica=1.82.0-3build4
+  ok 镜像 label 与 manifest 一致（含 tessdata 引用与权重哈希）
+  ok 权重 SHA256 与 manifest 一致
+  ok tesseract 5.3.4 / leptonica 1.82.0
+  ok 语言包 chi_sim/eng/osd 可用
+  ok 运行用户 uid=10001
+  ok --network none：容器无任何路由（/proc/net/route 仅表头）
+  ok 镜像 env 无 DB/OpenSearch/S3 依赖变量
+  ok OcrCli jar：/private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-ops-o1b-wt/apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar（本地构建产物；镜像 jar 早于 B5）
+     sha256=02066d0efbd76aaf7c681f9000696189eb880e5dadb7bdeabae5d3f2c5d1c58a
+  ok engine=tesseract text="RICCON OCR 12345" averageConfidence=0.922 blocks=1
+  ok bbox 存在：57,74,766,54
+ocr-check: OK image=riccon-worker-ocr:o1a jar=/private/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T/riccon-ops-o1b-wt/apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar（本地构建产物；镜像 jar 早于 B5） lang=chi_sim+eng text="RICCON OCR 12345" averageConfidence=0.922
+Project contract: OK (0 errors, 0 warnings)
+o1b-ok
+
+# --- stderr ---
+
