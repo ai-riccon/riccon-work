@@ -7,11 +7,14 @@
 //   PERF_M04_BASE_URL=http://127.0.0.1:18080 \
 //   k6 run e2e/perf/mvc-smoke.js
 //
-// 场景（PERF_M04_SCENARIO）：
+// 场景（PERF_M04_SCENARIO / PERF_M05_SCENARIO）：
 // - first_token：50 并发首字 p95 ≤ 3s；
 // - failover：50 并发 + 首字前故障注入（PERF_M04_FAILURE_MODE）后仍 100% 成功；
 // - quota：开关 true + 限额=已用+1，50 并发恰好 1 成功/49 个 429（零超卖）；
-// - cost：30/180 天成本查询 p95 ≤ 2s（需要 B7 cost API）。
+// - cost：30/180 天成本查询 p95 ≤ 2s（需要 B7 cost API）；
+// - knowledge（M05）：50 并发聊天（内部触发 10 万 chunk 检索）+ 列表/详情/ACL 读/
+//   下载 + 单 VU ACL 写 + 不可见文档 404；首字 p95 ≤3s、稳态 JSON API p95 ≤500ms。
+//   检索 p95 不在 k6 内断言，由 run.mjs 从 MySQL slow_log 汇总并写回报告。
 //
 // 测量口径：`m04_api_ms` 只统计稳态 JSON API（GET /runs、成本查询）；登录、workspace 列表、
 // 会话创建、开关/配额 setup 与 cleanup 不计入，避免认证 bcrypt 与每 VU 初始化把业务 API p95 拉偏。
@@ -26,8 +29,8 @@ import http from 'k6/http';
 import { check, fail, sleep } from 'k6';
 import { Counter, Rate, Trend } from 'k6/metrics';
 
-/** 当前场景；由 run.mjs 或 CI 显式指定。 */
-const scenario = (__ENV.PERF_M04_SCENARIO || 'first_token').trim();
+/** 当前场景；M05 知识库场景用 PERF_M05_SCENARIO，其余沿用 M04 变量。 */
+const scenario = (__ENV.PERF_M05_SCENARIO || __ENV.PERF_M04_SCENARIO || 'first_token').trim();
 
 /** API 根地址。 */
 const baseUrl = (__ENV.PERF_M04_BASE_URL || 'http://127.0.0.1:18080').replace(/\/$/, '');
@@ -44,6 +47,30 @@ const platformPassword = __ENV.PERF_M04_PLATFORM_PASSWORD || 'test-bootstrap-pas
 const workspaceId = __ENV.PERF_M04_WORKSPACE_ID || '';
 const failureMode = (__ENV.PERF_M04_FAILURE_MODE || 'server_error').trim();
 
+/**
+ * M05 知识库场景输入；由 run.mjs 在 seed 后注入。
+ *
+ * `PERF_M05_QUERY` 必须是能在 10 万 chunk 上命中一部分数据的稳定词；
+ * `PERF_M05_DOC_ID` 为员工可见文档，`PERF_M05_HIDDEN_DOC_ID` 为仅管理员可见
+ * （员工必须 404），`PERF_M05_ACL_DOC_ID` 为 ACL 写目标，`PERF_M05_DOWNLOAD_DOC_ID`
+ * 为可下载的真实上传文档。缺任一输入直接失败，避免把空场景当通过。
+ */
+const m05DocumentId = __ENV.PERF_M05_DOC_ID || '';
+const m05AclDocumentId = __ENV.PERF_M05_ACL_DOC_ID || '';
+const m05HiddenDocumentId = __ENV.PERF_M05_HIDDEN_DOC_ID || '';
+const m05DownloadDocumentId = __ENV.PERF_M05_DOWNLOAD_DOC_ID || '';
+const m05Query = __ENV.PERF_M05_QUERY || 'PERFKNOW';
+const m05AclUserIds = (() => {
+  try {
+    const parsed = JSON.parse(__ENV.PERF_M05_ACL_USER_IDS || '[]');
+    return Array.isArray(parsed)
+      ? parsed.filter((value) => typeof value === 'string' && value)
+      : [];
+  } catch (error) {
+    return [];
+  }
+})();
+
 /** 自定义指标；标签只保留场景/操作，不含租户或用户高基数标签。 */
 const firstTokenMs = new Trend('m04_first_token_ms', true);
 const chatStreamMs = new Trend('m04_chat_stream_ms', true);
@@ -56,6 +83,27 @@ const quotaAllowed = new Counter('m04_quota_allowed');
 const quotaRejected = new Counter('m04_quota_rejected');
 const costQueryMs = new Trend('m04_cost_query_ms', true);
 const costQueryOk = new Rate('m04_cost_query_ok');
+
+/** M05 指标：首字/API/ACL 写/下载与 ACL 负向检查。检索 p95 由 run.mjs 从 MySQL slow_log 计算。 */
+const m05FirstTokenMs = new Trend('m05_first_token_ms', true);
+const m05FirstTokenOk = new Rate('m05_first_token_ok');
+const m05ChatStreamMs = new Trend('m05_chat_stream_ms', true);
+const m05ChatTtfbMs = new Trend('m05_chat_submit_ttfb_ms', true);
+const m05ChatCitations = new Rate('m05_chat_citations');
+const m05ApiMs = new Trend('m05_api_ms', true);
+const m05ListMs = new Trend('m05_list_ms', true);
+const m05DetailMs = new Trend('m05_detail_ms', true);
+const m05ApiOk = new Rate('m05_api_ok');
+const m05ListOk = new Rate('m05_list_ok');
+const m05DetailOk = new Rate('m05_detail_ok');
+const m05AclGetOk = new Rate('m05_acl_get_ok');
+const m05RunDetailMs = new Trend('m05_run_detail_ms', true);
+const m05AclWriteMs = new Trend('m05_acl_write_ms', true);
+const m05AclWriteOk = new Rate('m05_acl_write_ok');
+const m05AclGetMs = new Trend('m05_acl_get_ms', true);
+const m05DownloadMs = new Trend('m05_download_ms', true);
+const m05DownloadOk = new Rate('m05_download_ok');
+const m05Denied404 = new Rate('m05_denied_404');
 
 /**
  * 解析并校验环境快照；缺少 profile 证据时直接失败，避免把默认 pool/stream 当成 perf 结果。
@@ -92,6 +140,10 @@ function loadEnvSnapshot() {
 
 const envSnapshot = loadEnvSnapshot();
 
+if (scenario === 'knowledge') {
+  requireKnowledgeInputs();
+}
+
 /** 场景级阈值；未列出的场景只记录指标，不伪造通过。 */
 function buildThresholds() {
   if (scenario === 'first_token') {
@@ -120,6 +172,28 @@ function buildThresholds() {
       m04_cost_query_ok: ['rate==1'],
     };
   }
+  if (scenario === 'knowledge') {
+    // 检索 p95 不在 k6 阈值内：ADR-0023 §9 要求先量测，超 500ms 由 run.mjs 标记
+    // decisionRequired 并触发 FTS/OpenSearch 决策，不在这里静默放宽或伪造阈值。
+    return {
+      m05_first_token_ms: ['p(95)<3000'],
+      m05_first_token_ok: ['rate>0.99'],
+      // 注意：k6 对 SSE 是整段缓冲，timings.waiting 接近完整流，不能当作首字预算。
+      // 检索对首字的影响通过 run.mjs 的 retrieval p95 + 服务端首字 p95 估算并在报告标注。
+      m05_api_ms: ['p(95)<500'],
+      m05_api_ok: ['rate>0.99'],
+      m05_list_ok: ['rate>0.99'],
+      m05_detail_ok: ['rate>0.99'],
+      m05_acl_get_ok: ['rate>0.99'],
+      m05_acl_write_ms: ['p(95)<500'],
+      m05_acl_write_ok: ['rate==1'],
+      m05_acl_get_ms: ['p(95)<500'],
+      m05_acl_get_ok: ['rate==1'],
+      m05_download_ok: ['rate>0.99'],
+      m05_denied_404: ['rate==1'],
+      m05_chat_citations: ['rate>0.99'],
+    };
+  }
   fail(`unknown PERF_M04_SCENARIO: ${scenario}`);
 }
 
@@ -146,6 +220,25 @@ function buildOptions() {
         vus: 2,
         duration: __ENV.PERF_M04_COST_DURATION || '15s',
         exec: 'costQuery',
+      },
+    },
+    knowledge: {
+      // 主负载：50 VU 同时做知识库聊天（内部触发检索）、列表、详情、ACL 读与下载；
+      // ACL 写由独立单 VU 场景并行执行，避免把写频率混入员工读路径。
+      knowledge: {
+        executor: 'constant-vus',
+        vus: 50,
+        duration: __ENV.PERF_M05_DURATION || '60s',
+        exec: 'knowledgeWorkload',
+      },
+      knowledge_acl_write: {
+        executor: 'per-vu-iterations',
+        vus: 1,
+        iterations: Number(__ENV.PERF_M05_ACL_WRITES || '10'),
+        // 避开 50 VU 同时登录的 bcrypt/凭据行锁冷启动，只测稳态 ACL 写。
+        startTime: __ENV.PERF_M05_ACL_START || '15s',
+        maxDuration: '60s',
+        exec: 'knowledgeAclWrite',
       },
     },
   };
@@ -281,10 +374,11 @@ function assertSession(current, label, expectedTenant, expectedUser, expectedRol
  * @param {string} path 路径
  * @param {object} [body] JSON 体
  * @param {object} [params] k6 参数覆盖
- * @param {boolean} [measure] 是否计入 m04_api_ms；认证/工作空间/会话/setup 传 false
+ * @param {boolean} [measure] 是否计入 API 指标；认证/工作空间/会话/setup 传 false
+ * @param {'m04'|'m05'} [series] 指标序列；M05 场景写 m05_api_ms，避免污染 M04 基线
  * @returns {object} k6 响应
  */
-function api(current, method, path, body, params = {}, measure = true) {
+function api(current, method, path, body, params = {}, measure = true, series = 'm04') {
   // 每次请求前清空 jar，确保只发送当前角色的显式 Cookie（V2 F-004）。
   clearCookieJar();
   const headers = {
@@ -307,7 +401,11 @@ function api(current, method, path, body, params = {}, measure = true) {
   );
   const kind = paramTags?.kind || 'api';
   if (measure && kind === 'api') {
-    apiMs.add(response.timings.duration, { op: paramTags?.op || 'api' });
+    if (series === 'm05') {
+      m05ApiMs.add(response.timings.duration, { op: paramTags?.op || 'api' });
+    } else {
+      apiMs.add(response.timings.duration, { op: paramTags?.op || 'api' });
+    }
   }
   return response;
 }
@@ -367,16 +465,19 @@ function ensureContext() {
  * @param {object} current 会话
  * @param {string} conversation 对话 ID
  * @param {string} tag 场景标签
+ * @param {string} [content] 消息内容；M05 用可命中知识库的查询词
+ * @param {'m04'|'m05'} [series] 指标序列
  * @returns {{status: number, runId: string|null, body: string, duration: number}} 结果
  */
-function sendChat(current, conversation, tag) {
+function sendChat(current, conversation, tag, content, series = 'm04') {
   const startedAt = Date.now();
+  const message = content || 'PERF-M04 首字与降级冒烟，请返回固定演示内容。';
   const response = api(
     current,
     'POST',
     `/api/v1/conversations/${conversation}/messages`,
     {
-      content: 'PERF-M04 首字与降级冒烟，请返回固定演示内容。',
+      content: message,
       clientMessageId: `perf-${__VU}-${__ITER}-${Date.now()}`,
     },
     {
@@ -391,11 +492,16 @@ function sendChat(current, conversation, tag) {
     },
   );
   const duration = Date.now() - startedAt;
-  chatStreamMs.add(duration, { scenario: tag });
   // 聊天提交是 SSE 端点：`ChatService.send` 返回前会等待 Worker 的 started 事件，
   // TTFB 含 Worker 排队/路由（本矩阵中约 1.4s），不能并入 500ms 的 JSON API 预算；
-  // 这里单独记录 TTFB，完整流时长仍由 m04_chat_stream_ms 记录。
-  chatSubmitTtfbMs.add(response.timings.waiting, { scenario: tag });
+  // 这里单独记录 TTFB，完整流时长仍由聊天流指标记录。
+  if (series === 'm05') {
+    m05ChatStreamMs.add(duration, { scenario: tag });
+    m05ChatTtfbMs.add(response.timings.waiting, { scenario: tag });
+  } else {
+    chatStreamMs.add(duration, { scenario: tag });
+    chatSubmitTtfbMs.add(response.timings.waiting, { scenario: tag });
+  }
   let runId = null;
   if (response.status === 200) {
     const match = /"runId":"([0-9a-f-]{36})"/.exec(response.body || '');
@@ -409,9 +515,10 @@ function sendChat(current, conversation, tag) {
  *
  * @param {object} current 会话
  * @param {string} runId 运行 ID
+ * @param {'m04'|'m05'} [series] 指标序列
  * @returns {{ok: boolean, firstToken: number|null, status: string|null}} 结果
  */
-function readFirstToken(current, runId) {
+function readFirstToken(current, runId, series = 'm04') {
   if (!runId) {
     return { ok: false, firstToken: null, status: null };
   }
@@ -419,7 +526,12 @@ function readFirstToken(current, runId) {
   const response = api(current, 'GET', `/api/v1/runs/${runId}`, undefined, {
     tags: { kind: 'api', op: 'run-detail' },
   });
-  runDetailMs.add(Date.now() - startedAt, { op: 'run-detail' });
+  const detailMs = Date.now() - startedAt;
+  if (series === 'm05') {
+    m05RunDetailMs.add(detailMs, { op: 'run-detail' });
+  } else {
+    runDetailMs.add(detailMs, { op: 'run-detail' });
+  }
   if (!check(response, { '运行详情 200': (r) => r.status === 200 })) {
     return { ok: false, firstToken: null, status: null };
   }
@@ -450,6 +562,229 @@ export function firstToken() {
     首字存在且成功: (value) => value.ok,
     '首字 ≤ 3000ms': (value) => value.ok && value.firstToken <= 3000,
   });
+}
+
+/**
+ * 校验 M05 场景输入；缺失时立即失败，避免用空文档 ID 跑出假绿。
+ */
+function requireKnowledgeInputs() {
+  const missing = [];
+  if (!m05DocumentId) {
+    missing.push('PERF_M05_DOC_ID');
+  }
+  if (!m05AclDocumentId) {
+    missing.push('PERF_M05_ACL_DOC_ID');
+  }
+  if (!m05HiddenDocumentId) {
+    missing.push('PERF_M05_HIDDEN_DOC_ID');
+  }
+  if (!m05DownloadDocumentId) {
+    missing.push('PERF_M05_DOWNLOAD_DOC_ID');
+  }
+  if (m05AclUserIds.length === 0) {
+    missing.push('PERF_M05_ACL_USER_IDS');
+  }
+  if (missing.length > 0) {
+    fail(
+      `knowledge scenario requires ${missing.join(', ')}; run scripts/real-stack/run.mjs --mode=perf with PERF_M05_SCENARIO=knowledge`,
+    );
+  }
+}
+
+/**
+ * 读取 M05 文档详情（计入 m05_api_ms；ACL 不可见时返回 404）。
+ *
+ * @param {object} current 会话
+ * @param {string} documentId 文档 ID
+ * @param {string} op 指标标签
+ * @param {boolean} [measure] 是否计入 m05_api_ms 与 m05_detail_ms
+ * @returns {{status: number, body: string}} 精简结果
+ */
+function knowledgeDetail(current, documentId, op, measure = true) {
+  const startedAt = Date.now();
+  const response = api(
+    current,
+    'GET',
+    `/api/v1/knowledge/documents/${documentId}`,
+    undefined,
+    { tags: { kind: 'api', op } },
+    measure,
+    'm05',
+  );
+  if (measure) {
+    m05DetailMs.add(Date.now() - startedAt, { op });
+  }
+  return { status: response.status, body: response.body || '' };
+}
+
+/**
+ * M05 主负载：50 VU 并发聊天（内部触发 10 万 chunk 检索）、列表、详情、ACL 读、下载与 ACL 负向检查。
+ *
+ * 检索耗时不在 HTTP 响应里单独暴露；本函数只负责制造并发与记录首字/API 指标，
+ * 检索 p95 由 run.mjs 从 MySQL slow_log 中同一条 LIKE 语句的执行时间计算。
+ */
+export function knowledgeWorkload() {
+  const current = ensureContext();
+  const chat = sendChat(current.session, current.conversationId, 'knowledge-chat', m05Query, 'm05');
+  const chatOk = chat.status === 200;
+  m05ChatCitations.add(
+    chatOk &&
+      /riccon\.chat\.citation\.v1/.test(chat.body) &&
+      /"sourceType"\s*:\s*"KNOWLEDGE"/.test(chat.body),
+  );
+  const first = readFirstToken(current.session, chat.runId, 'm05');
+  m05FirstTokenOk.add(chatOk && first.ok);
+  if (first.ok) {
+    m05FirstTokenMs.add(first.firstToken, { scenario: 'knowledge' });
+  }
+  check(first, {
+    知识库聊天首字存在且成功: (value) => value.ok,
+  });
+
+  // 列表/详情计入 500ms 的稳态 JSON API 预算。
+  const listStartedAt = Date.now();
+  const list = api(
+    current.session,
+    'GET',
+    '/api/v1/knowledge/documents?page=1&size=20',
+    undefined,
+    { tags: { kind: 'api', op: 'knowledge-list' } },
+    true,
+    'm05',
+  );
+  m05ListMs.add(Date.now() - listStartedAt, { op: 'knowledge-list' });
+  m05ApiOk.add(list.status === 200);
+  m05ListOk.add(list.status === 200);
+  const detail = knowledgeDetail(current.session, m05DocumentId, 'knowledge-detail');
+  m05ApiOk.add(detail.status === 200);
+  m05DetailOk.add(detail.status === 200);
+
+  // 下载是流式代理，单独记录时长与成功率，不与 500ms JSON 预算混算。
+  const downloadStartedAt = Date.now();
+  const download = api(
+    current.session,
+    'GET',
+    `/api/v1/knowledge/documents/${m05DownloadDocumentId}/download`,
+    undefined,
+    {
+      responseType: 'binary',
+      tags: { kind: 'download', op: 'knowledge-download' },
+      timeout: __ENV.PERF_M05_DOWNLOAD_TIMEOUT || '30s',
+    },
+    false,
+    'm05',
+  );
+  m05DownloadMs.add(Date.now() - downloadStartedAt, { op: 'knowledge-download' });
+  const downloadBytes = download.body ? (download.body.byteLength ?? download.body.length ?? 0) : 0;
+  const downloadContentLength = Number(
+    download.headers?.['Content-Length'] ?? download.headers?.['content-length'] ?? 0,
+  );
+  m05DownloadOk.add(download.status === 200 && (downloadBytes > 0 || downloadContentLength > 0));
+
+  // ACL 负向：仅管理员可见的文档，员工详情与下载都必须统一 404。
+  const hiddenDetail = knowledgeDetail(
+    current.session,
+    m05HiddenDocumentId,
+    'knowledge-hidden',
+    false,
+  );
+  const hiddenDownload = api(
+    current.session,
+    'GET',
+    `/api/v1/knowledge/documents/${m05HiddenDocumentId}/download`,
+    undefined,
+    {
+      responseType: 'binary',
+      tags: { kind: 'acl-negative', op: 'knowledge-hidden-download' },
+    },
+    false,
+    'm05',
+  );
+  m05Denied404.add(hiddenDetail.status === 404 && hiddenDownload.status === 404);
+  if (hiddenDetail.status !== 404 || hiddenDownload.status !== 404) {
+    console.error(
+      `knowledge hidden ACL mismatch: detail=${hiddenDetail.status} download=${hiddenDownload.status}`,
+    );
+  }
+  if (download.status !== 200 || downloadBytes + downloadContentLength <= 0) {
+    console.error(
+      `knowledge download unexpected: status=${download.status} bytes=${downloadBytes} contentLength=${downloadContentLength} headers=${JSON.stringify(download.headers)}`,
+    );
+  }
+
+  check(
+    {
+      list: list.status,
+      detail: detail.status,
+      download: download.status,
+      hiddenDetail: hiddenDetail.status,
+      hiddenDownload: hiddenDownload.status,
+    },
+    {
+      '知识库列表 200': (value) => value.list === 200,
+      '知识库详情 200': (value) => value.detail === 200,
+      '知识库下载 200': (value) => value.download === 200,
+      '不可见文档详情 404': (value) => value.hiddenDetail === 404,
+      '不可见文档下载 404': (value) => value.hiddenDownload === 404,
+    },
+  );
+
+  // 控制请求节奏：50 VU 在 60s 内保持并发，但不把同一租户打到百万请求级。
+  sleep(Number(__ENV.PERF_M05_THINK_TIME || '0.8'));
+}
+
+/**
+ * ACL 写场景：单 VU 在并行读负载下反复整体替换 USERS 名单，验证 ACL 写 p95。
+ *
+ * 目标文档始终保留成员授权，避免把员工正在读的文档切到不可见后污染首字指标。
+ */
+export function knowledgeAclWrite() {
+  const admin = login(tenant, adminUser, adminPassword);
+  const who = api(admin, 'GET', '/api/v1/auth/session', undefined, {}, false, 'm05');
+  if (who.status !== 200 || who.json()?.user?.username !== adminUser) {
+    console.error(
+      `knowledge ACL session mismatch: status=${who.status} user=${who.json()?.user?.username} expected=${adminUser}`,
+    );
+  }
+  // ACL 读要求 knowledge.acl.manage，只有管理员能读；员工读被拒不是性能信号。
+  const aclStartedAt = Date.now();
+  const acl = api(
+    admin,
+    'GET',
+    `/api/v1/knowledge/documents/${m05AclDocumentId}/acl`,
+    undefined,
+    { tags: { kind: 'api', op: 'knowledge-acl-get' } },
+    false,
+    'm05',
+  );
+  m05AclGetMs.add(Date.now() - aclStartedAt, { op: 'knowledge-acl-get' });
+  m05AclGetOk.add(acl.status === 200);
+  if (acl.status !== 200) {
+    console.error(`knowledge ACL get failed: status=${acl.status} body=${acl.body}`);
+  }
+  const targetUserIds =
+    __ITER % 2 === 0
+      ? m05AclUserIds
+      : m05AclUserIds.slice(0, Math.max(1, m05AclUserIds.length - 1));
+  const startedAt = Date.now();
+  const response = api(
+    admin,
+    'PUT',
+    `/api/v1/knowledge/documents/${m05AclDocumentId}/acl`,
+    { visibility: 'USERS', departmentId: null, userIds: targetUserIds },
+    { tags: { kind: 'api', op: 'knowledge-acl-write' } },
+    false,
+    'm05',
+  );
+  m05AclWriteMs.add(Date.now() - startedAt, { op: 'knowledge-acl-write' });
+  const ok = response.status === 200;
+  m05AclWriteOk.add(ok);
+  check(response, {
+    'ACL 写 200': (value) => value.status === 200,
+  });
+  if (!ok) {
+    console.error(`knowledge ACL write failed: status=${response.status} body=${response.body}`);
+  }
 }
 
 /**
@@ -489,7 +824,14 @@ export function quotaContention() {
   assertSession(admin, 'tenant-admin', tenant, adminUser, 'TENANT_ADMIN');
   assertSession(memberSession, 'member', tenant, member, 'MEMBER');
 
-  const switches = api(platform, 'GET', '/api/v1/admin/model-gateway/switches', undefined, {}, false);
+  const switches = api(
+    platform,
+    'GET',
+    '/api/v1/admin/model-gateway/switches',
+    undefined,
+    {},
+    false,
+  );
   if (switches.status !== 200) {
     fail(`read switches failed: ${switches.status}`);
   }
@@ -517,7 +859,14 @@ export function quotaContention() {
     }
     enabledState = enabled.json();
 
-    const quotas = api(platform, 'GET', '/api/v1/admin/quotas?page=1&size=100', undefined, {}, false);
+    const quotas = api(
+      platform,
+      'GET',
+      '/api/v1/admin/quotas?page=1&size=100',
+      undefined,
+      {},
+      false,
+    );
     if (quotas.status !== 200) {
       fail(`read quotas failed: ${quotas.status}`);
     }
@@ -533,7 +882,14 @@ export function quotaContention() {
     // 前序 first_token/failover 场景即使关闭执行也会累计用量；用户日窗口可能已超过
     // seed 限额（1000）。两级都设置“剩余=1”，否则用户窗口会先拒绝全部 50 请求，
     // 无法证明租户级零超卖。
-    const userQuotas = api(admin, 'GET', '/api/v1/quotas/users?page=1&size=100', undefined, {}, false);
+    const userQuotas = api(
+      admin,
+      'GET',
+      '/api/v1/quotas/users?page=1&size=100',
+      undefined,
+      {},
+      false,
+    );
     if (userQuotas.status !== 200) {
       fail(`read user quotas failed: ${userQuotas.status}`);
     }
@@ -638,8 +994,7 @@ export function quotaContention() {
         '恰好 1 个成功': (value) => value.allowed === 1,
         '恰好 49 个 429': (value) => value.rejected === 49,
         '没有 5xx/其他状态': (value) => value.other === 0,
-        '拒绝码均为 RICCON-QUOTA-429': (value) =>
-          value.rejectionCodeList === 'RICCON-QUOTA-429',
+        '拒绝码均为 RICCON-QUOTA-429': (value) => value.rejectionCodeList === 'RICCON-QUOTA-429',
       },
     );
   } finally {
@@ -747,11 +1102,15 @@ export function costQuery() {
 export function handleSummary(data) {
   const reportDir = __ENV.PERF_M04_REPORT_DIR || '.';
   const suffix = scenario === 'failover' ? `-${failureMode}` : '';
-  const file = __ENV.PERF_M04_REPORT_FILE || `${reportDir}/mvc-smoke-${scenario}${suffix}.json`;
+  const file =
+    __ENV.PERF_M05_REPORT_FILE ||
+    __ENV.PERF_M04_REPORT_FILE ||
+    `${reportDir}/mvc-smoke-${scenario}${suffix}.json`;
   const metrics = {};
   for (const [name, metric] of Object.entries(data.metrics)) {
     if (
       name.startsWith('m04_') ||
+      name.startsWith('m05_') ||
       name === 'http_req_duration' ||
       name === 'http_req_failed' ||
       name === 'iterations'
@@ -768,8 +1127,21 @@ export function handleSummary(data) {
     thresholds: buildThresholds(),
     metrics,
   };
+  if (scenario === 'knowledge') {
+    report.m05 = {
+      query: m05Query,
+      documentId: m05DocumentId,
+      aclDocumentId: m05AclDocumentId,
+      hiddenDocumentId: m05HiddenDocumentId,
+      downloadDocumentId: m05DownloadDocumentId,
+      aclUserCount: m05AclUserIds.length,
+      concurrency: { knowledgeVus: 50, aclWriteVus: 1 },
+      duration: __ENV.PERF_M05_DURATION || '60s',
+      note: '检索 p95 由 scripts/real-stack/run.mjs 从 MySQL slow_log 汇总后写回报告；k6 只负责并发与首字/API/ACL/下载指标',
+    };
+  }
   return {
     [file]: `${JSON.stringify(report, null, 2)}\n`,
-    stdout: `[perf-m04] scenario=${scenario}${suffix} report=${file}\n`,
+    stdout: `[perf-${scenario === 'knowledge' ? 'm05' : 'm04'}] scenario=${scenario}${suffix} report=${file}\n`,
   };
 }

@@ -5,8 +5,10 @@
 // 加密凭据，然后运行 Playwright 浏览器旅程、J2 HTTP 闭环、安全审计与 M04 目录/配额检查。
 //
 // 两种模式：
-// - full（默认）：完整 compose（MySQL/OpenSearch/RustFS）+ Web，用于 M02/M03/M10/M04 回归；
-// - perf：只启动 MySQL、假模型、API、Worker（不启 OpenSearch/Web），按降级矩阵运行 k6。
+// - full（默认）：完整 compose（MySQL/OpenSearch/RustFS）+ Web，用于 M02/M03/M10/M04/M05 回归；
+// - perf：只启动 MySQL、假模型、API、Worker（不启 Web），按降级矩阵运行 k6。
+//   设置 PERF_M05_SCENARIO=knowledge 时额外启动 OpenSearch/RustFS，按 M05 知识库场景
+//   造 5000 文档/10 万 chunk、上传积压并量测首字/API/ACL/检索/索引延迟。
 //   `PERF-M04` 主机规格与 OpenSearch 开关记录在 `real-stack-env.json` / `perf-m04-matrix.json`。
 //
 // 关键约束（ADR-0021 §2.1/§10.2）：
@@ -27,6 +29,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import {
+  closeSync,
   existsSync,
   mkdirSync,
   openSync,
@@ -37,7 +40,7 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 
-import { mysqlClientArgs, runSql } from "./lib/mysql.mjs";
+import { mysqlClientArgs, runSql, sqlString } from "./lib/mysql.mjs";
 
 /** 仓库根目录。 */
 const repoRoot = process.cwd();
@@ -63,7 +66,20 @@ const OIDC_ISSUER = `http://127.0.0.1:${OIDC_PORT}/realms/${OIDC_REALM}`;
 const OIDC_PROVIDER_NAME = "Alpha 测试企业 IdP";
 
 /** Worker 启动时校验的 Flyway 期望版本；API 必须先迁移到这里再起 Worker。 */
-const FLYWAY_EXPECTED_VERSION = 11;
+const FLYWAY_EXPECTED_VERSION = 12;
+
+/** M05 knowledge 场景默认规模；环境变量可覆盖，报告只记录实际写入值。 */
+const KNOWLEDGE_DEFAULTS = {
+  documents: 5000,
+  chunksPerDocument: 20,
+  knowledgeVus: 50,
+  duration: "60s",
+  thinkTimeSeconds: 0.8,
+  backlogUploads: 6,
+};
+
+/** M05 语料中的稳定检索词；20% 文档（每篇 20 chunk）包含该词。 */
+const KNOWLEDGE_QUERY = process.env.PERF_M05_QUERY ?? "PERFKNOW";
 
 /** 证据文件。 */
 const SEED_FILE = path.join(evidenceDir, "real-stack-seed.json");
@@ -103,10 +119,18 @@ function usage() {
   REAL_API_PORT/REAL_WORKER_PORT/REAL_WEB_PORT/REAL_MODEL_PORT
   REAL_PLAYWRIGHT_GREP           只过滤浏览器用例；全量 gate 不设置
   REAL_PERF_DURATION             perf 首字/降级场景时长（默认 45s）
+  REAL_PERF_SKIP_M04=1           跳过 M04 首字/降级/配额/成本矩阵（M05 定向复验用）
+  PERF_M05_SCENARIO=knowledge    启用 M05 知识库性能场景（OpenSearch+RustFS+10 万 chunk）
+  PERF_M05_DURATION              knowledge 主负载时长（默认 60s）
+  PERF_M05_DOCS/PERF_M05_CHUNKS_PER_DOC  语料规模（默认 5000/20）
+  PERF_M05_BACKLOG               knowledge 运行期间并发上传的索引积压文档数（默认 6）
+  PERF_M05_SEARCH_ENFORCE=1      检索 p95 >500ms 时硬失败（默认只标记 decisionRequired）
+  RICCON_OCR_LANG                宿主 OCR 探测语言（默认 chi_sim+eng）
 
 示例:
   node scripts/real-stack/run.mjs --mode=full
-  node scripts/real-stack/run.mjs --mode=perf --perf-modes=server_error,rate_limited,unauthorized,timeout`);
+  node scripts/real-stack/run.mjs --mode=perf --perf-modes=server_error,rate_limited,unauthorized,timeout
+  PERF_M05_SCENARIO=knowledge REAL_PERF_SKIP_M04=1 node scripts/real-stack/run.mjs --mode=perf`);
 }
 
 /**
@@ -462,6 +486,139 @@ function k6Version() {
 }
 
 /**
+ * 生成带 +08:00 偏移的 ISO 时间；项目默认 Asia/Shanghai。
+ *
+ * @param {Date} [date] 时间
+ * @returns {string} ISO 8601 带偏移
+ */
+function shanghaiIso(date = new Date()) {
+  const offsetMinutes = 8 * 60;
+  const shifted = new Date(date.getTime() + offsetMinutes * 60_000);
+  return `${shifted.toISOString().slice(0, 19)}+08:00`;
+}
+
+/**
+ * 截断长文本，避免把 native/JDBC 输出写进报告。
+ *
+ * @param {string} value 原文
+ * @param {number} [max] 最大长度
+ * @returns {string} 截断结果
+ */
+function truncateText(value, max = 400) {
+  const text = String(value ?? "").trim();
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+/**
+ * 计算 nearest-rank 分位数；values 会被复制排序，不修改入参。
+ *
+ * @param {number[]} values 样本
+ * @param {number} percentile 0–100
+ * @returns {number|null} 分位数
+ */
+function percentile(values, percentile) {
+  if (!Array.isArray(values) || values.length === 0) {
+    return null;
+  }
+  const sorted = [...values].sort((left, right) => left - right);
+  const rank = Math.ceil((percentile / 100) * sorted.length);
+  return sorted[Math.min(sorted.length, Math.max(1, rank)) - 1];
+}
+
+/**
+ * 以 root 执行 SQL；slow_log 的全局开关与 mysql.slow_log 读取需要 SYSTEM_VARIABLES_ADMIN。
+ *
+ * @param {string} sql SQL 文本
+ * @param {{ allowFailure?: boolean }} [options] 选项
+ * @returns {{status: number, stdout: string, stderr: string}} 结果
+ */
+function runRootSql(sql, options = {}) {
+  const result = spawnSync(
+    "docker",
+    [
+      "compose",
+      "-f",
+      "deploy/compose/docker-compose.test.yml",
+      "exec",
+      "-T",
+      "-e",
+      `MYSQL_PWD=${process.env.RICCON_DB_ROOT_PASSWORD ?? "riccon_root_test_only"}`,
+      "mysql",
+      "mysql",
+      "--user=root",
+      "--database=riccon",
+      "--batch",
+      "--raw",
+      "--default-character-set=utf8mb4",
+    ],
+    {
+      cwd: repoRoot,
+      input: sql,
+      encoding: "utf8",
+      maxBuffer: 32 * 1024 * 1024,
+    },
+  );
+  if (result.status !== 0 && !options.allowFailure) {
+    throw new Error(
+      `root mysql failed (exit ${result.status}): ${result.stderr || result.stdout}`,
+    );
+  }
+  return {
+    status: result.status,
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? "",
+  };
+}
+
+/**
+ * 探测宿主是否可加载 libtesseract 并完成一次 OCR。
+ *
+ * Worker 在 `riccon.worker.ocr.enabled=true` 时构造期加载原生库，宿主缺库会让 Worker
+ * 启动失败。先跑 OcrCli 再决定 OCR 开关，避免把“宿主缺 OCR”误报成性能失败；
+ * 探测结果写入报告，未量测的 OCR 指标不会被当成通过。
+ *
+ * @returns {{available: boolean, exitCode: number|null, engine: string, language: string, sample: string, output: string, probedAt: string}} 探测结果
+ */
+function probeOcr() {
+  const jar = "apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar";
+  const language = process.env.RICCON_OCR_LANG ?? "chi_sim+eng";
+  const result = {
+    available: false,
+    exitCode: null,
+    engine: "tesseract",
+    language,
+    sample: "deploy/ocr/sample.png",
+    output: "",
+    probedAt: shanghaiIso(),
+  };
+  if (!existsSync(path.join(repoRoot, jar))) {
+    result.output = `missing ${jar}`;
+    return result;
+  }
+  const args = [
+    "-Dloader.main=com.riccon.worker.ocr.service.OcrCli",
+    "-cp",
+    jar,
+    "org.springframework.boot.loader.launch.PropertiesLauncher",
+    "deploy/ocr/sample.png",
+    "--lang",
+    language,
+  ];
+  if (process.env.RICCON_OCR_TESSDATA_PATH) {
+    args.push("--tessdata", process.env.RICCON_OCR_TESSDATA_PATH);
+  }
+  const probe = spawnSync("java", args, {
+    cwd: repoRoot,
+    encoding: "utf8",
+    timeout: 120_000,
+  });
+  result.exitCode = probe.status;
+  result.available = probe.status === 0;
+  result.output = truncateText(`${probe.stdout ?? ""}\n${probe.stderr ?? ""}`);
+  return result;
+}
+
+/**
  * 构造环境快照：host CPU/内存、镜像 tag、k6 版本、脚本 sha、启动命令与 perf profile。
  *
  * @param {object} context 运行上下文
@@ -478,11 +635,15 @@ function buildEnvSnapshot(context) {
       cpuModel: os.cpus()[0]?.model ?? "unknown",
       memoryBytes: os.totalmem(),
       memoryGiB: Number((os.totalmem() / 1024 ** 3).toFixed(2)),
+      loadAverage: os.loadavg().map((value) => Number(value.toFixed(2))),
       node: process.version,
     },
     images: {
       compose: composeImages(),
-      started: context.mode === "perf" ? ["mysql:8.4.13"] : composeImages(),
+      started:
+        context.mode === "perf"
+          ? (context.startedImages ?? ["mysql:8.4.13"])
+          : composeImages(),
     },
     k6Version: k6Version(),
     scriptSha256: fileSha256("e2e/perf/mvc-smoke.js"),
@@ -492,6 +653,7 @@ function buildEnvSnapshot(context) {
     dbPoolSize: context.mode === "perf" ? 50 : 25,
     fakeModel: 1,
     deploymentMode: "DEMO",
+    ocr: context.ocrProbe ?? null,
     startCommand:
       `node scripts/real-stack/run.mjs ${process.argv.slice(2).join(" ")}`.trim(),
     startupCommands: [
@@ -516,8 +678,34 @@ function buildEnvSnapshot(context) {
         : null,
     openSearch:
       context.mode === "perf"
-        ? "excluded (perf mode; 2C4Gi sandbox 不足，主机规格见 host)"
+        ? context.knowledgePerf
+          ? "started (perf knowledge; riccon-kb index-version v1, 512m heap)"
+          : "excluded (perf mode; 2C4Gi sandbox 不足，主机规格见 host)"
         : "started (compose full)",
+    perfM05:
+      context.mode === "perf" && context.knowledgePerf
+        ? {
+            scenario: "knowledge",
+            dataset: {
+              documents: context.knowledgeDataset?.documents ?? null,
+              chunks: context.knowledgeDataset?.chunks ?? null,
+              chunksPerDocument:
+                context.knowledgeDataset?.chunksPerDocument ?? null,
+              query: KNOWLEDGE_QUERY,
+              matchRatio: "20% 文档包含检索词（每篇全部 20 chunk）",
+            },
+            concurrency: {
+              knowledgeVus: KNOWLEDGE_DEFAULTS.knowledgeVus,
+              aclWriteVus: 1,
+            },
+            duration:
+              process.env.PERF_M05_DURATION ?? KNOWLEDGE_DEFAULTS.duration,
+            dbPoolSize: 50,
+            chatMaxStreams: 50,
+            fakeModel: 1,
+            aclEnforcement: true,
+          }
+        : null,
   };
 }
 
@@ -548,6 +736,10 @@ function sharedModelEnv(context) {
     RICCON_DB_POOL_SIZE: dbPool,
     RICCON_FAKE_MODEL: "1",
     SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: dbPool,
+    // 知识库场景必须开启文档级 ACL，否则列表/检索/下载量测的是无 ACL 的旧路径。
+    ...(context.knowledgePerf
+      ? { RICCON_KB_ACL_ENFORCEMENT_ENABLED: "true" }
+      : {}),
   };
 }
 
@@ -639,7 +831,10 @@ async function startApplications(context, extra = {}) {
     },
   );
   await waitForHttp(`http://127.0.0.1:${API_PORT}/actuator/health`, 120_000);
-  const flywayVersion = await waitForFlywayVersion(FLYWAY_EXPECTED_VERSION, 120_000);
+  const flywayVersion = await waitForFlywayVersion(
+    FLYWAY_EXPECTED_VERSION,
+    120_000,
+  );
   console.log(
     `[real-stack] api ready (flyway=${flywayVersion}); starting worker`,
   );
@@ -657,6 +852,8 @@ async function startApplications(context, extra = {}) {
         RICCON_MCP_ALLOWED_SERVERS: "riccon-builtin",
         RICCON_MCP_ALLOW_HTTP: "true",
         RICCON_WORKER_PORT: String(WORKER_PORT),
+        // 宿主缺 libtesseract 时关闭 OCR，避免 Worker 启动失败；探测结果写入 env.ocr。
+        ...(context.ocrEnv ?? {}),
         ...extra,
       },
     },
@@ -822,6 +1019,912 @@ function runK6(context, scenario, extra = {}) {
 }
 
 /**
+ * 轻量 HTTP 客户端：只在知识库准备阶段使用 fetch；不引入额外依赖。
+ *
+ * 与 k6 一样显式维护 Cookie/CSRF，避免 Node fetch 的 cookie 行为差异。
+ */
+class KnowledgePerfClient {
+  /**
+   * @param {string} baseUrl API 根地址
+   */
+  constructor(baseUrl) {
+    this.baseUrl = baseUrl;
+    this.cookie = "";
+    this.csrf = "";
+  }
+
+  /**
+   * 发送请求并捕获 Set-Cookie。
+   *
+   * @param {string} method HTTP 方法
+   * @param {string} path 路径
+   * @param {{json?: object, form?: FormData, headers?: Record<string,string>}} [options] 选项
+   * @returns {Promise<{status:number, data:any, text:string}>} 响应
+   */
+  async request(method, path, options = {}) {
+    const headers = { ...(options.headers ?? {}) };
+    if (this.cookie) {
+      headers.cookie = this.cookie;
+    }
+    if (this.csrf && !["GET", "HEAD"].includes(method)) {
+      headers["x-csrf-token"] = this.csrf;
+    }
+    let body;
+    if (options.form) {
+      body = options.form;
+    } else if (options.json !== undefined) {
+      headers["content-type"] = "application/json";
+      body = JSON.stringify(options.json);
+    }
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method,
+      headers,
+      body,
+    });
+    const setCookies = response.headers.getSetCookie?.() ?? [];
+    if (setCookies.length > 0) {
+      this.cookie = setCookies.map((value) => value.split(";")[0]).join("; ");
+    }
+    const text = await response.text();
+    let data = null;
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      data = null;
+    }
+    return { status: response.status, data, text };
+  }
+
+  /**
+   * 登录并保存会话与 CSRF。
+   *
+   * @param {string} tenantCode 租户代码
+   * @param {string} username 用户名
+   * @param {string} password 密码
+   * @returns {Promise<void>}
+   */
+  async login(tenantCode, username, password) {
+    const csrfResponse = await this.request("GET", "/api/v1/auth/csrf");
+    if (csrfResponse.status !== 200) {
+      throw new Error(
+        `csrf failed: ${csrfResponse.status} ${csrfResponse.text}`,
+      );
+    }
+    const anonymousToken = csrfResponse.data?.token;
+    const loginResponse = await this.request("POST", "/api/v1/auth/login", {
+      json: { tenantCode, username, password },
+      headers: { "x-csrf-token": anonymousToken },
+    });
+    if (loginResponse.status !== 200) {
+      throw new Error(
+        `login failed for ${tenantCode}/${username}: ${loginResponse.status} ${loginResponse.text}`,
+      );
+    }
+    this.csrf = loginResponse.data?.csrfToken ?? anonymousToken;
+  }
+
+  /**
+   * GET JSON。
+   *
+   * @param {string} path 路径
+   * @returns {Promise<{status:number, data:any, text:string}>} 响应
+   */
+  get(path) {
+    return this.request("GET", path);
+  }
+
+  /**
+   * POST JSON。
+   *
+   * @param {string} path 路径
+   * @param {object} json JSON 体
+   * @returns {Promise<{status:number, data:any, text:string}>} 响应
+   */
+  post(path, json) {
+    return this.request("POST", path, { json });
+  }
+
+  /**
+   * 解析当前账号的可用工作空间。
+   *
+   * @returns {Promise<string>} 工作空间 ID
+   */
+  async workspaceId() {
+    const response = await this.get("/api/v1/workspaces?page=1&size=100");
+    if (response.status !== 200) {
+      throw new Error(`list workspaces failed: ${response.status}`);
+    }
+    const workspace = (response.data?.items ?? []).find(
+      (item) => item.status === "ACTIVE",
+    );
+    if (!workspace) {
+      throw new Error("no active workspace for knowledge perf account");
+    }
+    return workspace.id;
+  }
+
+  /**
+   * 上传文件到工作空间。
+   *
+   * @param {string} workspace 工作空间 ID
+   * @param {string} relativePath 仓库内文件路径
+   * @param {string} filename 上传文件名
+   * @param {string} mimeType MIME
+   * @returns {Promise<string>} 文件 ID
+   */
+  async upload(workspace, relativePath, filename, mimeType) {
+    const content = readFileSync(path.join(repoRoot, relativePath));
+    const form = new FormData();
+    form.append("file", new Blob([content], { type: mimeType }), filename);
+    const response = await this.request(
+      "POST",
+      `/api/v1/workspaces/${workspace}/files`,
+      { form },
+    );
+    if (response.status !== 201) {
+      throw new Error(
+        `upload ${filename} failed: ${response.status} ${response.text}`,
+      );
+    }
+    return response.data.id;
+  }
+
+  /**
+   * 轮询文件解析状态。
+   *
+   * @param {string} fileId 文件 ID
+   * @param {number} [timeoutMs] 超时
+   * @returns {Promise<number>} 从开始轮询到 SUCCEEDED 的毫秒数
+   */
+  async waitFileParsed(fileId, timeoutMs = 120_000) {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < timeoutMs) {
+      const response = await this.get(`/api/v1/files/${fileId}`);
+      if (response.status !== 200) {
+        throw new Error(`read file ${fileId} failed: ${response.status}`);
+      }
+      const status = response.data?.parse?.status;
+      if (status === "SUCCEEDED") {
+        return Date.now() - startedAt;
+      }
+      if (status === "FAILED") {
+        throw new Error(
+          `file parse failed: ${fileId} ${JSON.stringify(response.data?.parse)}`,
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    }
+    throw new Error(`file parse timeout: ${fileId}`);
+  }
+
+  /**
+   * 登记知识库文档并等待 INDEXED。
+   *
+   * @param {string} title 标题
+   * @param {string} fileId 来源文件 ID
+   * @param {{visibility?: string, userIds?: string[], departmentId?: string}} [acl] 可见范围
+   * @param {number} [timeoutMs] 超时
+   * @returns {Promise<{documentId: string, indexedMs: number, document: object}>} 结果
+   */
+  async waitIndexed(title, fileId, acl = {}, timeoutMs = 180_000) {
+    const startedAt = Date.now();
+    const created = await this.post("/api/v1/knowledge/documents", {
+      title,
+      fileId,
+      visibility: acl.visibility ?? "TENANT",
+      departmentId: acl.departmentId ?? null,
+      userIds: acl.userIds ?? null,
+    });
+    if (created.status !== 202 && created.status !== 201) {
+      throw new Error(
+        `create knowledge doc failed: ${created.status} ${created.text}`,
+      );
+    }
+    const documentId = created.data.id;
+    while (Date.now() - startedAt < timeoutMs) {
+      const response = await this.get(
+        `/api/v1/knowledge/documents/${documentId}`,
+      );
+      if (response.status !== 200) {
+        throw new Error(`read knowledge doc failed: ${response.status}`);
+      }
+      const status = response.data?.status;
+      if (status === "INDEXED") {
+        return {
+          documentId,
+          indexedMs: Date.now() - startedAt,
+          document: response.data,
+        };
+      }
+      if (status === "FAILED") {
+        throw new Error(
+          `knowledge index failed: ${documentId} ${response.data?.errorCode} ${response.data?.errorMessage}`,
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    }
+    throw new Error(`knowledge index timeout: ${documentId}`);
+  }
+}
+
+/**
+ * 把 UUID 字符串转为 BINARY(16) 字面量。
+ *
+ * @param {string} value UUID
+ * @returns {string} SQL 表达式
+ */
+function binaryUuidLiteral(value) {
+  return `UNHEX('${value.replaceAll("-", "")}')`;
+}
+
+/**
+ * 由整数生成稳定的 32 位十六进制 ID；避免随机 UUID 影响重跑对比。
+ *
+ * @param {number} value 整数
+ * @returns {string} 32 位十六进制
+ */
+function deterministicHex(value) {
+  return value.toString(16).padStart(32, "0");
+}
+
+/**
+ * 把 32 位十六进制格式化为 UUID 字符串。
+ *
+ * @param {string} hex 32 位十六进制
+ * @returns {string} UUID
+ */
+function uuidFromHex(hex) {
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+/**
+ * 构造知识库语料 SQL：部门、5000 文档、10 万 chunk 与 USERS ACL。
+ *
+ * 文档可见性分布：4400 TENANT + 500 DEPT + 50 USERS（成员可见）+ 50 USERS（仅管理员）。
+ * 20% 文档的每个 chunk 都含检索词，命中约 2 万 chunk；LIKE 仍需扫描 10 万行，
+ * 与 ACL EXISTS 一起构成检索 p95 的测量口径。
+ *
+ * @param {object} input 参数
+ * @param {string} input.adminUserId 管理员账号 ID
+ * @param {string} input.memberUserId 成员账号 ID
+ * @param {string} input.admin2UserId 第二管理员账号 ID
+ * @param {string} input.departmentId 部门 ID
+ * @param {number} input.documents 文档数
+ * @param {number} input.chunksPerDocument 每文档 chunk 数
+ * @returns {string} SQL
+ */
+function buildKnowledgeSeedSql(input) {
+  const tenant = sqlString("tenant-alpha");
+  const adminId = binaryUuidLiteral(input.adminUserId);
+  const memberId = binaryUuidLiteral(input.memberUserId);
+  const admin2Id = binaryUuidLiteral(input.admin2UserId);
+  const departmentId = binaryUuidLiteral(input.departmentId);
+  const statements = [];
+
+  // 部门与成员归属：让 DEPT 分支真实生效；成员在部门内可见 DEPT 文档。
+  statements.push(`
+INSERT IGNORE INTO department (tenant_id, id, name, manager_user_id, status, created_by, created_at, updated_at)
+VALUES (${tenant}, ${departmentId}, ${sqlString("perf-knowledge-dept")}, ${adminId}, 'ACTIVE', ${adminId}, NOW(6), NOW(6));`);
+  statements.push(`
+UPDATE app_user SET department_id = ${departmentId}
+ WHERE tenant_id = ${tenant} AND username = ${sqlString("alpha-member")};`);
+
+  const docIdHex = (index) => deterministicHex(2_000_000 + index);
+  const chunkIdHex = (index) => deterministicHex(3_000_000 + index);
+  const docId = (index) => `UNHEX('${docIdHex(index)}')`;
+
+  /** 生成文档行；字段顺序与 INSERT 列一致。 */
+  const documentRow = (index) => {
+    let visibility = "TENANT";
+    let department = "NULL";
+    if (index > 4400 && index <= 4900) {
+      visibility = "DEPT";
+      department = departmentId;
+    } else if (index > 4900) {
+      visibility = "USERS";
+    }
+    const title = `知识库性能语料 文档 ${index}${index % 10 === 0 ? " PERFKNOW" : ""}`;
+    return `(${tenant}, ${docId(index)}, ${sqlString(title)}, 'SEED', NULL, SHA2(CONCAT('perf-knowledge-', ${index}), 256), 'text/plain', 1024, 'INDEXED', NOW(6), ${adminId}, NOW(6), NOW(6), '${visibility}', ${department}, NULL, 1, DATE_ADD(NOW(6), INTERVAL 180 DAY))`;
+  };
+
+  // 文档按 500 行一批，避免单条 SQL 过大。
+  for (let start = 1; start <= input.documents; start += 500) {
+    const end = Math.min(input.documents, start + 499);
+    const rows = [];
+    for (let index = start; index <= end; index += 1) {
+      rows.push(documentRow(index));
+    }
+    statements.push(`
+INSERT IGNORE INTO knowledge_document (
+  tenant_id, id, title, source_type, file_id, checksum, mime_type, size_bytes, status,
+  indexed_at, created_by, created_at, updated_at, visibility, department_id, parse_engine,
+  acl_version, retention_expires_at
+) VALUES
+${rows.join(",\n")};`);
+  }
+
+  // 分块按 2000 行一批；chunk ID 用确定性值，便于重跑与核查。
+  let chunkSequence = 0;
+  for (let start = 1; start <= input.documents; start += 2000) {
+    const end = Math.min(input.documents, start + 1999);
+    const rows = [];
+    for (let index = start; index <= end; index += 1) {
+      const withTerm = index % 5 === 0;
+      for (let ordinal = 1; ordinal <= input.chunksPerDocument; ordinal += 1) {
+        chunkSequence += 1;
+        const content = `PERF-M05 语料 chunk ${index}-${ordinal} ${withTerm ? "PERFKNOW " : ""}协同办公 市场调研 数据`;
+        rows.push(
+          `(${tenant}, UNHEX('${chunkIdHex(chunkSequence)}'), ${docId(index)}, ${ordinal}, 'PARAGRAPH', NULL, NULL, NULL, ${ordinal}, ${sqlString(content)}, 16, NOW(6))`,
+        );
+      }
+    }
+    statements.push(`
+INSERT IGNORE INTO knowledge_chunk (
+  tenant_id, id, document_id, ordinal, locator_type, page_no, sheet_name, cell_range,
+  paragraph_no, content, token_count, created_at
+) VALUES
+${rows.join(",\n")};`);
+  }
+
+  // USERS ACL：4901–4950 授权成员与第二管理员；4951–5000 只授权管理员。
+  const aclRows = [];
+  for (let index = 4901; index <= 4950; index += 1) {
+    aclRows.push(
+      `(${tenant}, ${docId(index)}, ${memberId}, ${adminId}, NOW(6))`,
+    );
+    aclRows.push(
+      `(${tenant}, ${docId(index)}, ${admin2Id}, ${adminId}, NOW(6))`,
+    );
+  }
+  for (let index = 4951; index <= 5000; index += 1) {
+    aclRows.push(
+      `(${tenant}, ${docId(index)}, ${adminId}, ${adminId}, NOW(6))`,
+    );
+  }
+  statements.push(`
+INSERT IGNORE INTO knowledge_document_acl (tenant_id, document_id, user_id, granted_by, created_at)
+VALUES
+${aclRows.join(",\n")};`);
+
+  return statements.join("\n");
+}
+
+/**
+ * 造 M05 语料并返回 k6 需要的文档 ID。
+ *
+ * @param {object} seedState real-stack-seed.json
+ * @returns {{dataset: object, ids: object}} 语料信息与 ID
+ */
+function seedKnowledgeDataset(seedState) {
+  const documents = Number(
+    process.env.PERF_M05_DOCS ?? KNOWLEDGE_DEFAULTS.documents,
+  );
+  const chunksPerDocument = Number(
+    process.env.PERF_M05_CHUNKS_PER_DOC ?? KNOWLEDGE_DEFAULTS.chunksPerDocument,
+  );
+  if (!(documents >= 1000) || !(chunksPerDocument >= 1)) {
+    throw new Error(
+      `PERF_M05_DOCS/PERF_M05_CHUNKS_PER_DOC invalid: ${documents}/${chunksPerDocument}`,
+    );
+  }
+  const departmentId = uuidFromHex(deterministicHex(1_900_000));
+  const sql = buildKnowledgeSeedSql({
+    adminUserId: seedState.userIds.alphaAdmin,
+    memberUserId: seedState.userIds.alphaMember,
+    admin2UserId: seedState.userIds.alphaAdmin2,
+    departmentId,
+    documents,
+    chunksPerDocument,
+  });
+  const startedAt = Date.now();
+  runSql(sql, { repoRoot });
+  const seedMs = Date.now() - startedAt;
+  const counts = runSql(
+    `SELECT
+       (SELECT COUNT(*) FROM knowledge_document WHERE tenant_id='tenant-alpha' AND title LIKE '知识库性能语料%') AS documents,
+       (SELECT COUNT(*) FROM knowledge_chunk c JOIN knowledge_document d
+          ON d.tenant_id=c.tenant_id AND d.id=c.document_id
+         WHERE c.tenant_id='tenant-alpha' AND d.title LIKE '知识库性能语料%') AS chunks,
+       (SELECT COUNT(*) FROM knowledge_chunk c JOIN knowledge_document d
+          ON d.tenant_id=c.tenant_id AND d.id=c.document_id
+         WHERE c.tenant_id='tenant-alpha' AND c.content LIKE '%PERFKNOW%') AS matching_chunks;`,
+    { repoRoot },
+  ).stdout.trim();
+  return {
+    dataset: {
+      documents,
+      chunks: documents * chunksPerDocument,
+      chunksPerDocument,
+      departmentId,
+      seedMs,
+      countsRaw: counts,
+    },
+    ids: {
+      visibleDocumentId: uuidFromHex(deterministicHex(2_000_001)),
+      aclDocumentId: uuidFromHex(deterministicHex(2_004_901)),
+      hiddenDocumentId: uuidFromHex(deterministicHex(2_004_951)),
+    },
+  };
+}
+
+/**
+ * 启动一次 k6（异步），用于在运行期间并发提交索引积压。
+ *
+ * @param {object} context 上下文
+ * @param {string} scenario k6 场景
+ * @param {object} [extra] 额外 env
+ * @returns {{done: Promise<object>, reportFile: string, logFile: string}} 句柄
+ */
+function launchK6(context, scenario, extra = {}) {
+  const reportFile = path.join(evidenceDir, `perf-m05-${scenario}.json`);
+  const logFile = path.join(evidenceDir, `perf-m05-${scenario}.log`);
+  const envList = {
+    PERF_M04_ENV_JSON: JSON.stringify(context.envSnapshot),
+    PERF_M04_BASE_URL: `http://127.0.0.1:${API_PORT}`,
+    PERF_M04_WORKSPACE_ID: context.workspaceId,
+    PERF_M05_SCENARIO: scenario,
+    PERF_M05_DURATION:
+      process.env.PERF_M05_DURATION ?? KNOWLEDGE_DEFAULTS.duration,
+    PERF_M05_THINK_TIME:
+      process.env.PERF_M05_THINK_TIME ??
+      String(KNOWLEDGE_DEFAULTS.thinkTimeSeconds),
+    PERF_M05_REPORT_FILE: reportFile,
+    ...extra,
+  };
+  const args = ["run"];
+  for (const [key, value] of Object.entries(envList)) {
+    args.push("-e", `${key}=${value}`);
+  }
+  args.push("e2e/perf/mvc-smoke.js");
+  const fd = openSync(logFile, "w");
+  const child = spawn("k6", args, {
+    cwd: repoRoot,
+    env: { ...process.env, ...context.modelKeysEnv, ...envList },
+    stdio: ["ignore", fd, fd],
+  });
+  const done = new Promise((resolve) => {
+    child.on("close", (code) => {
+      closeSync(fd);
+      console.log(
+        `[real-stack] k6 ${scenario} exit=${code} report=${path.relative(repoRoot, reportFile)}`,
+      );
+      resolve({ scenario, status: code, report: reportFile, log: logFile });
+    });
+  });
+  return { done, reportFile, logFile };
+}
+
+/**
+ * 计算 MySQL slow_log 中检索语句的分位数。
+ *
+ * @param {Array<{ms:number, rowsExamined:number}>} samples 样本
+ * @returns {object} 汇总
+ */
+function summarizeRetrieval(samples) {
+  const values = samples.map((sample) => sample.ms);
+  return {
+    source: "mysql.slow_log (long_query_time=0.001s, log_output=TABLE)",
+    statement:
+      "AgentContextJdbc.search: knowledge_chunk.content LIKE / knowledge_document.title LIKE + ACL 谓词",
+    samples: samples.length,
+    p50Ms: percentile(values, 50),
+    p95Ms: percentile(values, 95),
+    maxMs: values.length > 0 ? Math.max(...values) : null,
+    avgRowsExamined:
+      samples.length > 0
+        ? Number(
+            (
+              samples.reduce((sum, sample) => sum + sample.rowsExamined, 0) /
+              samples.length
+            ).toFixed(1),
+          )
+        : null,
+  };
+}
+
+/**
+ * 开启 slow_log 并清空历史；只对测试栈生效。
+ *
+ * 必须在 API/Worker 启动前调用：MySQL 的 long_query_time 是会话变量，连接建立后
+ * 再改 GLOBAL 不会影响已存在的连接池，会漏掉 Worker 检索语句。
+ *
+ * @returns {void}
+ */
+function startRetrievalCapture() {
+  runRootSql(`
+SET GLOBAL slow_query_log = OFF;
+TRUNCATE TABLE mysql.slow_log;
+SET GLOBAL log_output = 'TABLE';
+SET GLOBAL long_query_time = 0.001;
+SET GLOBAL slow_query_log = ON;`);
+}
+
+/**
+ * 清空已捕获语句；保留 GLOBAL 设置，供正式 k6 负载阶段重新采样。
+ *
+ * @returns {void}
+ */
+function clearRetrievalSamples() {
+  runRootSql("TRUNCATE TABLE mysql.slow_log;");
+}
+
+/**
+ * 关闭 slow_log 并恢复默认阈值。
+ *
+ * @returns {void}
+ */
+function stopRetrievalCapture() {
+  runRootSql(
+    `
+SET GLOBAL slow_query_log = OFF;
+SET GLOBAL long_query_time = 10;`,
+    { allowFailure: true },
+  );
+}
+
+/**
+ * 读取并解析 slow_log 中的检索样本。
+ *
+ * @returns {object} 检索汇总
+ */
+function readRetrievalSamples() {
+  const output = runRootSql(`
+SELECT TIME_TO_SEC(query_time) * 1000 AS ms, rows_examined
+  FROM mysql.slow_log
+ WHERE sql_text LIKE '%knowledge_chunk%'
+   AND sql_text LIKE '%LIKE%'
+ ORDER BY start_time;`).stdout;
+  const lines = output.trim().split("\n").filter(Boolean);
+  if (lines.length <= 1) {
+    return summarizeRetrieval([]);
+  }
+  const samples = lines.slice(1).map((line) => {
+    const [ms, rowsExamined] = line.split("\t");
+    return { ms: Number(ms), rowsExamined: Number(rowsExamined) || 0 };
+  });
+  return summarizeRetrieval(samples);
+}
+
+/**
+ * 并发上传索引积压：文档/图片解析与索引走 heavy 通道，聊天走 default 通道。
+ *
+ * @param {KnowledgePerfClient} admin 管理员会话
+ * @param {string} workspace 工作空间
+ * @param {object} options 选项
+ * @returns {Promise<Array<object>>} 每个文件的耗时
+ */
+async function uploadBacklog(admin, workspace, options) {
+  const uploads = [];
+  for (let index = 1; index <= options.documents; index += 1) {
+    uploads.push(
+      (async () => {
+        const startedAt = Date.now();
+        const fileId = await admin.upload(
+          workspace,
+          "e2e/real/fixtures/market.docx",
+          `perf-backlog-${index}.docx`,
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        );
+        const uploadDoneAt = Date.now();
+        const parseMs = await admin.waitFileParsed(fileId);
+        const indexed = await admin.waitIndexed(
+          `PERF-M05 索引积压 ${index}`,
+          fileId,
+        );
+        const indexedAt = Date.now();
+        return {
+          kind: "docx",
+          index,
+          fileId,
+          documentId: indexed.documentId,
+          uploadMs: uploadDoneAt - startedAt,
+          parseMs,
+          createToIndexedMs: indexed.indexedMs,
+          totalMs: indexedAt - startedAt,
+          chunkCount: null,
+          parseEngine: indexed.document?.parseEngine ?? null,
+        };
+      })(),
+    );
+  }
+  if (options.ocr) {
+    uploads.push(
+      (async () => {
+        const startedAt = Date.now();
+        const fileId = await admin.upload(
+          workspace,
+          "deploy/ocr/sample.png",
+          "perf-ocr-sample.png",
+          "image/png",
+        );
+        const uploadDoneAt = Date.now();
+        const parseMs = await admin.waitFileParsed(fileId);
+        const indexed = await admin.waitIndexed("PERF-M05 OCR 单页", fileId);
+        const indexedAt = Date.now();
+        return {
+          kind: "ocr-image",
+          index: 0,
+          fileId,
+          documentId: indexed.documentId,
+          uploadMs: uploadDoneAt - startedAt,
+          parseMs,
+          createToIndexedMs: indexed.indexedMs,
+          totalMs: indexedAt - startedAt,
+          chunkCount: null,
+          parseEngine: indexed.document?.parseEngine ?? null,
+          ocr: indexed.document?.parseSummary?.ocr ?? null,
+        };
+      })(),
+    );
+  }
+  return Promise.all(uploads);
+}
+
+/**
+ * 执行 M05 knowledge 场景：造语料、并发上传积压、跑 k6、汇总 slow_log 并写增强报告。
+ *
+ * @param {object} context 运行上下文
+ * @returns {Promise<object>} 场景结果
+ */
+async function runKnowledgePerf(context) {
+  const phases = {};
+  const seedState = JSON.parse(readFileSync(SEED_FILE, "utf8"));
+  const seeded = seedKnowledgeDataset(seedState);
+  phases.dataset = "passed";
+
+  const admin = new KnowledgePerfClient(`http://127.0.0.1:${API_PORT}`);
+  await admin.login("tenant-alpha", "alpha-admin", "alpha-admin-password-12");
+  const workspace = await admin.workspaceId();
+
+  // 基线文档：真实上传→解析→索引→可下载；也是下载场景的源文件。
+  const baselineStartedAt = Date.now();
+  const baselineFileId = await admin.upload(
+    workspace,
+    "e2e/real/fixtures/market.docx",
+    "perf-knowledge-baseline.docx",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  );
+  const baselineParseMs = await admin.waitFileParsed(baselineFileId);
+  const baselineIndexed = await admin.waitIndexed(
+    "PERF-M05 基线知识库文档",
+    baselineFileId,
+  );
+  const baseline = {
+    kind: "docx",
+    fileId: baselineFileId,
+    documentId: baselineIndexed.documentId,
+    parseMs: baselineParseMs,
+    createToIndexedMs: baselineIndexed.indexedMs,
+    totalMs: Date.now() - baselineStartedAt,
+  };
+  phases.baselineIndex = "passed";
+
+  const aclUserIds = [
+    seedState.userIds.alphaMember,
+    seedState.userIds.alphaAdmin2,
+  ];
+  const reportFile = path.join(evidenceDir, "perf-m05-knowledge.json");
+
+  // OCR 只在本宿主原生库可用时测量；不可用写入报告，不伪造单页/索引耗时。
+  const ocrAvailable = Boolean(context.ocrProbe?.available);
+  const backlogDocuments = Number(
+    process.env.PERF_M05_BACKLOG ?? KNOWLEDGE_DEFAULTS.backlogUploads,
+  );
+
+  clearRetrievalSamples();
+  let k6Result;
+  let backlog = [];
+  try {
+    k6Result = launchK6(context, "knowledge", {
+      PERF_M05_DOC_ID: seeded.ids.visibleDocumentId,
+      PERF_M05_ACL_DOC_ID: seeded.ids.aclDocumentId,
+      PERF_M05_HIDDEN_DOC_ID: seeded.ids.hiddenDocumentId,
+      PERF_M05_DOWNLOAD_DOC_ID: baseline.documentId,
+      PERF_M05_ACL_USER_IDS: JSON.stringify(aclUserIds),
+      PERF_M05_QUERY: KNOWLEDGE_QUERY,
+    });
+    // 等 k6 进入负载后再提交积压，避免所有 VU 登录阶段与上传争抢连接池。
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    const backlogPromise = uploadBacklog(admin, workspace, {
+      documents: backlogDocuments,
+      ocr: ocrAvailable,
+    });
+    const result = await k6Result.done;
+    backlog = await backlogPromise;
+    k6Result = result;
+  } finally {
+    stopRetrievalCapture();
+  }
+  const retrieval = readRetrievalSamples();
+  phases.retrievalCapture = retrieval.samples > 0 ? "passed" : "failed";
+
+  if (!existsSync(reportFile)) {
+    throw new Error(
+      `k6 knowledge report missing (exit ${k6Result.status}); see ${path.relative(repoRoot, k6Result.log)}`,
+    );
+  }
+  const report = JSON.parse(readFileSync(reportFile, "utf8"));
+  const docxSamples = [
+    baseline,
+    ...backlog.filter((item) => item.kind === "docx"),
+  ].map((item) => item.createToIndexedMs);
+  const ocrSamples = backlog
+    .filter((item) => item.kind === "ocr-image")
+    .map((item) => item.createToIndexedMs);
+  const metrics = report.metrics ?? {};
+  const firstTokenP95 = metrics.m05_first_token_ms?.["p(95)"] ?? null;
+  const userFirstTokenP95 = metrics.m05_chat_submit_ttfb_ms?.["p(95)"] ?? null;
+  const apiP95 = metrics.m05_api_ms?.["p(95)"] ?? null;
+  const aclWriteP95 = metrics.m05_acl_write_ms?.["p(95)"] ?? null;
+  const aclGetP95 = metrics.m05_acl_get_ms?.["p(95)"] ?? null;
+  const indexP95 = percentile(docxSamples, 95);
+  const ocrIndexP95 = percentile(ocrSamples, 95);
+  const searchBudgetMs = Number(
+    process.env.PERF_M05_SEARCH_P95_BUDGET_MS ?? "500",
+  );
+  const decisionRequired =
+    retrieval.p95Ms === null || retrieval.p95Ms > searchBudgetMs;
+  const indexBudgetExceeded =
+    docxSamples.length >= 5 && indexP95 !== null && indexP95 > 60_000;
+  const enforceSearch = process.env.PERF_M05_SEARCH_ENFORCE === "1";
+
+  report.m05 = {
+    ...(report.m05 ?? {}),
+    generatedAt: shanghaiIso(),
+    dataset: {
+      documents: seeded.dataset.documents,
+      chunks: seeded.dataset.chunks,
+      chunksPerDocument: seeded.dataset.chunksPerDocument,
+      visibility: {
+        tenant: 4400,
+        department: 500,
+        usersVisible: 50,
+        usersHidden: 50,
+      },
+      departmentId: seeded.dataset.departmentId,
+      query: KNOWLEDGE_QUERY,
+      matchDocuments: "20%（每篇全部 chunk 含检索词）",
+      matchingChunks: "约 2 万（10 万 chunk 中）",
+      seedMs: seeded.dataset.seedMs,
+      countsRaw: seeded.dataset.countsRaw,
+      note: "直插 SQL 只用于列表/检索/ACL 数据规模；索引与下载仍走真实上传→解析→索引→对象存储路径",
+    },
+    host: context.envSnapshot.host,
+    hostEnd: {
+      loadAverage: os.loadavg().map((value) => Number(value.toFixed(2))),
+      measuredAt: shanghaiIso(),
+    },
+    openSearch: context.envSnapshot.openSearch,
+    ocr: {
+      probed: context.ocrProbe ?? null,
+      measured: ocrAvailable && ocrSamples.length > 0,
+      samples: backlog.filter((item) => item.kind === "ocr-image"),
+      note: ocrAvailable
+        ? "单页 PNG 端到端 create→INDEXED；未构造 20 页扫描件"
+        : "宿主 libtesseract 不可用，OCR 未量测；报告不把未执行当通过，需在含 Tesseract 的 worker 镜像/CI 复验",
+    },
+    indexing: {
+      noOcr: {
+        samples: docxSamples,
+        p95Ms: indexP95,
+        budgetMs: 60_000,
+        withinBudget: indexP95 !== null && indexP95 <= 60_000,
+      },
+      ocr: {
+        samples: ocrSamples,
+        p95Ms: ocrIndexP95,
+        budgetMs: 120_000,
+        withinBudget: ocrIndexP95 !== null && ocrIndexP95 <= 120_000,
+        note: "单页样本，非 ADR 的 20 页口径",
+      },
+      baseline,
+      backlog,
+      backlogDuringLoad: true,
+    },
+    retrieval: {
+      ...retrieval,
+      budgetMs: searchBudgetMs,
+      decisionRequired,
+      decision: decisionRequired
+        ? "检索 p95 未证明 ≤500ms：需在 M05 gate 前决定 (a) MySQL FULLTEXT/覆盖索引，(b) OpenSearch 两阶段 ACL 复核，(c) 用户批准单独检索预算（ADR-0023 §9）"
+        : "检索 p95 在 500ms 内，无需额外决策",
+    },
+    budgets: {
+      firstTokenServerP95Ms: firstTokenP95,
+      firstTokenServerBudgetMs: 3000,
+      firstTokenServerWithinBudget:
+        firstTokenP95 !== null && firstTokenP95 <= 3000,
+      // 检索在 Worker 模型调用前同步执行；用 retrieval p95 + 服务端首字 p95 估算用户可感知
+      // 首字上界。k6 对 SSE 整段缓冲，m05_chat_submit_ttfb_ms 接近完整流，不能当首字。
+      userFirstTokenEstimatedP95Ms:
+        retrieval.p95Ms !== null && firstTokenP95 !== null
+          ? retrieval.p95Ms + firstTokenP95
+          : null,
+      userFirstTokenBudgetMs: 3000,
+      userFirstTokenWithinBudget:
+        retrieval.p95Ms !== null &&
+        firstTokenP95 !== null &&
+        retrieval.p95Ms + firstTokenP95 <= 3000,
+      apiP95Ms: apiP95,
+      apiBudgetMs: 500,
+      apiWithinBudget: apiP95 !== null && apiP95 <= 500,
+      aclWriteP95Ms: aclWriteP95,
+      aclGetP95Ms: aclGetP95,
+      aclBudgetMs: 500,
+      aclWithinBudget:
+        aclWriteP95 !== null &&
+        aclWriteP95 <= 500 &&
+        aclGetP95 !== null &&
+        aclGetP95 <= 500,
+      downloadP95Ms: metrics.m05_download_ms?.["p(95)"] ?? null,
+      indexNoOcrP95Ms: indexP95,
+      indexBudgetMs: 60_000,
+      sseBufferedRequestP95Ms: userFirstTokenP95,
+      note: "首字用 retrieval p95 + 服务端模型首字 p95 估算；k6 对 SSE 整段缓冲，m05_chat_submit_ttfb_ms 不是首字口径",
+    },
+    thresholds: report.thresholds,
+    notes: [
+      "首字 p95 ≤3s、稳态 JSON API（列表/详情/ACL 读/ACL 写）p95 ≤500ms、50 并发。",
+      "首字用 retrieval p95 + 服务端模型首字 p95 估算；m05_chat_submit_ttfb_ms 因 k6 整段缓冲只作参考，不作为首字阈值。",
+      "下载是流式代理，单独记录 m05_download_ms，不并入 JSON API p95。",
+      "检索 p95 来自 MySQL slow_log 中 AgentContextJdbc LIKE + ACL 谓词的实际执行时间；不含网络与结果映射。",
+      "slow_log 在 API/Worker 建连前开启（long_query_time=0.001s）；它会给测试栈带来额外写开销，结果偏保守。",
+      "M05 不启用连接器分支。",
+    ],
+  };
+  if (os.loadavg()[0] > os.cpus().length) {
+    report.m05.notes.push(
+      `宿主 1 分钟负载 ${os.loadavg()[0].toFixed(1)} 高于 CPU 数 ${os.cpus().length}；结果偏保守，复验应在空闲宿主进行`,
+    );
+  }
+  writeFileSync(reportFile, `${JSON.stringify(report, null, 2)}\n`);
+
+  const matrix = {
+    status:
+      k6Result.status === 0 &&
+      !indexBudgetExceeded &&
+      (!decisionRequired || !enforceSearch)
+        ? decisionRequired
+          ? "passed-with-decision"
+          : "passed"
+        : "failed",
+    generatedAt: shanghaiIso(),
+    phase: phases,
+    k6: {
+      status: k6Result.status,
+      report: path.relative(repoRoot, reportFile),
+      log: path.relative(repoRoot, k6Result.log),
+    },
+    retrieval,
+    budgets: report.m05.budgets,
+    indexing: report.m05.indexing,
+    ocr: report.m05.ocr,
+    decisionRequired,
+    decision: report.m05.retrieval.decision,
+    notes: [
+      "PERF-M05-001：首字/API/ACL 写/检索量测；PERF-M05-002：索引延迟（无 OCR 与 OCR 单页）。",
+      "检索 >500ms 时 status 为 passed-with-decision（ADR-0023 §9 未预设通过阈值）；设置 PERF_M05_SEARCH_ENFORCE=1 可按 500ms 硬失败。",
+      "OCR 不可用时 ocr.measured=false，不把未执行当通过。",
+    ],
+  };
+  writeFileSync(
+    path.join(evidenceDir, "perf-m05-matrix.json"),
+    `${JSON.stringify(matrix, null, 2)}\n`,
+  );
+  console.log(JSON.stringify(matrix, null, 2));
+
+  const failed =
+    k6Result.status !== 0 ||
+    indexBudgetExceeded ||
+    (enforceSearch && decisionRequired);
+  return {
+    status: failed ? "failed" : matrix.status,
+    matrix,
+    reportFile,
+  };
+}
+
+/**
  * 自检：静态校验脚本语法、假模型自检与 k6 可用性；不启动服务。
  */
 function selfTest() {
@@ -979,7 +2082,8 @@ async function runFull() {
   await waitForHttp(`http://127.0.0.1:${OIDC_PORT}/__oidc__/health`, 30_000);
 
   const startup = await startApplications(context);
-  phases.migration = startup.flywayVersion >= FLYWAY_EXPECTED_VERSION ? "passed" : "failed";
+  phases.migration =
+    startup.flywayVersion >= FLYWAY_EXPECTED_VERSION ? "passed" : "failed";
   const fingerprint = await verifyActuatorFingerprint();
   context.fingerprint = fingerprint;
   phases.fingerprint = fingerprint.matched ? "passed" : "default-deny-recorded";
@@ -1201,11 +2305,48 @@ async function runPerf() {
   const phases = {};
   const endpoints = buildModelEndpoints();
   const initialKeys = buildModelKeys(options.perfModes[0]);
+  const knowledgePerf = process.env.PERF_M05_SCENARIO === "knowledge";
+  // 宿主没有 libtesseract 时 Worker 会在 OCR 引擎构造期失败；先探测再决定开关。
+  const ocrProbe = probeOcr();
   const context = {
     mode: "perf",
+    knowledgePerf,
     endpoints: endpoints.endpoints,
     endpointHash: endpoints.hash,
     modelKeysEnv: { REAL_MODEL_KEYS: initialKeys.json },
+    ocrProbe,
+    ocrEnv: ocrProbe.available
+      ? {
+          RICCON_OCR_ENABLED: "true",
+          RICCON_OCR_LANG: ocrProbe.language,
+          RICCON_OCR_TESSDATA_PATH: process.env.RICCON_OCR_TESSDATA_PATH ?? "",
+          RICCON_OCR_MAX_CONCURRENCY:
+            process.env.RICCON_OCR_MAX_CONCURRENCY ?? "2",
+          OMP_THREAD_LIMIT: "1",
+        }
+      : { RICCON_OCR_ENABLED: "0" },
+    startedImages: knowledgePerf
+      ? [
+          "mysql:8.4.13",
+          "opensearchproject/opensearch:3.9.0",
+          "rustfs/rustfs:1.0.6",
+        ]
+      : ["mysql:8.4.13"],
+    knowledgeDataset: {
+      documents: Number(
+        process.env.PERF_M05_DOCS ?? KNOWLEDGE_DEFAULTS.documents,
+      ),
+      chunks:
+        Number(process.env.PERF_M05_DOCS ?? KNOWLEDGE_DEFAULTS.documents) *
+        Number(
+          process.env.PERF_M05_CHUNKS_PER_DOC ??
+            KNOWLEDGE_DEFAULTS.chunksPerDocument,
+        ),
+      chunksPerDocument: Number(
+        process.env.PERF_M05_CHUNKS_PER_DOC ??
+          KNOWLEDGE_DEFAULTS.chunksPerDocument,
+      ),
+    },
   };
   context.envSnapshot = buildEnvSnapshot(context);
   writeFileSync(
@@ -1213,7 +2354,11 @@ async function runPerf() {
     `${JSON.stringify(context.envSnapshot, null, 2)}\n`,
   );
 
-  console.log("[real-stack] perf mode: mysql only (no OpenSearch/Web)");
+  console.log(
+    knowledgePerf
+      ? "[real-stack] perf mode: mysql + opensearch + object-storage (M05 knowledge)"
+      : "[real-stack] perf mode: mysql only (no OpenSearch/Web)",
+  );
   spawnSync(
     "docker",
     ["compose", "-f", "deploy/compose/docker-compose.test.yml", "down", "-v"],
@@ -1222,6 +2367,9 @@ async function runPerf() {
       stdio: "ignore",
     },
   );
+  const services = knowledgePerf
+    ? ["mysql", "opensearch", "object-storage"]
+    : ["mysql"];
   run("compose-up-perf", "docker", [
     "compose",
     "-f",
@@ -1229,9 +2377,14 @@ async function runPerf() {
     "up",
     "-d",
     "--wait",
-    "mysql",
+    ...services,
   ]);
   phases.compose = "passed";
+  if (knowledgePerf) {
+    // 下载场景需要真实对象；bucket 创建与 full 模式共用同一 SigV4 实现。
+    await createBucket();
+    phases.objectStorage = "passed";
+  }
   requireArtifacts();
 
   start("model", "node", ["scripts/real-stack/fake-model.mjs"], {
@@ -1245,6 +2398,13 @@ async function runPerf() {
   });
   await waitForHttp(`http://127.0.0.1:${MODEL_PORT}/__health__`, 30_000);
 
+  if (knowledgePerf) {
+    // 必须在 API/Worker 建连前设置，否则连接池会话保留旧的 long_query_time，
+    // 会漏掉 Worker 的检索语句。
+    startRetrievalCapture();
+    phases.retrievalCapture = "enabled";
+  }
+
   const startup = await startApplications(context, {
     // AC-17 假模型 perf profile（ADR-0021 §5.2）；生产默认不承诺 3s 失败注入。
     RICCON_MODEL_FIRST_TOKEN_TIMEOUT: "1000ms",
@@ -1254,7 +2414,8 @@ async function runPerf() {
     RICCON_MODEL_CONNECT_TIMEOUT: "500ms",
     RICCON_WORKER_MODEL_CONNECT_TIMEOUT: "500ms",
   });
-  phases.migration = startup.flywayVersion >= FLYWAY_EXPECTED_VERSION ? "passed" : "failed";
+  phases.migration =
+    startup.flywayVersion >= FLYWAY_EXPECTED_VERSION ? "passed" : "failed";
   const fingerprint = await verifyActuatorFingerprint();
   context.fingerprint = fingerprint;
   phases.fingerprint = fingerprint.matched ? "passed" : "default-deny-recorded";
@@ -1277,39 +2438,71 @@ async function runPerf() {
   context.workspaceId = seedState.workspaces.alpha.id;
 
   const runs = [];
-  // 首字基准不注入失败。
-  await setFakeKeyScenarios("ok", initialKeys.badKey, initialKeys.goodKey);
-  resetKeyHealth("baseline");
-  runs.push(runK6(context, "first_token"));
+  const skipM04 = process.env.REAL_PERF_SKIP_M04 === "1";
+  if (!skipM04) {
+    // 首字基准不注入失败。
+    await setFakeKeyScenarios("ok", initialKeys.badKey, initialKeys.goodKey);
+    resetKeyHealth("baseline");
+    runs.push(runK6(context, "first_token"));
 
-  // 降级矩阵：每个模式独立一次 k6 运行，前置重置 key 场景与健康状态。
-  for (const mode of options.perfModes) {
-    await setFakeKeyScenarios(mode, initialKeys.badKey, initialKeys.goodKey);
-    resetKeyHealth(mode);
-    runs.push(runK6(context, "failover", { PERF_M04_FAILURE_MODE: mode }));
+    // 降级矩阵：每个模式独立一次 k6 运行，前置重置 key 场景与健康状态。
+    for (const mode of options.perfModes) {
+      await setFakeKeyScenarios(mode, initialKeys.badKey, initialKeys.goodKey);
+      resetKeyHealth(mode);
+      runs.push(runK6(context, "failover", { PERF_M04_FAILURE_MODE: mode }));
+    }
+
+    // 配额争用：fake provider 正常返回，仅验证配额准入。
+    await setFakeKeyScenarios("ok", initialKeys.badKey, initialKeys.goodKey);
+    resetKeyHealth("quota");
+    runs.push(runK6(context, "quota"));
+
+    // 成本查询：B7 端点缺失时这里会非零，不能静默跳过。
+    runs.push(runK6(context, "cost"));
+  } else {
+    phases.m04 = "skipped-by-REAL_PERF_SKIP_M04";
   }
 
-  // 配额争用：fake provider 正常返回，仅验证配额准入。
-  await setFakeKeyScenarios("ok", initialKeys.badKey, initialKeys.goodKey);
-  resetKeyHealth("quota");
-  runs.push(runK6(context, "quota"));
-
-  // 成本查询：B7 端点缺失时这里会非零，不能静默跳过。
-  runs.push(runK6(context, "cost"));
+  let knowledgeResult = null;
+  if (knowledgePerf) {
+    // 语料必须放在 M04 场景之后造，避免把 10 万 chunk 混入 M04 首字基线。
+    try {
+      knowledgeResult = await runKnowledgePerf(context);
+    } finally {
+      // runKnowledgePerf 正常路径会关闭；这里兜住异常路径，避免 slow_log 一直开启。
+      stopRetrievalCapture();
+    }
+    phases.knowledge =
+      knowledgeResult.status === "failed" ? "failed" : "passed";
+    phases.ocr = context.ocrProbe?.available
+      ? "measured"
+      : "unavailable-on-host";
+  }
 
   const failed = runs.filter((entry) => entry.status !== 0);
+  const knowledgeFailed = knowledgeResult?.status === "failed";
+  const knowledgeDecision = knowledgeResult?.status === "passed-with-decision";
   const matrix = {
-    status: failed.length === 0 ? "passed" : "failed",
+    status:
+      failed.length === 0 && !knowledgeFailed
+        ? knowledgeDecision
+          ? "passed-with-decision"
+          : "passed"
+        : "failed",
     generatedAt: new Date().toISOString(),
     mode: "perf",
     env: context.envSnapshot,
     fingerprint: context.fingerprint,
     phases,
     runs,
+    knowledge: knowledgeResult?.matrix ?? null,
     notes: [
-      "perf 模式只启动 MySQL 与假模型/API/Worker；OpenSearch 与 Web 未启动，主机规格见 env.host。",
+      knowledgePerf
+        ? "M05 knowledge：MySQL + OpenSearch + RustFS 启动；OpenSearch 只做可重建索引，检索仍以 MySQL LIKE + ACL 为准。"
+        : "perf 模式只启动 MySQL 与假模型/API/Worker；OpenSearch 与 Web 未启动，主机规格见 env.host。",
       "每个降级模式独立一次 k6 运行并在前后重置 fake provider key 场景与 key 健康，避免 401 失效/冷却掩盖降级。",
       "配额场景会通过开关 GET/PUT 临时打开 quotaEnforcementEnabled，并把租户/用户日限额设为已用+1；结束后恢复开关与两级限额原值。",
+      "OCR 引擎由宿主 libtesseract 决定；不可用时 Worker 以 RICCON_OCR_ENABLED=0 启动并在报告中标记未量测。",
     ],
   };
   writeFileSync(
@@ -1317,7 +2510,7 @@ async function runPerf() {
     `${JSON.stringify(matrix, null, 2)}\n`,
   );
   console.log(JSON.stringify(matrix, null, 2));
-  if (failed.length > 0) {
+  if (failed.length > 0 || knowledgeFailed) {
     process.exitCode = 1;
   }
   return matrix;
