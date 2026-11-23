@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-0849",
+  "task_id": "TASK-0169",
+  "command": "LOCK=\"${TMPDIR:-/tmp}/riccon-maven.lock\"; while ! mkdir \"$LOCK\" 2>/dev/null; do sleep 5; done; trap 'rmdir \"$LOCK\" 2>/dev/null || true' EXIT; ./mvnw -q -T1C -pl apps/worker,apps/api -am test -Dtest='ParseSummaryJsonTest,HashingEmbeddingModelTest,OpenSearchIndexClientErrorTest,KnowledgeDocumentParseShapeTest,KnowledgeIndexServiceIntegrationTest,OpenSearchIndexClientTest,KnowledgeIndexModesIntegrationTest,KnowledgeIndexV2MigrationTest,ChunkRegionPersistenceIntegrationTest,ParsePersistenceIntegrationTest,FileParseServiceIntegrationTest' -Dsurefire.failIfNoSpecifiedTests=false",
+  "manual": false,
+  "commit": "ca6dfd942f57c3fa742949ad0ea75fdd65160505",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0169/EV-0849-2026-11-23T13-49-17-025+08-00-lock-tmpdir-tmp-riccon-maven-lock-while-mkdir-lo.log",
+  "output_sha256": "1ac1099989088996ab4c5106fe919a36735115cbe8d374d23ac73579361e82bd",
+  "output_bytes": 33447,
+  "agent": "riccon/builder-kb-index",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-23T13:48:07.895+08:00",
+  "finished_at": "2026-11-23T13:49:16.576+08:00",
+  "duration_ms": 68680,
+  "note": "B7 定向回归：mapping v2/别名切换、FULL/ACL_ONLY/DELETE、parse_* 契约 shape、bbox/ocr_confidence 落库、IT-KB-113；11 个测试类 45 用例，0 failure/0 skip；主树仅 .riccon 变更（dirty=false）",
+  "recorded_at": "2026-11-23T13:49:17.027+08:00"
+}
