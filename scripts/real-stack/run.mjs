@@ -1576,7 +1576,7 @@ SET GLOBAL long_query_time = 10;`,
  */
 function readRetrievalSamples() {
   const output = runRootSql(`
-SELECT TIME_TO_SEC(query_time) * 1000 AS ms, rows_examined
+SELECT query_time, rows_examined
   FROM mysql.slow_log
  WHERE sql_text LIKE '%knowledge_chunk%'
    AND sql_text LIKE '%LIKE%'
@@ -1586,8 +1586,12 @@ SELECT TIME_TO_SEC(query_time) * 1000 AS ms, rows_examined
     return summarizeRetrieval([]);
   }
   const samples = lines.slice(1).map((line) => {
-    const [ms, rowsExamined] = line.split("\t");
-    return { ms: Number(ms), rowsExamined: Number(rowsExamined) || 0 };
+    const [rawTime, rowsExamined] = line.split("\t");
+    // TIME_TO_SEC 会把 TIME(6) 截断成整秒（1.992s → 1），必须按 HH:MM:SS.ffffff 自行解析。
+    const [hours, minutes, seconds] = String(rawTime).split(":");
+    const ms =
+      (Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds)) * 1000;
+    return { ms, rowsExamined: Number(rowsExamined) || 0 };
   });
   return summarizeRetrieval(samples);
 }
