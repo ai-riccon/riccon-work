@@ -34,13 +34,13 @@
   "created_at": "2026-11-22T19:25:25.123+08:00",
   "updated_at": "2026-11-23T13:51:13.611+08:00",
   "scope_amendment": {
-    "at": "2026-11-23T03:51:52.954Z",
+    "at": "2026-11-23T05:53:11.432Z",
     "by": "riccon/lead",
-    "reason": "B4/B5 独立评审要求 B7 补 parse_* 与 bbox/ocr_confidence 持久化及 API shape 对齐；原 scope 仅 index/**。",
+    "reason": "B7 实现 brief 已列测试范围但任务 JSON 漏列；builder 直接补了 3 条测试 glob。Lead 审计：ca6dfd9 的 45 测试与持久化改动均在 index/parse/API DTO 及对应测试，无越界；接受补录。",
     "added": [
-      "apps/worker/src/main/java/com/riccon/worker/parse/service/FileParseService.java",
-      "apps/worker/src/main/java/com/riccon/worker/parse/domain/ParseSummary.java",
-      "apps/api/src/main/java/com/riccon/api/knowledge/dto/**"
+      "apps/worker/src/test/java/com/riccon/worker/index/**",
+      "apps/worker/src/test/java/com/riccon/worker/parse/service/ParsePersistenceIntegrationTest.java",
+      "apps/api/src/test/java/com/riccon/api/knowledge/KnowledgeDocumentParseShapeTest.java"
     ]
   },
   "baseline_commit": "539cc731e396cc2c7597036fa54bbb6df18049f1",
