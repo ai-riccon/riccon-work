@@ -36,17 +36,75 @@ Copyright 2026 Riccon
          (1:4.1.0-2) 提供；镜像用 tessdata_fast 覆盖 eng 并新增 chi_sim。
 
 ================================================================================
+JVM OCR 绑定组件（worker 可执行 jar，Maven 依赖；M05 B5 引入）
+================================================================================
+
+版本以 apps/worker/pom.xml（tess4j.version）与实际依赖树为准；
+deploy/sbom/check-jvm-ocr-licenses.sh 断言本节版本与 dependency:tree 一致。
+
+4) Tess4J 5.20.0
+   许可证：Apache License 2.0
+   Maven：net.sourceforge.tess4j:tess4j:5.20.0
+   上游：https://github.com/nguyenq/tess4j
+   版权：Tess4J 项目（POM 与 jar 未声明具体版权行，以上游仓库与 Apache-2.0 全文为准）
+   分发形式：worker 可执行 jar 内 BOOT-INF/lib/tess4j-5.20.0.jar
+   说明：仅 JVM 绑定，不含原生库；libtesseract/lept/tessdata 见上节 1)–3)。
+
+5) Lept4J 1.24.0
+   许可证：Apache License 2.0
+   Maven：net.sourceforge.lept4j:lept4j:1.24.0（Tess4J 传递依赖）
+   上游：https://github.com/nguyenq/lept4j
+   版权：Lept4J 项目（POM 与 jar 未声明具体版权行，以上游仓库与 Apache-2.0 全文为准）
+   分发形式：worker 可执行 jar 内 BOOT-INF/lib/lept4j-1.24.0.jar
+
+6) Java Native Access (JNA) 5.19.1
+   许可证：LGPL-2.1-or-later 或 Apache License 2.0（双许可，由使用方选择）
+            本项目按 Apache-2.0 使用：AGENTS.md constraints.licensing 只接受
+            Apache-2.0/MIT/BSD/EPL，jar 内 META-INF/LICENSE 明示可选择 Apache-2.0，
+            项目不分发 JNA 的修改版本，也不静态链接 LGPL 代码。
+   Maven：net.java.dev.jna:jna:5.19.1（Tess4J 传递依赖）
+   上游：https://github.com/java-native-access/jna
+   版权：以上游仓库与 jar 内 META-INF/AL2.0（Apache-2.0 全文）为准
+   分发形式：worker 可执行 jar 内 BOOT-INF/lib/jna-5.19.1.jar
+             （含 JNA 自带原生 libjnidispatch，随 jar 解压加载）
+
+7) jai-imageio-core 1.4.0
+   许可证：BSD 3-Clause（含核设施免责声明；POM 声明为
+            "BSD 3-clause License w/nuclear disclaimer"）
+   Maven：com.github.jai-imageio:jai-imageio-core:1.4.0（Tess4J 传递依赖）
+   上游：https://github.com/jai-imageio/jai-imageio-core
+   版权：Copyright (c) 2005 Sun Microsystems, Inc.；
+         Copyright (c) 2010-2014 University of Manchester；
+         Copyright (c) 2010-2015 Stian Soiland-Reyes；Copyright (c) 2015 Peter Hull
+   分发形式：worker 可执行 jar 内 BOOT-INF/lib/jai-imageio-core-1.4.0.jar
+   许可全文：jar 内 META-INF/LICENSE、META-INF/NOTICE
+
+8) Apache Commons IO 2.21.0
+   许可证：Apache License 2.0
+   Maven：commons-io:commons-io:2.21.0（经 org.apache.poi:poi-ooxml:5.5.1 传递引入，
+          与 Excel 解析共用；不是 Tess4J 引入）
+   上游：https://commons.apache.org/proper/commons-io/
+   版权：Copyright 2002-2025 The Apache Software Foundation（见 jar 内 META-INF/NOTICE.txt）
+   分发形式：worker 可执行 jar 内 BOOT-INF/lib/commons-io-2.21.0.jar
+
+Tess4J 自带的 PDFBox/pdfbox-tools/jbig2-imageio/jboss-vfs/slf4j-api 依赖已在
+apps/worker/pom.xml 中排除：PDFBox 由 M02 直接依赖固定为 3.0.8，不随 OCR 绑定
+重复引入；被排除的依赖不得出现在 worker 可执行 jar 内。
+
+================================================================================
 许可合规说明
 ================================================================================
 
 - 本项目只使用 Apache-2.0、MIT、BSD、EPL 兼容许可的依赖（AGENTS.md
-  constraints.licensing）。上述 OCR 组件均为 Apache-2.0 或 BSD-2-Clause。
-- 镜像内不含 AGPL 组件，也不含任何公有云 OCR SDK/服务端依赖（ADR-0023 §4.1
-  明确拒绝公有云 OCR；M05-AC-05 要求零出网）。
+  constraints.licensing）。原生 OCR 组件为 Apache-2.0 或 BSD-2-Clause；
+  JVM 绑定为 Apache-2.0 与 BSD-3-Clause，JNA 按 Apache-2.0 选择性授权。
+- 镜像与 worker jar 内均不含 AGPL/SSPL 组件，也不含任何公有云 OCR SDK/服务端
+  依赖（ADR-0023 §4.1 明确拒绝公有云 OCR；M05-AC-05 要求零出网）。
 - 若未来切换到 RapidOCR/PP-OCR ONNX 替代引擎，必须在本文件追加 RapidOCR、
   ONNX Runtime 与 PP-OCR 模型的版权、许可、来源与文件哈希，再发布镜像。
-- 第三方许可证原文随各发行包位于 /usr/share/doc/<package>/copyright；
-  上游全文见各组件仓库的 LICENSE 文件。
+- 第三方许可证原文：原生包位于 /usr/share/doc/<package>/copyright；jar 内位于
+  META-INF/LICENSE*、META-INF/NOTICE*；上游全文见各组件仓库的 LICENSE 文件。
+  Tess4J/Lept4J 的 jar 未内嵌 LICENSE 文件，以上游仓库 Apache-2.0 全文为准。
 
 本文件随仓库版本演进；新增或升级 OCR/原生依赖时必须同步更新并与
 deploy/sbom/README.md 的 SBOM 检查一起复核。
