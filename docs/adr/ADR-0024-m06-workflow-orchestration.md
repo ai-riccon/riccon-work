@@ -368,7 +368,7 @@ run queue:        PENDING -> RUNNING（领取）；RUNNING + lease 过期 -> 可
 - **取消**：API 条件更新运行到 `CANCELLED`（仅 `PENDING/RUNNING/WAITING_APPROVAL`），取消待审批；Worker 在节点边界/心跳检查并尽力中断模型流；已产生节点结果保留，后续节点不再执行（AC-23）。MCP 外部调用无法强杀时等待其超时，结果丢弃并记录。
 - **重试**：仅失败节点；`POST /workflow-runs/{id}/retry {nodeId}` 校验运行 `FAILED` 且节点 `FAILED`；新增 `attempt+1` 的 `workflow_node_run`（`PENDING`），运行回 `PENDING` 并设置 `current_node_key=failedNodeKey`；上游已成功节点不重跑；下游 `SKIPPED` 节点重新变为 `PENDING`。不做自动无限重试。
 - **幂等**：
-  - HTTP 创建/重试/审批决定带 `Idempotency-Key`；运行创建唯一键 `(tenant_id, workflow_id, requester_user_id, idempotency_key)`；重复请求返回既有运行。
+  - HTTP **创建运行**/重试/审批决定带 `Idempotency-Key`；运行创建唯一键 `(tenant_id, workflow_id, requester_user_id, idempotency_key)`；重复请求返回既有运行。
   - 运行状态条件更新（`PENDING→RUNNING`、`RUNNING→SUCCEEDED/FAILED/CANCELLED`）+ 租约是最终幂等守卫；重复领取/重复恢复不得二次执行。
   - 节点尝试唯一键 `(run,node,attempt)`；审批唯一 `(run,node,attempt)`；工具调用唯一 `(tenant_id, approval_id)`。
   - 崩溃恢复：模型/检索可安全重执行（只产生新的调用记录与估算成本）；MCP 工具若已有 `STARTED` 无终态，按 `WF_SIDE_EFFECT_UNKNOWN` fail-closed，必须重新审批并显式重试，不自动重放。
@@ -518,13 +518,13 @@ run queue:        PENDING -> RUNNING（领取）；RUNNING + lease 过期 -> 可
 | 方法 | 路径                                                | 权限（URL + 服务层） | 说明                                                                |
 | ---- | --------------------------------------------------- | -------------------- | ------------------------------------------------------------------- |
 | GET  | `/workflows`                                        | `workflow.read`      | `view=MINE/RUNNABLE/ALL`（`ALL` 仅租户管理员）；分页                |
-| POST | `/workflows`                                        | `workflow.edit`      | 新建空白/从模板创建草稿；可选 `Idempotency-Key`                     |
+| POST | `/workflows`                                        | `workflow.edit`      | 新建空白/从模板创建草稿；**不承诺键级重放**（无 `Idempotency-Key`） |
 | GET  | `/workflows/runtime-limits`                         | `workflow.read`      | 部署限制、保留、开关状态（租户只读；字面路径优先于 `{workflowId}`） |
 | GET  | `/workflows/{workflowId}`                           | `workflow.read`      | 详情 + `draftGraph`（仅所有者/管理员）                              |
 | PUT  | `/workflows/{workflowId}/draft`                     | `workflow.edit`      | 保存草稿；`version` 乐观锁，冲突 409 `RICCON-WF-409`                |
-| POST | `/workflows/{workflowId}/duplicate`                 | `workflow.edit`      | 另存副本（AC-01 冲突后）                                            |
-| POST | `/workflows/{workflowId}/validate`                  | `workflow.edit`      | 返回逐项问题（节点/原因/修正入口）                                  |
-| POST | `/workflows/{workflowId}/publish`                   | `workflow.publish`   | 生成不可变版本；`Idempotency-Key` 必填                              |
+| POST | `/workflows/{workflowId}/duplicate`                 | `workflow.edit`      | 另存副本（AC-01 冲突后）；**不承诺键级重放**                        |
+| POST | `/workflows/{workflowId}/validate`                  | `workflow.edit`      | 返回逐项问题；可带 `runScope`/`departmentId`（省略不含范围）       |
+| POST | `/workflows/{workflowId}/publish`                   | `workflow.publish`   | 生成不可变版本；**资源级幂等**（graph+scope+dept），无键级重放      |
 | GET  | `/workflows/{workflowId}/versions`                  | `workflow.read`      | 版本列表（旧版本仍可运行，除非流程停用）                            |
 | POST | `/workflows/{workflowId}/disable`                   | `workflow.publish`   | 停用；审计前后状态                                                  |
 | POST | `/workflows/{workflowId}/enable`                    | `workflow.publish`   | 重新启用；审计                                                      |
@@ -539,7 +539,7 @@ run queue:        PENDING -> RUNNING（领取）；RUNNING + lease 过期 -> 可
 | GET  | `/workflow-approvals/{workflowApprovalId}`          | `workflow.approve`   | 审批详情（仅 assignee；未分配 404；ACL 最小可见）                  |
 | POST | `/workflow-approvals/{workflowApprovalId}/decision` | `workflow.approve`   | 批准/拒绝；`Idempotency-Key`；禁自批 403                            |
 | GET  | `/workflow-templates`                               | `workflow.read`      | 内置模板（M06 1 个；M06b 再加用户共享/升级字段）                    |
-| POST | `/workflow-templates/{templateId}/copy`             | `workflow.edit`      | 复制为当前用户草稿（默认仅自己）；`Idempotency-Key`                 |
+| POST | `/workflow-templates/{templateId}/copy`             | `workflow.edit`      | 复制为当前用户草稿（默认仅自己）；可选键但 M06 不承诺键级重放        |
 
 M06b 预留（M06 契约标 `x-riccon-deferred: M06b`，不实现）：`POST /workflows/{workflowId}/templates`（另存为模板）、`PATCH/DELETE /workflow-templates/{templateId}`（共享/删除）、模板升级提示字段。M06 的 `WorkflowTemplate` 已包含 `source/visibility/builtInVersion/latestBuiltInVersion/upgradeAvailable` 可选字段，M06b 只增加写端点。
 
@@ -551,9 +551,21 @@ M06b 预留（M06 契约标 `x-riccon-deferred: M06b`，不实现）：`POST /wo
 
 运行/节点异步稳定码（响应字段/UI，不是 HTTP code）：`WF_INVALID_GRAPH`、`WF_NODE_LIMIT`、`WF_STEP_LIMIT`、`WF_RUN_TIMEOUT`、`WF_NODE_TIMEOUT`、`WF_MODEL_UNAVAILABLE`、`WF_MODEL_OUTPUT_INVALID`、`WF_RETRIEVAL_FAILED`、`WF_CONDITION_INVALID`、`WF_TOOL_NOT_AUTHORIZED`、`WF_TOOL_RESULT_LIMIT`、`WF_APPROVAL_REQUIRED`、`WF_NO_APPROVER`、`WF_APPROVAL_REJECTED`、`WF_SIDE_EFFECT_UNKNOWN`、`WF_PLAN_DRIFT`、`WF_RESULT_LIMIT`、`WF_FEATURE_DISABLED`、`WF_CANCELLED`、`WF_INTERNAL`。
 
-### 7.4 幂等与轮询
+### 7.4 幂等、校验范围与轮询
 
-- `Idempotency-Key`（8..128）：创建运行、发布、重试、审批决定必填；同一主体 + 资源 + 键返回既有结果；不跨用户复用。
+**幂等（F-001=B，团队决定，不新增用户决策）**
+
+- 键级 `Idempotency-Key`（8..128）只用于有异步/外部副作用的操作：创建运行、重试失败节点、审批决定。同一主体 + 资源 + 键返回既有结果；不跨用户复用；运行创建唯一键 `(tenant_id, workflow_id, requester_user_id, idempotency_key)`，重试/审批由状态机与既有唯一键兜底。
+- publish **不做键级重放**：使用资源级幂等，同一 `graph_sha256 + runScope + departmentId` 返回既有版本；重复 publish 不产生重复 `workflow_version`/`workflow.published` 审计。草稿并发由 `draftVersion` 保存乐观锁保证。
+- create/duplicate **不承诺键级重放**：不持久化/不按 `Idempotency-Key` 重放；重复请求可能产生多个草稿/副本，前端必须防重复提交；每次成功创建写审计。取消按状态幂等，不要求键。
+- 不新增 V16 `workflow_request_idempotency`：通用请求幂等表需 worker schema 16、CI/迁移/测试与 4–8h，收益集中在低风险管理操作；T4 重点的 run/retry/approval 已由 V15 键级幂等覆盖。若未来管理操作需要严格重放，另立 ADR/迁移。
+
+**VALIDATE 范围（F-002）**
+
+- `POST /validate` 增加可选 query `runScope`/`departmentId`；提供时复用 PUBLISH 的范围校验（角色/部门），省略时只校验图/审批可达性、不含范围。T10 编辑器必须传入当前选择的范围，才能把 `valid=true` 当作“可发布”信号。T03 增加参数并复用 T04 的发布校验器；T10 发送范围；无 schema 变更。
+
+**轮询**
+
 - 运行详情/历史用**轮询**（默认 3s，`WorkflowRun.updatedAt` 变化才重绘；契约已补 `updatedAt`）；**终态即停止轮询**，`result` 只在终态读取一次；列表不返回 result。不新增 SSE。理由：M06 无逐 token 流、SSE 增加连接与网关成本；AC-04 的“刷新后一致”由 DB 权威状态满足。`ETag`/`If-None-Match` 或 `includeResult=false` 作为后续优化，不阻塞 M06（OPS-M06-010）。
 - 列表分页 `page/size` 与全局规则一致（size ≤100）；运行历史过滤时间范围带偏移，最长 180 天。
 
@@ -601,6 +613,7 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 - details 只允许 ID、枚举、计数、版本号、脱敏摘要；**禁止**图 JSON、prompt/query 模板、节点输出、工具参数、凭据、文档正文、OCR 文本、完整 PII。
 - 租户管理员查看他人运行：LIST 每次一条 `admin_read`（`scope=LIST`）；DETAIL 仅在发起人不是本人时写一条（`scope=DETAIL`）；按正常权限查看自己的运行不写。
 - M10 查询/导出机制不变：新增动作必须加入 `AuditDetailsPolicy` 写入与读取白名单；导出字段白名单不含新敏感内容；平台管理员仍不查租户明细。
+- 幂等与审计：publish 资源级幂等命中时返回既有版本且**不重复写** `workflow.published`；create/duplicate 每次成功创建写一条审计（不承诺键级重放）；run/retry/approval 的键级幂等命中不重复写业务审计，拒绝/冲突按既有策略记录。
 
 ### 8.3 隐私说明
 
@@ -969,6 +982,20 @@ U-01/U-02 已由 DEC-0047=A / DEC-0048=A 解决；U-03..U-13 仍未决，不得�
 | U-13 | `workflow_run` 跨租户领取是新增 ADR-0009 例外 | 默认按 ADR-0016 模式：只读 claim 元数据、领取后立即租户上下文、索引例外登记；静态列集合断言 + `claim_failures`/denied；需独立安全评审（F-014/OPS-M06-015） | Verifier/安全 | 租户隔离/评审 |
 
 ---
+
+### 16.1 幂等收敛（F-001=B）
+
+- **决策**：采用 B。create/duplicate 收敛为“不承诺键级重放”，publish 依赖资源级幂等（`graph_sha256 + runScope + departmentId`），run/retry/approval 保留键级幂等。
+- **理由**：T4 重点是运行/重试/审批等有外部或异步副作用的操作；create/duplicate 只产生本租户管理数据，重复的成本是可见的草稿/副本与审计，不构成跨租户或外部副作用。V16 通用请求幂等表需要 worker schema 16、CI/迁移/测试与 4–8h，并把所有管理操作引入新的持久化契约，收益不足。
+- **成本**：0h 新增；不新增 V16、不改 worker schema 15、不改预算。未来若要严格管理操作重放，另立 ADR/迁移。
+- **契约**：create/duplicate 移除可选 `Idempotency-Key` 参数；publish 移除必填 `Idempotency-Key` 并说明资源级幂等；run/retry/approval 保留 required。版本仍 `1.6.0-m06`（未发布，无 schema 变更）。
+
+### 16.2 VALIDATE 范围（F-002）
+
+- **决策**：给 `POST /validate` 增加可选 query `runScope`/`departmentId`，复用 PUBLISH 的范围校验；`runScope=DEPARTMENT` 时 `departmentId` 必填，非 DEPARTMENT 提供 `departmentId` 返回 400；省略时只校验图/审批可达性，不含范围。
+- **理由**：T10 需要“validate 通过 = 可发布”的可靠信号；additive 参数不改变现有调用，T03/T04 只需把参数传入同一发布校验器，T10 发送当前选择。
+- **成本**：无模块预算变化；由 Lead 建小修复任务（T03/T04/T10）。
+- **契约**：无 schema 变更；版本仍 `1.6.0-m06`。
 
 ## 17. OPS 评审响应（REV-M06-OPS-001/002/003）
 

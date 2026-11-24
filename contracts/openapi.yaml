@@ -2565,11 +2565,12 @@ paths:
       tags: [Workflow]
       operationId: createWorkflow
       summary: 创建流程草稿
-      description: 新建空白流程或从模板复制为当前用户的草稿（默认仅自己可见）；同一 Idempotency-Key 返回既有草稿。
+      description: |
+        新建空白流程或从模板复制为当前用户的草稿（默认仅自己可见）。
+        M06 **不承诺 Idempotency-Key 键级重放**：重复请求可能创建多个草稿；前端应防重复提交（禁用按钮/请求去重），服务端不持久化该键、不按它重放。每次成功创建写一条审计。
       x-riccon-permission: workflow.edit
       parameters:
         - $ref: "#/components/parameters/CsrfToken"
-        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -2676,12 +2677,13 @@ paths:
       tags: [Workflow]
       operationId: duplicateWorkflow
       summary: 另存流程副本
-      description: 并发保存冲突后另存副本；副本为当前用户草稿，默认仅自己可见。
+      description: |
+        并发保存冲突后另存副本；副本为当前用户草稿，默认仅自己可见。
+        M06 **不承诺 Idempotency-Key 键级重放**：重复请求可能产生多个副本；前端应防重复提交。每次成功复制写一条审计。
       x-riccon-permission: workflow.edit
       parameters:
         - $ref: "#/components/parameters/WorkflowId"
         - $ref: "#/components/parameters/CsrfToken"
-        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: false
         content:
@@ -2711,12 +2713,24 @@ paths:
       operationId: validateWorkflow
       summary: 校验流程草稿
       description: |
-        校验 profile 与 PUBLISH **完全同口径**：结构、必填、节点配置、模型、工具授权、条件、结果与限制，以及审批可达性/NO_APPROVER、发布范围。返回 `WorkflowValidationResult{valid,issues}`（节点、原因、修正字段）；画布与列表/表单共用同一结果。
-        只读：不改变 `draftVersion`、不写草稿、不产生版本、不写审计。
+        校验 profile 与 PUBLISH **完全同口径**：结构、必填、节点配置、模型、工具授权、条件、结果与限制，以及审批可达性/NO_APPROVER。
+        可选 `runScope`/`departmentId`：提供时复用 PUBLISH 的范围校验（含角色/部门限制），返回发布等价结果；省略时只校验图/审批可达性，**不含范围**。`runScope=DEPARTMENT` 时 `departmentId` 必填；非 DEPARTMENT 范围提供 `departmentId` 返回 400 `RICCON-WF-400`。T10 编辑器必须传入当前选择的 runScope（DEPARTMENT 时同时传 departmentId）才能把 `valid=true` 当作“可发布”信号。
+        返回 `WorkflowValidationResult{valid,issues}`（节点、原因、修正字段）；画布与列表/表单共用同一结果。只读：不改变 `draftVersion`、不写草稿、不产生版本、不写审计。
       x-riccon-permission: workflow.edit
       parameters:
         - $ref: "#/components/parameters/WorkflowId"
         - $ref: "#/components/parameters/CsrfToken"
+        - name: runScope
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/WorkflowRunScope"
+        - name: departmentId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
       responses:
         "200":
           description: 校验结果
@@ -2738,17 +2752,11 @@ paths:
       description: |
         先执行与 VALIDATE 相同的**完整发布校验**：结构、必填、节点配置、模型、工具授权、条件、结果与限制，以及审批可达性/NO_APPROVER、`runScope` 角色/部门范围。
         校验失败返回 400 `RICCON-WF-400`，**不产生 `workflow_version`、不改变当前发布版本**；有审批节点但无可用非发起人审批人时同样阻断。校验通过后才生成不可变版本。
+        **幂等**：M06 采用资源级幂等（同一 `graph_sha256 + runScope + departmentId` 返回既有版本），**不承诺 Idempotency-Key 键级重放**；重复 publish 不应产生重复版本。草稿并发由 `draftVersion` 乐观锁在保存阶段保证。
       x-riccon-permission: workflow.publish
       parameters:
         - $ref: "#/components/parameters/WorkflowId"
         - $ref: "#/components/parameters/CsrfToken"
-        - name: Idempotency-Key
-          in: header
-          required: true
-          schema:
-            type: string
-            minLength: 8
-            maxLength: 128
       requestBody:
         required: true
         content:
