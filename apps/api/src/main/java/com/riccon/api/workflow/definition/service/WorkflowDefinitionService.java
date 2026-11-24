@@ -162,7 +162,8 @@ public class WorkflowDefinitionService {
         boolean owner = snapshot.isOwnedBy(actor.userId());
         boolean admin = actor.tenantAdmin();
         WorkflowPublishedVersionSnapshot latest = latestVersion(tenantId, snapshot);
-        UUID departmentId = owner || admin ? null : activeDepartmentId(tenantId, actor.userId());
+        // 运行范围对所有角色统一按发布版本判定；owner/admin 只影响详情可见性与编辑能力，不豁免运行范围。
+        UUID departmentId = latest == null || admin ? null : activeDepartmentId(tenantId, actor.userId());
         boolean scopeVisible = latest != null && withinScope(latest, snapshot, actor, departmentId);
         if (!owner && !admin && !scopeVisible) {
             // 私有草稿、跨范围或跨租户统一 404，不泄露存在性（ADR-0024 §6.2）。
@@ -316,7 +317,10 @@ public class WorkflowDefinitionService {
                 command.graph().nodeCount(),
                 traceId,
                 requestId));
-        return detail(saved, latestVersion(tenantId, saved), actor, true, false);
+        WorkflowPublishedVersionSnapshot latest = latestVersion(tenantId, saved);
+        UUID departmentId = latest == null || actor.tenantAdmin() ? null : activeDepartmentId(tenantId, actor.userId());
+        boolean scopeVisible = latest != null && withinScope(latest, saved, actor, departmentId);
+        return detail(saved, latest, actor, true, scopeVisible);
     }
 
     /**
@@ -518,7 +522,7 @@ public class WorkflowDefinitionService {
      * @param latest 最近发布版本；可空
      * @param actor 当前主体
      * @param includeDraftGraph 是否返回草稿图
-     * @param scopeVisible 是否按范围可见
+     * @param scopeVisible 是否在发布版本运行范围内；仅用于 canRun，所有者不豁免 DEPARTMENT 范围
      * @return 流程详情
      */
     private static WorkflowDefinitionDetailResponse detail(
@@ -531,10 +535,11 @@ public class WorkflowDefinitionService {
         boolean admin = actor.tenantAdmin();
         boolean canEdit = (owner || admin) && actor.canEdit();
         boolean canPublish = (owner || admin) && actor.canPublish();
+        // canRun 与运行准入/RUNNABLE 同口径：租户管理员按管理能力放行，其余主体必须命中版本范围。
         boolean canRun = latest != null
                 && snapshot.status() == WorkflowDefinitionStatus.ACTIVE
                 && actor.canRun()
-                && (admin || owner || scopeVisible);
+                && (admin || scopeVisible);
         WorkflowDefinitionResponse summary = WorkflowDefinitionResponse.from(snapshot, hasUnpublishedChanges(snapshot));
         return WorkflowDefinitionDetailResponse.from(
                 summary,

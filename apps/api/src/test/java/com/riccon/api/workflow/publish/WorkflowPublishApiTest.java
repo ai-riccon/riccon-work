@@ -444,6 +444,71 @@ class WorkflowPublishApiTest extends WorkflowVersionTestSupport {
         assertThat(versionCount(fixture.tenant(), workflowId)).isEqualTo(1);
     }
 
+    /** F-005：canRun 统一按版本范围判定，所有者移出 DEPARTMENT 后详情可见但不可运行。 */
+    @Test
+    @DisplayName("IT-WF-102 F-005 canRun 与版本范围/RUNNABLE 一致")
+    void canRun_matchesVersionScope_withoutOwnerException() {
+        Fixture fixture = fixture("wfp");
+        UUID department = createManagedDepartment(fixture, "销售部", fixture.ownerId());
+        addDepartmentMember(fixture.platform(), fixture.tenant(), department, fixture.otherEditorId());
+        String workflowId = createDraft(fixture.owner(), "部门运行范围").path("id").asText();
+        saveDraft(fixture.owner(), workflowId, 1, defaultGraph(fixture));
+        publishOk(fixture.owner(), workflowId, "DEPARTMENT", department, "publish-key-0701");
+
+        assertThat(getDetail(fixture.owner(), workflowId, 200).path("canRun").asBoolean())
+                .isTrue();
+        assertThat(getDetail(fixture.otherEditor(), workflowId, 200)
+                        .path("canRun")
+                        .asBoolean())
+                .isTrue();
+        assertThat(runnableContains(fixture.owner(), workflowId)).isTrue();
+        assertThat(runnableContains(fixture.otherEditor(), workflowId)).isTrue();
+
+        // 负责人移交给仍在部门的编辑者后，把原所有者移出部门；下一次请求按新范围判定。
+        transferDepartmentManager(fixture.platform(), fixture.tenant(), department, fixture.otherEditorId());
+        ApiTestClient.ApiResponse removed = client.delete(
+                "/api/v1/admin/tenants/" + fixture.tenant() + "/departments/" + department + "/members/"
+                        + fixture.ownerId(),
+                fixture.platform().sessionCookie(),
+                fixture.platform().csrfToken());
+        assertThat(removed.status()).as(removed.body()).isEqualTo(204);
+
+        // 所有者仍可见自己的草稿并可编辑/发布，但 canRun 必须与 RUNNABLE/运行准入一致为 false。
+        JsonNode ownerDetail = getDetail(fixture.owner(), workflowId, 200);
+        assertThat(ownerDetail.path("latestVersion").path("runScope").asText()).isEqualTo("DEPARTMENT");
+        assertThat(ownerDetail.path("canRun").asBoolean()).isFalse();
+        assertThat(ownerDetail.path("canEdit").asBoolean()).isTrue();
+        assertThat(runnableContains(fixture.owner(), workflowId)).isFalse();
+
+        // 仍在部门内的编辑者保持可运行；无部门/跨范围主体详情统一 404。
+        assertThat(getDetail(fixture.otherEditor(), workflowId, 200)
+                        .path("canRun")
+                        .asBoolean())
+                .isTrue();
+        assertThat(runnableContains(fixture.otherEditor(), workflowId)).isTrue();
+        assertThat(getDetail(fixture.member(), workflowId, 404).path("code").asText())
+                .isEqualTo(TENANT_404);
+    }
+
+    /**
+     * 判断 RUNNABLE 列表是否包含指定流程。
+     *
+     * @param session 会话
+     * @param workflowId 流程 ID
+     * @return 包含返回 true
+     */
+    private boolean runnableContains(LoginSession session, String workflowId) {
+        ApiTestClient.ApiResponse response =
+                client.get("/api/v1/workflows?view=RUNNABLE&size=100", session.sessionCookie(), Map.of());
+        assertThat(response.status()).as(response.body()).isEqualTo(200);
+        for (JsonNode item : client.json(response).path("items")) {
+            if (workflowId.equals(item.path("id").asText())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * 调用 VALIDATE 端点，按需附加范围 query 参数。
      *
