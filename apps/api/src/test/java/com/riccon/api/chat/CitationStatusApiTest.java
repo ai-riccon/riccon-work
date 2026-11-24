@@ -183,6 +183,56 @@ class CitationStatusApiTest extends ApiIntegrationTestSupport {
         assertThat(versions).containsExactly(checksum, null);
     }
 
+    /** J1 写入：连接器来源同样写入 checksum 快照；快照标题保持对象 key 末段，不携带完整 externalId。 */
+    @Test
+    @DisplayName("连接器写入：chat 引用写入 checksum 快照且不泄露完整 key")
+    void recordCitations_connectorWritesVersionSnapshot() {
+        Fixture fixture = fixture();
+        String workspace = personalWorkspace(fixture.member());
+        UUID conversationId = seedConversation(fixture.tenant(), workspace, actorId(fixture.member()));
+        UUID messageId = seedAssistantMessage(fixture.tenant(), conversationId);
+        UUID connectorId = seedConnector(fixture.tenant());
+        String keyPrefix = "reports/finance/2026/";
+        String title = "snapshot-source.pdf";
+        String checksum = "9".repeat(64);
+        UUID documentId = seedConnectorDocument(
+                fixture.tenant(), connectorId, keyPrefix + title, title, "TENANT", null, checksum);
+
+        ChatEventValidator.ParsedCitation citation = new ChatEventValidator.ParsedCitation(
+                1,
+                CitationSourceType.KNOWLEDGE,
+                null,
+                documentId,
+                null,
+                LocatorType.PARAGRAPH,
+                null,
+                null,
+                null,
+                1,
+                title,
+                "连接器片段",
+                new BigDecimal("0.8"));
+        TenantContext.callWithTenant(TenantId.of(fixture.tenant()), () -> {
+            chatEventRecorder.recordCitations(TenantId.of(fixture.tenant()), messageId, List.of(citation));
+            return null;
+        });
+
+        Map<String, Object> row = jdbcClient
+                .sql("""
+                        SELECT source_version, title_snapshot, snippet
+                          FROM message_citation
+                         WHERE tenant_id = :tenantId AND message_id = :messageId
+                        """)
+                .param("tenantId", fixture.tenant())
+                .param("messageId", BinaryUuids.toBytes(messageId))
+                .query()
+                .singleRow();
+        assertThat(row.get("source_version")).isEqualTo(checksum);
+        assertThat(row.get("title_snapshot")).isEqualTo(title);
+        assertThat((String) row.get("title_snapshot")).doesNotContain(keyPrefix);
+        assertThat(row.get("snippet")).isEqualTo("连接器片段");
+    }
+
     /** 历史引用（source_version 为空）在文档仍可见时按 AVAILABLE，不做 UPDATED 判定。 */
     @Test
     @DisplayName("读取：历史空版本按 AVAILABLE")
@@ -204,6 +254,227 @@ class CitationStatusApiTest extends ApiIntegrationTestSupport {
                 client.json(response).path("items").get(0).path("citations").get(0);
         assertThat(citation.path("sourceStatus").asText()).isEqualTo("AVAILABLE");
         assertThat(citation.path("title").asText()).isEqualTo("历史文档");
+    }
+
+    /**
+     * 连接器来源：源更新、软删除与 ACL 收窄都按当前 MySQL 行重新判定，且响应不泄露完整 externalId 或对象 key。
+     *
+     * <p>源更新后文档索引状态可能仍是 {@code PENDING}，引用状态不能用索引字段推断；这里按 checksum 判定
+     * {@code UPDATED}，并保留快照标题、片段与定位（ADR-0023 第 5.4 节）。
+     */
+    @Test
+    @DisplayName("连接器引用：四态遮蔽且不泄露完整 externalId/对象 key")
+    void connectorCitations_computeStatusAndHideExternalId() {
+        Fixture fixture = fixture();
+        LoginSession outsider = createAndLoginMember(fixture.platform(), fixture.tenant());
+        String workspace = personalWorkspace(fixture.member());
+        UUID conversationId = seedConversation(fixture.tenant(), workspace, actorId(fixture.member()));
+        UUID messageId = seedAssistantMessage(fixture.tenant(), conversationId);
+        UUID connectorId = seedConnector(fixture.tenant());
+        String keyPrefix = "reports/finance/2026/";
+
+        UUID available = seedConnectorDocument(
+                fixture.tenant(),
+                connectorId,
+                keyPrefix + "available-quarterly.pdf",
+                "available-quarterly.pdf",
+                "TENANT",
+                null,
+                "a".repeat(64));
+        UUID updated = seedConnectorDocument(
+                fixture.tenant(),
+                connectorId,
+                keyPrefix + "updated-summary.pdf",
+                "updated-summary.pdf",
+                "TENANT",
+                null,
+                "b".repeat(64));
+        UUID deleted = seedConnectorDocument(
+                fixture.tenant(),
+                connectorId,
+                keyPrefix + "deleted-draft.pdf",
+                "deleted-draft.pdf",
+                "TENANT",
+                null,
+                "c".repeat(64));
+        UUID noAccess = seedConnectorDocument(
+                fixture.tenant(),
+                connectorId,
+                keyPrefix + "restricted-budget.pdf",
+                "restricted-budget.pdf",
+                "USERS",
+                null,
+                "d".repeat(64));
+        UUID history = seedConnectorDocument(
+                fixture.tenant(),
+                connectorId,
+                keyPrefix + "history-plan.pdf",
+                "history-plan.pdf",
+                "TENANT",
+                null,
+                "e".repeat(64));
+        seedAcl(fixture.tenant(), noAccess, actorId(outsider));
+        markDeleted(fixture.tenant(), deleted);
+        // 源更新后索引尚未追平：status 仍是 PENDING，但文档 checksum 已变化；引用必须按 checksum 判 UPDATED。
+        setDocumentStatus(fixture.tenant(), updated, "PENDING");
+
+        UUID availableChunk = seedChunk(fixture.tenant(), available, 1, 100, 200, 300, 400, "0.930");
+        UUID updatedChunk = seedChunk(fixture.tenant(), updated, 1, 10, 20, 30, 40, "0.820");
+        UUID deletedChunk = seedChunk(fixture.tenant(), deleted, 1, 5, 6, 7, 8, "0.700");
+        UUID noAccessChunk = seedChunk(fixture.tenant(), noAccess, 1, 9, 10, 11, 12, "0.600");
+        seedCitation(
+                fixture.tenant(),
+                messageId,
+                1,
+                available,
+                availableChunk,
+                "a".repeat(64),
+                "available-quarterly.pdf",
+                "可见连接器片段");
+        seedCitation(
+                fixture.tenant(),
+                messageId,
+                2,
+                updated,
+                updatedChunk,
+                "0".repeat(64),
+                "updated-summary.pdf",
+                "更新连接器片段");
+        seedCitation(
+                fixture.tenant(), messageId, 3, deleted, deletedChunk, "c".repeat(64), "deleted-draft.pdf", "删除连接器片段");
+        seedCitation(
+                fixture.tenant(),
+                messageId,
+                4,
+                noAccess,
+                noAccessChunk,
+                "d".repeat(64),
+                "restricted-budget.pdf",
+                "受限连接器片段");
+        // 历史引用没有版本快照：仍受当前 ACL/删除状态约束，但不做 UPDATED 判定（ADR-0023 第 5.1 节）。
+        seedCitation(fixture.tenant(), messageId, 5, history, null, null, "history-plan.pdf", "历史连接器片段");
+
+        ApiTestClient.ApiResponse response = client.get(
+                "/api/v1/conversations/" + conversationId + "/messages",
+                fixture.member().sessionCookie(),
+                Map.of());
+        assertThat(response.status()).as(response.body()).isEqualTo(200);
+        JsonNode citations = client.json(response).path("items").get(0).path("citations");
+        assertThat(citations).hasSize(5);
+
+        assertThat(citations.get(0).path("sourceStatus").asText()).isEqualTo("AVAILABLE");
+        assertThat(citations.get(0).path("title").asText()).isEqualTo("available-quarterly.pdf");
+        assertThat(citations.get(0).path("snippet").asText()).isEqualTo("可见连接器片段");
+        assertThat(citations.get(0).path("bbox").path("x").asInt()).isEqualTo(100);
+
+        assertThat(citations.get(1).path("sourceStatus").asText()).isEqualTo("UPDATED");
+        assertThat(citations.get(1).path("title").asText()).isEqualTo("updated-summary.pdf");
+        assertThat(citations.get(1).path("snippet").asText()).isEqualTo("更新连接器片段");
+        assertThat(citations.get(1).path("sheetName").asText()).isEqualTo("销售数据");
+
+        assertMasked(citations.get(2), "DELETED");
+        assertMasked(citations.get(3), "NO_ACCESS");
+        assertThat(citations.get(4).path("sourceStatus").asText()).isEqualTo("AVAILABLE");
+        assertThat(citations.get(4).path("title").asText()).isEqualTo("history-plan.pdf");
+
+        // 引用快照与响应都不得携带完整 externalId、对象 key 或连接器 ID。
+        assertThat(response.body())
+                .doesNotContain(keyPrefix)
+                .doesNotContain("tenants/" + fixture.tenant() + "/connector/")
+                .doesNotContain(connectorId.toString());
+        assertThat(response.body()).doesNotContain("deleted-draft.pdf").doesNotContain("restricted-budget.pdf");
+    }
+
+    /**
+     * 连接器历史引用（空版本）仍按当前 MySQL ACL 判定：收窄后下一次请求立即 NO_ACCESS，不因旧快照误判可见。
+     */
+    @Test
+    @DisplayName("连接器历史引用：ACL 收窄后下一次请求即 NO_ACCESS")
+    void connectorHistoryCitation_followsAclNarrowing() {
+        Fixture fixture = fixture();
+        String workspace = personalWorkspace(fixture.member());
+        UUID conversationId = seedConversation(fixture.tenant(), workspace, actorId(fixture.member()));
+        UUID messageId = seedAssistantMessage(fixture.tenant(), conversationId);
+        UUID connectorId = seedConnector(fixture.tenant());
+        String title = "narrowed-history.pdf";
+        UUID documentId = seedConnectorDocument(
+                fixture.tenant(), connectorId, "reports/finance/2026/" + title, title, "TENANT", null, "1".repeat(64));
+        seedCitation(fixture.tenant(), messageId, 1, documentId, null, null, title, "历史连接器片段");
+
+        ApiTestClient.ApiResponse before = client.get(
+                "/api/v1/conversations/" + conversationId + "/messages",
+                fixture.member().sessionCookie(),
+                Map.of());
+        assertThat(before.status()).as(before.body()).isEqualTo(200);
+        JsonNode beforeCitation =
+                client.json(before).path("items").get(0).path("citations").get(0);
+        assertThat(beforeCitation.path("sourceStatus").asText()).isEqualTo("AVAILABLE");
+        assertThat(beforeCitation.path("title").asText()).isEqualTo(title);
+
+        // 管理员把可见范围收窄为 USERS 且未授权该成员；引用读取不使用缓存，下一次请求必须重新判定。
+        narrowToUsers(fixture.tenant(), documentId);
+
+        ApiTestClient.ApiResponse after = client.get(
+                "/api/v1/conversations/" + conversationId + "/messages",
+                fixture.member().sessionCookie(),
+                Map.of());
+        assertThat(after.status()).as(after.body()).isEqualTo(200);
+        JsonNode afterCitation =
+                client.json(after).path("items").get(0).path("citations").get(0);
+        assertMasked(afterCitation, "NO_ACCESS");
+        assertThat(after.body()).doesNotContain(title);
+    }
+
+    /**
+     * 连接器源端删除-重现：tombstone 复用同一 item 行并绑定新文档，旧文档引用保持 DELETED，新文档引用 AVAILABLE。
+     */
+    @Test
+    @DisplayName("连接器源重现：旧引用 DELETED、新引用 AVAILABLE")
+    void connectorReappearance_keepsOldCitationDeleted() {
+        Fixture fixture = fixture();
+        String workspace = personalWorkspace(fixture.member());
+        UUID conversationId = seedConversation(fixture.tenant(), workspace, actorId(fixture.member()));
+        UUID messageId = seedAssistantMessage(fixture.tenant(), conversationId);
+        UUID connectorId = seedConnector(fixture.tenant());
+        String externalId = "reports/finance/2026/reappeared.pdf";
+        String title = "reappeared.pdf";
+
+        UUID oldDocument =
+                seedConnectorDocument(fixture.tenant(), connectorId, externalId, title, "TENANT", null, "a".repeat(64));
+        markDeleted(fixture.tenant(), oldDocument);
+        // 源端重现复用 tombstone（generation+1、document_id 指向新文档），旧文档保留在历史/审计中。
+        UUID newDocument =
+                seedConnectorDocument(fixture.tenant(), connectorId, externalId, title, "TENANT", null, "b".repeat(64));
+        seedConnectorItem(fixture.tenant(), connectorId, newDocument, "SYNCED", 2, externalId, "b".repeat(64));
+        seedCitation(fixture.tenant(), messageId, 1, oldDocument, null, "a".repeat(64), title, "重现前片段");
+        seedCitation(fixture.tenant(), messageId, 2, newDocument, null, "b".repeat(64), title, "重现后片段");
+
+        ApiTestClient.ApiResponse response = client.get(
+                "/api/v1/conversations/" + conversationId + "/messages",
+                fixture.member().sessionCookie(),
+                Map.of());
+        assertThat(response.status()).as(response.body()).isEqualTo(200);
+        JsonNode citations = client.json(response).path("items").get(0).path("citations");
+        assertMasked(citations.get(0), "DELETED");
+        assertThat(citations.get(1).path("sourceStatus").asText()).isEqualTo("AVAILABLE");
+        assertThat(citations.get(1).path("title").asText()).isEqualTo(title);
+        assertThat(citations.get(0).path("knowledgeDocumentId").asText())
+                .isNotEqualTo(citations.get(1).path("knowledgeDocumentId").asText());
+
+        Map<String, Object> itemRow = jdbcClient
+                .sql("""
+                        SELECT generation, status, document_id
+                          FROM kb_connector_item
+                         WHERE tenant_id = :tenantId AND connector_id = :connectorId
+                        """)
+                .param("tenantId", fixture.tenant())
+                .param("connectorId", BinaryUuids.toBytes(connectorId))
+                .query()
+                .singleRow();
+        assertThat(((Number) itemRow.get("generation")).intValue()).isEqualTo(2);
+        assertThat(itemRow.get("status")).isEqualTo("SYNCED");
+        assertThat(BinaryUuids.fromBytes((byte[]) itemRow.get("document_id"))).isEqualTo(newDocument);
+        assertThat(response.body()).doesNotContain(externalId);
     }
 
     /**
@@ -381,6 +652,173 @@ class CitationStatusApiTest extends ApiIntegrationTestSupport {
                 .param("departmentId", departmentId == null ? null : BinaryUuids.toBytes(departmentId))
                 .update();
         return documentId;
+    }
+
+    /**
+     * 种子连接器行；端点 ID 与配置只用于满足外键/约束，不参与引用状态判定。
+     *
+     * @param tenant 租户
+     * @return 连接器 ID
+     */
+    private UUID seedConnector(String tenant) {
+        UUID connectorId = UuidV7.generate(Instant.now());
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        jdbcClient
+                .sql("""
+                        INSERT INTO kb_connector (
+                            tenant_id, id, name, type, status, endpoint_id, config, default_visibility,
+                            schedule_enabled, created_at, updated_at
+                        ) VALUES (
+                            :tenantId, :id, :name, 'S3', 'ACTIVE', 'test-endpoint',
+                            '{"bucket":"docs","prefix":"reports/"}', 'TENANT', FALSE, NOW(6), NOW(6)
+                        )
+                        """)
+                .param("tenantId", tenant)
+                .param("id", BinaryUuids.toBytes(connectorId))
+                .param("name", "引用测试连接器-" + suffix)
+                .update();
+        return connectorId;
+    }
+
+    /**
+     * 种子连接器文档：完整 externalId 只落库，标题按 B6 规则保存末段，不进入引用快照标题。
+     *
+     * @param tenant 租户
+     * @param connectorId 连接器 ID
+     * @param externalId 完整源对象 key
+     * @param title 文档标题（对象 key 末段）
+     * @param visibility 可见范围
+     * @param departmentId 部门；非 DEPT 为空
+     * @param checksum 内容 checksum
+     * @return 文档 ID
+     */
+    private UUID seedConnectorDocument(
+            String tenant,
+            UUID connectorId,
+            String externalId,
+            String title,
+            String visibility,
+            UUID departmentId,
+            String checksum) {
+        UUID documentId = UuidV7.generate(Instant.now());
+        jdbcClient
+                .sql("""
+                        INSERT INTO knowledge_document (
+                            tenant_id, id, title, source_type, file_id, connector_id, external_id, checksum,
+                            mime_type, size_bytes, status, created_by, created_at, updated_at, visibility,
+                            department_id, parse_engine, acl_version
+                        ) VALUES (
+                            :tenantId, :id, :title, 'CONNECTOR', NULL, :connectorId, :externalId, :checksum,
+                            'application/pdf', 4, 'INDEXED', NULL, NOW(6), NOW(6), :visibility,
+                            :departmentId, 'NONE', 1
+                        )
+                        """)
+                .param("tenantId", tenant)
+                .param("id", BinaryUuids.toBytes(documentId))
+                .param("title", title)
+                .param("connectorId", BinaryUuids.toBytes(connectorId))
+                .param("externalId", externalId)
+                .param("checksum", checksum)
+                .param("visibility", visibility)
+                .param("departmentId", departmentId == null ? null : BinaryUuids.toBytes(departmentId))
+                .update();
+        return documentId;
+    }
+
+    /**
+     * 种子连接器条目；同一 externalId 只有一行，重现时递增 generation 并改绑新文档。
+     *
+     * @param tenant 租户
+     * @param connectorId 连接器 ID
+     * @param documentId 绑定的文档 ID
+     * @param status 条目状态
+     * @param generation 代数
+     * @param externalId 完整源对象 key
+     * @param checksum 内容 checksum
+     */
+    private void seedConnectorItem(
+            String tenant,
+            UUID connectorId,
+            UUID documentId,
+            String status,
+            int generation,
+            String externalId,
+            String checksum) {
+        jdbcClient
+                .sql("""
+                        INSERT INTO kb_connector_item (
+                            tenant_id, id, connector_id, external_id, external_id_hash, external_version,
+                            checksum, document_id, generation, status, last_seen_at, created_at, updated_at
+                        ) VALUES (
+                            :tenantId, :id, :connectorId, :externalId, :externalIdHash, 'etag-1',
+                            :checksum, :documentId, :generation, :status, NOW(6), NOW(6), NOW(6)
+                        )
+                        """)
+                .param("tenantId", tenant)
+                .param("id", BinaryUuids.toBytes(UuidV7.generate(Instant.now())))
+                .param("connectorId", BinaryUuids.toBytes(connectorId))
+                .param("externalId", externalId)
+                .param("externalIdHash", sha256Hex(externalId))
+                .param("checksum", checksum)
+                .param("documentId", BinaryUuids.toBytes(documentId))
+                .param("generation", generation)
+                .param("status", status)
+                .update();
+    }
+
+    /**
+     * 覆盖文档索引状态，模拟源更新后索引尚未追平。
+     *
+     * @param tenant 租户
+     * @param documentId 文档 ID
+     * @param status 新状态
+     */
+    private void setDocumentStatus(String tenant, UUID documentId, String status) {
+        jdbcClient
+                .sql("""
+                        UPDATE knowledge_document
+                           SET status = :status, updated_at = NOW(6)
+                         WHERE tenant_id = :tenantId AND id = :id
+                        """)
+                .param("status", status)
+                .param("tenantId", tenant)
+                .param("id", BinaryUuids.toBytes(documentId))
+                .update();
+    }
+
+    /**
+     * 把文档可见范围收窄为 USERS 且不保留任何用户授权；下一次请求即按当前 ACL 判定。
+     *
+     * @param tenant 租户
+     * @param documentId 文档 ID
+     */
+    private void narrowToUsers(String tenant, UUID documentId) {
+        jdbcClient
+                .sql("""
+                        UPDATE knowledge_document
+                           SET visibility = 'USERS', department_id = NULL,
+                               acl_version = acl_version + 1, updated_at = NOW(6)
+                         WHERE tenant_id = :tenantId AND id = :id
+                        """)
+                .param("tenantId", tenant)
+                .param("id", BinaryUuids.toBytes(documentId))
+                .update();
+    }
+
+    /**
+     * 计算 SHA-256 十六进制串；用于 external_id_hash 唯一键。
+     *
+     * @param value 原值
+     * @return 64 位十六进制
+     */
+    private static String sha256Hex(String value) {
+        try {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (java.security.NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        }
     }
 
     /**
