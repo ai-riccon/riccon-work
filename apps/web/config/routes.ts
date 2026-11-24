@@ -79,6 +79,11 @@ export const routes: RicconRoute[] = [
         title: '模型 key',
       },
       {
+        path: '/admin/connectors',
+        component: '@/pages/admin/connectors',
+        title: '知识库连接器',
+      },
+      {
         path: '/admin/quotas',
         component: '@/pages/admin/quotas',
         title: '配额',
@@ -172,6 +177,8 @@ export interface NavigationItem {
  * M04 B9b 追加配额/成本入口：同一路径在平台与租户角色下文案不同（租户配额/配额、
  * 成本看板/成本），因此单独声明 `quotaCostNavigation`，由 `filterAdminNavigation` 在
  * 审计入口之前合并，保证“路由 / key / 配额 / 成本”四页在平台管理员菜单中连续可见。
+ * M05b 新增连接器入口：仅 `knowledge.connector.read`（当前仅租户管理员）可见，
+ * 平台管理员与普通员工不显示，直接访问由页面按后端语义给出 404/403。
  */
 export const adminNavigation: NavigationItem[] = [
   { path: '/admin/overview', label: '管理总览' },
@@ -186,6 +193,11 @@ export const adminNavigation: NavigationItem[] = [
     path: '/admin/model-keys',
     label: '模型 key',
     permissions: ['platform.model.read'],
+  },
+  {
+    path: '/admin/connectors',
+    label: '知识库连接器',
+    permissions: ['knowledge.connector.read'],
   },
   { path: '/admin/audit', label: '审计查询', permissions: ['audit.read'] },
   {
