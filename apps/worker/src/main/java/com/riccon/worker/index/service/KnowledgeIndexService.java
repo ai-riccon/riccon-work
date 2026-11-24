@@ -345,8 +345,9 @@ public class KnowledgeIndexService implements OutboxEventHandler {
      *
      * <p>连接器文档 {@code file_id} 为空、{@code connector_id} 非空；原文在平台桶，key 由
      * {@link S3FileContentReader#readConnector} 按租户与文档 ID 派生，不访问连接器源桶或凭据。
-     * 对象一次性读入后交给与 {@link FileContentExtractor} 相同的解析器注册表，避免为复用下载入口
-     * 再读取一次；后续分块沿用同一 {@link TextChunker}。
+     * 二进制对象一次性读入后交给与 {@link FileContentExtractor} 相同的解析器注册表；纯文本
+     * （{@code txt}/{@code md}）由 {@link ConnectorPlainTextExtractor} 按 UTF-8 抽取。两者都避免
+     * 为复用下载入口再读取一次，后续分块沿用同一 {@link TextChunker}。
      *
      * @param tenantId 当前租户
      * @param document 文档快照
@@ -355,6 +356,12 @@ public class KnowledgeIndexService implements OutboxEventHandler {
     private LoadedDocument loadConnectorDocument(TenantId tenantId, KnowledgeDocumentRecord document) {
         String title = document.title() == null ? "" : document.title();
         String extension = ConnectorContentTypes.extension(title);
+        if (ConnectorPlainTextExtractor.supports(extension)) {
+            // txt/md 没有 FileFormat/上传解析器：只在本分支按 UTF-8 抽取，仍复用同一 TextChunker。
+            byte[] bytes = contentReader.readConnector(tenantId, document.id(), document.createdAt());
+            ParsedContent content = ConnectorPlainTextExtractor.extract(bytes);
+            return new LoadedDocument(textChunker.chunk(content), content);
+        }
         // 先按标题扩展名选择解析器，再读取对象；不支持的格式不产生无意义下载。
         FileFormat format = connectorFormat(extension);
         byte[] bytes = contentReader.readConnector(tenantId, document.id(), document.createdAt());
@@ -370,10 +377,11 @@ public class KnowledgeIndexService implements OutboxEventHandler {
     }
 
     /**
-     * 把连接器对象扩展名映射为解析格式。
+     * 把连接器二进制对象扩展名映射为解析格式。
      *
-     * <p>连接器同步白名单包含 {@code txt}/{@code md}，但文件解析域目前没有纯文本格式与解析器；
-     * 这里按不可解析失败处理并保留稳定错误码，不静默跳过或伪造索引内容。
+     * <p>纯文本（{@code txt}/{@code md}/{@code markdown}）在调用前由
+     * {@link ConnectorPlainTextExtractor} 处理；这里只覆盖有 {@link FileFormat} 与解析器的类型，
+     * 其他扩展名按不可解析失败处理并保留稳定错误码，不静默跳过或伪造索引内容。
      *
      * @param extension 小写扩展名
      * @return 解析格式

@@ -96,6 +96,102 @@ class ConnectorKnowledgeIndexIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(source.toString()).doesNotContain(seed.externalId()).doesNotContain("connector/");
     }
 
+    /** 连接器 txt 文档按 UTF-8 索引：BOM 去除、CRLF 归一、中文段落可分块。 */
+    @Test
+    void textConnectorDocument_indexesUtf8WithBomAndCrlf() {
+        String tenant = uniqueTenant("conn-text");
+        data.createTenant(tenant);
+        UUID userId = data.createUser(tenant);
+        byte[] body = "\uFEFF第一段：市场调研数据\r\n\r\n第二段：中文内容与结论".getBytes(StandardCharsets.UTF_8);
+        Seed seed = seedConnectorDocument(tenant, userId, "market.txt", body);
+
+        data.publishKnowledgeIndex(tenant, seed.documentId(), null, userId, 1);
+        assertThat(poller.pollOnce()).isEqualTo(1);
+
+        assertThat(documentStatus(tenant, seed.documentId())).isEqualTo("INDEXED");
+        List<String> contents = chunks(tenant, seed.documentId());
+        assertThat(contents).hasSize(2);
+        assertThat(String.join("\n", contents)).contains("第一段：市场调研数据").contains("第二段：中文内容与结论");
+        assertThat(contents)
+                .allSatisfy(content -> assertThat(content).doesNotContain("\r").doesNotContain("\uFEFF"));
+        assertThat(countDocuments(tenant, seed.documentId())).isEqualTo(2);
+        JsonNode source = firstSource(tenant, seed.documentId());
+        assertThat(source.path("source_type").asText()).isEqualTo("CONNECTOR");
+        assertThat(source.path("parse_engine").asText()).isEqualTo("NONE");
+    }
+
+    /** 连接器 md 文档长文本按既有上限切分；重复 FULL 重灌不改变分块内容。 */
+    @Test
+    void markdownConnectorDocument_indexesLongTextIdempotently() {
+        String tenant = uniqueTenant("conn-markdown");
+        data.createTenant(tenant);
+        UUID userId = data.createUser(tenant);
+        String body = "# 调研指南\n\n" + "市场调研中文内容 ".repeat(160);
+        Seed seed = seedConnectorDocument(tenant, userId, "guide.md", body.getBytes(StandardCharsets.UTF_8));
+
+        data.publishKnowledgeIndex(tenant, seed.documentId(), null, userId, 1);
+        assertThat(poller.pollOnce()).isEqualTo(1);
+
+        assertThat(documentStatus(tenant, seed.documentId())).isEqualTo("INDEXED");
+        List<String> first = chunks(tenant, seed.documentId());
+        assertThat(first).hasSizeGreaterThan(1);
+        assertThat(first).allSatisfy(content -> assertThat(content.length()).isLessThanOrEqualTo(800));
+        assertThat(countDocuments(tenant, seed.documentId())).isEqualTo(first.size());
+
+        data.publishKnowledgeIndex(tenant, seed.documentId(), null, userId, 2);
+        assertThat(poller.pollOnce()).isEqualTo(1);
+
+        assertThat(chunks(tenant, seed.documentId())).containsExactlyElementsOf(first);
+        assertThat(countDocuments(tenant, seed.documentId())).isEqualTo(first.size());
+        assertThat(documentStatus(tenant, seed.documentId())).isEqualTo("INDEXED");
+    }
+
+    /** 空文件与仅空白文本按不可解析失败处理，不产生空索引或静默成功。 */
+    @Test
+    void emptyOrBlankTextConnectorDocument_failsWithoutEmptyIndex() {
+        String tenant = uniqueTenant("conn-empty-text");
+        data.createTenant(tenant);
+        UUID userId = data.createUser(tenant);
+
+        Seed empty = seedConnectorDocument(tenant, userId, "empty.txt", new byte[0]);
+        TestDataFactory.PublishedEvent emptyEvent =
+                data.publishKnowledgeIndex(tenant, empty.documentId(), null, userId, 1);
+        assertThat(poller.pollOnce()).isEqualTo(1);
+        assertThat(documentStatus(tenant, empty.documentId())).isEqualTo("FAILED");
+        assertThat(documentErrorCode(tenant, empty.documentId())).isEqualTo("RICCON-FILE-422");
+        assertThat(chunks(tenant, empty.documentId())).isEmpty();
+        assertThat(countDocuments(tenant, empty.documentId())).isZero();
+        assertThat(outboxStatus(emptyEvent.eventId())).isEqualTo("DEAD");
+
+        Seed blank =
+                seedConnectorDocument(tenant, userId, "blank.md", "\uFEFF \r\n\t\n".getBytes(StandardCharsets.UTF_8));
+        TestDataFactory.PublishedEvent blankEvent =
+                data.publishKnowledgeIndex(tenant, blank.documentId(), null, userId, 1);
+        assertThat(poller.pollOnce()).isEqualTo(1);
+        assertThat(documentStatus(tenant, blank.documentId())).isEqualTo("FAILED");
+        assertThat(documentErrorCode(tenant, blank.documentId())).isEqualTo("RICCON-FILE-422");
+        assertThat(chunks(tenant, blank.documentId())).isEmpty();
+        assertThat(countDocuments(tenant, blank.documentId())).isZero();
+        assertThat(outboxStatus(blankEvent.eventId())).isEqualTo("DEAD");
+    }
+
+    /** 非法 UTF-8 字节用替换字符处理，不抛未捕获异常、不导致索引崩溃。 */
+    @Test
+    void invalidUtf8TextConnectorDocument_isReplacedNotFatal() {
+        String tenant = uniqueTenant("conn-invalid-text");
+        data.createTenant(tenant);
+        UUID userId = data.createUser(tenant);
+        byte[] invalid = new byte[] {(byte) 0xC3, 0x28, 'a', 'b'};
+        Seed seed = seedConnectorDocument(tenant, userId, "legacy.txt", invalid);
+
+        data.publishKnowledgeIndex(tenant, seed.documentId(), null, userId, 1);
+        assertThat(poller.pollOnce()).isEqualTo(1);
+
+        assertThat(documentStatus(tenant, seed.documentId())).isEqualTo("INDEXED");
+        assertThat(String.join("", chunks(tenant, seed.documentId()))).contains("\uFFFD");
+        assertThat(countDocuments(tenant, seed.documentId())).isEqualTo(1);
+    }
+
     /** 同一文档重复 FULL 事件（重灌）不产生重复分块或重复索引文档。 */
     @Test
     void fullEventReplay_doesNotDuplicateChunks() {
