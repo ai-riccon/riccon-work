@@ -17,6 +17,7 @@ import {
   makeTestResult,
 } from '@/test/fake-connectors';
 import { withProviders } from '@/test/render';
+import { queryFocusableElements } from './focus-trap';
 import ConnectorsPage from './index';
 
 /** 租户管理员会话：连接器可读可写。 */
@@ -148,29 +149,6 @@ function expectAADangerButton(button: HTMLElement): void {
     );
   }
   expect(button.style.getPropertyValue('--ant-btn-color-base')).toBe('#cf1322');
-}
-
-/**
- * 收集容器内可键盘聚焦的元素；与抽屉实现的 Tab 循环选择器一致。
- *
- * @param container 抽屉面板
- * @returns 可聚焦元素
- */
-function focusableElements(container: HTMLElement): HTMLElement[] {
-  return Array.from(
-    container.querySelectorAll<HTMLElement>(
-      [
-        'a[href]',
-        'button:not([disabled])',
-        'input:not([disabled]):not([type="hidden"])',
-        'select:not([disabled])',
-        'textarea:not([disabled])',
-        '[tabindex]:not([tabindex="-1"])',
-      ].join(','),
-    ),
-  ).filter(
-    (element) => element.getAttribute('aria-hidden') !== 'true' && !element.hasAttribute('hidden'),
-  );
 }
 
 describe('知识库连接器页', () => {
@@ -654,7 +632,15 @@ describe('知识库连接器页', () => {
   });
 
   it('条目抽屉 Tab 焦点循环，并在 Escape 关闭后归还触发按钮', async () => {
-    renderPage(createFakeConnectorApi());
+    // 6 条数据只有 1 页：分页“下一页”禁用，隐藏分页大小选择器后“页 1”就是最后一个
+    // 可 Tab 元素，与 V1b 在 375px 复现的失败场景一致。
+    const items = Array.from({ length: 6 }, (_, index) =>
+      makeConnectorItem({ id: `item-${index}`, externalId: `dir/${index}.pdf` }),
+    );
+    const api = createFakeConnectorApi({
+      listConnectorItems: vi.fn(async () => connectorItemPage(items)),
+    });
+    renderPage(api);
     await screen.findByText('销售合同归档');
     const trigger = screen.getByRole('button', { name: '条目 销售合同归档' });
     fireEvent.click(trigger);
@@ -664,20 +650,33 @@ describe('知识库连接器页', () => {
     expect(dialog).not.toBeNull();
     const panel = dialog as HTMLElement;
     const closeButton = within(panel).getByRole('button', { name: '关闭' });
-    // 打开后焦点进入抽屉，键盘用户有明确起点。
     await waitFor(() => expect(closeButton).toHaveFocus());
 
-    const focusable = focusableElements(panel);
+    // 常规边界：最后一个可 Tab 元素 → Tab 回到第一个；第一个 → Shift+Tab 回到最后。
+    const focusable = queryFocusableElements(panel);
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
     expect(first).toBe(closeButton);
-
-    // 最后一个元素 Tab 回到第一个；第一个元素 Shift+Tab 回到最后一个。
     last.focus();
     fireEvent.keyDown(last, { key: 'Tab' });
     expect(first).toHaveFocus();
     fireEvent.keyDown(first, { key: 'Tab', shiftKey: true });
     expect(last).toHaveFocus();
+
+    // 375px 下 antd 用媒体查询隐藏分页大小选择器；隐藏 input 仍有 tabIndex=0，
+    // 不能被当作最后一个可聚焦元素，否则从“页 1”Tab 会逃到页面（F-004 回归）。
+    const paginationOptions = panel.querySelector<HTMLElement>('.ant-pagination-options');
+    expect(paginationOptions).not.toBeNull();
+    paginationOptions!.style.display = 'none';
+    const pageOne = within(panel).getByLabelText('页 1');
+    const visibleFocusable = queryFocusableElements(panel);
+    expect(visibleFocusable[visibleFocusable.length - 1]).toBe(pageOne);
+
+    pageOne.focus();
+    fireEvent.keyDown(pageOne, { key: 'Tab' });
+    expect(closeButton).toHaveFocus();
+    fireEvent.keyDown(closeButton, { key: 'Tab', shiftKey: true });
+    expect(pageOne).toHaveFocus();
 
     // Escape 关闭后焦点归还“条目”按钮（F-004）。
     fireEvent.keyDown(window, { key: 'Escape' });

@@ -31,6 +31,7 @@ import {
   formatConnectorTime,
   isConnectorSyncInProgress,
 } from '@/services/connector';
+import { resolveTabTrapTarget } from './focus-trap';
 
 /** 条目抽屉属性。 */
 export interface ConnectorItemsDrawerProps {
@@ -75,31 +76,6 @@ const HIGH_CONTRAST_TAG_STYLES = {
  */
 function highContrastTagStyle(color: string) {
   return HIGH_CONTRAST_TAG_STYLES[color as keyof typeof HIGH_CONTRAST_TAG_STYLES];
-}
-
-/** 抽屉内可聚焦元素选择器；用于 Tab 循环，避免引入额外依赖。 */
-const FOCUSABLE_SELECTOR = [
-  'a[href]',
-  'button:not([disabled])',
-  'input:not([disabled]):not([type="hidden"])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])',
-].join(',');
-
-/**
- * 收集容器内可键盘聚焦的元素。
- *
- * 只按 DOM 顺序返回可用元素，不计算可见性：jsdom 没有布局信息，且 Drawer 打开时
- * 隐藏的兄弟面板会被 antd 卸载或带有 `aria-hidden`，不会进入焦点循环。
- *
- * @param container 抽屉面板
- * @returns 可聚焦元素列表
- */
-function queryFocusableElements(container: HTMLElement): HTMLElement[] {
-  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
-    (element) => element.getAttribute('aria-hidden') !== 'true' && !element.hasAttribute('hidden'),
-  );
 }
 
 /**
@@ -259,24 +235,14 @@ export function ConnectorItemsDrawer({
       if (!panel) {
         return;
       }
-      const active = document.activeElement as HTMLElement | null;
-      if (!active || !panel.contains(active)) {
-        return;
-      }
-      const focusable = queryFocusableElements(panel);
-      if (focusable.length === 0) {
+      const result = resolveTabTrapTarget(
+        panel,
+        document.activeElement as HTMLElement | null,
+        event.shiftKey,
+      );
+      if (result.preventDefault) {
         event.preventDefault();
-        panel.focus({ preventScroll: true });
-        return;
-      }
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && (active === first || active === panel)) {
-        event.preventDefault();
-        last.focus({ preventScroll: true });
-      } else if (!event.shiftKey && active === last) {
-        event.preventDefault();
-        first.focus({ preventScroll: true });
+        result.target?.focus({ preventScroll: true });
       }
     };
     document.addEventListener('keydown', handleKeyDown, true);
