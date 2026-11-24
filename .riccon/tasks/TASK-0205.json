@@ -7,11 +7,16 @@
   "status": "planned",
   "write_scope": [
     "apps/worker/src/main/java/**/parse/service/S3FileContentReader.java",
-    "apps/worker/src/main/java/**/index/**"
+    "apps/worker/src/main/java/**/index/**",
+    "apps/worker/src/test/java/**/index/**",
+    "apps/worker/src/test/java/**/parse/service/**",
+    "apps/worker/src/test/java/**/connector/**"
   ],
   "acceptance": [
+    "连接器文档按平台 key tenants/{tenantId}/connector/{yyyy}/{documentId} 读取并解析；fileId=null/connectorId 非空分支；不依赖下载端点，不破坏 UPLOAD/SEED",
     "连接器对象 index/ACL_ONLY/DELETE/tombstone；重灌幂等；不破坏 M05 索引 v2/别名",
-    "测试覆盖对象删除/重现/失败"
+    "测试覆盖对象删除/重现/失败/重灌幂等；真实 RustFS/MySQL",
+    "不修改 contracts/docs/deploy；B6 平台桶写入与 TASK-0214 下载 key 为前置"
   ],
   "evidence": [],
   "tools_used": [],
