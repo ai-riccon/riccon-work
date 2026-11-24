@@ -17,6 +17,8 @@ import com.riccon.worker.research.domain.ResearchTaskRecord;
 import com.riccon.worker.research.domain.RunStageDetails;
 import com.riccon.worker.research.repository.ArtifactRepository;
 import com.riccon.worker.research.repository.ResearchRepository;
+import com.riccon.worker.research.service.ArtifactStorage;
+import com.riccon.worker.research.service.ReportArtifactService;
 import com.riccon.worker.research.service.ReportArtifactService.SavedArtifact;
 import com.riccon.worker.research.service.ReportArtifactWriter;
 import com.riccon.worker.run.service.OutboxPoller;
@@ -65,6 +67,10 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
     /** 产物写入编排。 */
     @Autowired
     private ReportArtifactWriter artifactWriter;
+
+    /** 产物落库服务；用于直接验证连接器来源的 source_version 快照。 */
+    @Autowired
+    private ReportArtifactService artifactService;
 
     /** 模型桩。 */
     private TestModelStub stub;
@@ -534,6 +540,101 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(citationCount(fixture.tenant())).isEqualTo(3);
     }
 
+    /**
+     * 连接器源更新：产物引用写入当时的文档 checksum；历史版本保留旧快照，新版本写入新 checksum。
+     *
+     * <p>B6 同步在源内容变化时更新同一 {@code knowledge_document.checksum} 并投递重索引；API 读取时据此把旧
+     * 引用判为 {@code UPDATED}。这里锁定 Worker 写入侧：引用快照不被回溯改写，也不携带完整 externalId。
+     */
+    @Test
+    void connectorSourceUpdate_persistsVersionSnapshotPerReport() {
+        Fixture fixture = fixture("tenant-a", false);
+        UUID connectorId = insertConnector(fixture.tenant());
+        String externalId = "reports/finance/2026/connector-summary.pdf";
+        String title = "connector-summary.pdf";
+        UUID documentId = insertConnectorDocument(fixture.tenant(), connectorId, externalId, title, "a".repeat(64));
+        ResearchTaskRecord task = tenantCall(
+                fixture.tenant(),
+                () -> researchRepository
+                        .findTask(TenantId.of(fixture.tenant()), fixture.taskId())
+                        .orElseThrow());
+
+        ReportDocument first = new ReportDocument(
+                "连接器引用报告",
+                "# 连接器引用报告\n\n## 摘要\n\n第一次分析。\n\n## 分析\n\n第一次正文。",
+                "第一次分析。",
+                List.of(connectorCitation(1, documentId, title, "第一次片段")));
+        SavedArtifact firstSaved = tenantCall(
+                fixture.tenant(),
+                () -> artifactService.persist(
+                        TenantId.of(fixture.tenant()),
+                        task,
+                        fixture.runId(),
+                        fixture.userId(),
+                        first,
+                        new ArtifactStorage.StoredArtifact(
+                                "tenants/" + fixture.tenant() + "/artifact/2026/connector-v1", 16, "1".repeat(64)),
+                        "trace-connector-1"));
+        assertThat(firstSaved.created()).isTrue();
+        assertThat(firstSaved.version().version()).isEqualTo(1);
+
+        List<ArtifactCitationRecord> firstCitations = tenantCall(
+                fixture.tenant(),
+                () -> artifactRepository.findCitations(
+                        TenantId.of(fixture.tenant()), firstSaved.version().id()));
+        assertThat(firstCitations).hasSize(1);
+        assertThat(firstCitations.get(0).sourceVersion()).isEqualTo("a".repeat(64));
+        assertThat(firstCitations.get(0).titleSnapshot()).isEqualTo(title);
+        // 引用快照只保存对象 key 末段，不写入完整 externalId 或平台对象 key。
+        assertThat(firstCitations.get(0).titleSnapshot()).doesNotContain("reports/finance/2026/");
+        assertThat(firstCitations.get(0).titleSnapshot()).doesNotContain("tenants/" + fixture.tenant());
+        assertThat(firstCitations.get(0).snippet()).isEqualTo("第一次片段");
+
+        // 模拟 B6 源更新：同一文档 checksum 变化，后续引用应写入新版本快照。
+        jdbcClient
+                .sql("""
+                        UPDATE knowledge_document
+                           SET checksum = :checksum, updated_at = NOW(6)
+                         WHERE tenant_id = :tenantId AND id = :id
+                        """)
+                .param("checksum", "b".repeat(64))
+                .param("tenantId", fixture.tenant())
+                .param("id", UuidBinary.toBytes(documentId))
+                .update();
+
+        ReportDocument second = new ReportDocument(
+                "连接器引用报告",
+                "# 连接器引用报告\n\n## 摘要\n\n第二次分析。\n\n## 分析\n\n第二次正文。",
+                "第二次分析。",
+                List.of(connectorCitation(1, documentId, title, "第二次片段")));
+        SavedArtifact secondSaved = tenantCall(
+                fixture.tenant(),
+                () -> artifactService.persist(
+                        TenantId.of(fixture.tenant()),
+                        task,
+                        fixture.runId(),
+                        fixture.userId(),
+                        second,
+                        new ArtifactStorage.StoredArtifact(
+                                "tenants/" + fixture.tenant() + "/artifact/2026/connector-v2", 16, "2".repeat(64)),
+                        "trace-connector-2"));
+        assertThat(secondSaved.created()).isTrue();
+        assertThat(secondSaved.version().version()).isEqualTo(2);
+
+        List<ArtifactCitationRecord> secondCitations = tenantCall(
+                fixture.tenant(),
+                () -> artifactRepository.findCitations(
+                        TenantId.of(fixture.tenant()), secondSaved.version().id()));
+        assertThat(secondCitations).hasSize(1);
+        assertThat(secondCitations.get(0).sourceVersion()).isEqualTo("b".repeat(64));
+        // 历史版本快照不被回溯改写；API 读取时会与当前 checksum 比较得到 UPDATED。
+        List<ArtifactCitationRecord> firstCitationsAfter = tenantCall(
+                fixture.tenant(),
+                () -> artifactRepository.findCitations(
+                        TenantId.of(fixture.tenant()), firstSaved.version().id()));
+        assertThat(firstCitationsAfter.get(0).sourceVersion()).isEqualTo("a".repeat(64));
+    }
+
     /** 产物、版本与引用查询严格按租户隔离，跨租户不可见。 */
     @Test
     void artifactQueries_areTenantScoped() {
@@ -836,6 +937,93 @@ class ReportArtifactIntegrationTest extends WorkerIntegrationTestBase {
     /** 在租户上下文中执行查询。 */
     private <T> T tenantCall(String tenant, java.util.function.Supplier<T> supplier) {
         return TenantContext.callWithTenant(TenantId.of(tenant), supplier);
+    }
+
+    /**
+     * 构造连接器知识库来源的引用清单条目。
+     *
+     * @param ordinal 序号
+     * @param documentId 连接器文档 ID
+     * @param title 文档标题（对象 key 末段）
+     * @param snippet 片段
+     * @return 引用条目
+     */
+    private static ReportCitation connectorCitation(int ordinal, UUID documentId, String title, String snippet) {
+        return new ReportCitation(
+                ordinal,
+                "KNOWLEDGE",
+                null,
+                documentId,
+                null,
+                null,
+                title,
+                snippet,
+                com.riccon.platform.domain.chat.LocatorType.PARAGRAPH,
+                null,
+                null,
+                null,
+                1,
+                null);
+    }
+
+    /**
+     * 插入连接器配置行；端点/配置只满足约束，不参与引用版本判定。
+     *
+     * @param tenant 租户
+     * @return 连接器 ID
+     */
+    private UUID insertConnector(String tenant) {
+        UUID connectorId = UuidBinary.newV7();
+        jdbcClient
+                .sql("""
+                        INSERT INTO kb_connector (
+                            tenant_id, id, name, type, status, endpoint_id, config, default_visibility,
+                            schedule_enabled, created_at, updated_at
+                        ) VALUES (
+                            :tenantId, :id, :name, 'S3', 'ACTIVE', 'test-endpoint',
+                            '{"bucket":"docs","prefix":"reports/"}', 'TENANT', FALSE, NOW(6), NOW(6)
+                        )
+                        """)
+                .param("tenantId", tenant)
+                .param("id", UuidBinary.toBytes(connectorId))
+                .param("name", "引用测试连接器-" + connectorId)
+                .update();
+        return connectorId;
+    }
+
+    /**
+     * 插入连接器来源文档：完整 externalId 只落库，标题保存对象 key 末段。
+     *
+     * @param tenant 租户
+     * @param connectorId 连接器 ID
+     * @param externalId 完整源对象 key
+     * @param title 文档标题
+     * @param checksum 内容 checksum
+     * @return 文档 ID
+     */
+    private UUID insertConnectorDocument(
+            String tenant, UUID connectorId, String externalId, String title, String checksum) {
+        UUID documentId = UuidBinary.newV7();
+        jdbcClient
+                .sql("""
+                        INSERT INTO knowledge_document (
+                            tenant_id, id, title, source_type, file_id, connector_id, external_id, checksum,
+                            mime_type, size_bytes, status, created_by, created_at, updated_at, visibility,
+                            department_id, parse_engine, acl_version
+                        ) VALUES (
+                            :tenantId, :id, :title, 'CONNECTOR', NULL, :connectorId, :externalId, :checksum,
+                            'application/pdf', 4, 'INDEXED', NULL, NOW(6), NOW(6), 'TENANT',
+                            NULL, 'NONE', 1
+                        )
+                        """)
+                .param("tenantId", tenant)
+                .param("id", UuidBinary.toBytes(documentId))
+                .param("title", title)
+                .param("connectorId", UuidBinary.toBytes(connectorId))
+                .param("externalId", externalId)
+                .param("checksum", checksum)
+                .update();
+        return documentId;
     }
 
     /**
