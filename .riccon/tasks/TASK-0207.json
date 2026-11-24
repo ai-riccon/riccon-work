@@ -8,10 +8,15 @@
   "write_scope": [
     "apps/api/src/main/java/com/riccon/api/chat/**",
     "apps/api/src/main/java/com/riccon/api/research/**",
-    "apps/worker/src/main/java/com/riccon/worker/research/**"
+    "apps/worker/src/main/java/com/riccon/worker/research/**",
+    "apps/api/src/test/java/**/chat/**",
+    "apps/api/src/test/java/**/research/**",
+    "apps/worker/src/test/java/**/research/**"
   ],
   "acceptance": [
-    "连接器源 UPDATED/DELETED/NO_ACCESS 遮蔽；J1/J2 同判；历史引用保守；测试"
+    "连接器源 UPDATED/DELETED/NO_ACCESS 遮蔽；J1/J2 同判；历史引用保守；不把完整 externalId/对象 key 写入引用快照",
+    "ACL 收窄/软删除/源端重现后引用状态按当前 MySQL 计算，索引字段不作为授权依据",
+    "API/Worker 测试覆盖上述状态与历史引用；不修改 contracts/docs/deploy"
   ],
   "evidence": [],
   "tools_used": [],
