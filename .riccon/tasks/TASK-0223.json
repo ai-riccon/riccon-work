@@ -13,11 +13,12 @@
     "实现运行创建/准入/取消/重试、M04 配额按运行 1 单位、并发上限 429、kill switch 503、幂等键；AC-03/04/15/17/23；证据 IT-WF-109/110。",
     "复用 QuotaAdmissionService 锁顺序；不新增 token/成本配额（DEC-0048=A）；参照 ADR §4.8/§6.2；受影响测试通过。",
     "高风险任务：done 前必须有独立 Verifier 任务级评审；只改 write_scope；不改 contracts/PRODUCT/AGENTS；不启动 M06b；提交后取证，任务只移到 review。",
-    "关闭 REV-TASK-0220-001 F-004/F-005：补 DEPARTMENT 可见性集成测试；统一所有者移出部门后 detail canRun 与 RUNNABLE 列表语义（T05 运行准入复用同一规则）。"
+    "关闭 REV-TASK-0220-001 F-004/F-005：补 DEPARTMENT 可见性集成测试；统一所有者移出部门后 detail canRun 与 RUNNABLE 列表语义（T05 运行准入复用同一规则）。",
+    "T04 评审约束：运行准入必须读取用户所选 workflow_version.run_scope + department_id 再校验（不能只用最近发布版本/definition 范围），防止 v1=ONLY_SELF、v2=TENANT 时普通员工用 versionId 运行 v1；补集成用例。"
   ],
   "evidence": [],
   "tools_used": [],
   "blocker": null,
   "created_at": "2026-11-25T02:10:49.864+08:00",
-  "updated_at": "2026-11-25T04:40:48.678+08:00"
+  "updated_at": "2026-11-25T06:49:00.958+08:00"
 }
