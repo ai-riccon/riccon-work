@@ -15,8 +15,9 @@ import tools.jackson.databind.JsonNode;
  * 生效：全局 Jackson 配置忽略未知字段，直接绑定会静默丢弃客户端字段。所有错误映射为
  * 400 {@code RICCON-WF-400}，说明只含字段名与范围。
  *
- * <p>保存草稿不做完整发布校验：允许空图或不完整节点参数，结构问题由校验器在 validate/publish 返回；
- * 图 JSON 的字段白名单、类型、枚举与上限由 {@link WorkflowGraphJson} 在保存时拒绝（TM-72）。
+ * <p>保存草稿仍会调用 {@link com.riccon.api.workflow.validation.WorkflowValidator} 拒绝非法图；解析器只负责
+ * 形状、字段白名单、类型、枚举与上限，结构、必填、模型/工具/审批等语义问题由校验器以逐项 issue 返回
+ * （AC-02/24）。图 JSON 的字段白名单、类型、枚举与上限由 {@link WorkflowGraphJson} 在保存时拒绝（TM-72）。
  */
 @Component
 public class WorkflowDefinitionRequestParser {

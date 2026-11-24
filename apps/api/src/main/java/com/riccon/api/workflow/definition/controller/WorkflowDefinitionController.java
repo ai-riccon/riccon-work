@@ -14,6 +14,7 @@ import com.riccon.api.workflow.definition.dto.WorkflowDefinitionDetailResponse;
 import com.riccon.api.workflow.definition.dto.WorkflowDefinitionPageResponse;
 import com.riccon.api.workflow.definition.service.WorkflowDefinitionRequestParser;
 import com.riccon.api.workflow.definition.service.WorkflowDefinitionService;
+import com.riccon.api.workflow.validation.WorkflowValidationResult;
 import com.riccon.platform.domain.identity.PermissionCodes;
 import com.riccon.platform.domain.workflow.WorkflowDefinitionStatus;
 import jakarta.servlet.http.HttpServletRequest;
@@ -157,6 +158,22 @@ public class WorkflowDefinitionController {
                 parser.parseDraft(body),
                 RequestContext.traceId(request),
                 RequestContext.requestId(request));
+    }
+
+    /**
+     * 校验流程草稿。
+     *
+     * <p>按契约 {@code POST /workflows/{workflowId}/validate} 返回逐项问题；不改变草稿版本、不写审计。
+     * 权限与保存一致为 {@code workflow.edit}，平台租户 404 由前置 filter 短路。
+     *
+     * @param workflowId 流程 ID
+     * @param authentication 当前认证
+     * @return 逐项校验结果
+     */
+    @PostMapping("/{workflowId}/validate")
+    @RequirePermission(PermissionCodes.WORKFLOW_EDIT)
+    public WorkflowValidationResult validate(@PathVariable UUID workflowId, Authentication authentication) {
+        return service.validateDraft(actor(authentication), workflowId);
     }
 
     /**

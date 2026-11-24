@@ -23,6 +23,10 @@ import com.riccon.api.workflow.definition.service.WorkflowDefinitionRequestParse
 import com.riccon.api.workflow.definition.service.WorkflowDefinitionRequestParser.DuplicateCommand;
 import com.riccon.api.workflow.domain.WorkflowGraph;
 import com.riccon.api.workflow.domain.WorkflowGraphJson;
+import com.riccon.api.workflow.validation.WorkflowValidationException;
+import com.riccon.api.workflow.validation.WorkflowValidationRequest;
+import com.riccon.api.workflow.validation.WorkflowValidationResult;
+import com.riccon.api.workflow.validation.WorkflowValidator;
 import com.riccon.platform.common.tenant.TenantId;
 import com.riccon.platform.domain.identity.PermissionCodes;
 import com.riccon.platform.domain.organization.DepartmentStatus;
@@ -44,6 +48,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>审计 {@code workflow.created}/{@code workflow.draft.saved} 与业务同事务写入，失败即回滚
  * （ADR-0007/ADR-0024 §8.2）。本服务不记录 prompt、查询模板、图 JSON 或工具参数。
+ *
+ * <p>保存前调用 {@link WorkflowValidator} 拒绝非法图；{@link #validateDraft} 按发布口径返回逐项问题但不改
+ * 草稿版本、不写审计。发布与运行由 T04/T05 复用同一校验器，保证三处规则一致。
  */
 @Service
 public class WorkflowDefinitionService {
@@ -66,6 +73,9 @@ public class WorkflowDefinitionService {
     /** 部门仓储；用于 DEPARTMENT 范围可见性与运行准入判定。 */
     private final DepartmentRepository departmentRepository;
 
+    /** 图校验器；保存、校验、发布与运行前共用。 */
+    private final WorkflowValidator validator;
+
     /** 可注入时钟。 */
     private final Clock clock;
 
@@ -75,17 +85,20 @@ public class WorkflowDefinitionService {
      * @param repository 流程定义仓储
      * @param auditService 审计写入
      * @param departmentRepository 部门仓储
+     * @param validator 图校验器
      * @param clock 可注入时钟
      */
     public WorkflowDefinitionService(
             WorkflowDefinitionRepository repository,
             AuditService auditService,
             DepartmentRepository departmentRepository,
+            WorkflowValidator validator,
             Clock clock) {
         this.repository = Objects.requireNonNull(repository, "repository must not be null");
         this.auditService = Objects.requireNonNull(auditService, "auditService must not be null");
         this.departmentRepository =
                 Objects.requireNonNull(departmentRepository, "departmentRepository must not be null");
+        this.validator = Objects.requireNonNull(validator, "validator must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
@@ -264,6 +277,12 @@ public class WorkflowDefinitionService {
         requireEditPermission(actor);
         TenantId tenantId = TenantId.of(actor.tenantId());
         requireEditable(tenantId, workflowId, actor);
+        WorkflowValidationResult validation =
+                validator.validate(command.graph(), WorkflowValidationRequest.save(tenantId, actor.userId()));
+        if (!validation.valid()) {
+            // 非法图不写库、不写审计；逐项问题由 400 detail 与 validate 端点返回（AC-02/24）。
+            throw new WorkflowValidationException(validation);
+        }
         Instant now = clock.instant();
         int updated = repository.updateDraft(
                 tenantId,
@@ -290,6 +309,24 @@ public class WorkflowDefinitionService {
                 traceId,
                 requestId));
         return detail(saved, latestVersion(tenantId, saved), actor, true, false);
+    }
+
+    /**
+     * 校验当前草稿（不改变版本、不写审计）。
+     *
+     * <p>按发布口径返回逐项问题：结构、必填参数、模型、工具、条件、结果与可用审批人；画布与列表/表单共用
+     * 同一结果（AC-02/06）。只有所有者与租户管理员可见草稿，其他主体按私有草稿 404（ADR-0024 §6.2）。
+     *
+     * @param actor 当前主体
+     * @param workflowId 流程 ID
+     * @return 图校验结果
+     */
+    @Transactional(readOnly = true)
+    public WorkflowValidationResult validateDraft(WorkflowDefinitionActor actor, UUID workflowId) {
+        requireEditPermission(actor);
+        TenantId tenantId = TenantId.of(actor.tenantId());
+        WorkflowDefinitionSnapshot snapshot = requireEditable(tenantId, workflowId, actor);
+        return validator.validate(snapshot.draftGraph(), WorkflowValidationRequest.publish(tenantId, actor.userId()));
     }
 
     /**
