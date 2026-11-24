@@ -9,6 +9,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.riccon.platform.common.crypto.CredentialEnvelope;
 import com.riccon.platform.common.tenant.TenantContext;
 import com.riccon.platform.common.tenant.TenantId;
@@ -41,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -541,6 +545,63 @@ class ConnectorSyncIntegrationTest extends WorkerIntegrationTestBase {
         assertThat(auditCount(tenant, "knowledge.connector.sync.started")).isZero();
         assertThat(events(tenant, EventTypes.KNOWLEDGE_CONNECTOR_SYNC_REQUESTED))
                 .isEmpty();
+    }
+
+    @Test
+    void syncLogsAndAudit_doNotContainCredentialOrExternalId() {
+        String tenant = uniqueTenant("conn");
+        data.createTenant(tenant);
+        UUID user = data.createUser(tenant);
+        String prefix = uniquePrefix("log-redaction");
+        String externalId =
+                prefix + "v2b-external-canary-" + UUID.randomUUID().toString().substring(0, 8) + ".pdf";
+        UUID connector = createConnector(
+                tenant,
+                user,
+                prefix,
+                List.of(),
+                List.of(),
+                false,
+                ExternalTestServices.storageAccessKey(),
+                ExternalTestServices.storageSecretKey());
+        put(externalId, "log redaction");
+
+        Logger logger = (Logger) LoggerFactory.getLogger("com.riccon.worker.connector");
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            sync(tenant, connector, 0);
+        } finally {
+            logger.detachAppender(appender);
+        }
+
+        assertThat(documents(tenant, connector)).hasSize(1);
+        assertThat(appender.list).as("同步至少应写一条连接器日志，否则测试无法证明日志脱敏").isNotEmpty();
+        String logs = String.join(
+                "\n",
+                appender.list.stream().map(ILoggingEvent::getFormattedMessage).toList());
+        assertThat(logs)
+                .as("日志不得包含连接器凭据、源对象 key 或桶名")
+                .doesNotContain(ExternalTestServices.storageAccessKey())
+                .doesNotContain(ExternalTestServices.storageSecretKey())
+                .doesNotContain(externalId)
+                .doesNotContain(SOURCE_BUCKET);
+
+        List<String> details =
+                jdbcClient.sql("""
+                        SELECT details FROM audit_event
+                         WHERE tenant_id = :tenant
+                           AND action IN ('knowledge.connector.sync.started', 'knowledge.connector.sync.completed')
+                         ORDER BY occurred_at ASC
+                        """).param("tenant", tenant).query(String.class).list();
+        assertThat(details).isNotEmpty();
+        assertThat(String.join("\n", details))
+                .as("连接器审计 details 不得包含凭据、externalId 或源桶名")
+                .doesNotContain(ExternalTestServices.storageAccessKey())
+                .doesNotContain(ExternalTestServices.storageSecretKey())
+                .doesNotContain(externalId)
+                .doesNotContain(SOURCE_BUCKET);
     }
 
     @Test

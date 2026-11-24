@@ -169,6 +169,67 @@ class KnowledgeRetentionTest extends KnowledgeAclTestSupport {
     }
 
     /**
+     * 连接器来源文档与普通文档共用保留到期任务：软删除、审计 CONNECTOR/RETENTION 与索引 DELETE（IT-CONN-107）。
+     */
+    @Test
+    @DisplayName("连接器文档保留到期：软删除、审计与索引 DELETE")
+    void retention_coversConnectorSourceDocuments() {
+        TenantFixture fixture = tenantFixture();
+        Instant now = Instant.now();
+        UUID connectorId = UuidV7.generate();
+        String documentId = insertConnectorDocument(
+                fixture.tenant(),
+                connectorId,
+                actorId(fixture.admin()),
+                now.minus(Duration.ofDays(1)),
+                now.minus(Duration.ofHours(1)));
+        insertChunk(fixture.tenant(), documentId, 1);
+
+        retentionJob.expireDaily();
+
+        assertExpired(fixture, documentId, true);
+        assertThat(documentRow(fixture.tenant(), documentId).get("status")).isEqualTo("DELETED");
+        assertThat(listDocuments(fixture.admin()).body()).doesNotContain(documentId);
+        assertThat(getDocument(fixture.admin(), documentId).status()).isEqualTo(404);
+    }
+
+    /**
+     * 插入一个连接器来源文档。
+     *
+     * @param tenant 租户
+     * @param connectorId 逻辑连接器 ID
+     * @param creator 创建人
+     * @param createdAt 创建时间
+     * @param retentionExpiresAt 保留到期
+     * @return 文档 ID
+     */
+    private String insertConnectorDocument(
+            String tenant, UUID connectorId, UUID creator, Instant createdAt, Instant retentionExpiresAt) {
+        UUID documentId = UuidV7.generate(createdAt);
+        jdbcClient
+                .sql("""
+                        INSERT INTO knowledge_document (
+                            tenant_id, id, title, source_type, file_id, connector_id, external_id, checksum,
+                            mime_type, size_bytes, status, created_by, created_at, updated_at, visibility,
+                            department_id, parse_engine, acl_version, retention_expires_at
+                        ) VALUES (
+                            :tenant, :id, '连接器保留文档', 'CONNECTOR', NULL, :connectorId, 'retention/doc.pdf',
+                            :checksum, 'application/pdf', 4, 'INDEXED', :createdBy, :createdAt, :createdAt,
+                            'TENANT', NULL, 'NONE', 1, :retention
+                        )
+                        """)
+                .param("tenant", tenant)
+                .param("id", BinaryUuids.toBytes(documentId))
+                .param("connectorId", BinaryUuids.toBytes(connectorId))
+                .param("checksum", "f".repeat(64))
+                .param("createdBy", BinaryUuids.toBytes(creator))
+                .param("createdAt", Timestamp.from(createdAt))
+                .param("retention", Timestamp.from(retentionExpiresAt))
+                .update();
+        return documentId.toString();
+    }
+
+    /**
      * 断言文档已软删除、审计存在、索引 DELETE 是否符合预期。
      *
      * @param fixture 租户夹具
