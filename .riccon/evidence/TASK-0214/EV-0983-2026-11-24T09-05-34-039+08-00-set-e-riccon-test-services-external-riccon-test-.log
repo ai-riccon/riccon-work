@@ -1,0 +1,524 @@
+# command: set -e; RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=lead-b12b ./mvnw -q -T1C -pl apps/api -am -Dtest='Connector*Test,KnowledgeDownloadApiTest,KnowledgeAclApiTest' -Dsurefire.failIfNoSpecifiedTests=false test
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-24T09:05:00.679+08:00
+# finished_at: 2026-11-24T09:05:32.603+08:00
+# duration_ms: 31922
+# exit_code: 1
+
+# --- stdout ---
+09:05:28.736 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.KnowledgeDownloadApiTest]: KnowledgeDownloadApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:29.404 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.KnowledgeDownloadApiTest
+09:05:29.985 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.KnowledgeDownloadApiTest]: KnowledgeDownloadApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:29.988 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.KnowledgeAclTestSupport]: KnowledgeAclTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:29.992 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.FileApiTestSupport]: FileApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:29.993 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiStorageIntegrationTestSupport]: ApiStorageIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:29.995 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:30.005 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.KnowledgeDownloadApiTest
+09:05:30.315 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+09:05:30.325 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+[ERROR] Tests run: 6, Failures: 0, Errors: 6, Skipped: 0, Time elapsed: 3.460 s <<< FAILURE! -- in com.riccon.api.knowledge.KnowledgeDownloadApiTest
+[ERROR] com.riccon.api.knowledge.KnowledgeDownloadApiTest.download_managementReadWritesAudit -- Time elapsed: 0.005 s <<< ERROR!
+java.lang.ExceptionInInitializerError
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.IllegalStateException: external test database riccon_test_lead_b12b_api is unreachable; start and prepare the stack: pnpm test-services start && pnpm test-services prepare --namespace lead-b12b
+	at com.riccon.api.support.ExternalTestServices.verifyAndLock(ExternalTestServices.java:157)
+	at com.riccon.api.support.ApiIntegrationTestSupport.<clinit>(ApiIntegrationTestSupport.java:60)
+	... 8 more
+Caused by: java.sql.SQLSyntaxErrorException: Access denied for user 'riccon'@'%' to database 'riccon_test_lead_b12b_api'
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:112)
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:114)
+	at com.mysql.cj.jdbc.ConnectionImpl.createNewIO(ConnectionImpl.java:840)
+	at com.mysql.cj.jdbc.ConnectionImpl.<init>(ConnectionImpl.java:416)
+	at com.mysql.cj.jdbc.ConnectionImpl.getInstance(ConnectionImpl.java:237)
+	at com.mysql.cj.jdbc.NonRegisteringDriver.connect(NonRegisteringDriver.java:180)
+	at java.sql/java.sql.DriverManager.getConnection(DriverManager.java:683)
+	at java.sql/java.sql.DriverManager.getConnection(DriverManager.java:230)
+	at com.riccon.api.support.ExternalTestServices.verifyAndLock(ExternalTestServices.java:137)
+	... 9 more
+
+[ERROR] com.riccon.api.knowledge.KnowledgeDownloadApiTest.download_softDeletedAndPlatformAdmin_returnTenant404 -- Time elapsed: 0.005 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.KnowledgeDownloadApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.ExceptionInInitializerError [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.KnowledgeDownloadApiTest.download_missingSourceReturnsKb404 -- Time elapsed: 0.006 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.KnowledgeDownloadApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.ExceptionInInitializerError [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.KnowledgeDownloadApiTest.download_enforcesAclPerRequest -- Time elapsed: 0.004 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.KnowledgeDownloadApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.ExceptionInInitializerError [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.KnowledgeDownloadApiTest.download_streamsSourceWithoutExposingKey -- Time elapsed: 0.003 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.KnowledgeDownloadApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.ExceptionInInitializerError [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.KnowledgeDownloadApiTest.download_storageFailureReturnsKb502 -- Time elapsed: 0.002 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.KnowledgeDownloadApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.ExceptionInInitializerError [in thread "main"]
+	... 8 more
+
+09:05:31.363 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.KnowledgeAclApiTest]: KnowledgeAclApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.379 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.KnowledgeAclApiTest
+09:05:31.388 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.KnowledgeAclApiTest]: KnowledgeAclApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.390 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.KnowledgeAclTestSupport]: KnowledgeAclTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.394 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.FileApiTestSupport]: FileApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.397 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiStorageIntegrationTestSupport]: ApiStorageIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.401 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.409 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.KnowledgeAclApiTest
+[ERROR] Tests run: 5, Failures: 0, Errors: 5, Skipped: 0, Time elapsed: 0.098 s <<< FAILURE! -- in com.riccon.api.knowledge.KnowledgeAclApiTest
+[ERROR] com.riccon.api.knowledge.KnowledgeAclApiTest.aclValidationAndMatrix -- Time elapsed: 0.006 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.KnowledgeAclTestSupport
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.ExceptionInInitializerError [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.KnowledgeAclApiTest.createDocument_defaultsToTenantWithRetentionAndAudit -- Time elapsed: 0.002 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.KnowledgeAclApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.KnowledgeAclTestSupport [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.KnowledgeAclApiTest.usersAcl_controlsVisibilityAndNextRequest -- Time elapsed: 0.002 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.KnowledgeAclApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.KnowledgeAclTestSupport [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.KnowledgeAclApiTest.deptAcl_departmentBoundaryAndDisable -- Time elapsed: 0.001 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.KnowledgeAclApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.KnowledgeAclTestSupport [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.KnowledgeAclApiTest.creatorIsAlwaysVisibleAndNotRemovable -- Time elapsed: 0.005 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.KnowledgeAclApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.KnowledgeAclTestSupport [in thread "main"]
+	... 8 more
+
+09:05:31.489 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorCredentialSyncApiTest]: ConnectorCredentialSyncApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.731 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.connector.ConnectorCredentialSyncApiTest
+09:05:31.739 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorCredentialSyncApiTest]: ConnectorCredentialSyncApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.746 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorApiTestSupport]: ConnectorApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.748 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.753 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.connector.ConnectorCredentialSyncApiTest
+[ERROR] Tests run: 4, Failures: 0, Errors: 4, Skipped: 0, Time elapsed: 0.290 s <<< FAILURE! -- in com.riccon.api.knowledge.connector.ConnectorCredentialSyncApiTest
+[ERROR] com.riccon.api.knowledge.connector.ConnectorCredentialSyncApiTest.credential_onlyWriteRotateAndMaskedAudit -- Time elapsed: 0.001 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.support.ApiIntegrationTestSupport
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.IllegalStateException: external test database riccon_test_lead_b12b_api is unreachable; start and prepare the stack: pnpm test-services start && pnpm test-services prepare --namespace lead-b12b [in thread "main"]
+	at com.riccon.api.support.ExternalTestServices.verifyAndLock(ExternalTestServices.java:157)
+	at com.riccon.api.support.ApiIntegrationTestSupport.<clinit>(ApiIntegrationTestSupport.java:60)
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.connector.ConnectorCredentialSyncApiTest.sync_acceptedAndConcurrentConflict -- Time elapsed: 0.002 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorCredentialSyncApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.support.ApiIntegrationTestSupport [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.connector.ConnectorCredentialSyncApiTest.credentialValidation -- Time elapsed: 0.001 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorCredentialSyncApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.support.ApiIntegrationTestSupport [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.connector.ConnectorCredentialSyncApiTest.testConnector_successAndFailureCategories -- Time elapsed: 0.001 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorCredentialSyncApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.support.ApiIntegrationTestSupport [in thread "main"]
+	... 8 more
+
+09:05:31.787 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorDocumentReadApiTest]: ConnectorDocumentReadApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.792 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.connector.ConnectorDocumentReadApiTest
+09:05:31.804 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorDocumentReadApiTest]: ConnectorDocumentReadApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.808 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorApiTestSupport]: ConnectorApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.811 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.820 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.connector.ConnectorDocumentReadApiTest
+[ERROR] Tests run: 1, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 0.050 s <<< FAILURE! -- in com.riccon.api.knowledge.connector.ConnectorDocumentReadApiTest
+[ERROR] com.riccon.api.knowledge.connector.ConnectorDocumentReadApiTest.connectorDocument_isReadableWithTruncatedExternalId -- Time elapsed: 0.003 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorApiTestSupport
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.support.ApiIntegrationTestSupport [in thread "main"]
+	... 8 more
+
+09:05:31.848 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorCrudApiTest]: ConnectorCrudApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.861 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+09:05:31.872 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorCrudApiTest]: ConnectorCrudApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.875 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorApiTestSupport]: ConnectorApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.878 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.887 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+[ERROR] Tests run: 10, Failures: 0, Errors: 10, Skipped: 0, Time elapsed: 0.114 s <<< FAILURE! -- in com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+[ERROR] com.riccon.api.knowledge.connector.ConnectorCrudApiTest.connectorPermissionsAndTenantIsolation -- Time elapsed: 0.002 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorApiTestSupport
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.support.ApiIntegrationTestSupport [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.connector.ConnectorCrudApiTest.deleteConnector_softDeleteDocuments -- Time elapsed: 0.001 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorApiTestSupport [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.connector.ConnectorCrudApiTest.createConnector_validationAndConflict -- Time elapsed: 0.004 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorApiTestSupport [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.connector.ConnectorCrudApiTest.listItems_paginationAndDisplay -- Time elapsed: 0.002 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorApiTestSupport [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.connector.ConnectorCrudApiTest.patchConnector_switchesVisibilityAndClearsDepartment -- Time elapsed: 0.001 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorApiTestSupport [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.connector.ConnectorCrudApiTest.patchConnector_updatesScheduleAndStatusAudit -- Time elapsed: 0.003 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorApiTestSupport [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.connector.ConnectorCrudApiTest.createConnector_persistsMaskedCredentialAndAudit -- Time elapsed: 0.002 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorApiTestSupport [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.connector.ConnectorCrudApiTest.patchConnector_duplicateNameReturns409 -- Time elapsed: 0.002 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorApiTestSupport [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.connector.ConnectorCrudApiTest.deleteConnector_keepDocuments -- Time elapsed: 0.002 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorApiTestSupport [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.connector.ConnectorCrudApiTest.platformAdmin_allConnectorEndpointsReturn404 -- Time elapsed: 0.004 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorApiTestSupport [in thread "main"]
+	... 8 more
+
+09:05:31.975 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorDownloadApiTest]: ConnectorDownloadApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.981 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.connector.ConnectorDownloadApiTest
+09:05:31.987 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorDownloadApiTest]: ConnectorDownloadApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.989 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.knowledge.connector.ConnectorApiTestSupport]: ConnectorApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:31.990 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+09:05:32.005 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.knowledge.connector.ConnectorDownloadApiTest
+[ERROR] Tests run: 5, Failures: 0, Errors: 5, Skipped: 0, Time elapsed: 0.081 s <<< FAILURE! -- in com.riccon.api.knowledge.connector.ConnectorDownloadApiTest
+[ERROR] com.riccon.api.knowledge.connector.ConnectorDownloadApiTest.download_connectorDocumentStreamsPlatformObject -- Time elapsed: 0.002 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorApiTestSupport
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.support.ApiIntegrationTestSupport [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.connector.ConnectorDownloadApiTest.download_connectorDocumentSoftDeletedReturns404 -- Time elapsed: 0.002 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorDownloadApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorApiTestSupport [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.connector.ConnectorDownloadApiTest.download_documentWithoutSourceKeepsKb404 -- Time elapsed: 0.002 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorDownloadApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorApiTestSupport [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.connector.ConnectorDownloadApiTest.download_connectorDocumentEnforcesAclPerRequest -- Time elapsed: 0.003 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorDownloadApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorApiTestSupport [in thread "main"]
+	... 8 more
+
+[ERROR] com.riccon.api.knowledge.connector.ConnectorDownloadApiTest.download_missingPlatformObjectReturnsKb502 -- Time elapsed: 0.003 s <<< ERROR!
+java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorDownloadApiTest
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized0(Native Method)
+	at java.base/jdk.internal.misc.Unsafe.ensureClassInitialized(Unsafe.java:1160)
+	at java.base/java.lang.reflect.Constructor.acquireConstructorAccessor(Constructor.java:549)
+	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499)
+	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:486)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+Caused by: java.lang.ExceptionInInitializerError: Exception java.lang.NoClassDefFoundError: Could not initialize class com.riccon.api.knowledge.connector.ConnectorApiTestSupport [in thread "main"]
+	... 8 more
+
+[ERROR] Errors: 
+[ERROR]   KnowledgeAclApiTest.aclValidationAndMatrix » NoClassDefFound Could not initialize class com.riccon.api.knowledge.KnowledgeAclTestSupport
+[ERROR]   KnowledgeAclApiTest.createDocument_defaultsToTenantWithRetentionAndAudit » NoClassDefFound Could not initialize class com.riccon.api.knowledge.KnowledgeAclApiTest
+[ERROR]   KnowledgeAclApiTest.creatorIsAlwaysVisibleAndNotRemovable » NoClassDefFound Could not initialize class com.riccon.api.knowledge.KnowledgeAclApiTest
+[ERROR]   KnowledgeAclApiTest.deptAcl_departmentBoundaryAndDisable » NoClassDefFound Could not initialize class com.riccon.api.knowledge.KnowledgeAclApiTest
+[ERROR]   KnowledgeAclApiTest.usersAcl_controlsVisibilityAndNextRequest » NoClassDefFound Could not initialize class com.riccon.api.knowledge.KnowledgeAclApiTest
+[ERROR]   KnowledgeDownloadApiTest.download_enforcesAclPerRequest » NoClassDefFound Could not initialize class com.riccon.api.knowledge.KnowledgeDownloadApiTest
+[ERROR]   KnowledgeDownloadApiTest.download_managementReadWritesAudit » ExceptionInInitializer
+[ERROR]   KnowledgeDownloadApiTest.download_missingSourceReturnsKb404 » NoClassDefFound Could not initialize class com.riccon.api.knowledge.KnowledgeDownloadApiTest
+[ERROR]   KnowledgeDownloadApiTest.download_softDeletedAndPlatformAdmin_returnTenant404 » NoClassDefFound Could not initialize class com.riccon.api.knowledge.KnowledgeDownloadApiTest
+[ERROR]   KnowledgeDownloadApiTest.download_storageFailureReturnsKb502 » NoClassDefFound Could not initialize class com.riccon.api.knowledge.KnowledgeDownloadApiTest
+[ERROR]   KnowledgeDownloadApiTest.download_streamsSourceWithoutExposingKey » NoClassDefFound Could not initialize class com.riccon.api.knowledge.KnowledgeDownloadApiTest
+[ERROR]   ConnectorCredentialSyncApiTest.credentialValidation » NoClassDefFound Could not initialize class com.riccon.api.knowledge.connector.ConnectorCredentialSyncApiTest
+[ERROR]   ConnectorCredentialSyncApiTest.credential_onlyWriteRotateAndMaskedAudit » NoClassDefFound Could not initialize class com.riccon.api.support.ApiIntegrationTestSupport
+[ERROR]   ConnectorCredentialSyncApiTest.sync_acceptedAndConcurrentConflict » NoClassDefFound Could not initialize class com.riccon.api.knowledge.connector.ConnectorCredentialSyncApiTest
+[ERROR]   ConnectorCredentialSyncApiTest.testConnector_successAndFailureCategories » NoClassDefFound Could not initialize class com.riccon.api.knowledge.connector.ConnectorCredentialSyncApiTest
+[ERROR]   ConnectorCrudApiTest.connectorPermissionsAndTenantIsolation » NoClassDefFound Could not initialize class com.riccon.api.knowledge.connector.ConnectorApiTestSupport
+[ERROR]   ConnectorCrudApiTest.createConnector_persistsMaskedCredentialAndAudit » NoClassDefFound Could not initialize class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+[ERROR]   ConnectorCrudApiTest.createConnector_validationAndConflict » NoClassDefFound Could not initialize class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+[ERROR]   ConnectorCrudApiTest.deleteConnector_keepDocuments » NoClassDefFound Could not initialize class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+[ERROR]   ConnectorCrudApiTest.deleteConnector_softDeleteDocuments » NoClassDefFound Could not initialize class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+[ERROR]   ConnectorCrudApiTest.listItems_paginationAndDisplay » NoClassDefFound Could not initialize class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+[ERROR]   ConnectorCrudApiTest.patchConnector_duplicateNameReturns409 » NoClassDefFound Could not initialize class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+[ERROR]   ConnectorCrudApiTest.patchConnector_switchesVisibilityAndClearsDepartment » NoClassDefFound Could not initialize class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+[ERROR]   ConnectorCrudApiTest.patchConnector_updatesScheduleAndStatusAudit » NoClassDefFound Could not initialize class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+[ERROR]   ConnectorCrudApiTest.platformAdmin_allConnectorEndpointsReturn404 » NoClassDefFound Could not initialize class com.riccon.api.knowledge.connector.ConnectorCrudApiTest
+[ERROR]   ConnectorDocumentReadApiTest.connectorDocument_isReadableWithTruncatedExternalId » NoClassDefFound Could not initialize class com.riccon.api.knowledge.connector.ConnectorApiTestSupport
+[ERROR]   ConnectorDownloadApiTest.download_connectorDocumentEnforcesAclPerRequest » NoClassDefFound Could not initialize class com.riccon.api.knowledge.connector.ConnectorDownloadApiTest
+[ERROR]   ConnectorDownloadApiTest.download_connectorDocumentSoftDeletedReturns404 » NoClassDefFound Could not initialize class com.riccon.api.knowledge.connector.ConnectorDownloadApiTest
+[ERROR]   ConnectorDownloadApiTest.download_connectorDocumentStreamsPlatformObject » NoClassDefFound Could not initialize class com.riccon.api.knowledge.connector.ConnectorApiTestSupport
+[ERROR]   ConnectorDownloadApiTest.download_documentWithoutSourceKeepsKb404 » NoClassDefFound Could not initialize class com.riccon.api.knowledge.connector.ConnectorDownloadApiTest
+[ERROR]   ConnectorDownloadApiTest.download_missingPlatformObjectReturnsKb502 » NoClassDefFound Could not initialize class com.riccon.api.knowledge.connector.ConnectorDownloadApiTest
+[ERROR] Tests run: 44, Failures: 0, Errors: 31, Skipped: 0
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.6:test (default-test) on project riccon-api: 
+[ERROR] 
+[ERROR] See /Users/ricky/Documents/projects/riccon-work/apps/api/target/surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+[ERROR] 
+[ERROR] After correcting the problems, you can resume the build with the command
+[ERROR]   mvn <args> -rf :riccon-api
+
+# --- stderr ---
+
