@@ -292,8 +292,7 @@ function NodeConfigForm({
               >
                 <Select
                   allowClear
-                  showSearch
-                  optionFilterProp="label"
+                  showSearch={{ optionFilterProp: 'label' }}
                   options={modelOptions}
                   placeholder="选择模型或留空"
                 />
@@ -316,8 +315,7 @@ function NodeConfigForm({
               <Form.Item label="授权工具" name="toolId" required>
                 <Select
                   allowClear
-                  showSearch
-                  optionFilterProp="label"
+                  showSearch={{ optionFilterProp: 'label' }}
                   options={toolOptions}
                   placeholder="选择已授权工具"
                 />
@@ -408,8 +406,7 @@ function NodeConfigForm({
               <Form.Item label="上游节点" name="conditionLeftNodeId" required>
                 <Select
                   options={nodeOptions}
-                  showSearch
-                  optionFilterProp="label"
+                  showSearch={{ optionFilterProp: 'label' }}
                   placeholder="选择上游节点"
                 />
               </Form.Item>
