@@ -12,8 +12,9 @@ import tools.jackson.databind.JsonNode;
  *
  * <p>使用 {@link JsonNode} 而不是直接绑定 DTO，确保契约 {@code additionalProperties: false} 生效：
  * 未知字段、错误类型、非法枚举统一返回 400 {@code RICCON-WF-400}。{@code runScope} 必填，
- * {@code departmentId} 只在 {@code DEPARTMENT} 范围允许出现；角色/负责人条件由
- * {@link WorkflowPublishService} 校验（ADR-0024 §6.2）。
+ * {@code departmentId} 只做格式解析；范围组合、角色与负责人/部门条件由
+ * {@link com.riccon.api.workflow.validation.WorkflowPublishScopeValidator} 校验
+ * （ADR-0024 §6.2、§7.4）。
  */
 @Component
 public class WorkflowPublishRequestParser {
@@ -39,12 +40,6 @@ public class WorkflowPublishRequestParser {
         }
         WorkflowRunScope runScope = requireRunScope(body);
         UUID departmentId = optionalUuid(body, "departmentId");
-        if (runScope == WorkflowRunScope.DEPARTMENT && departmentId == null) {
-            throw new WorkflowPublishBadRequestException("departmentId is required for DEPARTMENT scope");
-        }
-        if (runScope != WorkflowRunScope.DEPARTMENT && departmentId != null) {
-            throw new WorkflowPublishBadRequestException("departmentId is only allowed for DEPARTMENT scope");
-        }
         return new WorkflowPublishCommand(runScope, departmentId);
     }
 

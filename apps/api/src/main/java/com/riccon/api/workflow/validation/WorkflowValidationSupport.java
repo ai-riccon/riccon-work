@@ -2,11 +2,12 @@ package com.riccon.api.workflow.validation;
 
 import com.riccon.platform.common.tenant.TenantId;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
 /**
- * 图校验所需的只读目录/授权查询端口。
+ * 图校验与发布范围校验所需的只读目录/授权查询端口。
  *
  * <p>校验器位于 {@code workflow.validation} 根包，只依赖本端口；实现放在
  * {@code workflow.validation.repository}，通过 {@code ..persistence..} 访问全局目录与租户表，满足
@@ -42,4 +43,16 @@ public interface WorkflowValidationSupport {
      * @return 可用审批人数；无可用审批人时返回 0
      */
     int countActiveApprovers(TenantId tenantId, WorkflowApproverQuery query);
+
+    /**
+     * 查询账号当前负责的启用部门。
+     *
+     * <p>用于 PUBLISH 与 VALIDATE 共用的 DEPARTMENT 范围校验：账号必须是启用状态，部门必须是其主部门、
+     * 启用状态，且负责人是本人（ADR-0024 §6.2、§7.4）。
+     *
+     * @param tenantId 当前租户
+     * @param userId 当前账号
+     * @return 部门 ID；账号停用、无部门、部门停用或负责人不是本人时为空
+     */
+    Optional<UUID> findActiveManagedDepartmentId(TenantId tenantId, UUID userId);
 }

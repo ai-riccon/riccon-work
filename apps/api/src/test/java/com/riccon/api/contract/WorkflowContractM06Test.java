@@ -25,11 +25,12 @@ import org.junit.jupiter.api.Test;
  * M06 编排 Studio 契约（{@code 1.6.0-m06}，ADR-0024 §7）。
  *
  * <p>只读 {@code contracts/openapi.yaml}，断言：版本与 117 条路径；23 个 M06 operation 的真实
- * operationId/权限/CSRF/幂等键，且不被 {@code x-riccon-deferred} 冒充；节点/状态/范围/错误码等封闭枚举
- * 与 {@code platform-domain} 完全一致；{@code WorkflowEdge.branch} 是字符串枚举而非布尔；
- * {@code WorkflowNodeConfig.actionKind/targetNodeKey}、{@code WorkflowApproval.dataScopeSummary}、
- * {@code WorkflowRun.updatedAt/counts}、{@code WorkflowNodeRun.inputSummary} 与拒绝理由条件必填存在；
- * M06b 模板字段只读预留。契约由 T01 独占写入，本测试不修改 contracts。
+ * operationId/权限/CSRF/幂等键（幂等键仅运行/重试/审批决定，create/duplicate/publish 不承诺键级重放），
+ * validate 的可选范围参数；节点/状态/范围/错误码等封闭枚举与 {@code platform-domain} 完全一致；
+ * {@code WorkflowEdge.branch} 是字符串枚举而非布尔；{@code WorkflowNodeConfig.actionKind/targetNodeKey}、
+ * {@code WorkflowApproval.dataScopeSummary}、{@code WorkflowRun.updatedAt/counts}、
+ * {@code WorkflowNodeRun.inputSummary} 与拒绝理由条件必填存在；M06b 模板字段只读预留。契约由 T01 独占
+ * 写入，本测试不修改 contracts。
  */
 class WorkflowContractM06Test {
 
@@ -96,7 +97,7 @@ class WorkflowContractM06Test {
         }
         assertThat(operations).hasSize(23);
 
-        // 写操作必须显式声明 CSRF（$ref）；创建/发布/重试/决定/复制必须声明 Idempotency-Key（内联参数）。
+        // 写操作必须显式声明 CSRF（$ref）；只有运行/重试/审批决定保留必需 Idempotency-Key（键级幂等）。
         for (String[] expected : List.of(
                 new String[] {"post", "/api/v1/workflows"},
                 new String[] {"post", "/api/v1/workflows/{workflowId}/publish"},
@@ -107,10 +108,50 @@ class WorkflowContractM06Test {
             assertThat(OpenApiContract.referencesParameter(operation, "CsrfToken"))
                     .as(expected[1])
                     .isTrue();
+        }
+        for (String[] expected : List.of(
+                new String[] {"post", "/api/v1/workflows/{workflowId}/runs"},
+                new String[] {"post", "/api/v1/workflow-runs/{workflowRunId}/retry"},
+                new String[] {"post", "/api/v1/workflow-approvals/{workflowApprovalId}/decision"})) {
+            Map<String, Object> operation = OpenApiContract.operation(document, expected[1], expected[0]);
             assertThat(declaresParameter(operation, "Idempotency-Key"))
                     .as(expected[1])
                     .isTrue();
+            assertThat(parameter(operation, "Idempotency-Key").get("required"))
+                    .as(expected[1])
+                    .isEqualTo(true);
         }
+
+        // M06 幂等收敛（F-001）：create/duplicate/publish 不声明必需幂等键，publish 描述资源级幂等。
+        for (String[] expected : List.of(
+                new String[] {"post", "/api/v1/workflows"},
+                new String[] {"post", "/api/v1/workflows/{workflowId}/duplicate"},
+                new String[] {"post", "/api/v1/workflows/{workflowId}/publish"})) {
+            Map<String, Object> operation = OpenApiContract.operation(document, expected[1], expected[0]);
+            assertThat(declaresParameter(operation, "Idempotency-Key"))
+                    .as(expected[1])
+                    .isFalse();
+        }
+        assertThat(String.valueOf(OpenApiContract.operation(document, "/api/v1/workflows/{workflowId}/publish", "post")
+                        .get("description")))
+                .contains("graph_sha256", "资源级幂等");
+        assertThat(String.valueOf(OpenApiContract.operation(document, "/api/v1/workflows", "post")
+                        .get("description")))
+                .contains("不承诺 Idempotency-Key 键级重放");
+
+        // VALIDATE 范围（F-002）：可选 runScope/departmentId，runScope 引用封闭枚举。
+        Map<String, Object> validate =
+                OpenApiContract.operation(document, "/api/v1/workflows/{workflowId}/validate", "post");
+        Map<String, Object> runScope = parameter(validate, "runScope");
+        assertThat(runScope.get("required")).isEqualTo(false);
+        assertThat(OpenApiContract.map(runScope.get("schema")).get("$ref"))
+                .isEqualTo("#/components/schemas/WorkflowRunScope");
+        Map<String, Object> departmentId = parameter(validate, "departmentId");
+        assertThat(departmentId.get("required")).isEqualTo(false);
+        assertThat(OpenApiContract.map(departmentId.get("schema")).get("type")).isEqualTo("string");
+        assertThat(OpenApiContract.map(departmentId.get("schema")).get("format"))
+                .isEqualTo("uuid");
+        assertThat(String.valueOf(validate.get("description"))).contains("复用 PUBLISH 的范围校验", "只读");
 
         List<?> deferredEntries =
                 document.get("x-riccon-deferred") instanceof List<?> list ? List.copyOf(list) : List.of();
@@ -268,6 +309,29 @@ class WorkflowContractM06Test {
         Map<String, Object> limits = OpenApiContract.schema(document, "WorkflowRuntimeLimits");
         assertThat(OpenApiContract.map(limits.get("properties"))).containsKey("disabledReason");
         assertThat(OpenApiContract.required(limits)).contains("featureEnabled", "resultMaxBytes");
+    }
+
+    /**
+     * 按名称取操作参数定义（支持内联 name 或组件 {@code $ref} 的 {@code IdempotencyKey}）。
+     *
+     * @param operation 操作
+     * @param name 参数名
+     * @return 参数定义
+     */
+    private static Map<String, Object> parameter(Map<String, Object> operation, String name) {
+        String componentRef = "#/components/parameters/" + name.replace("-", "");
+        Object parameters = operation.get("parameters");
+        assertThat(parameters).isInstanceOf(List.class);
+        for (Map<String, Object> candidate : ((List<?>) parameters)
+                .stream()
+                        .filter(Map.class::isInstance)
+                        .map(OpenApiContract::map)
+                        .toList()) {
+            if (name.equals(candidate.get("name")) || componentRef.equals(candidate.get("$ref"))) {
+                return candidate;
+            }
+        }
+        throw new AssertionError("parameter not found: " + name);
     }
 
     /**

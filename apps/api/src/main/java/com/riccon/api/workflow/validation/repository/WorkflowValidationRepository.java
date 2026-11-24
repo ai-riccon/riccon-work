@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Repository;
@@ -126,5 +127,17 @@ public class WorkflowValidationRepository implements WorkflowValidationSupport {
             return 0;
         }
         return jdbc.countActiveRoleUsers(tenantId, query.assigneeRole(), query.excludedUserId());
+    }
+
+    /**
+     * 查询账号当前负责的启用部门。
+     *
+     * @param tenantId 当前租户
+     * @param userId 当前账号
+     * @return 部门 ID；账号停用、无部门、部门停用或负责人不是本人时为空
+     */
+    @Override
+    public Optional<UUID> findActiveManagedDepartmentId(TenantId tenantId, UUID userId) {
+        return jdbc.findActiveManagedDepartmentId(tenantId, userId);
     }
 }

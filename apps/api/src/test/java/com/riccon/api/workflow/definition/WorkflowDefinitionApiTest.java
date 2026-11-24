@@ -395,6 +395,60 @@ class WorkflowDefinitionApiTest extends ApiIntegrationTestSupport {
                 .isZero();
     }
 
+    /** create/duplicate 不要求 Idempotency-Key：缺失可成功，可选键被接受但不承诺键级重放。 */
+    @Test
+    @DisplayName("IT-WF-101 create/duplicate 可选幂等键且不承诺重放")
+    void createAndDuplicate_idempotencyKeyIsOptionalAndNotReplayed() {
+        Fixture fixture = fixture();
+        String createBody = client.jsonBody("name", "可选键创建");
+
+        ApiTestClient.ApiResponse keyedCreate1 = client.post(
+                "/api/v1/workflows",
+                createBody,
+                fixture.owner().sessionCookie(),
+                fixture.owner().csrfToken(),
+                Map.of("Idempotency-Key", "create-key-0001"));
+        ApiTestClient.ApiResponse keyedCreate2 = client.post(
+                "/api/v1/workflows",
+                createBody,
+                fixture.owner().sessionCookie(),
+                fixture.owner().csrfToken(),
+                Map.of("Idempotency-Key", "create-key-0001"));
+        assertThat(keyedCreate1.status()).as(keyedCreate1.body()).isEqualTo(201);
+        assertThat(keyedCreate2.status()).as(keyedCreate2.body()).isEqualTo(201);
+        assertThat(client.json(keyedCreate1).path("id").asText())
+                .isNotEqualTo(client.json(keyedCreate2).path("id").asText());
+
+        // 无键创建与无键复制均成功（旧实现已可选，这里锁定新契约）。
+        String sourceId = createDraft(fixture.owner(), "无键创建", null).path("id").asText();
+        JsonNode copyNoKey = duplicate(fixture.owner(), sourceId, null);
+        assertThat(copyNoKey.path("id").asText()).isNotEqualTo(sourceId);
+
+        // 同一可选键复制两次：接受但不重放，产生两个副本。
+        ApiTestClient.ApiResponse keyedCopy1 = client.post(
+                "/api/v1/workflows/" + sourceId + "/duplicate",
+                "{}",
+                fixture.owner().sessionCookie(),
+                fixture.owner().csrfToken(),
+                Map.of("Idempotency-Key", "duplicate-key-0001"));
+        ApiTestClient.ApiResponse keyedCopy2 = client.post(
+                "/api/v1/workflows/" + sourceId + "/duplicate",
+                "{}",
+                fixture.owner().sessionCookie(),
+                fixture.owner().csrfToken(),
+                Map.of("Idempotency-Key", "duplicate-key-0001"));
+        assertThat(keyedCopy1.status()).as(keyedCopy1.body()).isEqualTo(201);
+        assertThat(keyedCopy2.status()).as(keyedCopy2.body()).isEqualTo(201);
+        assertThat(client.json(keyedCopy1).path("id").asText())
+                .isNotEqualTo(client.json(keyedCopy2).path("id").asText());
+
+        // 每次成功创建/复制写一条 workflow.created 审计（不因可选键抑制）。
+        assertThat(auditRows("workflow.created").stream()
+                        .filter(row -> row.tenantId().equals(fixture.tenant()))
+                        .count())
+                .isEqualTo(6);
+    }
+
     /** 请求解析与控制器分支：view/幂等键/未知字段/缺图/说明清空。 */
     @Test
     @DisplayName("IT-WF-101 请求分支：view/幂等键/未知字段/缺图/说明清空")

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0241",
+  "module_id": "M06",
+  "title": "M06 T04b 幂等契约收敛与 validate runScope",
+  "owner": "riccon/builder-b2",
+  "status": "in_progress",
+  "write_scope": [
+    "apps/api/src/main/java/com/riccon/api/workflow/publish/**",
+    "apps/api/src/main/java/com/riccon/api/workflow/definition/**",
+    "apps/api/src/main/java/com/riccon/api/workflow/validation/**",
+    "apps/api/src/test/java/com/riccon/api/workflow/publish/**",
+    "apps/api/src/test/java/com/riccon/api/workflow/definition/**",
+    "apps/api/src/test/java/com/riccon/api/workflow/validation/**",
+    "apps/api/src/test/java/com/riccon/api/contract/WorkflowContractM06Test.java"
+  ],
+  "acceptance": [
+    "F-001：按 1.6.0-m06 收敛幂等——POST /workflows、/duplicate、/publish 不再要求 Idempotency-Key；代码接受可选键但不因缺失拒绝，publish 用 graph_sha256+runScope+departmentId 资源级幂等；run/retry/approval 的键级幂等不变；WorkflowContractM06Test 同步。",
+    "F-002：POST /workflows/{id}/validate 增加可选 runScope/departmentId；DEPARTMENT 必须带 departmentId，非 DEPARTMENT 带 departmentId 返回 400；带范围时复用 publish 的范围校验，省略时只校验图/审批可达；只读不改 draftVersion、不写审计。",
+    "测试：publish 缺失/带可选键、create/duplicate 可选键、validate 范围组合（ONLY_SELF/DEPARTMENT/TENANT、缺 departmentId、非法 departmentId）、与 publish 同口径；T03/T04 既有测试回归；不改 V15/schema/PRODUCT/AGENTS；高风险任务 done 前独立 Verifier 评审。"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-25T06:40:11.325+08:00",
+  "updated_at": "2026-11-25T06:49:16.640+08:00",
+  "baseline_commit": "219e196"
+}

@@ -29,8 +29,9 @@ import tools.jackson.databind.JsonNode;
  * 流程发布接口（契约 {@code 1.6.0-m06}）。
  *
  * <p>{@code POST /api/v1/workflows/{workflowId}/publish} 要求 {@code workflow.publish}；
- * {@code Idempotency-Key} 按契约必填并校验 8..128 长度。平台租户 404 由
- * {@code WorkflowPlatformTenantFilter} 在权限拦截器前短路（ADR-0024 §6.1）。
+ * {@code Idempotency-Key} 为可选参数：缺失不拒绝，提供时只校验 8..128 长度，但 M06 不持久化该键、
+ * 不做键级重放；重复发布由资源级幂等（图哈希 + 范围）返回既有版本（ADR-0024 §7.4、§16.1）。平台租户
+ * 404 由 {@code WorkflowPlatformTenantFilter} 在权限拦截器前短路（ADR-0024 §6.1）。
  *
  * <p>请求体使用 {@link JsonNode} 交给解析器做字段白名单，确保 {@code additionalProperties: false}
  * 生效并返回 400 {@code RICCON-WF-400}，而不是被全局 Jackson 配置静默忽略未知字段。
@@ -73,7 +74,7 @@ public class WorkflowPublishController {
      *
      * @param workflowId 流程 ID
      * @param body 发布请求
-     * @param idempotencyKey 幂等键（必填）
+     * @param idempotencyKey 可选幂等键；缺失不拒绝，提供时校验 8..128 长度
      * @param authentication 当前认证
      * @param request HTTP 请求
      * @return 新发布版本或同一草稿的既有版本
@@ -87,7 +88,7 @@ public class WorkflowPublishController {
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             Authentication authentication,
             HttpServletRequest request) {
-        requireIdempotencyKey(idempotencyKey);
+        validateIdempotencyKey(idempotencyKey);
         return service.publish(
                 actor(authentication),
                 workflowId,
@@ -115,14 +116,18 @@ public class WorkflowPublishController {
     }
 
     /**
-     * 校验必填幂等键长度。
+     * 校验可选幂等键长度。
      *
-     * @param idempotencyKey 请求头
-     * @throws WorkflowPublishBadRequestException 缺失或长度不在 8..128
+     * <p>M06 发布不承诺键级重放：缺失直接通过；提供时只校验 8..128，避免把明显错误的键静默忽略。
+     *
+     * @param idempotencyKey 请求头；可为空
+     * @throws WorkflowPublishBadRequestException 提供但长度不在 8..128
      */
-    private static void requireIdempotencyKey(String idempotencyKey) {
-        if (idempotencyKey == null
-                || idempotencyKey.length() < MIN_IDEMPOTENCY_KEY_LENGTH
+    private static void validateIdempotencyKey(String idempotencyKey) {
+        if (idempotencyKey == null) {
+            return;
+        }
+        if (idempotencyKey.length() < MIN_IDEMPOTENCY_KEY_LENGTH
                 || idempotencyKey.length() > MAX_IDEMPOTENCY_KEY_LENGTH) {
             throw new WorkflowPublishBadRequestException("Idempotency-Key must be between " + MIN_IDEMPOTENCY_KEY_LENGTH
                     + " and " + MAX_IDEMPOTENCY_KEY_LENGTH + " characters");

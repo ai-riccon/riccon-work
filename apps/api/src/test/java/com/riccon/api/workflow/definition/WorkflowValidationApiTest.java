@@ -139,6 +139,81 @@ class WorkflowValidationApiTest extends ApiIntegrationTestSupport {
                 .isEqualTo(2);
     }
 
+    /** VALIDATE 范围参数与 PUBLISH 同口径：合法范围 200、非法组合 400、全程只读。 */
+    @Test
+    @DisplayName("IT-WF-111 VALIDATE 范围参数：同发布口径且只读")
+    void validateScope_usesPublishRulesAndStaysReadOnly() {
+        Fixture fixture = fixture();
+        LoginSession platform = loginPlatformAdmin();
+        UUID department = createManagedDepartment(platform, fixture.tenant(), "销售部", fixture.ownerId());
+        String workflowId = createDraft(fixture.owner(), "范围校验");
+        UUID toolId = createTool(fixture.tenant(), "ACTIVE", true, true);
+        // 审批人使用 WORKFLOW_EDITOR：owner/otherEditor 均可用，确保发布口径下审批可达。
+        String graph = templateGraph(toolId)
+                .replace("\"assigneeRole\":\"TENANT_ADMIN\"", "\"assigneeRole\":\"WORKFLOW_EDITOR\"");
+        saveOk(fixture.owner(), workflowId, 1, graph);
+        int draftVersion = draftVersion(fixture.tenant(), workflowId);
+
+        // 三种范围与省略范围均返回发布等价结果（200 + valid）。
+        assertThat(validateOk(fixture.owner(), workflowId, null, null)
+                        .path("valid")
+                        .asBoolean())
+                .isTrue();
+        assertThat(validateOk(fixture.owner(), workflowId, "ONLY_SELF", null)
+                        .path("valid")
+                        .asBoolean())
+                .isTrue();
+        assertThat(validateOk(fixture.owner(), workflowId, "DEPARTMENT", department)
+                        .path("valid")
+                        .asBoolean())
+                .isTrue();
+        assertThat(validateOk(fixture.tenantAdmin(), workflowId, "TENANT", null)
+                        .path("valid")
+                        .asBoolean())
+                .isTrue();
+
+        // 与 PUBLISH 同口径的非法组合统一 400 RICCON-WF-400。
+        for (ApiTestClient.ApiResponse response : List.of(
+                validate(fixture.owner(), workflowId, "DEPARTMENT", null),
+                validate(fixture.owner(), workflowId, "TENANT", null),
+                validate(fixture.tenantAdmin(), workflowId, "DEPARTMENT", department),
+                validate(fixture.owner(), workflowId, "DEPARTMENT", UUID.randomUUID()),
+                validate(fixture.owner(), workflowId, "ONLY_SELF", department),
+                validate(fixture.owner(), workflowId, null, department),
+                validate(fixture.owner(), workflowId, "UNKNOWN", null))) {
+            assertThat(response.status()).as(response.body()).isEqualTo(400);
+            assertThat(client.json(response).path("code").asText()).isEqualTo(WF_400);
+        }
+        ApiTestClient.ApiResponse invalidUuid = client.post(
+                "/api/v1/workflows/" + workflowId + "/validate?departmentId=not-a-uuid",
+                null,
+                fixture.owner().sessionCookie(),
+                fixture.owner().csrfToken(),
+                Map.of());
+        assertThat(invalidUuid.status()).as(invalidUuid.body()).isEqualTo(400);
+        assertThat(client.json(invalidUuid).path("code").asText()).isEqualTo(WF_400);
+
+        // 只读：草稿版本不变、无发布版本、无发布/保存审计新增。
+        assertThat(draftVersion(fixture.tenant(), workflowId)).isEqualTo(draftVersion);
+        assertThat(jdbcClient
+                        .sql("SELECT COUNT(*) FROM workflow_version WHERE tenant_id = :tenant AND workflow_id = :id")
+                        .param("tenant", fixture.tenant())
+                        .param("id", BinaryUuids.toBytes(UUID.fromString(workflowId)))
+                        .query(Long.class)
+                        .single())
+                .isZero();
+        assertThat(auditRows("workflow.published").stream()
+                        .filter(row -> row.tenantId().equals(fixture.tenant())
+                                && row.targetId().equals(workflowId))
+                        .count())
+                .isZero();
+        assertThat(auditRows("workflow.draft.saved").stream()
+                        .filter(row -> row.tenantId().equals(fixture.tenant())
+                                && row.targetId().equals(workflowId))
+                        .count())
+                .isEqualTo(1);
+    }
+
     /** 非法图保存 400：逐项问题、版本不推进、无保存审计、草稿图不变。 */
     @Test
     @DisplayName("IT-WF-111 非法图保存 400 且不写库/不写审计")
@@ -626,6 +701,42 @@ class WorkflowValidationApiTest extends ApiIntegrationTestSupport {
     }
 
     /**
+     * 通过平台管理员创建部门、加入账号并任命负责人。
+     *
+     * @param platform 平台管理员会话
+     * @param tenant 租户
+     * @param name 部门名
+     * @param managerUserId 负责人账号
+     * @return 部门 ID
+     */
+    private UUID createManagedDepartment(LoginSession platform, String tenant, String name, UUID managerUserId) {
+        ApiTestClient.ApiResponse created = client.post(
+                "/api/v1/admin/tenants/" + tenant + "/departments",
+                client.jsonBody("name", name),
+                platform.sessionCookie(),
+                platform.csrfToken(),
+                Map.of());
+        assertThat(created.status()).as(created.body()).isEqualTo(201);
+        UUID departmentId = UUID.fromString(client.json(created).path("id").asText());
+
+        ApiTestClient.ApiResponse member = client.post(
+                "/api/v1/admin/tenants/" + tenant + "/departments/" + departmentId + "/members",
+                client.jsonBody("userId", managerUserId.toString()),
+                platform.sessionCookie(),
+                platform.csrfToken(),
+                Map.of());
+        assertThat(member.status()).as(member.body()).isEqualTo(201);
+
+        ApiTestClient.ApiResponse manager = client.put(
+                "/api/v1/admin/tenants/" + tenant + "/departments/" + departmentId + "/manager",
+                client.jsonBody("userId", managerUserId.toString()),
+                platform.sessionCookie(),
+                platform.csrfToken());
+        assertThat(manager.status()).as(manager.body()).isEqualTo(200);
+        return departmentId;
+    }
+
+    /**
      * 创建空白草稿。
      *
      * @param session 会话
@@ -721,7 +832,20 @@ class WorkflowValidationApiTest extends ApiIntegrationTestSupport {
      * @return 校验结果
      */
     private JsonNode validateOk(LoginSession session, String workflowId) {
-        ApiTestClient.ApiResponse response = validate(session, workflowId);
+        return validateOk(session, workflowId, null, null);
+    }
+
+    /**
+     * 带范围参数调用校验端点并断言 200。
+     *
+     * @param session 会话
+     * @param workflowId 流程 ID
+     * @param runScope 运行范围；可空
+     * @param departmentId 部门 ID；可空
+     * @return 校验结果
+     */
+    private JsonNode validateOk(LoginSession session, String workflowId, String runScope, UUID departmentId) {
+        ApiTestClient.ApiResponse response = validate(session, workflowId, runScope, departmentId);
         assertThat(response.status()).as(response.body()).isEqualTo(200);
         return client.json(response);
     }
@@ -734,8 +858,30 @@ class WorkflowValidationApiTest extends ApiIntegrationTestSupport {
      * @return 响应
      */
     private ApiTestClient.ApiResponse validate(LoginSession session, String workflowId) {
+        return validate(session, workflowId, null, null);
+    }
+
+    /**
+     * 调用校验端点，按需附加范围 query 参数。
+     *
+     * @param session 会话
+     * @param workflowId 流程 ID
+     * @param runScope 运行范围；可空
+     * @param departmentId 部门 ID；可空
+     * @return 响应
+     */
+    private ApiTestClient.ApiResponse validate(
+            LoginSession session, String workflowId, String runScope, UUID departmentId) {
+        List<String> parameters = new ArrayList<>();
+        if (runScope != null) {
+            parameters.add("runScope=" + runScope);
+        }
+        if (departmentId != null) {
+            parameters.add("departmentId=" + departmentId);
+        }
+        String suffix = parameters.isEmpty() ? "" : "?" + String.join("&", parameters);
         return client.post(
-                "/api/v1/workflows/" + workflowId + "/validate",
+                "/api/v1/workflows/" + workflowId + "/validate" + suffix,
                 null,
                 session.sessionCookie(),
                 session.csrfToken(),

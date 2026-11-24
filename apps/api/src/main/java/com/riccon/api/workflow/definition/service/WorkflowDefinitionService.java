@@ -23,6 +23,7 @@ import com.riccon.api.workflow.definition.service.WorkflowDefinitionRequestParse
 import com.riccon.api.workflow.definition.service.WorkflowDefinitionRequestParser.DuplicateCommand;
 import com.riccon.api.workflow.domain.WorkflowGraph;
 import com.riccon.api.workflow.domain.WorkflowGraphJson;
+import com.riccon.api.workflow.validation.WorkflowPublishScopeValidator;
 import com.riccon.api.workflow.validation.WorkflowValidationException;
 import com.riccon.api.workflow.validation.WorkflowValidationRequest;
 import com.riccon.api.workflow.validation.WorkflowValidationResult;
@@ -31,6 +32,7 @@ import com.riccon.platform.common.tenant.TenantId;
 import com.riccon.platform.domain.identity.PermissionCodes;
 import com.riccon.platform.domain.organization.DepartmentStatus;
 import com.riccon.platform.domain.workflow.WorkflowDefinitionStatus;
+import com.riccon.platform.domain.workflow.WorkflowRunScope;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -76,6 +78,9 @@ public class WorkflowDefinitionService {
     /** 图校验器；保存、校验、发布与运行前共用。 */
     private final WorkflowValidator validator;
 
+    /** 发布/校验共用的运行范围校验器。 */
+    private final WorkflowPublishScopeValidator scopeValidator;
+
     /** 可注入时钟。 */
     private final Clock clock;
 
@@ -86,6 +91,7 @@ public class WorkflowDefinitionService {
      * @param auditService 审计写入
      * @param departmentRepository 部门仓储
      * @param validator 图校验器
+     * @param scopeValidator 发布/校验共用的运行范围校验器
      * @param clock 可注入时钟
      */
     public WorkflowDefinitionService(
@@ -93,12 +99,14 @@ public class WorkflowDefinitionService {
             AuditService auditService,
             DepartmentRepository departmentRepository,
             WorkflowValidator validator,
+            WorkflowPublishScopeValidator scopeValidator,
             Clock clock) {
         this.repository = Objects.requireNonNull(repository, "repository must not be null");
         this.auditService = Objects.requireNonNull(auditService, "auditService must not be null");
         this.departmentRepository =
                 Objects.requireNonNull(departmentRepository, "departmentRepository must not be null");
         this.validator = Objects.requireNonNull(validator, "validator must not be null");
+        this.scopeValidator = Objects.requireNonNull(scopeValidator, "scopeValidator must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
@@ -315,17 +323,25 @@ public class WorkflowDefinitionService {
      * 校验当前草稿（不改变版本、不写审计）。
      *
      * <p>按发布口径返回逐项问题：结构、必填参数、模型、工具、条件、结果与可用审批人；画布与列表/表单共用
-     * 同一结果（AC-02/06）。只有所有者与租户管理员可见草稿，其他主体按私有草稿 404（ADR-0024 §6.2）。
+     * 同一结果（AC-02/06）。可选 {@code runScope}/{@code departmentId} 与 PUBLISH 复用同一范围校验器：
+     * 提供时校验角色/部门并返回发布等价结果；省略时只校验图与审批可达性，不含范围（ADR-0024 §7.4，
+     * F-002）。部门校验只读，不改变草稿版本、不写审计。只有所有者与租户管理员可见草稿，其他主体按
+     * 私有草稿 404（ADR-0024 §6.2）。
      *
      * @param actor 当前主体
      * @param workflowId 流程 ID
+     * @param runScope 可选运行范围；为空表示不校验范围
+     * @param departmentId 可选部门 ID；非 DEPARTMENT 范围必须为空
      * @return 图校验结果
      */
     @Transactional(readOnly = true)
-    public WorkflowValidationResult validateDraft(WorkflowDefinitionActor actor, UUID workflowId) {
+    public WorkflowValidationResult validateDraft(
+            WorkflowDefinitionActor actor, UUID workflowId, WorkflowRunScope runScope, UUID departmentId) {
         requireEditPermission(actor);
         TenantId tenantId = TenantId.of(actor.tenantId());
         WorkflowDefinitionSnapshot snapshot = requireEditable(tenantId, workflowId, actor);
+        // 与 PUBLISH 同口径：先校验范围组合/角色/部门，再执行完整图与审批可达性校验；全程只读。
+        scopeValidator.resolve(tenantId, actor.userId(), actor.tenantAdmin(), runScope, departmentId);
         return validator.validate(snapshot.draftGraph(), WorkflowValidationRequest.publish(tenantId, actor.userId()));
     }
 

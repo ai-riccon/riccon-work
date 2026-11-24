@@ -12,11 +12,13 @@ import com.riccon.api.workflow.definition.domain.WorkflowDefinitionActor;
 import com.riccon.api.workflow.definition.domain.WorkflowDefinitionView;
 import com.riccon.api.workflow.definition.dto.WorkflowDefinitionDetailResponse;
 import com.riccon.api.workflow.definition.dto.WorkflowDefinitionPageResponse;
+import com.riccon.api.workflow.definition.service.WorkflowDefinitionBadRequestException;
 import com.riccon.api.workflow.definition.service.WorkflowDefinitionRequestParser;
 import com.riccon.api.workflow.definition.service.WorkflowDefinitionService;
 import com.riccon.api.workflow.validation.WorkflowValidationResult;
 import com.riccon.platform.domain.identity.PermissionCodes;
 import com.riccon.platform.domain.workflow.WorkflowDefinitionStatus;
+import com.riccon.platform.domain.workflow.WorkflowRunScope;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -36,8 +38,10 @@ import tools.jackson.databind.JsonNode;
 /**
  * 流程定义与草稿接口（契约 {@code 1.6.0-m06}）。
  *
- * <p>路径与权限：列表/详情要求 {@code workflow.read}；创建、保存草稿与另存副本要求 {@code workflow.edit}。
- * 平台租户 404 由 {@code WorkflowPlatformTenantFilter} 在权限拦截器之前短路（ADR-0024 §6.1，F-005）。
+ * <p>路径与权限：列表/详情要求 {@code workflow.read}；创建、保存草稿、校验与另存副本要求 {@code workflow.edit}。
+ * 创建/副本的 {@code Idempotency-Key} 为可选参数：缺失不拒绝、有值只校验长度，但 M06 不持久化该键、
+ * 不承诺键级重放（ADR-0024 §7.4、§16.1）。平台租户 404 由
+ * {@code WorkflowPlatformTenantFilter} 在权限拦截器之前短路（ADR-0024 §6.1，F-005）。
  *
  * <p>请求体使用 {@link JsonNode} 交给解析器做白名单校验，确保契约 {@code additionalProperties: false}
  * 生效并返回 400 {@code RICCON-WF-400}，而不是被全局 Jackson 配置静默忽略未知字段。
@@ -102,7 +106,7 @@ public class WorkflowDefinitionController {
      * 创建流程草稿（空白或从模板复制）。
      *
      * @param body 请求体
-     * @param idempotencyKey 可选幂等键
+     * @param idempotencyKey 可选幂等键；缺失不拒绝，提供时只校验 8..128，M06 不承诺键级重放
      * @param authentication 当前认证
      * @param request HTTP 请求
      * @return 已创建草稿
@@ -164,16 +168,26 @@ public class WorkflowDefinitionController {
      * 校验流程草稿。
      *
      * <p>按契约 {@code POST /workflows/{workflowId}/validate} 返回逐项问题；不改变草稿版本、不写审计。
-     * 权限与保存一致为 {@code workflow.edit}，平台租户 404 由前置 filter 短路。
+     * 可选 query {@code runScope}/{@code departmentId}：提供时复用 PUBLISH 的范围校验（角色/部门），
+     * 省略时只校验图与审批可达性；{@code DEPARTMENT} 必须带部门，非 {@code DEPARTMENT} 带部门返回
+     * 400 {@code RICCON-WF-400}（ADR-0024 §7.4，F-002）。权限与保存一致为 {@code workflow.edit}，
+     * 平台租户 404 由前置 filter 短路。
      *
      * @param workflowId 流程 ID
+     * @param runScope 可选运行范围
+     * @param departmentId 可选部门 ID
      * @param authentication 当前认证
      * @return 逐项校验结果
      */
     @PostMapping("/{workflowId}/validate")
     @RequirePermission(PermissionCodes.WORKFLOW_EDIT)
-    public WorkflowValidationResult validate(@PathVariable UUID workflowId, Authentication authentication) {
-        return service.validateDraft(actor(authentication), workflowId);
+    public WorkflowValidationResult validate(
+            @PathVariable UUID workflowId,
+            @RequestParam(required = false) String runScope,
+            @RequestParam(required = false) String departmentId,
+            Authentication authentication) {
+        return service.validateDraft(
+                actor(authentication), workflowId, parseRunScope(runScope), parseDepartmentId(departmentId));
     }
 
     /**
@@ -181,7 +195,7 @@ public class WorkflowDefinitionController {
      *
      * @param workflowId 源流程 ID
      * @param body 可选请求体
-     * @param idempotencyKey 可选幂等键
+     * @param idempotencyKey 可选幂等键；缺失不拒绝，提供时只校验 8..128，M06 不承诺键级重放
      * @param authentication 当前认证
      * @param request HTTP 请求
      * @return 副本详情
@@ -240,9 +254,47 @@ public class WorkflowDefinitionController {
     }
 
     /**
+     * 解析可选运行范围。
+     *
+     * @param value 查询参数
+     * @return 运行范围；未提供或空串时为 {@code null}
+     * @throws WorkflowDefinitionBadRequestException 枚举值非法
+     */
+    private static WorkflowRunScope parseRunScope(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return WorkflowRunScope.valueOf(value);
+        } catch (IllegalArgumentException exception) {
+            throw new WorkflowDefinitionBadRequestException("runScope must be ONLY_SELF, DEPARTMENT or TENANT");
+        }
+    }
+
+    /**
+     * 解析可选部门 ID。
+     *
+     * @param value 查询参数
+     * @return 部门 ID；未提供或空串时为 {@code null}
+     * @throws WorkflowDefinitionBadRequestException 不是合法 UUID
+     */
+    private static UUID parseDepartmentId(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException exception) {
+            throw new WorkflowDefinitionBadRequestException("departmentId must be a UUID");
+        }
+    }
+
+    /**
      * 校验可选幂等键长度。
      *
-     * @param idempotencyKey 请求头
+     * <p>M06 创建/副本不承诺键级重放：缺失直接通过；提供时只校验 8..128，避免把明显错误的键静默忽略。
+     *
+     * @param idempotencyKey 请求头；可为空
      */
     private static void validateIdempotencyKey(String idempotencyKey) {
         if (idempotencyKey == null) {

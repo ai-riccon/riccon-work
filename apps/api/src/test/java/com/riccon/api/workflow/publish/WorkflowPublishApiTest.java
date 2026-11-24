@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.riccon.api.support.ApiTestClient;
 import com.riccon.api.workflow.domain.WorkflowGraphJson;
 import com.riccon.api.workflow.version.WorkflowVersionTestSupport;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -251,15 +252,14 @@ class WorkflowPublishApiTest extends WorkflowVersionTestSupport {
         assertThat(versionCount(fixture.tenant(), workflowId)).isEqualTo(2);
     }
 
-    /** 发布请求形状/幂等键校验：缺失、过短、过长、未知字段、非法范围均 400 且不产生版本。 */
+    /** 发布请求形状/可选幂等键校验：缺失键接受，过短/过长、未知字段、非法范围均 400 且不产生版本。 */
     @Test
-    @DisplayName("IT-WF-102 发布请求与幂等键校验")
+    @DisplayName("IT-WF-102 发布请求与可选幂等键校验")
     void publish_requestValidation() {
         Fixture fixture = fixture("wfp");
         String workflowId = createDraft(fixture.owner(), "发布校验").path("id").asText();
         saveDraft(fixture.owner(), workflowId, 1, defaultGraph(fixture));
 
-        assertProblem(publish(fixture.owner(), workflowId, "ONLY_SELF", null, null), 400, WF_400);
         assertProblem(publish(fixture.owner(), workflowId, "ONLY_SELF", null, "short"), 400, WF_400);
         assertProblem(publish(fixture.owner(), workflowId, "ONLY_SELF", null, "a".repeat(129)), 400, WF_400);
         assertProblem(publish(fixture.owner(), workflowId, null, null, "publish-key-0401"), 400, WF_400);
@@ -267,6 +267,7 @@ class WorkflowPublishApiTest extends WorkflowVersionTestSupport {
         assertProblem(publish(fixture.owner(), workflowId, "DEPARTMENT", null, "publish-key-0403"), 400, WF_400);
         assertProblem(
                 publish(fixture.owner(), workflowId, "ONLY_SELF", UUID.randomUUID(), "publish-key-0404"), 400, WF_400);
+        assertProblem(publish(fixture.owner(), workflowId, "TENANT", null, "publish-key-0406"), 400, WF_400);
 
         ApiTestClient.ApiResponse unknownField = client.post(
                 "/api/v1/workflows/" + workflowId + "/publish",
@@ -278,6 +279,96 @@ class WorkflowPublishApiTest extends WorkflowVersionTestSupport {
 
         assertThat(versionCount(fixture.tenant(), workflowId)).isZero();
         assertThat(publishedVersionId(fixture.tenant(), workflowId)).isNull();
+    }
+
+    /** 发布不要求 Idempotency-Key：缺失键可发布，重复发布仍按资源级幂等返回同一版本。 */
+    @Test
+    @DisplayName("IT-WF-102 发布缺失 Idempotency-Key 仍成功且资源级幂等")
+    void publish_withoutIdempotencyKey_isAcceptedAndIdempotent() {
+        Fixture fixture = fixture("wfp");
+        String workflowId = createDraft(fixture.owner(), "无键发布").path("id").asText();
+        saveDraft(fixture.owner(), workflowId, 1, defaultGraph(fixture));
+
+        JsonNode first = publishOk(fixture.owner(), workflowId, "ONLY_SELF", null, null);
+        JsonNode second = publishOk(fixture.owner(), workflowId, "ONLY_SELF", null, null);
+
+        assertThat(second.path("id").asText()).isEqualTo(first.path("id").asText());
+        assertThat(second.path("versionNo").asInt()).isEqualTo(1);
+        assertThat(versionCount(fixture.tenant(), workflowId)).isEqualTo(1);
+        assertThat(auditRows("workflow.published").stream()
+                        .filter(audit -> audit.tenantId().equals(fixture.tenant())
+                                && audit.targetId().equals(workflowId))
+                        .count())
+                .isEqualTo(1);
+    }
+
+    /** VALIDATE 与 PUBLISH 同口径：范围组合/角色/部门结果一致，且校验只读。 */
+    @Test
+    @DisplayName("IT-WF-102 VALIDATE 范围与 PUBLISH 同口径且只读")
+    void validate_scopeMatchesPublish_andStaysReadOnly() {
+        Fixture fixture = fixture("wfp");
+        UUID ownerDepartment = createManagedDepartment(fixture, "销售部", fixture.ownerId());
+        UUID otherDepartment = createManagedDepartment(fixture, "市场部", fixture.otherEditorId());
+        String workflowId = createDraft(fixture.owner(), "范围校验").path("id").asText();
+        saveDraft(fixture.owner(), workflowId, 1, defaultGraph(fixture));
+        int draftVersion =
+                getDetail(fixture.owner(), workflowId, 200).path("draftVersion").asInt();
+
+        List<ScopeCase> cases = List.of(
+                new ScopeCase(fixture.owner(), "ONLY_SELF", null, true),
+                new ScopeCase(fixture.owner(), "DEPARTMENT", ownerDepartment, true),
+                new ScopeCase(fixture.owner(), "TENANT", null, false),
+                new ScopeCase(fixture.owner(), "DEPARTMENT", otherDepartment, false),
+                new ScopeCase(fixture.owner(), "DEPARTMENT", UUID.randomUUID(), false),
+                new ScopeCase(fixture.owner(), "ONLY_SELF", ownerDepartment, false),
+                new ScopeCase(fixture.tenantAdmin(), "TENANT", null, true),
+                new ScopeCase(fixture.tenantAdmin(), "DEPARTMENT", ownerDepartment, false));
+        int published = 0;
+        for (ScopeCase scopeCase : cases) {
+            ApiTestClient.ApiResponse validation =
+                    validate(scopeCase.session(), workflowId, scopeCase.runScope(), scopeCase.departmentId());
+            if (scopeCase.allowed()) {
+                assertThat(validation.status()).as(validation.body()).isEqualTo(200);
+                assertThat(client.json(validation).path("valid").asBoolean())
+                        .as(scopeCase.toString())
+                        .isTrue();
+            } else {
+                assertProblem(validation, 400, WF_400);
+            }
+
+            ApiTestClient.ApiResponse publish = publish(
+                    scopeCase.session(),
+                    workflowId,
+                    scopeCase.runScope(),
+                    scopeCase.departmentId(),
+                    "publish-key-scope-" + published);
+            if (scopeCase.allowed()) {
+                assertThat(publish.status()).as(publish.body()).isEqualTo(201);
+                published++;
+            } else {
+                assertProblem(publish, 400, WF_400);
+            }
+        }
+
+        // 省略范围：只校图/审批可达；与带范围的成功/失败互不影响。
+        ApiTestClient.ApiResponse omitted = validate(fixture.owner(), workflowId, null, null);
+        assertThat(omitted.status()).as(omitted.body()).isEqualTo(200);
+        assertThat(client.json(omitted).path("valid").asBoolean()).isTrue();
+
+        // 非法参数统一 400 RICCON-WF-400。
+        assertProblem(validate(fixture.owner(), workflowId, "UNKNOWN", null), 400, WF_400);
+        assertProblem(validate(fixture.owner(), workflowId, null, ownerDepartment), 400, WF_400);
+
+        assertThat(getDetail(fixture.owner(), workflowId, 200)
+                        .path("draftVersion")
+                        .asInt())
+                .isEqualTo(draftVersion);
+        assertThat(versionCount(fixture.tenant(), workflowId)).isEqualTo(published);
+        assertThat(auditRows("workflow.draft.saved").stream()
+                        .filter(audit -> audit.tenantId().equals(fixture.tenant())
+                                && audit.targetId().equals(workflowId))
+                        .count())
+                .isEqualTo(1);
     }
 
     /** 并发发布同一草稿：行锁串行化，第二个请求返回既有版本，不产生重复版本。 */
@@ -352,4 +443,41 @@ class WorkflowPublishApiTest extends WorkflowVersionTestSupport {
         assertProblem(publish(platformAdmin, workflowId, "ONLY_SELF", null, "publish-key-0506"), 404, TENANT_404);
         assertThat(versionCount(fixture.tenant(), workflowId)).isEqualTo(1);
     }
+
+    /**
+     * 调用 VALIDATE 端点，按需附加范围 query 参数。
+     *
+     * @param session 会话
+     * @param workflowId 流程 ID
+     * @param runScope 运行范围；可空
+     * @param departmentId 部门 ID；可空
+     * @return 原始响应
+     */
+    private ApiTestClient.ApiResponse validate(
+            LoginSession session, String workflowId, String runScope, UUID departmentId) {
+        List<String> parameters = new ArrayList<>();
+        if (runScope != null) {
+            parameters.add("runScope=" + runScope);
+        }
+        if (departmentId != null) {
+            parameters.add("departmentId=" + departmentId);
+        }
+        String suffix = parameters.isEmpty() ? "" : "?" + String.join("&", parameters);
+        return client.post(
+                "/api/v1/workflows/" + workflowId + "/validate" + suffix,
+                null,
+                session.sessionCookie(),
+                session.csrfToken(),
+                Map.of());
+    }
+
+    /**
+     * VALIDATE/PUBLISH 同口径对照用例。
+     *
+     * @param session 调用会话
+     * @param runScope 运行范围
+     * @param departmentId 部门 ID；可空
+     * @param allowed 该范围是否允许发布
+     */
+    private record ScopeCase(LoginSession session, String runScope, UUID departmentId, boolean allowed) {}
 }

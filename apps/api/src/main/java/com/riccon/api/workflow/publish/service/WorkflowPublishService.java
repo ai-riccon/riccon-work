@@ -16,6 +16,8 @@ import com.riccon.api.workflow.publish.domain.WorkflowPublishCommand;
 import com.riccon.api.workflow.publish.domain.WorkflowPublishLockRow;
 import com.riccon.api.workflow.publish.domain.WorkflowVersionInsert;
 import com.riccon.api.workflow.publish.repository.WorkflowPublishRepository;
+import com.riccon.api.workflow.validation.WorkflowPublishScopeValidator;
+import com.riccon.api.workflow.validation.WorkflowScopeValidationException;
 import com.riccon.api.workflow.validation.WorkflowValidationException;
 import com.riccon.api.workflow.validation.WorkflowValidationRequest;
 import com.riccon.api.workflow.validation.WorkflowValidationResult;
@@ -39,10 +41,10 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code RICCON-WF-400}，不写 {@code workflow_version}、不改当前发布版本；通过后写不可变版本快照
  * （规范化 JSON + SHA-256 + 范围）、更新定义的发布指针并同事务写审计。
  *
- * <p>幂等口径：V15 没有发布幂等键表，本任务也不新增迁移，因此以“当前发布版本的
- * {@code graph_sha256 + run_scope + department_id} 与本次发布相同”判定同一草稿的重复发布，直接返回
- * 既有版本，不产生重复版本；草稿内容或范围变化必须发布新版本。{@code Idempotency-Key} 仍按契约必填
- * 并由控制器校验长度（8..128），但键级持久化需后续迁移，已作为 residual 记录在任务回执。
+ * <p>幂等口径：M06 不新增迁移，也**不承诺** {@code Idempotency-Key} 键级重放；同一草稿以“当前发布版本的
+ * {@code graph_sha256 + run_scope + department_id} 与本次发布相同”判定资源级幂等，直接返回既有版本，
+ * 不产生重复版本或重复 {@code workflow.published} 审计；草稿内容或范围变化必须发布新版本。控制器仍
+ * 接受可选的 {@code Idempotency-Key}（只校验 8..128 长度），但不持久化该键（ADR-0024 §7.4、§16.1）。
  *
  * <p>并发：发布前对 {@code workflow_definition} 行加排他锁并在锁内重读草稿，保证同一流程的发布、
  * 保存草稿、停用/启用与移交串行化；后到者能看到先到者提交的发布指针并走幂等分支。本方法使用
@@ -68,8 +70,11 @@ public class WorkflowPublishService {
     /** 审计写入；与发布同事务，失败回滚。 */
     private final AuditService auditService;
 
-    /** 部门仓储，用于 DEPARTMENT 范围与可见性判定。 */
+    /** 部门仓储，用于已发布版本的可见性判定。 */
     private final DepartmentRepository departmentRepository;
+
+    /** 发布/校验共用的运行范围校验器。 */
+    private final WorkflowPublishScopeValidator scopeValidator;
 
     /** 可注入时钟。 */
     private final Clock clock;
@@ -82,6 +87,7 @@ public class WorkflowPublishService {
      * @param validator 图校验器
      * @param auditService 审计写入
      * @param departmentRepository 部门仓储
+     * @param scopeValidator 发布/校验共用的运行范围校验器
      * @param clock 可注入时钟
      */
     public WorkflowPublishService(
@@ -90,6 +96,7 @@ public class WorkflowPublishService {
             WorkflowValidator validator,
             AuditService auditService,
             DepartmentRepository departmentRepository,
+            WorkflowPublishScopeValidator scopeValidator,
             Clock clock) {
         this.definitionRepository =
                 Objects.requireNonNull(definitionRepository, "definitionRepository must not be null");
@@ -98,6 +105,7 @@ public class WorkflowPublishService {
         this.auditService = Objects.requireNonNull(auditService, "auditService must not be null");
         this.departmentRepository =
                 Objects.requireNonNull(departmentRepository, "departmentRepository must not be null");
+        this.scopeValidator = Objects.requireNonNull(scopeValidator, "scopeValidator must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
@@ -110,7 +118,7 @@ public class WorkflowPublishService {
      * @param traceId 追踪 ID
      * @param requestId 请求 ID
      * @return 新发布版本或同一草稿的既有版本
-     * @throws WorkflowPublishBadRequestException 范围/部门不满足发布条件
+     * @throws WorkflowScopeValidationException 范围/角色/部门不满足发布条件
      * @throws WorkflowValidationException 完整发布校验失败
      */
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -132,7 +140,8 @@ public class WorkflowPublishService {
         WorkflowDefinitionSnapshot snapshot = load(tenantId, workflowId);
         requireOwnerOrAdminWithVisibility(tenantId, actor, snapshot);
 
-        UUID departmentId = resolveDepartmentId(tenantId, actor, command);
+        UUID departmentId = scopeValidator.resolve(
+                tenantId, actor.userId(), actor.tenantAdmin(), command.runScope(), command.departmentId());
         String graphSha256 = WorkflowGraphJson.sha256(snapshot.draftGraph());
         WorkflowPublishedVersionSnapshot existing = existingVersion(tenantId, lock);
         if (existing != null
@@ -240,51 +249,6 @@ public class WorkflowPublishService {
             throw new ForbiddenException(PermissionCodes.WORKFLOW_PUBLISH);
         }
         throw new NotFoundException(RESOURCE);
-    }
-
-    /**
-     * 校验并解析运行范围。
-     *
-     * <p>租户管理员只能选择 {@code ONLY_SELF}/{@code TENANT}；流程编辑者只能选择
-     * {@code ONLY_SELF}/{@code DEPARTMENT}，且部门必须是本人当前负责的启用部门。负责人关系只限制
-     * 可发布范围，不授予编辑能力（ADR-0024 §6.2，AC-15）。
-     *
-     * @param tenantId 当前租户
-     * @param actor 当前主体
-     * @param command 发布命令
-     * @return 部门范围 ID；非 DEPARTMENT 时为空
-     */
-    private UUID resolveDepartmentId(TenantId tenantId, WorkflowDefinitionActor actor, WorkflowPublishCommand command) {
-        return switch (command.runScope()) {
-            case ONLY_SELF -> null;
-            case TENANT -> {
-                if (!actor.tenantAdmin()) {
-                    throw new WorkflowPublishBadRequestException("TENANT scope requires tenant admin");
-                }
-                yield null;
-            }
-            case DEPARTMENT -> {
-                if (actor.tenantAdmin()) {
-                    throw new WorkflowPublishBadRequestException(
-                            "tenant admin can only publish ONLY_SELF or TENANT scope");
-                }
-                UUID departmentId = command.departmentId();
-                if (departmentId == null) {
-                    throw new WorkflowPublishBadRequestException("departmentId is required for DEPARTMENT scope");
-                }
-                DepartmentRecord department = departmentRepository
-                        .findDepartmentRecordOfUser(tenantId, actor.userId())
-                        .orElse(null);
-                if (department == null
-                        || department.status() != DepartmentStatus.ACTIVE
-                        || !departmentId.equals(department.id())
-                        || !actor.userId().equals(department.managerUserId())) {
-                    throw new WorkflowPublishBadRequestException(
-                            "departmentId must be an active department managed by the publisher");
-                }
-                yield departmentId;
-            }
-        };
     }
 
     /**

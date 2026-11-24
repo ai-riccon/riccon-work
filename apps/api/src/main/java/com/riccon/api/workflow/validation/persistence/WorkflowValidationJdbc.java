@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -80,6 +81,23 @@ public class WorkflowValidationJdbc {
                AND u.status = 'ACTIVE'
                AND r.code = :roleCode
                AND u.id <> :excludedUserId
+            """;
+
+    /**
+     * 当前账号负责的启用部门。
+     *
+     * <p>与发布范围规则一致：账号启用、部门是其主部门且启用、负责人是本人；只读取 ID，不返回成员或
+     * 展示名。
+     */
+    private static final String SELECT_ACTIVE_MANAGED_DEPARTMENT = """
+            SELECT d.id
+              FROM app_user u
+              JOIN department d ON d.tenant_id = u.tenant_id AND d.id = u.department_id
+             WHERE u.tenant_id = :tenantId
+               AND u.id = :userId
+               AND u.status = 'ACTIVE'
+               AND d.status = 'ACTIVE'
+               AND d.manager_user_id = :userId
             """;
 
     /** 全局目录客户端。 */
@@ -192,6 +210,21 @@ public class WorkflowValidationJdbc {
                 COUNT_ACTIVE_ROLE_USERS,
                 Map.of("roleCode", roleCode, "excludedUserId", BinaryUuids.toBytes(excludedUserId)));
         return (int) Math.min(count, Integer.MAX_VALUE);
+    }
+
+    /**
+     * 查询账号当前负责的启用部门。
+     *
+     * @param tenantId 当前租户
+     * @param userId 当前账号
+     * @return 部门 ID；账号停用、无部门、部门停用或负责人不是本人时为空
+     */
+    public Optional<UUID> findActiveManagedDepartmentId(TenantId tenantId, UUID userId) {
+        return tenantJdbc.queryOne(
+                tenantId,
+                SELECT_ACTIVE_MANAGED_DEPARTMENT,
+                Map.of("userId", BinaryUuids.toBytes(userId)),
+                (rs, rowNum) -> BinaryUuids.fromBytes(rs.getBytes("id")));
     }
 
     /**

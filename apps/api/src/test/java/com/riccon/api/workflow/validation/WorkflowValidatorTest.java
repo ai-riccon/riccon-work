@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -599,6 +600,12 @@ class WorkflowValidatorTest {
         @Override
         public int countActiveApprovers(TenantId tenantId, WorkflowApproverQuery query) {
             return approvers;
+        }
+
+        @Override
+        public Optional<UUID> findActiveManagedDepartmentId(TenantId tenantId, UUID userId) {
+            // 图校验不涉及发布范围，桩返回空部门即可。
+            return Optional.empty();
         }
     }
 }
