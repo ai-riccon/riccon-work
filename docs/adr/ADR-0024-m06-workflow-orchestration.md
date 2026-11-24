@@ -178,6 +178,8 @@ model_invocation.workflow_run_id / workflow_node_run_id（可空逻辑引用，�
 | `retention_expires_at`                               | `DATETIME(6) NOT NULL`                | 到期不可见；默认创建时间 + 租户保留天数（默认 180 天）        |
 | `created_at`/`updated_at`/`started_at`/`finished_at` | `DATETIME(6)`                         | UTC                                                           |
 
+- `approvalStatus`/`pendingApprovalCount`/`approvedApprovalCount`/`rejectedApprovalCount` 是 `workflow_approval` 的派生聚合（不新增列）：任一 PENDING→PENDING；否则任一 REJECTED→REJECTED；否则任一 APPROVED→APPROVED；否则 null。
+
 键：`PK (tenant_id,id)`；`UNIQUE (tenant_id, workflow_id, requester_user_id, idempotency_key)`；`KEY (tenant_id, workflow_id, created_at)`、`KEY (tenant_id, status, created_at)`、`KEY (tenant_id, requester_user_id, created_at)`、`KEY (tenant_id, retention_expires_at)`、`KEY (tenant_id, status, lease_until)`、`KEY (status, lease_until, id)`（跨租户领取例外，TM-85）；FK `workflow_definition`、`workflow_version`、`app_user`。
 
 #### 3.3.4 `workflow_node_run`（租户表）
@@ -191,6 +193,7 @@ model_invocation.workflow_run_id / workflow_node_run_id（可空逻辑引用，�
 | `node_name`                              | `VARCHAR(200) NOT NULL`              | 快照                                                                  |
 | `attempt`                                | `INT NOT NULL DEFAULT 1`             | 节点尝试号；重试递增                                                  |
 | `status`                                 | `VARCHAR(24) NOT NULL`               | `PENDING/RUNNING/WAITING_APPROVAL/SUCCEEDED/FAILED/SKIPPED/CANCELLED` |
+| `input_summary`                          | `VARCHAR(2000) NULL`                 | 节点输入摘要（运行输入/上游摘要组合；不返回完整提示词或参数）          |
 | `output_json`                            | `JSON NULL`                          | 下游使用的完整输出（内部，不直接返回 API；单节点 ≤256 KiB）           |
 | `output_summary`                         | `VARCHAR(2000) NULL`                 | 运行详情展示的摘要                                                    |
 | `citations_json`                         | `JSON NULL`                          | 引用快照（≤20 条，复用 `Citation` 语义）                              |
@@ -217,13 +220,15 @@ model_invocation.workflow_run_id / workflow_node_run_id（可空逻辑引用，�
 | `target_node_key`                                   | `VARCHAR(64) NULL`                         | 解锁的下游节点（工具/模型）或空                                         |
 | `target_tool_id`/`target_tool_name`                 | `BINARY(16)`/`VARCHAR(128)`                | 工具快照（逻辑引用）                                                    |
 | `params_preview`                                    | `JSON NOT NULL`                            | 审批人可见的脱敏摘要（≤16 键、单值 ≤200 字符、≤4096 字节）              |
-| `params_ciphertext`/`params_key_id`/`params_sha256` | `VARBINARY(8192)`/`VARCHAR(64)`/`CHAR(64)` | 仅 `MCP_TOOL`：可重放参数密文（复用 ADR-0017，AAD=`tenantId             | workflowApprovalId`） |
+| `params_ciphertext`/`params_key_id`/`params_sha256` | `VARBINARY(8192)`/`VARCHAR(64)`/`CHAR(64)` | 仅 `MCP_TOOL`：可重放参数密文（复用 ADR-0017，AAD=`tenantId\|workflowApprovalId`） |
 | `plan_sha256`                                       | `CHAR(64) NOT NULL`                        | 版本 + 节点配置 + 上游输出摘要的绑定哈希；执行前重算，漂移 fail-closed  |
 | `requested_by`/`decided_by`                         | `BINARY(16)`                               | 运行发起人/审批人；FK `app_user`                                        |
 | `decided_at`/`decision_comment`                     | `DATETIME(6)`/`VARCHAR(500)`               | 决定时间；拒绝时理由必填                                                |
 | `created_at`/`updated_at`                           | `DATETIME(6)`                              | UTC                                                                     |
 
 键：`PK (tenant_id,id)`；`UNIQUE (tenant_id, workflow_run_id, node_key, attempt)`；`KEY (tenant_id, status, created_at)`、`KEY (tenant_id, workflow_id, created_at)`；FK `workflow_run`、`workflow_definition`、`requested_by/decided_by`。CHECK：`USER` → `assignee_role_code IS NULL`；`ROLE` → `assignee_role_code IS NOT NULL`；`APPROVED/REJECTED` → `decided_by/decided_at` 非空；`PENDING` → 二者为空；`REJECTED` → `decision_comment` 非空。
+
+- `dataScopeSummary` 是派生字段（不新增列）：`runScope`/`departmentId` 取运行绑定版本，`documentReferenceCount` 取审批节点上游引用的去重计数；不返回文档标题/片段/正文，审批人按 M05 ACL 自行访问。
 
 `workflow_approval_assignee`：`(tenant_id, approval_id, user_id)` 复合主键，FK approval/app_user，`KEY (tenant_id, user_id, approval_id)`；仅 `assignee_type=USER` 时写入，最多 50 行。角色审批不写该表，待办按 `user_role` 联接解析。
 
@@ -245,7 +250,7 @@ model_invocation.workflow_run_id / workflow_node_run_id（可空逻辑引用，�
 
 #### 3.3.7 `workflow_template`（全局内置目录）与 `workflow_user_template`（租户，M06b 预留）
 
-`workflow_template`（**全局表**，ADR-0012 §4 例外清单由本 ADR 扩展）：`id BINARY(16)` PK、`template_key VARCHAR(64)` 唯一（如 `market-research`）、`name`、`scenario`、`description`、`graph_json`、`version INT`、`status`、`created_at/updated_at`。只读目录，无租户键；内置模板 ID 使用固定 UUID（迁移种子，升级不改变 ID），用户副本使用新 UUIDv7；内置模板升级 = 新版本行或 version+1（M06b 决定），不静默覆盖已复制草稿。
+`workflow_template`（**全局表**，ADR-0012 §4 例外清单由本 ADR 扩展）：`id BINARY(16)` PK、`template_key VARCHAR(64)` 唯一（如 `market-research`）、`name`、`scenario`、`description`、`graph_json`、`version INT`、`status`、`created_at/updated_at`。只读目录，无租户键；内置模板 `visibility=BUILT_IN`（不是 `PRIVATE`/`TENANT`），ID 使用固定 UUID（迁移种子，升级不改变 ID），用户副本使用新 UUIDv7；内置模板升级 = 新版本行或 version+1（M06b 决定），不静默覆盖已复制草稿。
 
 `workflow_user_template`（租户表，V15 预留，M06 无读写路径）：`(tenant_id,id)` PK、`name`、`description`、`scenario`、`graph_json`、`visibility`（`PRIVATE/TENANT`，默认 `PRIVATE`）、`owner_user_id`、`source_workflow_id`/`source_workflow_version_no`、`status`、`created_at/updated_at/created_by`；`KEY (tenant_id, visibility, updated_at)`、`KEY (tenant_id, owner_user_id)`。
 
@@ -264,17 +269,27 @@ model_invocation.workflow_run_id / workflow_node_run_id（可空逻辑引用，�
 2. `model_invocation` 追加 `workflow_run_id`、`workflow_node_run_id`（可空、末尾、INSTANT）与 `idx_model_invocation_workflow (tenant_id, workflow_run_id, started_at)`（INPLACE/LOCK=NONE）；**不加 CHECK、不改 `purpose`**。
 3. 权限字典：`workflow.read/edit/publish/run/approve/manage`；回填既有 `TENANT_ADMIN`（全部 6 个）、`MEMBER`（read/run/approve）；创建 `WORKFLOW_EDITOR` 角色行并为存量租户回填（见 §6.1）。
 4. 内置模板种子：`market-research`（J2 等价，1 个）；`version=1`。
-5. `workflow_version` 不可变触发器。
+5. `workflow_version` 不可变触发器（最后创建；失败按下方矩阵处置）。
 6. `apps/worker` 期望 schema 14 → 15。
+7. 联动断言：`.github/workflows/ci.yml`（触发器数；当前硬编码 2，V15 后为 4，建议从 `CREATE TRIGGER` 推导）、`ApiApplicationTests`（migrations 14→15、tables 49→58、triggers 2→4）、`SchemaVersionCheckerTest`（expected=15）、`scripts/ops/restore-drill.mjs`（14/2→15/4，含 self-test fixtures 49/48 表）、`docs/RUNBOOK.md`（V1–V14→V1–V15、48/49→57/58 表、2→4 触发器）必须在同一提交更新，写范围见 §13.1。
 
-**回滚**：
+**生产预检（T01 编码前、发布前）**：
 
-- 正常回滚不删表、不做 down migration；V15 对旧代码不可见（旧代码只读 `model_invocation` 新列不存在也不影响）。
-- 受支持回滚见 §10.4；`workflow_version` 触发器与 V15 表保留。
-- 只有在**没有任何 workflow 数据与 workflow 审计行**且用户书面同意时，才允许执行应急 drop（顺序：触发器 → 子表 → 父表 → 权限/角色回填 → `model_invocation` 索引/列）；生产以备份恢复为主（ADR-0010）。
-- `workflow_template` 为全局表，drop 不涉及租户数据；`workflow_user_template` 在 M06 为空表。
+- `SELECT MAX(version) FROM flyway_schema_history` = 14；备份可恢复；`SHOW GRANTS` 含 `TRIGGER`；binlog 开启时 `log_bin_trust_function_creators=1` 或等价 SUPER；无长事务/未提交 DDL；MDL 等待与维护窗口已确认；磁盘余量满足 V15 + 备份。
+- `@@max_allowed_packet` 与 JDBC `maxAllowedPacket` ≥ 8 MiB（且 ≥ `RICCON_WORKFLOW_RESULT_MAX_BYTES` + JSON/协议余量）；否则先调服务器/驱动，不得靠 5 MiB 结果上线后再发现。
+- 测试栈的 `--log-bin-trust-function-creators=1` 只作测试便利，不得作为生产预检证据。
 
----
+**MySQL DDL 非事务失败处置**（必须先停写/停迁移；生产默认备份恢复）：
+
+| 失败点 | 可能残留 | 处置 |
+| --- | --- | --- |
+| 建表/索引/列中途失败 | 已提交的表/列/索引 | 记录最后成功语句；按 FK 逆序 drop 半成品（全局 `workflow_template` 与租户表分开）；删除 `success=0` 的 history 行；`flyway repair`；重跑 |
+| 权限/角色/模板 DML 冲突 | 部分回填 | 所有 DML 必须 `INSERT ... WHERE NOT EXISTS` / `ON DUPLICATE KEY UPDATE` 幂等；修因后 repair/重跑；迁移测试断言二次执行无重复行 |
+| 触发器失败（1419/权限） | 表已建、触发器缺失 | 补 `TRIGGER`/binlog 变量；单独重放触发器或按上表清理；不得删除审计触发器绕过 |
+| 包大小/超时/连接中断 | 取决于最后提交语句 | 提升 `max_allowed_packet`/维护窗口后 repair/重跑；无法可靠定位则备份恢复 |
+
+- 不修改已应用的 V15 文件；所有修复走后续迁移或备份恢复（ADR-0010）。
+- 应急 drop 只在无 workflow 数据/审计行且用户书面同意时执行；全局模板与租户表分两段脚本（§10.4）。
 
 ## 4. 执行模型
 
@@ -309,11 +324,14 @@ run queue:        PENDING -> RUNNING（领取）；RUNNING + lease 过期 -> 可
 **不复用 `agent_run_outbox`**：该表 `run_id NOT NULL` + FK `agent_run`，`OutboxPoller` 以 `agent_run.kind/status` 推进并在成功后 `markSucceeded`；把工作流事件塞进去需要改 NOT NULL/FK/Poller，直接扩大 J2 回归面。也不新增第二个 outbox 表（复制 claimer/看门狗/清理，或重构 `OutboxPoller`）。M06 使用 `workflow_run` 自身作为持久运行队列：
 
 - API 在创建/审批恢复/重试时把运行置 `PENDING` 并写 `current_node_key`（创建时为 `START` 节点，恢复/重试为目标节点）；取消置 `CANCELLED`；不需要事件表/事件 schema。
-- `WorkflowRunClaimer`（worker `..persistence..`）按 `(status='PENDING') OR (status='RUNNING' AND lease_until <= NOW(6))` 以 `FOR UPDATE SKIP LOCKED` 领取，只读取 `id/tenant_id/status/lease_until`，更新使用 `(tenant_id,id)` + 状态/租约条件写 `lease_owner/lease_until`。这是 ADR-0009/0016 的**新增跨租户领取例外**：只限 `workflow_run` 领取列；领取后立即 `TenantContext.open` 并回到 `TenantJdbc`，不通过该路径读取业务内容。
-- 领取索引 `(status, lease_until, id)` 故意不以 `tenant_id` 开头（与 outbox 领取同类例外）；`ORDER BY id` 利用 UUIDv7 时间有序。
-- `WorkflowRunScheduler` 以 `RICCON_WORKFLOW_WORKER_CONCURRENCY`（默认 10）固定并发轮询；审批等待释放线程/租约，不占执行并发。
-- 租约 90s，心跳续期；续期/完成使用 `WHERE id=? AND lease_owner=? AND status='RUNNING'` 条件更新，0 行视为租约丢失并放弃结果。仅当从租约过期的 `RUNNING` 重新领取时递增 `claim_attempts`；新建/恢复/重试的 `PENDING` 归零。超过 5 次仍无法推进 → 运行失败 `WF_INTERNAL` 并写审计，避免崩溃循环。
-- 心跳同时读取运行状态；发现 `CANCELLED` 时尽力中断当前模型流/等待 MCP 超时，节点标记 `CANCELLED`。
+- **槽位与领取批量闭合**：`WorkflowRunScheduler` 使用**独立**的 `ThreadPoolTaskScheduler`（不复用 `spring.task.scheduling.pool.size`），池大小 = `RICCON_WORKFLOW_WORKER_CONCURRENCY`（默认 10），启动校验池 ≥ 并发。每个槽位空闲时只领取 **1** 个 run（claim SQL `LIMIT 1`；`RICCON_WORKFLOW_CLAIM_BATCH` 在 v1 固定为 1，配置 >1 启动失败）；禁止“一次领 10 个再串行执行”。租约从领取时刻起算；领取成功后**先启动心跳**，再加载图/执行节点。
+- **心跳池**：独立 `WorkflowLeaseHeartbeat`，线程数 ≥ worker 并发（`RICCON_WORKFLOW_HEARTBEAT_CONCURRENCY`，默认 10）；续期间隔 30s（`RICCON_WORKFLOW_HEARTBEAT_INTERVAL_SECONDS`，必须 ≤ lease/3 = 30s）；领取后立即首次续期。心跳同时检查运行状态/取消；续期失败或租约丢失记 `lease_lost_total` 并放弃结果。启动校验心跳池 ≥ 并发、间隔 ≤ lease/3。
+- `WorkflowRunClaimer`（worker `..persistence..`）按 `(status='PENDING') OR (status='RUNNING' AND lease_until <= NOW(6))` 以 `FOR UPDATE SKIP LOCKED` + `LIMIT 1` 领取，SELECT **恰好 4 列** `id/tenant_id/status/lease_until`（ArchUnit/字符串断言静态守卫，不得 SELECT *）；更新使用 `(tenant_id,id)` + 状态/租约条件写 `lease_owner/lease_until`。这是 ADR-0009/0016 的**新增跨租户领取例外**：只限 `workflow_run` 领取列；领取后立即 `TenantContext.open` 并回到 `TenantJdbc`，不通过该路径读取 `inputs_json`/`result_json` 等业务内容。
+- 非法/空 `tenant_id` fail-closed：不打开 TenantContext、不读取业务列、不执行；记 `claim_failures_total{reason=INVALID_TENANT}` 并写 `platform` 租户 denied 审计（可归属时）。`IT-WF-103` 与 `TEN-M06-01` 必须覆盖非法 tenant、跨租户行、列集合断言；TM-85 的跨租户领取需独立安全评审（F-014/U-13）。
+- 领取索引 `(status, lease_until, id)` 故意不以 `tenant_id` 开头（与 outbox 领取同类例外）；`ORDER BY id` 利用 UUIDv7 时间有序；两段 status 查询可能 filesort，作为可接受项观察 claim 延迟。
+- 领取/完成/续期均使用条件更新；重复领取不得二次执行：`lease_owner` 不匹配、状态非 `RUNNING`、节点/尝试唯一键共同兜底。`IT-WF-103` 必须覆盖“批量/并发领取同一行、租约过期重领、心跳丢失、重复执行防护”。
+- 仅当从租约过期的 `RUNNING` 重新领取时递增 `claim_attempts`；新建/恢复/重试的 `PENDING` 归零。超过 5 次仍无法推进 → 运行 `FAILED`（`WF_INTERNAL`），并把当前节点 `workflow_node_run` 置 `FAILED`（若节点行不存在，按 `current_node_key` 创建一次失败尝试），保证 `POST /retry` 可用；写审计。
+- 优雅停机/停止领取：`RICCON_WORKFLOW_CLAIM_ENABLED=false` 时槽位停止领取新 run，在途 run 最多等待 `RICCON_WORKFLOW_SHUTDOWN_GRACE_SECONDS`（默认 120s）后退出；未完成运行靠租约过期被其他实例恢复。不得把“缩容到 0”作为唯一停止手段。
 - 运行超时按“累计执行时间”计算，审批等待不计；每次暂停/恢复累加 `execution_ms`。
 
 ### 4.4 节点执行器
@@ -331,7 +349,7 @@ run queue:        PENDING -> RUNNING（领取）；RUNNING + lease 过期 -> 可
 - 执行器接口（设计约束，不写代码）：`WorkflowNodeExecutor` 以 `(run, node, inputs, deadline)` 为输入，返回 `NodeResult{status, output, citations, summary, errorCode, invocationRef}`；实现按节点类型分派，禁止在节点内解释任意脚本/表达式/HTTP。
 - 节点开始前做条件更新 `PENDING -> RUNNING`；成功后写输出与摘要；失败写稳定码并标记所有下游为 `SKIPPED`。
 - 步骤预算：每次节点尝试计 1 步（重试也计）；超过 200 → 运行失败 `WF_STEP_LIMIT`；条件未走分支不计步。
-- 节点输出 `output_json` 只供下游使用；API 只返回 `output_summary`、引用与最终结果。
+- 节点输出 `output_json` 只供下游使用；API 返回 `inputSummary`/`outputSummary`、引用与最终结果，不返回完整提示词或工具参数。
 
 ### 4.5 条件求值与模板占位符
 
@@ -353,12 +371,23 @@ run queue:        PENDING -> RUNNING（领取）；RUNNING + lease 过期 -> 可
   - 运行状态条件更新（`PENDING→RUNNING`、`RUNNING→SUCCEEDED/FAILED/CANCELLED`）+ 租约是最终幂等守卫；重复领取/重复恢复不得二次执行。
   - 节点尝试唯一键 `(run,node,attempt)`；审批唯一 `(run,node,attempt)`；工具调用唯一 `(tenant_id, approval_id)`。
   - 崩溃恢复：模型/检索可安全重执行（只产生新的调用记录与估算成本）；MCP 工具若已有 `STARTED` 无终态，按 `WF_SIDE_EFFECT_UNKNOWN` fail-closed，必须重新审批并显式重试，不自动重放。
+- **`WF_INTERNAL` 终态**：`claim_attempts` 耗尽或不可恢复内部错误时，当前节点 `RUNNING→FAILED`（无节点行则按 `current_node_key` 创建一次失败尝试），运行 `FAILED` 并写审计；`POST /retry` 可重试该节点，运行不再永久卡在 `RUNNING`。
 - **部分完成**：节点记录独立持久化；失败/取消运行保留已完成节点、输出摘要与引用；不生成部分最终结果（只有 `END` 成功才写 `result_json`）。
 
 ### 4.7 工具调用、写工具审批与 plan 绑定
 
 - 工具节点执行前必须满足：工具在 `mcp_tool` 全局目录 `ACTIVE`、租户 `mcp_tool_grant.enabled=TRUE`、参数通过 schema/长度/敏感键校验；否则不发起调用，节点失败 `WF_TOOL_NOT_AUTHORIZED`（AC-18）。
 - 实现上**不直接调用 J2 `McpGateway.invoke`**（其 `mcp_invocation.approval_id` FK `approval`）：抽取 worker 内部共享的 `McpCallExecutor`（授权/端点/超时/结果上限/审计），J2 与工作流各自持久化到 `mcp_invocation` / `workflow_tool_invocation`；不得复制两套策略分支。J2 行为由 `IT-HITL-001`、`MCP-001..008` 回归守住。
+
+**执行器策略（F-006）**：`McpCallExecutor` 接收显式 `McpExecutionPolicy`，不在执行器内部猜测调用方：
+
+| 模式 | 调用方 | 允许风险 | 审批要求 | 持久化/审计 |
+| --- | --- | --- | --- | --- |
+| `READ_ONLY` | J2（M02 research） | 仅 `risk_level=READ`；`WRITE` 直接拒绝（保持 `McpGateway.validatePolicy` 现状） | 现有 `approval` 必须 APPROVED 且绑定 | `mcp_invocation` + `mcp.tool.invoked` |
+| `APPROVAL_BOUND_WRITE` | M06 工作流 | READ 按目录；WRITE 仅在 `workflow_approval` APPROVED 且 `plan_sha256` 匹配时允许 | 写工具必须前置审批、重试重新审批、一个审批最多一次 | `workflow_tool_invocation` + `mcp.tool.invoked`（带 workflowRunId） |
+
+- 策略由调用方传入；**不得**因为 M06 需要 WRITE 而放宽 J2 的 `READ_ONLY`。未知风险级别 fail-closed。
+- 验收：J2 的 `IT-HITL-001`/`MCP-001..008` 必须证明 WRITE 仍被拒；M06 的 `SEC-WF-004`/`IT-WF-104` 证明 WRITE 只在审批后执行、重试重新审批。
 - `tool.requires_approval=TRUE` 或 `risk_level=WRITE` 时，工具的**直接前驱必须是 `APPROVAL` 节点**且 `targetNodeKey` 指向该工具节点；发布校验与运行前复查。M02 目录全部 `requires_approval=TRUE`，因此模板/流程默认包含审批节点。
 - 审批记录绑定：`params_ciphertext` 保存规范化参数（AES-256-GCM，复用 ADR-0017，AAD=`tenantId|workflowApprovalId`）；`params_sha256` 供审计核对；`plan_sha256` 绑定 `workflow_version_id + node_key + 目标工具 + 上游输出摘要`。执行前重算：审批状态 `APPROVED`、`decided_by != requested_by`、参数哈希/plan 哈希一致；任一不符 → `WF_PLAN_DRIFT`，不调用工具。
 - 写工具重试：新 attempt → 新审批；旧审批/旧调用不可复用；审批详情标注“重试”，提示可能重复外部副作用（AC-08）。系统无法证明外部幂等时不自动重试。
@@ -373,7 +402,7 @@ run queue:        PENDING -> RUNNING（领取）；RUNNING + lease 过期 -> 可
   4. 插入 `workflow_run`（`PENDING`）+ 审计；任一步失败整体回滚。
 - “运行准入并发”包含等待审批的运行；“执行并发”是 worker 运行队列并发（等待审批不占），两者在文档/UI 明确区分。
 - 停用流程（`status=DISABLED`）阻止新运行；在途运行继续；重新启用恢复。停用/启用由所有者和租户管理员执行并审计（AC-15/16）。
-- kill switch：`RICCON_WORKFLOW_ENABLED`（默认 `true`）。关闭时 API 拒绝创建/重试/审批决定/复制模板（503 `RICCON-WF-503`），编辑器只读，列表/历史/审批记录可读；J1/J2 不受影响；已受理的在途运行继续到终态。API 启动时若开关为关闭，写一条 `workflow.feature.changed` 审计（actor=SYSTEM，tenant=platform），作为关闭动作的可核对证据；多实例可能重复写，append-only 允许（§16 记录替代方案）。
+- kill switch：`RICCON_WORKFLOW_ENABLED`（默认 `true`）。关闭时 API 拒绝创建/重试/审批决定/复制模板（503 `RICCON-WF-503`），但**取消仍可用**（否则无法清空在途）；编辑器只读，列表/历史/审批记录可读；J1/J2 不受影响；已受理的在途运行继续到终态。API 启动时若开关为关闭，写一条 `workflow.feature.changed` 审计（actor=SYSTEM，tenant=platform），details 带 `source=DEPLOYMENT_CONFIG`、`instanceId`、`observedAt`；语义是“启动观测”，不是变更日志，多实例/重启重复可接受。暴露 `riccon_workflow_feature_enabled` gauge，便于发现“API 已关但 Worker 仍在领”。Worker 侧 `RICCON_WORKFLOW_CLAIM_ENABLED` 控制停止领取与优雅停机（§4.3）。Ops 立场：保留部署配置，不升为用户决策（OPS-M06-009）。
 
 ### 4.9 为什么不是 outbox / 第二个队列
 
@@ -413,7 +442,7 @@ run queue:        PENDING -> RUNNING（领取）；RUNNING + lease 过期 -> 可
 ### 5.2 审批人解析与禁自批
 
 - 审批节点配置二选一：`assigneeType=USER` + `assigneeUserIds`（1..50）或 `assigneeType=ROLE` + `assigneeRole`（`TENANT_ADMIN`/`WORKFLOW_EDITOR`/`MEMBER`）。
-- 解析顺序：本租户 → 账号 `ACTIVE` → 部门（如角色无部门限制，不额外过滤；部门级审批不在 M06）→ 排除运行发起人。解析结果为空 → 运行保持 `WAITING_APPROVAL`，`blockedReason=NO_APPROVER`；不自动放行、不跳过、不允许平台管理员跨租户代批（AC-06）。
+- 解析顺序：本租户 → 账号 `ACTIVE` → 部门（如角色无部门限制，不额外过滤；部门级审批不在 M06）→ 排除运行发起人。解析结果为空 → 运行保持 `WAITING_APPROVAL`，**不新增 `blocked_reason` 列**，用 `WorkflowRun.errorCode=WF_NO_APPROVER` + 固定中文 `errorMessage`（“需先配置非发起人审批人”）表达；创建一条无可用 assignee 的 `workflow_approval` 记录用于时间线/审计；不自动放行、不跳过、不允许平台管理员跨租户代批（AC-06，`SEC-WF-001` 断言）。
 - 发布校验：审批节点必须配置审批人；若按角色解析后租户内没有除发布者外的可用成员，发布返回 `400 RICCON-WF-400`（`reason=NO_APPROVER`）并提示配置入口（AC-06；单管理员租户需先增加第二名可审批成员）。
 - 自批：`decided_by == workflow_run.requester_user_id` 一律 403 `RICCON-AUTH-403` 并写拒绝审计，运行保持等待；不因调用者是租户管理员而放行（AC-06）。发起人的待办项从 inbox 过滤，界面不提供入口。
 - 审批人必须在节点指定范围内；范围外/已停用/他租户 → 404（不可见运行）或 403（可见但无能力），不泄露运行内容。
@@ -421,14 +450,14 @@ run queue:        PENDING -> RUNNING（领取）；RUNNING + lease 过期 -> 可
 ### 5.3 审批可见性与 ACL
 
 - 待办列表只显示“分配给当前用户”的 PENDING 项；按 `created_at ASC`；每项显示流程名、节点名、发起人、等待时长、数据范围摘要；空态固定文案（AC-05）。`GET /workflow-approvals/{id}` 同样只对 assignee 开放（未分配 404）；租户管理员在运行详情只看到审批状态/决定/审批人与时间等元数据，不因管理员身份获得待审批参数摘要。
-- 审批详情显示：将要执行的动作、目标工具、数据范围、脱敏参数摘要；**不显示**完整工具参数、完整提示词、凭据、文档正文/OCR 文本。若审批人在 M05 文档 ACL 下无权访问引用文档，只显示脱敏摘要与来源标识（AC-05/18、OQ-M06-13）。
+- 审批详情/待办显示：将要执行的动作、目标工具、`dataScopeSummary`（运行范围/部门/引用计数）、脱敏参数摘要；**不显示**完整工具参数、完整提示词、凭据、文档正文/OCR 文本。若审批人在 M05 文档 ACL 下无权访问引用文档，只显示脱敏摘要与来源标识（AC-05/18、OQ-M06-13）。`WorkflowDataScopeSummary` 只含范围/部门/计数，不含标题/片段/正文。
 - 审批记录（审批人、时间、决定、理由）在运行详情与审计中可查；拒绝理由必填（≤500 字符），进入审批记录与审计（§8 隐私说明）。
 - 无审批通知/代理/转交/超时自动放行（non-goal）；`expires_at` 不使用，审批不过期（M06 不自动放行）。
 
 ### 5.4 审批状态与运行推进
 
 - 审批节点执行时把 `current_node_key` 置为该审批节点；`APPROVE` 时条件更新审批 `PENDING→APPROVED`，写 `decided_by/decided_at/comment`；审批节点的 `workflow_node_run` 置 `SUCCEEDED`；运行 `WAITING_APPROVAL→PENDING` 且 `current_node_key=targetNodeKey`；同事务写审计；审计失败整体回滚。
-- `REJECT`：审批 `→REJECTED`；审批节点 `workflow_node_run→FAILED`（`WF_APPROVAL_REJECTED`）；运行 `→FAILED`，后续节点 `SKIPPED`，不写最终结果；审批记录保留理由（AC-05）。
+- `REJECT`：审批 `→REJECTED`；审批节点 `workflow_node_run→FAILED`（`WF_APPROVAL_REJECTED`）；运行 `→FAILED`，后续节点 `SKIPPED`，不写最终结果；`comment` 在请求 schema 条件必填（`decision=REJECT` 时 `minLength=1`），缺失/空返回 400 `RICCON-WF-400`；审批记录保留理由（AC-05，`SEC-WF-001` 断言）。
 - 重复决定/并发决定：条件更新 0 行 → `409 RICCON-WF-409`；一个 200、一个 409。
 - 取消运行：所有 PENDING 审批 `→CANCELLED`；已决定的审批保留。
 - 审批详情/决定的 URL 级权限 `workflow.approve` + 服务层 assignee/自批校验；平台管理员 404。
@@ -451,6 +480,7 @@ run queue:        PENDING -> RUNNING（领取）；RUNNING + lease 过期 -> 可
 - 新增系统角色 `WORKFLOW_EDITOR`（展示名“流程编辑者”）：`workflow.read/edit/publish/run/approve`。由租户管理员通过既有 `PUT /api/v1/users/{userId}/roles`（`tenant.role.manage`）授予/撤销；审计动作沿用 `permission.changed`（`details.role=WORKFLOW_EDITOR`），立即生效。撤销后已有草稿保留但只读（无 `workflow.edit`）。
 - V15 为存量租户插入 `WORKFLOW_EDITOR` 角色行与角色权限；新租户由 `RoleDefinitions.tenantSystemRoles()` 创建。迁移生成的系统角色 ID 使用确定性 `BINARY(16)`（`SHA-256('role:WORKFLOW_EDITOR:'+tenant_id)` 前 16 字节），是 ADR-0012 UUIDv7 规则的系统数据例外（不对外暴露语义）；Builder 必须在迁移测试中断言幂等与唯一。
 - 平台管理员不持有任何 `workflow.*` 权限；`/api/v1/workflows/**`、`/workflow-runs/**`、`/workflow-approvals/**`、`/workflow-templates/**` 对 `tenantId=platform` 统一 404（AC-15/24）。
+- **平台租户 404 机制（F-005）**：新增 `WorkflowPlatformTenantFilter`（servlet filter，位于认证之后、`PermissionInterceptor`/RBAC 之前；`@Order` 显式排在权限拦截器前），对上述路径检查已认证主体租户；`tenantId=platform` 直接写 404 `RICCON-TENANT-404` 并结束，不进入 `@RequirePermission`，因此不会先返回 403。未认证仍 401；非 platform 继续走权限链。禁止只在 controller 内做 404（会被方法级权限拦截器抢先 403）。`TEN-M06-01` 必须断言平台管理员 404（不是 403），`T01` 实现 guard、`T05` 端点集成测试。
 
 ### 6.2 范围与资源级判定
 
@@ -523,7 +553,7 @@ M06b 预留（M06 契约标 `x-riccon-deferred: M06b`，不实现）：`POST /wo
 ### 7.4 幂等与轮询
 
 - `Idempotency-Key`（8..128）：创建运行、发布、重试、审批决定必填；同一主体 + 资源 + 键返回既有结果；不跨用户复用。
-- 运行详情/历史用**轮询**（默认 3s，`updatedAt` 变化才重绘）；不新增 SSE。理由：M06 无逐 token 流、SSE 增加连接与网关成本；AC-04 的“刷新后一致”由 DB 权威状态满足。若后续要求实时推送，另立契约/ADR。
+- 运行详情/历史用**轮询**（默认 3s，`WorkflowRun.updatedAt` 变化才重绘；契约已补 `updatedAt`）；**终态即停止轮询**，`result` 只在终态读取一次；列表不返回 result。不新增 SSE。理由：M06 无逐 token 流、SSE 增加连接与网关成本；AC-04 的“刷新后一致”由 DB 权威状态满足。`ETag`/`If-None-Match` 或 `includeResult=false` 作为后续优化，不阻塞 M06（OPS-M06-010）。
 - 列表分页 `page/size` 与全局规则一致（size ≤100）；运行历史过滤时间范围带偏移，最长 180 天。
 
 ### 7.5 合同与依赖影响
@@ -573,7 +603,7 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 
 ### 8.3 隐私说明
 
-`workflow.approval.decided.decisionComment` 是 Product AC-16 要求的“审批含理由”，属于用户输入的业务说明（≤500 字符）。风险：可能包含 PII/敏感信息。控制：审批 UI 明示“理由会进入审计并按审计保留期保存”；输入长度限制；导出沿用 M10 字段白名单；不写入 prompt/文档正文。若安全评审不接受，替代方案是审计只写 `commentSha256` 并在审批记录中保留理由（需 Product 确认 AC-16 口径，§16）。
+`workflow.approval.decided.decisionComment` 是 Product AC-16 要求的“审批含理由”，属于用户输入的业务说明（≤500 字符）。风险：可能包含 PII/敏感信息。控制：审批 UI 明示“理由会进入审计并按审计保留期保存”；输入长度限制；导出沿用 M10 字段白名单；不写入 prompt/文档正文。若安全评审不接受，替代方案是审计只写 `commentSha256` 并在审批记录中保留理由（需 Product 确认 AC-16 口径，§16）。**状态：U-05 未解决**（owner=安全评审/Product，due=M06 gate 前）；当前是临时默认，不得在评审中声称已接受；M06 gate 前必须二选一并补测试（F-013）。
 
 ---
 
@@ -589,18 +619,18 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------- |
 | TM-72 | 图/节点/算子/模板占位符均为服务端封闭 schema；未知类型/字段/表达式拒绝；节点 ≤50、边 ≤100、indegree ≤1、无环；保存/发布/运行三处校验              | api/worker | `IT-WF-101`、`SEC-WF-005`                         |
 | TM-73 | 发布版本不可变（触发器 + 无更新路径）；运行绑定版本快照与 `graph_sha256`；草稿修改不影响在跑运行                                                  | api        | `IT-WF-102`、`E2E-M06-02`                         |
-| TM-74 | 双重 RBAC（URL + 服务层）+ 资源级范围；平台管理员 404；跨租户/跨部门 404；可见无能力 403；列表不泄露名称/数量                                     | api        | `SEC-WF-002/003/006`、`TEN-M06-01`、`DEPT-M06-01` |
+| TM-74 | 双重 RBAC + 范围：URL `workflow.*` + 服务层 owner/发起人/部门/租户；`WorkflowPlatformTenantFilter` 在权限拦截器前对 platform 租户返回 404（不是 403）；跨租户/跨部门/私有 404；可见无能力 403；列表不泄露名称/数量 | api | `SEC-WF-002/003/006`、`TEN-M06-01`、`DEPT-M06-01` | 4.13/§6 |
 | TM-75 | 审批绑定：assignee 解析、禁自批、无审批人阻断不自动放行、工具参数密文 + `params_sha256` + `plan_sha256`、写工具重试重新审批、一个审批最多执行一次 | api/worker | `SEC-WF-001/004`、`IT-WF-104`                     |
 | TM-76 | 审批/运行详情最小可见：不返回完整 prompt/工具参数/凭据/文档正文；审批摘要按审批人 M05 ACL 遮蔽；`sourceStatus` 遮蔽                               | api        | `SEC-WF-004`、`IT-WF-106`                         |
-| TM-77 | 工具白名单/状态/租户授权/风险在保存、发布、执行三处复查；不允许用户自选未授权工具或任意 HTTP；未授权不发起调用                                    | api/worker | `SEC-WF-004`、`IT-WF-105`                         |
+| TM-77 | 工具策略：J2 `READ_ONLY` 继续拒绝 WRITE；M06 `APPROVAL_BOUND_WRITE` 只在审批/plan 校验后允许 WRITE；工具状态/租户授权在保存/发布/执行三处复查；无任意 HTTP/脚本节点 | api/worker | `SEC-WF-004`、`IT-WF-104/105`、`IT-HITL-001`、`MCP-001..008` | 4.13/§4.7 |
 | TM-78 | 提示注入：检索/模型/工具输出视为不可信数据，不进入系统指令；系统提示服务端固定；模型不能改变图/边/工具/审批；canary 凭据/内网地址不泄露           | worker     | `SEC-WF-004`、`INJ-*` 扩展                        |
-| TM-79 | 资源上限：节点/步数/超时/租户与单流程并发/结果大小服务端强制；超限稳定码与可读提示，不静默截断、不留半成品                                        | api/worker | `IT-WF-109`、`E2E-M06-09`                         |
+| TM-79 | 资源/队列上限：节点/步数/超时/并发/结果大小服务端强制；`queue_depth`/`oldest_pending_age`/`lease_lost`/`claim_exhausted` 可观测；超限稳定码与可读提示，不静默截断、不留半成品 | api/worker | `IT-WF-109`、`E2E-M06-09`、`OPS-M06-01` | 4.13/§4.8/§10.2 |
 | TM-80 | 数据最小化与保留：运行/审批/工具记录只存必要字段；默认 180 天到期不可见；不提供在线删除；日志/审计脱敏；不返回对象 key                            | api/worker | `IT-WF-106/107`、`IT-AUDIT-M06-01`                |
-| TM-81 | 执行幂等/租约：`workflow_run` 条件领取、运行状态条件更新、节点/审批/工具唯一键；取消优先；崩溃恢复不重复外部副作用；未知副作用 fail-closed | worker | `IT-WF-103/104` | 4.13/§4.6 |
-| TM-82 | kill switch/回滚：关闭后新运行/重试/审批不受理、历史只读、J1/J2 不受影响；不做 down migration；回滚限制进 RUNBOOK                                 | api/ops    | `IT-WF-110`、`OPS-M06-01`                         |
+| TM-81 | 执行幂等/租约：每槽位 batch=1、领取后先启动心跳、续期间隔 ≤lease/3、调度/心跳池 ≥并发；`workflow_run` 条件领取、运行状态条件更新、节点/审批/工具唯一键；取消优先；崩溃恢复不重复外部副作用；未知副作用 fail-closed | worker | `IT-WF-103/104` | 4.13/§4.3/§4.6 |
+| TM-82 | kill switch/回滚：关闭后新运行/重试/审批不受理但取消可用、历史只读、J1/J2 不受影响；`workflow.feature.changed` 观测审计 + feature gauge；不做 down migration；AC-23 判定 SQL/拒绝路径/演练进 RUNBOOK | api/ops | `IT-WF-110`、`OPS-M06-01` | 4.13/§10.4/§10.5 |
 | TM-83 | 审计 fail-closed + action-aware 白名单；管理性读取审计；M10 查询/导出不变；新动作必须进读取白名单                                                 | api/worker | `IT-WF-108/112`、`IT-AUDIT-M06-01`                |
 | TM-84 | 权限/部门边界：`WORKFLOW_EDITOR` 仅租户管理员授予；`manager_user_id` 只限制 DEPT 发布范围、不授权；禁用/移出部门下一次请求生效；移交流程审计      | api        | `SEC-WF-006`、`DEPT-M06-01`                       |
-| TM-85 | `workflow_run` 跨租户领取例外：只读 `id/tenant_id/status/lease_until`，领取后立即打开租户上下文；不得通过领取路径读业务内容；索引 `(status,lease_until,id)` 不以 tenant 开头，登记为例外 | worker | `IT-WF-103`、`TEN-M06-01` | 4.13/§4.3 |
+| TM-85 | `workflow_run` 跨租户领取例外：只读 `id/tenant_id/status/lease_until`（静态列集合断言），领取后立即打开租户上下文；不得通过领取路径读业务内容；非法 tenant/领取失败记 `claim_failures_total{reason}`/denied 审计；索引 `(status,lease_until,id)` 不以 tenant 开头，登记为例外 | worker | `IT-WF-103`、`TEN-M06-01` | 4.13/§4.3 |
 
 ### 9.3 明确不开放（负向控制，AC-24）
 
@@ -613,7 +643,7 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 
 - **B-27**：代码执行/脚本/任意 HTTP/并行/循环/定时入口未关闭或可绕过；工具白名单/审批绑定失效。
 - **B-28**：权限/租户/部门 403/404 矩阵不闭合；平台管理员可读取租户流程/运行/审批；自批可成功。
-- **B-29**：资源上限/并发/结果大小/超时不可验证，或 kill switch/回滚演练缺失。
+- **B-29**：队列参数/租约/心跳/调度池不闭合，资源上限/并发/结果大小/超时不可验证，或 kill switch/AC-23 判定 SQL/回滚演练/RUNBOOK 缺失。
 - **B-30**：威胁模型 M06 增补未评审、审计动作/details 白名单缺失、提示注入/审批摘要 ACL 用例失败。
 
 关闭条件与证据见 `docs/security/THREAT-MODEL.md` §8；任一未关闭不得通过 M06 gate。
@@ -636,27 +666,58 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 
 ### 10.1 部署配置（租户只读）
 
-| 配置                                           | 默认                              | 说明                                                           |
-| ---------------------------------------------- | --------------------------------- | -------------------------------------------------------------- |
-| `RICCON_WORKFLOW_ENABLED`                      | `true`                            | kill switch；关闭时新运行/重试/审批决定/复制模板 503，历史只读 |
-| `RICCON_WORKFLOW_MAX_NODES`                    | `50`                              | 单流程节点上限                                                 |
-| `RICCON_WORKFLOW_MAX_STEPS`                    | `200`                             | 单运行节点尝试步数上限                                         |
-| `RICCON_WORKFLOW_MODEL_TIMEOUT_SECONDS`        | `300`                             | 模型节点超时                                                   |
-| `RICCON_WORKFLOW_RETRIEVAL_TIMEOUT_SECONDS`    | `120`                             | 检索节点超时                                                   |
-| `RICCON_WORKFLOW_MCP_TIMEOUT_SECONDS`          | `60`                              | MCP 工具节点超时                                               |
-| `RICCON_WORKFLOW_RUN_TIMEOUT_MINUTES`          | `30`                              | 运行执行超时（审批等待不计）                                   |
-| `RICCON_WORKFLOW_TENANT_CONCURRENCY`           | `10`                              | 租户准入并发（含等待审批）                                     |
-| `RICCON_WORKFLOW_FLOW_CONCURRENCY`             | `5`                               | 单流程准入并发                                                 |
-| `RICCON_WORKFLOW_RESULT_MAX_BYTES`             | `5242880`                         | 单次运行输出+结果上限（5 MiB）                                 |
-| `RICCON_WORKFLOW_WORKER_CONCURRENCY` | `10` | worker 运行队列并发 |
-| `RICCON_WORKFLOW_CLAIM_BATCH` | `10` | 单次领取批量上限 |
-| `RICCON_WORKFLOW_RETENTION_DAYS`               | 租户 `retention_days`（默认 180） | 运行到期不可见；M06 不新增租户覆盖入口                         |
+| 配置 | 默认 | 说明 |
+| --- | --- | --- |
+| `RICCON_WORKFLOW_ENABLED` | `true` | kill switch；关闭时新运行/重试/审批决定/复制模板 503，取消仍可用 |
+| `RICCON_WORKFLOW_DISABLED_REASON` | 空 | 可选；关闭原因，API 回退固定文案；租户只读 |
+| `RICCON_WORKFLOW_MAX_NODES` | `50` | 单流程节点上限 |
+| `RICCON_WORKFLOW_MAX_STEPS` | `200` | 单运行节点尝试步数上限 |
+| `RICCON_WORKFLOW_MODEL_TIMEOUT_SECONDS` | `300` | 模型节点超时 |
+| `RICCON_WORKFLOW_RETRIEVAL_TIMEOUT_SECONDS` | `120` | 检索节点超时 |
+| `RICCON_WORKFLOW_MCP_TIMEOUT_SECONDS` | `60` | MCP 工具节点超时 |
+| `RICCON_WORKFLOW_RUN_TIMEOUT_MINUTES` | `30` | 运行执行超时（审批等待不计） |
+| `RICCON_WORKFLOW_TENANT_CONCURRENCY` | `10` | 租户准入并发（含等待审批） |
+| `RICCON_WORKFLOW_FLOW_CONCURRENCY` | `5` | 单流程准入并发 |
+| `RICCON_WORKFLOW_RESULT_MAX_BYTES` | `5242880` | 单次运行输出+结果上限（5 MiB） |
+| `RICCON_WORKFLOW_WORKER_CONCURRENCY` | `10` | worker 运行队列槽位 |
+| `RICCON_WORKFLOW_CLAIM_BATCH` | `1` | v1 固定 1（每槽位领 1 个 run）；>1 启动失败 |
+| `RICCON_WORKFLOW_SCHEDULER_POOL_SIZE` | `10` | 独立调度池，必须 ≥ worker 并发 |
+| `RICCON_WORKFLOW_HEARTBEAT_CONCURRENCY` | `10` | 心跳池线程数，必须 ≥ worker 并发 |
+| `RICCON_WORKFLOW_HEARTBEAT_INTERVAL_SECONDS` | `30` | 续期间隔，必须 ≤ lease/3 |
+| `RICCON_WORKFLOW_LEASE_SECONDS` | `90` | 执行租约 |
+| `RICCON_WORKFLOW_CLAIM_ENABLED` | `true` | Worker 侧停止领取开关（优雅停机/紧急停止） |
+| `RICCON_WORKFLOW_SHUTDOWN_GRACE_SECONDS` | `120` | 停止领取后的在途等待上限 |
+| `RICCON_WORKFLOW_RETENTION_DAYS` | 租户 `retention_days`（默认 180） | 运行到期不可见；M06 不新增租户覆盖入口 |
+| `RICCON_DB_MAX_ALLOWED_PACKET` | `16777216` | JDBC `maxAllowedPacket`；预检服务器 `max_allowed_packet` ≥8 MiB 且 ≥结果上限 + 余量 |
 
-启动校验：超时/并发/上限必须为正；worker 并发 ≥1；否则启动失败（fail-closed）。
+启动校验（fail-closed，错误信息给出可操作键）：
 
-### 10.2 指标（M06，Micrometer）
+- `WORKER_CONCURRENCY >= 1`；`CLAIM_BATCH == 1`；调度池 ≥ worker 并发；心跳池 ≥ worker 并发；`HEARTBEAT_INTERVAL <= LEASE_SECONDS / 3`。
+- 超时/并发/上限为正；`RESULT_MAX_BYTES` 与 `max_allowed_packet`/JDBC `maxAllowedPacket` 满足 ≥8 MiB 且 ≥结果上限 + JSON/协议余量。
+- 调度使用**独立** `ThreadPoolTaskScheduler`，不复用 `spring.task.scheduling.pool.size`；若误用共享池，启动校验必须把 outbox 既有任务计入所需池大小。
+- `GET /workflows/runtime-limits` 返回 `featureEnabled`/`disabledReason`/限制/保留；租户只读，不能修改（OQ-M06-16）。
 
-`riccon_workflow_runs_total{status}`、`riccon_workflow_run_duration_seconds`、`riccon_workflow_node_duration_seconds{node_type,status}`、`riccon_workflow_runs_active`、`riccon_workflow_approvals_pending`、`riccon_workflow_admission_rejected_total{scope}`、`riccon_workflow_result_oversize_total`。`/actuator/prometheus` 仍仅内网/受控；告警阈值由 M09 接入 RUNBOOK。
+### 10.2 指标与告警（M06，Micrometer）
+
+| 指标 | 类型/标签 | 用途 / 建议阈值（RUNBOOK，M06 负责处置） |
+| --- | --- | --- |
+| `riccon_workflow_queue_depth{status}` | Gauge | `PENDING`/`WAITING_APPROVAL` 深度；PENDING >50 持续 10min 告警 |
+| `riccon_workflow_queue_oldest_pending_age_seconds` | Gauge | 最老 PENDING 年龄；>300s 告警，>900s 升级 |
+| `riccon_workflow_lease_lost_total` | Counter | 任何增长都告警（重复执行/租约风险） |
+| `riccon_workflow_claim_exhausted_total` | Counter | >0 告警（`WF_INTERNAL` 死记录） |
+| `riccon_workflow_claim_failures_total{reason}` | Counter | 非法 tenant/DB 失败/领取异常；>0 告警 |
+| `riccon_workflow_runs_total{status}` | Counter | 终态分布/失败率 |
+| `riccon_workflow_run_duration_seconds` | Histogram | 执行时长（不含审批等待） |
+| `riccon_workflow_node_duration_seconds{node_type,status}` | Histogram | 节点耗时/失败定位 |
+| `riccon_workflow_runs_active` | Gauge | 当前执行槽位占用 |
+| `riccon_workflow_approvals_pending` / `riccon_workflow_approval_oldest_wait_seconds` | Gauge | 待审批数/最老等待；>24h 提示租户管理员（OPS-M06-007） |
+| `riccon_workflow_admission_rejected_total{scope}` | Counter | 租户/单流程 429 |
+| `riccon_workflow_result_oversize_total` / `riccon_workflow_result_size_bytes` | Counter/Histogram | 5 MiB 超限与容量分位数（OPS-M06-011） |
+| `riccon_workflow_heartbeat_renew_failures_total` | Counter | 续期失败/租约丢失前置信号 |
+| `riccon_workflow_feature_enabled` | Gauge | API/Worker 开关不一致告警；按实例抓取 |
+
+- 告警阈值与处置步骤写入 RUNBOOK（§10.5），M06 负责；M09 只做告警路由/长期容量，不把全部推给 M09。
+- `/actuator/prometheus` 仍仅内网/受控（M04 CIDR）；不新增暴露面。
 
 **性能预算（AC-21）**：沿用合同 `commands.perf` / `e2e/perf/mvc-smoke.js`，新增 `RICCON_PERF_SCENARIO=workflow`（或等价脚本）。50 并发为混合 J1/J2/M06 总负载（不要求 50 个 M06 同时执行，M06 并发上限单独记录）：J1 首字 p95 ≤3s；Studio 列表/详情/保存/发布/运行准入 API p95 ≤500ms（不含 SSE/TTFB）；审批等待不占执行并发；单流程 5 并发、租户 10 并发；超限 429。报告记录 `RICCON_FAKE_MODEL=1`、并发数、限制值、脚本参数与退出码，可复现。
 
@@ -671,26 +732,46 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 
 **受支持回滚**：
 
-1. 关闭 `RICCON_WORKFLOW_ENABLED`；新运行/重试/审批决定 503，历史/审计只读；在途运行可等待终态或由发起人/管理员取消。
-2. 回滚 Worker 到 M06 前版本：先等待/取消在途运行（关闭后 API 不受理新运行）；旧 Worker 不认识 `workflow_run` 表，不会领取；回滚窗口按 ADR-0021 的 schema 校验开关流程（仅人工核对 `MAX(version)=15`、登记工单）。
-3. **保留 M06 API** 以继续提供运行历史/审批/审计读取；或对 API 前向修复。
-4. V15 表/触发器/权限保留；对象存储无新增类别；J1/J2 不受影响。
+1. 关闭 `RICCON_WORKFLOW_ENABLED`；新运行/重试/审批决定 503，**取消仍可用**，历史/审计只读；在途运行等待终态或由发起人/管理员取消。
+2. **回滚 Worker 前必须清空 `WAITING_APPROVAL`**：审批不过期，旧 Worker 不会接管；用保留的 M06 API 取消所有等待审批运行，确认 `SELECT COUNT(*) FROM workflow_run WHERE status='WAITING_APPROVAL'` = 0。不能只“等待终态”。
+3. 回滚 Worker 到 M06 前版本：旧 Worker 不认识 `workflow_run` 表，不会领取；回滚窗口按 ADR-0021 的 schema 校验开关流程（仅人工核对 `MAX(version)=15`、登记工单）。
+4. **保留 M06 API** 以继续提供运行历史/审批/审计读取；或对 API 前向修复。
+5. V15 表/触发器/权限保留；对象存储无新增类别；J1/J2 不受影响。
 
-**不支持**：在存在 workflow 运行/审批/审计行后把 API 回滚到 M06 前版本——旧 API 的 `AuditDetailsReader` 对未知 `workflow.*` 动作 fail-closed，审计查询/导出会失败；且旧 API 无 workflow 端点，**历史运行不可读**（与 AC-23 冲突）。因此 AC-23 的“应用回滚”按“关闭开关 + 回滚 Worker + 保留/前向修复 API”解释；DEC-0047=A 已确认本口径，AC-23 文本由 Product 同步；全量 API 回滚只允许在无任何 workflow 数据与审计行时执行。
+**不支持**：在存在 workflow 运行/审批/审计行后把 API 回滚到 M06 前版本——旧 API 的 `AuditDetailsReader` 对未知 `workflow.*` 动作 fail-closed，审计查询/导出会失败；且旧 API 无 workflow 端点，**历史运行不可读**（与 AC-23 冲突）。因此 AC-23 的“应用回滚”按“关闭开关 + 回滚 Worker + 保留/前向修复 API”解释；DEC-0047=A 已确认本口径，AC-23 文本由 Product 同步。
 
-**应急 drop**（仅无数据 + 用户书面同意）：停 Worker → drop 触发器 → 按 FK 逆序 drop 子表/父表 → 删 `model_invocation` 索引/列 → 删权限/角色回填 → 删 `flyway_schema_history` 15 → 旧 Worker。生产优先备份恢复（ADR-0010）。
+**AC-23 全量 API 回滚/应急 drop 判定 SQL（任一 >0 必须拒绝）**：
 
-### 10.5 RUNBOOK 最小章节（设计输入，不写最终 runbook）
+```sql
+SELECT
+  (SELECT COUNT(*) FROM workflow_definition) AS definitions,
+  (SELECT COUNT(*) FROM workflow_version) AS versions,
+  (SELECT COUNT(*) FROM workflow_run) AS runs,
+  (SELECT COUNT(*) FROM workflow_node_run) AS node_runs,
+  (SELECT COUNT(*) FROM workflow_approval) AS approvals,
+  (SELECT COUNT(*) FROM workflow_tool_invocation) AS tool_invocations,
+  (SELECT COUNT(*) FROM workflow_user_template) AS user_templates,
+  (SELECT COUNT(*) FROM audit_event WHERE action LIKE 'workflow.%') AS workflow_audit_events;
+```
 
-1. 开关与限制配置说明、启动校验、生效方式（重启/滚动）。
-2. 关闭/开启编排的操作步骤、影响面、审计证据（`workflow.feature.changed`）。
-3. 工作流运行队列积压/租约/看门狗排障；审批等待与执行并发的区别。
-4. 失败节点重试/写工具重审批/未知副作用处置。
-5. 回滚步骤与限制（§10.4）、schema 15 校验、旧 Worker 回滚窗口。
-6. 保留到期不可见与 M09 物理清理边界；客户询问“已删除”时的标准答复。
-7. 指标/告警阈值、容量（5 MiB/运行、10 并发、MySQL `max_allowed_packet`）。
+- 全部为 0 且用户书面同意，才允许全量 API 回滚/应急 drop；任一非 0 → 脚本/操作以非 0 退出并拒绝，只允许受支持回滚。`scripts/ops/workflow-rollback-drill.mjs`（T16b）必须断言“有数据时拒绝、无数据时允许”，并写演练报告（OPS-M06-001）。
+- 全局 `workflow_template`（内置目录）与租户表分两段 drop：先租户表，最后全局模板；租户数据未清时不得删内置目录。
 
----
+**应急 drop**（仅无数据 + 用户书面同意）：停 Worker → drop 触发器 → 按 FK 逆序 drop 租户子表/父表 → 删全局 `workflow_template` → 删 `model_invocation` 索引/列 → 删权限/角色回填 → 删 `flyway_schema_history` 15 → 旧 Worker。生产优先备份恢复（ADR-0010）。
+
+### 10.5 RUNBOOK 最小章节（T15 写 `docs/RUNBOOK.md`；设计输入）
+
+1. 配置表：全部 `RICCON_WORKFLOW_*`/`RICCON_DB_MAX_ALLOWED_PACKET`、默认值、启动校验（batch=1、调度/心跳池、lease/3、包大小）、生效方式（重启/滚动）。
+2. 关闭/开启编排、Worker 停止领取（`RICCON_WORKFLOW_CLAIM_ENABLED`）与优雅停机；影响面；审计证据（`workflow.feature.changed` 的 instanceId/observedAt）。
+3. 队列积压/最老 PENDING/租约丢失/`claim_exhausted`/心跳失败排障；重复领取与结果丢弃语义。
+4. 审批等待占满 10 槽的发现与解除（最老等待 >24h、取消、审批人配置）；审批等待与执行并发的区别。
+5. 失败节点重试/写工具重审批/`WF_SIDE_EFFECT_UNKNOWN`/`WF_INTERNAL` 终态与恢复。
+6. V15 迁移预检（TRIGGER/binlog/MDL/包大小/备份）、单迁移失败处置、`flyway repair`/备份恢复。
+7. 受支持回滚（DEC-0047=A）：取消 `WAITING_APPROVAL` → 关开关 → 回滚 Worker → 保留/前向修复 API；判定 SQL/拒绝路径；旧 Worker schema 15 窗口。
+8. 全量 API 回滚/应急 drop 的无数据判定与拒绝路径；全局/租户 drop 分段。
+9. 保留到期不可见与 M09 物理清理边界；“未物理删除”标准答复。
+10. 5 MiB/`max_allowed_packet`/JDBC `maxAllowedPacket` 预检、容量公式（runs/day × 结果大小分位数 × 保留天数）、binlog/备份体积；指标/告警阈值与处置（§10.2）。
+11. 发布/回滚演练（`OPS-M06-01`）：造运行/审批/审计 → 关闭 → 回滚 Worker → 历史可读/J1/J2 正常 → schema 15 核对 → 恢复。
 
 ## 11. 可访问性（a11y）
 
@@ -711,11 +792,12 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 
 ## 12. M06b/M26 边界与前向兼容
 
-- **M06 交付**：1 个全局内置模板 `market-research`（J2 等价：检索 → 模型 → 审批 → 工具 → 模型 → 结束，带引用），模板列表/复制；不实现用户另存模板、共享、升级提示 UI。
+- **M06 交付**：1 个全局内置模板 `market-research`（J2 等价：检索 → 模型 → 审批 → 工具 → 模型 → 结束，带引用），模板列表/复制；内置模板 `visibility=BUILT_IN`（契约新增枚举，避免 `PRIVATE/TENANT` 误读，F-018）；不实现用户另存模板、共享、升级提示 UI。
 - **M06b/M26 交付**：模板库（≥2 个内置模板，含知识库摘要）、用户模板另存、租户内共享（`PRIVATE/TENANT`）、升级提示（`latestBuiltInVersion`/`upgradeAvailable`）、复制新版本；AC-11/25 为 M06b gate P0。
 - **V15 预留**：`workflow_user_template` 表、`workflow_definition.source_template_*`、`WorkflowTemplate` 的 `source/visibility/builtInVersion/latestBuiltInVersion/upgradeAvailable` 字段；M06 只读内置模板，用户模板表无读写路径。
 - **契约**：M06 `1.6.0-m06` 定义只读模板字段；M06b `1.7.0-m06b` 增加写端点/共享/升级提示，全部 additive；M06 的 `x-riccon-deferred` 记录 `workflow-template-sharing`。
 - **预算**：M06b 48h 不含在 M06 120h；M06 不为 M06b 预留实现工作量（只保留表/字段，约 1h 已计入 T01/T14）。
+- **回滚继承（OPS-M06-014）**：M06b 无迁移、纯 API/Web 滚动，但新增 `workflow.template.saved/shared/unshared` 审计动作后，旧（M06）API 的 `AuditDetailsReader` 仍 fail-closed；因此“M06b → M06 API 回滚”只允许在无 M06b 审计行时执行。M06b 设计必须继承 DEC-0047=A 口径与 AC-23 判定 SQL，不得声称可任意回退。
 - **不声称**：跨租户模板市场、模板计费、部门级模板共享（P2）、模板版本回滚。
 
 ---
@@ -724,30 +806,34 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 
 ### 13.1 M06（23 条 AC，120h）
 
-| ID       | 内容                                                                                                           | 依赖     | 风险 | h   | AC                | 证据                                                  | write_scope（glob）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| -------- | -------------------------------------------------------------------------------------------------------------- | -------- | ---- | --- | ----------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| T-M06-01 | 契约 `1.6.0-m06`、常量/枚举、V15 迁移、权限/角色回填、内置模板种子、审计白名单、worker schema 15、契约测试骨架 | —        | 高   | 9   | 02/03/06/16/17/22 | `IT-WF-101`、迁移测试、`WorkflowContractM06Test`      | `platform/platform-domain/src/main/java/com/riccon/platform/domain/workflow/**`、`platform/platform-domain/src/main/java/com/riccon/platform/domain/{identity,audit}/**`、`apps/api/src/main/resources/db/migration/V15__workflow_studio.sql`、`apps/api/src/main/java/com/riccon/api/audit/domain/AuditDetailsPolicy.java`、`apps/api/src/main/java/com/riccon/api/identity/domain/RoleDefinitions.java`、`apps/api/src/main/resources/application.yml`、`apps/worker/src/main/resources/application.yml`、`apps/api/src/test/java/com/riccon/api/contract/WorkflowContractM06Test.java`、`apps/worker/src/main/java/com/riccon/worker/persistence/SchemaVersionChecker.java` |
-| T-M06-02 | 定义/草稿领域与仓储、草稿 API、乐观锁、另存副本                                                                | T01      | 高   | 6   | 01                | `IT-WF-101`、`E2E-M06-01`                             | `apps/api/src/main/java/com/riccon/api/workflow/definition/**`、`apps/api/src/main/java/com/riccon/api/workflow/domain/WorkflowGraph*.java`、`apps/api/src/main/java/com/riccon/api/workflow/persistence/WorkflowDefinition*.java`                                                                                                                                                                                                                                                                       |
-| T-M06-03 | 校验器：结构/必填/模型/工具/审批可达/条件/结果/限制                                                            | T01,T02  | 高   | 6   | 02/06/09/18/24    | `IT-WF-101`、`SEC-WF-005`                             | `apps/api/src/main/java/com/riccon/api/workflow/validation/**`                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| T-M06-04 | 发布/版本/停用启用/移交/范围与审计                                                                             | T02,T03  | 高   | 6   | 03/15/16          | `IT-WF-102`、`IT-WF-112`                              | `apps/api/src/main/java/com/riccon/api/workflow/version/**`、`.../workflow/publish/**`                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| T-M06-05 | 运行准入/创建/取消/重试 API、配额与并发计数 | T03,T04 | 高 | 6 | 03/04/15/17/23 | `IT-WF-109/110` | `apps/api/src/main/java/com/riccon/api/workflow/run/**` |
-| T-M06-06 | Worker 引擎/运行队列：`WorkflowRunClaimer`、`WorkflowRunScheduler`、租约心跳、串行调度、开始/结束/检索/模型/条件、超时/取消/结果 | T05 | 高 | 14 | 04/07/09/13/17 | `IT-WF-103/105/109` | `apps/worker/src/main/java/com/riccon/worker/workflow/engine/**`、`.../workflow/queue/**`、`.../workflow/node/{start,end,retrieval,model,condition}/**` |
-| T-M06-07 | Worker 审批/工具/重试/幂等/plan：`workflow_approval`、参数加密、工具调用记录、重审批、未知副作用               | T06      | 高   | 10  | 05/06/07/08/18    | `IT-WF-104`、`SEC-WF-001/004`                         | `apps/worker/src/main/java/com/riccon/worker/workflow/approval/**`、`.../workflow/tool/**`、`apps/worker/src/main/java/com/riccon/worker/mcp/service/McpCallExecutor.java`、`apps/worker/src/main/java/com/riccon/worker/mcp/service/McpGateway.java`                                                                                                                                                                                                                                                                                                                                                                                                               |
-| T-M06-08 | 运行历史/详情/重试/取消/管理性读取/保留可见性                                                                  | T05,T07  | 高   | 6   | 12/13/14/15/16    | `IT-WF-106/107/108`                                   | `apps/api/src/main/java/com/riccon/api/workflow/history/**`                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| T-M06-09 | 审批待办/详情/决定 API（assignee/自批/无审批人）                                                               | T07      | 高   | 5   | 05/06/15/18       | `IT-WF-108`、`SEC-WF-001`                             | `apps/api/src/main/java/com/riccon/api/workflow/approval/**`                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| T-M06-10 | 前端：流程列表 + 表单编辑 + 节点配置 + 校验面板 + 空/错/禁用态                                                 | T02,T03  | 高   | 10  | 01/02/19/20       | `E2E-M06-01`、`E2E-M06-09`                            | `apps/web/src/pages/workflow/list/**`、`apps/web/src/pages/workflow/edit/**`                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| T-M06-11 | 前端画布增强：SVG、节点焦点/aria、边列表、375px 降级                                                           | T10      | 中   | 5   | 19/20             | `E2E-M06-09`、`@a11y`                                 | `apps/web/src/components/workflow/canvas/**`                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| T-M06-12 | 前端：发布/版本/运行详情时间线/历史/重试/取消                                                                  | T10,T05  | 高   | 10  | 03/04/12/13/19    | `E2E-M06-02/03/05/08`                                 | `apps/web/src/pages/workflow/run/**`、`apps/web/src/pages/workflow/history/**`                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| T-M06-13 | 前端：审批待办/详情/决定、空态/错误态/键盘                                                                     | T09,T10  | 中   | 4   | 05/06/19/20       | `E2E-M06-04`、`@a11y`                                 | `apps/web/src/pages/workflow/approvals/**`                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| T-M06-14 | 内置模板（J2 等价）+ 复制 + 模板列表                                                                           | T01,T02  | 中   | 4   | 10                | `E2E-M06-07`                                          | `apps/api/src/main/java/com/riccon/api/workflow/template/**`、`apps/api/src/main/resources/workflow-templates/**`、`apps/web/src/pages/workflow/templates/**`                                                                                                                                                                                                                                                                                                                                            |
-| T-M06-15 | 运行限制读取/开关/指标/观测/启动校验                                                                           | T05,T06  | 中   | 3   | 16/17/23          | `IT-WF-109/110`、`OPS-M06-01`                         | `apps/api/src/main/java/com/riccon/api/workflow/runtime/**`、`apps/worker/src/main/java/com/riccon/worker/workflow/metrics/**`、`apps/api/src/main/java/com/riccon/api/config/Workflow*.java`                                                                                                                                                                                                                                                                                                            |
-| T-M06-16 | E2E/axe/键盘/50 并发 perf/越权/注入/重试 harness                                                               | T10..T15 | 高   | 8   | 19/20/21/22/24    | `E2E-M06-01..10`、`@a11y`、`PERF-M06-001`、`SEC-WF-*` | `e2e/**`、`scripts/**`、`e2e/perf/**`                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| T-M06-17 | 独立 Verifier 任务评审、模块 gate、全量回归、回滚/威胁模型核对                                                 | 全部     | 高   | 8   | 22/23 + 全量      | review 文件、gate EV、`OPS-M06-01`                    | `.riccon/reviews/**`（verifier 写）                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-
-- 合计 **120h**；关键路径 T01→T02→T03→T04→T05→T06→T07→T16→T17 ≈ **73h**；前端链 T01→T02→T10→T11→T12→T13 ≈ 44h，可与后端并行。2–3 builder 时墙钟预计 75–90h，留 30–45h 修复/评审余量。
+| ID | 内容 | 依赖 | 风险 | h | AC | 证据 | write_scope（glob） |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| T-M06-01 | 契约 `1.6.0-m06`、常量/枚举、V15 迁移、权限/角色回填、模板种子、审计白名单、schema 15、V15 联动断言（CI/`ApiApplicationTests`/`SchemaVersionCheckerTest`/`restore-drill`）、平台租户 404 guard、契约测试骨架 | — | 高 | 9 | 02/03/06/16/17/22 | `IT-WF-101`、迁移测试、`WorkflowContractM06Test`、V15 断言测试 | `platform/platform-domain/src/main/java/com/riccon/platform/domain/workflow/**`、`platform/platform-domain/src/main/java/com/riccon/platform/domain/{identity,audit}/**`、`apps/api/src/main/resources/db/migration/V15__workflow_studio.sql`、`apps/api/src/main/java/com/riccon/api/audit/domain/AuditDetailsPolicy.java`、`apps/api/src/main/java/com/riccon/api/identity/domain/RoleDefinitions.java`、`apps/api/src/main/java/com/riccon/api/workflow/web/**`、`apps/api/src/main/resources/application.yml`、`apps/worker/src/main/resources/application.yml`、`apps/api/src/test/java/com/riccon/api/contract/WorkflowContractM06Test.java`、`apps/api/src/test/java/com/riccon/api/workflow/web/**`、`apps/api/src/test/java/com/riccon/api/ApiApplicationTests.java`、`apps/worker/src/test/java/com/riccon/worker/persistence/SchemaVersionCheckerTest.java`、`apps/worker/src/main/java/com/riccon/worker/persistence/SchemaVersionChecker.java`、`.github/workflows/ci.yml`、`scripts/ops/restore-drill.mjs` |
+| T-M06-02 | 定义/草稿领域与仓储、草稿 API、乐观锁、另存副本 | T01 | 高 | 6 | 01 | `IT-WF-101`、`E2E-M06-01` | `apps/api/src/main/java/com/riccon/api/workflow/definition/**`、`apps/api/src/main/java/com/riccon/api/workflow/domain/WorkflowGraph*.java`、`apps/api/src/main/java/com/riccon/api/workflow/persistence/WorkflowDefinition*.java`、`apps/api/src/test/java/com/riccon/api/workflow/definition/**` |
+| T-M06-03 | 校验器：结构/必填/模型/工具/审批可达/条件/结果/限制 | T01,T02 | 高 | 6 | 02/06/09/18/24 | `IT-WF-101`、`SEC-WF-005` | `apps/api/src/main/java/com/riccon/api/workflow/validation/**`、`apps/api/src/test/java/com/riccon/api/workflow/validation/**` |
+| T-M06-04 | 发布/版本/停用启用/移交/范围与审计 | T02,T03 | 高 | 6 | 03/15/16 | `IT-WF-102`、`IT-WF-112` | `apps/api/src/main/java/com/riccon/api/workflow/version/**`、`.../workflow/publish/**`、`apps/api/src/test/java/com/riccon/api/workflow/version/**`、`apps/api/src/test/java/com/riccon/api/workflow/publish/**` |
+| T-M06-05 | 运行准入/创建/取消/重试 API、配额与并发计数 | T03,T04 | 高 | 6 | 03/04/15/17/23 | `IT-WF-109/110` | `apps/api/src/main/java/com/riccon/api/workflow/run/**`、`apps/api/src/test/java/com/riccon/api/workflow/run/**` |
+| T-M06-06a | 运行队列/租约/调度池/心跳：claim batch=1、独立调度池、心跳池≥并发、interval≤lease/3、启动校验、重复领取防护、`WF_INTERNAL` 终态 | T05 | 高 | 6 | 04/17 | `IT-WF-103`、`OPS-M06-01` | `apps/worker/src/main/java/com/riccon/worker/workflow/queue/**`、`.../workflow/heartbeat/**`、`apps/worker/src/test/java/com/riccon/worker/workflow/queue/**`、`.../workflow/heartbeat/**` |
+| T-M06-06b | 串行引擎/节点执行：开始/结束/检索/模型/条件、超时/取消、结果/引用、`inputSummary/outputSummary` | T06a | 高 | 8 | 04/07/09/13/17 | `IT-WF-105/109` | `apps/worker/src/main/java/com/riccon/worker/workflow/engine/**`、`.../workflow/node/**`、`apps/worker/src/test/java/com/riccon/worker/workflow/engine/**`、`.../workflow/node/**` |
+| T-M06-07a | 审批模型/参数加密/assignee/决定：`workflow_approval`、不再自批、无审批人 `WF_NO_APPROVER`、决定幂等 | T06b | 高 | 5 | 05/06/15/18 | `IT-WF-108`、`SEC-WF-001` | `apps/worker/src/main/java/com/riccon/worker/workflow/approval/**`、`apps/worker/src/test/java/com/riccon/worker/workflow/approval/**` |
+| T-M06-07b | 工具执行器策略/plan/重试/未知副作用：`McpCallExecutor` READ_ONLY vs APPROVAL_BOUND_WRITE、工具调用记录、重审批 | T07a | 高 | 5 | 07/08/18 | `IT-WF-104`、`SEC-WF-004`、`IT-HITL-001`、`MCP-001..008` | `apps/worker/src/main/java/com/riccon/worker/workflow/tool/**`、`apps/worker/src/main/java/com/riccon/worker/mcp/service/McpCallExecutor.java`、`.../mcp/service/McpGateway.java`、`apps/worker/src/test/java/com/riccon/worker/workflow/tool/**`、`apps/worker/src/test/java/com/riccon/worker/mcp/**` |
+| T-M06-08 | 运行历史/详情/重试/取消/管理性读取/保留可见性/审批聚合/counts | T05,T07b | 高 | 6 | 12/13/14/15/16 | `IT-WF-106/107/108` | `apps/api/src/main/java/com/riccon/api/workflow/history/**`、`apps/api/src/test/java/com/riccon/api/workflow/history/**` |
+| T-M06-09 | 审批待办/详情/决定 API（assignee/自批/无审批人/dataScopeSummary/拒绝理由） | T07a | 高 | 5 | 05/06/15/18 | `IT-WF-108`、`SEC-WF-001` | `apps/api/src/main/java/com/riccon/api/workflow/approval/**`、`apps/api/src/test/java/com/riccon/api/workflow/approval/**` |
+| T-M06-10 | 前端：流程列表 + 表单编辑 + 节点配置 + 校验面板 + 空/错/禁用态 | T02,T03 | 高 | 10 | 01/02/19/20 | `E2E-M06-01`、`E2E-M06-09` | `apps/web/src/pages/workflow/list/**`、`apps/web/src/pages/workflow/edit/**` |
+| T-M06-11 | 前端画布最小增强：SVG/节点焦点/aria/边列表/375px 降级（表单为主路径） | T10 | 中 | 2 | 19/20 | `E2E-M06-09`、`@a11y` | `apps/web/src/components/workflow/canvas/**` |
+| T-M06-12a | 前端运行详情：节点时间线/输入输出摘要/引用/结果/审批记录 | T05,T06b | 高 | 5 | 04/13/19 | `E2E-M06-03/08` | `apps/web/src/pages/workflow/run/**` |
+| T-M06-12b | 前端发布/版本/运行历史/重试/取消 | T05,T06b | 高 | 5 | 03/12/13/19 | `E2E-M06-02/05/08` | `apps/web/src/pages/workflow/history/**` |
+| T-M06-13 | 前端审批待办/详情/决定、空态/错误态/键盘 | T09,T10 | 中 | 4 | 05/06/19/20 | `E2E-M06-04`、`@a11y` | `apps/web/src/pages/workflow/approvals/**` |
+| T-M06-14 | 内置模板（J2 等价）+ 复制 + 模板列表（`visibility=BUILT_IN`） | T01,T02 | 中 | 4 | 10 | `E2E-M06-07` | `apps/api/src/main/java/com/riccon/api/workflow/template/**`、`apps/api/src/test/java/com/riccon/api/workflow/template/**`、`apps/api/src/main/resources/workflow-templates/**`、`apps/web/src/pages/workflow/templates/**` |
+| T-M06-15 | 运行限制/开关/指标/启动校验/RUNBOOK：claim/heartbeat/scheduler 不变量、lease/3、包大小预检、队列/租约/审批等待指标与告警、Worker 停止领取、`docs/RUNBOOK.md` M06 章节 | T05,T06a | 中 | 4 | 16/17/23 | `IT-WF-109/110`、`OPS-M06-01` | `apps/api/src/main/java/com/riccon/api/workflow/runtime/**`、`apps/worker/src/main/java/com/riccon/worker/workflow/metrics/**`、`apps/worker/src/main/java/com/riccon/worker/workflow/config/**`、`apps/api/src/main/java/com/riccon/api/config/Workflow*.java`、`apps/api/src/test/java/com/riccon/api/workflow/runtime/**`、`apps/worker/src/test/java/com/riccon/worker/workflow/metrics/**`、`docs/RUNBOOK.md` |
+| T-M06-16a | E2E/axe/键盘/50 并发 perf/越权/注入/重试 harness | T10..T15 | 高 | 6 | 19/20/21/22/24 | `E2E-M06-01..10`、`@a11y`、`PERF-M06-001`、`SEC-WF-*` | `e2e/**`、`scripts/real-stack/**`、`e2e/perf/**` |
+| T-M06-16b | 回滚演练/5 MiB 容量/包大小预检：`scripts/ops/workflow-rollback-drill.mjs`、AC-23 判定 SQL/拒绝路径、容量报告 | T16a,T15 | 高 | 4 | 23 | `OPS-M06-01`、`IT-WF-110` | `scripts/ops/workflow-*.mjs` |
+| T-M06-17 | 独立 Verifier 任务评审、模块 gate、全量回归、回滚/威胁模型核对 | 全部 | 高 | 8 | 22/23 + 全量 | review 文件、gate EV、`OPS-M06-01` | `.riccon/reviews/**`（verifier 写） |
+- 合计 **120h**；关键路径 T01→T02→T03→T04→T05→T06a→T06b→T07a→T07b→T16a→T16b→T17 ≈ **75h**；前端链 T01→T02→T10→T11→T12a→T12b→T13 ≈ 41h，可与后端并行。2–3 builder 时墙钟预计 77–92h，留修复/评审余量。
+- **OPS-M06-013 工时调剂**：T11 画布 5h→2h（-3h）、T15 3h→4h（+1h）、T16 8h→10h（+2h），总额仍 120h；画布只保留最小增强，列表/表单仍是等价主路径。若再超支，候选后移：运行历史高级过滤（-2h）、模板列表合并（-1h）；不得缩减 AC-15/16/17/18/21/23/24。
 - 口径说明：上表是 Builder/Verifier 可执行任务工时（含迁移、契约测试、E2E/性能/安全 harness 与 gate）；Architect 的 ADR/设计评审时间按团队角色另计，不重复计入 builder 任务。若 Lead 要求把设计时间并入 120h 模块预算，需从 T10/T11 前端余量或 T17 gate 余量扣减 ~7h 并记录；不静默增加预算。
-- 高风险任务（T01–T09、T12、T16、T17）在 done 前必须有独立 Verifier 任务级评审；同一 owner 同时只一个 `in_progress`；写范围互不重叠，共享文件（`AuditDetailsPolicy`、`SchemaVersionChecker`、`contracts/**`）由 T01 独占。
-- 若实际超过 120h 20%（>144h），按 DEC-0046 暂停并回用户决策；候选缩减：画布降为只读预览（-3h）、运行历史高级过滤后移（-2h）、模板列表合并到流程列表（-1h）；不得缩减 AC-15/16/17/18/21/23/24。
+- 高风险任务统一为 **T01–T13、T16、T17**（含 T10 前端与拆分后的 T06a/b、T07a/b、T12a/b、T16a/b）；在 done 前必须有独立 Verifier 任务级评审；同一 owner 同时只一个 `in_progress`；写范围互不重叠，共享文件（`AuditDetailsPolicy`、`SchemaVersionChecker`、`contracts/**`、`docs/RUNBOOK.md`、`.github/workflows/ci.yml`、`scripts/ops/restore-drill.mjs`）由 T01/T15 独占。
+- 若实际超过 120h 20%（>144h），按 DEC-0046 暂停并回用户决策；画布已降为最小增强，不再重复扣减。
 
 ### 13.2 M06b/M26（AC-11/25，48h）
 
@@ -768,30 +854,30 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 
 | AC        | 归属 | 设计/契约                                | 任务                        | 验证 ID                                                        | 备注                                    |
 | --------- | ---- | ---------------------------------------- | --------------------------- | -------------------------------------------------------------- | --------------------------------------- |
-| M06-AC-01 | M06  | §3.3.1/§4.1、`PUT /workflows/{id}/draft` | T02,T10                     | `E2E-M06-01`、`IT-WF-101`                                      | 并发冲突用所有者+管理员；见 §16         |
+| M06-AC-01 | M06  | §3.3.1/§4.1、`PUT /workflows/{id}/draft` | T02,T10 | `E2E-M06-01`、`IT-WF-101` | Product 9d30ac1 已改为所有者/管理员并发；同侪不在 v1（U-03 复验） |
 | M06-AC-02 | M06  | §4.1/§4.5、`POST /validate`              | T01,T03,T10                 | `E2E-M06-01`、`IT-WF-101`                                      | 画布/表单同问题列表                     |
-| M06-AC-03 | M06  | §3.3.2/§4.1、`publish/versions`          | T04,T05,T12                 | `E2E-M06-02`、`IT-WF-102`                                      | 版本不可变（触发器）                    |
-| M06-AC-04 | M06  | §4.2/§4.3、`GET /workflow-runs/{id}`     | T05,T06,T12                 | `E2E-M06-03`                                                   | 轮询，无 SSE                            |
-| M06-AC-05 | M06  | §5.2/§5.4、`workflow-approvals`          | T07,T09,T13                 | `E2E-M06-04`、`SEC-WF-001`                                     | 拒绝理由必填                            |
-| M06-AC-06 | M06  | §5.2/§6.2                                | T03,T07,T09                 | `SEC-WF-001`、`E2E-M06-04`                                     | 自批 403+审计；无审批人阻断             |
-| M06-AC-07 | M06  | §4.6、`retry`                            | T06,T07,T12                 | `E2E-M06-05`、`IT-WF-103`                                      | 上游不重跑；下游跳过                    |
-| M06-AC-08 | M06  | §4.6/§4.7                                | T07,T16                     | `IT-WF-104`、`E2E-M06-05`                                      | 写工具重审批；未知副作用 fail-closed    |
-| M06-AC-09 | M06  | §4.5                                     | T03,T06,T10                 | `E2E-M06-06`、`IT-WF-105`                                      | 条件失败不默认分支                      |
+| M06-AC-03 | M06  | §3.3.2/§4.1、`publish/versions`          | T04,T05,T12b                 | `E2E-M06-02`、`IT-WF-102`                                      | 版本不可变（触发器）                    |
+| M06-AC-04 | M06  | §4.2/§4.3、`GET /workflow-runs/{id}`     | T05,T06b,T12a                 | `E2E-M06-03`                                                   | 轮询，无 SSE                            |
+| M06-AC-05 | M06  | §5.2/§5.4、`workflow-approvals` | T07a,T09,T13 | `E2E-M06-04`、`SEC-WF-001` | 拒绝理由必填；dataScopeSummary；ACL 最小可见 |
+| M06-AC-06 | M06  | §5.2/§6.2 | T03,T07a,T09 | `SEC-WF-001`、`E2E-M06-04` | 自批 403+审计；无审批人 `WF_NO_APPROVER` |
+| M06-AC-07 | M06  | §4.6、`retry`                            | T06b,T07b,T12a                 | `E2E-M06-05`、`IT-WF-103`                                      | 上游不重跑；下游跳过                    |
+| M06-AC-08 | M06  | §4.6/§4.7                                | T07b,T16a                     | `IT-WF-104`、`E2E-M06-05`                                      | 写工具重审批；未知副作用 fail-closed    |
+| M06-AC-09 | M06  | §4.5 | T03,T06b,T10 | `E2E-M06-06`、`IT-WF-105` | 条件失败不默认分支；branch 字符串枚举 |
 | M06-AC-10 | M06  | §12、`workflow-templates`                | T14,T10                     | `E2E-M06-07`                                                   | 1 个内置模板；升级提示 M06b             |
 | M06-AC-11 | M06b | §12、`x-riccon-deferred`                 | M26-B1..B5                  | `E2E-M06-11`、`SEC-WF-002`                                     | 私有默认；跨租户 404                    |
-| M06-AC-12 | M06  | §6.2、`GET /workflow-runs`               | T08,T12                     | `E2E-M06-08`、`SEC-WF-003`                                     | 所有者只看元数据；管理员全部            |
-| M06-AC-13 | M06  | §3.4/§6.2/§7.3                           | T06,T08,T12                 | `E2E-M06-08`、`IT-WF-106`                                      | 引用 `sourceStatus`；不泄露 prompt/参数 |
+| M06-AC-12 | M06  | §6.2、`GET /workflow-runs` | T08,T12b | `E2E-M06-08`、`SEC-WF-003` | 所有者只看元数据；管理员全部；审批聚合/counts |
+| M06-AC-13 | M06  | §3.4/§6.2/§7.3 | T06b,T08,T12a | `E2E-M06-08`、`IT-WF-106` | 引用 `sourceStatus`；input/outputSummary；不泄露 prompt/参数 |
 | M06-AC-14 | M06  | §3.3.3/§10.1                             | T08                         | `IT-WF-107`                                                    | 到期不可见；无在线删除                  |
-| M06-AC-15 | M06  | §6                                       | T04,T05,T08,T09,T16         | `SEC-WF-002/003/006`、`TEN-M06-01`、`DEPT-M06-01`、`IT-WF-112` | 403/404 矩阵；平台管理员 404            |
-| M06-AC-16 | M06  | §8                                       | T01,T04,T05,T07,T08,T09,T15 | `IT-WF-108/112`、`IT-AUDIT-M06-01`                             | 管理性读取审计；审计失败即失败          |
-| M06-AC-17 | M06  | §4.8/§10.1                               | T05,T06,T15,T16             | `IT-WF-109`、`E2E-M06-09`                                      | 上限可读提示；租户只读                  |
-| M06-AC-18 | M06  | §4.7/§9                                  | T03,T07,T16                 | `SEC-WF-004`、`E2E-M06-04`                                     | 工具授权/审批/注入/canary               |
-| M06-AC-19 | M06  | §11                                      | T10,T12,T13,T16             | `E2E-M06-09`、`@a11y`                                          | 五界面状态；375px                       |
-| M06-AC-20 | M06  | §11                                      | T10,T11,T13,T16             | `E2E-M06-09`、`@a11y`                                          | 键盘全流程；等价路径                    |
-| M06-AC-21 | M06  | §10.2、契约轮询                          | T16,T17                     | `PERF-M06-001`                                                 | 50 并发混合；p95 口径                   |
-| M06-AC-22 | M06  | §7、§10.3                                | T16,T17                     | `E2E-M06-10`、`CONTRACT-M06`                                   | 无 404/deferred 冒充；J1/J2 回归        |
+| M06-AC-15 | M06  | §6 | T01,T04,T05,T08,T09,T16a | `SEC-WF-002/003/006`、`TEN-M06-01`、`DEPT-M06-01`、`IT-WF-112` | 403/404 矩阵；平台管理员 404（filter） |
+| M06-AC-16 | M06  | §8                                       | T01,T04,T05,T07a/b,T08,T09,T15 | `IT-WF-108/112`、`IT-AUDIT-M06-01`                             | 管理性读取审计；审计失败即失败；M06 只验收发布/运行/取消/审批/停用/授权/移交；模板共享子句已由 Product 在 9d30ac1 修订为 M06b AC-11/25 验收（F-003），M06 gate 不声称共享已实现 |
+| M06-AC-17 | M06  | §4.8/§10.1                               | T05,T06a,T15,T16a             | `IT-WF-109`、`E2E-M06-09`                                      | 上限可读提示；租户只读                  |
+| M06-AC-18 | M06  | §4.7/§9 | T03,T07b,T16a | `SEC-WF-004`、`E2E-M06-04` | READ_ONLY/APPROVAL_BOUND_WRITE；工具授权/审批/注入/canary |
+| M06-AC-19 | M06  | §11                                      | T10,T12a,T12b,T13,T16a             | `E2E-M06-09`、`@a11y`                                          | 五界面状态；375px                       |
+| M06-AC-20 | M06  | §11                                      | T10,T11,T13,T16a             | `E2E-M06-09`、`@a11y`                                          | 键盘全流程；等价路径                    |
+| M06-AC-21 | M06  | §10.2、契约轮询                          | T16a,T16b,T17                     | `PERF-M06-001`                                                 | 50 并发混合；p95 口径                   |
+| M06-AC-22 | M06  | §7、§10.3                                | T16a,T17                     | `E2E-M06-10`、`CONTRACT-M06`                                   | 无 404/deferred 冒充；J1/J2 回归        |
 | M06-AC-23 | M06  | §10.4                                    | T15,T17                     | `IT-WF-110`、`OPS-M06-01`、THREAT §7                           | DEC-0047=A 回滚口径；全量 API 回滚仅限无数据/审计行                          |
-| M06-AC-24 | M06  | §9.3/§7.3                                | T01,T03,T16                 | `SEC-WF-005`、`IT-WF-111`                                      | 无代码/脚本/HTTP/并行/循环/定时入口     |
+| M06-AC-24 | M06  | §9.3/§7.3                                | T01,T03,T16a                 | `SEC-WF-005`、`IT-WF-111`                                      | 无代码/脚本/HTTP/并行/循环/定时入口     |
 | M06-AC-25 | M06b | §12                                      | M26-B1..B5                  | `E2E-M06-12`、`SEC-WF-002`、`@a11y`                            | 2 个内置模板/升级提示                   |
 
 - 补充：`TEN-M06-01`（流程/运行/审批/模板跨租户 404、平台管理员 404）、`DEPT-M06-01`（跨部门/移出部门/部门停用后 404）、`IT-WF-111`（负向节点类型/字段）、`IT-AUDIT-M06-01`（新动作可查询/导出、details 白名单）。
@@ -845,11 +931,11 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 | T01         | `riccon/builder-b1`    | platform-domain + V15 + AuditDetailsPolicy + schema | 迁移测试、契约测试、白名单测试    | Verifier 任务评审（迁移/审计） |
 | T02/T03/T04 | `riccon/builder-b1`    | definition/validation/version                       | E2E-01/02、IT-WF-101/102          | Verifier（并发/校验/版本）     |
 | T05         | `riccon/builder-b1`    | run API                                             | 429/503、幂等、审计               | Verifier（权限/配额）          |
-| T06/T07     | `riccon/builder-b2`    | worker engine/approval/tool                         | IT-WF-103/104/105、SEC-WF-001/004 | Verifier（执行/审批/注入）     |
+| T06a/b/T07a/b | `riccon/builder-b2` | worker queue/engine/approval/tool                   | IT-WF-103/104/105、SEC-WF-001/004 | Verifier（执行/审批/注入）     |
 | T08/T09     | `riccon/builder-b2`    | history/approval API                                | IT-WF-106/107/108、TEN/DEPT       | Verifier（越权/保留）          |
 | T10–T13     | `riccon/builder-b3`    | web pages/components                                | E2E/axe/375                       | Verifier（a11y/E2E）           |
 | T14/T15     | `riccon/builder-b2`/b3 | template/runtime                                    | E2E-07、OPS                       | Verifier（模板/运维）          |
-| T16/T17     | `riccon/verifier`      | e2e/reviews                                         | PERF/SEC/E2E 全量                 | Lead/用户（gate）              |
+| T16a/b/T17  | `riccon/verifier`      | e2e/scripts/reviews                                         | PERF/SEC/E2E 全量                 | Lead/用户（gate）              |
 
 ---
 
@@ -859,21 +945,72 @@ U-01/U-02 已由 DEC-0047=A / DEC-0048=A 解决；U-03..U-13 仍未决，不得�
 
 | ID   | 问题                                                                                       | 默认/建议                                                                                         | 需谁决策              | 影响                |
 | ---- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- | --------------------- | ------------------- |
-| U-01（已解决：DEC-0047=A） | AC-23“应用回滚到 M06 前版本且历史运行与审计仍可读”与旧 API 无 workflow 端点/审计白名单冲突 | DEC-0047=A：关闭 + 回滚 Worker + 保留/前向修复 API；全量 API 回滚仅限无 workflow 数据/审计行 | user（DEC-0047=A） | 回滚口径、gate 判定 |
+| U-01（已解决：DEC-0047=A） | AC-23“应用回滚到 M06 前版本且历史运行与审计仍可读”与旧 API 无 workflow 端点/审计白名单冲突 | DEC-0047=A：关闭 + 回滚 Worker + 保留/前向修复 API；判定 SQL/拒绝路径见 §10.4（OPS-M06-001） | user（DEC-0047=A） | 回滚口径、gate 判定 |
 | U-02（已解决：DEC-0048=A） | 配额单位：按运行 1 单位 vs 按模型节点逐次 | DEC-0048=A：按运行准入 1 单位；模型成本按 model_invocation 聚合；资源上限约束；R-36 accepted | user（DEC-0048=A） | 成本/配额公平 |
 | U-03 | AC-01“另一编辑者”是否要求同侪协同编辑                                                      | 默认所有者 + 租户管理员；同侪需草稿共享模型                                                       | Product               | 权限/审计           |
-| U-04 | kill switch 审计：部署配置 + 启动审计 vs 参考 M04 的 DB 开关 + 平台 API                    | 默认部署配置 + 启动 `workflow.feature.changed`（可能多实例重复）                                  | Ops/Verifier          | 可运维/审计         |
-| U-05 | 审批理由进入审计（AC-16）可能含 PII                                                        | 默认允许 ≤500 字符并提示；替代为 `commentSha256` + 审批记录保留                                   | 安全评审/Product      | 隐私/合规           |
+| U-04 | kill switch 审计：部署配置 + 启动审计 vs 参考 M04 的 DB 开关 + 平台 API | 默认部署配置 + 启动**观测**审计（instanceId/observedAt）+ `riccon_workflow_feature_enabled` gauge + Worker claim 开关；不升用户决策（OPS-M06-009） | Ops/Verifier | 可运维/审计 |
+| U-05 | 审批理由进入审计（AC-16）可能含 PII | **未解决**：临时默认允许 ≤500 字符并提示；替代为 `commentSha256` + 审批记录保留；M06 gate 前安全评审二选一（F-013） | 安全评审/Product | 隐私/合规 |
 | U-06 | 模型节点是否允许选择任意员工可用模型                                                       | 默认必须属于 REPORT 路由链且 ACTIVE                                                               | Product/架构          | 路由/成本           |
-| U-07 | 运行结果是否写对象存储                                                                     | 默认 MySQL JSON ≤5 MiB；更大需 ADR-0009 对象 key 扩展                                             | 架构/Ops              | 存储/下载           |
+| U-07 | 运行结果是否写对象存储 | 默认 MySQL ≤5 MiB；预检 `max_allowed_packet`/JDBC `maxAllowedPacket` ≥8 MiB + 容量公式；更大需 ADR-0009 对象 key 扩展（OPS-M06-011） | 架构/Ops | 存储/下载 |
 | U-08 | `WORKFLOW_EDITOR` 角色 vs 专用授权表                                                       | 默认角色（复用角色管理/审计）；专用表增加端点与审计面                                             | Lead/Product          | 权限模型            |
 | U-09 | 租户管理员是否可编辑所有草稿                                                               | 默认是（管理能力）；若不允许需草稿 ACL                                                            | 安全评审/Product      | 草稿保密            |
 | U-10 | 部门范围快照：所有者调动后旧版本仍按发布时部门                                             | 默认版本快照 + 部门当前成员判定；停用/移交由管理员处理                                            | Product               | 可见性              |
 | U-11 | M06b 内置模板升级：新行 vs version+1                                                       | M06b 决定；M06 只预留字段                                                                         | M06b 设计             | 模板升级            |
-| U-12 | 审批等待是否计入租户准入并发                                                               | 默认计入（防无限等待），但释放 worker 执行槽位；perf 报告单列                                     | Product/Verifier      | 并发/性能           |
-| U-13 | `workflow_run` 跨租户领取是新增 ADR-0009 例外 | 默认按 ADR-0016 模式：只读 claim 元数据、领取后立即租户上下文、索引例外登记；需安全/Verifier 评审 | Verifier/安全 | 租户隔离/评审 |
+| U-12 | 审批等待是否计入租户准入并发 | 默认计入（防无限等待），但释放 worker 执行槽位；最老审批等待 >24h 告警 + 取消/配置解除步骤（OPS-M06-007） | Product/Verifier | 并发/性能 |
+| U-13 | `workflow_run` 跨租户领取是新增 ADR-0009 例外 | 默认按 ADR-0016 模式：只读 claim 元数据、领取后立即租户上下文、索引例外登记；静态列集合断言 + `claim_failures`/denied；需独立安全评审（F-014/OPS-M06-015） | Verifier/安全 | 租户隔离/评审 |
 
 ---
+
+## 17. OPS 评审响应（REV-M06-OPS-001）
+
+评审基线 `751d384`、HEAD `a694979`，结论 `fail`（5 P1 open、10 P2（8 open + 2 accepted）、1 P3）。本节只记录**设计响应**，不声称 findings 已 fixed；由 Ops 复验后更新状态。
+
+| Finding | 严重度 | 处理 | 修改位置/证据 | Owner / Due / 备注 |
+| --- | --- | --- | --- | --- |
+| OPS-M06-001 | P2 | 设计已补（待 Ops 复验）：AC-23 判定 SQL、拒绝路径、`WAITING_APPROVAL` 清空顺序、演练断言 | §10.4、§10.5、§13.1 T16b | T16b（脚本）/T15（RUNBOOK）；M06 gate 前 |
+| OPS-M06-002 | P1 | 设计已补：每槽位 batch=1、领取后先心跳、独立调度池、心跳池≥并发、interval≤lease/3、启动校验、重复领取验收 | §4.3、§10.1、§13.1 T06a/T15 | T06a/T15；T06a 开工前 |
+| OPS-M06-003 | P1 | 设计已补：queue_depth/oldest_pending_age/lease_lost/claim_exhausted/claim_failures/审批等待/feature gauge 与阈值；告警归 M06 | §10.2、§10.5、§13.1 T15 | T15；T15 完成前 |
+| OPS-M06-004 | P1 | 设计已补：V15 联动断言（CI 触发器、ApiApplicationTests、SchemaVersionCheckerTest、restore-drill、RUNBOOK）写入 T01/T15/T16b write_scope | §3.5、§13.1 T01/T15/T16b | T01/T16b；V15 合入前 |
+| OPS-M06-005 | P1 | 设计已补：TRIGGER/binlog/MDL/max_allowed_packet 预检、DDL 非事务失败矩阵、repair/备份恢复、DML 幂等 | §3.5、§10.5、§13.1 T01 | T01；T01 编码前 |
+| OPS-M06-006 | P1 | 设计已补：`docs/RUNBOOK.md` 写入 T15；补 M06 配置/开关/队列/审批/迁移/回滚/保留/指标/演练章节 | §10.5、§13.1 T15 | T15；M06 gate 前 |
+| OPS-M06-007 | P2 | **accepted**（Ops 已接受）+ 设计补充：最老审批等待告警、取消/配置解除步骤；不改变 U-12 语义 | §10.2、§10.5、§13.1 T15/T09 | T15/T09；M06 gate 前；accepted_reason=U-12 已由 DEC-0046=A 批准，仅补可观测/操作 |
+| OPS-M06-008 | P2 | 设计已补：`WF_INTERNAL` 时节点 FAILED（或创建失败尝试）、运行 FAILED、retry 可用 | §4.3、§4.6、§13.1 T06a/T08 | T06a/T08；T06a 完成前 |
+| OPS-M06-009 | P2 | 设计已补：kill switch 观测审计（instanceId/observedAt）、feature gauge、Worker `CLAIM_ENABLED`/优雅停机；保留部署配置，不升用户决策 | §4.8、§10.1、§10.5、§13.1 T15 | T15；T15 完成前；accepted_reason=部署配置适合私有化，无需平台 UI |
+| OPS-M06-010 | P2 | 设计已补：契约 `WorkflowRun.updatedAt`；终态停止轮询、result 只读一次；ETag/includeResult 记为后续优化 | §7.4、`contracts/openapi.yaml`、§13.1 T01/T08/T12a/T12b | T01/T08/T12a/T12b；T08 契约冻结前 |
+| OPS-M06-011 | P2 | 设计已补：JDBC `maxAllowedPacket`/服务器 `max_allowed_packet` ≥8 MiB 预检、容量公式、结果分位数、节点 256 KiB 与总 5 MiB 先后关系 | §10.1、§10.5、§13.1 T15/T16b | T15/T16b；T15/T16b 完成前 |
+| OPS-M06-012 | P2 | **accepted**（Ops 已接受）：180 天只做到期不可见、物理清理 M09；补 RUNBOOK 标准答复/容量告警 | §10.5、§13.1 T15；M09 | Lead/M09；M09 release blocker；accepted_reason=R-35/M09 排期，M06 不新增在线删除 |
+| OPS-M06-013 | P2 | 设计已补：T15 3→4h、T16 8→10h、T11 5→2h，总额 120h；回滚演练脚本落 T16b | §13.1 工时/写范围 | Lead；M06 建卡时（T16a/b 合计 10h） |
+| OPS-M06-014 | P2 | 设计已补：M06b 继承 DEC-0047 回滚口径；无 M06b 审计行才允许 M06b→M06 API 回滚 | §12、M26-B1 设计输入 | Architect；M06b 设计启动时 |
+| OPS-M06-015 | P2 | 设计已补（Ops 可接受 TM-85）：claim SELECT 列集合静态断言、非法 tenant/领取失败 `claim_failures`/denied；`IT-WF-103`/`TEN-M06-01` 覆盖 | §4.3、§9.2 TM-85、§13.1 T06a | T06a/Verifier；T06a 完成前 |
+| OPS-M06-016 | P3 | 设计已补：`RICCON_WORKFLOW_DISABLED_REASON`（可选，API 回退固定文案）入 §10.1/RUNBOOK | §10.1、§10.5、§13.1 T15 | T01/T15；T15 完成前 |
+
+### 17.1 REV-M06-ARCH-001（Verifier）
+
+评审基线 `751d384`、本轮 HEAD `90ff68e`，结论 `fail`（7 P1 / 8 P2 / 4 P3）。本节记录设计响应，不声称 fixed。
+
+| Finding | 严重度 | 处理 | 修改位置/证据 | Owner / Due / 备注 |
+| --- | --- | --- | --- | --- |
+| F-001 | P1 | 设计已补：`branch` enum 加引号为 `["TRUE","FALSE",null]`；契约测试断言字符串 | `contracts/openapi.yaml`、§4.1、§13.1 T01 | T01；T01 实现前 |
+| F-002 | P1 | 设计已补：`WorkflowNodeConfig` 增加 `actionKind`/`targetNodeKey`，服务端校验指向直接后继 | `contracts/openapi.yaml`、§4.4、§13.1 T01/T03 | T01/T03；实现前 |
+| F-003 | P1 | **Product 已修订（9d30ac1）**：AC-16 共享审计归 M06b AC-11/25；M06 只验收发布/运行/取消/审批/停用/授权/移交；待复验 | PRODUCT AC-16、§14 AC-16 备注、§8.1 | Product/Verifier；M06 gate 前 |
+| F-004 | P1 | 设计已补：`WorkflowApproval.dataScopeSummary`（runScope/departmentId/引用计数），只含计数不含正文 | `contracts/openapi.yaml`、§3.3.5、§5.3、§13.1 T09 | T09；实现前 |
+| F-005 | P1 | 设计已补：`WorkflowPlatformTenantFilter` 在认证后、权限拦截器前对 platform 租户返回 404；TEN-M06-01 断言 | §6.1、§13.1 T01/T05 | T01/T05；实现前 |
+| F-006 | P1 | 设计已补：`McpCallExecutor` 策略 `READ_ONLY`（J2）/`APPROVAL_BOUND_WRITE`（M06）；J2 WRITE 继续拒绝 | §4.7、§13.1 T07b；`IT-HITL-001`/`MCP-001..008`/`SEC-WF-004` | T07b；实现前 |
+| F-007 | P1 | 设计已补：T02–T09/T15 write_scope 增 `src/test`；IT-WF owner 明确 | §13.1 任务表 | Lead 建卡；实现前 |
+| F-008 | P2 | **Product 已修订（9d30ac1）**：AC-01 Given 改为所有者/租户管理员并发，同侪编辑不在 v1；U-03 待复验后关闭 | PRODUCT AC-01、§6.2、§16 U-03 | Product/Verifier；M06 gate 前 |
+| F-009 | P2 | 设计已补：不新增列，用 `errorCode=WF_NO_APPROVER` + 固定 errorMessage；`SEC-WF-001` 断言 | §5.2、§13.1 T09 | T09；实现前 |
+| F-010 | P2 | 设计已补：`WorkflowRun.updatedAt` required；终态停止轮询、result 只读一次（与 OPS-M06-010 同一修改） | `contracts/openapi.yaml`、§7.4、§13.1 T01/T08 | T01/T08；T08 契约冻结前 |
+| F-011 | P2 | 设计已补：`workflow_node_run.input_summary` + `WorkflowNodeRun.inputSummary` | §3.3.4、§4.4、`contracts/openapi.yaml`、T08 | T08；实现前 |
+| F-012 | P2 | 设计已补：`approvalStatus` 聚合规则 + pending/approved/rejected counts（派生，不新增列） | §3.3.3、§5.4、`contracts/openapi.yaml`、T08 | T08；实现前 |
+| F-013 | P2 | **未解决（U-05）**：保留理由入审计为临时默认；安全评审/Product 在 M06 gate 前二选一（原文+提示 vs hash+记录保留）；不得声称已接受 | §8.3、§16 U-05 | 安全评审/Product；M06 gate 前 |
+| F-014 | P2 | 设计已补：claim SELECT 恰好 4 列、非法 tenant fail-closed、claim_failures/denied、静态断言与负向测试；需独立安全评审（与 OPS-M06-015 同一修改） | §4.3、§9.2 TM-85、T06a/TEN-M06-01 | T06a/Verifier；实现前 |
+| F-015 | P2 | 设计已补：拆 T06a/b、T07a/b、T12a/b、T16a/b；总 120h 不变（与 OPS-M06-013 合并） | §13.1 | Lead 建卡；实现前 |
+| F-017 | P3 | 设计已补：请求 schema `if decision=REJECT then comment required/minLength=1`；400 断言 | `contracts/openapi.yaml`、§5.4、T01/T09 | T01/T09；实现前 |
+| F-018 | P3 | 设计已补：内置模板 `visibility=BUILT_IN`（新增枚举），用户模板 PRIVATE/TENANT | `contracts/openapi.yaml`、§3.3.7、§12、T14 | T14；实现前 |
+| F-019 | P3 | 设计已补：THREAT-MODEL R-06-1 改为“M06 仍不执行用户代码；开放前另立模块并重开威胁模型” | `docs/security/THREAT-MODEL.md` | Architect；M06 gate 前 |
+| F-020 | P3 | 设计已补：高风险任务统一 T01–T13、T16、T17，§15.5 与任务表一致 | §13.1、§15.5 | Lead 建卡；实现前 |
+
+> 复验口径：Ops 重跑 REV-M06-OPS-001 时只审 delta；本表状态不代表 fixed。P1 必须在 M06 实现前由 Ops 复验；P2 accepted 项保留 owner/due。
 
 ## Consequences
 

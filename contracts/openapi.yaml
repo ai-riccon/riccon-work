@@ -8017,8 +8017,8 @@ components:
       enum: [BUILT_IN, TENANT]
     WorkflowTemplateVisibility:
       type: string
-      enum: [PRIVATE, TENANT]
-      description: 用户模板共享范围；M06 只返回内置模板，M06b 启用共享。
+      enum: [BUILT_IN, PRIVATE, TENANT]
+      description: 内置模板固定 `BUILT_IN`；用户模板 `PRIVATE`（默认）/`TENANT`（M06b 共享）。
     WorkflowResultStatus:
       type: string
       enum: [NONE, SAVED, OVER_LIMIT]
@@ -8168,6 +8168,15 @@ components:
           items:
             type: string
             format: uuid
+        actionKind:
+          oneOf:
+            - $ref: "#/components/schemas/WorkflowApprovalActionKind"
+            - type: "null"
+          description: 审批节点解锁的动作类型；服务端按后继节点校验，MCP_TOOL 时必填且 targetNodeKey 指向工具节点。
+        targetNodeKey:
+          type: [string, "null"]
+          pattern: "^[A-Za-z0-9_-]{1,64}$"
+          description: 审批解锁的下游节点 key；服务端校验必须是直接后继/目标工具节点。
         condition:
           oneOf:
             - $ref: "#/components/schemas/WorkflowCondition"
@@ -8218,8 +8227,8 @@ components:
           pattern: "^[A-Za-z0-9_-]{1,64}$"
         branch:
           type: [string, "null"]
-          enum: [TRUE, FALSE, null]
-          description: 仅 `CONDITION` 出边必填；其他边为空。
+          enum: ["TRUE", "FALSE", null]
+          description: 仅 `CONDITION` 出边必填；其他边为空。必须是字符串 "TRUE"/"FALSE"，不是布尔值。
       additionalProperties: false
     WorkflowGraph:
       type: object
@@ -8386,6 +8395,7 @@ components:
           status,
           resultStatus,
           createdAt,
+          updatedAt,
           retentionExpiresAt,
         ]
       properties:
@@ -8414,6 +8424,7 @@ components:
           oneOf:
             - $ref: "#/components/schemas/WorkflowApprovalStatus"
             - type: "null"
+          description: 聚合规则：任一 PENDING→PENDING；否则任一 REJECTED→REJECTED；否则任一 APPROVED→APPROVED；否则 null。配合 counts 字段表达多审批节点。
         errorCode:
           oneOf:
             - $ref: "#/components/schemas/WorkflowErrorCode"
@@ -8434,6 +8445,20 @@ components:
           format: date-time
         durationMs:
           type: [integer, "null"]
+          minimum: 0
+        updatedAt:
+          type: string
+          format: date-time
+          description: 轮询判据；变化才重绘。终态后停止轮询，result 只在终态读取一次。
+        pendingApprovalCount:
+          type: integer
+          minimum: 0
+          description: PENDING 审批数；用于多审批节点聚合。
+        approvedApprovalCount:
+          type: integer
+          minimum: 0
+        rejectedApprovalCount:
+          type: integer
           minimum: 0
         retentionExpiresAt:
           type: string
@@ -8465,6 +8490,10 @@ components:
         durationMs:
           type: [integer, "null"]
           minimum: 0
+        inputSummary:
+          type: [string, "null"]
+          maxLength: 2000
+          description: 节点输入摘要；由运行输入/上游输出摘要组合，服务端生成，不返回完整提示词或工具参数。
         outputSummary:
           type: [string, "null"]
           maxLength: 2000
@@ -8530,6 +8559,21 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/WorkflowRun"
+    WorkflowDataScopeSummary:
+      type: object
+      required: [runScope, documentReferenceCount]
+      properties:
+        runScope:
+          $ref: "#/components/schemas/WorkflowRunScope"
+        departmentId:
+          type: [string, "null"]
+          format: uuid
+        documentReferenceCount:
+          type: integer
+          minimum: 0
+          description: 审批涉及的文档引用数量；不返回标题/片段/正文，审批人按 ACL 自行访问。
+      additionalProperties: false
+      description: AC-05 的“数据范围摘要”；只含范围/部门/引用计数，不含文档正文。
     WorkflowApproval:
       type: object
       required:
@@ -8542,6 +8586,7 @@ components:
           status,
           assigneeType,
           actionKind,
+          dataScopeSummary,
           planSha256,
           requestedBy,
           createdAt,
@@ -8577,6 +8622,8 @@ components:
             format: uuid
         actionKind:
           $ref: "#/components/schemas/WorkflowApprovalActionKind"
+        dataScopeSummary:
+          $ref: "#/components/schemas/WorkflowDataScopeSummary"
         targetToolName:
           type: [string, "null"]
         paramsPreview:
@@ -8690,6 +8737,7 @@ components:
         disabledReason:
           type: [string, "null"]
           maxLength: 200
+          description: 来自 `RICCON_WORKFLOW_DISABLED_REASON`；未配置时返回固定文案。
         maxNodes:
           type: integer
           minimum: 1
@@ -8722,6 +8770,7 @@ components:
         resultMaxBytes:
           type: integer
           minimum: 1
+          description: 单次运行结果上限（默认 5 MiB）；服务端预检 `max_allowed_packet`/JDBC `maxAllowedPacket` ≥8 MiB。
         retentionDays:
           type: integer
           minimum: 1
@@ -8848,8 +8897,21 @@ components:
         comment:
           type: [string, "null"]
           maxLength: 500
-          description: 拒绝时必填；进入审批记录与审计（≤500 字符）。
+          description: 拒绝时必填（minLength 1）；进入审批记录与审计（≤500 字符）。
       additionalProperties: false
+      allOf:
+        - if:
+            properties:
+              decision:
+                const: REJECT
+            required: [decision]
+          then:
+            required: [comment]
+            properties:
+              comment:
+                type: string
+                minLength: 1
+                maxLength: 500
     WorkflowTemplateCopyRequest:
       type: object
       properties:

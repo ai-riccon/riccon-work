@@ -45,8 +45,8 @@
 | Architect 草案              | draft   | ADR-0024 `proposed`（2026-11-25）：`workflow_*` 9 张表（V15）、串行 + 条件求值、新建 `workflow_approval`、`WORKFLOW_EDITOR` 角色、`1.6.0-m06`、`workflow_run` 持久运行队列（TM-85 跨租户领取例外）、TM-72..TM-85、120h/48h 任务拆分 |
 | Lead 完整性/合同一致性      | pending | 待 Lead 检查：23+2 条 AC 归属、120h + 48h 预算与 DEC-0046=A、V15、契约 `1.6.0-m06`；DEC-0047=A 已确认回滚口径、DEC-0048=A 已确认配额按运行 1 单位 |
 | 用户批准（不可逆/高成本项） | pass | DEC-0046=A（2026-11-25）：拆分 M06 120h + M06b/M26 48h、25 条 AC、non-goals、角色模型、16 条 OQ 默认值、代码执行不开放；DEC-0047=A 确认 AC-23 回滚口径；DEC-0048=A 确认配额按运行准入 1 单位 |
-| Verifier 可测试性/安全边界  | pending | 待 Verifier：403/404 矩阵、审批/自批、越权、注入、重试幂等、资源上限、AC-21/23 可测性、TM-85 跨租户领取例外；`SEC-WF-001..006`、`TEN-M06-01`、`DEPT-M06-01`                                                                  |
-| Ops 可运维/可回滚 | pending | 待 Ops：运行队列并发/租约/看门狗、kill switch、V15 迁移/回滚、指标、schema 15；DEC-0047=A 已确认 AC-23 回滚口径，AC-23 文本由 Product 同步 |
+| Verifier 可测试性/安全边界  | changes-requested | REV-M06-ARCH-001 fail（7 P1/8 P2/4 P3）；ADR §17.1 设计响应待复验；403/404、契约 schema、审批字段、工具策略、测试写范围仍需复核；`SEC-WF-001..006`、`TEN-M06-01`、`DEPT-M06-01` |
+| Ops 可运维/可回滚 | changes-requested | REV-M06-OPS-001 fail（5 P1/8 P2 open + 2 accepted/1 P3）；ADR §17 设计响应待复验；队列参数/心跳池、指标、V15 联动断言、迁移失败处置、RUNBOOK 写范围已补；DEC-0047=A 已确认回滚口径，AC-23 文本由 Product 同步 |
 | 安全/合规评审（如适用）     | pending | 待安全：TM-72..TM-85、B-27..B-30、提示注入/canary、工具参数加密/plan 绑定、审批理由入审计（U-05）                                                                                                      |
 
 > ADR-0024 未评审前不进入 M06 实现；本表不声称 M06 已批准或已交付。M06b/M26 在 M06 用户验收后另行设计/评审。
@@ -504,6 +504,7 @@ Studio 编辑（列表/表单为主，画布增强）
 ### 执行与并发
 
 - `workflow_run` 自身是持久运行队列：worker 以 `FOR UPDATE SKIP LOCKED` 领取 `PENDING` 或租约过期的 `RUNNING`，租约 90s + 心跳，默认并发 10；审批等待释放线程/租约，恢复/重试通过把运行置回 `PENDING` + `current_node_key` 触发。不复用 J2 `agent_run_outbox`（`run_id NOT NULL` FK `agent_run`，`OutboxPoller` 绑定 agent_run）。
+- 队列不变量：每槽位 batch=1、独立调度池≥并发、心跳池≥并发、续期≤lease/3；启动校验失败即拒绝启动。`RICCON_WORKFLOW_CLAIM_ENABLED` 控制停止领取/优雅停机；`queue_depth`/`oldest_pending_age`/`lease_lost`/`claim_exhausted` 指标与阈值进 RUNBOOK（T15）。
 - 运行准入：M04 配额 1 单位/运行（DEC-0048=A）+ 租户 10/单流程 5（含等待审批）；超限 429 RICCON-WF-429；不新增 token/成本配额。
 - 节点超时：模型 300s、检索 120s、MCP 60s；运行 30min（审批等待不计）；步数 200、节点 50。
 - 重试只针对失败节点，上游不重跑；写工具重试必须重新审批；工具调用未知终态 fail-closed（`WF_SIDE_EFFECT_UNKNOWN`）。
@@ -528,7 +529,7 @@ Studio 编辑（列表/表单为主，画布增强）
 
 ### 交付与预算
 
-- M06 = 17 个任务、**120h**，关键路径 ≈73h（T01→T02→T03→T04→T05→T06→T07→T16→T17）；M06b/M26 = 6 个任务、**48h**（AC-11/25，M06 用户验收后启动）。任务边界/写范围/AC/证据见 ADR-0024 §13。
+- M06 = 21 个任务、**120h**，关键路径 ≈75h（T01→T02→T03→T04→T05→T06a→T06b→T07a→T07b→T16a→T16b→T17）；M06b/M26 = 6 个任务、**48h**（AC-11/25，M06 用户验收后启动）。任务边界/写范围/AC/证据见 ADR-0024 §13；T15 3→4h、T16 8→10h 由 T11 画布 5→2h 调剂。
 - M06 gate：AC-01..10、12..24；AC-11/25 不进 M06 gate。AC-19/20/21/23/24 仍须在模块 gate 与 release 前验证（T4 决策不新增 DoD key）。
 
 ### 风险
@@ -661,6 +662,8 @@ Studio 编辑（列表/表单为主，画布增强）
 | M06 运行/历史跨部门或平台管理员读取             | 低     | 高（越权）                | 双重 RBAC + 资源范围；统一 404；平台管理员 404；管理员读取审计；`TEN-M06-01`、`DEPT-M06-01`                                                      |
 | M06 回滚后历史不可读/审计查询失败               | 中     | 高（运维/合规）           | DEC-0047=A 已确认：受支持回滚 = 关开关 + 回滚 Worker + 保留/前向修复 API；不做 down migration；RUNBOOK 记录限制；ADR-0024 §10.4                                |
 | M06 运行队列挤占 J1/J2                          | 中     | 中（延迟）                | 独立 `workflow_run` 队列 + 默认并发 10 + 租约/看门狗；审批等待释放槽位；`PERF-M06-001`                                                           |
+| M06 队列参数/租约/心跳不闭合 | 中 | 高（重复执行/静默降并发） | batch=1/槽位、独立调度池、心跳池≥并发、续期≤lease/3、启动校验；`IT-WF-103`、`OPS-M06-01` |
+| M06 V15 单迁移非事务失败/联动断言变红 | 中 | 高（半迁移/构建红） | TRIGGER/binlog/MDL/包大小预检、失败矩阵/repair/备份恢复、DML 幂等；CI/ApiApplicationTests/SchemaVersionCheckerTest/restore-drill/RUNBOOK 同提交更新 |
 | M05 索引 v2 重灌遗漏或跨租户写入                | 低     | 高（越权/缺检索）         | 以 MySQL 重灌、索引名由租户派生、逐租户切别名、v1 保留 7 天；`IT-KB-113`、`TEN-034`                                                              |
 
 ## 相关决策

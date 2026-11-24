@@ -174,8 +174,8 @@ TB-12 审计导出边界：apps/api ↔ 管理员浏览器（审批后的 CSV �
 | T-06-1 | T    | 工作区跨会话残留或污染                   | 数据串租户 | 每会话一次性容器与临时卷；`close()` 删除；并发隔离用例              | worker   | `IT-SBX-001`、沙箱冒烟  |
 | I-06-1 | I    | 沙箱文件落盘或挂载宿主目录               | 数据泄露   | 仅临时卷/tmpfs；不挂载 `$HOME`、项目目录或云凭据                    | worker   | `SEC-SBX-002`           |
 | D-06-1 | D    | fork bomb、内存/CPU 打满                 | 宿主不可用 | CPU/内存/pids/墙钟限额（合同 `sandbox.limits`）                     | worker   | 沙箱冒烟限额断言        |
-| E-06-1 | E    | 沙箱访问内网、元数据服务或 Docker socket | 横向移动   | 默认 `network=none`；M06 开放执行前重新威胁建模                     | worker   | 沙箱冒烟断网断言        |
-| R-06-1 | R    | 沙箱内执行无审计                         | 无法追责   | M02 不执行用户代码；M06 起记录 runId 与命令摘要                     | worker   | `SEC-SBX-003`（M06）    |
+| E-06-1 | E    | 沙箱访问内网、元数据服务或 Docker socket | 横向移动   | 默认 `network=none`；代码执行开放前必须重开本威胁模型               | worker   | 沙箱冒烟断网断言        |
+| R-06-1 | R    | 沙箱内执行无审计                         | 无法追责   | M06 仍不执行用户代码；代码执行开放前另立模块并重开 TB-06/E-06-1/R-06-1 | worker   | `SEC-WF-005`、`IT-WF-111`（无执行入口） |
 
 ### 4.7 TB-07 管理员 ↔ 平台
 
@@ -634,7 +634,7 @@ M06 工作流控制（TM-72..TM-85）：
 | TM-82 | kill switch/回滚：关闭后新运行/重试/审批不受理、历史只读、J1/J2 不受影响；不做 down migration；回滚限制进 RUNBOOK                                                        | api/ops    | `IT-WF-110`、`OPS-M06-01`                         | 4.13/§10.4         |
 | TM-83 | 审计 fail-closed + action-aware 白名单；管理性读取审计；M10 查询/导出不变；新动作必须进读取白名单（旧 API 回滚风险登记）                                                 | api/worker | `IT-WF-108/112`、`IT-AUDIT-M06-01`                | 4.13/§8            |
 | TM-84 | 权限/部门边界：`WORKFLOW_EDITOR` 仅租户管理员授予；`manager_user_id` 只限制 DEPT 发布范围、不授权；禁用/移出部门下一次请求生效；移交审计                                 | api        | `SEC-WF-006`、`DEPT-M06-01`                       | 4.13/§6            |
-| TM-85 | `workflow_run` 跨租户领取例外：只读 `id/tenant_id/status/lease_until`，领取后立即打开租户上下文；不得通过领取路径读业务内容；索引 `(status,lease_until,id)` 不以 tenant 开头，登记为例外 | worker | `IT-WF-103`、`TEN-M06-01` | 4.13/§4.3 |
+| TM-85 | `workflow_run` 跨租户领取例外：只读 `id/tenant_id/status/lease_until`（静态列集合断言），领取后立即打开租户上下文；不得通过领取路径读业务内容；非法/空 tenant fail-closed 并记 `claim_failures`/denied；索引 `(status,lease_until,id)` 不以 tenant 开头，登记为例外 | worker | `IT-WF-103`、`TEN-M06-01` | 4.13/§4.3 |
 
 ## 7. 后置缓解
 

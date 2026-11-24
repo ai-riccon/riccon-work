@@ -8,7 +8,7 @@
 
 **M05b 交付（`1.5.0-m05b`）**：S3 兼容目录连接器列表/创建/更新/软删除（`GET/POST /api/v1/knowledge/connectors`、`PATCH/DELETE .../{connectorId}`）、凭据只写不读与掩码（`PUT .../credential`）、连接测试（`POST .../test`）、手动同步 202（`POST .../sync`，并发 409）与同步条目分页（`GET .../items`）；`KnowledgeDocument` 增加 `connectorId`/`externalId`，`sourceType` 增加 `CONNECTOR`；新增 `Connector`、`ConnectorCreate/Update`、`ConnectorCredential`、`ConnectorItemPage` 等 schema。连接器导入文档复用 M05 文档 ACL、下载与引用遮蔽语义，不新增第二套文档权限。
 
-**M06 交付（`1.6.0-m06`）**：流程定义/草稿（`GET/POST /api/v1/workflows`、`GET /workflows/{id}`、`PUT .../draft`、`POST .../duplicate`、`POST .../validate`）、发布版本（`POST .../publish`、`GET .../versions`）、停用/启用/移交（`POST .../disable`、`.../enable`、`.../transfer`）、运行（`POST/GET .../runs`、`GET /workflow-runs`、`GET /workflow-runs/{id}`、`.../cancel`、`.../retry`）、审批（`GET /workflow-approvals`、`GET .../{id}`、`POST .../decision`）、模板（`GET /workflow-templates`、`POST .../{templateId}/copy`）与运行限制（`GET /workflows/runtime-limits`）。新增 `WorkflowGraph`/`WorkflowDefinition`/`WorkflowVersion`/`WorkflowRun`/`WorkflowNodeRun`/`WorkflowApproval`/`WorkflowTemplate`/`WorkflowRuntimeLimits` 等 schema；M06 不使用 outbox/事件，`workflow_run` 自身为持久运行队列。节点/算子/占位符为封闭白名单，不支持代码/脚本/任意 HTTP/并行/循环/子流程/定时触发；运行详情轮询，不新增 SSE；M06b 模板共享/升级字段标 `x-riccon-deferred: M06b`。`contracts/internal-api.yaml` 不变（工作流通过 `workflow_run` 队列轮询触发，Worker 不新增入站端点）。
+**M06 交付（`1.6.0-m06`）**：流程定义/草稿（`GET/POST /api/v1/workflows`、`GET /workflows/{id}`、`PUT .../draft`、`POST .../duplicate`、`POST .../validate`）、发布版本（`POST .../publish`、`GET .../versions`）、停用/启用/移交（`POST .../disable`、`.../enable`、`.../transfer`）、运行（`POST/GET .../runs`、`GET /workflow-runs`、`GET /workflow-runs/{id}`、`.../cancel`、`.../retry`）、审批（`GET /workflow-approvals`、`GET .../{id}`、`POST .../decision`）、模板（`GET /workflow-templates`、`POST .../{templateId}/copy`）与运行限制（`GET /workflows/runtime-limits`）。新增 `WorkflowGraph`/`WorkflowDefinition`/`WorkflowVersion`/`WorkflowRun`/`WorkflowNodeRun`/`WorkflowApproval`/`WorkflowTemplate`/`WorkflowRuntimeLimits` 等 schema；M06 不使用 outbox/事件，`workflow_run` 自身为持久运行队列。节点/算子/占位符为封闭白名单，不支持代码/脚本/任意 HTTP/并行/循环/子流程/定时触发；运行详情轮询，不新增 SSE；M06b 模板共享/升级字段标 `x-riccon-deferred: M06b`。schema 补充：`WorkflowRun.updatedAt`/审批 counts、`WorkflowApproval.dataScopeSummary`、`WorkflowNodeRun.inputSummary`、`WorkflowNodeConfig.actionKind/targetNodeKey`、`WorkflowEdge.branch` 字符串枚举、`WorkflowApprovalDecisionRequest` 拒绝理由条件必填、`WorkflowTemplate.visibility=BUILT_IN`、`WorkflowRuntimeLimits.disabledReason` 配置来源。`contracts/internal-api.yaml` 不变（工作流通过 `workflow_run` 队列轮询触发，Worker 不新增入站端点）。
 
 ## 1. 目录
 
@@ -144,7 +144,7 @@ contracts/
 - 图约束：1 个 `START`、≥1 个 `END`、每个节点入边 ≤1、`CONDITION` 出边恰好 `TRUE/FALSE`、无环/无孤立、节点 ≤50、边 ≤100；保存/发布/运行三处校验。
 - 版本：发布不可变；运行绑定版本；`runScope` 为版本属性，变更需发布新版本；旧版本仍可运行，除非流程停用。
 - 审批：指定 `USER` 或 `ROLE`（`TENANT_ADMIN`/`WORKFLOW_EDITOR`/`MEMBER`）；发起人不得审批；无可用审批人保持等待；写工具/高风险工具必须前置审批，重试重新审批；审批摘要按审批人 ACL 最小可见。
-- 运行：默认 180 天保留、到期不可见、无在线删除；节点/步数/超时/并发/5 MiB 限制由部署配置；超限 `RICCON-WF-429` 或 `WF_*` 稳定码。
+- 运行：默认 180 天保留、到期不可见、无在线删除；节点/步数/超时/并发/5 MiB 限制由部署配置；超限 `RICCON-WF-429` 或 `WF_*` 稳定码。队列执行不变量（batch=1/槽位、心跳≤lease/3、独立调度/心跳池）属于实现/运维约束，不在 REST 契约暴露；指标/RUNBOOK 见 ADR-0024 §10。
 - 错误：`RICCON-WF-400`（图/参数/校验/无审批人）、`RICCON-WF-409`（草稿版本冲突/审批已决定/状态冲突）、`RICCON-WF-429`（并发上限）、`RICCON-WF-503`（编排关闭/引擎不可用）；跨租户/跨部门/不可见仍 `RICCON-TENANT-404`；同租户无能力 `RICCON-AUTH-403`；平台管理员 404。
 - 轮询：运行详情/历史按 `updatedAt` 轮询，不新增 SSE；事件只用于 API → Worker。
 - M06b：用户另存模板、租户内共享、升级提示、模板库写端点标 `x-riccon-deferred: M06b`；M06 只返回内置模板与只读 `source/visibility/builtInVersion/latestBuiltInVersion/upgradeAvailable` 字段。
