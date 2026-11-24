@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
   title: Riccon API
-  version: 1.5.0-m05b
+  version: 1.6.0-m06
   description: |
-    Riccon M05b 公开 REST 契约（J1 通用问答与文件处理、J2 市场调研报告、部门与空间数据范围、OIDC/SSO、审计查询与导出、模型路由/降级/多 key、配额与成本、知识库文档级 ACL/下载/重索引、Excel/OCR 引用定位、S3 兼容目录连接器）。
+    Riccon M06 公开 REST 契约（J1 通用问答与文件处理、J2 市场调研报告、部门与空间数据范围、OIDC/SSO、审计查询与导出、模型路由/降级/多 key、配额与成本、知识库文档级 ACL/下载/重索引、Excel/OCR 引用定位、S3 兼容目录连接器、编排 Studio 流程/版本/运行/审批/模板）。
 
     ## 认证与会话
     - 内置账号：`tenantCode + username + password`；租户代码即 `tenant.id`。
@@ -63,10 +63,22 @@ info:
     - 同步删除仅在 `lastSyncComplete=true` 时传播；源端重现复用 tombstone（`generation+1`），不撞唯一键；部分/截断/超限一律不删除。连接器导入文档的 `sourceType=CONNECTOR`，`fileId` 为空、`connectorId`/`externalId` 非空；原文下载仍按文档 ACL 与既有下载端点执行。
     - 权限：读 `knowledge.connector.read`，写 `knowledge.connector.manage`；当前仅 `TENANT_ADMIN` 持有。跨租户 `connectorId` 统一 `404 RICCON-TENANT-404`；同租户非管理员 `403 RICCON-AUTH-403`。
 
+    ## 编排 Studio（M06）
+    - 仅手动触发；串行执行 + 条件分支；节点类型 `START/END/RETRIEVAL/MODEL/MCP_TOOL/APPROVAL/CONDITION`。不支持代码执行/脚本/任意 HTTP、并行/循环/子流程、定时/事件触发、跨租户模板市场、审批通知/代理；接口与 UI 均不提供入口。
+    - 图约束：恰好 1 个 `START`、≥1 个 `END`；每个节点入边 ≤1（不允许合并/并行）；`CONDITION` 恰好 2 条出边 `TRUE`/`FALSE`；无环、无孤立；节点 ≤50、边 ≤100；保存、发布、运行三处校验。
+    - 版本：草稿 `version` 乐观锁；发布版本不可变并绑定 `runScope`（`ONLY_SELF`/`DEPARTMENT`/`TENANT`）；运行绑定发布版本；草稿修改不影响在跑运行；旧版本仍可运行，除非流程停用。
+    - 审批：审批节点指定角色/人；发起人不得审批自己的运行（403）；无可用审批人时保持等待、不自动放行；写工具/高风险工具必须经过前置审批，重试重新审批；审批摘要只显示脱敏参数与审批人有权访问的引用。
+    - 运行：`PENDING/RUNNING/WAITING_APPROVAL/SUCCEEDED/FAILED/CANCELLED`；节点级时间线；失败可重试失败节点，上游不重跑；取消保留已完成结果；运行默认保留 180 天，到期统一不可见，无在线删除。
+    - 资源限制（部署配置、租户只读）：节点 50、步数 200、模型 300s、检索 120s、MCP 60s、运行 30min（审批等待不计）、租户并发 10、单流程 5、单次结果 ≤5 MiB；超限返回 `RICCON-WF-429` 或稳定 `WF_*` 码。
+    - 权限：`workflow.read/edit/publish/run/approve/manage`；系统角色 `WORKFLOW_EDITOR` 由租户管理员经既有角色管理授予/撤销；部门负责人仅在发布 `DEPARTMENT` 范围时需要 `department.manager_user_id` 关系（关系不授权）。平台管理员访问租户工作流统一 404。
+    - 审计：发布/运行/取消/审批/停用/启用/共享/授权/移交同事务 fail-closed；租户管理员查看他人运行写 `workflow.run.admin_read`（`MANAGEMENT_READ`）；不含 prompt、完整工具参数、凭据或正文。
+    - 模板：M06 提供内置模板列表与复制（至少 1 个，含 J2 等价市场调研）；用户另存模板、租户内共享、升级提示在 M06b（`x-riccon-deferred: M06b`），M06 不实现。
+    - 运行详情用轮询（`updatedAt` 变化），不新增 SSE；`GET /workflows/runtime-limits` 为字面路径，优先于 `/workflows/{workflowId}`。
+
     ## 错误
     统一使用 RFC 9457 `application/problem+json`，至少包含 `type/title/status/code/traceId`。
     错误码格式 `RICCON-<DOMAIN>-<NNN>`；禁止返回堆栈、SQL、内部主机、密钥或完整提示词。
-    部门/空间成员关系冲突使用 `RICCON-DEPT-409`；跨租户/跨部门/不可见统一 `RICCON-TENANT-404`；OIDC 绑定冲突使用 `RICCON-OIDC-409`；审计查询/导出使用 `RICCON-AUDIT-*`；模型配置使用 `RICCON-MODEL-400/409`；配额使用 `RICCON-QUOTA-429/503`；成本查询使用 `RICCON-COST-400/503`；知识库文档 ACL/下载/重索引使用 `RICCON-KB-400/404/409/502/503`（源文件读取失败为 `RICCON-KB-502`）。
+    部门/空间成员关系冲突使用 `RICCON-DEPT-409`；跨租户/跨部门/不可见统一 `RICCON-TENANT-404`；OIDC 绑定冲突使用 `RICCON-OIDC-409`；审计查询/导出使用 `RICCON-AUDIT-*`；模型配置使用 `RICCON-MODEL-400/409`；配额使用 `RICCON-QUOTA-429/503`；成本查询使用 `RICCON-COST-400/503`；知识库文档 ACL/下载/重索引使用 `RICCON-KB-400/404/409/502/503`（源文件读取失败为 `RICCON-KB-502`）；编排 Studio 使用 `RICCON-WF-400/409/429/503`（400 图/参数/校验/无审批人；409 草稿版本冲突/审批已决定/状态冲突；429 并发上限；503 编排关闭/引擎不可用）。
     知识库下载在 ACL 通过后才发现无源文件时返回 `RICCON-KB-404`；该码不得替代不可见时的 `RICCON-TENANT-404`。
     路径存在但不支持该 HTTP 方法返回 405 `RICCON-METHOD-405`，并在 `Allow` 响应头列出受支持方法；路径不存在仍是 404 `RICCON-REQUEST-404`，已认证但无权限仍是 403。405 不产生审计写入，也不新增路由。
 
@@ -75,8 +87,8 @@ info:
     事件载荷见 `contracts/events/sse/chat-event.v1.schema.json`；报告进度事件见
     `contracts/events/sse/run-progress.v1.schema.json`。审计导出下载返回 `text/csv`，不是流式事件。
 
-    ## 范围外（M05b 后）
-    MFA、审计哈希链/完整性证明、平台管理员跨租户审计明细、租户 BYO 模型凭据、模型价格编辑、多币种/汇率、账单对账、成本预聚合、MCP 注册/凭据托管（M07）、可视化编排（M06）、引用页图渲染/框选、物理对象与分块清理（M09）、知识库共享链接/匿名访问/跨租户共享。
+    ## 范围外（M06 后）
+    MFA、审计哈希链/完整性证明、平台管理员跨租户审计明细、租户 BYO 模型凭据、模型价格编辑、多币种/汇率、账单对账、成本预聚合、MCP 注册/凭据托管（M07）、代码执行/脚本/任意 HTTP/并行/循环/子流程/定时触发、跨租户模板市场（M06b 只做租户内共享）、审批通知/代理/转交/超时自动放行、引用页图渲染/框选、物理对象与分块清理（M09）、知识库共享链接/匿名访问/跨租户共享、工作流运行结果另存工作空间产物（P1 后续）。
   contact:
     name: Riccon 架构组
   license:
@@ -115,6 +127,8 @@ tags:
     description: 审计只读查询、导出申请/审批与策略
   - name: Admin
     description: 平台只读目录、租户/账号管理与导出审批
+  - name: Workflow
+    description: 编排 Studio：流程定义/草稿/版本、运行、审批、模板与运行限制（M06）
 security:
   - sessionCookie: []
 x-riccon-deferred:
@@ -157,6 +171,15 @@ x-riccon-deferred:
   - id: workspace-archive
     status: M09
     reason: 归档/生命周期与保留策略由 M09 统一设计；M04 不实现归档端点。
+  - id: workflow-template-sharing
+    status: M06b
+    reason: M06 只提供内置模板列表/复制；用户另存模板、租户内共享、升级提示与模板库在 M06b/M26（AC-11/25），M06 契约仅预留只读字段。
+  - id: workflow-code-execution
+    status: not planned
+    reason: 代码执行/脚本/任意 HTTP/并行/循环/子流程/定时触发不在 M06；开放前必须另立模块并重开威胁模型（ADR-0024 §9.3）。
+  - id: workflow-result-artifact
+    status: deferred (P1)
+    reason: M06 运行结果只在详情内查看；另存为工作空间产物复用现有 artifact 模型，后续评估（OQ-M06-14）。
 paths:
   /api/v1/auth/csrf:
     get:
@@ -2505,6 +2528,709 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+  /api/v1/workflows:
+    get:
+      tags: [Workflow]
+      operationId: listWorkflows
+      summary: 列出可访问的流程
+      description: |
+        `view=MINE` 返回本人草稿与已发布流程（租户管理员返回本租户全部）；`view=RUNNABLE` 只返回当前用户可运行的已发布流程；
+        `view=ALL` 仅租户管理员可用。不可见对象不返回名称或数量。
+      x-riccon-permission: workflow.read
+      parameters:
+        - name: view
+          in: query
+          schema:
+            type: string
+            enum: [MINE, RUNNABLE, ALL]
+            default: MINE
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/WorkflowDefinitionStatus"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 流程列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowDefinitionPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Workflow]
+      operationId: createWorkflow
+      summary: 创建流程草稿
+      description: 新建空白流程或从模板复制为当前用户的草稿（默认仅自己可见）；同一 Idempotency-Key 返回既有草稿。
+      x-riccon-permission: workflow.edit
+      parameters:
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowCreateRequest"
+      responses:
+        "201":
+          description: 已创建草稿
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowDefinitionDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/v1/workflows/runtime-limits:
+    get:
+      tags: [Workflow]
+      operationId: getWorkflowRuntimeLimits
+      summary: 读取编排运行限制
+      description: 部署配置的节点/步数/超时/并发/结果大小/保留与启用状态；租户只读。字面路径优先于 `/workflows/{workflowId}`。
+      x-riccon-permission: workflow.read
+      responses:
+        "200":
+          description: 生效限制
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowRuntimeLimits"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/v1/workflows/{workflowId}:
+    get:
+      tags: [Workflow]
+      operationId: getWorkflow
+      summary: 读取流程详情
+      description: 草稿仅所有者与租户管理员可见；发布流程按版本范围可见。`draftGraph` 只对可编辑者返回。
+      x-riccon-permission: workflow.read
+      parameters:
+        - $ref: "#/components/parameters/WorkflowId"
+      responses:
+        "200":
+          description: 流程详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowDefinitionDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/workflows/{workflowId}/draft:
+    put:
+      tags: [Workflow]
+      operationId: saveWorkflowDraft
+      summary: 保存流程草稿
+      description: |
+        `version` 为草稿乐观锁；不一致返回 409 `RICCON-WF-409`，前端可另存副本或放弃。
+        保存不做完整发布校验（允许未完成草稿），非法结构在 validate/publish 拒绝。
+      x-riccon-permission: workflow.edit
+      parameters:
+        - $ref: "#/components/parameters/WorkflowId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowDraftUpdateRequest"
+      responses:
+        "200":
+          description: 已保存
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowDefinitionDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/v1/workflows/{workflowId}/duplicate:
+    post:
+      tags: [Workflow]
+      operationId: duplicateWorkflow
+      summary: 另存流程副本
+      description: 并发保存冲突后另存副本；副本为当前用户草稿，默认仅自己可见。
+      x-riccon-permission: workflow.edit
+      parameters:
+        - $ref: "#/components/parameters/WorkflowId"
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowDuplicateRequest"
+      responses:
+        "201":
+          description: 已创建副本
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowDefinitionDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/v1/workflows/{workflowId}/validate:
+    post:
+      tags: [Workflow]
+      operationId: validateWorkflow
+      summary: 校验流程草稿
+      description: 返回逐项问题（节点、原因、修正字段）；画布与列表/表单共用同一结果。
+      x-riccon-permission: workflow.edit
+      parameters:
+        - $ref: "#/components/parameters/WorkflowId"
+        - $ref: "#/components/parameters/CsrfToken"
+      responses:
+        "200":
+          description: 校验结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowValidationResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/workflows/{workflowId}/publish:
+    post:
+      tags: [Workflow]
+      operationId: publishWorkflow
+      summary: 发布流程版本
+      description: 校验通过后生成不可变版本；`runScope` 受角色限制；有审批节点但无可用审批人时返回 400 `RICCON-WF-400`。
+      x-riccon-permission: workflow.publish
+      parameters:
+        - $ref: "#/components/parameters/WorkflowId"
+        - $ref: "#/components/parameters/CsrfToken"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowPublishRequest"
+      responses:
+        "201":
+          description: 已发布
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowVersion"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/v1/workflows/{workflowId}/versions:
+    get:
+      tags: [Workflow]
+      operationId: listWorkflowVersions
+      summary: 列出版本
+      description: 已发布版本按版本号倒序；旧版本仍可运行，除非流程被停用。
+      x-riccon-permission: workflow.read
+      parameters:
+        - $ref: "#/components/parameters/WorkflowId"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 版本列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowVersionPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/workflows/{workflowId}/disable:
+    post:
+      tags: [Workflow]
+      operationId: disableWorkflow
+      summary: 停用流程
+      description: 停用后不可新运行；历史可查；在途运行继续。仅所有者或租户管理员。
+      x-riccon-permission: workflow.publish
+      parameters:
+        - $ref: "#/components/parameters/WorkflowId"
+        - $ref: "#/components/parameters/CsrfToken"
+      responses:
+        "200":
+          description: 已停用
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowDefinitionDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/workflows/{workflowId}/enable:
+    post:
+      tags: [Workflow]
+      operationId: enableWorkflow
+      summary: 重新启用流程
+      description: 仅所有者或租户管理员；恢复新运行，历史不变。
+      x-riccon-permission: workflow.publish
+      parameters:
+        - $ref: "#/components/parameters/WorkflowId"
+        - $ref: "#/components/parameters/CsrfToken"
+      responses:
+        "200":
+          description: 已启用
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowDefinitionDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/workflows/{workflowId}/transfer:
+    post:
+      tags: [Workflow]
+      operationId: transferWorkflow
+      summary: 移交流程所有权
+      description: 仅租户管理员；目标必须是本租户启用且具备 workflow.edit 的成员；原所有者失去编辑权。
+      x-riccon-permission: workflow.manage
+      parameters:
+        - $ref: "#/components/parameters/WorkflowId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowTransferRequest"
+      responses:
+        "200":
+          description: 已移交
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowDefinitionDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/workflows/{workflowId}/runs:
+    get:
+      tags: [Workflow]
+      operationId: listWorkflowRunsForWorkflow
+      summary: 列出某流程的运行
+      description: 流程所有者看元数据；租户管理员看全部；其他用户只看自己发起的运行。
+      x-riccon-permission: workflow.read
+      parameters:
+        - $ref: "#/components/parameters/WorkflowId"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 运行列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowRunPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Workflow]
+      operationId: createWorkflowRun
+      summary: 手动运行流程
+      description: 默认绑定最近发布版本；不可见/停用/未发布 404 或 400；并发超限 429 `RICCON-WF-429`；编排关闭 503 `RICCON-WF-503`。
+      x-riccon-permission: workflow.run
+      parameters:
+        - $ref: "#/components/parameters/WorkflowId"
+        - $ref: "#/components/parameters/CsrfToken"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowRunCreateRequest"
+      responses:
+        "201":
+          description: 已受理
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowRun"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/v1/workflow-runs:
+    get:
+      tags: [Workflow]
+      operationId: listWorkflowRuns
+      summary: 运行历史
+      description: 按开始时间倒序；可按流程/版本/状态/时间/发起人过滤；不可见对象不返回名称或数量；到期运行不可见。
+      x-riccon-permission: workflow.read
+      parameters:
+        - name: workflowId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: versionNo
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/WorkflowRunStatus"
+        - name: requesterUserId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 运行历史
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowRunPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/v1/workflow-runs/{workflowRunId}:
+    get:
+      tags: [Workflow]
+      operationId: getWorkflowRun
+      summary: 运行详情
+      description: 节点时间线、审批记录、引用与结果；只对发起人与租户管理员可见；到期/不可见统一 404。
+      x-riccon-permission: workflow.read
+      parameters:
+        - $ref: "#/components/parameters/WorkflowRunId"
+      responses:
+        "200":
+          description: 运行详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowRunDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/workflow-runs/{workflowRunId}/cancel:
+    post:
+      tags: [Workflow]
+      operationId: cancelWorkflowRun
+      summary: 取消运行
+      description: 仅发起人或租户管理员；已完成节点结果保留，后续节点不再执行。
+      x-riccon-permission: workflow.run
+      parameters:
+        - $ref: "#/components/parameters/WorkflowRunId"
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "202":
+          description: 已请求取消
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/workflow-runs/{workflowRunId}/retry:
+    post:
+      tags: [Workflow]
+      operationId: retryWorkflowRunNode
+      summary: 重试失败节点
+      description: 仅失败节点；上游已成功节点不重跑；写工具重试必须重新审批；不做自动无限重试。
+      x-riccon-permission: workflow.run
+      parameters:
+        - $ref: "#/components/parameters/WorkflowRunId"
+        - $ref: "#/components/parameters/CsrfToken"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowRetryRequest"
+      responses:
+        "202":
+          description: 已受理重试
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/v1/workflow-approvals:
+    get:
+      tags: [Workflow]
+      operationId: listWorkflowApprovals
+      summary: 审批待办
+      description: 只返回分配给当前用户的 PENDING 项，按创建时间升序；发起人的自己运行不出现在待办；空态有固定文案。
+      x-riccon-permission: workflow.approve
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/WorkflowApprovalStatus"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 待办列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowApprovalPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/v1/workflow-approvals/{workflowApprovalId}:
+    get:
+      tags: [Workflow]
+      operationId: getWorkflowApproval
+      summary: 审批详情
+      description: 只显示分配给当前用户或租户管理员的审批；参数摘要按 M05 ACL 最小可见；不返回完整参数/提示词/凭据。
+      x-riccon-permission: workflow.approve
+      parameters:
+        - $ref: "#/components/parameters/WorkflowApprovalId"
+      responses:
+        "200":
+          description: 审批详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowApprovalDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/workflow-approvals/{workflowApprovalId}/decision:
+    post:
+      tags: [Workflow]
+      operationId: decideWorkflowApproval
+      summary: 批准或拒绝
+      description: 发起人自批 403 `RICCON-AUTH-403` 并写拒绝审计；重复决定 409 `RICCON-WF-409`；拒绝理由必填。
+      x-riccon-permission: workflow.approve
+      parameters:
+        - $ref: "#/components/parameters/WorkflowApprovalId"
+        - $ref: "#/components/parameters/CsrfToken"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowApprovalDecisionRequest"
+      responses:
+        "200":
+          description: 已决定
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowApproval"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /api/v1/workflow-templates:
+    get:
+      tags: [Workflow]
+      operationId: listWorkflowTemplates
+      summary: 模板列表
+      description: M06 返回内置模板（至少 1 个，含 J2 等价市场调研）；M06b 增加租户内共享模板与升级提示。可按名称/场景过滤。
+      x-riccon-permission: workflow.read
+      parameters:
+        - name: scenario
+          in: query
+          schema:
+            type: string
+            maxLength: 200
+        - name: name
+          in: query
+          schema:
+            type: string
+            maxLength: 200
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: 模板列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowTemplatePage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/v1/workflow-templates/{templateId}/copy:
+    post:
+      tags: [Workflow]
+      operationId: copyWorkflowTemplate
+      summary: 从模板创建草稿
+      description: 生成当前用户的草稿副本（默认仅自己可见）；模板本身不被修改；来源与版本记录在草稿上。
+      x-riccon-permission: workflow.edit
+      parameters:
+        - $ref: "#/components/parameters/WorkflowTemplateId"
+        - $ref: "#/components/parameters/CsrfToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowTemplateCopyRequest"
+      responses:
+        "201":
+          description: 已创建草稿
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowDefinitionDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
   /api/v1/admin/tenants:
     get:
       tags: [Admin]
@@ -3785,6 +4511,34 @@ components:
         type: string
         minLength: 8
         maxLength: 128
+    WorkflowId:
+      name: workflowId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    WorkflowRunId:
+      name: workflowRunId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    WorkflowApprovalId:
+      name: workflowApprovalId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    WorkflowTemplateId:
+      name: templateId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     Page:
       name: page
       in: query
@@ -4500,6 +5254,9 @@ components:
           TENANT,
           AUDIT,
           AUDIT_EXPORT,
+          WORKFLOW,
+          WORKFLOW_RUN,
+          WORKFLOW_TEMPLATE,
         ]
     AuditEvent:
       type: object
@@ -7218,6 +7975,889 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/CostInvocation"
+    WorkflowDefinitionStatus:
+      type: string
+      enum: [ACTIVE, DISABLED]
+      description: 流程级状态；`DISABLED` 阻止新运行，历史仍可查。
+    WorkflowRunScope:
+      type: string
+      enum: [ONLY_SELF, DEPARTMENT, TENANT]
+      description: 发布版本的运行范围；不可变，变更需发布新版本。
+    WorkflowNodeType:
+      type: string
+      enum: [START, END, RETRIEVAL, MODEL, MCP_TOOL, APPROVAL, CONDITION]
+      description: M06 节点最小集；不含 CODE/SCRIPT/HTTP/PARALLEL/LOOP/SUBFLOW/CRON。
+    WorkflowNodeStatus:
+      type: string
+      enum:
+        [
+          PENDING,
+          RUNNING,
+          WAITING_APPROVAL,
+          SUCCEEDED,
+          FAILED,
+          SKIPPED,
+          CANCELLED,
+        ]
+    WorkflowRunStatus:
+      type: string
+      enum: [PENDING, RUNNING, WAITING_APPROVAL, SUCCEEDED, FAILED, CANCELLED]
+    WorkflowApprovalStatus:
+      type: string
+      enum: [PENDING, APPROVED, REJECTED, CANCELLED]
+    WorkflowApprovalDecision:
+      type: string
+      enum: [APPROVE, REJECT]
+    WorkflowApprovalActionKind:
+      type: string
+      enum: [MCP_TOOL, MODEL, CONTINUE]
+      description: 审批解锁的动作类型；MCP_TOOL 携带可重放参数密文。
+    WorkflowTemplateSource:
+      type: string
+      enum: [BUILT_IN, TENANT]
+    WorkflowTemplateVisibility:
+      type: string
+      enum: [PRIVATE, TENANT]
+      description: 用户模板共享范围；M06 只返回内置模板，M06b 启用共享。
+    WorkflowResultStatus:
+      type: string
+      enum: [NONE, SAVED, OVER_LIMIT]
+      description: "`OVER_LIMIT` 表示运行因结果超过 5 MiB 未保存完整结果，运行以 `WF_RESULT_LIMIT` 失败。"
+    WorkflowRetentionPolicy:
+      type: string
+      enum: [DEPLOYMENT_DEFAULT, TENANT_POLICY]
+      description: 运行保留策略来源；租户策略优先于部署默认（默认 180 天）。
+    WorkflowValidationCode:
+      type: string
+      enum:
+        [
+          GRAPH_CYCLE,
+          MISSING_START,
+          MULTIPLE_START,
+          MISSING_END,
+          ORPHAN_NODE,
+          INDEGREE_EXCEEDED,
+          EDGE_INVALID,
+          CONDITION_BRANCH_INVALID,
+          REQUIRED_CONFIG,
+          NODE_LIMIT,
+          EDGE_LIMIT,
+          MODEL_UNAVAILABLE,
+          TOOL_NOT_AUTHORIZED,
+          TOOL_DISABLED,
+          APPROVAL_CONFIG,
+          NO_APPROVER,
+          RESULT_INVALID,
+          TEMPLATE_INVALID,
+        ]
+    WorkflowErrorCode:
+      type: string
+      enum:
+        [
+          WF_INVALID_GRAPH,
+          WF_NODE_LIMIT,
+          WF_STEP_LIMIT,
+          WF_RUN_TIMEOUT,
+          WF_NODE_TIMEOUT,
+          WF_MODEL_UNAVAILABLE,
+          WF_MODEL_OUTPUT_INVALID,
+          WF_RETRIEVAL_FAILED,
+          WF_CONDITION_INVALID,
+          WF_TOOL_NOT_AUTHORIZED,
+          WF_TOOL_RESULT_LIMIT,
+          WF_APPROVAL_REQUIRED,
+          WF_NO_APPROVER,
+          WF_APPROVAL_REJECTED,
+          WF_SIDE_EFFECT_UNKNOWN,
+          WF_PLAN_DRIFT,
+          WF_RESULT_LIMIT,
+          WF_FEATURE_DISABLED,
+          WF_CANCELLED,
+          WF_INTERNAL,
+        ]
+      description: 运行/节点异步稳定码；HTTP 错误仍用 `RICCON-WF-400/409/429/503`。
+    WorkflowConditionSource:
+      type: object
+      required: [source, path, valueType]
+      properties:
+        source:
+          type: string
+          enum: [RUN_INPUT, NODE_OUTPUT]
+        nodeId:
+          type: [string, "null"]
+          description: "`NODE_OUTPUT` 时必填；必须指向上游已执行节点。"
+        path:
+          type: string
+          maxLength: 64
+          description: 受控字段：`RUN_INPUT` 为输入键（≤64，服务端校验存在/类型）；`NODE_OUTPUT` 仅 `hitCount`/`classificationLabel`/`decision`/`status`。
+        valueType:
+          type: string
+          enum: [NUMBER, STRING, BOOLEAN]
+      additionalProperties: false
+    WorkflowConditionRight:
+      type: object
+      required: [valueType]
+      properties:
+        valueType:
+          type: string
+          enum: [NUMBER, STRING, BOOLEAN]
+        value:
+          type: [string, number, boolean, "null"]
+        values:
+          type: array
+          maxItems: 20
+          items:
+            type: [string, number, boolean]
+          description: "`operator=IN` 时使用。"
+      additionalProperties: false
+    WorkflowCondition:
+      type: object
+      required: [left, operator, right]
+      properties:
+        left:
+          $ref: "#/components/schemas/WorkflowConditionSource"
+        operator:
+          type: string
+          enum: [EQ, NE, GT, GTE, LT, LTE, IN]
+        right:
+          $ref: "#/components/schemas/WorkflowConditionRight"
+      additionalProperties: false
+      description: 封闭算子；不支持表达式、脚本或正则。
+    WorkflowNodeConfig:
+      type: object
+      description: 按节点类型校验必填；M06 不接受 script/code/http/cron/parallel/loop/subflow 字段。
+      properties:
+        promptTemplate:
+          type: string
+          maxLength: 8000
+        queryTemplate:
+          type: string
+          maxLength: 2000
+        topK:
+          type: integer
+          minimum: 1
+          maximum: 20
+        modelId:
+          type: [string, "null"]
+          format: uuid
+        outputKind:
+          type: string
+          enum: [TEXT, CLASSIFICATION]
+        labels:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            maxLength: 64
+        toolId:
+          type: [string, "null"]
+          format: uuid
+        argsTemplate:
+          type: object
+          maxProperties: 16
+          additionalProperties: true
+        assigneeType:
+          type: string
+          enum: [USER, ROLE]
+        assigneeRole:
+          type: [string, "null"]
+          enum: [TENANT_ADMIN, WORKFLOW_EDITOR, MEMBER, null]
+        assigneeUserIds:
+          type: array
+          maxItems: 50
+          items:
+            type: string
+            format: uuid
+        condition:
+          oneOf:
+            - $ref: "#/components/schemas/WorkflowCondition"
+            - type: "null"
+        resultFrom:
+          type: [string, "null"]
+          maxLength: 64
+        resultTitle:
+          type: [string, "null"]
+          maxLength: 200
+      additionalProperties: false
+    WorkflowNode:
+      type: object
+      required: [id, type, name, config]
+      properties:
+        id:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{1,64}$"
+        type:
+          $ref: "#/components/schemas/WorkflowNodeType"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        config:
+          $ref: "#/components/schemas/WorkflowNodeConfig"
+        position:
+          type: object
+          properties:
+            x:
+              type: number
+            y:
+              type: number
+          additionalProperties: false
+      additionalProperties: false
+    WorkflowEdge:
+      type: object
+      required: [id, source, target]
+      properties:
+        id:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{1,64}$"
+        source:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{1,64}$"
+        target:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{1,64}$"
+        branch:
+          type: [string, "null"]
+          enum: [TRUE, FALSE, null]
+          description: 仅 `CONDITION` 出边必填；其他边为空。
+      additionalProperties: false
+    WorkflowGraph:
+      type: object
+      required: [schemaVersion, nodes, edges]
+      properties:
+        schemaVersion:
+          type: integer
+          const: 1
+        nodes:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/WorkflowNode"
+        edges:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/WorkflowEdge"
+      additionalProperties: false
+      description: 恰好 1 个 START、≥1 个 END；每个节点入边 ≤1；无环；CONDITION 恰好 2 条出边 TRUE/FALSE。
+    WorkflowDefinition:
+      type: object
+      required:
+        [
+          id,
+          name,
+          ownerUserId,
+          status,
+          draftVersion,
+          hasUnpublishedChanges,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: [string, "null"]
+        ownerUserId:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/WorkflowDefinitionStatus"
+        draftVersion:
+          type: integer
+          minimum: 1
+        publishedVersionId:
+          type: [string, "null"]
+          format: uuid
+        publishedVersionNo:
+          type: [integer, "null"]
+          minimum: 1
+        hasUnpublishedChanges:
+          type: boolean
+        sourceTemplateId:
+          type: [string, "null"]
+          format: uuid
+        sourceTemplateType:
+          type: [string, "null"]
+          enum: [BUILT_IN, TENANT, null]
+        sourceTemplateVersion:
+          type: [integer, "null"]
+          minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    WorkflowDefinitionDetail:
+      allOf:
+        - $ref: "#/components/schemas/WorkflowDefinition"
+        - type: object
+          properties:
+            draftGraph:
+              oneOf:
+                - $ref: "#/components/schemas/WorkflowGraph"
+                - type: "null"
+              description: 仅可编辑者（所有者/租户管理员）返回。
+            latestVersion:
+              oneOf:
+                - $ref: "#/components/schemas/WorkflowVersion"
+                - type: "null"
+            canEdit:
+              type: boolean
+            canPublish:
+              type: boolean
+            canRun:
+              type: boolean
+    WorkflowDefinitionPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/WorkflowDefinition"
+    WorkflowVersion:
+      type: object
+      required:
+        [
+          id,
+          workflowId,
+          versionNo,
+          runScope,
+          graphSha256,
+          nodeCount,
+          publishedBy,
+          publishedAt,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        workflowId:
+          type: string
+          format: uuid
+        versionNo:
+          type: integer
+          minimum: 1
+        runScope:
+          $ref: "#/components/schemas/WorkflowRunScope"
+        departmentId:
+          type: [string, "null"]
+          format: uuid
+        graphSha256:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+        nodeCount:
+          type: integer
+          minimum: 1
+          maximum: 50
+        publishedBy:
+          type: string
+          format: uuid
+        publishedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    WorkflowVersionPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/WorkflowVersion"
+    WorkflowRun:
+      type: object
+      required:
+        [
+          id,
+          workflowId,
+          workflowVersionId,
+          versionNo,
+          requesterUserId,
+          status,
+          resultStatus,
+          createdAt,
+          retentionExpiresAt,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        workflowId:
+          type: string
+          format: uuid
+        workflowName:
+          type: [string, "null"]
+        workflowVersionId:
+          type: string
+          format: uuid
+        versionNo:
+          type: integer
+          minimum: 1
+        requesterUserId:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/WorkflowRunStatus"
+        currentNodeId:
+          type: [string, "null"]
+        approvalStatus:
+          oneOf:
+            - $ref: "#/components/schemas/WorkflowApprovalStatus"
+            - type: "null"
+        errorCode:
+          oneOf:
+            - $ref: "#/components/schemas/WorkflowErrorCode"
+            - type: "null"
+        errorMessage:
+          type: [string, "null"]
+          maxLength: 500
+        resultStatus:
+          $ref: "#/components/schemas/WorkflowResultStatus"
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: [string, "null"]
+          format: date-time
+        finishedAt:
+          type: [string, "null"]
+          format: date-time
+        durationMs:
+          type: [integer, "null"]
+          minimum: 0
+        retentionExpiresAt:
+          type: string
+          format: date-time
+    WorkflowNodeRun:
+      type: object
+      required: [id, nodeId, nodeType, name, status, attempt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        nodeId:
+          type: string
+        nodeType:
+          $ref: "#/components/schemas/WorkflowNodeType"
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/WorkflowNodeStatus"
+        attempt:
+          type: integer
+          minimum: 1
+        startedAt:
+          type: [string, "null"]
+          format: date-time
+        finishedAt:
+          type: [string, "null"]
+          format: date-time
+        durationMs:
+          type: [integer, "null"]
+          minimum: 0
+        outputSummary:
+          type: [string, "null"]
+          maxLength: 2000
+        errorCode:
+          oneOf:
+            - $ref: "#/components/schemas/WorkflowErrorCode"
+            - type: "null"
+        errorMessage:
+          type: [string, "null"]
+          maxLength: 500
+        approvalId:
+          type: [string, "null"]
+          format: uuid
+        invocationId:
+          type: [string, "null"]
+          format: uuid
+      additionalProperties: false
+    WorkflowRunDetail:
+      allOf:
+        - $ref: "#/components/schemas/WorkflowRun"
+        - type: object
+          properties:
+            nodes:
+              type: array
+              items:
+                $ref: "#/components/schemas/WorkflowNodeRun"
+            approvals:
+              type: array
+              items:
+                $ref: "#/components/schemas/WorkflowApproval"
+            citations:
+              type: array
+              items:
+                $ref: "#/components/schemas/Citation"
+            result:
+              oneOf:
+                - $ref: "#/components/schemas/WorkflowResult"
+                - type: "null"
+    WorkflowResult:
+      type: object
+      required: [format, sizeBytes]
+      properties:
+        format:
+          type: string
+          enum: [TEXT, MARKDOWN, JSON]
+        text:
+          type: [string, "null"]
+          description: 最终结果文本；超过 5 MiB 时不保存（`resultStatus=OVER_LIMIT`）。
+        sizeBytes:
+          type: integer
+          minimum: 0
+        generatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    WorkflowRunPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/WorkflowRun"
+    WorkflowApproval:
+      type: object
+      required:
+        [
+          id,
+          workflowRunId,
+          workflowId,
+          nodeId,
+          nodeName,
+          status,
+          assigneeType,
+          actionKind,
+          planSha256,
+          requestedBy,
+          createdAt,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        workflowRunId:
+          type: string
+          format: uuid
+        workflowId:
+          type: string
+          format: uuid
+        workflowName:
+          type: [string, "null"]
+        nodeId:
+          type: string
+        nodeName:
+          type: string
+        status:
+          $ref: "#/components/schemas/WorkflowApprovalStatus"
+        assigneeType:
+          type: string
+          enum: [USER, ROLE]
+        assigneeRole:
+          type: [string, "null"]
+          enum: [TENANT_ADMIN, WORKFLOW_EDITOR, MEMBER, null]
+        assigneeUserIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        actionKind:
+          $ref: "#/components/schemas/WorkflowApprovalActionKind"
+        targetToolName:
+          type: [string, "null"]
+        paramsPreview:
+          type: object
+          maxProperties: 16
+          additionalProperties: true
+          description: 脱敏参数摘要；仅审批详情（assignee）返回；不返回完整参数、提示词、凭据或文档正文。运行详情对非 assignee 省略该字段。
+        planSha256:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+        requestedBy:
+          type: string
+          format: uuid
+        decidedBy:
+          type: [string, "null"]
+          format: uuid
+        decidedAt:
+          type: [string, "null"]
+          format: date-time
+        decisionComment:
+          type: [string, "null"]
+          maxLength: 500
+        createdAt:
+          type: string
+          format: date-time
+    WorkflowApprovalDetail:
+      allOf:
+        - $ref: "#/components/schemas/WorkflowApproval"
+        - type: object
+          properties:
+            selfApprovalBlocked:
+              type: boolean
+              description: 当前用户是运行发起人时为 true；界面不提供入口，直接调用 403。
+            documentReferenceCount:
+              type: integer
+              minimum: 0
+              description: 审批涉及的引用数量；正文按审批人 ACL 最小可见。
+    WorkflowApprovalPage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/WorkflowApproval"
+    WorkflowTemplate:
+      type: object
+      required: [id, name, scenario, source, visibility, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        scenario:
+          type: string
+          maxLength: 200
+        description:
+          type: [string, "null"]
+        source:
+          $ref: "#/components/schemas/WorkflowTemplateSource"
+        visibility:
+          $ref: "#/components/schemas/WorkflowTemplateVisibility"
+        ownerUserId:
+          type: [string, "null"]
+          format: uuid
+        builtInVersion:
+          type: [integer, "null"]
+          minimum: 1
+        latestBuiltInVersion:
+          type: [integer, "null"]
+          minimum: 1
+        upgradeAvailable:
+          type: boolean
+          description: M06b 升级提示；M06 恒为 false。
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    WorkflowTemplatePage:
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/WorkflowTemplate"
+    WorkflowRuntimeLimits:
+      type: object
+      required:
+        [
+          featureEnabled,
+          maxNodes,
+          maxSteps,
+          nodeTimeoutSeconds,
+          runTimeoutSeconds,
+          tenantConcurrency,
+          workflowConcurrency,
+          resultMaxBytes,
+          retentionDays,
+          retentionPolicy,
+          generatedAt,
+        ]
+      properties:
+        featureEnabled:
+          type: boolean
+        disabledReason:
+          type: [string, "null"]
+          maxLength: 200
+        maxNodes:
+          type: integer
+          minimum: 1
+        maxSteps:
+          type: integer
+          minimum: 1
+        nodeTimeoutSeconds:
+          type: object
+          required: [model, retrieval, mcp]
+          properties:
+            model:
+              type: integer
+              minimum: 1
+            retrieval:
+              type: integer
+              minimum: 1
+            mcp:
+              type: integer
+              minimum: 1
+          additionalProperties: false
+        runTimeoutSeconds:
+          type: integer
+          minimum: 1
+        tenantConcurrency:
+          type: integer
+          minimum: 1
+        workflowConcurrency:
+          type: integer
+          minimum: 1
+        resultMaxBytes:
+          type: integer
+          minimum: 1
+        retentionDays:
+          type: integer
+          minimum: 1
+        retentionPolicy:
+          $ref: "#/components/schemas/WorkflowRetentionPolicy"
+        generatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    WorkflowValidationIssue:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          $ref: "#/components/schemas/WorkflowValidationCode"
+        nodeId:
+          type: [string, "null"]
+        field:
+          type: [string, "null"]
+        message:
+          type: string
+          maxLength: 500
+      additionalProperties: false
+    WorkflowValidationResult:
+      type: object
+      required: [valid, issues]
+      properties:
+        valid:
+          type: boolean
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowValidationIssue"
+      additionalProperties: false
+    WorkflowCreateRequest:
+      type: object
+      anyOf:
+        - required: [name]
+        - required: [templateId]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: [string, "null"]
+          maxLength: 1000
+        templateId:
+          type: [string, "null"]
+          format: uuid
+      additionalProperties: false
+    WorkflowDraftUpdateRequest:
+      type: object
+      required: [version, graph]
+      properties:
+        version:
+          type: integer
+          minimum: 1
+        name:
+          type: [string, "null"]
+          minLength: 1
+          maxLength: 200
+        description:
+          type: [string, "null"]
+          maxLength: 1000
+        graph:
+          $ref: "#/components/schemas/WorkflowGraph"
+      additionalProperties: false
+    WorkflowDuplicateRequest:
+      type: object
+      properties:
+        name:
+          type: [string, "null"]
+          minLength: 1
+          maxLength: 200
+      additionalProperties: false
+    WorkflowPublishRequest:
+      type: object
+      required: [runScope]
+      properties:
+        runScope:
+          $ref: "#/components/schemas/WorkflowRunScope"
+        departmentId:
+          type: [string, "null"]
+          format: uuid
+          description: "`runScope=DEPARTMENT` 必填；必须是发布人当前负责的启用部门。"
+      additionalProperties: false
+    WorkflowTransferRequest:
+      type: object
+      required: [ownerUserId]
+      properties:
+        ownerUserId:
+          type: string
+          format: uuid
+      additionalProperties: false
+    WorkflowRunCreateRequest:
+      type: object
+      required: [inputs]
+      properties:
+        versionId:
+          type: [string, "null"]
+          format: uuid
+          description: 默认最近发布版本；必须是该流程已发布版本。
+        inputs:
+          type: object
+          maxProperties: 16
+          additionalProperties: true
+          description: 运行输入；≤64 KiB，键/长度服务端校验。
+      additionalProperties: false
+    WorkflowRetryRequest:
+      type: object
+      required: [nodeId]
+      properties:
+        nodeId:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{1,64}$"
+      additionalProperties: false
+    WorkflowApprovalDecisionRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          $ref: "#/components/schemas/WorkflowApprovalDecision"
+        comment:
+          type: [string, "null"]
+          maxLength: 500
+          description: 拒绝时必填；进入审批记录与审计（≤500 字符）。
+      additionalProperties: false
+    WorkflowTemplateCopyRequest:
+      type: object
+      properties:
+        name:
+          type: [string, "null"]
+          minLength: 1
+          maxLength: 200
+      additionalProperties: false
     McpServer:
       type: object
       required: [id, code, name, transport, status]
