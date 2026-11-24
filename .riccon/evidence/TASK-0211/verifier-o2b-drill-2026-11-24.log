@@ -1,0 +1,56 @@
+DRILL_DIR=/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T//riccon-o2b-drill.nDSdSi
+PASS  隔离 MySQL 8.4.13 就绪
+PASS  drill schema 49 tables (49)
+PASS  drill schema append-only triggers (2)
+PASS  fixtures 7 connectors (7)
+PASS  dry-run exit 0 (0)
+PASS  dry-run counts 3/2/1/1/7
+PASS  dry-run 不含密文标记
+PASS  dry-run 不写审计 (0)
+PASS  apply#1 exit 0 (0)
+PASS  分批首轮 processed=1 audit=1 truncated=true 余 2
+PASS  首轮后到期无密文行=3（1 新置空 + 2 原本无密文） (3)
+PASS  首轮审计 1 条 (1)
+PASS  due-45d 三列置空 (1)
+PASS  apply#2 exit 0 (0)
+PASS  apply#2 processed=2 audit=2 余 0
+PASS  全量后审计 3 条 (3)
+PASS  重复 apply exit 0 (0)
+PASS  重复 apply 0 变更 0 审计
+PASS  重复 apply 不新增审计 (3)
+PASS  window-10d 未变 (1,1,1)
+PASS  ACTIVE 未变 (1,1,1)
+PASS  already-blank 未变 (0,0,0)
+PASS  ciphertext 为空但 key/hint 非空的行不被三类列覆盖 (0,1,1)
+PASS  三类到期行三列全部置空 (3)
+PASS  连接器行未被物理删除 (7)
+PASS  审计字段 SYSTEM/system/action/target/trace/schema (3)
+PASS  审计 target 覆盖 3 行 (3)
+PASS  每行恰好 1 条审计 (0)
+PASS  details 键严格等于白名单 4 键 (3)
+PASS  details 值为置空前 key/hint/type 且 connectorId=target (3)
+PASS  审计 details 不含密文标记
+PASS  occurred_at 为近期 UTC (0)
+PASS  CHECK 断言在 1!=0 时报错（临时表 CHECK 生效）
+PASS  回滚用例行已就绪 (1)
+PASS  审计写入失败时 apply exit 1 (1)
+PASS  审计失败整批回滚：三列未变 (1)
+PASS  审计失败未新增审计 (3)
+PASS  移除审计故障后 apply exit 0 (0)
+PASS  回滚行重跑后置空 (1)
+PASS  重跑后审计 4 条 (4)
+INFO  并发 apply 退出码: 0 / 0
+PASS  并发后两行均置空 (2)
+PASS  并发后审计共 6 条（+2） (6)
+PASS  并发无重复审计（每个 target 恰好 1 条） (0)
+PASS  并发至少一个成功完成
+PASS  空表 apply exit 0 (0)
+PASS  空表 processed=0
+PASS  空表无审计 (0)
+PASS  未知参数 exit 2 (2)
+PASS  --apply 与 --dry-run 互斥 exit 2 (2)
+PASS  client 模式缺 env exit 2 (2)
+PASS  隔离容器已清理 (0)
+-----
+DRILL_RESULT fail_count=0
+DRILL_DIR=/var/folders/jz/47nmh5g113sb1674f5q_ttqm0000gn/T//riccon-o2b-drill.nDSdSi
