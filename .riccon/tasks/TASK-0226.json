@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0226",
+  "module_id": "M06",
+  "title": "M06 T07a 审批模型/参数加密/assignee/决定",
+  "owner": "riccon/builder-b2",
+  "status": "planned",
+  "write_scope": [
+    "apps/worker/src/main/java/com/riccon/worker/workflow/approval/**",
+    "apps/worker/src/test/java/com/riccon/worker/workflow/approval/**"
+  ],
+  "acceptance": [
+    "实现 workflow_approval/assignee、参数 AES-GCM、params_sha256/plan_sha256、禁自批、WF_NO_APPROVER、决定幂等；AC-05/06/15/18；证据 IT-WF-108、SEC-WF-001。",
+    "审批人解析限本租户 ACTIVE 且非发起人；无审批人保持等待；参照 ADR §5；受影响测试通过。",
+    "高风险任务：done 前必须有独立 Verifier 任务级评审；只改 write_scope；不改 contracts/PRODUCT/AGENTS；不启动 M06b；提交后取证，任务只移到 review。"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-25T02:10:49.919+08:00",
+  "updated_at": "2026-11-25T02:10:49.919+08:00"
+}

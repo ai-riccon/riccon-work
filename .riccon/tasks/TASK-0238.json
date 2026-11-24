@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0238",
+  "module_id": "M06",
+  "title": "M06 T16b 回滚演练/5MiB 容量/包大小预检",
+  "owner": "riccon/verifier",
+  "status": "planned",
+  "write_scope": [
+    "scripts/ops/workflow-*.mjs"
+  ],
+  "acceptance": [
+    "交付 workflow-rollback-drill.mjs：无窗口回滚顺序断言、无数据允许在首次禁用前/独立空栈、有数据拒绝独立栈/备份夹具、近 5MiB result_json 插入容量报告、旧 Worker tag/digest；AC-23；证据 OPS-M06-01、IT-WF-110。",
+    "无法清零不得回滚 Worker；回滚后复断言；受支持回滚与 DEC-0047=A 一致。",
+    "高风险任务：done 前必须有独立 Verifier 任务级评审；只改 write_scope；不改 contracts/PRODUCT/AGENTS；不启动 M06b；提交后取证，任务只移到 review。"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-25T02:10:50.116+08:00",
+  "updated_at": "2026-11-25T02:10:50.116+08:00"
+}

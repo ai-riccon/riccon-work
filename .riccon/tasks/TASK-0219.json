@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0219",
+  "module_id": "M06",
+  "title": "M06 T01 契约/常量/V15 迁移/权限回填/审计白名单/启动守卫",
+  "owner": "riccon/builder-b1",
+  "status": "in_progress",
+  "write_scope": [
+    "platform/platform-domain/src/main/java/com/riccon/platform/domain/workflow/**",
+    "platform/platform-domain/src/main/java/com/riccon/platform/domain/identity/**",
+    "platform/platform-domain/src/main/java/com/riccon/platform/domain/audit/**",
+    "apps/api/src/main/resources/db/migration/V15__workflow_studio.sql",
+    "apps/api/src/main/java/com/riccon/api/audit/domain/AuditDetailsPolicy.java",
+    "apps/api/src/main/java/com/riccon/api/audit/domain/AuditDetailsReader.java",
+    "apps/api/src/main/java/com/riccon/api/identity/domain/RoleDefinitions.java",
+    "apps/api/src/main/java/com/riccon/api/workflow/web/**",
+    "apps/api/src/main/java/com/riccon/api/config/**",
+    "apps/api/src/main/resources/application.yml",
+    "apps/worker/src/main/resources/application.yml",
+    "apps/worker/src/main/java/com/riccon/worker/persistence/SchemaVersionChecker.java",
+    "apps/api/src/test/java/com/riccon/api/contract/WorkflowContractM06Test.java",
+    "apps/api/src/test/java/com/riccon/api/workflow/web/**",
+    "apps/api/src/test/java/com/riccon/api/config/**",
+    "apps/api/src/test/java/com/riccon/api/migration/**",
+    "apps/api/src/test/java/com/riccon/api/ApiApplicationTests.java",
+    "apps/worker/src/test/java/com/riccon/worker/persistence/SchemaVersionCheckerTest.java",
+    ".github/workflows/ci.yml",
+    "scripts/ops/restore-drill.mjs"
+  ],
+  "acceptance": [
+    "交付 V15 additive 迁移：9 张 workflow 表、workflow_version 不可变触发器、model_invocation 可空 workflow 引用与索引、WORKFLOW_EDITOR/权限回填、内置模板种子；V15MigrationTest 覆盖正向、触发器拒绝、种子/DML 二次执行幂等、无数据可 drop/有数据保留（应急 drop SQL 内联）",
+    "交付契约常量/枚举、权限码 workflow.read/edit/publish/run/approve/manage、WORKFLOW_EDITOR 角色与 RoleDefinitions、审计动作与 AuditDetailsPolicy/AuditDetailsReader 白名单（含 workflow.feature.changed 的 instanceId/observedAt）、WorkflowContractM06Test",
+    "交付 WorkflowPlatformTenantFilter（认证后、权限拦截器前对 platform 租户统一 404）与关闭态启动审计 fail-closed；worker schema 15、Hikari 默认 16、RICCON_WORKFLOW_* 配置键写入 application.yml；现有 J1/J2 行为不变",
+    "同步 V15 联动断言：CI 触发器数、ApiApplicationTests 57/58 表与 4 触发器/15 迁移、SchemaVersionCheckerTest 15、restore-drill 15/4；受影响测试通过并记录命令/退出码/日志",
+    "高风险任务：done 前必须有独立 Verifier 任务评审；只改 write_scope；不改 contracts/PRODUCT/AGENTS；不启动 M06b；提交后取证，任务只移到 review"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-25T02:09:09.909+08:00",
+  "updated_at": "2026-11-25T02:09:34.450+08:00",
+  "baseline_commit": "7f8cedc"
+}

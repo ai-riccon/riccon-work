@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0223",
+  "module_id": "M06",
+  "title": "M06 T05 运行准入/创建/取消/重试 API、配额与并发计数",
+  "owner": "riccon/builder-b1",
+  "status": "planned",
+  "write_scope": [
+    "apps/api/src/main/java/com/riccon/api/workflow/run/**",
+    "apps/api/src/test/java/com/riccon/api/workflow/run/**"
+  ],
+  "acceptance": [
+    "实现运行创建/准入/取消/重试、M04 配额按运行 1 单位、并发上限 429、kill switch 503、幂等键；AC-03/04/15/17/23；证据 IT-WF-109/110。",
+    "复用 QuotaAdmissionService 锁顺序；不新增 token/成本配额（DEC-0048=A）；参照 ADR §4.8/§6.2；受影响测试通过。",
+    "高风险任务：done 前必须有独立 Verifier 任务级评审；只改 write_scope；不改 contracts/PRODUCT/AGENTS；不启动 M06b；提交后取证，任务只移到 review。"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-25T02:10:49.864+08:00",
+  "updated_at": "2026-11-25T02:10:49.864+08:00"
+}

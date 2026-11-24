@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0224",
+  "module_id": "M06",
+  "title": "M06 T06a 运行队列/租约/调度池/心跳",
+  "owner": "riccon/builder-b2",
+  "status": "planned",
+  "write_scope": [
+    "apps/worker/src/main/java/com/riccon/worker/workflow/queue/**",
+    "apps/worker/src/main/java/com/riccon/worker/workflow/heartbeat/**",
+    "apps/worker/src/test/java/com/riccon/worker/workflow/queue/**",
+    "apps/worker/src/test/java/com/riccon/worker/workflow/heartbeat/**"
+  ],
+  "acceptance": [
+    "实现 workflow_run 持久队列：每槽位 claim batch=1、先启动心跳、独立调度池、心跳池≥并发、interval≤lease/3、启动校验、重复领取防护、WF_INTERNAL 终态；AC-04/17；证据 IT-WF-103、OPS-M06-01。",
+    "claim SELECT 仅 4 列、非法 tenant fail-closed、claim 失败指标/denied；不触碰 J2 outbox；参照 ADR §4.3/§10.1；受影响测试通过。",
+    "高风险任务：done 前必须有独立 Verifier 任务级评审；只改 write_scope；不改 contracts/PRODUCT/AGENTS；不启动 M06b；提交后取证，任务只移到 review。"
+  ],
+  "evidence": [],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-25T02:10:49.885+08:00",
+  "updated_at": "2026-11-25T02:10:49.885+08:00"
+}
