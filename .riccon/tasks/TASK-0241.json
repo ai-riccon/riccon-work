@@ -4,7 +4,7 @@
   "module_id": "M06",
   "title": "M06 T04b 幂等契约收敛与 validate runScope",
   "owner": "riccon/builder-b2",
-  "status": "in_progress",
+  "status": "review",
   "write_scope": [
     "apps/api/src/main/java/com/riccon/api/workflow/publish/**",
     "apps/api/src/main/java/com/riccon/api/workflow/definition/**",
@@ -19,10 +19,22 @@
     "F-002：POST /workflows/{id}/validate 增加可选 runScope/departmentId；DEPARTMENT 必须带 departmentId，非 DEPARTMENT 带 departmentId 返回 400；带范围时复用 publish 的范围校验，省略时只校验图/审批可达；只读不改 draftVersion、不写审计。",
     "测试：publish 缺失/带可选键、create/duplicate 可选键、validate 范围组合（ONLY_SELF/DEPARTMENT/TENANT、缺 departmentId、非法 departmentId）、与 publish 同口径；T03/T04 既有测试回归；不改 V15/schema/PRODUCT/AGENTS；高风险任务 done 前独立 Verifier 评审。"
   ],
-  "evidence": [],
-  "tools_used": [],
+  "evidence": [
+    "EV-1034",
+    "EV-1035"
+  ],
+  "tools_used": [
+    "codegraph",
+    "serena",
+    "read",
+    "grep",
+    "shell",
+    "maven",
+    "docker"
+  ],
   "blocker": null,
   "created_at": "2026-11-25T06:40:11.325+08:00",
-  "updated_at": "2026-11-25T06:49:16.640+08:00",
-  "baseline_commit": "219e196"
+  "updated_at": "2026-11-25T07:09:52.877+08:00",
+  "baseline_commit": "219e196",
+  "end_commit": "c1f8f19"
 }
