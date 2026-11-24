@@ -13,6 +13,9 @@ import com.riccon.worker.parse.domain.ParseSummary;
 import com.riccon.worker.parse.domain.ParsedChunk;
 import com.riccon.worker.persistence.TenantJdbc;
 import com.riccon.worker.persistence.UuidBinary;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -67,7 +70,7 @@ public class KnowledgeRepository {
         return tenantJdbc.queryOne(
                 tenantId,
                 """
-                SELECT title, file_id, status, visibility, department_id, acl_version,
+                SELECT title, file_id, created_at, status, visibility, department_id, acl_version,
                        source_type, connector_id, parse_engine
                   FROM knowledge_document
                  WHERE tenant_id = :tenantId
@@ -78,6 +81,7 @@ public class KnowledgeRepository {
                         documentId,
                         rs.getString("title"),
                         rs.getBytes("file_id") == null ? null : UuidBinary.fromBytes(rs.getBytes("file_id")),
+                        toInstant(rs.getObject("created_at", LocalDateTime.class)),
                         KnowledgeDocumentStatus.valueOf(rs.getString("status")),
                         KnowledgeVisibility.valueOf(rs.getString("visibility")),
                         rs.getBytes("department_id") == null
@@ -349,6 +353,16 @@ public class KnowledgeRepository {
             return null;
         }
         return new BoundingBox(xValue, yValue, widthValue, heightValue);
+    }
+
+    /**
+     * 把数据库 UTC 时间列转换为 {@link Instant}；{@code DATETIME(6)} 不带时区，按 UTC 解释。
+     *
+     * @param value 数据库时间
+     * @return UTC 时刻；空值返回空
+     */
+    private static Instant toInstant(LocalDateTime value) {
+        return value == null ? null : value.toInstant(ZoneOffset.UTC);
     }
 
     /**

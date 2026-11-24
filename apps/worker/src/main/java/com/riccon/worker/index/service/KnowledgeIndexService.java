@@ -3,9 +3,11 @@ package com.riccon.worker.index.service;
 import com.riccon.platform.common.tenant.TenantContext;
 import com.riccon.platform.common.tenant.TenantId;
 import com.riccon.platform.domain.contract.EventTypes;
+import com.riccon.platform.domain.file.FileFormat;
 import com.riccon.platform.domain.knowledge.KnowledgeDocumentStatus;
 import com.riccon.platform.domain.knowledge.KnowledgeIndexMode;
 import com.riccon.platform.domain.research.RunKind;
+import com.riccon.worker.connector.domain.ConnectorContentTypes;
 import com.riccon.worker.index.domain.EmbeddingModel;
 import com.riccon.worker.index.domain.IndexException;
 import com.riccon.worker.index.domain.KnowledgeChunkRecord;
@@ -16,7 +18,9 @@ import com.riccon.worker.parse.domain.ParseException;
 import com.riccon.worker.parse.domain.ParsedChunk;
 import com.riccon.worker.parse.domain.ParsedContent;
 import com.riccon.worker.parse.repository.FileRepository;
+import com.riccon.worker.parse.service.DocumentParserRegistry;
 import com.riccon.worker.parse.service.FileContentExtractor;
+import com.riccon.worker.parse.service.S3FileContentReader;
 import com.riccon.worker.parse.service.TextChunker;
 import com.riccon.worker.run.domain.ClaimedOutboxEvent;
 import com.riccon.worker.run.domain.EventProcessingException;
@@ -62,6 +66,12 @@ public class KnowledgeIndexService implements OutboxEventHandler {
     /** 文件内容抽取器。 */
     private final FileContentExtractor contentExtractor;
 
+    /** 平台对象读取器；连接器文档不使用 file 表与连接器源桶。 */
+    private final S3FileContentReader contentReader;
+
+    /** 解析器注册表；与 {@link FileContentExtractor} 共用同一解析实现。 */
+    private final DocumentParserRegistry parserRegistry;
+
     /** 文本切分器。 */
     private final TextChunker textChunker;
 
@@ -80,6 +90,8 @@ public class KnowledgeIndexService implements OutboxEventHandler {
      * @param knowledgeRepository 知识库仓库
      * @param fileRepository 文件仓库
      * @param contentExtractor 内容抽取器
+     * @param contentReader 平台对象读取器
+     * @param parserRegistry 解析器注册表
      * @param textChunker 文本切分器
      * @param embeddingModel 向量模型
      * @param indexClient OpenSearch 客户端
@@ -89,6 +101,8 @@ public class KnowledgeIndexService implements OutboxEventHandler {
             KnowledgeRepository knowledgeRepository,
             FileRepository fileRepository,
             FileContentExtractor contentExtractor,
+            S3FileContentReader contentReader,
+            DocumentParserRegistry parserRegistry,
             TextChunker textChunker,
             EmbeddingModel embeddingModel,
             OpenSearchIndexClient indexClient,
@@ -96,6 +110,8 @@ public class KnowledgeIndexService implements OutboxEventHandler {
         this.knowledgeRepository = Objects.requireNonNull(knowledgeRepository, "knowledgeRepository must not be null");
         this.fileRepository = Objects.requireNonNull(fileRepository, "fileRepository must not be null");
         this.contentExtractor = Objects.requireNonNull(contentExtractor, "contentExtractor must not be null");
+        this.contentReader = Objects.requireNonNull(contentReader, "contentReader must not be null");
+        this.parserRegistry = Objects.requireNonNull(parserRegistry, "parserRegistry must not be null");
         this.textChunker = Objects.requireNonNull(textChunker, "textChunker must not be null");
         this.embeddingModel = Objects.requireNonNull(embeddingModel, "embeddingModel must not be null");
         this.indexClient = Objects.requireNonNull(indexClient, "indexClient must not be null");
@@ -295,26 +311,82 @@ public class KnowledgeIndexService implements OutboxEventHandler {
     }
 
     /**
-     * 从来源文件或已有 MySQL 分块加载待索引文本与解析元数据。
+     * 从来源文件、连接器对象或已有 MySQL 分块加载待索引文本与解析元数据。
+     *
+     * <p>三条来源互斥：UPLOAD 走 file 表与 {@link FileContentExtractor}；连接器文档没有 file 行，
+     * 按 {@code tenants/{tenantId}/connector/{yyyy}/{documentId}} 读取平台桶并走同一解析器与切分器；
+     * SEED/无来源文档才回退到既有分块。连接器对象缺失或解析失败必须失败，不能落进 SEED 路径。
      *
      * @param tenantId 当前租户
      * @param document 文档快照
      * @return 分块与解析结果；无源文件时分块来自 MySQL、解析结果为空
      */
     private LoadedDocument loadDocument(TenantId tenantId, KnowledgeDocumentRecord document) {
-        if (document.fileId() == null) {
-            return new LoadedDocument(
-                    knowledgeRepository.findChunks(tenantId, document.id()).stream()
-                            .map(KnowledgeIndexService::toParsedChunk)
-                            .toList(),
-                    null);
+        if (document.fileId() != null) {
+            FileRecord file = fileRepository
+                    .findFile(tenantId, document.fileId())
+                    .orElseThrow(() -> new EventProcessingException(
+                            WorkerErrorCodes.TENANT_NOT_FOUND, false, "knowledge source file not found"));
+            ParsedContent content = contentExtractor.extract(tenantId, file);
+            return new LoadedDocument(textChunker.chunk(content), content);
         }
-        FileRecord file = fileRepository
-                .findFile(tenantId, document.fileId())
-                .orElseThrow(() -> new EventProcessingException(
-                        WorkerErrorCodes.TENANT_NOT_FOUND, false, "knowledge source file not found"));
-        ParsedContent content = contentExtractor.extract(tenantId, file);
+        if (document.connectorId() != null) {
+            return loadConnectorDocument(tenantId, document);
+        }
+        return new LoadedDocument(
+                knowledgeRepository.findChunks(tenantId, document.id()).stream()
+                        .map(KnowledgeIndexService::toParsedChunk)
+                        .toList(),
+                null);
+    }
+
+    /**
+     * 读取连接器文档的平台桶对象并解析。
+     *
+     * <p>连接器文档 {@code file_id} 为空、{@code connector_id} 非空；原文在平台桶，key 由
+     * {@link S3FileContentReader#readConnector} 按租户与文档 ID 派生，不访问连接器源桶或凭据。
+     * 对象一次性读入后交给与 {@link FileContentExtractor} 相同的解析器注册表，避免为复用下载入口
+     * 再读取一次；后续分块沿用同一 {@link TextChunker}。
+     *
+     * @param tenantId 当前租户
+     * @param document 文档快照
+     * @return 分块与解析结果
+     */
+    private LoadedDocument loadConnectorDocument(TenantId tenantId, KnowledgeDocumentRecord document) {
+        String title = document.title() == null ? "" : document.title();
+        String extension = ConnectorContentTypes.extension(title);
+        // 先按标题扩展名选择解析器，再读取对象；不支持的格式不产生无意义下载。
+        FileFormat format = connectorFormat(extension);
+        byte[] bytes = contentReader.readConnector(tenantId, document.id(), document.createdAt());
+        FileRecord file = new FileRecord(
+                document.id(),
+                title,
+                format,
+                ConnectorContentTypes.mimeType(extension),
+                bytes.length,
+                S3FileContentReader.connectorObjectKey(tenantId, document.id(), document.createdAt()));
+        ParsedContent content = parserRegistry.parse(file, bytes);
         return new LoadedDocument(textChunker.chunk(content), content);
+    }
+
+    /**
+     * 把连接器对象扩展名映射为解析格式。
+     *
+     * <p>连接器同步白名单包含 {@code txt}/{@code md}，但文件解析域目前没有纯文本格式与解析器；
+     * 这里按不可解析失败处理并保留稳定错误码，不静默跳过或伪造索引内容。
+     *
+     * @param extension 小写扩展名
+     * @return 解析格式
+     */
+    private static FileFormat connectorFormat(String extension) {
+        return switch (extension) {
+            case "pdf" -> FileFormat.PDF;
+            case "docx" -> FileFormat.DOCX;
+            case "xlsx" -> FileFormat.XLSX;
+            case "png" -> FileFormat.PNG;
+            case "jpg", "jpeg" -> FileFormat.JPEG;
+            default -> throw ParseException.unprocessable("connector document format is not parseable", null);
+        };
     }
 
     /**
