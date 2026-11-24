@@ -7,7 +7,7 @@ reviewer:
   session: ses_df563b2e6ffeVjF7cCHZYTDmmN
   model: opencode-go/deepseek-v4.1-flash
   independent: true
-verdict: fail
+verdict: pass
 reviewed_commits:
   - 81bd9c6a5383289edb3719f253f6ee4feb4d0380
   - 85878b71f1fa3a84fd99c25904490cb9ca11692a
@@ -19,12 +19,14 @@ reviewed_commits:
   - 38852d71729053b2ff133157ecb8ef289e69f919
   - e30c1b9f30b521040b1d807c8a2bb90e9283309d
   - d2a0d9376494525669d5cd16380e092107337bc9
-head_commit: d2a0d9376494525669d5cd16380e092107337bc9
+  - 275e14a49f473a3377fa57285bda5ff40659a37b
+  - 1e833ba601a5793f263fa1d6a2c157812075c189
+head_commit: ad4063306cf5b2794697213f22c6b95787f32693
 baseline_commit: 81bd9c6a5383289edb3719f253f6ee4feb4d0380
 dod:
   acceptance: true
   build: true
-  tests: false
+  tests: true
   security: true
   review: true
   evidence: true
@@ -36,11 +38,11 @@ dod_not_applicable:
   - accessibility
   - docs
 dod_note: >-
-  第三轮 delta 复核：F-001/F-002（P1）与 F-003..F-018 的功能修复均已核对，EV-0979/0980/0981
-  及 verifier 独立复跑均通过；acceptance/build/security/review/evidence 可判 true。tests 仍为 false：
-  F-013 的唯一剩余点是 F-018 的“已存在删除事件”测试使用 `@MockitoBean ConnectorEventPublisher`，
-  实际未调用生产 `enqueueDelete`/`hasDeleteIndexEvent`，属于假绿；补真实 publisher 路径测试前不能判 pass。
-  coverage/e2e/migration/perf/a11y/docs 由 M25 模块 gate/其他任务承接。
+  最终聚焦复核：F-001/F-002（P1）与 F-003..F-018 的功能修复均已核对；F-013 的假绿测试已通过
+  `275e14a` 改为 `@MockitoSpyBean` 并真实执行 `enqueueDelete`/`hasDeleteIndexEvent`，聚焦测试
+  3/0/0/0、Worker 全 36/0/0/0、API 22/0/0/0、ArchUnit 12/0/0/0。所有 P0/P1/P2 已 fixed，P3 均
+  fixed 或 accepted（F-008/F-011/F-012 accepted），故 acceptance/build/tests/security/review/evidence
+  均可判 true。coverage/e2e/migration/perf/a11y/docs 由 M25 模块 gate/其他任务承接。
 reviewed_evidence:
   - EV-0967
   - EV-0968
@@ -57,6 +59,7 @@ reviewed_evidence:
   - EV-0979
   - EV-0980
   - EV-0981
+  - EV-0982
 evidence:
   - EV-0967
   - EV-0968
@@ -73,6 +76,7 @@ evidence:
   - EV-0979
   - EV-0980
   - EV-0981
+  - EV-0982
 findings:
   - id: F-001
     severity: P1
@@ -255,23 +259,22 @@ findings:
       :394-402；apps/worker/src/main/java/com/riccon/worker/connector/persistence/ConnectorJdbc.java:195-215。
   - id: F-013
     severity: P2
-    status: open
+    status: fixed
     owner: riccon/builder-kb-connector
-    due: TASK-0204 done 前
-    title: "F-018 的 existing delete event 测试使用 Mockito mock，未验证生产 enqueueDelete 幂等"
+    due: fixed in 275e14a
+    title: "F-018 existing delete event 测试改为 MockitoSpyBean，真实执行 publisher 幂等分支"
     summary: >-
-      本轮已补 F-016 sync 路径事件失败/重试、F-007 支持对象截断页、F-014 掩码、F-015 updated_at、
-      F-017 删除后写入回滚等测试；但 `ConnectorDeletePropagationIntegrationTest` 类级使用
-      `@MockitoBean ConnectorEventPublisher eventPublisher`，新增的
-      `propagate_existingDeleteEventIsIdempotent` 只预插 outbox 行并调用 `propagate`，实际
-      `eventPublisher.enqueueDelete` 是 mock，完全不执行生产 `hasDeleteIndexEvent`/`enqueueDelete`
-      分支。该测试因此不能证明 F-018“已存在事件不重复插入 outbox”的生产行为。需要改为
-      `@MockitoSpyBean`（或独立真实 publisher 测试）并断言真实 outbox 唯一键/已存在路径。
+      `ConnectorDeletePropagationIntegrationTest` 把 `ConnectorEventPublisher` 从 `@MockitoBean`
+      改为 `@MockitoSpyBean`，并把 `ConnectorRepository` 也改成 spy；`enqueueDelete` 默认执行真实
+      `hasDeleteIndexEvent` + 提前返回分支，事件失败用例仍显式 `doThrow`。现有用例通过
+      `verify(eventPublisher).enqueueDelete(...)` 与 `verify(connectorRepository).hasDeleteIndexEvent(...)`
+      证明真实 publisher 路径被调用，且 outbox 行数保持 1（不重复插入）。聚焦测试
+      3/0/0/0、Worker 全量 36/0/0/0，均 exit 0；EV-0980/EV-0982。
     evidence: >-
-      apps/worker/src/test/java/com/riccon/worker/connector/ConnectorDeletePropagationIntegrationTest.java:35-40
-      （`@MockitoBean ConnectorEventPublisher`）、:83-128（测试本身）；
+      apps/worker/src/test/java/com/riccon/worker/connector/ConnectorDeletePropagationIntegrationTest.java:38-45
+      （SpyBean 声明）、:83-130（真实幂等用例与 verify）；
       apps/worker/src/main/java/com/riccon/worker/connector/service/ConnectorEventPublisher.java:100-120；
-      `grep -R "enqueueDelete" apps/worker/src/test/java/com/riccon/worker/connector` 仅命中该 mock 调用。
+      EV-0980/EV-0982。
   - id: F-014
     severity: P3
     status: fixed
@@ -338,62 +341,67 @@ findings:
     title: "删除事件幂等：先查已有 outbox 事件，删除传播捕获 DuplicateKeyException"
     summary: >-
       `ConnectorEventPublisher.enqueueDelete` 先 `hasDeleteIndexEvent` 查询精确幂等键，存在则返回 null；
-      `ConnectorDeletePropagationService` 捕获 DuplicateKeyException 视为已存在。代码路径已覆盖；
-      但现有测试使用 mock publisher，未真正触发该分支（见 F-013）。
+      `ConnectorDeletePropagationService` 捕获 DuplicateKeyException 视为已存在。F-013 修复后，
+      `ConnectorDeletePropagationIntegrationTest` 的 SpyBean 真实执行该分支并断言 outbox 行数不增加。
     evidence: >-
       apps/worker/src/main/java/com/riccon/worker/connector/service/ConnectorEventPublisher.java:100-120；
       apps/worker/src/main/java/com/riccon/worker/connector/persistence/ConnectorJdbc.java:711-735；
       apps/worker/src/main/java/com/riccon/worker/connector/service/ConnectorDeletePropagationService.java:74-80；
-      EV-0974/EV-0977/EV-0980。
+      apps/worker/src/test/java/com/riccon/worker/connector/ConnectorDeletePropagationIntegrationTest.java:83-130；
+      EV-0980/EV-0982。
 test_impact: >-
-  第三轮 delta 独立复跑（HEAD d2a0d93，工作树无生产改动）：
-  API 指定 6 类（ConnectorCrud/CredentialSync/DocumentRead/ExternalIds/Credentials/KnowledgeAcl）→
-  exit 0，22 tests / 0 failures / 0 errors / 0 skipped（Crud 10、Credential 4、DocumentRead 1、
-  ExternalIds 1、Credentials 1、KnowledgeAcl 5）；
-  Worker `Connector*Test` → exit 0，36 tests / 0/0/0（Audit 1、DeletePropagation 3、DocumentWrite 2、
-  Domain 2、Endpoint 5、ObjectWriter 1、Properties 2、Budget 2、Completion 1、SyncIntegration 17）；
-  ArchUnit `ModuleBoundaryTest` → exit 0，12 tests / 0/0/0。
-  Lead 证据 EV-0979（API）、EV-0980（Worker 36）、EV-0981（ArchUnit）均 commit=e30c1b9、dirty=false、
-  exit 0，日志哈希与 JSON 一致。`git diff --name-status 9275eb0..38852d7` 共 12 文件，全部在
-  TASK-0204 写范围；`git diff --check 9275eb0..38852d7` exit 0；无 contracts/docs/deploy/migration 改动。
+  最终聚焦独立复跑（HEAD ad40633，工作树无生产改动）：
+  `ConnectorDeletePropagationIntegrationTest` 聚焦 → exit 0，3 tests / 0/0/0；
+  Worker `Connector*Test` 全量 → exit 0，36 tests / 0/0/0（Audit 1、DeletePropagation 3、
+  DocumentWrite 2、Domain 2、Endpoint 5、ObjectWriter 1、Properties 2、Budget 2、Completion 1、
+  SyncIntegration 17）；
+  此前 API 6 类独立复跑 → 22 tests / 0/0/0；ArchUnit → 12 tests / 0/0/0。
+  Lead 证据 EV-0979（API）、EV-0980（Worker 36）、EV-0981（ArchUnit）、EV-0982（F-013 修复后
+  Worker 36）均 exit 0、dirty=false；EV-0982 commit=1e833ba、日志哈希与 JSON 一致。
+  `git diff --name-status 38852d7..275e14a` 共 1 文件（仅 `ConnectorDeletePropagationIntegrationTest`），
+  无生产源码/contracts/docs/deploy/.riccon 改动；`git diff --check` exit 0。
   未运行 M25 全量 test/coverage/E2E/a11y/perf；所有定向测试未使用 skip/retry/额外串行参数。
 notes: >-
-  第三轮 delta 提交链：38852d7（父 9275eb0，12 文件）→ e30c1b9（merge）→ d2a0d93（状态/证据）。
-  原 F-001..F-018 的功能修复均已核对；唯一阻断点是 F-013 的 F-018 测试假绿：类级
-  `@MockitoBean ConnectorEventPublisher` 使 `propagate_existingDeleteEventIsIdempotent` 没有调用生产
-  `enqueueDelete`/`hasDeleteIndexEvent`，因此不能证明 F-018。F-018 生产代码本身有 pre-check + catch，
-  但并发重复键仍可能把当前事务标记 rollback-only（P3 残余，未阻断本轮）。F-010 的流式下载硬上限仍
-  依赖源端 list size 预检（P3 观察）。F-008 由 TASK-0214/DEC-0041 承接；F-011/F-012 accepted。
-  `riccon gate check --module M25` 仍 FAIL：TASK-0204 review、TASK-0205..0209/0211..0214 planned、
-  无模块 review；本任务 verdict=fail 仅因 F-013。未修改任务 status/源码/测试/契约。
+  最终提交链：275e14a（父 38852d7，仅 1 个测试文件）→ 1e833ba（merge）→ ad40633（状态/证据）。
+  F-013 的假绿已修复：`ConnectorDeletePropagationIntegrationTest` 使用 `@MockitoSpyBean` 真实执行
+  `ConnectorEventPublisher.enqueueDelete` 与 `ConnectorRepository.hasDeleteIndexEvent`，并用 verify
+  断言调用；事件失败用例仍保留 `doThrow`。F-018 生产 pre-check + catch 未改；并发重复键仍可能触发
+  rollback-only 的 P3 观察保留在剩余风险。F-010 的流式下载硬上限仍依赖源端 list size 预检（P3 观察）。
+  F-008 由 TASK-0214/DEC-0041 承接；F-011/F-012 accepted。`riccon gate check --module M25` 仍 FAIL：
+  TASK-0204 review（本 review 已 pass）、TASK-0205..0209/0211..0214 planned、无模块 review；
+  模块 gate 仍需全量合同证据。未修改任务 status/源码/测试/契约。
 created_at: "2026-11-24T08:08:00+08:00"
 ---
 
-# REV-TASK-0204-001：TASK-0204（M05b-B6 S3/OSS 连接器）独立评审（第三轮 delta 复核）
+# REV-TASK-0204-001：TASK-0204（M05b-B6 S3/OSS 连接器）独立评审（最终聚焦复核）
 
 ## 结论
 
-**不通过（fail）。** 第三轮返工 `38852d7` 已真实关闭 F-016/F-007/F-014/F-015/F-017/F-018 的生产代码问题；F-001/F-002 两个 P1 和第二轮 F-003/F-004/F-005/F-006/F-009/F-010 仍保持 fixed。独立复跑 API 22/0/0/0、Worker 36/0/0/0、ArchUnit 12/0/0/0。
+**通过（pass）。** 最后一轮 `275e14a` 仅修改 F-013 的测试：`ConnectorDeletePropagationIntegrationTest`
+把 `ConnectorEventPublisher` 改为 `@MockitoSpyBean`、`ConnectorRepository` 改为 spy，
+`propagate_existingDeleteEventIsIdempotent` 现在真实执行 `hasDeleteIndexEvent`/`enqueueDelete`，并用
+`verify` 断言真实 publisher 被调用、outbox 行数保持 1；事件失败回滚用例仍保留显式 `doThrow`。
 
-但 **F-013 仍 open P2**：F-018 的“已存在删除事件”测试所在类使用 `@MockitoBean ConnectorEventPublisher`，新增测试只预插 outbox 行并调用 `propagate`，实际 `enqueueDelete`/`hasDeleteIndexEvent` 是 mock，完全没有验证生产幂等分支。这是假绿，不能作为 F-018 的测试证据；在改为真实 publisher（或 `@MockitoSpyBean` 调用真实方法）前，不能判 pass。
+独立复跑：聚焦测试 3/0/0/0，Worker `Connector*Test` 全量 36/0/0/0，API 22/0/0/0，ArchUnit 12/0/0/0；
+所有 P0/P1/P2 已 fixed，P3 均 fixed 或 accepted（F-008/F-011/F-012 accepted），无 open finding。
 
 ## Delta 复核范围
 
-- `git diff --name-status 9275eb0..38852d7`：12 文件，全部在 TASK-0204 write_scope；无 contracts/docs/deploy/migration/.riccon 生产改动。
-- `git diff --check 9275eb0..38852d7`：exit 0。
-- 新变更：`ConnectorCredentials` 短掩码、`ConnectorJdbc` `lockSyncableConnector`/`claimDue`/`hasDeleteIndexEvent`、`ConnectorDocumentWriteService` 事务锁与 `createDocument` 接线、`ConnectorSyncService` 截断页与新文档路径、`ConnectorEventPublisher` 删除事件幂等，以及对应 API/Worker 测试。
-- 合并链：`38852d7`（父 `9275eb0`）→ `e30c1b9`（merge）→ `d2a0d93`（状态/证据）；当前 HEAD `d2a0d93` 与 `e30c1b9` 的 production 代码相同。
+- `git diff --name-status 38852d7..275e14a`：仅 1 个测试文件 `ConnectorDeletePropagationIntegrationTest.java`；无生产源码/contracts/docs/deploy/.riccon 改动。
+- `git diff --check 38852d7..275e14a`：exit 0。
+- F-013 变更：`ConnectorEventPublisher` 从 `@MockitoBean` 改为 `@MockitoSpyBean`；`ConnectorRepository` 改为 spy；existing-event 用例真实执行 publisher 幂等分支并 `verify`；失败用例保留 `doThrow`。
+- 合并链：`275e14a`（父 `38852d7`）→ `1e833ba`（merge）→ `ad40633`（状态/证据）；当前 HEAD `ad40633` 与 `1e833ba` 的 production 代码相同。
 
 ## 验证了什么
 
 - **F-016**：`ConnectorSyncService` 新文档路径已调用 `documentWriteService.createDocument`；`createDocument` `@Transactional` 内插入文档、item SYNCED、enqueueIndex。`createDocumentEventFailureRollsBackAndNextSyncRecovers` 走真实 SyncService，首次事件失败无文档/事件、第二次成功 1 文档/1 事件。
 - **F-007**：截断无 token 的检查移到对象循环之后；当前页 `a.pdf` 已处理并 touch/SYNCED，随后 `complete=false`/TRUNCATED，不传播删除。`truncatedWithoutToken` 用支持类型对象断言。
-- **F-013**：新测试覆盖 F-016/F-007 的 sync 路径；但 F-018 的 existing-event 测试是 mock，见 finding。
+- **F-013**：`ConnectorDeletePropagationIntegrationTest` 已改为 `@MockitoSpyBean`，真实执行 `hasDeleteIndexEvent`/`enqueueDelete`，`verify` 真实调用 + outbox 行数 1；聚焦 3/0/0/0。
 - **F-014**：`MIN_MASK_LENGTH=12`；`ConnectorCredentialsTest` 覆盖短 key。
 - **F-015**：`claimDue` 新增 `now`，`updated_at=:now`；调度测试断言 `updated_at < next_sync_at`。
 - **F-017**：`createDocument/updateDocument` 事务首步 `SELECT ... FOR UPDATE` 锁 connector + tenant ACTIVE；删除后写入测试回滚、item 保持 PENDING。
-- **F-018**：生产 `enqueueDelete` 有 `hasDeleteIndexEvent` 预查，`propagate` 捕获 DuplicateKeyException；但测试未走真实分支（F-013）。
-- **独立复跑**：API 22/0/0/0；Worker 36/0/0/0；ArchUnit 12/0/0/0；Lead EV-0979/0980/0981 均为 e30c1b9、dirty=false、exit 0。
+- **F-018**：生产 `enqueueDelete` 有 `hasDeleteIndexEvent` 预查，`propagate` 捕获 DuplicateKeyException；F-013 修复后测试真实走该分支。
+- **独立复跑**：聚焦 `ConnectorDeletePropagationIntegrationTest` 3/0/0/0；Worker 36/0/0/0；API 22/0/0/0；ArchUnit 12/0/0/0；Lead EV-0979/0980/0981/0982 均 exit 0，EV-0982 commit=1e833ba。
 - **未验证**：M25 全量 test/coverage/E2E/a11y/perf/security、真实浏览器/UI（无 UI 本任务）、真实客户源桶生产网络、F-008 下载（TASK-0214 未启动）。
 
 ## AC 对账（任务卡 7 条）
@@ -403,7 +411,7 @@ created_at: "2026-11-24T08:08:00+08:00"
 | 1. CRUD/凭据/测试/202/409/契约真实实现                                          | **pass** | F-002/F-005 已修；平台管理员 404、员工 403、他租户 404、PATCH 409、凭据掩码/加密、test/sync 均有测试。 |
 | 2. 首次/增量/ETag/未变化/完整 list 删除/tombstone/限额/PARTIAL/重试/last_sync_* | **pass** | EV-0974/0977/0980 全绿；F-007 截断页处理、F-016 新文档事务均已修。                                     |
 | 3. 端点 allowlist + SSRF                                                        | **pass** | API/Worker policy 同源，私网 DNS 正反例、元数据/链路本地、redirect、SDK 禁重定向均保留。               |
-| 4. 审计同事务 fail-closed/details 白名单/租户停用                               | **pass** | F-003 删除传播事务已修；F-018 生产幂等有 pre-check/catch，F-018 测试假绿见 F-013；F-011 accepted。     |
+| 4. 审计同事务 fail-closed/details 白名单/租户停用                               | **pass** | F-003 删除传播事务已修；F-018 生产幂等有 pre-check/catch，F-013 修复后真实 publisher 测试覆盖；F-011 accepted。 |
 | 5. 真实 RustFS/无泄露/调度/不改 contracts                                       | **pass** | 双桶测试真实通过；F-008 转 TASK-0214（accepted）；契约无改动。                                         |
 | 6. CONNECTOR 列表/详情 connectorId/externalId/UPLOAD null/读路径                | **pass** | API 读路径测试继续通过；F-009 两段 externalId 已修。                                                   |
 | 7. finishSync 与 sync.completed/sync.failed 同短事务 fail-closed                | **pass** | `ConnectorSyncCompletionService` `@Transactional` + 完成审计失败回滚测试继续通过。                     |
@@ -414,24 +422,25 @@ created_at: "2026-11-24T08:08:00+08:00"
 - 未运行真实浏览器/UI（本任务无 UI 改动）。
 - 未在真实客户源端点/源桶与平台桶分离的生产网络复现；双桶测试使用真实 RustFS 两个 bucket。
 - 未运行连接器下载（TASK-0214 未启动）。
-- 未复现 F-018 的并发 DuplicateKey 竞态；当前测试是 mock，属 F-013 假绿。
+- 未复现 F-018 的并发 DuplicateKey 竞态；常规幂等路径已由真实 publisher 测试覆盖。
 
 ## Findings
 
-详见 front matter。第三轮状态：
+详见 front matter。最终状态：
 
 - **P0/P1**：0 open；F-001/F-002 fixed。
-- **P2**：仅 F-013 open；F-003/F-004/F-005/F-006/F-007/F-016 fixed；F-008 accepted。
+- **P2**：F-003/F-004/F-005/F-006/F-007/F-016 fixed；F-008 accepted。
 - **P3**：F-009/F-010/F-014/F-015/F-017/F-018 fixed；F-011/F-012 accepted。
+- 无 open finding。
 
 ## 剩余风险与下一步
 
-1. **F-013（阻断）**：把 `ConnectorDeletePropagationIntegrationTest` 的事件 publisher 从 `@MockitoBean` 改为 `@MockitoSpyBean`（或独立测试 real `ConnectorEventPublisher`），真正执行 `hasDeleteIndexEvent`/`enqueueDelete`，断言已有事件不新增 outbox 行、propagate 成功；再删除 mock 对 existing-event 用例的影响。
-2. **F-018 并发残余**：pre-check + catch 已覆盖常规路径；并发重复键仍可能把当前事务标记 rollback-only，建议后续用 insert-if-absent/`INSERT IGNORE` 或独立事务，列为 P3 观察。
-3. **F-010 流式上限**：临时文件清理已 fixed；下载阶段仍依赖源端 list size 预检，极端不实 size 仍可能先写大临时文件，列为 P3 观察。
-4. **F-008**：TASK-0214 完成前 B7b 不应假设连接器下载可用；下载 key 必须与 B6 平台桶一致。
+1. **F-018 并发残余（P3 观察）**：常规幂等路径已由真实 publisher 测试覆盖；并发重复键仍可能把当前事务标记 rollback-only，建议后续用 insert-if-absent/`INSERT IGNORE` 或独立事务。
+2. **F-010 流式上限（P3 观察）**：临时文件清理已 fixed；下载阶段仍依赖源端 list size 预检，极端不实 size 仍可能先写大临时文件。
+3. **F-008**：TASK-0214 完成前 B7b 不应假设连接器下载可用；下载 key 必须与 B6 平台桶一致。
+4. **F-011/F-012**：accepted，M25 gate 前统一处理。
 5. M25 gate 仍需全量 test/coverage/E2E/a11y/perf/security；本任务定向证据只支撑 TASK-0204。
 
 ## Gate
 
-`riccon gate check --module M25` 当前 FAIL（预期）：TASK-0204 仍 review、TASK-0205..0209/0211..0214 planned、无模块 review。本任务自身 verdict=fail 仅因 F-013 的假绿测试；建议 Lead 在修复 F-013 后复核再标 done，不应在假绿测试存在时直接 done。B7b 的 F-008 残余仍由 TASK-0214 承接。
+`riccon gate check --module M25` 当前 FAIL（预期）：TASK-0204 仍 review、TASK-0205..0209/0211..0214 planned、无模块 review。本任务自身 verdict=pass，F-013 假绿已修复；建议 Lead 将 TASK-0204 标 done。模块 gate 仍需全量合同证据；B7b 的 F-008 残余由 TASK-0214 承接。
