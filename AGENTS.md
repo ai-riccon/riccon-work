@@ -32,7 +32,7 @@ product:
     - "agentscope Team/Workflow preview 的可视化编排（M06 自研 DAG Studio 属于 v1）"
   success_metrics:
     - "12 周内 M02（MVC）可演示"
-    - "24 周内完成 M02–M06（含 M10/M03b）私有化 v1"
+    - "24 周内完成 M02–M06（含 M06b/M26 与 M10/M03b）私有化 v1"
     - "MVC 旅程 J1/J2 E2E 通过，跨租户越权用例零漏检"
     - "假模型基准下首字 p95 不超过 3 秒"
     - "审计覆盖模型、工具、MCP 与权限变更"
@@ -67,7 +67,11 @@ product:
       status: done
     - id: M06
       title: "编排 Studio"
-      goal: "自研 DAG 可视化、模板、运行历史、审批节点"
+      goal: "Studio 核心：自研 DAG 可视化、版本发布、串行执行 + 条件分支、1 个内置模板、运行历史与审批节点"
+      status: planned
+    - id: M26
+      title: "M06b 模板库与共享纵深"
+      goal: "模板库、至少 2 个内置模板、升级提示与租户内共享；M06 用户验收后启动；alias M06b"
       status: planned
     - id: M07
       title: "MCP 网关纵深"
