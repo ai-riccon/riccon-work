@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0216",
+  "module_id": "M25",
+  "title": "M25 worker branch coverage 修复（连接器）",
+  "owner": "riccon/verifier-coverage",
+  "status": "done",
+  "write_scope": [
+    "apps/worker/src/test/java/**/connector/**",
+    "apps/api/src/test/java/**/connector/**"
+  ],
+  "acceptance": [
+    "worker branch ≥70%、line ≥80%（不降低/排除门槛，不排除 TesseractOcrEngine 生产类）",
+    "补 ConnectorObjectWriter/S3FileContentReader/ConnectorContentTypes/ConnectorSyncService 等低分支覆盖单测",
+    "external 热栈 full ./mvnw -q -T1C verify jacoco:report 通过（821 API + 662 worker 全绿、coverage check 通过）"
+  ],
+  "evidence": [
+    "EV-1013"
+  ],
+  "tools_used": [],
+  "blocker": null,
+  "created_at": "2026-11-24T16:22:25.866+08:00",
+  "updated_at": "2026-11-24T18:15:58.414+08:00",
+  "baseline_commit": "3191df5",
+  "end_commit": "1e11660"
+}
