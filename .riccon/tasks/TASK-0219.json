@@ -25,19 +25,38 @@
     "apps/api/src/test/java/com/riccon/api/ApiApplicationTests.java",
     "apps/worker/src/test/java/com/riccon/worker/persistence/SchemaVersionCheckerTest.java",
     ".github/workflows/ci.yml",
-    "scripts/ops/restore-drill.mjs"
+    "scripts/ops/restore-drill.mjs",
+    "apps/api/src/main/java/com/riccon/api/audit/service/AuditDetailsReader.java",
+    "apps/api/src/test/java/com/riccon/api/TenantIsolationTest.java",
+    "apps/api/src/test/java/com/riccon/api/identity/domain/RoleDefinitionsTest.java",
+    "platform/platform-domain/src/test/java/com/riccon/platform/domain/audit/AuditVocabularyTest.java",
+    "platform/platform-domain/src/test/java/com/riccon/platform/domain/identity/RoleCodesTest.java",
+    "apps/api/src/test/java/com/riccon/api/contract/ConnectorContractM05bTest.java",
+    "apps/api/src/test/java/com/riccon/api/contract/KnowledgeContractM05Test.java",
+    "apps/api/src/test/java/com/riccon/api/contract/ModelContract108aTest.java",
+    "apps/api/src/test/java/com/riccon/api/contract/ModelContract108bTest.java",
+    "apps/api/src/test/java/com/riccon/api/security/m04verify/M04V2VerifierBoundaryTest.java",
+    "apps/worker/src/main/java/com/riccon/worker/audit/domain/AuditDetailsPolicy.java",
+    "apps/worker/src/test/java/com/riccon/worker/audit/**"
   ],
   "acceptance": [
     "交付 V15 additive 迁移：9 张 workflow 表、workflow_version 不可变触发器、model_invocation 可空 workflow 引用与索引、WORKFLOW_EDITOR/权限回填、内置模板种子；V15MigrationTest 覆盖正向、触发器拒绝、种子/DML 二次执行幂等、无数据可 drop/有数据保留（应急 drop SQL 内联）",
     "交付契约常量/枚举、权限码 workflow.read/edit/publish/run/approve/manage、WORKFLOW_EDITOR 角色与 RoleDefinitions、审计动作与 AuditDetailsPolicy/AuditDetailsReader 白名单（含 workflow.feature.changed 的 instanceId/observedAt）、WorkflowContractM06Test",
     "交付 WorkflowPlatformTenantFilter（认证后、权限拦截器前对 platform 租户统一 404）与关闭态启动审计 fail-closed；worker schema 15、Hikari 默认 16、RICCON_WORKFLOW_* 配置键写入 application.yml；现有 J1/J2 行为不变",
     "同步 V15 联动断言：CI 触发器数、ApiApplicationTests 57/58 表与 4 触发器/15 迁移、SchemaVersionCheckerTest 15、restore-drill 15/4；受影响测试通过并记录命令/退出码/日志",
-    "高风险任务：done 前必须有独立 Verifier 任务评审；只改 write_scope；不改 contracts/PRODUCT/AGENTS；不启动 M06b；提交后取证，任务只移到 review"
+    "高风险任务：done 前必须有独立 Verifier 任务评审；只改 write_scope；不改 contracts/PRODUCT/AGENTS；不启动 M06b；提交后取证，任务只移到 review",
+    "写范围经 Lead 追认（2026-11-25）：为 1.6.0-m06 契约升级与 schema 15 更新既有契约/词汇/隔离/M04V2 测试；为 worker 审计写入登记 workflow 动作到 worker AuditDetailsPolicy；不改变生产行为/AC。"
   ],
-  "evidence": [],
-  "tools_used": [],
+  "evidence": [
+    "EV-1018"
+  ],
+  "tools_used": [
+    "serena",
+    "grep",
+    "read"
+  ],
   "blocker": null,
   "created_at": "2026-11-25T02:09:09.909+08:00",
-  "updated_at": "2026-11-25T02:09:34.450+08:00",
+  "updated_at": "2026-11-25T03:03:00.084+08:00",
   "baseline_commit": "7f8cedc"
 }
