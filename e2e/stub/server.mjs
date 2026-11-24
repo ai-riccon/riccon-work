@@ -151,6 +151,32 @@ const M05_RETENTION_EXPIRED = '2026-11-01T00:00:00+08:00';
 /** M05 失败文档的固定失败时间；用于详情“失败时间”断言。 */
 const M05_FAILED_AT = '2026-11-23T18:30:00+08:00';
 
+/** M05b 连接器合成 ID；E2E 只依赖这些稳定 UUID。 */
+const M05B_CONNECTOR_CONTRACTS = 'd5d5d5d5-d5d5-45d5-85d5-000000000001';
+const M05B_CONNECTOR_POLICY = 'd5d5d5d5-d5d5-45d5-85d5-000000000002';
+const M05B_CONNECTOR_FINANCE = 'd5d5d5d5-d5d5-45d5-85d5-000000000003';
+const M05B_CONNECTOR_BACKUP = 'd5d5d5d5-d5d5-45d5-85d5-000000000004';
+const M05B_CONNECTOR_OTHER_TENANT = 'd5d5d5d5-d5d5-45d5-85d5-000000000005';
+
+/** M05b 连接器导入的知识库文档 ID；用于删除传播的用户可见断言。 */
+const M05B_DOC_CONTRACT_Q3 = 'd6d6d6d6-d6d6-46d6-86d6-000000000001';
+const M05B_DOC_CONTRACT_Q4 = 'd6d6d6d6-d6d6-46d6-86d6-000000000002';
+const M05B_DOC_CONTRACT_OBSOLETE = 'd6d6d6d6-d6d6-46d6-86d6-000000000003';
+
+/** 部署允许列表中的端点 ID；stub 只做语义模拟，不代表真实部署配置。 */
+const M05B_ALLOWED_ENDPOINTS = new Set(['internal-s3', 'finance-s3', 'archive-s3']);
+
+/** 连接器凭据掩码；页面与审计只允许出现掩码，不能出现明文。 */
+const M05B_CREDENTIAL_MASK = 'AKIA…7F2';
+
+/** M05b 固定同步时间；让列表与条目抽屉的时间断言稳定（Asia/Shanghai）。 */
+const M05B_NEXT_SYNC = '2026-11-24T12:00:00+08:00';
+const M05B_SYNC_STARTED = '2026-11-23T09:00:00+08:00';
+const M05B_SYNC_FINISHED = '2026-11-23T09:04:12+08:00';
+const M05B_LAST_SUCCESS = '2026-11-22T09:04:12+08:00';
+const M05B_BACKUP_STARTED = '2026-11-23T18:25:00+08:00';
+const M05B_BACKUP_FINISHED = '2026-11-23T18:30:00+08:00';
+
 /**
  * E2E 登录账号表；key 为 `tenantCode/username`。
  *
@@ -227,6 +253,8 @@ const M03_CREDENTIALS = {
       'knowledge.read',
       'knowledge.manage',
       'knowledge.acl.manage',
+      'knowledge.connector.read',
+      'knowledge.connector.manage',
       'tenant.user.manage',
       'quota.read',
       'cost.read',
@@ -803,6 +831,8 @@ function createInitialState() {
     m04: createM04State(),
     // M05：知识库文档、ACL 与审计；由 /__stub__/m05-seed 填充。
     knowledge: { seeded: false, documents: [], audit: [] },
+    // M05b：连接器、同步条目与导入文档；由 /__stub__/m05b-seed 填充。
+    connectors: { seeded: false, connectors: [], items: [] },
   };
 }
 
@@ -1537,6 +1567,25 @@ function m05ScenarioCitation() {
         bbox: null,
         ocrConfidence: null,
         sourceStatus: 'DELETED',
+      };
+    case 'm05-citation-connector-updated':
+      return {
+        ordinal: 1,
+        sourceType: 'KNOWLEDGE',
+        knowledgeDocumentId: M05B_DOC_CONTRACT_Q3,
+        fileId: null,
+        chunkId: null,
+        title: 'q3-report.pdf',
+        snippet: '华东区第三季度销售额 128 万元，较上季度增长 18%。',
+        score: 0.86,
+        locatorType: 'PARAGRAPH',
+        sheetName: null,
+        cellRange: null,
+        pageNo: null,
+        paragraphNo: 2,
+        bbox: null,
+        ocrConfidence: null,
+        sourceStatus: 'UPDATED',
       };
     case 'm05-citation-no-source':
       return {
@@ -2525,6 +2574,19 @@ function handleControl(req, res, pathname, raw) {
   if (pathname === '/__stub__/m05-seed' && req.method === 'POST') {
     seedM05State();
     writeResult(res, json({ ok: true, documents: state.knowledge.documents.length }));
+    return true;
+  }
+  if (pathname === '/__stub__/m05b-seed' && req.method === 'POST') {
+    const body = readJson(raw);
+    seedM05bState(body?.empty === true);
+    writeResult(
+      res,
+      json({
+        ok: true,
+        connectors: state.connectors.connectors.length,
+        items: state.connectors.items.length,
+      }),
+    );
     return true;
   }
   if (pathname === '/__stub__/m05-audit' && req.method === 'GET') {
@@ -4507,6 +4569,319 @@ function seedM05State() {
 }
 
 /**
+ * 确保 M05b 页面需要的部门目录存在。
+ *
+ * 只填充部门与员工归属，不触碰会话/空间；与 M05 seed 的部门定义保持一致。
+ */
+function ensureM05bDepartments() {
+  if (state.departments.length > 0) {
+    return;
+  }
+  state.departments = [
+    {
+      id: M03_SALES_DEPARTMENT_ID,
+      tenantId: M03_TENANT_ACME,
+      name: '销售部',
+      status: 'ACTIVE',
+      managerUserId: M03_MANAGER_USER_ID,
+      createdAt: BASE_TIME,
+      updatedAt: BASE_TIME,
+    },
+    {
+      id: M03_MARKETING_DEPARTMENT_ID,
+      tenantId: M03_TENANT_ACME,
+      name: '市场部',
+      status: 'ACTIVE',
+      managerUserId: null,
+      createdAt: BASE_TIME,
+      updatedAt: BASE_TIME,
+    },
+    {
+      id: M03_ARCHIVED_DEPARTMENT_ID,
+      tenantId: M03_TENANT_ACME,
+      name: '综合部',
+      status: 'DISABLED',
+      managerUserId: null,
+      createdAt: BASE_TIME,
+      updatedAt: BASE_TIME,
+    },
+  ];
+  state.users = state.users.map((user) => {
+    if (user.id === M03_MEMBER_USER_ID || user.id === M03_MANAGER_USER_ID) {
+      return { ...user, departmentId: M03_SALES_DEPARTMENT_ID };
+    }
+    if (user.id === M03_OUTSIDER_USER_ID) {
+      return { ...user, departmentId: M03_MARKETING_DEPARTMENT_ID };
+    }
+    return user;
+  });
+}
+
+/**
+ * 填充 M05b 连接器合同桩数据；重复调用结果相同。
+ *
+ * 覆盖 ACTIVE/PAUSED/ERROR 三态、TENANT/DEPT 默认可见范围、已同步/部分成功/未同步/认证失败、
+ * 条目五态与一个其他租户连接器（用于跨租户 404）。导入文档同步写入知识库列表，
+ * 让删除传播的用户可见结果可用于 E2E 断言。
+ *
+ * @param {boolean} [empty] 是否只保留空列表，用于空态断言
+ */
+function seedM05bState(empty = false) {
+  ensureM05bDepartments();
+  const createdAt = BASE_TIME;
+  /**
+   * 构造连接器内部记录；未给出的字段使用 M05b 默认值。
+   *
+   * @param {object} overrides 覆盖字段
+   * @returns {object} 连接器记录
+   */
+  const connector = (overrides) => ({
+    tenantId: M03_TENANT_ACME,
+    type: 'S3',
+    status: 'PAUSED',
+    endpointId: 'internal-s3',
+    config: { bucket: 'sales-archive' },
+    defaultVisibility: 'TENANT',
+    defaultDepartmentId: null,
+    credentialMaskedHint: null,
+    credentialKeyId: null,
+    scheduleEnabled: false,
+    nextSyncAt: null,
+    lastSyncStartedAt: null,
+    lastSyncFinishedAt: null,
+    lastSyncStatus: null,
+    lastSyncComplete: false,
+    lastSuccessAt: null,
+    lastErrorCode: null,
+    lastSyncSummary: null,
+    createdBy: M03_ADMIN_USER_ID,
+    createdAt,
+    updatedAt: createdAt,
+    deletedAt: null,
+    ...overrides,
+  });
+
+  state.connectors.connectors = empty
+    ? []
+    : [
+        connector({
+          id: M05B_CONNECTOR_CONTRACTS,
+          name: '销售合同归档',
+          status: 'ACTIVE',
+          endpointId: 'internal-s3',
+          config: {
+            bucket: 'sales-archive',
+            prefix: 'contracts/2026/',
+            region: 'cn-north-1',
+            includeExtensions: ['pdf', 'docx'],
+            excludeGlobs: ['**/tmp/**'],
+          },
+          credentialMaskedHint: M05B_CREDENTIAL_MASK,
+          credentialKeyId: 'key-contracts-1',
+          scheduleEnabled: true,
+          nextSyncAt: M05B_NEXT_SYNC,
+          lastSyncStartedAt: M05B_SYNC_STARTED,
+          lastSyncFinishedAt: M05B_SYNC_FINISHED,
+          lastSyncStatus: 'PARTIAL',
+          lastSyncComplete: true,
+          lastSuccessAt: M05B_LAST_SUCCESS,
+          lastSyncSummary: {
+            scanned: 6,
+            created: 2,
+            updated: 1,
+            skipped: 1,
+            failed: 1,
+            deleted: 1,
+            complete: true,
+          },
+        }),
+        connector({
+          id: M05B_CONNECTOR_POLICY,
+          name: '制度归档（已同步）',
+          status: 'ACTIVE',
+          endpointId: 'internal-s3',
+          config: { bucket: 'policy-docs', prefix: 'policies/' },
+          credentialMaskedHint: 'AKIA…5D4',
+          credentialKeyId: 'key-policy-1',
+          scheduleEnabled: true,
+          nextSyncAt: M05B_NEXT_SYNC,
+          lastSyncStartedAt: '2026-11-23T08:00:00+08:00',
+          lastSyncFinishedAt: '2026-11-23T08:01:30+08:00',
+          lastSyncStatus: 'SUCCESS',
+          lastSyncComplete: true,
+          lastSuccessAt: '2026-11-23T08:01:30+08:00',
+          lastSyncSummary: {
+            scanned: 3,
+            created: 3,
+            updated: 0,
+            skipped: 0,
+            failed: 0,
+            deleted: 0,
+            complete: true,
+          },
+        }),
+        connector({
+          id: M05B_CONNECTOR_FINANCE,
+          name: '财务凭证归档',
+          endpointId: 'finance-s3',
+          config: { bucket: 'finance-vouchers', prefix: 'vouchers/' },
+          defaultVisibility: 'DEPT',
+          defaultDepartmentId: M03_SALES_DEPARTMENT_ID,
+        }),
+        connector({
+          id: M05B_CONNECTOR_BACKUP,
+          name: '年度备份（连接失败）',
+          status: 'ERROR',
+          endpointId: 'archive-s3',
+          config: { bucket: 'yearly-backup' },
+          credentialMaskedHint: 'AKIA…9K1',
+          credentialKeyId: 'key-backup-1',
+          lastSyncStartedAt: M05B_BACKUP_STARTED,
+          lastSyncFinishedAt: M05B_BACKUP_FINISHED,
+          lastSyncStatus: 'ERROR',
+          lastSyncComplete: false,
+          lastSuccessAt: M05B_LAST_SUCCESS,
+          lastErrorCode: 'KB_CONNECTOR_AUTH',
+          lastSyncSummary: {
+            scanned: 0,
+            created: 0,
+            updated: 0,
+            skipped: 0,
+            failed: 2,
+            deleted: 0,
+            complete: false,
+          },
+        }),
+        connector({
+          id: M05B_CONNECTOR_OTHER_TENANT,
+          tenantId: M03_TENANT_BETA,
+          name: 'Beta 租户连接器',
+          config: { bucket: 'beta-archive' },
+        }),
+      ];
+
+  /**
+   * 构造同步条目内部记录；sourceKey 只在 stub 内存中，响应只返回末段。
+   *
+   * @param {object} overrides 覆盖字段
+   * @returns {object} 条目记录
+   */
+  const item = (overrides) => ({
+    tenantId: M03_TENANT_ACME,
+    connectorId: M05B_CONNECTOR_CONTRACTS,
+    externalVersion: 'etag-1',
+    status: 'SYNCED',
+    documentId: null,
+    errorCode: null,
+    generation: 1,
+    lastSeenAt: M05B_SYNC_STARTED,
+    createdAt,
+    updatedAt: createdAt,
+    deletedAt: null,
+    ...overrides,
+  });
+
+  state.connectors.items = empty
+    ? []
+    : [
+        item({
+          id: 'e5e5e5e5-e5e5-45e5-85e5-000000000001',
+          sourceKey: 'contracts/2026/pending.pdf',
+          status: 'PENDING',
+          documentId: null,
+        }),
+        item({
+          id: 'e5e5e5e5-e5e5-45e5-85e5-000000000002',
+          sourceKey: 'contracts/2026/q3-report.pdf',
+          documentId: M05B_DOC_CONTRACT_Q3,
+        }),
+        item({
+          id: 'e5e5e5e5-e5e5-45e5-85e5-000000000003',
+          sourceKey: 'contracts/2026/q4-plan.docx',
+          externalVersion: 'etag-2',
+          documentId: M05B_DOC_CONTRACT_Q4,
+        }),
+        item({
+          id: 'e5e5e5e5-e5e5-45e5-85e5-000000000004',
+          sourceKey: 'contracts/2026/archive.zip',
+          status: 'SKIPPED',
+          errorCode: 'KB_CONNECTOR_TYPE_UNSUPPORTED',
+          documentId: null,
+        }),
+        item({
+          id: 'e5e5e5e5-e5e5-45e5-85e5-000000000005',
+          sourceKey: 'contracts/2026/broken.pdf',
+          status: 'FAILED',
+          errorCode: 'KB_CONNECTOR_OBJECT_FAILED',
+          documentId: null,
+        }),
+        item({
+          id: 'e5e5e5e5-e5e5-45e5-85e5-000000000006',
+          sourceKey: 'contracts/2026/obsolete.pdf',
+          status: 'DELETED',
+          generation: 2,
+          documentId: M05B_DOC_CONTRACT_OBSOLETE,
+          deletedAt: '2026-11-23T09:02:00+08:00',
+        }),
+      ];
+
+  // 连接器导入文档：让知识库列表能观察软删除传播，不影响 UPLOAD/SEED 文档。
+  state.knowledge.documents = state.knowledge.documents.filter(
+    (document) => document.sourceType !== 'CONNECTOR',
+  );
+  /**
+   * 构造连接器导入文档。
+   *
+   * @param {object} overrides 覆盖字段
+   * @returns {object} 知识库文档记录
+   */
+  const connectorDocument = (overrides) => ({
+    tenantId: M03_TENANT_ACME,
+    sourceType: 'CONNECTOR',
+    status: 'INDEXED',
+    checksum: pseudoSha256(overrides.id ?? 'connector-document'),
+    mimeType: 'application/pdf',
+    sizeBytes: 8192,
+    errorCode: null,
+    errorMessage: null,
+    indexedAt: createdAt,
+    failedAt: null,
+    createdAt,
+    visibility: 'TENANT',
+    departmentId: null,
+    userIds: [],
+    creatorUserId: M03_ADMIN_USER_ID,
+    parseEngine: 'PDFBOX',
+    warnings: [],
+    parseSummary: null,
+    sourceFileAccessLimited: false,
+    retentionExpiresAt: M05_RETENTION_EXPIRES,
+    retentionDays: 180,
+    retentionPolicy: 'DEPLOYMENT_DEFAULT',
+    deletedAt: null,
+    deletedReason: null,
+    connectorId: M05B_CONNECTOR_CONTRACTS,
+    ...overrides,
+  });
+  if (!empty) {
+    state.knowledge.documents.push(
+      connectorDocument({
+        id: M05B_DOC_CONTRACT_Q3,
+        title: 'q3-report.pdf',
+        connectorId: M05B_CONNECTOR_CONTRACTS,
+      }),
+      connectorDocument({
+        id: M05B_DOC_CONTRACT_Q4,
+        title: 'q4-plan.docx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        connectorId: M05B_CONNECTOR_CONTRACTS,
+      }),
+    );
+  }
+  state.connectors.seeded = true;
+}
+
+/**
  * 返回账号的有效权限；与 sessionInfo 的员工权限收敛保持一致。
  *
  * @param account 登录账号
@@ -5009,6 +5384,899 @@ function handleM05Api(req, res, url, raw, session) {
   return false;
 }
 
+/**
+ * 返回连接器响应的安全展示值。
+ *
+ * 只返回契约字段：不含凭据明文/密文、DEK、端点 URL、对象 key 或对象内容；
+ * bucket/prefix 只向有 `knowledge.connector.read` 的管理员返回。
+ *
+ * @param connector 连接器记录
+ * @returns OpenAPI Connector
+ */
+function m05bConnectorResponse(connector) {
+  return {
+    id: connector.id,
+    name: connector.name,
+    type: connector.type,
+    status: connector.status,
+    endpointId: connector.endpointId,
+    config: {
+      bucket: connector.config.bucket,
+      ...(connector.config.prefix ? { prefix: connector.config.prefix } : {}),
+      ...(connector.config.region ? { region: connector.config.region } : {}),
+      ...(connector.config.includeExtensions
+        ? { includeExtensions: [...connector.config.includeExtensions] }
+        : {}),
+      ...(connector.config.excludeGlobs
+        ? { excludeGlobs: [...connector.config.excludeGlobs] }
+        : {}),
+    },
+    defaultVisibility: connector.defaultVisibility,
+    defaultDepartmentId: connector.defaultDepartmentId ?? null,
+    credentialMaskedHint: connector.credentialMaskedHint ?? null,
+    scheduleEnabled: connector.scheduleEnabled,
+    nextSyncAt: connector.nextSyncAt ?? null,
+    lastSyncStartedAt: connector.lastSyncStartedAt ?? null,
+    lastSyncFinishedAt: connector.lastSyncFinishedAt ?? null,
+    lastSyncStatus: connector.lastSyncStatus ?? null,
+    lastSyncComplete: connector.lastSyncComplete,
+    lastSuccessAt: connector.lastSuccessAt ?? null,
+    lastErrorCode: connector.lastErrorCode ?? null,
+    lastSyncSummary: connector.lastSyncSummary ? { ...connector.lastSyncSummary } : null,
+    createdBy: connector.createdBy ?? null,
+    createdAt: connector.createdAt,
+    updatedAt: connector.updatedAt,
+  };
+}
+
+/**
+ * 把源对象 key 截成接口允许的展示值：末两段或 32 字符。
+ *
+ * @param externalId 完整源对象 key
+ * @returns 脱敏展示值
+ */
+function m05bDisplayExternalId(externalId) {
+  const segments = String(externalId ?? '')
+    .split('/')
+    .filter((segment) => segment.length > 0);
+  const tail = segments.length > 0 ? segments.slice(-2).join('/') : String(externalId ?? '');
+  return tail.length > 32 ? `…${tail.slice(-32)}` : tail;
+}
+
+/**
+ * 返回条目响应；不返回 bucket、端点或完整对象 key。
+ *
+ * @param item 条目记录
+ * @returns OpenAPI ConnectorItem
+ */
+function m05bItemResponse(item) {
+  return {
+    id: item.id,
+    externalId: m05bDisplayExternalId(item.sourceKey),
+    externalVersion: item.externalVersion ?? null,
+    status: item.status,
+    documentId: item.documentId ?? null,
+    generation: item.generation,
+    errorCode: item.errorCode ?? null,
+    lastSeenAt: item.lastSeenAt ?? null,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+    deletedAt: item.deletedAt ?? null,
+  };
+}
+
+/**
+ * 生成只含掩码的凭据提示。
+ *
+ * @param accessKeyId 访问键 ID
+ * @returns 掩码（首 4 末 3，或以省略号保留首末字符）
+ */
+function m05bMaskCredential(accessKeyId) {
+  const value = String(accessKeyId ?? '');
+  if (value.length <= 7) {
+    return `${value.slice(0, 1)}…${value.slice(-1)}`;
+  }
+  return `${value.slice(0, 4)}…${value.slice(-3)}`;
+}
+
+/**
+ * 写入一条 M05b 连接器合成审计；只供 E2E 断言动作序列。
+ *
+ * 不含凭据、Authorization 头、对象 key 或正文；details 只保留端点/桶/前缀摘要与计数。
+ *
+ * @param {string} action 审计动作
+ * @param {object} account 操作者
+ * @param {object} connector 目标连接器
+ * @param {object} [extra] 附加字段
+ */
+function m05bAudit(action, account, connector, extra = {}) {
+  state.knowledge.audit.push({
+    action,
+    targetType: 'KNOWLEDGE_CONNECTOR',
+    tenantId: account?.tenantId ?? null,
+    actorId: account?.userId ?? null,
+    actorName: account?.displayName ?? '系统',
+    targetId: connector?.id ?? null,
+    targetTitle: connector?.name ?? null,
+    reason: extra.reason ?? null,
+    result: 'SUCCESS',
+    createdAt: new Date().toISOString(),
+    details: extra.details ?? null,
+  });
+}
+
+/**
+ * 校验连接器配置；只实现 E2E 需要的形状校验。
+ *
+ * @param config 配置对象
+ * @returns 可读错误或 null
+ */
+function m05bValidateConfig(config) {
+  if (!config || typeof config !== 'object') {
+    return 'config is required.';
+  }
+  if (typeof config.bucket !== 'string' || config.bucket.trim().length === 0) {
+    return 'config.bucket is required.';
+  }
+  if (config.bucket.length > 255) {
+    return 'config.bucket is too long.';
+  }
+  if (config.includeExtensions && !Array.isArray(config.includeExtensions)) {
+    return 'config.includeExtensions must be an array.';
+  }
+  if (config.excludeGlobs && !Array.isArray(config.excludeGlobs)) {
+    return 'config.excludeGlobs must be an array.';
+  }
+  return null;
+}
+
+/**
+ * 校验默认可见范围；DEPT 必须指向本租户启用部门。
+ *
+ * @param account 当前账号
+ * @param visibility 可见范围
+ * @param departmentId 部门 ID
+ * @returns 可读错误或 null
+ */
+function m05bValidateVisibility(account, visibility, departmentId) {
+  if (!['TENANT', 'DEPT'].includes(visibility)) {
+    return 'defaultVisibility must be TENANT or DEPT.';
+  }
+  if (visibility === 'TENANT') {
+    return null;
+  }
+  if (!departmentId) {
+    return 'defaultDepartmentId is required.';
+  }
+  const department = findDepartment(account.tenantId, departmentId);
+  if (!department || department.status !== 'ACTIVE') {
+    return 'defaultDepartmentId must be an active department.';
+  }
+  return null;
+}
+
+/**
+ * 处理 M05b 连接器 API 子集。
+ *
+ * 只实现 E2E 需要的 8 个端点与权限语义：平台管理员统一 404（跨租户）、
+ * 同租户非 `knowledge.connector.read` 403、写操作要求 `knowledge.connector.manage`。
+ *
+ * @param req Node 请求
+ * @param res Node 响应
+ * @param url 解析后的 URL
+ * @param raw 请求体
+ * @param session 当前会话
+ * @returns 是否已处理
+ */
+function handleM05bApi(req, res, url, raw, session) {
+  const { pathname, searchParams } = url;
+  const method = req.method ?? 'GET';
+  if (!pathname.startsWith('/api/v1/knowledge/connectors')) {
+    return false;
+  }
+  const account = currentAccount(session);
+  if (!account) {
+    writeResult(res, problem(401, 'RICCON-AUTH-401', '未登录', '请先登录后再访问。'));
+    return true;
+  }
+  // 平台管理员没有连接器权限；即使持有租户连接器 ID 也必须统一 404，不泄露存在性。
+  if (account.persona === 'platform-admin') {
+    writeResult(
+      res,
+      problem(404, 'RICCON-TENANT-404', '连接器不存在', '连接器不存在或不属于当前租户。'),
+    );
+    return true;
+  }
+  const permissions = m05Permissions(account);
+  if (!permissions.includes('knowledge.connector.read')) {
+    writeResult(res, problem(403, 'RICCON-AUTH-403', '没有权限', '连接器仅向租户管理员开放。'));
+    return true;
+  }
+  /**
+   * 校验管理权限；只读账号可以查看，但不能配置、测试、同步或删除。
+   *
+   * @returns 403 响应或 null
+   */
+  const manageError = () =>
+    permissions.includes('knowledge.connector.manage')
+      ? null
+      : problem(403, 'RICCON-AUTH-403', '没有权限', '只有租户管理员可以配置连接器。');
+  const tenantConnectors = () =>
+    state.connectors.connectors.filter(
+      (connector) => connector.tenantId === account.tenantId && !connector.deletedAt,
+    );
+  const findConnector = (connectorId) =>
+    tenantConnectors().find((connector) => connector.id === connectorId) ?? null;
+  const collection = pathname === '/api/v1/knowledge/connectors';
+  const actionMatch =
+    /^\/api\/v1\/knowledge\/connectors\/([^/]+)\/(credential|test|sync|items)$/.exec(pathname);
+  const connectorMatch = /^\/api\/v1\/knowledge\/connectors\/([^/]+)$/.exec(pathname);
+
+  // 列表：只返回本租户未删除连接器；分页与 status/type 过滤。
+  if (collection && method === 'GET') {
+    if (scenario === 'm05b-list-403') {
+      writeResult(res, problem(403, 'RICCON-AUTH-403', '没有权限', '连接器仅向租户管理员开放。'));
+      return true;
+    }
+    if (scenario === 'm05b-list-404') {
+      writeResult(
+        res,
+        problem(404, 'RICCON-TENANT-404', '连接器不存在', '连接器不存在或不属于当前租户。'),
+      );
+      return true;
+    }
+    if (scenario === 'm05b-list-500') {
+      writeResult(res, problem(500, 'RICCON-COMMON-500', '服务暂不可用', '连接器列表暂时不可用。'));
+      return true;
+    }
+    if (scenario === 'm05b-list-503') {
+      writeResult(
+        res,
+        problem(
+          503,
+          'RICCON-KB-503',
+          '连接器不可用',
+          '连接器功能未启用或同步队列不可用，请联系部署管理员。',
+        ),
+      );
+      return true;
+    }
+    const pageNo = Math.max(1, Number.parseInt(searchParams.get('page') ?? '1', 10) || 1);
+    const size = Math.min(
+      100,
+      Math.max(1, Number.parseInt(searchParams.get('size') ?? '10', 10) || 10),
+    );
+    const status = searchParams.get('status');
+    const type = searchParams.get('type');
+    const items = tenantConnectors()
+      .filter((connector) => !status || connector.status === status)
+      .filter((connector) => !type || connector.type === type)
+      .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
+    const start = (pageNo - 1) * size;
+    writeResult(
+      res,
+      json({
+        page: pageNo,
+        size,
+        total: items.length,
+        totalPages: items.length === 0 ? 0 : Math.ceil(items.length / size),
+        items: items.slice(start, start + size).map(m05bConnectorResponse),
+      }),
+    );
+    return true;
+  }
+
+  // 创建：默认 PAUSED；defaultVisibility 必须显式；endpointId 必须命中部署允许列表。
+  if (collection && method === 'POST') {
+    const csrfError = requireCsrf(session, req);
+    if (csrfError) {
+      writeResult(res, csrfError);
+      return true;
+    }
+    const permissionError = manageError();
+    if (permissionError) {
+      writeResult(res, permissionError);
+      return true;
+    }
+    const body = readJson(raw);
+    if (!body || typeof body !== 'object') {
+      writeResult(res, problem(400, 'RICCON-KB-400', '参数无效', '请求体必须是 JSON 对象。'));
+      return true;
+    }
+    const knownFields = new Set([
+      'name',
+      'type',
+      'endpointId',
+      'config',
+      'defaultVisibility',
+      'defaultDepartmentId',
+      'scheduleEnabled',
+      'credential',
+    ]);
+    const unknownField = Object.keys(body).find((key) => !knownFields.has(key));
+    if (unknownField) {
+      writeResult(
+        res,
+        problem(400, 'RICCON-KB-400', '参数无效', `unknown field: ${unknownField}.`),
+      );
+      return true;
+    }
+    if (typeof body.name !== 'string' || body.name.trim().length === 0 || body.name.length > 120) {
+      writeResult(res, problem(400, 'RICCON-KB-400', '参数无效', 'name is required.'));
+      return true;
+    }
+    if (body.type !== 'S3') {
+      writeResult(res, problem(400, 'RICCON-KB-400', '参数无效', 'type must be S3.'));
+      return true;
+    }
+    if (typeof body.endpointId !== 'string' || !M05B_ALLOWED_ENDPOINTS.has(body.endpointId)) {
+      writeResult(
+        res,
+        problem(
+          400,
+          'RICCON-KB-400',
+          '端点不允许',
+          'endpointId is not in the deployment allowlist.',
+        ),
+      );
+      return true;
+    }
+    const configError = m05bValidateConfig(body.config);
+    if (configError) {
+      writeResult(res, problem(400, 'RICCON-KB-400', '参数无效', configError));
+      return true;
+    }
+    if (!body.defaultVisibility) {
+      writeResult(res, problem(400, 'RICCON-KB-400', '参数无效', 'defaultVisibility is required.'));
+      return true;
+    }
+    const visibilityError = m05bValidateVisibility(
+      account,
+      body.defaultVisibility,
+      body.defaultDepartmentId,
+    );
+    if (visibilityError) {
+      writeResult(res, problem(400, 'RICCON-KB-400', '参数无效', visibilityError));
+      return true;
+    }
+    if (
+      tenantConnectors().some(
+        (connector) => connector.name.toLowerCase() === body.name.trim().toLowerCase(),
+      )
+    ) {
+      writeResult(res, problem(409, 'RICCON-KB-409', '名称冲突', 'connector name already exists.'));
+      return true;
+    }
+    let maskedHint = null;
+    if (body.credential !== undefined && body.credential !== null) {
+      const credential = body.credential;
+      const invalid =
+        !credential ||
+        typeof credential.accessKeyId !== 'string' ||
+        typeof credential.secretAccessKey !== 'string' ||
+        credential.accessKeyId.length === 0 ||
+        credential.secretAccessKey.length === 0 ||
+        credential.accessKeyId !== credential.accessKeyId.trim() ||
+        credential.secretAccessKey !== credential.secretAccessKey.trim();
+      if (invalid) {
+        writeResult(
+          res,
+          problem(
+            400,
+            'RICCON-KB-400',
+            '凭据无效',
+            'credential must not contain leading or trailing whitespace.',
+          ),
+        );
+        return true;
+      }
+      maskedHint = m05bMaskCredential(credential.accessKeyId);
+    }
+    const now = new Date().toISOString();
+    const created = {
+      id: nextId('connector'),
+      tenantId: account.tenantId,
+      name: body.name.trim(),
+      type: 'S3',
+      status: 'PAUSED',
+      endpointId: body.endpointId,
+      config: {
+        bucket: body.config.bucket.trim(),
+        ...(typeof body.config.prefix === 'string' && body.config.prefix.trim().length > 0
+          ? { prefix: body.config.prefix.trim() }
+          : {}),
+        ...(typeof body.config.region === 'string' && body.config.region.trim().length > 0
+          ? { region: body.config.region.trim() }
+          : {}),
+        ...(Array.isArray(body.config.includeExtensions) && body.config.includeExtensions.length > 0
+          ? { includeExtensions: [...body.config.includeExtensions] }
+          : {}),
+        ...(Array.isArray(body.config.excludeGlobs) && body.config.excludeGlobs.length > 0
+          ? { excludeGlobs: [...body.config.excludeGlobs] }
+          : {}),
+      },
+      defaultVisibility: body.defaultVisibility,
+      defaultDepartmentId: body.defaultVisibility === 'DEPT' ? body.defaultDepartmentId : null,
+      credentialMaskedHint: maskedHint,
+      credentialKeyId: maskedHint ? `key-${nextId('credential')}` : null,
+      scheduleEnabled: body.scheduleEnabled === true,
+      nextSyncAt: null,
+      lastSyncStartedAt: null,
+      lastSyncFinishedAt: null,
+      lastSyncStatus: null,
+      lastSyncComplete: false,
+      lastSuccessAt: null,
+      lastErrorCode: null,
+      lastSyncSummary: null,
+      createdBy: account.userId,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    };
+    state.connectors.connectors.push(created);
+    m05bAudit('knowledge.connector.created', account, created, {
+      reason: 'USER',
+      details: {
+        connectorId: created.id,
+        type: created.type,
+        endpointId: created.endpointId,
+        bucket: created.config.bucket,
+        prefix: created.config.prefix ?? null,
+        status: created.status,
+      },
+    });
+    if (maskedHint) {
+      m05bAudit('knowledge.connector.credential.changed', account, created, {
+        reason: 'CREDENTIAL',
+        details: {
+          connectorId: created.id,
+          type: created.type,
+          credentialKeyId: created.credentialKeyId,
+          maskedHint,
+        },
+      });
+    }
+    writeResult(res, json(m05bConnectorResponse(created), 201));
+    return true;
+  }
+
+  // 凭据：只写不读；响应只返回掩码，审计不含明文。
+  if (actionMatch && actionMatch[2] === 'credential' && method === 'PUT') {
+    const csrfError = requireCsrf(session, req);
+    if (csrfError) {
+      writeResult(res, csrfError);
+      return true;
+    }
+    const permissionError = manageError();
+    if (permissionError) {
+      writeResult(res, permissionError);
+      return true;
+    }
+    const connector = findConnector(decodeURIComponent(actionMatch[1]));
+    if (!connector) {
+      writeResult(
+        res,
+        problem(404, 'RICCON-TENANT-404', '连接器不存在', '连接器不存在或不属于当前租户。'),
+      );
+      return true;
+    }
+    const body = readJson(raw);
+    const accessKeyId = typeof body?.accessKeyId === 'string' ? body.accessKeyId : '';
+    const secretAccessKey = typeof body?.secretAccessKey === 'string' ? body.secretAccessKey : '';
+    if (
+      accessKeyId.length === 0 ||
+      secretAccessKey.length === 0 ||
+      accessKeyId !== accessKeyId.trim() ||
+      secretAccessKey !== secretAccessKey.trim()
+    ) {
+      writeResult(
+        res,
+        problem(
+          400,
+          'RICCON-KB-400',
+          '凭据无效',
+          'credential must not contain leading or trailing whitespace.',
+        ),
+      );
+      return true;
+    }
+    connector.credentialMaskedHint = m05bMaskCredential(accessKeyId);
+    connector.credentialKeyId = `key-${nextId('credential')}`;
+    connector.updatedAt = new Date().toISOString();
+    m05bAudit('knowledge.connector.credential.changed', account, connector, {
+      reason: 'CREDENTIAL',
+      details: {
+        connectorId: connector.id,
+        type: connector.type,
+        credentialKeyId: connector.credentialKeyId,
+        maskedHint: connector.credentialMaskedHint,
+      },
+    });
+    writeResult(res, json(m05bConnectorResponse(connector)));
+    return true;
+  }
+
+  // 连接测试：失败仍为 200；无凭据按 CONFIG 失败，场景可强制 AUTH 失败。
+  if (actionMatch && actionMatch[2] === 'test' && method === 'POST') {
+    const csrfError = requireCsrf(session, req);
+    if (csrfError) {
+      writeResult(res, csrfError);
+      return true;
+    }
+    const permissionError = manageError();
+    if (permissionError) {
+      writeResult(res, permissionError);
+      return true;
+    }
+    const connector = findConnector(decodeURIComponent(actionMatch[1]));
+    if (!connector) {
+      writeResult(
+        res,
+        problem(404, 'RICCON-TENANT-404', '连接器不存在', '连接器不存在或不属于当前租户。'),
+      );
+      return true;
+    }
+    const testedAt = new Date().toISOString();
+    if (!connector.credentialMaskedHint) {
+      writeResult(
+        res,
+        json({
+          success: false,
+          category: 'CONFIG',
+          message: '连接器尚未写入凭据，请先保存凭据后重试。',
+          testedAt,
+        }),
+      );
+      return true;
+    }
+    if (scenario === 'm05b-test-fail-auth') {
+      writeResult(
+        res,
+        json({
+          success: false,
+          category: 'AUTH',
+          message: '源端拒绝了凭据，请检查访问键与密钥是否有效。',
+          testedAt,
+        }),
+      );
+      return true;
+    }
+    writeResult(
+      res,
+      json({
+        success: true,
+        category: null,
+        message: '已成功读取源端对象列表（1 个对象）。',
+        testedAt,
+      }),
+    );
+    return true;
+  }
+
+  // 立即同步：202 受理并写开始时间；排队/运行中或场景强制返回 409。
+  if (actionMatch && actionMatch[2] === 'sync' && method === 'POST') {
+    const csrfError = requireCsrf(session, req);
+    if (csrfError) {
+      writeResult(res, csrfError);
+      return true;
+    }
+    const permissionError = manageError();
+    if (permissionError) {
+      writeResult(res, permissionError);
+      return true;
+    }
+    const connector = findConnector(decodeURIComponent(actionMatch[1]));
+    if (!connector) {
+      writeResult(
+        res,
+        problem(404, 'RICCON-TENANT-404', '连接器不存在', '连接器不存在或不属于当前租户。'),
+      );
+      return true;
+    }
+    if (
+      scenario === 'm05b-sync-409' ||
+      (Boolean(connector.lastSyncStartedAt) && !connector.lastSyncFinishedAt)
+    ) {
+      writeResult(
+        res,
+        problem(409, 'RICCON-KB-409', '同步冲突', 'connector sync is already pending or running.'),
+      );
+      return true;
+    }
+    const acceptedAt = new Date().toISOString();
+    const syncId = nextId('connector-sync');
+    connector.lastSyncStartedAt = acceptedAt;
+    connector.lastSyncFinishedAt = null;
+    connector.updatedAt = acceptedAt;
+    m05bAudit('knowledge.connector.sync.started', account, connector, {
+      reason: 'MANUAL',
+      details: {
+        connectorId: connector.id,
+        syncId,
+        trigger: 'MANUAL',
+      },
+    });
+    writeResult(
+      res,
+      json({ syncId, connectorId: connector.id, status: 'PENDING', acceptedAt }, 202),
+    );
+    return true;
+  }
+
+  // 条目：只返回末段对象 ID；按状态过滤与分页。
+  if (actionMatch && actionMatch[2] === 'items' && method === 'GET') {
+    const connector = findConnector(decodeURIComponent(actionMatch[1]));
+    if (!connector) {
+      writeResult(
+        res,
+        problem(404, 'RICCON-TENANT-404', '连接器不存在', '连接器不存在或不属于当前租户。'),
+      );
+      return true;
+    }
+    if (scenario === 'm05b-items-500') {
+      writeResult(res, problem(500, 'RICCON-COMMON-500', '服务暂不可用', '同步条目暂时不可用。'));
+      return true;
+    }
+    const pageNo = Math.max(1, Number.parseInt(searchParams.get('page') ?? '1', 10) || 1);
+    const size = Math.min(
+      100,
+      Math.max(1, Number.parseInt(searchParams.get('size') ?? '10', 10) || 10),
+    );
+    const status = searchParams.get('status');
+    const items = state.connectors.items
+      .filter((item) => item.tenantId === account.tenantId && item.connectorId === connector.id)
+      .filter((item) => !status || item.status === status);
+    const start = (pageNo - 1) * size;
+    writeResult(
+      res,
+      json({
+        page: pageNo,
+        size,
+        total: items.length,
+        totalPages: items.length === 0 ? 0 : Math.ceil(items.length / size),
+        items: items.slice(start, start + size).map(m05bItemResponse),
+      }),
+    );
+    return true;
+  }
+
+  // 部分更新：未知字段/type/ERROR 状态 400；名称冲突 409；跨租户 404。
+  if (connectorMatch && method === 'PATCH') {
+    const csrfError = requireCsrf(session, req);
+    if (csrfError) {
+      writeResult(res, csrfError);
+      return true;
+    }
+    const permissionError = manageError();
+    if (permissionError) {
+      writeResult(res, permissionError);
+      return true;
+    }
+    const connector = findConnector(decodeURIComponent(connectorMatch[1]));
+    if (!connector) {
+      writeResult(
+        res,
+        problem(404, 'RICCON-TENANT-404', '连接器不存在', '连接器不存在或不属于当前租户。'),
+      );
+      return true;
+    }
+    const body = readJson(raw);
+    if (!body || typeof body !== 'object') {
+      writeResult(res, problem(400, 'RICCON-KB-400', '参数无效', '请求体必须是 JSON 对象。'));
+      return true;
+    }
+    if (Object.keys(body).length === 0) {
+      writeResult(
+        res,
+        problem(400, 'RICCON-KB-400', '参数无效', 'at least one field is required.'),
+      );
+      return true;
+    }
+    if (Object.prototype.hasOwnProperty.call(body, 'type')) {
+      writeResult(res, problem(400, 'RICCON-KB-400', '参数无效', 'type must be S3.'));
+      return true;
+    }
+    const knownFields = new Set([
+      'name',
+      'endpointId',
+      'config',
+      'defaultVisibility',
+      'defaultDepartmentId',
+      'scheduleEnabled',
+      'status',
+    ]);
+    const unknownField = Object.keys(body).find((key) => !knownFields.has(key));
+    if (unknownField) {
+      writeResult(
+        res,
+        problem(400, 'RICCON-KB-400', '参数无效', `unknown field: ${unknownField}.`),
+      );
+      return true;
+    }
+    if (body.status !== undefined && !['ACTIVE', 'PAUSED'].includes(body.status)) {
+      writeResult(
+        res,
+        problem(400, 'RICCON-KB-400', '参数无效', 'status must be ACTIVE or PAUSED.'),
+      );
+      return true;
+    }
+    if (
+      body.name !== undefined &&
+      (typeof body.name !== 'string' || body.name.trim().length === 0 || body.name.length > 120)
+    ) {
+      writeResult(res, problem(400, 'RICCON-KB-400', '参数无效', 'name is required.'));
+      return true;
+    }
+    if (body.endpointId !== undefined && !M05B_ALLOWED_ENDPOINTS.has(body.endpointId)) {
+      writeResult(
+        res,
+        problem(
+          400,
+          'RICCON-KB-400',
+          '端点不允许',
+          'endpointId is not in the deployment allowlist.',
+        ),
+      );
+      return true;
+    }
+    if (body.config !== undefined) {
+      const configError = m05bValidateConfig(body.config);
+      if (configError) {
+        writeResult(res, problem(400, 'RICCON-KB-400', '参数无效', configError));
+        return true;
+      }
+    }
+    const nextVisibility = body.defaultVisibility ?? connector.defaultVisibility;
+    const nextDepartmentId =
+      body.defaultDepartmentId !== undefined
+        ? body.defaultDepartmentId
+        : connector.defaultDepartmentId;
+    const visibilityError = m05bValidateVisibility(account, nextVisibility, nextDepartmentId);
+    if (visibilityError) {
+      writeResult(res, problem(400, 'RICCON-KB-400', '参数无效', visibilityError));
+      return true;
+    }
+    if (
+      body.name !== undefined &&
+      tenantConnectors().some(
+        (candidate) =>
+          candidate.id !== connector.id &&
+          candidate.name.toLowerCase() === body.name.trim().toLowerCase(),
+      )
+    ) {
+      writeResult(res, problem(409, 'RICCON-KB-409', '名称冲突', 'connector name already exists.'));
+      return true;
+    }
+    const previousStatus = connector.status;
+    if (body.name !== undefined) {
+      connector.name = body.name.trim();
+    }
+    if (body.endpointId !== undefined) {
+      connector.endpointId = body.endpointId;
+    }
+    if (body.config !== undefined) {
+      connector.config = {
+        bucket: body.config.bucket.trim(),
+        ...(typeof body.config.prefix === 'string' && body.config.prefix.trim().length > 0
+          ? { prefix: body.config.prefix.trim() }
+          : {}),
+        ...(typeof body.config.region === 'string' && body.config.region.trim().length > 0
+          ? { region: body.config.region.trim() }
+          : {}),
+        ...(Array.isArray(body.config.includeExtensions) && body.config.includeExtensions.length > 0
+          ? { includeExtensions: [...body.config.includeExtensions] }
+          : {}),
+        ...(Array.isArray(body.config.excludeGlobs) && body.config.excludeGlobs.length > 0
+          ? { excludeGlobs: [...body.config.excludeGlobs] }
+          : {}),
+      };
+    }
+    connector.defaultVisibility = nextVisibility;
+    connector.defaultDepartmentId = nextVisibility === 'DEPT' ? nextDepartmentId : null;
+    if (body.scheduleEnabled !== undefined) {
+      connector.scheduleEnabled = body.scheduleEnabled === true;
+    }
+    if (body.status !== undefined) {
+      connector.status = body.status;
+    }
+    connector.nextSyncAt =
+      connector.status === 'ACTIVE' && connector.scheduleEnabled ? M05B_NEXT_SYNC : null;
+    connector.updatedAt = new Date().toISOString();
+    if (body.status !== undefined && body.status !== previousStatus) {
+      m05bAudit('knowledge.connector.status.changed', account, connector, {
+        reason: 'STATUS',
+        details: {
+          connectorId: connector.id,
+          status: connector.status,
+          previousStatus,
+        },
+      });
+    }
+    m05bAudit('knowledge.connector.updated', account, connector, {
+      reason: 'USER',
+      details: {
+        connectorId: connector.id,
+        type: connector.type,
+        endpointId: connector.endpointId,
+        bucket: connector.config.bucket,
+        prefix: connector.config.prefix ?? null,
+        status: connector.status,
+        previousStatus,
+      },
+    });
+    writeResult(res, json(m05bConnectorResponse(connector)));
+    return true;
+  }
+
+  // 软删除：documents=KEEP 保留导入文档；SOFT_DELETE 同步软删除并投递索引 DELETE。
+  if (connectorMatch && method === 'DELETE') {
+    const csrfError = requireCsrf(session, req);
+    if (csrfError) {
+      writeResult(res, csrfError);
+      return true;
+    }
+    const permissionError = manageError();
+    if (permissionError) {
+      writeResult(res, permissionError);
+      return true;
+    }
+    const connector = findConnector(decodeURIComponent(connectorMatch[1]));
+    if (!connector) {
+      writeResult(
+        res,
+        problem(404, 'RICCON-TENANT-404', '连接器不存在', '连接器不存在或不属于当前租户。'),
+      );
+      return true;
+    }
+    const documents = searchParams.get('documents') ?? 'KEEP';
+    if (!['KEEP', 'SOFT_DELETE'].includes(documents)) {
+      writeResult(
+        res,
+        problem(400, 'RICCON-KB-400', '参数无效', 'documents must be KEEP or SOFT_DELETE.'),
+      );
+      return true;
+    }
+    connector.deletedAt = new Date().toISOString();
+    connector.updatedAt = connector.deletedAt;
+    connector.nextSyncAt = null;
+    connector.status = 'PAUSED';
+    m05bAudit('knowledge.connector.deleted', account, connector, {
+      reason: 'USER',
+      details: {
+        connectorId: connector.id,
+        type: connector.type,
+        endpointId: connector.endpointId,
+        documents,
+      },
+    });
+    if (documents === 'SOFT_DELETE') {
+      const deletedAt = connector.deletedAt;
+      for (const connectorItem of state.connectors.items.filter(
+        (item) => item.connectorId === connector.id && item.documentId,
+      )) {
+        connectorItem.status = 'DELETED';
+        connectorItem.deletedAt = deletedAt;
+        connectorItem.errorCode = null;
+        connectorItem.updatedAt = deletedAt;
+        const document = state.knowledge.documents.find(
+          (candidate) => candidate.id === connectorItem.documentId,
+        );
+        if (document && document.status !== 'DELETED') {
+          document.status = 'DELETED';
+          document.deletedAt = deletedAt;
+          document.deletedReason = 'CONNECTOR';
+          m05Audit('knowledge.document.deleted', account, document, { reason: 'CONNECTOR' });
+        }
+      }
+    }
+    res.writeHead(204, { 'Cache-Control': 'no-store' });
+    res.end();
+    return true;
+  }
+
+  return false;
+}
+
 function handleApi(req, res, url, raw) {
   const { pathname, searchParams } = url;
   const method = req.method ?? 'GET';
@@ -5079,6 +6347,11 @@ function handleApi(req, res, url, raw) {
 
   // ---------- M05：知识库文档/ACL/下载/删除/重索引 ----------
   if (handleM05Api(req, res, url, raw, session)) {
+    return true;
+  }
+
+  // ---------- M05b：知识库连接器/凭据/测试/同步/条目 ----------
+  if (handleM05bApi(req, res, url, raw, session)) {
     return true;
   }
 

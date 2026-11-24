@@ -32,7 +32,15 @@ export type StubScenario =
   | 'm05-citation-ocr-low'
   | 'm05-citation-no-access'
   | 'm05-citation-deleted'
-  | 'm05-citation-no-source';
+  | 'm05-citation-no-source'
+  | 'm05-citation-connector-updated'
+  | 'm05b-list-403'
+  | 'm05b-list-404'
+  | 'm05b-list-500'
+  | 'm05b-list-503'
+  | 'm05b-test-fail-auth'
+  | 'm05b-sync-409'
+  | 'm05b-items-500';
 
 /** stub 控制面；控制端点不属于产品 OpenAPI，仅 E2E 使用。 */
 export interface StubControl {
@@ -46,6 +54,8 @@ export interface StubControl {
   seedM03: () => Promise<void>;
   /** 播种 M05 知识库文档/ACL 演示数据；只影响当前用例。 */
   seedM05: () => Promise<void>;
+  /** 播种 M05b 连接器/同步条目/导入文档；`empty` 只保留空列表。 */
+  seedM05b: (options?: { empty?: boolean }) => Promise<void>;
   /** 读取 M05 stub 审计动作；仅用于验证 E2E 触发的动作序列。 */
   audit: () => Promise<Array<Record<string, unknown>>>;
 }
@@ -80,6 +90,12 @@ function createStubControl(request: APIRequestContext): StubControl {
     seedM05: async () => {
       const response = await request.post(`${STUB_URL}/__stub__/m05-seed`);
       expect(response.ok(), 'stub M05 知识库数据播种失败').toBe(true);
+    },
+    seedM05b: async (options = {}) => {
+      const response = await request.post(`${STUB_URL}/__stub__/m05b-seed`, {
+        data: { empty: options.empty ?? false },
+      });
+      expect(response.ok(), 'stub M05b 连接器数据播种失败').toBe(true);
     },
     audit: async () => {
       const response = await request.get(`${STUB_URL}/__stub__/m05-audit`);
