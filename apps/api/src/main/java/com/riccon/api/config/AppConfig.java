@@ -1,6 +1,5 @@
 package com.riccon.api.config;
 
-import com.riccon.api.audit.service.AuditService;
 import java.time.Clock;
 import java.util.HashMap;
 import java.util.Map;
@@ -47,19 +46,5 @@ public class AppConfig {
         Map<String, PasswordEncoder> encoders = new HashMap<>();
         encoders.put("bcrypt", new BCryptPasswordEncoder(12));
         return new DelegatingPasswordEncoder("bcrypt", encoders);
-    }
-
-    /**
-     * 编排开关启动观测的审计写入端口。
-     *
-     * <p>直接委托 {@link com.riccon.api.audit.service.AuditService}，保持与业务审计相同的写入与事务语义；
-     * 端口化只用于让“关闭态审计失败不阻断启动”可被单元测试证明（ADR-0024 §4.8、OPS-M06-024）。
-     *
-     * @param auditService 审计写入服务
-     * @return 审计写入端口
-     */
-    @Bean
-    public WorkflowFeatureAuditWriter workflowFeatureAuditWriter(AuditService auditService) {
-        return auditService::append;
     }
 }

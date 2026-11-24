@@ -1,6 +1,5 @@
 package com.riccon.api.config;
 
-import com.riccon.api.auth.controller.TenantContextFilter;
 import com.riccon.api.oidc.infrastructure.OidcAwareSecurityContextRepository;
 import com.riccon.api.web.JsonAccessDeniedHandler;
 import com.riccon.api.web.JsonAuthenticationEntryPoint;
@@ -199,7 +198,10 @@ public class SecurityConfig {
                 .addFilterBefore(originCheckFilter, CsrfFilter.class)
                 .addFilterAfter(tenantContextFilter, SecurityContextHolderFilter.class)
                 // M06：平台租户工作流端点必须在 MVC 权限拦截器之前 404，否则会先返回 403（ADR-0024 §6.1）。
-                .addFilterAfter(workflowPlatformTenantFilter, TenantContextFilter.class)
+                // 锚点用租户过滤器的运行时类型，保持“租户解析之后、同源校验之前”的顺序；config 层不能
+                // import controller 层的 TenantContextFilter（ArchUnit 分层规则），而上一行已把该类型
+                // 以同一 Filter 实例注册进本 HttpSecurity 的过滤器顺序表。
+                .addFilterAfter(workflowPlatformTenantFilter, tenantContextFilter.getClass())
                 // OIDC：预检在授权重定向之前；限流在回调认证之前。
                 .addFilterBefore(oidcAuthorizePreflightFilter, OAuth2AuthorizationRequestRedirectFilter.class)
                 .addFilterBefore(oidcLoginRateLimitFilter, OAuth2LoginAuthenticationFilter.class);
