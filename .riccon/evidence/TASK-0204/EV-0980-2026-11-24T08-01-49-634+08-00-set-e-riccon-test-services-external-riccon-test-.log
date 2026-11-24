@@ -1,0 +1,158 @@
+# command: set -e; RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=builder-b6 ./mvnw -q -T1C -pl apps/worker -am -Dtest='Connector*Test' -Dsurefire.failIfNoSpecifiedTests=false test
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-24T08:01:00.391+08:00
+# finished_at: 2026-11-24T08:01:48.685+08:00
+# duration_ms: 48293
+# exit_code: 0
+
+# --- stdout ---
+08:01:19.210 [main] INFO com.riccon.worker.connector.config.ConnectorProperties -- worker connector configuration loaded; enabled=true endpoints=0 maxObjects=5000 maxObjectBytes=104857600 syncTimeoutMinutes=60 schedulerEnabled=true
+08:01:19.847 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.connector.ConnectorDocumentWriteServiceIntegrationTest]: ConnectorDocumentWriteServiceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+08:01:20.113 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.connector.ConnectorDocumentWriteServiceIntegrationTest
+08:01:20.301 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.connector.ConnectorDocumentWriteServiceIntegrationTest]: ConnectorDocumentWriteServiceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+08:01:20.301 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+08:01:20.306 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.connector.ConnectorDocumentWriteServiceIntegrationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-24T08:01:23.164+08:00  INFO 10865 --- [riccon-worker] [           main] ectorDocumentWriteServiceIntegrationTest : Starting ConnectorDocumentWriteServiceIntegrationTest using Java 21.0.13 with PID 10865 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/worker)
+2026-11-24T08:01:23.166+08:00  INFO 10865 --- [riccon-worker] [           main] ectorDocumentWriteServiceIntegrationTest : The following 1 profile is active: "test"
+2026-11-24T08:01:25.668+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-24T08:01:25.951+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.config.ConnectorProperties       : worker connector configuration loaded; enabled=false endpoints=0 maxObjects=5000 maxObjectBytes=104857600 syncTimeoutMinutes=60 schedulerEnabled=true
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-24T08:01:28.587+08:00  WARN 10865 --- [riccon-worker] [           main] o.a.poi.openxml4j.util.ZipSecureFile     : setting max text size greater than 10485760 can be risky; set to 268435456 chars
+2026-11-24T08:01:30.854+08:00  INFO 10865 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-24T08:01:30.855+08:00  INFO 10865 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-24T08:01:30.908+08:00  INFO 10865 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-24T08:01:30.940+08:00  INFO 10865 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 85 ms
+2026-11-24T08:01:31.299+08:00  INFO 10865 --- [riccon-worker] [           main] ectorDocumentWriteServiceIntegrationTest : Started ConnectorDocumentWriteServiceIntegrationTest in 8.786 seconds (process running for 14.407)
+2026-11-24T08:01:31.426+08:00  INFO 10865 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-24T08:01:31.473+08:00  INFO 10865 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-24T08:01:31.538+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=14 actual=14
+2026-11-24T08:01:33.039+08:00  INFO 10865 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.connector.ConnectorSyncCompletionIntegrationTest]: ConnectorSyncCompletionIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T08:01:33.047+08:00  INFO 10865 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.connector.ConnectorSyncCompletionIntegrationTest
+2026-11-24T08:01:33.049+08:00  INFO 10865 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.connector.ConnectorSyncCompletionIntegrationTest]: ConnectorSyncCompletionIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T08:01:33.050+08:00  INFO 10865 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T08:01:33.054+08:00  INFO 10865 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.connector.ConnectorSyncCompletionIntegrationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-24T08:01:33.145+08:00  INFO 10865 --- [riccon-worker] [           main] c.ConnectorSyncCompletionIntegrationTest : Starting ConnectorSyncCompletionIntegrationTest using Java 21.0.13 with PID 10865 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/worker)
+2026-11-24T08:01:33.145+08:00  INFO 10865 --- [riccon-worker] [           main] c.ConnectorSyncCompletionIntegrationTest : The following 1 profile is active: "test"
+2026-11-24T08:01:34.009+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-24T08:01:34.071+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.config.ConnectorProperties       : worker connector configuration loaded; enabled=false endpoints=0 maxObjects=5000 maxObjectBytes=104857600 syncTimeoutMinutes=60 schedulerEnabled=true
+2026-11-24T08:01:34.548+08:00  INFO 10865 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-24T08:01:34.549+08:00  INFO 10865 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-24T08:01:34.557+08:00  INFO 10865 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-24T08:01:34.566+08:00  INFO 10865 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 17 ms
+2026-11-24T08:01:34.624+08:00  INFO 10865 --- [riccon-worker] [           main] c.ConnectorSyncCompletionIntegrationTest : Started ConnectorSyncCompletionIntegrationTest in 1.562 seconds (process running for 17.733)
+2026-11-24T08:01:34.626+08:00  INFO 10865 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Starting...
+2026-11-24T08:01:34.644+08:00  INFO 10865 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Start completed.
+2026-11-24T08:01:34.662+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=14 actual=14
+2026-11-24T08:01:34.769+08:00  INFO 10865 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.connector.ConnectorSyncIntegrationTest]: ConnectorSyncIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T08:01:34.775+08:00  INFO 10865 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.connector.ConnectorSyncIntegrationTest
+2026-11-24T08:01:34.777+08:00  INFO 10865 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.connector.ConnectorSyncIntegrationTest]: ConnectorSyncIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T08:01:34.778+08:00  INFO 10865 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T08:01:34.780+08:00  INFO 10865 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.connector.ConnectorSyncIntegrationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-24T08:01:34.826+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.ConnectorSyncIntegrationTest     : Starting ConnectorSyncIntegrationTest using Java 21.0.13 with PID 10865 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/worker)
+2026-11-24T08:01:34.826+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.ConnectorSyncIntegrationTest     : The following 1 profile is active: "test"
+2026-11-24T08:01:35.389+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-24T08:01:35.448+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.config.ConnectorProperties       : worker connector configuration loaded; enabled=true endpoints=1 maxObjects=5000 maxObjectBytes=10485760 syncTimeoutMinutes=60 schedulerEnabled=true
+2026-11-24T08:01:35.979+08:00  INFO 10865 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-24T08:01:35.979+08:00  INFO 10865 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-24T08:01:35.991+08:00  INFO 10865 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-24T08:01:36.001+08:00  INFO 10865 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 22 ms
+2026-11-24T08:01:36.061+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.ConnectorSyncIntegrationTest     : Started ConnectorSyncIntegrationTest in 1.276 seconds (process running for 19.17)
+2026-11-24T08:01:36.063+08:00  INFO 10865 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-3 - Starting...
+2026-11-24T08:01:36.081+08:00  INFO 10865 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-3 - Start completed.
+2026-11-24T08:01:36.097+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=14 actual=14
+2026-11-24T08:01:36.478+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-a37f-72cf-b4fe-5fb3e0874519 syncId=01a20adb-a404-7a00-90e6-02821da94f62 status=PARTIAL complete=false scanned=1 created=0 updated=0 skipped=0 failed=1 deleted=0 durationMs=184
+2026-11-24T08:01:36.657+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-a4fd-7eb3-81e1-52db710107af syncId=01a20adb-a516-7160-8799-2706994d468b status=SUCCESS complete=true scanned=1 created=1 updated=0 skipped=0 failed=0 deleted=0 durationMs=101
+2026-11-24T08:01:36.777+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-a4fd-7eb3-81e1-52db710107af syncId=01a20adb-a5b6-7584-8941-871560f6be5b status=SUCCESS complete=true scanned=0 created=0 updated=0 skipped=0 failed=0 deleted=1 durationMs=63
+2026-11-24T08:01:36.911+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-a4fd-7eb3-81e1-52db710107af syncId=01a20adb-a618-7cd2-b22a-7dbe3268dd36 status=SUCCESS complete=true scanned=1 created=1 updated=0 skipped=0 failed=0 deleted=0 durationMs=96
+2026-11-24T08:01:43.696+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-a6ae-7339-87ce-5c3e96462b20 syncId=01a20adb-ab24-7d1e-9b02-aa0be1394721 status=SUCCESS complete=true scanned=100 created=100 updated=0 skipped=0 failed=0 deleted=0 durationMs=5591
+2026-11-24T08:01:43.848+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-c140-7844-b9c3-cc0b809ba825 syncId=01a20adb-c15a-7195-9642-7406d66f6622 status=ERROR complete=false scanned=0 created=0 updated=0 skipped=0 failed=0 deleted=0 durationMs=37
+2026-11-24T08:01:43.919+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-c140-7844-b9c3-cc0b809ba825 syncId=01a20adb-c1bb-7d30-9b0a-1814dcbf0d8a status=ERROR complete=false scanned=0 created=0 updated=0 skipped=0 failed=0 deleted=0 durationMs=19
+2026-11-24T08:01:43.969+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-c140-7844-b9c3-cc0b809ba825 syncId=01a20adb-c1f0-726d-8db6-523ab5a405eb status=ERROR complete=false scanned=0 created=0 updated=0 skipped=0 failed=0 deleted=0 durationMs=21
+2026-11-24T08:01:44.005+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-c140-7844-b9c3-cc0b809ba825 syncId=01a20adb-c221-742c-954c-efd07f9faf62 status=ERROR complete=false scanned=0 created=0 updated=0 skipped=0 failed=0 deleted=0 durationMs=20
+2026-11-24T08:01:44.056+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncHandler     : connector.sync.skipped connectorId=01a20adb-c25e-7baa-bbc2-8aa463d821ec reason=tenant_not_active
+2026-11-24T08:01:44.124+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncScheduler   : connector.scheduler.scheduled count=1
+2026-11-24T08:01:44.278+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-c2dc-7f0c-905b-f307f711ad21 syncId=01a20adb-c2ef-7693-9d50-fb02644310ba status=SUCCESS complete=true scanned=1 created=1 updated=0 skipped=0 failed=0 deleted=0 durationMs=86
+2026-11-24T08:01:44.342+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-c2dc-7f0c-905b-f307f711ad21 syncId=01a20adb-c35f-7f23-8fc3-bd69c4b51509 status=SUCCESS complete=true scanned=1 created=0 updated=0 skipped=0 failed=0 deleted=0 durationMs=37
+2026-11-24T08:01:44.665+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-c3b2-7925-beca-4d43afcc1f3a syncId=01a20adb-c3e8-70b7-8bb5-1ed4f2fa5559 status=SUCCESS complete=true scanned=4 created=4 updated=0 skipped=0 failed=0 deleted=0 durationMs=221
+2026-11-24T08:01:44.747+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-c3b2-7925-beca-4d43afcc1f3a syncId=01a20adb-c4ef-7ef5-ab37-7c9eb5dd8570 status=PARTIAL complete=false scanned=2 created=0 updated=0 skipped=0 failed=0 deleted=0 durationMs=44
+2026-11-24T08:01:44.862+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-c3b2-7925-beca-4d43afcc1f3a syncId=01a20adb-c532-71c8-8c8f-4f15fc083420 status=SUCCESS complete=true scanned=3 created=0 updated=0 skipped=0 failed=0 deleted=1 durationMs=91
+2026-11-24T08:01:44.981+08:00  WARN 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.object_failed connectorId=01a20adb-c5b5-71ac-862c-2a94faac8e06 documentId=null errorCode=KB_CONNECTOR_OBJECT_FAILED exception=IllegalStateException
+2026-11-24T08:01:45.001+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-c5b5-71ac-862c-2a94faac8e06 syncId=01a20adb-c5cf-7b65-8c37-f45739db5fff status=PARTIAL complete=true scanned=1 created=0 updated=0 skipped=0 failed=1 deleted=0 durationMs=74
+2026-11-24T08:01:45.088+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-c5b5-71ac-862c-2a94faac8e06 syncId=01a20adb-c62e-7f8b-bcc6-c280e111fba0 status=SUCCESS complete=true scanned=1 created=1 updated=0 skipped=0 failed=0 deleted=0 durationMs=64
+2026-11-24T08:01:45.144+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-c69a-734f-a2c0-bce1d2d2a5ce syncId=01a20adb-c69f-7617-aff9-fba5cece3b03 status=ERROR complete=false scanned=0 created=0 updated=0 skipped=0 failed=0 deleted=0 durationMs=8
+2026-11-24T08:01:45.341+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-c6ce-7071-9194-c3d9c8965700 syncId=01a20adb-c6ee-7c37-8138-95fa820895fa status=SUCCESS complete=true scanned=2 created=2 updated=0 skipped=0 failed=0 deleted=0 durationMs=124
+2026-11-24T08:01:45.436+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-c6ce-7071-9194-c3d9c8965700 syncId=01a20adb-c78d-7ff9-9dc0-89407bc90cb9 status=SUCCESS complete=true scanned=1 created=0 updated=0 skipped=0 failed=0 deleted=1 durationMs=60
+2026-11-24T08:01:45.691+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-c7f8-73b7-9255-add3328b44b5 syncId=01a20adb-c81f-76d7-baae-0403a88989c7 status=SUCCESS complete=true scanned=3 created=3 updated=0 skipped=0 failed=0 deleted=0 durationMs=173
+2026-11-24T08:01:45.783+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-c7f8-73b7-9255-add3328b44b5 syncId=01a20adb-c911-7085-b76a-dd3741f44fc4 status=PARTIAL complete=false scanned=1 created=0 updated=0 skipped=0 failed=0 deleted=0 durationMs=22
+2026-11-24T08:01:45.854+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.aborted connectorId=01a20adb-c956-7a80-bbe4-8f5f22d153b6 reason=deleted_or_tenant_inactive
+2026-11-24T08:01:46.118+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-c996-7cf3-944f-8f38c83b4823 syncId=01a20adb-c9ca-7809-b00b-1e857982c8ab status=SUCCESS complete=true scanned=4 created=2 updated=0 skipped=2 failed=0 deleted=0 durationMs=168
+2026-11-24T08:01:46.360+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-caca-706d-ae6d-7d8bda6298e1 syncId=01a20adb-caf3-7125-8501-ce776c43a54a status=PARTIAL complete=true scanned=2 created=1 updated=0 skipped=0 failed=1 deleted=0 durationMs=112
+2026-11-24T08:01:46.458+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-caca-706d-ae6d-7d8bda6298e1 syncId=01a20adb-cb7d-7aba-90bc-6fe337953aef status=SUCCESS complete=true scanned=2 created=1 updated=0 skipped=0 failed=0 deleted=0 durationMs=77
+2026-11-24T08:01:46.591+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-cbf1-7a57-a3c9-c5ec6a618f4a syncId=01a20adb-cc06-729b-81ba-03679f464473 status=SUCCESS complete=true scanned=1 created=1 updated=0 skipped=0 failed=0 deleted=0 durationMs=74
+2026-11-24T08:01:46.699+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-cbf1-7a57-a3c9-c5ec6a618f4a syncId=01a20adb-cc6f-711c-98de-5136028b9355 status=SUCCESS complete=true scanned=1 created=0 updated=1 skipped=0 failed=0 deleted=0 durationMs=72
+2026-11-24T08:01:46.826+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-cce2-7585-a8d4-c575a9ec8f7a syncId=01a20adb-ccf5-7673-95a0-2ed489de8e36 status=SUCCESS complete=true scanned=1 created=1 updated=0 skipped=0 failed=0 deleted=0 durationMs=69
+2026-11-24T08:01:46.938+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.service.ConnectorSyncService     : connector.sync.finished connectorId=01a20adb-cce2-7585-a8d4-c575a9ec8f7a syncId=01a20adb-cd53-7208-b513-456305fef8d8 status=SUCCESS complete=true scanned=2 created=1 updated=0 skipped=0 failed=0 deleted=0 durationMs=85
+2026-11-24T08:01:46.949+08:00  INFO 10865 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.connector.ConnectorDeletePropagationIntegrationTest]: ConnectorDeletePropagationIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T08:01:46.953+08:00  INFO 10865 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.connector.ConnectorDeletePropagationIntegrationTest
+2026-11-24T08:01:46.954+08:00  INFO 10865 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.connector.ConnectorDeletePropagationIntegrationTest]: ConnectorDeletePropagationIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T08:01:46.955+08:00  INFO 10865 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-24T08:01:46.957+08:00  INFO 10865 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.connector.ConnectorDeletePropagationIntegrationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-24T08:01:46.998+08:00  INFO 10865 --- [riccon-worker] [           main] onnectorDeletePropagationIntegrationTest : Starting ConnectorDeletePropagationIntegrationTest using Java 21.0.13 with PID 10865 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/worker)
+2026-11-24T08:01:46.998+08:00  INFO 10865 --- [riccon-worker] [           main] onnectorDeletePropagationIntegrationTest : The following 1 profile is active: "test"
+2026-11-24T08:01:47.492+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-24T08:01:47.534+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.c.config.ConnectorProperties       : worker connector configuration loaded; enabled=false endpoints=0 maxObjects=5000 maxObjectBytes=104857600 syncTimeoutMinutes=60 schedulerEnabled=true
+2026-11-24T08:01:47.833+08:00  INFO 10865 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-24T08:01:47.833+08:00  INFO 10865 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-24T08:01:47.839+08:00  INFO 10865 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-24T08:01:47.846+08:00  INFO 10865 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 12 ms
+2026-11-24T08:01:47.886+08:00  INFO 10865 --- [riccon-worker] [           main] onnectorDeletePropagationIntegrationTest : Started ConnectorDeletePropagationIntegrationTest in 0.923 seconds (process running for 30.995)
+2026-11-24T08:01:47.888+08:00  INFO 10865 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-4 - Starting...
+2026-11-24T08:01:47.904+08:00  INFO 10865 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-4 - Start completed.
+2026-11-24T08:01:47.919+08:00  INFO 10865 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=14 actual=14
+
+# --- stderr ---
+
