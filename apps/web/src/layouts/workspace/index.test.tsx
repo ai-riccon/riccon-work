@@ -1,13 +1,19 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/services/api/errors';
 import { authStore } from '@/services/auth/auth-store';
 import { DEMO_SESSION, createFakeApi, pageOf } from '@/test/fake-api';
 import type { WorkspaceManagementApi } from '@/services/api/client';
-import type { Department } from '@/services/api/types';
+import type { Department, SessionInfo } from '@/services/api/types';
 import { withProviders } from '@/test/render';
 import WorkspaceLayout from './index';
+
+/** 已授予编排读取权限的员工会话。 */
+const WORKFLOW_SESSION: SessionInfo = {
+  ...DEMO_SESSION,
+  permissions: [...DEMO_SESSION.permissions, 'workflow.read'],
+};
 
 /** 构造部门夹具。 */
 function makeDepartment(overrides: Partial<Department> = {}): Department {
@@ -56,6 +62,7 @@ function makeManagementApi(departments: Department[]): WorkspaceManagementApi {
 describe('报告任务工作空间布局', () => {
   beforeEach(() => {
     authStore.reset();
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
   });
 
   it('已登录时展示租户、员工导航与子路由出口', () => {
@@ -68,8 +75,91 @@ describe('报告任务工作空间布局', () => {
     expect(screen.getByText('示例企业')).toBeVisible();
     expect(screen.getByRole('link', { name: '问答工作空间' })).toHaveAttribute('href', '/chat');
     expect(screen.getByRole('link', { name: '市场调研报告' })).toHaveAttribute('href', '/research');
+    // 默认会话没有 workflow.read，编排入口必须隐藏，避免无权限用户看到死链。
+    expect(screen.queryByRole('link', { name: '编排 Studio' })).not.toBeInTheDocument();
     expect(screen.getByText('演示员工')).toBeVisible();
     expect(screen.getByTestId('umi-outlet')).toBeInTheDocument();
+  });
+
+  it('有 workflow.read 时展示编排 Studio，并在列表深链高亮', () => {
+    authStore.setAuthenticated(WORKFLOW_SESSION);
+
+    render(
+      withProviders(
+        <WorkspaceLayout api={createFakeApi()} navigate={vi.fn()} pathname="/workflows/list" />,
+      ),
+    );
+
+    const studio = screen.getByRole('link', { name: '编排 Studio' });
+    expect(studio).toHaveAttribute('href', '/workflows');
+    expect(studio).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: '问答工作空间' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('link', { name: '市场调研报告' })).not.toHaveAttribute('aria-current');
+
+    const breadcrumb = screen.getByRole('navigation', { name: '面包屑' });
+    expect(within(breadcrumb).getByRole('link', { name: '工作空间' })).toHaveAttribute(
+      'href',
+      '/chat',
+    );
+    expect(within(breadcrumb).getByText('编排 Studio')).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('编辑器深链的面包屑可回到列表，且导航仍保持编排分区选中', () => {
+    authStore.setAuthenticated(WORKFLOW_SESSION);
+
+    render(
+      withProviders(
+        <WorkspaceLayout
+          api={createFakeApi()}
+          navigate={vi.fn()}
+          pathname="/workflows/workflow-1/edit"
+        />,
+      ),
+    );
+
+    expect(
+      within(screen.getByRole('navigation', { name: '主导航' })).getByRole('link', {
+        name: '编排 Studio',
+      }),
+    ).toHaveAttribute('aria-current', 'page');
+    const breadcrumb = screen.getByRole('navigation', { name: '面包屑' });
+    expect(within(breadcrumb).getByRole('link', { name: '编排 Studio' })).toHaveAttribute(
+      'href',
+      '/workflows',
+    );
+    expect(within(breadcrumb).getByText('流程编辑')).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('无 workflow.read 时不渲染编排入口，直接访问交由页面守卫显示 403', () => {
+    authStore.setAuthenticated(DEMO_SESSION);
+
+    render(
+      withProviders(
+        <WorkspaceLayout api={createFakeApi()} navigate={vi.fn()} pathname="/workflows/list" />,
+      ),
+    );
+
+    expect(screen.queryByRole('link', { name: '编排 Studio' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '问答工作空间' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByTestId('umi-outlet')).toBeInTheDocument();
+  });
+
+  it('375px 下导航与面包屑换行展示，入口仍可聚焦', () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 375 });
+    authStore.setAuthenticated(WORKFLOW_SESSION);
+
+    render(
+      withProviders(
+        <WorkspaceLayout api={createFakeApi()} navigate={vi.fn()} pathname="/workflows/list" />,
+      ),
+    );
+
+    expect(screen.getByRole('navigation', { name: '主导航' })).toBeVisible();
+    expect(screen.getByRole('navigation', { name: '面包屑' })).toBeVisible();
+    const studio = screen.getByRole('link', { name: '编排 Studio' });
+    expect(studio).toBeVisible();
+    studio.focus();
+    expect(studio).toHaveFocus();
   });
 
   it('显示当前账号主部门；停用部门仍显示名称与停用标签', async () => {

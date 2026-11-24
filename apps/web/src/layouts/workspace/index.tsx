@@ -9,6 +9,11 @@ import { authStore, useAuth } from '@/services/auth/auth-store';
 import { CurrentDepartmentBadge } from '@/services/workspaces/current-department-badge';
 import { supportsWorkspaceManagement } from '@/services/workspaces/management-api';
 import { useWorkspaceManagement } from '@/services/workspaces/use-workspace-management';
+import {
+  buildWorkspaceBreadcrumb,
+  filterWorkspaceNavigation,
+  isNavigationActive,
+} from '../../../config/routes';
 import './workspace.css';
 
 /** 报告任务工作空间外壳的可注入依赖，便于组件测试。 */
@@ -17,6 +22,8 @@ export interface WorkspaceLayoutProps {
   /** 空间管理能力；未注入时从 api 能力检测。 */
   managementApi?: WorkspaceManagementApi;
   navigate?: (to: string, options?: { replace?: boolean }) => void;
+  /** 当前路径；默认读取 Umi 路由，测试可注入不同深链。 */
+  pathname?: string;
 }
 
 /**
@@ -26,18 +33,23 @@ export interface WorkspaceLayoutProps {
  * 与 J1 工作空间共享同一个 authStore，但保持独立布局，避免 J2 改动影响 J1 的
  * 会话列表、文件上传与流式区域。
  *
- * @param props API 与导航注入
+ * M06 起该布局同时承载编排 Studio；导航按 `workflow.read` 过滤，选中态与面包屑
+ * 都从 `config/routes.ts` 的同一份路由/导航元数据推导，避免菜单、标题与深链漂移。
+ *
+ * @param props API、导航与路径注入
  * @returns 工作空间外壳
  */
 export default function WorkspaceLayout({
   api = defaultApi,
   managementApi: injectedManagementApi,
   navigate: injectedNavigate,
+  pathname: injectedPathname,
 }: WorkspaceLayoutProps) {
   const auth = useAuth();
   const managementApi = injectedManagementApi ?? (supportsWorkspaceManagement(api) ? api : null);
   const management = useWorkspaceManagement(managementApi, auth.session);
   const location = useLocation();
+  const pathname = injectedPathname ?? location.pathname;
   const umiNavigate = useNavigate();
   const navigate = injectedNavigate ?? umiNavigate;
   const [loggingOut, setLoggingOut] = useState(false);
@@ -111,7 +123,8 @@ export default function WorkspaceLayout({
     return <FullPageSpin text="正在加载会话…" />;
   }
 
-  const onResearch = location.pathname.startsWith('/research');
+  const navigation = filterWorkspaceNavigation(auth.session.permissions);
+  const breadcrumbs = buildWorkspaceBreadcrumb(pathname);
 
   return (
     <div className="workspace-shell">
@@ -133,12 +146,15 @@ export default function WorkspaceLayout({
           </div>
 
           <nav aria-label="主导航" className="workspace-shell-nav">
-            <Link aria-current={onResearch ? undefined : 'page'} to="/chat">
-              问答工作空间
-            </Link>
-            <Link aria-current={onResearch ? 'page' : undefined} to="/research">
-              市场调研报告
-            </Link>
+            {navigation.map((item) => (
+              <Link
+                aria-current={isNavigationActive(pathname, item.path) ? 'page' : undefined}
+                key={item.path}
+                to={item.path}
+              >
+                {item.label}
+              </Link>
+            ))}
           </nav>
 
           <div className="workspace-shell-actions">
@@ -168,6 +184,24 @@ export default function WorkspaceLayout({
       </header>
 
       <main className="workspace-shell-main">
+        {breadcrumbs.length > 1 ? (
+          <nav aria-label="面包屑" className="workspace-shell-breadcrumb">
+            <ol>
+              {breadcrumbs.map((crumb, index) => {
+                const current = index === breadcrumbs.length - 1;
+                return (
+                  <li key={`${crumb.label}-${index}`}>
+                    {crumb.path && !current ? (
+                      <Link to={crumb.path}>{crumb.label}</Link>
+                    ) : (
+                      <span aria-current={current ? 'page' : undefined}>{crumb.label}</span>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </nav>
+        ) : null}
         <Outlet />
       </main>
     </div>

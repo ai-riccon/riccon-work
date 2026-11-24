@@ -44,6 +44,25 @@ export const routes: RicconRoute[] = [
     ],
   },
   {
+    // M06 编排 Studio 与报告任务共用员工端工作空间外壳；/workflows 作为入口重定向到列表，
+    // 编辑器使用动态 workflowId，刷新或深链时由页面通过 useParams 读取。
+    path: '/workflows',
+    component: '@/layouts/workspace',
+    routes: [
+      { path: '/workflows', redirect: '/workflows/list' },
+      {
+        path: '/workflows/list',
+        component: '@/pages/workflow/list',
+        title: '编排 Studio',
+      },
+      {
+        path: '/workflows/:workflowId/edit',
+        component: '@/pages/workflow/edit',
+        title: '流程编辑',
+      },
+    ],
+  },
+  {
     path: '/admin',
     component: '@/layouts/admin',
     routes: [
@@ -164,6 +183,139 @@ export interface NavigationItem {
    * 权限码取值与 `PermissionCodes` 及 `services` 下的 access 常量保持一致。
    */
   permissions?: readonly string[];
+}
+
+/**
+ * 员工端工作空间主导航。
+ *
+ * `/chat` 与 `/research` 保持既有语义：菜单始终渲染，最终授权由服务端 403 决定。
+ * M06 新增编排 Studio 入口，按 `workflow.read` 过滤；无权限时隐藏入口，
+ * 直接访问 `/workflows` 仍由页面守卫与服务端 403/404 兜底。
+ */
+export const workspaceNavigation: NavigationItem[] = [
+  { path: '/chat', label: '问答工作空间' },
+  { path: '/research', label: '市场调研报告' },
+  {
+    path: '/workflows',
+    label: '编排 Studio',
+    permissions: ['workflow.read'],
+  },
+];
+
+/**
+ * 按会话权限过滤工作空间导航。
+ *
+ * @param permissions 当前会话权限码；会话未加载时传空数组
+ * @returns 当前会话可见的导航项
+ */
+export function filterWorkspaceNavigation(permissions: readonly string[] = []): NavigationItem[] {
+  return workspaceNavigation.filter(
+    (item) =>
+      item.permissions === undefined ||
+      item.permissions.some((permission) => permissions.includes(permission)),
+  );
+}
+
+/**
+ * 判断导航项是否处于选中态。
+ *
+ * 只按完整路径段匹配，避免 `/research` 误命中 `/research-archive` 之类的前缀路径。
+ *
+ * @param pathname 当前浏览器路径
+ * @param path 导航项路径
+ * @returns 是否为当前分区
+ */
+export function isNavigationActive(pathname: string, path: string): boolean {
+  return pathname === path || pathname.startsWith(`${path}/`);
+}
+
+/** 面包屑条目；省略 `path` 表示当前页面。 */
+export interface BreadcrumbItem {
+  /** 展示文案 */
+  label: string;
+  /** 可点击的目标路径；当前页省略 */
+  path?: string;
+}
+
+/**
+ * 判断具体路径是否命中路由模板，支持 `:param` 动态段。
+ *
+ * @param pathname 当前浏览器路径
+ * @param pattern 路由模板，例如 `/workflows/:workflowId/edit`
+ * @returns 是否匹配
+ */
+function matchesRoutePattern(pathname: string, pattern: string): boolean {
+  const pathnameSegments = pathname.split('/').filter(Boolean);
+  const patternSegments = pattern.split('/').filter(Boolean);
+  if (pathnameSegments.length !== patternSegments.length) {
+    return false;
+  }
+  return patternSegments.every((segment, index) => {
+    const actual = pathnameSegments[index];
+    return segment.startsWith(':') ? actual.length > 0 : segment === actual;
+  });
+}
+
+/**
+ * 查找当前路径命中的页面路由。
+ *
+ * 只返回真正渲染页面的节点（`component` 以 `@/pages/` 开头），布局路由与重定向不参与面包屑。
+ *
+ * @param pathname 当前浏览器路径
+ * @returns 命中的页面路由；未命中时返回 undefined
+ */
+function findPageRouteByPathname(pathname: string): RicconRoute | undefined {
+  const walk = (nodes: RicconRoute[]): RicconRoute | undefined => {
+    for (const node of nodes) {
+      if (
+        node.path &&
+        node.component?.startsWith('@/pages/') &&
+        matchesRoutePattern(pathname, node.path)
+      ) {
+        return node;
+      }
+      if (node.routes) {
+        const matched = walk(node.routes);
+        if (matched) {
+          return matched;
+        }
+      }
+    }
+    return undefined;
+  };
+
+  return walk(routes);
+}
+
+/**
+ * 生成工作空间面包屑。
+ *
+ * 层级固定为“工作空间 → 导航分区 → 页面标题”；分区标题与页面标题相同时只保留一项，
+ * 避免列表页出现“编排 Studio / 编排 Studio”。不在工作空间导航范围内的路径返回空数组，
+ * 由布局决定不渲染面包屑。
+ *
+ * @param pathname 当前浏览器路径
+ * @returns 面包屑条目
+ */
+export function buildWorkspaceBreadcrumb(pathname: string): BreadcrumbItem[] {
+  const section = workspaceNavigation.find((item) => isNavigationActive(pathname, item.path));
+  if (!section) {
+    return [];
+  }
+  // 问答工作空间是员工端首页，本身没有下级页面，只显示一级。
+  if (section.path === '/chat') {
+    return [{ label: '工作空间' }];
+  }
+
+  const page = findPageRouteByPathname(pathname);
+  const items: BreadcrumbItem[] = [{ label: '工作空间', path: '/chat' }];
+  if (page?.title && page.title !== section.label) {
+    items.push({ label: section.label, path: section.path });
+    items.push({ label: page.title });
+    return items;
+  }
+  items.push({ label: section.label });
+  return items;
 }
 
 /**
