@@ -3,13 +3,13 @@
 Status: proposed
 Date: 2026-11-25
 Reviewers: `riccon/lead`（范围/合同一致性、回滚口径）、`riccon/verifier`（权限矩阵、审批边界、资源上限、可测性）、`riccon/ops`（并发/租约/开关/回滚/指标）、安全评审（提示注入、工具审批、跨租户/跨部门、审计白名单）
-Approved-by: DEC-0046=A（2026-11-25）已批准 `docs/PRODUCT.md` §12 的 25 条 AC、non-goals、角色模型与 16 条 OQ 默认值，并批准拆分 M06 120h + M06b/M26 48h；M06 先做，M06b 在 M06 用户验收后启动。ADR 本身仍为 `proposed`，待 Lead/Verifier/Ops/安全设计评审。
+Approved-by: DEC-0046=A（2026-11-25）已批准 `docs/PRODUCT.md` §12 的 25 条 AC、non-goals、角色模型与 16 条 OQ 默认值，并批准拆分 M06 120h + M06b/M26 48h；M06 先做，M06b 在 M06 用户验收后启动。后续 DEC-0047=A（2026-11-25）已确认 AC-23 回滚口径；DEC-0048=A（2026-11-25）已确认工作流配额按运行准入 1 单位。ADR 本身仍为 `proposed`，待 Lead/Verifier/Ops/安全设计评审。
 Review-date: 待定（M06 gate 前完成 Lead/Verifier/Ops/安全评审；M06b 另在 M06b gate 前复核）
 Supersedes: none
 Scope: M06「编排 Studio 核心」的流程定义/版本、串行执行 + 条件分支、审批节点、运行历史/重试/取消、权限/审计/资源限制/回滚；并给出 M06b/M26「模板库与共享」的前向兼容边界
 关联: `docs/PRODUCT.md` §12、`docs/ARCHITECTURE.md`、`docs/security/THREAT-MODEL.md`、ADR-0006（信封加密）、ADR-0007（审计）、ADR-0008（outbox）、ADR-0009（租户隔离）、ADR-0010（Flyway）、ADR-0012（数据模型）、ADR-0014（契约/SSE）、ADR-0016（outbox 跨租户领取）、ADR-0017（审批参数加密）、ADR-0018（部门范围）、ADR-0020（审计查询）、ADR-0021/0022（模型网关/配额）、ADR-0023（知识库 ACL）、`contracts/README.md`
 
-> 状态口径：`proposed` 只表示架构草案已写出。DEC-0046=A 已答复的范围、拆分与 OQ 默认值按本 ADR 记录；本 ADR 不修改 `docs/PRODUCT.md`，§14 只是对 Product §12 AC 的设计映射，AC 以 Product 定稿为准。本文不含生产源码、测试实现或迁移 SQL；V15 只给结构顺序与回滚约束，SQL 由 Builder 在任务内编写。
+> 状态口径：`proposed` 只表示架构草案已写出。DEC-0046=A 已答复的范围、拆分与 OQ 默认值按本 ADR 记录；DEC-0047=A/0048=A 已确认回滚与配额口径；本 ADR 不修改 `docs/PRODUCT.md`，§14 只是对 Product §12 AC 的设计映射，AC 以 Product 定稿为准。本文不含生产源码、测试实现或迁移 SQL；V15 只给结构顺序与回滚约束，SQL 由 Builder 在任务内编写。
 
 ---
 
@@ -71,10 +71,11 @@ Scope: M06「编排 Studio 核心」的流程定义/版本、串行执行 + 条�
 | 条件求值   | 封闭算子白名单（EQ/NE/GT/GTE/LT/LTE/IN）+ 受控数据源（运行输入/检索命中数/模型分类标签/审批决定）；**无表达式、无脚本**             | 团队决定                                |
 | 执行       | 串行；`workflow_run` 自身作为持久运行队列（租约 90s + 心跳；默认并发 10）；审批等待释放执行槽位；不新增 outbox 表/事件 | 团队决定 |
 | 资源限制   | 节点 50、步数 200、模型 300s、检索 120s、MCP 60s、运行 30min（不含审批等待）、租户并发 10、单流程 5、结果 5 MiB；部署配置、租户只读 | DEC-0046 已批准                         |
+| 配额/成本 | 按运行准入 1 单位计（DEC-0048=A），与 M04 按请求数计一致；模型成本按 `model_invocation` 聚合；资源上限约束单运行模型节点数量；不新增 token/成本配额 | DEC-0048=A：按运行准入 1 单位 |
 | 权限       | 新增 `workflow.read/edit/publish/run/approve/manage`；新增系统角色 `WORKFLOW_EDITOR`；租户管理员经既有角色管理显式授予/撤销         | 团队决定；角色模型 DEC-0046 已批准      |
 | 审计       | 新增 `workflow.*` 动作；同事务 fail-closed；租户管理员查看他人运行写 `workflow.run.admin_read`；M10 查询/导出机制不变               | 团队决定                                |
 | 契约       | `1.6.0-m06`，全部 additive；internal API 不变；运行详情用**轮询**，不新增 SSE；M06b 端点标 `x-riccon-deferred`                      | 团队决定                                |
-| 回滚       | 不做 down migration；受支持回滚 = 关闭开关 + 回滚 Worker + 保留/前向修复 API；**有工作流审计行后不支持 API 回滚到 M06 前**          | 需 Lead/Verifier 确认 AC-23 口径（§16） |
+| 回滚       | 不做 down migration；受支持回滚 = 关闭开关 + 回滚 Worker + 保留/前向修复 API；**有工作流审计行后不支持 API 回滚到 M06 前**；全量 API 回滚仅限无 workflow 数据/审计行 | DEC-0047=A 已确认 AC-23 口径 |
 | M06b       | V15 预留 `workflow_user_template` 与模板字段；M06 仅 1 个全局内置模板；M06b 无迁移                                                  | 团队决定                                |
 
 ---
@@ -366,7 +367,7 @@ run queue:        PENDING -> RUNNING（领取）；RUNNING + lease 过期 -> 可
 ### 4.8 运行准入、并发与 kill switch
 
 - 准入在 API `POST /workflow-runs` 同事务内：
-  1. `QuotaAdmissionService.lockTenant(tenantId)`（与 M04 相同锁顺序），随后 `admit(tenantId, userId)`（M06 v1 每次运行 1 个请求配额单位，见 §16）；
+  1. `QuotaAdmissionService.lockTenant(tenantId)`（与 M04 相同锁顺序），随后 `admit(tenantId, userId)`（DEC-0048=A：按运行准入 1 单位）；
   2. `SELECT COUNT(*) FROM workflow_run WHERE tenant_id=? AND status IN ('PENDING','RUNNING','WAITING_APPROVAL')` 与按 `workflow_id` 的计数；
   3. 超过租户 10 / 单流程 5 → `429 RICCON-WF-429`，返回限制值与重试建议，不创建运行；
   4. 插入 `workflow_run`（`PENDING`）+ 审计；任一步失败整体回滚。
@@ -390,7 +391,7 @@ run queue:        PENDING -> RUNNING（领取）；RUNNING + lease 过期 -> 可
 - 复用 `ModelRouter`（`purpose=REPORT`）与 M04 降级/端点允许列表/配额；不新增 `WORKFLOW` 用途、不改 `model_routing` CHECK 与平台路由 UI。
 - `model_invocation` 复用：`run_id=NULL`、`conversation_id/message_id=NULL`、`workflow_run_id`/`workflow_node_run_id` 写入；成本按现有租户/模型/日聚合自动包含工作流调用；`purpose` 显示为 `REPORT`（成本口径说明，§16）。
 - 节点可选 `modelId` 必须属于当前 REPORT 路由链且 `ACTIVE`；否则保存/发布/运行拒绝（防止绕过平台路由）。
-- 配额：v1 按“运行准入 1 单位”计；不按模型节点逐次计（§16 未决项；由资源上限约束滥用）。
+- 配额：按运行准入 1 单位计（DEC-0048=A），与 M04 按请求数计一致；模型成本按 `model_invocation` 聚合；资源上限约束单运行模型节点数量；R-36 为已接受 residual，不新增 token/成本配额。
 - 外部模型端点：沿用 M04 允许列表；演示端点只处理合成数据；生产 PII 必须走客户内网网关（合同 `constraints.security`）。
 
 ---
@@ -626,7 +627,7 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 | R-33 | 审批是控制而非串谋证明；同租户管理员可指派自己人审批                    | 审批绕过           | 禁自批 + assignee 范围 + 审计；高风险客户可要求双人/平台审批（后续）                      |
 | R-34 | 运行结果/节点输出存 MySQL 明文（租户隔离 + 备份）                       | DB 高权限者可读    | 与现有会话/知识库内容同级；生产 DB 最小权限/堡垒机（M09）；不新增字段级加密               |
 | R-35 | 180 天保留只做到期不可见，物理清理归 M09                                | 合规时间差         | 与 M05 R-26 一致；M06 不声称已删除；M09 release blocker                                   |
-| R-36 | M06 v1 按运行计 1 个配额单位，模型节点不逐次计                          | 配额套利           | 节点 ≤50、步数 ≤200、运行 30min、租户并发 10；如客户要求逐次计费需共享配额组件（§16）     |
+| R-36 | M06 v1 按运行计 1 个配额单位，模型节点不逐次计（DEC-0048=A 接受） | 配额套利 | owner=Lead/Verifier；due=M06 gate 前；accepted_reason=DEC-0048=A 接受；节点 ≤50、步数 ≤200、运行 30min、租户并发 10 约束套利；如客户要求逐次计费需共享配额组件/新 ADR |
 | R-37 | 单入边树状图不支持合并/并行，复杂流程需拆多个流程                       | 表达力限制         | 已在 non-goals；文案不声称并行/循环；后续模块另立 ADR                                     |
 
 ---
@@ -675,7 +676,7 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 3. **保留 M06 API** 以继续提供运行历史/审批/审计读取；或对 API 前向修复。
 4. V15 表/触发器/权限保留；对象存储无新增类别；J1/J2 不受影响。
 
-**不支持**：在存在 workflow 运行/审批/审计行后把 API 回滚到 M06 前版本——旧 API 的 `AuditDetailsReader` 对未知 `workflow.*` 动作 fail-closed，审计查询/导出会失败；且旧 API 无 workflow 端点，**历史运行不可读**（与 AC-23 冲突）。因此 AC-23 的“应用回滚”按“关闭开关 + 回滚 Worker + 保留/前向修复 API”解释；全量 API 回滚只允许在无任何 workflow 数据与审计行时执行。该口径需 Lead/Verifier 在 M06 gate 前确认（§16）。
+**不支持**：在存在 workflow 运行/审批/审计行后把 API 回滚到 M06 前版本——旧 API 的 `AuditDetailsReader` 对未知 `workflow.*` 动作 fail-closed，审计查询/导出会失败；且旧 API 无 workflow 端点，**历史运行不可读**（与 AC-23 冲突）。因此 AC-23 的“应用回滚”按“关闭开关 + 回滚 Worker + 保留/前向修复 API”解释；DEC-0047=A 已确认本口径，AC-23 文本由 Product 同步；全量 API 回滚只允许在无任何 workflow 数据与审计行时执行。
 
 **应急 drop**（仅无数据 + 用户书面同意）：停 Worker → drop 触发器 → 按 FK 逆序 drop 子表/父表 → 删 `model_invocation` 索引/列 → 删权限/角色回填 → 删 `flyway_schema_history` 15 → 旧 Worker。生产优先备份恢复（ADR-0010）。
 
@@ -789,7 +790,7 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 | M06-AC-20 | M06  | §11                                      | T10,T11,T13,T16             | `E2E-M06-09`、`@a11y`                                          | 键盘全流程；等价路径                    |
 | M06-AC-21 | M06  | §10.2、契约轮询                          | T16,T17                     | `PERF-M06-001`                                                 | 50 并发混合；p95 口径                   |
 | M06-AC-22 | M06  | §7、§10.3                                | T16,T17                     | `E2E-M06-10`、`CONTRACT-M06`                                   | 无 404/deferred 冒充；J1/J2 回归        |
-| M06-AC-23 | M06  | §10.4                                    | T15,T17                     | `IT-WF-110`、`OPS-M06-01`、THREAT §7                           | 回滚口径见 §16                          |
+| M06-AC-23 | M06  | §10.4                                    | T15,T17                     | `IT-WF-110`、`OPS-M06-01`、THREAT §7                           | DEC-0047=A 回滚口径；全量 API 回滚仅限无数据/审计行                          |
 | M06-AC-24 | M06  | §9.3/§7.3                                | T01,T03,T16                 | `SEC-WF-005`、`IT-WF-111`                                      | 无代码/脚本/HTTP/并行/循环/定时入口     |
 | M06-AC-25 | M06b | §12                                      | M26-B1..B5                  | `E2E-M06-12`、`SEC-WF-002`、`@a11y`                            | 2 个内置模板/升级提示                   |
 
@@ -820,7 +821,7 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 
 - 不新增 `definition_of_done.module` key（遵循 2026-11-20 T4 决策）；security/a11y/perf/migration 继续作为 Verifier 评审与 release evidence。
 - M06 gate 判 AC-01..10、12..24；AC-11/25 不进 M06 gate，M06b gate 判 AC-11/25。AC-19/20 虽 P1，仍须在 M06 gate 检查（合同质量基线），不得因预算后移不验。
-- 配额：工作流模型调用计入 M04 成本；配额按运行准入 1 单位（§16）；不新增 token/成本配额。
+- 配额：按运行准入 1 单位（DEC-0048=A）；模型成本按 `model_invocation` 聚合；资源上限约束单运行模型节点数量；不新增 token/成本配额。
 - 安全：代码执行/脚本/HTTP/并行/循环/定时均无入口；工具白名单/审批/ACL/审计 fail-closed；平台管理员 404。
 
 ### 15.4 命名一致性
@@ -852,12 +853,14 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 
 ---
 
-## 16. 风险与未决问题
+## 16. 风险与问题记录（含已解决）
+
+U-01/U-02 已由 DEC-0047=A / DEC-0048=A 解决；U-03..U-13 仍未决，不得视为已解决。
 
 | ID   | 问题                                                                                       | 默认/建议                                                                                         | 需谁决策              | 影响                |
 | ---- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- | --------------------- | ------------------- |
-| U-01 | AC-23“应用回滚到 M06 前版本且历史运行与审计仍可读”与旧 API 无 workflow 端点/审计白名单冲突 | 受支持回滚 = 关闭开关 + 回滚 Worker + 保留/前向修复 API；全量 API 回滚仅限无 workflow 数据/审计行 | Lead/Product/Verifier | 回滚口径、gate 判定 |
-| U-02 | 配额单位：按运行 1 单位 vs 按模型节点逐次                                                  | 按运行 1 单位（J2 口径）；资源上限约束套利；逐次计费需共享配额组件/新 ADR                         | Product/M04 owner     | 成本/配额公平       |
+| U-01（已解决：DEC-0047=A） | AC-23“应用回滚到 M06 前版本且历史运行与审计仍可读”与旧 API 无 workflow 端点/审计白名单冲突 | DEC-0047=A：关闭 + 回滚 Worker + 保留/前向修复 API；全量 API 回滚仅限无 workflow 数据/审计行 | user（DEC-0047=A） | 回滚口径、gate 判定 |
+| U-02（已解决：DEC-0048=A） | 配额单位：按运行 1 单位 vs 按模型节点逐次 | DEC-0048=A：按运行准入 1 单位；模型成本按 model_invocation 聚合；资源上限约束；R-36 accepted | user（DEC-0048=A） | 成本/配额公平 |
 | U-03 | AC-01“另一编辑者”是否要求同侪协同编辑                                                      | 默认所有者 + 租户管理员；同侪需草稿共享模型                                                       | Product               | 权限/审计           |
 | U-04 | kill switch 审计：部署配置 + 启动审计 vs 参考 M04 的 DB 开关 + 平台 API                    | 默认部署配置 + 启动 `workflow.feature.changed`（可能多实例重复）                                  | Ops/Verifier          | 可运维/审计         |
 | U-05 | 审批理由进入审计（AC-16）可能含 PII                                                        | 默认允许 ≤500 字符并提示；替代为 `commentSha256` + 审批记录保留                                   | 安全评审/Product      | 隐私/合规           |
@@ -887,7 +890,7 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 - **React Flow 等画布库**：许可可行但增加依赖与 a11y 成本；自研 SVG + 表单等价路径，拒绝新依赖。
 - **SSE 运行进度**：M06 无逐 token 流，轮询足够；减少连接/网关成本，拒绝（可后续另立）。
 - **对象存储结果**：引入 presigned URL/清理/M02 F-015 债务；5 MiB 内 MySQL 更简单，拒绝。
-- **按模型节点逐次配额**：需把配额准入下沉到 worker 或共享模块；M06 预算内不做，拒绝（见 U-02）。
+- **按模型节点逐次配额**：需把配额准入下沉到 worker 或共享模块；M06 预算内不做，拒绝（DEC-0048=A 已选择按运行计）。
 
 ## Evidence
 
