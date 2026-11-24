@@ -15,8 +15,9 @@ spring:
     username: ${RICCON_DB_USERNAME:riccon}
     password: ${RICCON_DB_PASSWORD:riccon_test_only}
     hikari:
-      # Worker 轮询与租户任务并发有限，连接池保持小规模；生产按实例数调整。
-      maximum-pool-size: ${RICCON_DB_POOL_SIZE:10}
+      # Worker 轮询与租户任务并发有限；M06 运行队列与心跳/outbox/健康检查共用连接池，
+      # 默认 16 必须 ≥ RICCON_WORKFLOW_WORKER_CONCURRENCY + 4（ADR-0024 §4.3/§10.1，OPS-M06-022）。
+      maximum-pool-size: ${RICCON_DB_POOL_SIZE:16}
       connection-timeout: 3000
       # ADR-0012：DATETIME(6) 统一按 UTC 写入，禁止依赖容器默认时区。
       connection-init-sql: "SET time_zone = '+00:00'"
@@ -94,6 +95,38 @@ riccon:
   # M04：/actuator/prometheus 来源允许列表（逗号分隔 CIDR）；空值仅允许 loopback。
   ops:
     allowed-cidrs: ${RICCON_OPS_ALLOWED_CIDRS:}
+  # M06 编排 Studio 部署配置（ADR-0024 §10.1）：与 API 使用同一组键与环境变量，便于漂移核对。
+  # Worker 实际消费 claim/lease/心跳/调度池/并发/结果上限；关 ENABLED 只影响 API 受理，关
+  # CLAIM_ENABLED 才停止领取并进入优雅停机（在途最多等待 SHUTDOWN_GRACE_SECONDS）。
+  # 启动校验（batch=1、调度/心跳池 ≥ 并发、interval ≤ lease/3、连接池 ≥ 并发 + 4）由 T06a 落地。
+  workflow:
+    enabled: ${RICCON_WORKFLOW_ENABLED:true}
+    disabled-reason: ${RICCON_WORKFLOW_DISABLED_REASON:}
+    instance-id: ${RICCON_INSTANCE_ID:}
+    max-nodes: ${RICCON_WORKFLOW_MAX_NODES:50}
+    max-steps: ${RICCON_WORKFLOW_MAX_STEPS:200}
+    model-timeout-seconds: ${RICCON_WORKFLOW_MODEL_TIMEOUT_SECONDS:300}
+    retrieval-timeout-seconds: ${RICCON_WORKFLOW_RETRIEVAL_TIMEOUT_SECONDS:120}
+    mcp-timeout-seconds: ${RICCON_WORKFLOW_MCP_TIMEOUT_SECONDS:60}
+    run-timeout-minutes: ${RICCON_WORKFLOW_RUN_TIMEOUT_MINUTES:30}
+    tenant-concurrency: ${RICCON_WORKFLOW_TENANT_CONCURRENCY:10}
+    flow-concurrency: ${RICCON_WORKFLOW_FLOW_CONCURRENCY:5}
+    result-max-bytes: ${RICCON_WORKFLOW_RESULT_MAX_BYTES:5242880}
+    worker-concurrency: ${RICCON_WORKFLOW_WORKER_CONCURRENCY:10}
+    claim-batch: ${RICCON_WORKFLOW_CLAIM_BATCH:1}
+    claim-poll-interval-ms: ${RICCON_WORKFLOW_CLAIM_POLL_INTERVAL_MS:1000}
+    claim-idle-backoff-max-ms: ${RICCON_WORKFLOW_CLAIM_IDLE_BACKOFF_MAX_MS:5000}
+    scheduler-pool-size: ${RICCON_WORKFLOW_SCHEDULER_POOL_SIZE:10}
+    heartbeat-concurrency: ${RICCON_WORKFLOW_HEARTBEAT_CONCURRENCY:10}
+    heartbeat-interval-seconds: ${RICCON_WORKFLOW_HEARTBEAT_INTERVAL_SECONDS:30}
+    lease-seconds: ${RICCON_WORKFLOW_LEASE_SECONDS:90}
+    claim-enabled: ${RICCON_WORKFLOW_CLAIM_ENABLED:true}
+    shutdown-grace-seconds: ${RICCON_WORKFLOW_SHUTDOWN_GRACE_SECONDS:120}
+    retention-days: ${RICCON_WORKFLOW_RETENTION_DAYS:180}
+  # M06 结果大小预检（ADR-0024 §10.1/§10.5）：见 API 同名区块；Worker 只消费运行结果上限。
+  db:
+    pool-size: ${RICCON_DB_POOL_SIZE:16}
+    max-allowed-packet: ${RICCON_DB_MAX_ALLOWED_PACKET:16777216}
   worker:
     schema:
       # 启动时读取 flyway_schema_history 最大成功版本；与代码期望版本不一致则拒绝启动。

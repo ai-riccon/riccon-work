@@ -10,17 +10,25 @@ import org.junit.jupiter.api.Test;
 /** 内置角色与权限映射。 */
 class RoleDefinitionsTest {
 
-    /** 租户开通必须创建 TENANT_ADMIN 与 MEMBER。 */
+    /** 租户开通必须创建 TENANT_ADMIN、MEMBER 与流程编辑者（M06）。 */
     @Test
     void tenantSystemRolesContainAdminAndMember() {
         assertThat(RoleDefinitions.tenantSystemRoles())
                 .extracting(RoleDefinition::code)
-                .containsExactly(RoleCodes.TENANT_ADMIN, RoleCodes.MEMBER);
+                .containsExactly(RoleCodes.TENANT_ADMIN, RoleCodes.MEMBER, RoleCodes.WORKFLOW_EDITOR);
         assertThat(RoleDefinitions.tenantRole(RoleCodes.TENANT_ADMIN).permissions())
                 .contains(PermissionCodes.TENANT_USER_MANAGE, PermissionCodes.TENANT_ROLE_MANAGE);
         assertThat(RoleDefinitions.tenantRole(RoleCodes.MEMBER).permissions())
                 .contains(PermissionCodes.CONVERSATION_WRITE)
                 .doesNotContain(PermissionCodes.TENANT_USER_MANAGE);
+        assertThat(RoleDefinitions.tenantRole(RoleCodes.WORKFLOW_EDITOR).permissions())
+                .contains(
+                        PermissionCodes.WORKFLOW_READ,
+                        PermissionCodes.WORKFLOW_EDIT,
+                        PermissionCodes.WORKFLOW_PUBLISH,
+                        PermissionCodes.WORKFLOW_RUN,
+                        PermissionCodes.WORKFLOW_APPROVE)
+                .doesNotContain(PermissionCodes.WORKFLOW_MANAGE);
         assertThat(RoleDefinitions.tenantRole("UNKNOWN")).isNull();
     }
 

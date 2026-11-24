@@ -32,10 +32,10 @@ class ModelContract108aTest {
         assertMcpDeferredAndProblemDetail();
     }
 
-    /** 版本保持 M04 全量设计，并在 M05 契约内继续存在；M02/M03/M10 代表路径仍在。 */
+    /** 版本保持 M04 全量设计，并在 M06 契约内继续存在；M02/M03/M10 代表路径仍在。 */
     private void assertVersionAndRegressionSurface() {
         Map<String, Object> info = OpenApiContract.map(document.get("info"));
-        assertThat(info.get("version")).isEqualTo("1.5.0-m05b");
+        assertThat(info.get("version")).isEqualTo("1.6.0-m06");
         for (String path : List.of(
                 "/api/v1/auth/csrf",
                 "/api/v1/conversations/{conversationId}/messages",

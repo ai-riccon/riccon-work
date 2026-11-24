@@ -7,6 +7,7 @@ import com.riccon.api.identity.domain.RoleDefinition;
 import com.riccon.api.identity.domain.RoleDefinitions;
 import com.riccon.api.persistence.BinaryUuids;
 import com.riccon.platform.domain.identity.PermissionCodes;
+import com.riccon.platform.domain.identity.RoleCodes;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
@@ -829,6 +830,10 @@ class V11MigrationTest {
         insertTenant(fresh, "freshco");
         insertRoleWithPermissions(fresh, PLATFORM_TENANT, PLATFORM_ADMIN_ROLE, RoleDefinitions.platformAdminRole());
         for (RoleDefinition definition : RoleDefinitions.tenantSystemRoles()) {
+            // WORKFLOW_EDITOR 由 V15 引入；本测试 fresh schema 的目标是 V14，不创建该角色。
+            if (RoleCodes.WORKFLOW_EDITOR.equals(definition.code())) {
+                continue;
+            }
             insertRoleWithPermissions(fresh, "freshco", roleIdFor(definition.code()), definition);
         }
 
@@ -872,7 +877,10 @@ class V11MigrationTest {
                 }
             }
         }
-        return codes;
+        return codes.stream()
+                // V15 新增的 workflow.* 不在 V14 字典；V15MigrationTest 断言完整字典。
+                .filter(code -> !code.startsWith("workflow."))
+                .toList();
     }
 
     /** 多 key 回滚：每组 1 行、有 ACTIVE 保留 ACTIVE 否则 RETIRED，结构回到 V10。 */
@@ -1255,8 +1263,20 @@ class V11MigrationTest {
             JdbcClient jdbc, String tenant, UUID roleId, RoleDefinition definition) {
         insertRole(jdbc, tenant, roleId, definition.code());
         for (String permission : definition.permissions()) {
-            insertRolePermission(jdbc, tenant, roleId, permission);
+            // V15 新增的 workflow.* 不在 V14 权限字典中；V1–V14 的严格覆盖断言由 V15MigrationTest 承担。
+            if (permissionExists(jdbc, permission)) {
+                insertRolePermission(jdbc, tenant, roleId, permission);
+            }
         }
+    }
+
+    /** 判断权限码是否已在本 schema 的字典中。 */
+    private static boolean permissionExists(JdbcClient jdbc, String permissionCode) {
+        return jdbc.sql("SELECT COUNT(*) FROM permission WHERE code = :code")
+                        .param("code", permissionCode)
+                        .query(Long.class)
+                        .single()
+                > 0;
     }
 
     /** 按角色码返回 fresh schema 使用的固定角色 ID。 */

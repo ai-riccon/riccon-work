@@ -344,8 +344,8 @@ class M04V2VerifierBoundaryTest extends ApiIntegrationTestSupport {
                     assertThat(row.details()).doesNotContain(PROVIDER_URL).doesNotContain("apiKey");
                 });
 
-        // 关闭开关不需要回滚数据库：schema 仍为当前 14（V14 只加 FULLTEXT 索引），历史调用行与成本快照可读且未被改写。
-        assertThat(schemaVersion()).isEqualTo(14);
+        // 关闭开关不需要回滚数据库：schema 仍为当前 15（V15 只新增 workflow 结构与权限/模板种子），历史调用行与成本快照可读且未被改写。
+        assertThat(schemaVersion()).isEqualTo(15);
         Map<String, Object> after = historicalSnapshot(tenantCode, invocationId);
         assertThat(after).isEqualTo(before);
         // 旧应用（M04 前）按列名读取历史调用仍工作。

@@ -6,6 +6,11 @@ import com.riccon.platform.domain.knowledge.ConnectorSyncTrigger;
 import com.riccon.platform.domain.knowledge.ConnectorType;
 import com.riccon.platform.domain.knowledge.KnowledgeDocumentStatus;
 import com.riccon.platform.domain.knowledge.KnowledgeVisibility;
+import com.riccon.platform.domain.workflow.WorkflowApprovalActionKind;
+import com.riccon.platform.domain.workflow.WorkflowApprovalDecision;
+import com.riccon.platform.domain.workflow.WorkflowDefinitionStatus;
+import com.riccon.platform.domain.workflow.WorkflowRunScope;
+import com.riccon.platform.domain.workflow.WorkflowRunStatus;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,6 +31,11 @@ import java.util.UUID;
  * {@code removedUserIds} 为 UUID 数组、各自最多 50 个、允许空数组；{@code admin_read} 的
  * {@code documentId} 在 {@code scope=LIST} 时可为空且 {@code resultCount} 必填；封闭枚举字段与
  * 未知键/超限/类型错误一律 fail-closed（ADR-0023 第 5.6/5.7 节，IT-KB-110）。
+ *
+ * <p>M06：{@code workflow.*} 动作只允许 ID、枚举、计数与脱敏摘要（ADR-0024 第 8.1/8.2 节）；
+ * {@code workflow.feature.changed} 强制 {@code enabled}/{@code source=DEPLOYMENT_CONFIG}/
+ * {@code instanceId}/{@code observedAt} 四键，供关闭态启动观测审计（OPS-M06-019）。
+ * 未登记动作仍只允许空 details，保持 M10 读取端 fail-closed。
  */
 public final class AuditDetailsPolicy {
 
@@ -270,7 +280,51 @@ public final class AuditDetailsPolicy {
                     Set.of("connectorId", "syncId", "errorCode", "retryable", "complete", "durationMs")),
             Map.entry(
                     AuditActions.KNOWLEDGE_CONNECTOR_SYNC_RETRIED,
-                    Set.of("connectorId", "syncId", "attempt", "reason")));
+                    Set.of("connectorId", "syncId", "attempt", "reason")),
+            // M06 编排 Studio（ADR-0024 §8.1）：details 只写 ID、枚举、计数与脱敏摘要；禁止图 JSON、
+            // prompt/query 模板、节点输出、工具参数、凭据与文档正文。M10 读取端复用同一白名单。
+            Map.entry(AuditActions.WORKFLOW_CREATED, Set.of("workflowId", "sourceTemplateId", "sourceTemplateType")),
+            Map.entry(AuditActions.WORKFLOW_DRAFT_SAVED, Set.of("workflowId", "version", "nodeCount")),
+            Map.entry(
+                    AuditActions.WORKFLOW_PUBLISHED,
+                    Set.of("workflowId", "workflowVersionId", "versionNo", "runScope", "departmentId", "nodeCount")),
+            Map.entry(AuditActions.WORKFLOW_DISABLED, Set.of("workflowId", "previousStatus", "status")),
+            Map.entry(AuditActions.WORKFLOW_ENABLED, Set.of("workflowId", "previousStatus", "status")),
+            Map.entry(AuditActions.WORKFLOW_OWNER_TRANSFERRED, Set.of("workflowId", "fromUserId", "toUserId")),
+            Map.entry(
+                    AuditActions.WORKFLOW_RUN_REQUESTED,
+                    Set.of("workflowId", "workflowVersionId", "workflowRunId", "versionNo", "nodeCount")),
+            Map.entry(AuditActions.WORKFLOW_RUN_STARTED, Set.of("workflowRunId", "workflowId")),
+            Map.entry(
+                    AuditActions.WORKFLOW_RUN_COMPLETED,
+                    Set.of("workflowRunId", "status", "durationMs", "nodeCount", "resultBytes")),
+            Map.entry(AuditActions.WORKFLOW_RUN_FAILED, Set.of("workflowRunId", "errorCode", "failedNodeId")),
+            Map.entry(AuditActions.WORKFLOW_RUN_CANCELLED, Set.of("workflowRunId", "previousStatus", "reason")),
+            Map.entry(AuditActions.WORKFLOW_RUN_RETRIED, Set.of("workflowRunId", "nodeId", "attempt")),
+            Map.entry(AuditActions.WORKFLOW_RUN_ADMIN_READ, Set.of("workflowRunId", "scope", "reason")),
+            Map.entry(
+                    AuditActions.WORKFLOW_APPROVAL_REQUESTED,
+                    Set.of(
+                            "workflowRunId",
+                            "workflowApprovalId",
+                            "nodeId",
+                            "assigneeCount",
+                            "actionKind",
+                            "targetToolName")),
+            Map.entry(
+                    AuditActions.WORKFLOW_APPROVAL_DECIDED,
+                    Set.of(
+                            "workflowRunId",
+                            "workflowApprovalId",
+                            "nodeId",
+                            "decision",
+                            "approverUserId",
+                            "targetToolName",
+                            "decisionComment")),
+            // 启动观测（不是变更日志）：ADR-0024 §4.8/§8.1 要求 instanceId 与 observedAt 必须可写入。
+            Map.entry(
+                    AuditActions.WORKFLOW_FEATURE_CHANGED,
+                    Set.of("enabled", "source", "reason", "instanceId", "observedAt")));
 
     /**
      * 允许 JSON null 的动作级键。
@@ -290,7 +344,16 @@ public final class AuditDetailsPolicy {
             Map.entry(AuditActions.KNOWLEDGE_CONNECTOR_CREATED, Set.of("previousStatus")),
             Map.entry(AuditActions.KNOWLEDGE_CONNECTOR_UPDATED, Set.of("previousStatus")),
             Map.entry(AuditActions.KNOWLEDGE_CONNECTOR_DELETED, Set.of("previousStatus")),
-            Map.entry(AuditActions.KNOWLEDGE_CONNECTOR_STATUS_CHANGED, Set.of("previousStatus")));
+            Map.entry(AuditActions.KNOWLEDGE_CONNECTOR_STATUS_CHANGED, Set.of("previousStatus")),
+            // M06：未从模板创建时来源为空；非 DEPARTMENT 范围时部门为空；可选失败节点/原因/工具名/
+            // 拒绝理由按动作语义允许 JSON null，其他键继续 fail-closed（ADR-0024 §8.1 的 “?” 字段）。
+            Map.entry(AuditActions.WORKFLOW_CREATED, Set.of("sourceTemplateId", "sourceTemplateType")),
+            Map.entry(AuditActions.WORKFLOW_PUBLISHED, Set.of("departmentId")),
+            Map.entry(AuditActions.WORKFLOW_RUN_FAILED, Set.of("failedNodeId")),
+            Map.entry(AuditActions.WORKFLOW_RUN_CANCELLED, Set.of("reason")),
+            Map.entry(AuditActions.WORKFLOW_APPROVAL_REQUESTED, Set.of("targetToolName")),
+            Map.entry(AuditActions.WORKFLOW_APPROVAL_DECIDED, Set.of("targetToolName", "decisionComment")),
+            Map.entry(AuditActions.WORKFLOW_FEATURE_CHANGED, Set.of("reason")));
 
     /**
      * 允许受限数组的动作级键。
@@ -353,7 +416,50 @@ public final class AuditDetailsPolicy {
             Map.entry(
                     AuditActions.KNOWLEDGE_CONNECTOR_CREDENTIAL_CHANGED,
                     Map.of("type", Set.of(ConnectorType.S3.name()))),
-            Map.entry(AuditActions.KNOWLEDGE_CONNECTOR_SYNC_STARTED, Map.of("trigger", triggerValues())));
+            Map.entry(AuditActions.KNOWLEDGE_CONNECTOR_SYNC_STARTED, Map.of("trigger", triggerValues())),
+            // M06 编排 Studio：封闭枚举与角色/状态/动作类型白名单；不属于枚举的原因码由写入方保证。
+            Map.entry(AuditActions.WORKFLOW_CREATED, Map.of("sourceTemplateType", Set.of("BUILT_IN", "USER"))),
+            Map.entry(
+                    AuditActions.WORKFLOW_PUBLISHED,
+                    Map.of(
+                            "runScope",
+                            Set.of(
+                                    WorkflowRunScope.ONLY_SELF.name(),
+                                    WorkflowRunScope.DEPARTMENT.name(),
+                                    WorkflowRunScope.TENANT.name()))),
+            Map.entry(
+                    AuditActions.WORKFLOW_DISABLED,
+                    Map.of(
+                            "status",
+                            Set.of(WorkflowDefinitionStatus.ACTIVE.name(), WorkflowDefinitionStatus.DISABLED.name()),
+                            "previousStatus",
+                            Set.of(WorkflowDefinitionStatus.ACTIVE.name(), WorkflowDefinitionStatus.DISABLED.name()))),
+            Map.entry(
+                    AuditActions.WORKFLOW_ENABLED,
+                    Map.of(
+                            "status",
+                            Set.of(WorkflowDefinitionStatus.ACTIVE.name(), WorkflowDefinitionStatus.DISABLED.name()),
+                            "previousStatus",
+                            Set.of(WorkflowDefinitionStatus.ACTIVE.name(), WorkflowDefinitionStatus.DISABLED.name()))),
+            Map.entry(
+                    AuditActions.WORKFLOW_RUN_COMPLETED,
+                    Map.of(
+                            "status",
+                            Set.of(
+                                    WorkflowRunStatus.SUCCEEDED.name(),
+                                    WorkflowRunStatus.FAILED.name(),
+                                    WorkflowRunStatus.CANCELLED.name()))),
+            Map.entry(AuditActions.WORKFLOW_RUN_CANCELLED, Map.of("previousStatus", runStatusValues())),
+            Map.entry(
+                    AuditActions.WORKFLOW_RUN_ADMIN_READ,
+                    Map.of("scope", Set.of("LIST", "DETAIL"), "reason", Set.of("MANAGEMENT_READ"))),
+            Map.entry(AuditActions.WORKFLOW_APPROVAL_REQUESTED, Map.of("actionKind", approvalActionKindValues())),
+            Map.entry(
+                    AuditActions.WORKFLOW_APPROVAL_DECIDED,
+                    Map.of(
+                            "decision",
+                            Set.of(WorkflowApprovalDecision.APPROVE.name(), WorkflowApprovalDecision.REJECT.name()))),
+            Map.entry(AuditActions.WORKFLOW_FEATURE_CHANGED, Map.of("source", Set.of("DEPLOYMENT_CONFIG"))));
 
     /** 任何情况下都不允许出现的敏感键（大小写不敏感）。 */
     private static final Set<String> FORBIDDEN_KEYS = Set.of(
@@ -442,6 +548,22 @@ public final class AuditDetailsPolicy {
             }
             if (!(details.get("status") instanceof String status) || status.isBlank()) {
                 throw new IllegalArgumentException("audit detail key is required: status");
+            }
+            return;
+        }
+        // M06 启动观测：四个键缺一不可，避免“关闭编排”没有可追溯的实例与时间（ADR-0024 §4.8、OPS-M06-019）。
+        if (AuditActions.WORKFLOW_FEATURE_CHANGED.equals(action)) {
+            if (!(details.get("enabled") instanceof Boolean)) {
+                throw new IllegalArgumentException("audit detail value must be a boolean: enabled");
+            }
+            if (!"DEPLOYMENT_CONFIG".equals(details.get("source"))) {
+                throw new IllegalArgumentException("audit detail source must be DEPLOYMENT_CONFIG");
+            }
+            if (!(details.get("instanceId") instanceof String instanceId) || instanceId.isBlank()) {
+                throw new IllegalArgumentException("audit detail key is required: instanceId");
+            }
+            if (!(details.get("observedAt") instanceof String observedAt) || observedAt.isBlank()) {
+                throw new IllegalArgumentException("audit detail key is required: observedAt");
             }
             return;
         }
@@ -540,6 +662,24 @@ public final class AuditDetailsPolicy {
                 ConnectorSyncTrigger.MANUAL.name(),
                 ConnectorSyncTrigger.SCHEDULE.name(),
                 ConnectorSyncTrigger.RETRY.name());
+    }
+
+    /** 返回运行状态枚举名集合，供取消动作的 previousStatus 校验使用。 */
+    private static Set<String> runStatusValues() {
+        java.util.List<String> values = new java.util.ArrayList<>();
+        for (WorkflowRunStatus status : WorkflowRunStatus.values()) {
+            values.add(status.name());
+        }
+        return Set.copyOf(values);
+    }
+
+    /** 返回审批动作类型枚举名集合，供 request 动作的 actionKind 校验使用。 */
+    private static Set<String> approvalActionKindValues() {
+        java.util.List<String> values = new java.util.ArrayList<>();
+        for (WorkflowApprovalActionKind kind : WorkflowApprovalActionKind.values()) {
+            values.add(kind.name());
+        }
+        return Set.copyOf(values);
     }
 
     /**

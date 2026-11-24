@@ -31,6 +31,10 @@ import java.util.Set;
  *
  * <p>为什么必须同时改迁移与本类：V10 的 {@code INSERT ... SELECT FROM role} 只覆盖迁移前已存在的角色，
  * 覆盖不到 fresh install、空库引导和 V10 之后新建的租户；缺少这两条映射会直接断裂 AC-17 的审批链。
+ *
+ * <p>M06 说明：新增系统角色 {@code WORKFLOW_EDITOR}（reading/editing/publishing/running/approving）与
+ * 6 个 {@code workflow.*} 权限码。V15 为存量租户回填确定性 ID 的该角色，本类负责 V15 之后新建租户与
+ * 空库引导；部门负责人关系只限制 DEPT 发布范围，不授予任何能力（ADR-0024 §6.1）。
  */
 public final class RoleDefinitions {
 
@@ -49,7 +53,11 @@ public final class RoleDefinitions {
             PermissionCodes.ARTIFACT_READ,
             PermissionCodes.MODEL_READ,
             PermissionCodes.MCP_READ,
-            PermissionCodes.DEPARTMENT_READ);
+            PermissionCodes.DEPARTMENT_READ,
+            // M06：普通员工可运行本租户/本部门已发布流程并审批指派给自己的审批项，但不能编辑或发布。
+            PermissionCodes.WORKFLOW_READ,
+            PermissionCodes.WORKFLOW_RUN,
+            PermissionCodes.WORKFLOW_APPROVE);
 
     /** 租户管理员在员工权限之上增加团队空间、知识库维护与账号/角色管理。 */
     private static final Set<String> TENANT_ADMIN_PERMISSIONS = Set.of(
@@ -81,7 +89,14 @@ public final class RoleDefinitions {
             PermissionCodes.AUDIT_EXPORT_APPROVE,
             // M04：租户管理员只读本租户配额与成本；写权限只属于平台管理员。
             PermissionCodes.QUOTA_READ,
-            PermissionCodes.COST_READ);
+            PermissionCodes.COST_READ,
+            // M06：租户管理员拥有全部 6 个编排权限，含移交流程所有权与任意范围发布。
+            PermissionCodes.WORKFLOW_READ,
+            PermissionCodes.WORKFLOW_EDIT,
+            PermissionCodes.WORKFLOW_PUBLISH,
+            PermissionCodes.WORKFLOW_RUN,
+            PermissionCodes.WORKFLOW_APPROVE,
+            PermissionCodes.WORKFLOW_MANAGE);
 
     /** 平台管理员只管理平台目录与租户元数据（含部门元数据），不读取租户业务内容。 */
     private static final Set<String> PLATFORM_ADMIN_PERMISSIONS = Set.of(
@@ -107,6 +122,18 @@ public final class RoleDefinitions {
     private static final RoleDefinition MEMBER =
             new RoleDefinition(RoleCodes.MEMBER, "普通员工", "使用工作空间、文件、会话与报告", MEMBER_PERMISSIONS);
 
+    /** 流程编辑者权限（M06）：可编辑自己的草稿并发布，但没有移交流程所有权的管理权限。 */
+    private static final Set<String> WORKFLOW_EDITOR_PERMISSIONS = Set.of(
+            PermissionCodes.WORKFLOW_READ,
+            PermissionCodes.WORKFLOW_EDIT,
+            PermissionCodes.WORKFLOW_PUBLISH,
+            PermissionCodes.WORKFLOW_RUN,
+            PermissionCodes.WORKFLOW_APPROVE);
+
+    /** 流程编辑者角色定义（M06）。 */
+    private static final RoleDefinition WORKFLOW_EDITOR = new RoleDefinition(
+            RoleCodes.WORKFLOW_EDITOR, "流程编辑者", "创建/编辑自己的流程草稿并发布本部门或仅自己范围", WORKFLOW_EDITOR_PERMISSIONS);
+
     /** 平台管理员角色定义。 */
     private static final RoleDefinition PLATFORM_ADMIN = new RoleDefinition(
             RoleCodes.PLATFORM_ADMIN, "平台管理员", "管理租户、部门元数据与平台目录，不读取租户业务内容", PLATFORM_ADMIN_PERMISSIONS);
@@ -117,10 +144,10 @@ public final class RoleDefinitions {
     /**
      * 返回新租户开通时必须创建的系统角色。
      *
-     * @return 租户管理员与普通员工两个系统角色
+     * @return 租户管理员、普通员工与流程编辑者三个系统角色
      */
     public static List<RoleDefinition> tenantSystemRoles() {
-        return List.of(TENANT_ADMIN, MEMBER);
+        return List.of(TENANT_ADMIN, MEMBER, WORKFLOW_EDITOR);
     }
 
     /**
@@ -144,6 +171,9 @@ public final class RoleDefinitions {
         }
         if (RoleCodes.MEMBER.equals(code)) {
             return MEMBER;
+        }
+        if (RoleCodes.WORKFLOW_EDITOR.equals(code)) {
+            return WORKFLOW_EDITOR;
         }
         return null;
     }

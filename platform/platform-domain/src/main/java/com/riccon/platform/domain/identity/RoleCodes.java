@@ -16,4 +16,10 @@ public interface RoleCodes {
 
     /** 普通员工：使用工作空间、文件、会话、报告与审批。 */
     String MEMBER = "MEMBER";
+
+    /**
+     * 流程编辑者（M06）：拥有 {@code workflow.read/edit/publish/run/approve}，由租户管理员通过既有
+     * 角色管理授予/撤销；身份只是授权载体，部门负责人关系仍只限制 DEPT 发布范围（ADR-0024 §6.1）。
+     */
+    String WORKFLOW_EDITOR = "WORKFLOW_EDITOR";
 }

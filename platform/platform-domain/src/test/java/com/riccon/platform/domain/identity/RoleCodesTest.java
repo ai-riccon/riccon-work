@@ -45,14 +45,16 @@ class RoleCodesTest {
         assertThat(roleCodes().values()).doesNotHaveDuplicates();
     }
 
-    /** 内置角色码集合必须稳定为 PLATFORM_ADMIN/TENANT_ADMIN/MEMBER，不允许未登记的角色码进入共享词汇。 */
+    /** 内置角色码集合必须稳定为 PLATFORM_ADMIN/TENANT_ADMIN/MEMBER/WORKFLOW_EDITOR，不允许未登记的角色码进入共享词汇。 */
     @Test
     void builtInRoleCodes_matchContractVocabulary() throws IllegalAccessException {
         assertThat(roleCodes())
                 .containsOnly(
                         Map.entry("PLATFORM_ADMIN", "PLATFORM_ADMIN"),
                         Map.entry("TENANT_ADMIN", "TENANT_ADMIN"),
-                        Map.entry("MEMBER", "MEMBER"));
+                        Map.entry("MEMBER", "MEMBER"),
+                        // M06 流程编辑者：唯一新增系统角色，由租户管理员通过既有角色管理授予（ADR-0024 §6.1）。
+                        Map.entry("WORKFLOW_EDITOR", "WORKFLOW_EDITOR"));
     }
 
     /**

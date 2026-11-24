@@ -35,6 +35,12 @@ import org.springframework.stereotype.Component;
  * <p>M05-B9（TASK-0197）：V13 为 {@code artifact_citation} 增加可空 {@code chunk_id} 逻辑引用与租户索引；
  * Worker 写入报告引用时需要该列，因此不得在 V12 库上接收任务。
  *
+ * <p>M06（TASK-0219）：期望版本升到 15。V15 新增 9 张 workflow 表、{@code model_invocation} 的
+ * 可空工作流引用与索引、workflow 权限/角色回填、内置模板种子与 {@code workflow_version} 不可变触发器；
+ * Worker 的运行队列、审批与工具执行依赖这些结构，不得在 V14 库上接收任务。回滚顺序：停新 Worker →
+ * 关 {@code RICCON_WORKFLOW_CLAIM_ENABLED} 并等宽限 → 取消/清零在途运行 → 回滚 Worker（API 保留）
+ * （ADR-0024 §10.4、DEC-0047=A）。
+ *
  * <p>M05-B3b（TASK-0198）：期望版本升到 14。V14 为 {@code knowledge_chunk.content} 与
  * {@code knowledge_document.title} 增加 ngram FULLTEXT 索引；Worker 的检索查询依赖这些索引，
  * 不得在 V13 库上接收任务。回滚顺序：停新 Worker → 应用 V14 回滚 SQL（删两个 FULLTEXT 索引）→
@@ -51,8 +57,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class SchemaVersionChecker implements ApplicationRunner {
 
-    /** 期望的 schema 最大版本，对应 {@code apps/api/src/main/resources/db/migration/V1..V14}。 */
-    public static final int EXPECTED_SCHEMA_VERSION = 14;
+    /** 期望的 schema 最大版本，对应 {@code apps/api/src/main/resources/db/migration/V1..V15}。 */
+    public static final int EXPECTED_SCHEMA_VERSION = 15;
 
     /** 稳定错误码前缀，启动失败日志只输出版本与错误码，不输出连接串。 */
     public static final String ERROR_CODE = "RICCON-WORKER-001";

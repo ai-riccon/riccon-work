@@ -240,11 +240,28 @@ jobs:
             apps/api/src/main/resources/db/migration/V*.sql | wc -l | tr -d ' ')"
           tables="$(mysql_exec --batch --skip-column-names \
             -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='riccon'")"
+          # M06：期望触发器数从迁移文件推导，避免每次新增触发器都要改死数字；硬编码 4 作为回归哨兵
+          # （V6 审计 append-only 2 条 + V15 workflow_version 不可变 2 条），见 ADR-0024 §3.5。
+          expected_triggers="$(grep -hE '^CREATE TRIGGER' \
+            apps/api/src/main/resources/db/migration/V*.sql | wc -l | tr -d ' ')"
           triggers="$(mysql_exec --batch --skip-column-names \
             -e "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema='riccon'")"
-          echo "tables=${tables} expected_tables=${expected_tables} triggers=${triggers}"
+          echo "tables=${tables} expected_tables=${expected_tables} triggers=${triggers} expected_triggers=${expected_triggers}"
           test "${tables}" -eq "${expected_tables}"
-          test "${triggers}" -eq 2
+          test "${expected_triggers}" -eq 4
+          test "${triggers}" -eq "${expected_triggers}"
+
+          # V15（M06）结构断言：9 张 workflow 表、workflow_version 不可变触发器 2 条、6 个权限码。
+          v15_tables="$(mysql_exec --batch --skip-column-names \
+            -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='riccon' AND table_name LIKE 'workflow%'")"
+          v15_triggers="$(mysql_exec --batch --skip-column-names \
+            -e "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema='riccon' AND trigger_name IN ('trg_workflow_version_no_update','trg_workflow_version_no_delete')")"
+          v15_permissions="$(mysql_exec --batch --skip-column-names \
+            -e "SELECT COUNT(*) FROM permission WHERE code IN ('workflow.read','workflow.edit','workflow.publish','workflow.run','workflow.approve','workflow.manage')")"
+          echo "v15_tables=${v15_tables} v15_triggers=${v15_triggers} v15_permissions=${v15_permissions}"
+          test "${v15_tables}" -eq 9
+          test "${v15_triggers}" -eq 2
+          test "${v15_permissions}" -eq 6
 
           # V10（M10）结构断言：导出请求表、audit_event 两条查询索引、两条审批权限。
           v10_table="$(mysql_exec --batch --skip-column-names \

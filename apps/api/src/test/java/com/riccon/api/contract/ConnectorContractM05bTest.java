@@ -25,7 +25,7 @@ class ConnectorContractM05bTest {
     @Test
     @DisplayName("#contractVersionAndScope")
     void contractVersionAndScope() {
-        assertThat(OpenApiContract.map(document.get("info")).get("version")).isEqualTo("1.5.0-m05b");
+        assertThat(OpenApiContract.map(document.get("info")).get("version")).isEqualTo("1.6.0-m06");
 
         for (String[] expected : List.of(
                 new String[] {"get", "/api/v1/knowledge/connectors"},

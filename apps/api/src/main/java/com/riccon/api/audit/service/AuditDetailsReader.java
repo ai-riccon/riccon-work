@@ -11,6 +11,7 @@ import tools.jackson.databind.ObjectMapper;
  * <p>读取与写入使用同一 action-aware 白名单（ADR-0020 第 1/6.1 节）：白名单外的键、未知动作的非空 details
  * 以及敏感键命中即 fail-closed {@code RICCON-AUDIT-500}，不静默剔除。禁止用 {@code token}/{@code secret}/
  * {@code content} 子串规则，{@code promptTokens}/{@code completionTokens} 等合法指标必须通过。
+ * M06 的 {@code workflow.*} 动作由 {@link AuditDetailsPolicy} 同步登记，读取端无需第二份白名单。
  */
 public final class AuditDetailsReader {
 

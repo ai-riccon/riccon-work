@@ -260,7 +260,7 @@ class TenantIsolationTest extends ApiIntegrationTestSupport {
         assertThat(admin.body().path("authenticated").asBoolean()).isTrue();
     }
 
-    /** 租户开通时复制两个系统角色及权限映射。 */
+    /** 租户开通时复制三个系统角色（M06 新增 WORKFLOW_EDITOR）及权限映射。 */
     @Test
     void tenantCreationCopiesSystemRoles() {
         LoginSession platform = loginPlatformAdmin();
@@ -271,7 +271,7 @@ class TenantIsolationTest extends ApiIntegrationTestSupport {
                 .param("tenantId", tenant)
                 .query(String.class)
                 .list();
-        assertThat(roles).containsExactly("MEMBER", "TENANT_ADMIN");
+        assertThat(roles).containsExactly("MEMBER", "TENANT_ADMIN", "WORKFLOW_EDITOR");
         Long permissionMappings = jdbcClient
                 .sql("SELECT COUNT(*) FROM role_permission WHERE tenant_id = :tenantId")
                 .param("tenantId", tenant)

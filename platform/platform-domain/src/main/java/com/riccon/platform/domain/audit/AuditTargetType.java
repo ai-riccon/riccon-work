@@ -45,5 +45,11 @@ public enum AuditTargetType {
     /** 审计自身（M10 查询）。 */
     AUDIT,
     /** 审计导出请求（M10，target_id 为导出请求 ID）。 */
-    AUDIT_EXPORT
+    AUDIT_EXPORT,
+    /** 工作流定义/流程（M06，target_id 为 workflowId）。 */
+    WORKFLOW,
+    /** 工作流运行（M06，target_id 为 workflowRunId）。 */
+    WORKFLOW_RUN,
+    /** 工作流模板（M06，target_id 为 templateId）。 */
+    WORKFLOW_TEMPLATE
 }

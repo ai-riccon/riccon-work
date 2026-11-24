@@ -12,6 +12,10 @@ package com.riccon.platform.domain.identity;
  * M05 新增 {@value #KNOWLEDGE_ACL_MANAGE}、{@value #KNOWLEDGE_CONNECTOR_READ} 与
  * {@value #KNOWLEDGE_CONNECTOR_MANAGE}，只授予 {@code TENANT_ADMIN}；创建人对本人文档的 ACL 修改
  * 由服务层例外授权，不新增角色（ADR-0023 第 5.6 节）。
+ *
+ * <p>M06 新增 {@code workflow.read/edit/publish/run/approve/manage}：平台管理员不持有任何 workflow
+ * 权限，`/workflows/**`、`/workflow-runs/**`、`/workflow-approvals/**`、`/workflow-templates/**`
+ * 对 {@code tenantId=platform} 统一 404；{@code WORKFLOW_EDITOR} 是唯一新增系统角色（ADR-0024 §6.1）。
  */
 public interface PermissionCodes {
 
@@ -90,4 +94,17 @@ public interface PermissionCodes {
     String AUDIT_EXPORT_APPROVE = "audit.export.approve";
     /** 平台管理员审批单管理员租户的审计导出申请（M10，仅元数据；ADR-0020 第 2 节）。 */
     String PLATFORM_AUDIT_EXPORT_APPROVE = "platform.audit.export.approve";
+
+    /** 读取可运行流程、自己的草稿/运行、模板列表与运行限制（M06；ADR-0024 §6.1）。 */
+    String WORKFLOW_READ = "workflow.read";
+    /** 创建/编辑草稿、校验、复制模板与另存副本（M06）。 */
+    String WORKFLOW_EDIT = "workflow.edit";
+    /** 发布版本、停用/启用流程（M06；DEPARTMENT 范围还要求部门负责人关系，关系本身不授权）。 */
+    String WORKFLOW_PUBLISH = "workflow.publish";
+    /** 创建运行、取消/重试自己的运行（M06）。 */
+    String WORKFLOW_RUN = "workflow.run";
+    /** 审批待办/详情/决定（M06；只对指派给本人的审批生效）。 */
+    String WORKFLOW_APPROVE = "workflow.approve";
+    /** 移交流程所有权（M06，仅 TENANT_ADMIN）。 */
+    String WORKFLOW_MANAGE = "workflow.manage";
 }

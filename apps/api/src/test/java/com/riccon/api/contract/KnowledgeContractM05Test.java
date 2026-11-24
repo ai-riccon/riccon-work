@@ -21,11 +21,11 @@ class KnowledgeContractM05Test {
     /** 契约根。 */
     private final Map<String, Object> document = OpenApiContract.load();
 
-    /** 版本、M05 端点集合、M05b additive 范围与既有模块回归面。 */
+    /** 版本、M05 端点集合、M05b/M06 additive 范围与既有模块回归面。 */
     @Test
-    @DisplayName("#contract 1.5.0-m05b 版本、M05 端点与 M05b additive 增量")
+    @DisplayName("#contract 1.6.0-m06 版本、M05 端点与后续 additive 增量")
     void contractVersionAndScope() {
-        assertThat(OpenApiContract.map(document.get("info")).get("version")).isEqualTo("1.5.0-m05b");
+        assertThat(OpenApiContract.map(document.get("info")).get("version")).isEqualTo("1.6.0-m06");
 
         assertThat(OpenApiContract.operation(document, "/api/v1/knowledge/documents/{documentId}/acl", "get"))
                 .isNotEmpty();

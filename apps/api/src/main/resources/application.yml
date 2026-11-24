@@ -131,6 +131,38 @@ riccon:
   # M04：/actuator/prometheus 来源允许列表（逗号分隔 CIDR）；空值仅允许 loopback。
   ops:
     allowed-cidrs: ${RICCON_OPS_ALLOWED_CIDRS:}
+  # M06 编排 Studio 部署配置（ADR-0024 §10.1）：租户只读，只能由部署环境修改。
+  # 关闭时新运行/重试/审批决定/复制模板 503，取消仍可用；启动写 workflow.feature.changed 观测审计。
+  # Worker 侧的 CLAIM_* 键由 Worker 读取；API 保留同一组键，便于 /actuator/info 漂移核对与
+  # GET /workflows/runtime-limits 只读展示（T15）。本区块不含密钥。
+  workflow:
+    enabled: ${RICCON_WORKFLOW_ENABLED:true}
+    disabled-reason: ${RICCON_WORKFLOW_DISABLED_REASON:}
+    instance-id: ${RICCON_INSTANCE_ID:}
+    max-nodes: ${RICCON_WORKFLOW_MAX_NODES:50}
+    max-steps: ${RICCON_WORKFLOW_MAX_STEPS:200}
+    model-timeout-seconds: ${RICCON_WORKFLOW_MODEL_TIMEOUT_SECONDS:300}
+    retrieval-timeout-seconds: ${RICCON_WORKFLOW_RETRIEVAL_TIMEOUT_SECONDS:120}
+    mcp-timeout-seconds: ${RICCON_WORKFLOW_MCP_TIMEOUT_SECONDS:60}
+    run-timeout-minutes: ${RICCON_WORKFLOW_RUN_TIMEOUT_MINUTES:30}
+    tenant-concurrency: ${RICCON_WORKFLOW_TENANT_CONCURRENCY:10}
+    flow-concurrency: ${RICCON_WORKFLOW_FLOW_CONCURRENCY:5}
+    result-max-bytes: ${RICCON_WORKFLOW_RESULT_MAX_BYTES:5242880}
+    worker-concurrency: ${RICCON_WORKFLOW_WORKER_CONCURRENCY:10}
+    claim-batch: ${RICCON_WORKFLOW_CLAIM_BATCH:1}
+    claim-poll-interval-ms: ${RICCON_WORKFLOW_CLAIM_POLL_INTERVAL_MS:1000}
+    claim-idle-backoff-max-ms: ${RICCON_WORKFLOW_CLAIM_IDLE_BACKOFF_MAX_MS:5000}
+    scheduler-pool-size: ${RICCON_WORKFLOW_SCHEDULER_POOL_SIZE:10}
+    heartbeat-concurrency: ${RICCON_WORKFLOW_HEARTBEAT_CONCURRENCY:10}
+    heartbeat-interval-seconds: ${RICCON_WORKFLOW_HEARTBEAT_INTERVAL_SECONDS:30}
+    lease-seconds: ${RICCON_WORKFLOW_LEASE_SECONDS:90}
+    claim-enabled: ${RICCON_WORKFLOW_CLAIM_ENABLED:true}
+    shutdown-grace-seconds: ${RICCON_WORKFLOW_SHUTDOWN_GRACE_SECONDS:120}
+    retention-days: ${RICCON_WORKFLOW_RETENTION_DAYS:180}
+  # M06 结果大小预检（ADR-0024 §10.1/§10.5）：JDBC maxAllowedPacket 与服务端 max_allowed_packet
+  # 必须 ≥8 MiB 且 ≥ RICCON_WORKFLOW_RESULT_MAX_BYTES + JSON/协议余量；启动预检由 T15 落地。
+  db:
+    max-allowed-packet: ${RICCON_DB_MAX_ALLOWED_PACKET:16777216}
   # API → Worker 内部对话流客户端；共享密钥与端点只由部署环境注入（ADR-0014 第 5 节）。
   worker:
     client:

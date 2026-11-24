@@ -1,5 +1,6 @@
 package com.riccon.api.config;
 
+import com.riccon.api.auth.controller.TenantContextFilter;
 import com.riccon.api.oidc.infrastructure.OidcAwareSecurityContextRepository;
 import com.riccon.api.web.JsonAccessDeniedHandler;
 import com.riccon.api.web.JsonAuthenticationEntryPoint;
@@ -112,6 +113,7 @@ public class SecurityConfig {
      * @param accessDeniedHandler 403 响应
      * @param originCheckFilter 同源校验过滤器
      * @param tenantContextFilter 租户上下文过滤器
+     * @param workflowPlatformTenantFilter 平台租户工作流端点 404 守卫（M06）
      * @param clientRegistrationRepository 动态 OIDC 客户端注册
      * @param oidcAuthorizedClientRepository 不保存 token 的授权客户端仓储
      * @param oidcAuthorizationRequestRepository 会话内授权请求仓储
@@ -132,6 +134,7 @@ public class SecurityConfig {
             JsonAccessDeniedHandler accessDeniedHandler,
             @Qualifier("originCheckFilter") Filter originCheckFilter,
             @Qualifier("tenantContextFilter") Filter tenantContextFilter,
+            @Qualifier("workflowPlatformTenantFilter") Filter workflowPlatformTenantFilter,
             ClientRegistrationRepository clientRegistrationRepository,
             OAuth2AuthorizedClientRepository oidcAuthorizedClientRepository,
             AuthorizationRequestRepository<OAuth2AuthorizationRequest> oidcAuthorizationRequestRepository,
@@ -195,6 +198,8 @@ public class SecurityConfig {
                 // 同源校验在 CSRF 令牌之前执行，形成纵深；租户上下文在安全上下文加载之后建立。
                 .addFilterBefore(originCheckFilter, CsrfFilter.class)
                 .addFilterAfter(tenantContextFilter, SecurityContextHolderFilter.class)
+                // M06：平台租户工作流端点必须在 MVC 权限拦截器之前 404，否则会先返回 403（ADR-0024 §6.1）。
+                .addFilterAfter(workflowPlatformTenantFilter, TenantContextFilter.class)
                 // OIDC：预检在授权重定向之前；限流在回调认证之前。
                 .addFilterBefore(oidcAuthorizePreflightFilter, OAuth2AuthorizationRequestRedirectFilter.class)
                 .addFilterBefore(oidcLoginRateLimitFilter, OAuth2LoginAuthenticationFilter.class);
@@ -222,6 +227,20 @@ public class SecurityConfig {
      */
     @Bean
     FilterRegistrationBean<Filter> originCheckFilterRegistration(@Qualifier("originCheckFilter") Filter filter) {
+        FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    /**
+     * 禁止 Servlet 容器重复注册平台租户工作流守卫；它只应运行在安全过滤器链中。
+     *
+     * @param filter 平台租户工作流守卫
+     * @return 被禁用的注册
+     */
+    @Bean
+    FilterRegistrationBean<Filter> workflowPlatformTenantFilterRegistration(
+            @Qualifier("workflowPlatformTenantFilter") Filter filter) {
         FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>(filter);
         registration.setEnabled(false);
         return registration;

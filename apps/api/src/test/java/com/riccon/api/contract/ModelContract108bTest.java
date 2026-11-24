@@ -33,7 +33,7 @@ class ModelContract108bTest {
     /** 配额/成本与模型端点同属当前版本全量契约，没有 deferred 分段。 */
     private void assertSameFullContractVersion() {
         Map<String, Object> info = OpenApiContract.map(document.get("info"));
-        assertThat(info.get("version")).isEqualTo("1.5.0-m05b");
+        assertThat(info.get("version")).isEqualTo("1.6.0-m06");
         for (String path : List.of(
                 "/api/v1/quotas",
                 "/api/v1/quotas/users",

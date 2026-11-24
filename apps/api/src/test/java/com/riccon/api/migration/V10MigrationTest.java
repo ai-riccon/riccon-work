@@ -7,6 +7,7 @@ import com.riccon.api.identity.domain.RoleDefinition;
 import com.riccon.api.identity.domain.RoleDefinitions;
 import com.riccon.api.persistence.BinaryUuids;
 import com.riccon.platform.domain.identity.PermissionCodes;
+import com.riccon.platform.domain.identity.RoleCodes;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -219,7 +220,7 @@ class V10MigrationTest {
         migrate(rollbackUrl, "root", "10");
         rollbackV10Objects();
 
-        // fresh install：空库直接应用最新迁移（含 V14），验证当前 RoleDefinitions 的权限字典覆盖与引导路径可用。
+        // fresh install：空库直接应用最新迁移（含 V15），验证当前 RoleDefinitions 的权限字典覆盖与引导路径可用。
         migrateLatest(freshUrl, "root");
         fresh = jdbcClient(freshUrl, "root");
 
@@ -587,7 +588,7 @@ class V10MigrationTest {
     @DisplayName("空库 V1–V14 后 RoleDefinitions 权限字典完整")
     void freshDatabase_bootstrapCoversRoleDefinitions() {
         assertThat(flywayLatest(freshUrl, "root").info().current().getVersion().getVersion())
-                .isEqualTo("14");
+                .isEqualTo("15");
         assertThat(count(fresh, """
                         SELECT COUNT(*) FROM information_schema.TABLES
                          WHERE TABLE_SCHEMA = :schema AND TABLE_NAME = 'audit_export_request'
@@ -604,6 +605,10 @@ class V10MigrationTest {
         insertTenant(fresh, PLATFORM_TENANT);
         createRoleWithPermissions(fresh, PLATFORM_TENANT, PLATFORM_ADMIN_ROLE, RoleDefinitions.platformAdminRole());
         for (RoleDefinition definition : RoleDefinitions.tenantSystemRoles()) {
+            // WORKFLOW_EDITOR 由 V15 引入；本测试 fresh schema 的目标是 V14，不创建该角色。
+            if (RoleCodes.WORKFLOW_EDITOR.equals(definition.code())) {
+                continue;
+            }
             createRoleWithPermissions(fresh, TENANT_A, roleIdFor(definition.code()), definition);
         }
 
@@ -971,8 +976,20 @@ class V10MigrationTest {
             JdbcClient jdbc, String tenant, UUID roleId, RoleDefinition definition) {
         insertRole(jdbc, tenant, roleId, definition.code());
         for (String permission : definition.permissions()) {
-            insertRolePermission(jdbc, tenant, roleId, permission);
+            // V15 新增的 workflow.* 不在 V14 权限字典中；V1–V14 的严格覆盖断言由 V15MigrationTest 承担。
+            if (permissionExists(jdbc, permission)) {
+                insertRolePermission(jdbc, tenant, roleId, permission);
+            }
         }
+    }
+
+    /** 判断权限码是否已在本 schema 的字典中。 */
+    private static boolean permissionExists(JdbcClient jdbc, String permissionCode) {
+        return jdbc.sql("SELECT COUNT(*) FROM permission WHERE code = :code")
+                        .param("code", permissionCode)
+                        .query(Long.class)
+                        .single()
+                > 0;
     }
 
     /** 按角色码返回测试固定角色 ID；仅用于 seed 的四个已知角色。 */

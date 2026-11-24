@@ -127,7 +127,11 @@ class AuditVocabularyTest {
                         "TENANT",
                         "AUDIT",
                         "AUDIT_EXPORT",
-                        "KNOWLEDGE_CONNECTOR")
+                        "KNOWLEDGE_CONNECTOR",
+                        // M06 编排 Studio：流程定义/运行/模板三类目标（ADR-0024 §8.1）。
+                        "WORKFLOW",
+                        "WORKFLOW_RUN",
+                        "WORKFLOW_TEMPLATE")
                 .allSatisfy(name -> assertThat(name).matches("^[A-Z][A-Z0-9_]*$"));
     }
 }

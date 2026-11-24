@@ -162,4 +162,39 @@ public interface AuditActions {
     String WORKSPACE_MEMBER_ADDED = "workspace.member.added";
     /** 移出 CUSTOM 空间显式成员（M03）。 */
     String WORKSPACE_MEMBER_REMOVED = "workspace.member.removed";
+
+    // M06 编排 Studio（ADR-0024 §8.1）：details 同时受 API 写入与 M10 读取白名单约束。
+
+    /** 新建流程草稿；details 只写流程 ID 与来源模板。 */
+    String WORKFLOW_CREATED = "workflow.created";
+    /** 保存草稿；details 写流程 ID、乐观锁版本与节点数。 */
+    String WORKFLOW_DRAFT_SAVED = "workflow.draft.saved";
+    /** 发布不可变版本；details 写版本 ID/号、范围与部门。 */
+    String WORKFLOW_PUBLISHED = "workflow.published";
+    /** 停用流程；details 写前后状态。 */
+    String WORKFLOW_DISABLED = "workflow.disabled";
+    /** 重新启用流程；details 写前后状态。 */
+    String WORKFLOW_ENABLED = "workflow.enabled";
+    /** 移交流程所有权；details 写 from/to 用户。 */
+    String WORKFLOW_OWNER_TRANSFERRED = "workflow.owner.transferred";
+    /** 创建运行（API）；details 写流程/版本/运行与节点数。 */
+    String WORKFLOW_RUN_REQUESTED = "workflow.run.requested";
+    /** Worker 开始执行运行。 */
+    String WORKFLOW_RUN_STARTED = "workflow.run.started";
+    /** 运行成功完成；details 写状态、耗时、节点数与结果字节数。 */
+    String WORKFLOW_RUN_COMPLETED = "workflow.run.completed";
+    /** 运行失败；details 写稳定错误码与失败节点。 */
+    String WORKFLOW_RUN_FAILED = "workflow.run.failed";
+    /** 运行取消（API/Worker）；details 写前一状态与可选原因。 */
+    String WORKFLOW_RUN_CANCELLED = "workflow.run.cancelled";
+    /** 重试失败节点；details 写运行、节点与尝试号。 */
+    String WORKFLOW_RUN_RETRIED = "workflow.run.retried";
+    /** 租户管理员管理性读取他人运行；details 写范围与固定原因 {@code MANAGEMENT_READ}。 */
+    String WORKFLOW_RUN_ADMIN_READ = "workflow.run.admin_read";
+    /** Worker 创建审批节点请求；details 写审批、节点、审批人数与动作类型。 */
+    String WORKFLOW_APPROVAL_REQUESTED = "workflow.approval.requested";
+    /** 审批人做出决定；细节含决定与理由（≤500，见 ADR-0024 §8.3）。 */
+    String WORKFLOW_APPROVAL_DECIDED = "workflow.approval.decided";
+    /** 编排开关启动观测（不是变更日志）；details 必含 enabled/source/instanceId/observedAt。 */
+    String WORKFLOW_FEATURE_CHANGED = "workflow.feature.changed";
 }
