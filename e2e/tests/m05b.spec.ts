@@ -775,7 +775,8 @@ test.describe('M05b 知识库连接器', () => {
     await expect(editForm).toBeHidden();
     await expect(page.getByText(/已保存连接器「销售合同归档」/)).toBeVisible();
 
-    // 键盘打开条目 Drawer；焦点在 Drawer 内，Escape 关闭并回到触发按钮。
+    // 键盘打开条目 Drawer；焦点在 Drawer 内，分页末尾 Tab 回关闭、Shift+Tab 反向，
+    // Escape 关闭并把焦点归还“条目”按钮（F-004）。
     const itemsButton = page.getByRole('button', {
       name: `条目 ${M05B_FIXTURES.connectors.contractsName}`,
     });
@@ -784,17 +785,24 @@ test.describe('M05b 知识库连接器', () => {
     const drawer = itemsDrawer(page);
     await expect(drawer).toBeVisible();
     await expectFocusInside(page, '.ant-drawer');
-    // antd 6 的 Drawer 没有焦点陷阱，关闭后也不会把焦点还给触发按钮；AC-19 只要求
-    // 键盘可完成路径与焦点可见。这里断言打开后焦点进入 Drawer、抽屉内控件可 Tab 到达、
-    // Escape 可关闭；焦点逃逸与不归还触发按钮作为 P2 残余在任务回执记录，不在测试中
-    // 伪装为已通过。
+    const drawerClose = drawer.getByRole('button', { name: '关闭' });
+    await expect(drawerClose).toBeFocused();
+    // 375px 下分页大小选择器被隐藏，“页 1”是实际最后一个可 Tab 元素。
+    const pageOne = drawer.getByLabel('页 1');
+    await pageOne.focus();
     await page.keyboard.press('Tab');
-    await expectFocusInside(page, '.ant-drawer');
+    await expect(drawerClose).toBeFocused();
     await page.keyboard.press('Shift+Tab');
-    await expectFocusInside(page, '.ant-drawer');
+    await expect(pageOne).toBeFocused();
+    // 连续 Tab 不得落到 BODY；焦点必须始终留在抽屉内。
+    for (let index = 0; index < 12; index += 1) {
+      await page.keyboard.press('Tab');
+      await expectFocusInside(page, '.ant-drawer');
+    }
     await expectNoHorizontalScroll(page);
     await page.keyboard.press('Escape');
     await expect(drawer).toBeHidden();
+    await expect(itemsButton).toBeFocused();
   });
 
   test('E2E-M05-07f-1 连接器列表 axe 无 serious/critical @a11y', async ({ page, stub }) => {
