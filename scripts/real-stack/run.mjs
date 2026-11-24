@@ -2950,7 +2950,7 @@ async function runKnowledgePerf(context) {
       "检索 p95 来自 MySQL slow_log 中 AgentContextJdbc FULLTEXT MATCH + ACL 谓词的实际执行时间；不含网络与结果映射。",
       "slow_log 在 API/Worker 建连前开启（long_query_time=0.001s）；它会给测试栈带来额外写开销，结果偏保守。",
       context.connectorPerf
-        ? "M05b 连接器同步分支：1000 对象同步与索引在 k6 前串行完成，随后用同一套 50 并发 knowledge 负载复验整条 AC-20；slow_log 全程开启，连接器阶段结果偏保守。"
+        ? `M05b 连接器同步分支：${context.connectorConfig.objects} 对象同步与索引在 k6 前串行完成，随后用同一套 50 并发 knowledge 负载复验整条 AC-20；slow_log 全程开启，连接器阶段结果偏保守。`
         : "M05 不启用连接器分支。",
     ],
   };
@@ -2996,7 +2996,9 @@ async function runKnowledgePerf(context) {
     decision: report.m05.retrieval.decision,
     notes: [
       "PERF-M05-001：首字/API/ACL 写/检索量测；PERF-M05-002：索引延迟（无 OCR 与 OCR 单页）。",
-      "PERF-M05-003：连接器同步 1000 对象 ≤15min；PERF-M05-004：heavy 通道队列等待 p95 ≤5min。",
+      context.connectorPerf
+        ? `PERF-M05-003：连接器同步 ${context.connectorConfig.objects} 对象 ≤15min；PERF-M05-004：heavy 通道队列等待 p95 ≤5min。`
+        : "PERF-M05-003/004：连接器同步分支未启用；本报告不声称已量测连接器同步或队列等待。",
       "OpenSearch 使用 v2 索引并核对别名目标与 bbox/acl mapping 字段；检索仍以 MySQL FULLTEXT + ACL 为准。",
       context.connectorPerf
         ? "连接器分支启用时检索 p95 >500ms 直接失败（M05b 整条复验判据），不降级为 passed-with-decision。"
