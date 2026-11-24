@@ -60,6 +60,23 @@ const m05AclDocumentId = __ENV.PERF_M05_ACL_DOC_ID || '';
 const m05HiddenDocumentId = __ENV.PERF_M05_HIDDEN_DOC_ID || '';
 const m05DownloadDocumentId = __ENV.PERF_M05_DOWNLOAD_DOC_ID || '';
 const m05Query = __ENV.PERF_M05_QUERY || 'QXZJKW';
+
+/**
+ * M05b 连接器同步分支标记；同步/索引本身由 `scripts/real-stack/run.mjs` 编排，
+ * k6 只负责在连接器文档入库后制造 50 并发检索/聊天负载并把连接器元数据写进报告。
+ * 该分支默认关闭，不改变既有 M05 knowledge 场景的并发与查询语义。
+ */
+const m05ConnectorEnabled = __ENV.PERF_M05_CONNECTOR === '1';
+const m05Connector = m05ConnectorEnabled
+  ? {
+      objects: Number(__ENV.PERF_M05_CONNECTOR_OBJECTS || '0'),
+      connectorId: __ENV.PERF_M05_CONNECTOR_ID || '',
+      syncId: __ENV.PERF_M05_CONNECTOR_SYNC_ID || '',
+      bucket: __ENV.PERF_M05_CONNECTOR_BUCKET || '',
+      prefix: __ENV.PERF_M05_CONNECTOR_PREFIX || '',
+    }
+  : null;
+
 const m05AclUserIds = (() => {
   try {
     const parsed = JSON.parse(__ENV.PERF_M05_ACL_USER_IDS || '[]');
@@ -142,6 +159,7 @@ const envSnapshot = loadEnvSnapshot();
 
 if (scenario === 'knowledge') {
   requireKnowledgeInputs();
+  requireConnectorInputs();
 }
 
 /** 场景级阈值；未列出的场景只记录指标，不伪造通过。 */
@@ -587,6 +605,31 @@ function requireKnowledgeInputs() {
   if (missing.length > 0) {
     fail(
       `knowledge scenario requires ${missing.join(', ')}; run scripts/real-stack/run.mjs --mode=perf with PERF_M05_SCENARIO=knowledge`,
+    );
+  }
+}
+
+/**
+ * 校验 M05b 连接器分支输入；启用标记时必须由 run.mjs 注入完整元数据，
+ * 避免手工只设 `PERF_M05_CONNECTOR=1` 就得到一份没有同步证据的假绿报告。
+ */
+function requireConnectorInputs() {
+  if (!m05ConnectorEnabled) {
+    return;
+  }
+  const missing = [];
+  if (!Number.isInteger(m05Connector.objects) || m05Connector.objects < 1) {
+    missing.push('PERF_M05_CONNECTOR_OBJECTS');
+  }
+  if (!m05Connector.connectorId) {
+    missing.push('PERF_M05_CONNECTOR_ID');
+  }
+  if (!m05Connector.syncId) {
+    missing.push('PERF_M05_CONNECTOR_SYNC_ID');
+  }
+  if (missing.length > 0) {
+    fail(
+      `M05b connector branch requires ${missing.join(', ')}; run scripts/real-stack/run.mjs --mode=perf with PERF_M05_SCENARIO=knowledge PERF_M05_CONNECTOR=1`,
     );
   }
 }
@@ -1137,6 +1180,14 @@ export function handleSummary(data) {
       aclUserCount: m05AclUserIds.length,
       concurrency: { knowledgeVus: 50, aclWriteVus: 1 },
       duration: __ENV.PERF_M05_DURATION || '60s',
+      // M05b 连接器同步结果由 run.mjs 在 k6 结束后写回；这里只记录本次负载对应的
+      // 连接器元数据，便于单看 k6 报告也能区分“普通 M05 段”和“M05b 整条复验”。
+      connector: m05Connector
+        ? {
+            ...m05Connector,
+            note: '同步/索引/队列等待由 scripts/real-stack/run.mjs 在 k6 前量测并写回同目录报告',
+          }
+        : null,
       note: '检索 p95 由 scripts/real-stack/run.mjs 从 MySQL slow_log 汇总后写回报告；k6 只负责并发与首字/API/ACL/下载指标',
     };
   }
