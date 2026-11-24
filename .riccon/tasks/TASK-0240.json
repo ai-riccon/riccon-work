@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0240",
+  "module_id": "M06",
+  "title": "M06 T01 ArchUnit 分层修复（config→service/controller）",
+  "owner": "riccon/builder-b1",
+  "status": "review",
+  "write_scope": [
+    "apps/api/src/main/java/com/riccon/api/config/**",
+    "apps/api/src/main/java/com/riccon/api/workflow/config/**",
+    "apps/api/src/main/java/com/riccon/api/workflow/web/**",
+    "apps/api/src/main/java/com/riccon/api/auth/controller/**",
+    "apps/api/src/main/java/com/riccon/api/common/**",
+    "apps/api/src/test/java/com/riccon/api/config/**",
+    "apps/api/src/test/java/com/riccon/api/workflow/web/**",
+    "apps/api/src/test/java/com/riccon/api/auth/**"
+  ],
+  "acceptance": [
+    "修复 T01 commit db38f09 引入的 ModuleBoundaryTest.mvcLayeringIsOneWay P0：AppConfig.workflowFeatureAuditWriter(AuditService) 的 config→service、SecurityConfig.securityFilterChain 引用 TenantContextFilter 的 config→controller。允许移动 workflow 配置 bean 到 workflow/config、抽接口/按类型注入或移动 filter；不得修改 platform-architecture-tests 规则或 @SuppressWarnings 绕过。",
+    "验证：./mvnw -q -pl platform/platform-architecture-tests -am test 通过（12/12）；./mvnw -q -pl apps/api -am -Dtest='WorkflowFeatureStartupAuditorTest,WorkflowFeatureDisabledStartupTest,WorkflowPlatformTenantFilterTest,ApiApplicationTests' -Dsurefire.failIfNoSpecifiedTests=false test 通过；J1/J2 行为不变。",
+    "只改写范围；不改 contracts/PRODUCT/AGENTS/V15/J2；高风险任务 done 前必须有独立 Verifier 任务评审；提交后取证，任务只移到 review。修复工时从模块缓冲支付，不新增 AC。"
+  ],
+  "evidence": [
+    "EV-1022",
+    "EV-1023",
+    "EV-1024",
+    "EV-1025"
+  ],
+  "tools_used": [
+    "codegraph",
+    "read",
+    "grep"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-25T04:11:26.732+08:00",
+  "updated_at": "2026-11-25T04:42:25.890+08:00",
+  "baseline_commit": "50c6e89",
+  "end_commit": "8d0252f"
+}
