@@ -120,10 +120,8 @@ class WorkflowRunAdmissionApiTest extends WorkflowRunTestSupport {
         UUID versionA = publishedVersionId(fixture.tenant(), workflowA);
         UUID versionB = publishedVersionId(fixture.tenant(), workflowB);
         for (int index = 0; index < 5; index++) {
-            insertActiveRun(
-                    fixture.tenant(), workflowA, versionA, 1, fixture.ownerId(), "PENDING", "start");
-            insertActiveRun(
-                    fixture.tenant(), workflowB, versionB, 1, fixture.ownerId(), "RUNNING", "start");
+            insertActiveRun(fixture.tenant(), workflowA, versionA, 1, fixture.ownerId(), "PENDING", "start");
+            insertActiveRun(fixture.tenant(), workflowB, versionB, 1, fixture.ownerId(), "RUNNING", "start");
         }
 
         ApiTestClient.ApiResponse rejected =
@@ -180,13 +178,12 @@ class WorkflowRunAdmissionApiTest extends WorkflowRunTestSupport {
                 createRun(fixture.owner(), workflowId, null, seventeenKeys.toString(), "run-input-001");
         assertProblem(tooManyKeys, 400, WF_400);
 
-        ApiTestClient.ApiResponse badKey = createRun(
-                fixture.owner(), workflowId, null, "{\"bad key\":\"value\"}", "run-input-002");
+        ApiTestClient.ApiResponse badKey =
+                createRun(fixture.owner(), workflowId, null, "{\"bad key\":\"value\"}", "run-input-002");
         assertProblem(badKey, 400, WF_400);
 
         String oversized = "{\"topic\":\"" + "a".repeat(70 * 1024) + "\"}";
-        ApiTestClient.ApiResponse tooLarge =
-                createRun(fixture.owner(), workflowId, null, oversized, "run-input-003");
+        ApiTestClient.ApiResponse tooLarge = createRun(fixture.owner(), workflowId, null, oversized, "run-input-003");
         assertProblem(tooLarge, 400, WF_400);
 
         ApiTestClient.ApiResponse unknownField = client.post(
@@ -213,12 +210,10 @@ class WorkflowRunAdmissionApiTest extends WorkflowRunTestSupport {
                 java.util.Map.of("Idempotency-Key", "run-input-005"));
         assertProblem(missingBody, 400, WF_400);
 
-        ApiTestClient.ApiResponse missingKey =
-                createRun(fixture.owner(), workflowId, null, DEFAULT_INPUTS, null);
+        ApiTestClient.ApiResponse missingKey = createRun(fixture.owner(), workflowId, null, DEFAULT_INPUTS, null);
         assertProblem(missingKey, 400, WF_400);
 
-        ApiTestClient.ApiResponse shortKey =
-                createRun(fixture.owner(), workflowId, null, DEFAULT_INPUTS, "short");
+        ApiTestClient.ApiResponse shortKey = createRun(fixture.owner(), workflowId, null, DEFAULT_INPUTS, "short");
         assertProblem(shortKey, 400, WF_400);
 
         assertThat(runCount(fixture.tenant())).isZero();
@@ -230,41 +225,23 @@ class WorkflowRunAdmissionApiTest extends WorkflowRunTestSupport {
     void createRun_unpublishedDisabledAndVersionVisibility() {
         Fixture fixture = fixture("wfr");
         String unpublished = draft(fixture, "未发布");
-        assertProblem(
-                createRun(fixture.owner(), unpublished, null, DEFAULT_INPUTS, "run-state-001"),
-                400,
-                WF_400);
+        assertProblem(createRun(fixture.owner(), unpublished, null, DEFAULT_INPUTS, "run-state-001"), 400, WF_400);
 
         String disabled = publishWorkflow(fixture, "停用", "TENANT");
         assertThat(disable(fixture.owner(), disabled).status()).isEqualTo(200);
-        assertProblem(
-                createRun(fixture.owner(), disabled, null, DEFAULT_INPUTS, "run-state-002"),
-                400,
-                WF_400);
+        assertProblem(createRun(fixture.owner(), disabled, null, DEFAULT_INPUTS, "run-state-002"), 400, WF_400);
 
         String other = publishWorkflow(fixture, "另一个流程", "TENANT");
         UUID otherVersion = publishedVersionId(fixture.tenant(), other);
         String target = publishWorkflow(fixture, "目标流程", "TENANT");
         assertProblem(
-                createRun(fixture.owner(), target, otherVersion, DEFAULT_INPUTS, "run-state-003"),
+                createRun(fixture.owner(), target, otherVersion, DEFAULT_INPUTS, "run-state-003"), 404, TENANT_404);
+        assertProblem(
+                createRun(fixture.owner(), UUID.randomUUID().toString(), null, DEFAULT_INPUTS, "run-state-004"),
                 404,
                 TENANT_404);
         assertProblem(
-                createRun(
-                        fixture.owner(),
-                        UUID.randomUUID().toString(),
-                        null,
-                        DEFAULT_INPUTS,
-                        "run-state-004"),
-                404,
-                TENANT_404);
-        assertProblem(
-                createRun(
-                        fixture.owner(),
-                        target,
-                        UUID.randomUUID(),
-                        DEFAULT_INPUTS,
-                        "run-state-005"),
+                createRun(fixture.owner(), target, UUID.randomUUID(), DEFAULT_INPUTS, "run-state-005"),
                 404,
                 TENANT_404);
         assertThat(runCount(fixture.tenant())).isZero();
@@ -278,23 +255,8 @@ class WorkflowRunAdmissionApiTest extends WorkflowRunTestSupport {
         Fixture other = fixture("wfr");
 
         assertProblem(
-                createRun(
-                        fixture.platform(),
-                        workflowId,
-                        null,
-                        DEFAULT_INPUTS,
-                        "run-tenant-001"),
-                404,
-                TENANT_404);
-        assertProblem(
-                createRun(
-                        other.owner(),
-                        workflowId,
-                        null,
-                        DEFAULT_INPUTS,
-                        "run-tenant-002"),
-                404,
-                TENANT_404);
+                createRun(fixture.platform(), workflowId, null, DEFAULT_INPUTS, "run-tenant-001"), 404, TENANT_404);
+        assertProblem(createRun(other.owner(), workflowId, null, DEFAULT_INPUTS, "run-tenant-002"), 404, TENANT_404);
         assertThat(runCount(fixture.tenant())).isZero();
     }
 }

@@ -16,13 +16,13 @@ import com.riccon.api.workflow.domain.WorkflowGraphEdge;
 import com.riccon.api.workflow.domain.WorkflowGraphNode;
 import com.riccon.api.workflow.run.domain.WorkflowRunCreateCommand;
 import com.riccon.api.workflow.run.domain.WorkflowRunDefinitionSnapshot;
+import com.riccon.api.workflow.run.domain.WorkflowRunInsert;
+import com.riccon.api.workflow.run.domain.WorkflowRunNodeInsert;
 import com.riccon.api.workflow.run.domain.WorkflowRunNodeSnapshot;
 import com.riccon.api.workflow.run.domain.WorkflowRunRetryCommand;
 import com.riccon.api.workflow.run.domain.WorkflowRunSnapshot;
 import com.riccon.api.workflow.run.domain.WorkflowRunVersionSnapshot;
 import com.riccon.api.workflow.run.dto.WorkflowRunResponse;
-import com.riccon.api.workflow.run.domain.WorkflowRunInsert;
-import com.riccon.api.workflow.run.domain.WorkflowRunNodeInsert;
 import com.riccon.api.workflow.run.repository.WorkflowRunRepository;
 import com.riccon.platform.common.tenant.TenantId;
 import com.riccon.platform.domain.identity.PermissionCodes;
@@ -164,9 +164,8 @@ public class WorkflowRunService {
         quotaAdmissionService.admit(tenantId, actor.userId());
         requireAdmissionLimits(tenantId, workflowId);
         Instant now = clock.instant();
-        TenantRecord tenant = tenantDirectoryRepository
-                .findById(actor.tenantId())
-                .orElseThrow(() -> new NotFoundException("tenant"));
+        TenantRecord tenant =
+                tenantDirectoryRepository.findById(actor.tenantId()).orElseThrow(() -> new NotFoundException("tenant"));
         UUID runId = UuidV7.generate(now);
         WorkflowRunSnapshot created = new WorkflowRunSnapshot(
                 runId,
@@ -230,7 +229,8 @@ public class WorkflowRunService {
             return;
         }
         if (run.terminal()) {
-            throw new WorkflowRunConflictException("run is already " + run.status().name());
+            throw new WorkflowRunConflictException(
+                    "run is already " + run.status().name());
         }
         Instant now = clock.instant();
         if (run.status() == WorkflowRunStatus.WAITING_APPROVAL) {
@@ -238,9 +238,8 @@ public class WorkflowRunService {
         }
         int updated = repository.markCancelled(tenantId, runId, run.status(), now);
         if (updated == 0) {
-            WorkflowRunSnapshot latest = repository
-                    .findById(tenantId, runId)
-                    .orElseThrow(() -> new NotFoundException("workflow run"));
+            WorkflowRunSnapshot latest =
+                    repository.findById(tenantId, runId).orElseThrow(() -> new NotFoundException("workflow run"));
             if (latest.status() == WorkflowRunStatus.CANCELLED) {
                 return;
             }
@@ -288,9 +287,8 @@ public class WorkflowRunService {
         WorkflowRunSnapshot run =
                 repository.findById(tenantId, runId).orElseThrow(() -> new NotFoundException("workflow run"));
         requireOwnerOrAdmin(actor, run);
-        WorkflowRunNodeSnapshot latest = repository
-                .findLatestNode(tenantId, runId, command.nodeId())
-                .orElse(null);
+        WorkflowRunNodeSnapshot latest =
+                repository.findLatestNode(tenantId, runId, command.nodeId()).orElse(null);
         if (run.status() != WorkflowRunStatus.FAILED) {
             if (isReplayAfterRetry(run, command.nodeId(), latest)) {
                 return;
@@ -311,9 +309,8 @@ public class WorkflowRunService {
         Instant now = clock.instant();
         int updated = repository.markRetried(tenantId, runId, command.nodeId(), now);
         if (updated == 0) {
-            WorkflowRunSnapshot latestRun = repository
-                    .findById(tenantId, runId)
-                    .orElseThrow(() -> new NotFoundException("workflow run"));
+            WorkflowRunSnapshot latestRun =
+                    repository.findById(tenantId, runId).orElseThrow(() -> new NotFoundException("workflow run"));
             if (isReplayAfterRetry(latestRun, command.nodeId(), latest)) {
                 return;
             }
@@ -323,13 +320,7 @@ public class WorkflowRunService {
         repository.insertNodeAttempt(
                 tenantId,
                 new WorkflowRunNodeInsert(
-                        UuidV7.generate(now),
-                        runId,
-                        node.id(),
-                        node.type(),
-                        node.name(),
-                        attempt,
-                        now));
+                        UuidV7.generate(now), runId, node.id(), node.type(), node.name(), attempt, now));
         Set<String> downstream = downstreamNodeKeys(version.graph(), node.id());
         if (!downstream.isEmpty()) {
             // 只恢复失败节点的可达下游；条件未走分支的 SKIPPED 保持原状。
@@ -350,8 +341,7 @@ public class WorkflowRunService {
      * @param latest 最新节点尝试
      * @return 幂等重放时返回 {@code true}
      */
-    private static boolean isReplayAfterRetry(
-            WorkflowRunSnapshot run, String nodeId, WorkflowRunNodeSnapshot latest) {
+    private static boolean isReplayAfterRetry(WorkflowRunSnapshot run, String nodeId, WorkflowRunNodeSnapshot latest) {
         return !run.terminal()
                 && nodeId.equals(run.currentNodeKey())
                 && latest != null
@@ -398,9 +388,8 @@ public class WorkflowRunService {
             }
             versionId = definition.publishedVersionId();
         }
-        WorkflowRunVersionSnapshot version = repository
-                .findVersion(tenantId, versionId)
-                .orElseThrow(() -> new NotFoundException(VERSION_RESOURCE));
+        WorkflowRunVersionSnapshot version =
+                repository.findVersion(tenantId, versionId).orElseThrow(() -> new NotFoundException(VERSION_RESOURCE));
         if (!version.workflowId().equals(definition.id())) {
             // 版本不属于路径流程：按不可见统一 404，不泄露其他流程的版本存在性。
             throw new NotFoundException(VERSION_RESOURCE);
@@ -483,13 +472,11 @@ public class WorkflowRunService {
     private void requireAdmissionLimits(TenantId tenantId, UUID workflowId) {
         long tenantActive = repository.countActiveTenant(tenantId);
         if (tenantActive >= properties.tenantConcurrency()) {
-            throw new WorkflowRunRateLimitedException(
-                    "tenant", properties.tenantConcurrency(), tenantActive);
+            throw new WorkflowRunRateLimitedException("tenant", properties.tenantConcurrency(), tenantActive);
         }
         long workflowActive = repository.countActiveWorkflow(tenantId, workflowId);
         if (workflowActive >= properties.flowConcurrency()) {
-            throw new WorkflowRunRateLimitedException(
-                    "workflow", properties.flowConcurrency(), workflowActive);
+            throw new WorkflowRunRateLimitedException("workflow", properties.flowConcurrency(), workflowActive);
         }
     }
 

@@ -75,14 +75,12 @@ class WorkflowRunAuditFailClosedTest extends WorkflowRunTestSupport {
         Fixture fixture = fixture("wfa");
         String workflowId = publishWorkflow(fixture, "重试审计失败");
         UUID versionId = publishedVersionId(fixture.tenant(), workflowId);
-        UUID runId =
-                insertFailedRun(fixture.tenant(), workflowId, versionId, 1, fixture.ownerId(), "draft");
+        UUID runId = insertFailedRun(fixture.tenant(), workflowId, versionId, 1, fixture.ownerId(), "draft");
 
         doThrow(new DataAccessResourceFailureException("audit storage unavailable"))
                 .when(auditRepository)
                 .append(argThat((AuditEvent event) -> AuditActions.WORKFLOW_RUN_RETRIED.equals(event.action())));
-        ApiTestClient.ApiResponse response =
-                retryRun(fixture.owner(), runId.toString(), "draft", "retry-audit-001");
+        ApiTestClient.ApiResponse response = retryRun(fixture.owner(), runId.toString(), "draft", "retry-audit-001");
         assertThat(response.status()).as(response.body()).isEqualTo(500);
         assertThat(runRow(fixture.tenant(), runId).status()).isEqualTo("FAILED");
         assertThat(nodeAttemptCount(fixture.tenant(), runId, "draft")).isEqualTo(1);

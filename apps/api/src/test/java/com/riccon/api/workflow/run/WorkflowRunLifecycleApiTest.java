@@ -62,8 +62,7 @@ class WorkflowRunLifecycleApiTest extends WorkflowRunTestSupport {
                 .param("tenant", fixture.tenant())
                 .param("id", com.riccon.api.persistence.BinaryUuids.toBytes(runId))
                 .update();
-        UUID approvalId =
-                insertPendingApproval(fixture.tenant(), runId, workflowId, "approval", fixture.ownerId());
+        UUID approvalId = insertPendingApproval(fixture.tenant(), runId, workflowId, "approval", fixture.ownerId());
 
         ApiTestClient.ApiResponse response = cancelRun(fixture.tenantAdmin(), runId.toString());
         assertThat(response.status()).as(response.body()).isEqualTo(202);
@@ -86,14 +85,7 @@ class WorkflowRunLifecycleApiTest extends WorkflowRunTestSupport {
         Fixture fixture = fixture("wfl");
         String workflowId = publishWorkflow(fixture, "取消权限");
         UUID versionId = publishedVersionId(fixture.tenant(), workflowId);
-        UUID runId = insertActiveRun(
-                fixture.tenant(),
-                workflowId,
-                versionId,
-                1,
-                fixture.ownerId(),
-                "SUCCEEDED",
-                "end");
+        UUID runId = insertActiveRun(fixture.tenant(), workflowId, versionId, 1, fixture.ownerId(), "SUCCEEDED", "end");
 
         assertProblem(cancelRun(fixture.owner(), runId.toString()), 409, WF_409);
         assertProblem(cancelRun(fixture.member(), runId.toString()), 403, AUTH_403);
@@ -109,14 +101,12 @@ class WorkflowRunLifecycleApiTest extends WorkflowRunTestSupport {
         Fixture fixture = fixture("wfl");
         String workflowId = publishWorkflow(fixture, "重试运行");
         UUID versionId = publishedVersionId(fixture.tenant(), workflowId);
-        UUID runId =
-                insertFailedRun(fixture.tenant(), workflowId, versionId, 1, fixture.ownerId(), "draft");
+        UUID runId = insertFailedRun(fixture.tenant(), workflowId, versionId, 1, fixture.ownerId(), "draft");
         insertNodeRun(fixture.tenant(), runId, "report", "MODEL", "生成报告", 1, "SKIPPED");
         // 非失败节点可达的下游（模拟条件未走分支）必须在重试后保持 SKIPPED。
         insertNodeRun(fixture.tenant(), runId, "unrelated", "MODEL", "未走分支", 1, "SKIPPED");
 
-        ApiTestClient.ApiResponse response =
-                retryRun(fixture.owner(), runId.toString(), "draft", "retry-key-001");
+        ApiTestClient.ApiResponse response = retryRun(fixture.owner(), runId.toString(), "draft", "retry-key-001");
         assertThat(response.status()).as(response.body()).isEqualTo(202);
         RunRow row = runRow(fixture.tenant(), runId);
         assertThat(row.status()).isEqualTo("PENDING");
@@ -127,8 +117,10 @@ class WorkflowRunLifecycleApiTest extends WorkflowRunTestSupport {
         assertThat(nodeRows(fixture.tenant(), runId, "draft"))
                 .extracting(NodeRow::attempt, NodeRow::status)
                 .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple(1, com.riccon.platform.domain.workflow.WorkflowNodeStatus.FAILED),
-                        org.assertj.core.groups.Tuple.tuple(2, com.riccon.platform.domain.workflow.WorkflowNodeStatus.PENDING));
+                        org.assertj.core.groups.Tuple.tuple(
+                                1, com.riccon.platform.domain.workflow.WorkflowNodeStatus.FAILED),
+                        org.assertj.core.groups.Tuple.tuple(
+                                2, com.riccon.platform.domain.workflow.WorkflowNodeStatus.PENDING));
         assertThat(nodeKeysByStatus(fixture.tenant(), runId, "PENDING")).contains("report");
         assertThat(nodeKeysByStatus(fixture.tenant(), runId, "SKIPPED")).contains("unrelated");
         var audits = tenantAuditRows(fixture.tenant(), "workflow.run.retried");
@@ -138,8 +130,7 @@ class WorkflowRunLifecycleApiTest extends WorkflowRunTestSupport {
         assertThat(details.path("nodeId").asText()).isEqualTo("draft");
         assertThat(details.path("attempt").asInt()).isEqualTo(2);
 
-        ApiTestClient.ApiResponse replay =
-                retryRun(fixture.owner(), runId.toString(), "draft", "retry-key-001");
+        ApiTestClient.ApiResponse replay = retryRun(fixture.owner(), runId.toString(), "draft", "retry-key-001");
         assertThat(replay.status()).as(replay.body()).isEqualTo(202);
         assertThat(nodeAttemptCount(fixture.tenant(), runId, "draft")).isEqualTo(2);
         assertThat(tenantAuditRows(fixture.tenant(), "workflow.run.retried")).hasSize(1);
@@ -151,15 +142,11 @@ class WorkflowRunLifecycleApiTest extends WorkflowRunTestSupport {
         Fixture fixture = fixture("wfl");
         String workflowId = publishWorkflow(fixture, "重试校验");
         UUID versionId = publishedVersionId(fixture.tenant(), workflowId);
-        UUID pendingRun = insertActiveRun(
-                fixture.tenant(), workflowId, versionId, 1, fixture.ownerId(), "PENDING", "start");
-        assertProblem(
-                retryRun(fixture.owner(), pendingRun.toString(), "draft", "retry-key-002"),
-                409,
-                WF_409);
+        UUID pendingRun =
+                insertActiveRun(fixture.tenant(), workflowId, versionId, 1, fixture.ownerId(), "PENDING", "start");
+        assertProblem(retryRun(fixture.owner(), pendingRun.toString(), "draft", "retry-key-002"), 409, WF_409);
 
-        UUID failedRun = insertFailedRun(
-                fixture.tenant(), workflowId, versionId, 1, fixture.ownerId(), "draft");
+        UUID failedRun = insertFailedRun(fixture.tenant(), workflowId, versionId, 1, fixture.ownerId(), "draft");
         jdbcClient
                 .sql("""
                         UPDATE workflow_node_run SET status = 'SUCCEEDED'
@@ -168,14 +155,8 @@ class WorkflowRunLifecycleApiTest extends WorkflowRunTestSupport {
                 .param("tenant", fixture.tenant())
                 .param("runId", com.riccon.api.persistence.BinaryUuids.toBytes(failedRun))
                 .update();
-        assertProblem(
-                retryRun(fixture.owner(), failedRun.toString(), "draft", "retry-key-003"),
-                409,
-                WF_409);
-        assertProblem(
-                retryRun(fixture.owner(), failedRun.toString(), "missing", "retry-key-004"),
-                409,
-                WF_409);
+        assertProblem(retryRun(fixture.owner(), failedRun.toString(), "draft", "retry-key-003"), 409, WF_409);
+        assertProblem(retryRun(fixture.owner(), failedRun.toString(), "missing", "retry-key-004"), 409, WF_409);
 
         ApiTestClient.ApiResponse badNode = client.post(
                 "/api/v1/workflow-runs/" + failedRun + "/retry",
@@ -184,8 +165,7 @@ class WorkflowRunLifecycleApiTest extends WorkflowRunTestSupport {
                 fixture.owner().csrfToken(),
                 Map.of("Idempotency-Key", "retry-key-005"));
         assertProblem(badNode, 400, WF_400);
-        ApiTestClient.ApiResponse missingKey =
-                retryRun(fixture.owner(), failedRun.toString(), "draft", null);
+        ApiTestClient.ApiResponse missingKey = retryRun(fixture.owner(), failedRun.toString(), "draft", null);
         assertProblem(missingKey, 400, WF_400);
         assertThat(tenantAuditRows(fixture.tenant(), "workflow.run.retried")).isEmpty();
     }
@@ -196,16 +176,11 @@ class WorkflowRunLifecycleApiTest extends WorkflowRunTestSupport {
         Fixture fixture = fixture("wfl");
         String workflowId = publishWorkflow(fixture, "重试权限");
         UUID versionId = publishedVersionId(fixture.tenant(), workflowId);
-        UUID failedRun = insertFailedRun(
-                fixture.tenant(), workflowId, versionId, 1, fixture.ownerId(), "draft");
-        assertProblem(
-                retryRun(fixture.member(), failedRun.toString(), "draft", "retry-key-006"),
-                403,
-                AUTH_403);
+        UUID failedRun = insertFailedRun(fixture.tenant(), workflowId, versionId, 1, fixture.ownerId(), "draft");
+        assertProblem(retryRun(fixture.member(), failedRun.toString(), "draft", "retry-key-006"), 403, AUTH_403);
 
         for (int index = 0; index < 5; index++) {
-            insertActiveRun(
-                    fixture.tenant(), workflowId, versionId, 1, fixture.ownerId(), "PENDING", "start");
+            insertActiveRun(fixture.tenant(), workflowId, versionId, 1, fixture.ownerId(), "PENDING", "start");
         }
         ApiTestClient.ApiResponse rejected =
                 retryRun(fixture.tenantAdmin(), failedRun.toString(), "draft", "retry-key-007");

@@ -54,10 +54,7 @@ class WorkflowRunScopeApiTest extends WorkflowRunTestSupport {
         saveDraft(fixture.owner(), workflowId, 2, defaultGraph(fixture));
         publishOk(fixture.tenantAdmin(), workflowId, "TENANT", null, "publish-scope-002");
 
-        assertProblem(
-                createRun(fixture.member(), workflowId, v1, DEFAULT_INPUTS, "run-scope-001"),
-                404,
-                TENANT_404);
+        assertProblem(createRun(fixture.member(), workflowId, v1, DEFAULT_INPUTS, "run-scope-001"), 404, TENANT_404);
         JsonNode run = createRunOk(fixture.member(), workflowId, null, "run-scope-002");
         assertThat(run.path("versionNo").asInt()).isEqualTo(2);
         assertThat(runCount(fixture.tenant())).isEqualTo(1);
@@ -77,10 +74,7 @@ class WorkflowRunScopeApiTest extends WorkflowRunTestSupport {
 
         JsonNode run = createRunOk(fixture.member(), workflowId, v1, "run-scope-003");
         assertThat(run.path("versionNo").asInt()).isEqualTo(1);
-        assertProblem(
-                createRun(fixture.member(), workflowId, null, DEFAULT_INPUTS, "run-scope-004"),
-                404,
-                TENANT_404);
+        assertProblem(createRun(fixture.member(), workflowId, null, DEFAULT_INPUTS, "run-scope-004"), 404, TENANT_404);
         assertThat(runCount(fixture.tenant())).isEqualTo(1);
     }
 
@@ -93,19 +87,10 @@ class WorkflowRunScopeApiTest extends WorkflowRunTestSupport {
         addDepartmentMember(fixture.platform(), fixture.tenant(), departmentA, fixture.memberId());
         String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         LoginSession outsider = seedAndLoginLocalUser(
-                fixture.platform(),
-                fixture.tenant(),
-                "outsider" + suffix,
-                "outsider-password-12",
-                List.of("MEMBER"));
-        addDepartmentMember(
-                fixture.platform(), fixture.tenant(), departmentB, actorId(outsider));
+                fixture.platform(), fixture.tenant(), "outsider" + suffix, "outsider-password-12", List.of("MEMBER"));
+        addDepartmentMember(fixture.platform(), fixture.tenant(), departmentB, actorId(outsider));
         LoginSession noDepartment = seedAndLoginLocalUser(
-                fixture.platform(),
-                fixture.tenant(),
-                "nodept" + suffix,
-                "nodept-password-12",
-                List.of("MEMBER"));
+                fixture.platform(), fixture.tenant(), "nodept" + suffix, "nodept-password-12", List.of("MEMBER"));
 
         String workflowId = draft(fixture, "部门范围");
         saveDraft(fixture.owner(), workflowId, 1, defaultGraph(fixture));
@@ -113,14 +98,8 @@ class WorkflowRunScopeApiTest extends WorkflowRunTestSupport {
 
         JsonNode run = createRunOk(fixture.member(), workflowId, null, "run-dept-001");
         assertThat(run.path("status").asText()).isEqualTo("PENDING");
-        assertProblem(
-                createRun(outsider, workflowId, null, DEFAULT_INPUTS, "run-dept-002"),
-                404,
-                TENANT_404);
-        assertProblem(
-                createRun(noDepartment, workflowId, null, DEFAULT_INPUTS, "run-dept-003"),
-                404,
-                TENANT_404);
+        assertProblem(createRun(outsider, workflowId, null, DEFAULT_INPUTS, "run-dept-002"), 404, TENANT_404);
+        assertProblem(createRun(noDepartment, workflowId, null, DEFAULT_INPUTS, "run-dept-003"), 404, TENANT_404);
 
         // 详情与 RUNNABLE 列表使用同一范围谓词：本部门可见，他部门/无部门 404。
         assertThat(getDetail(fixture.member(), workflowId, 200).path("id").asText())
@@ -133,14 +112,8 @@ class WorkflowRunScopeApiTest extends WorkflowRunTestSupport {
 
         // 部门停用：下一次请求按新范围判定；租户管理员仍保留管理能力。
         disableDepartment(fixture.tenant(), departmentA);
-        assertProblem(
-                createRun(fixture.member(), workflowId, null, DEFAULT_INPUTS, "run-dept-004"),
-                404,
-                TENANT_404);
-        assertProblem(
-                createRun(fixture.owner(), workflowId, null, DEFAULT_INPUTS, "run-dept-005"),
-                404,
-                TENANT_404);
+        assertProblem(createRun(fixture.member(), workflowId, null, DEFAULT_INPUTS, "run-dept-004"), 404, TENANT_404);
+        assertProblem(createRun(fixture.owner(), workflowId, null, DEFAULT_INPUTS, "run-dept-005"), 404, TENANT_404);
         JsonNode adminRun = createRunOk(fixture.tenantAdmin(), workflowId, null, "run-dept-006");
         assertThat(adminRun.path("status").asText()).isEqualTo("PENDING");
     }
@@ -158,10 +131,7 @@ class WorkflowRunScopeApiTest extends WorkflowRunTestSupport {
         // 所有者移出部门：下一次请求按新范围判定，列表与运行准入都不再包含该流程。
         moveUserDepartment(fixture.tenant(), fixture.ownerId(), null);
         assertThat(contains(runnableList(fixture.owner()), workflowId)).isFalse();
-        assertProblem(
-                createRun(fixture.owner(), workflowId, null, DEFAULT_INPUTS, "run-dept-007"),
-                404,
-                TENANT_404);
+        assertProblem(createRun(fixture.owner(), workflowId, null, DEFAULT_INPUTS, "run-dept-007"), 404, TENANT_404);
 
         // 仍在部门内的成员保持可运行；租户管理员按管理能力可运行任意版本。
         createRunOk(fixture.member(), workflowId, null, "run-dept-008");

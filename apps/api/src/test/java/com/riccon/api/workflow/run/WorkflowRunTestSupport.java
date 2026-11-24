@@ -56,8 +56,7 @@ public abstract class WorkflowRunTestSupport extends WorkflowVersionTestSupport 
             body.put("versionId", versionId.toString());
         }
         body.put("inputs", JSON.readTree(inputsJson));
-        Map<String, String> headers =
-                idempotencyKey == null ? Map.of() : Map.of("Idempotency-Key", idempotencyKey);
+        Map<String, String> headers = idempotencyKey == null ? Map.of() : Map.of("Idempotency-Key", idempotencyKey);
         return client.post(
                 "/api/v1/workflows/" + workflowId + "/runs",
                 JSON.writeValueAsString(body),
@@ -75,10 +74,8 @@ public abstract class WorkflowRunTestSupport extends WorkflowVersionTestSupport 
      * @param idempotencyKey 幂等键
      * @return 运行响应
      */
-    protected JsonNode createRunOk(
-            LoginSession session, String workflowId, UUID versionId, String idempotencyKey) {
-        ApiTestClient.ApiResponse response =
-                createRun(session, workflowId, versionId, DEFAULT_INPUTS, idempotencyKey);
+    protected JsonNode createRunOk(LoginSession session, String workflowId, UUID versionId, String idempotencyKey) {
+        ApiTestClient.ApiResponse response = createRun(session, workflowId, versionId, DEFAULT_INPUTS, idempotencyKey);
         assertThat(response.status()).as(response.body()).isEqualTo(201);
         return client.json(response);
     }
@@ -110,8 +107,7 @@ public abstract class WorkflowRunTestSupport extends WorkflowVersionTestSupport 
      */
     protected ApiTestClient.ApiResponse retryRun(
             LoginSession session, String runId, String nodeId, String idempotencyKey) {
-        Map<String, String> headers =
-                idempotencyKey == null ? Map.of() : Map.of("Idempotency-Key", idempotencyKey);
+        Map<String, String> headers = idempotencyKey == null ? Map.of() : Map.of("Idempotency-Key", idempotencyKey);
         return client.post(
                 "/api/v1/workflow-runs/" + runId + "/retry",
                 client.jsonBody("nodeId", nodeId),
@@ -255,8 +251,8 @@ public abstract class WorkflowRunTestSupport extends WorkflowVersionTestSupport 
             int versionNo,
             UUID requesterUserId,
             String failedNodeKey) {
-        UUID runId = insertActiveRun(
-                tenant, workflowId, versionId, versionNo, requesterUserId, "FAILED", failedNodeKey);
+        UUID runId =
+                insertActiveRun(tenant, workflowId, versionId, versionNo, requesterUserId, "FAILED", failedNodeKey);
         jdbcClient
                 .sql("""
                         UPDATE workflow_run
@@ -286,13 +282,7 @@ public abstract class WorkflowRunTestSupport extends WorkflowVersionTestSupport 
      * @return 节点运行 ID
      */
     protected UUID insertNodeRun(
-            String tenant,
-            UUID runId,
-            String nodeKey,
-            String nodeType,
-            String nodeName,
-            int attempt,
-            String status) {
+            String tenant, UUID runId, String nodeKey, String nodeType, String nodeName, int attempt, String status) {
         UUID id = UuidV7.generate();
         jdbcClient
                 .sql("""
@@ -518,14 +508,11 @@ public abstract class WorkflowRunTestSupport extends WorkflowVersionTestSupport 
      * @param enabled 是否执行
      */
     protected void setQuotaEnforcement(boolean enabled) {
-        jdbcClient
-                .sql("""
+        jdbcClient.sql("""
                         UPDATE model_gateway_switch
                            SET switch_value = :value, updated_at = NOW(6)
                          WHERE switch_key = 'quotaEnforcementEnabled'
-                        """)
-                .param("value", Boolean.toString(enabled))
-                .update();
+                        """).param("value", Boolean.toString(enabled)).update();
     }
 
     /**

@@ -57,8 +57,7 @@ public class WorkflowRunController {
      * @param parser 请求解析器
      * @param authService 认证服务
      */
-    public WorkflowRunController(
-            WorkflowRunService service, WorkflowRunRequestParser parser, AuthService authService) {
+    public WorkflowRunController(WorkflowRunService service, WorkflowRunRequestParser parser, AuthService authService) {
         this.service = service;
         this.parser = parser;
         this.authService = authService;
@@ -105,8 +104,7 @@ public class WorkflowRunController {
     @PostMapping("/api/v1/workflow-runs/{workflowRunId}/cancel")
     @ResponseStatus(HttpStatus.ACCEPTED)
     @RequirePermission(PermissionCodes.WORKFLOW_RUN)
-    public void cancel(
-            @PathVariable UUID workflowRunId, Authentication authentication, HttpServletRequest request) {
+    public void cancel(@PathVariable UUID workflowRunId, Authentication authentication, HttpServletRequest request) {
         service.cancel(
                 actor(authentication),
                 workflowRunId,

@@ -374,7 +374,8 @@ public class WorkflowRunJdbc {
      */
     public int resetSkippedNodes(TenantId tenantId, UUID runId, Set<String> nodeKeys, Instant now) {
         return tenantJdbc.update(
-                tenantId, """
+                tenantId,
+                """
                 UPDATE workflow_node_run
                    SET status = 'PENDING',
                        started_at = NULL,
@@ -387,7 +388,8 @@ public class WorkflowRunJdbc {
                    AND workflow_run_id = :runId
                    AND node_key IN (:nodeKeys)
                    AND status = 'SKIPPED'
-                """, Map.of(
+                """,
+                Map.of(
                         "runId", BinaryUuids.toBytes(runId),
                         "nodeKeys", nodeKeys,
                         "now", SqlTimestamps.toDatabase(now)));
