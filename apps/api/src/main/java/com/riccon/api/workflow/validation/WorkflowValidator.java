@@ -610,7 +610,12 @@ public class WorkflowValidator {
             List<WorkflowValidationIssue> issues) {
         UUID toolId = node.config().toolId();
         if (toolId == null) {
-            // 内置模板把工具留空，复制后由用户在授权范围内选择；空值不发起工具调用。
+            // MCP_TOOL 必须显式选择已授权工具；内置模板复制后由 T14 提供工具选择，保存/发布前必须补齐（F-001）。
+            issues.add(WorkflowValidationIssue.of(
+                    WorkflowValidationCode.REQUIRED_CONFIG,
+                    node.id(),
+                    "config.toolId",
+                    "MCP_TOOL node requires toolId; select an authorized tool before saving or publishing"));
             return;
         }
         WorkflowToolAvailability state = toolStates.getOrDefault(toolId, WorkflowToolAvailability.notAuthorized());

@@ -55,6 +55,24 @@ class WorkflowValidatorTest {
                 .isTrue();
     }
 
+    /** F-001：MCP_TOOL 的 toolId 缺失必须在 SAVE/PUBLISH/RUNTIME 一致返回缺失必填。 */
+    @Test
+    @DisplayName("F-001 toolId=null：SAVE/PUBLISH/RUNTIME 返回 REQUIRED_CONFIG")
+    void nullToolId_isRequiredConfig() {
+        UUID toolId = UUID.randomUUID();
+        String graph = toolGraph(toolId).replace("\"toolId\":\"" + toolId + "\"", "\"toolId\":null");
+
+        for (WorkflowValidationScope scope : WorkflowValidationScope.values()) {
+            WorkflowValidationResult result = validate(parse(graph), scope);
+            assertThat(result.valid()).as(scope.name()).isFalse();
+            assertThat(result.issues()).as(scope.name()).anySatisfy(issue -> {
+                assertThat(issue.code()).isEqualTo(WorkflowValidationCode.REQUIRED_CONFIG);
+                assertThat(issue.nodeId()).isEqualTo("tool");
+                assertThat(issue.field()).isEqualTo("config.toolId");
+            });
+        }
+    }
+
     /** 合法条件图：条件源、算子、类型与 TRUE/FALSE 分支均通过。 */
     @Test
     @DisplayName("合法条件图：条件源/算子/分支通过")

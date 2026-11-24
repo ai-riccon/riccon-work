@@ -2,6 +2,7 @@ package com.riccon.api.workflow.definition;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.riccon.api.common.UuidV7;
 import com.riccon.api.persistence.BinaryUuids;
 import com.riccon.api.support.ApiIntegrationTestSupport;
 import com.riccon.api.support.ApiTestClient;
@@ -74,7 +75,7 @@ class WorkflowDefinitionApiTest extends ApiIntegrationTestSupport {
         assertThat(created.path("draftGraph").path("nodes")).isEmpty();
         assertThat(created.path("sourceTemplateId").isMissingNode()).isTrue();
 
-        JsonNode saved = saveDraft(fixture.owner(), workflowId, 1, "销售调研 v2", GRAPH);
+        JsonNode saved = saveDraft(fixture.owner(), workflowId, 1, "销售调研 v2", graph(fixture));
         assertThat(saved.path("draftVersion").asInt()).isEqualTo(2);
         assertThat(saved.path("name").asText()).isEqualTo("销售调研 v2");
         assertThat(saved.path("draftGraph").path("nodes")).hasSize(7);
@@ -134,7 +135,7 @@ class WorkflowDefinitionApiTest extends ApiIntegrationTestSupport {
         Fixture fixture = fixture();
         String workflowId =
                 createDraft(fixture.owner(), "私有草稿", null).path("id").asText();
-        saveDraft(fixture.owner(), workflowId, 1, null, GRAPH);
+        saveDraft(fixture.owner(), workflowId, 1, null, graph(fixture));
 
         JsonNode notVisible = get(fixture.otherEditor(), workflowId, 404);
         assertThat(notVisible.path("code").asText()).isEqualTo("RICCON-TENANT-404");
@@ -179,17 +180,17 @@ class WorkflowDefinitionApiTest extends ApiIntegrationTestSupport {
         Fixture fixture = fixture();
         String workflowId =
                 createDraft(fixture.owner(), "并发草稿", null).path("id").asText();
-        saveDraft(fixture.owner(), workflowId, 1, "所有者修改", GRAPH);
+        saveDraft(fixture.owner(), workflowId, 1, "所有者修改", graph(fixture));
 
         // 租户管理员基于同一版本 2 保存，版本推进到 3。
-        JsonNode adminSaved = saveDraft(fixture.tenantAdmin(), workflowId, 2, "管理员修改", GRAPH);
+        JsonNode adminSaved = saveDraft(fixture.tenantAdmin(), workflowId, 2, "管理员修改", graph(fixture));
         assertThat(adminSaved.path("draftVersion").asInt()).isEqualTo(3);
         assertThat(adminSaved.path("name").asText()).isEqualTo("管理员修改");
 
         // 所有者仍持版本 2，保存必须 409 且不覆盖管理员修改。
         ApiTestClient.ApiResponse stale = client.put(
                 "/api/v1/workflows/" + workflowId + "/draft",
-                draftBody(2, "过期修改", GRAPH),
+                draftBody(2, "过期修改", graph(fixture)),
                 fixture.owner().sessionCookie(),
                 fixture.owner().csrfToken());
         assertThat(stale.status()).as(stale.body()).isEqualTo(409);
@@ -264,7 +265,7 @@ class WorkflowDefinitionApiTest extends ApiIntegrationTestSupport {
         Fixture fixture = fixture();
         String tenantFlow =
                 createDraft(fixture.owner(), "租户流程", null).path("id").asText();
-        saveDraft(fixture.owner(), tenantFlow, 1, null, GRAPH);
+        saveDraft(fixture.owner(), tenantFlow, 1, null, graph(fixture));
         publishFixture(
                 fixture, tenantFlow, "TENANT", UUID.fromString(fixture.ownerId().toString()));
 
@@ -279,7 +280,7 @@ class WorkflowDefinitionApiTest extends ApiIntegrationTestSupport {
         assertThat(ids(list(fixture.member(), "view=MINE&size=50"))).contains(tenantFlow);
 
         String selfFlow = createDraft(fixture.owner(), "仅自己流程", null).path("id").asText();
-        saveDraft(fixture.owner(), selfFlow, 1, null, GRAPH);
+        saveDraft(fixture.owner(), selfFlow, 1, null, graph(fixture));
         publishFixture(
                 fixture,
                 selfFlow,
@@ -289,12 +290,12 @@ class WorkflowDefinitionApiTest extends ApiIntegrationTestSupport {
         assertThat(ids(list(fixture.owner(), "view=RUNNABLE&size=50"))).contains(selfFlow);
 
         // 草稿改名后再保存同图，哈希不变；改图后 hasUnpublishedChanges=true。
-        saveDraft(fixture.owner(), tenantFlow, 2, "租户流程改名", GRAPH);
+        saveDraft(fixture.owner(), tenantFlow, 2, "租户流程改名", graph(fixture));
         assertThat(get(fixture.owner(), tenantFlow, 200)
                         .path("hasUnpublishedChanges")
                         .asBoolean())
                 .isFalse();
-        saveDraft(fixture.owner(), tenantFlow, 3, null, GRAPH.replace("生成报告", "生成报告 v2"));
+        saveDraft(fixture.owner(), tenantFlow, 3, null, graph(fixture).replace("生成报告", "生成报告 v2"));
         assertThat(get(fixture.owner(), tenantFlow, 200)
                         .path("hasUnpublishedChanges")
                         .asBoolean())
@@ -312,7 +313,7 @@ class WorkflowDefinitionApiTest extends ApiIntegrationTestSupport {
      * @param publishedBy 发布人
      */
     private void publishFixture(Fixture fixture, String workflowId, String runScope, UUID publishedBy) {
-        WorkflowGraph graph = WorkflowGraphJson.parse(GRAPH);
+        WorkflowGraph graph = WorkflowGraphJson.parse(graph(fixture));
         UUID versionId = UUID.randomUUID();
         jdbcClient
                 .sql("""
@@ -370,8 +371,8 @@ class WorkflowDefinitionApiTest extends ApiIntegrationTestSupport {
                         .asText())
                 .isEqualTo("RICCON-WF-400");
 
-        assertWorkflow400(fixture.owner(), workflowId, 0, GRAPH);
-        assertWorkflow400(fixture.owner(), workflowId, 1, GRAPH.replace("START", "SCRIPT"));
+        assertWorkflow400(fixture.owner(), workflowId, 0, graph(fixture));
+        assertWorkflow400(fixture.owner(), workflowId, 1, graph(fixture).replace("START", "SCRIPT"));
         assertWorkflow400(
                 fixture.owner(),
                 workflowId,
@@ -463,14 +464,15 @@ class WorkflowDefinitionApiTest extends ApiIntegrationTestSupport {
         JsonNode cleared = saveDraftWithBody(
                 fixture.owner(),
                 workflowId,
-                "{\"version\":1,\"description\":null,\"graph\":" + JSON.writeValueAsString(JSON.readTree(GRAPH)) + "}");
+                "{\"version\":1,\"description\":null,\"graph\":"
+                        + JSON.writeValueAsString(JSON.readTree(graph(fixture))) + "}");
         assertThat(cleared.path("description").isMissingNode()).isTrue();
         assertThat(cleared.path("name").asText()).isEqualTo("分支草稿");
         JsonNode described = saveDraftWithBody(
                 fixture.owner(),
                 workflowId,
-                "{\"version\":2,\"description\":\"新说明\",\"graph\":" + JSON.writeValueAsString(JSON.readTree(GRAPH))
-                        + "}");
+                "{\"version\":2,\"description\":\"新说明\",\"graph\":"
+                        + JSON.writeValueAsString(JSON.readTree(graph(fixture))) + "}");
         assertThat(described.path("description").asText()).isEqualTo("新说明");
     }
 
@@ -659,7 +661,60 @@ class WorkflowDefinitionApiTest extends ApiIntegrationTestSupport {
                 platformAdmin, tenant, "editor" + shortId(), "editor-password-12", List.of("WORKFLOW_EDITOR"));
         LoginSession member = seedAndLoginLocalUser(
                 platformAdmin, tenant, "member" + shortId(), "member-password-12", List.of("MEMBER"));
-        return new Fixture(tenant, tenantAdmin, owner, otherEditor, member);
+        UUID toolId = createTool(tenant);
+        return new Fixture(tenant, tenantAdmin, owner, otherEditor, member, toolId);
+    }
+
+    /**
+     * 创建本测试租户可用的 MCP 工具；合法草稿必须选择已授权工具（T03 F-001）。
+     *
+     * @param tenant 租户
+     * @return 工具 ID
+     */
+    private UUID createTool(String tenant) {
+        UUID serverId = UuidV7.generate();
+        UUID toolId = UuidV7.generate();
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        jdbcClient
+                .sql("""
+                        INSERT INTO mcp_server (id, code, name, transport, endpoint, status, created_at, updated_at)
+                        VALUES (:id, :code, 'Mock MCP', 'HTTP', 'https://mcp.invalid/rpc', 'ACTIVE', NOW(6), NOW(6))
+                        """)
+                .param("id", BinaryUuids.toBytes(serverId))
+                .param("code", "wfd-" + suffix)
+                .update();
+        jdbcClient
+                .sql("""
+                        INSERT INTO mcp_tool (
+                            id, server_id, name, description, risk_level, requires_approval, status,
+                            created_at, updated_at
+                        ) VALUES (
+                            :id, :serverId, :name, 'mock read-only tool', 'READ', TRUE, 'ACTIVE', NOW(6), NOW(6)
+                        )
+                        """)
+                .param("id", BinaryUuids.toBytes(toolId))
+                .param("serverId", BinaryUuids.toBytes(serverId))
+                .param("name", "search-" + suffix)
+                .update();
+        jdbcClient
+                .sql("""
+                        INSERT INTO mcp_tool_grant (tenant_id, mcp_tool_id, enabled, granted_at, updated_at)
+                        VALUES (:tenantId, :toolId, TRUE, NOW(6), NOW(6))
+                        """)
+                .param("tenantId", tenant)
+                .param("toolId", BinaryUuids.toBytes(toolId))
+                .update();
+        return toolId;
+    }
+
+    /**
+     * 构造使用夹具已授权工具的合法图；模板 seed 的 toolId=null 必须由用户补选。
+     *
+     * @param fixture 测试夹具
+     * @return JSON
+     */
+    private static String graph(Fixture fixture) {
+        return GRAPH.replace("\"toolId\":null", "\"toolId\":\"" + fixture.toolId() + "\"");
     }
 
     /**
@@ -679,13 +734,15 @@ class WorkflowDefinitionApiTest extends ApiIntegrationTestSupport {
      * @param owner 流程所有者（WORKFLOW_EDITOR）会话
      * @param otherEditor 同租户其他编辑者会话
      * @param member 普通员工会话
+     * @param toolId 本租户已授权工具 ID
      */
     private record Fixture(
             String tenant,
             LoginSession tenantAdmin,
             LoginSession owner,
             LoginSession otherEditor,
-            LoginSession member) {
+            LoginSession member,
+            UUID toolId) {
 
         /**
          * 所有者账号 ID。

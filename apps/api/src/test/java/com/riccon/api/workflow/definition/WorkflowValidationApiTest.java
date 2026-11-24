@@ -32,6 +32,9 @@ class WorkflowValidationApiTest extends ApiIntegrationTestSupport {
     /** 保存非法图统一错误码。 */
     private static final String WF_400 = "RICCON-WF-400";
 
+    /** V15 种子的内置市场调研模板 ID。 */
+    private static final UUID TEMPLATE_ID = UUID.fromString("01990000-0000-7000-8000-000000000601");
+
     /** 本测试创建的模型 ID，用于清理全局目录。 */
     private final List<UUID> createdModelIds = new ArrayList<>();
 
@@ -117,8 +120,9 @@ class WorkflowValidationApiTest extends ApiIntegrationTestSupport {
     void validDraft_saveAndValidate() {
         Fixture fixture = fixture();
         String workflowId = createDraft(fixture.owner(), "合法流程");
+        UUID toolId = createTool(fixture.tenant(), "ACTIVE", true, true);
 
-        JsonNode saved = saveOk(fixture.owner(), workflowId, 1, TEMPLATE_GRAPH);
+        JsonNode saved = saveOk(fixture.owner(), workflowId, 1, templateGraph(toolId));
         assertThat(saved.path("draftVersion").asInt()).isEqualTo(2);
 
         JsonNode validation = validateOk(fixture.owner(), workflowId);
@@ -141,6 +145,8 @@ class WorkflowValidationApiTest extends ApiIntegrationTestSupport {
     void invalidGraph_saveReturns400WithoutWrites() {
         Fixture fixture = fixture();
         String workflowId = createDraft(fixture.owner(), "非法流程");
+        UUID toolId = createTool(fixture.tenant(), "ACTIVE", true, true);
+        String validWithTool = templateGraph(toolId);
 
         JsonNode error = save400(fixture.owner(), workflowId, 1, """
                 {"schemaVersion":1,"nodes":[
@@ -168,14 +174,14 @@ class WorkflowValidationApiTest extends ApiIntegrationTestSupport {
                 fixture.owner(),
                 workflowId,
                 1,
-                TEMPLATE_GRAPH.replace("\"targetNodeKey\":\"tool\"", "\"targetNodeKey\":\"bad key\""));
+                validWithTool.replace("\"targetNodeKey\":\"tool\"", "\"targetNodeKey\":\"bad key\""));
         assertThat(badTargetKey.path("detail").asText()).contains("APPROVAL_CONFIG");
 
         JsonNode badModel = save400(
                 fixture.owner(),
                 workflowId,
                 1,
-                TEMPLATE_GRAPH.replace(
+                validWithTool.replace(
                         "{\"promptTemplate\":\"整合\",\"outputKind\":\"TEXT\"}",
                         "{\"promptTemplate\":\"整合\",\"outputKind\":\"TEXT\",\"modelId\":\"" + UUID.randomUUID()
                                 + "\"}"));
@@ -185,7 +191,7 @@ class WorkflowValidationApiTest extends ApiIntegrationTestSupport {
                 fixture.owner(),
                 workflowId,
                 1,
-                TEMPLATE_GRAPH.replace("\"toolId\":null", "\"toolId\":\"" + UUID.randomUUID() + "\""));
+                validWithTool.replace("\"toolId\":\"" + toolId + "\"", "\"toolId\":\"" + UUID.randomUUID() + "\""));
         assertThat(badTool.path("detail").asText()).contains("TOOL_NOT_AUTHORIZED");
 
         assertThat(draftVersion(fixture.tenant(), workflowId)).isEqualTo(1);
@@ -195,6 +201,40 @@ class WorkflowValidationApiTest extends ApiIntegrationTestSupport {
                 .isZero();
         assertThat(getOk(fixture.owner(), workflowId).path("draftGraph").path("nodes"))
                 .isEmpty();
+    }
+
+    /** F-001：MCP_TOOL.toolId=null 必须按缺失必填阻断保存与 VALIDATE/PUBLISH 口径校验。 */
+    @Test
+    @DisplayName("IT-WF-111 F-001 toolId=null：保存 400、模板复制 VALIDATE 阻断")
+    void nullToolId_isRequiredAndBlocksSaveValidate() {
+        Fixture fixture = fixture();
+        String workflowId = createDraft(fixture.owner(), "缺工具流程");
+
+        JsonNode error = save400(fixture.owner(), workflowId, 1, TEMPLATE_GRAPH);
+        assertThat(error.path("detail").asText()).contains("REQUIRED_CONFIG", "node=tool", "field=config.toolId");
+        assertThat(draftVersion(fixture.tenant(), workflowId)).isEqualTo(1);
+        assertThat(auditRows("workflow.draft.saved").stream()
+                        .filter(row -> row.tenantId().equals(fixture.tenant()))
+                        .count())
+                .isZero();
+        assertThat(getOk(fixture.owner(), workflowId).path("draftGraph").path("nodes"))
+                .isEmpty();
+
+        // 内置模板复制后保留 toolId=null：VALIDATE（发布口径）必须逐项阻断，保存也必须再次阻断。
+        JsonNode copied = createDraftFromTemplate(fixture.owner(), TEMPLATE_ID);
+        String copiedId = copied.path("id").asText();
+        JsonNode validation = validateOk(fixture.owner(), copiedId);
+        assertThat(validation.path("valid").asBoolean()).isFalse();
+        assertThat(validation.path("issues")).anySatisfy(issue -> {
+            assertThat(issue.path("code").asText()).isEqualTo("REQUIRED_CONFIG");
+            assertThat(issue.path("nodeId").asText()).isEqualTo("tool");
+            assertThat(issue.path("field").asText()).isEqualTo("config.toolId");
+        });
+        assertThat(save400(fixture.owner(), copiedId, 1, TEMPLATE_GRAPH)
+                        .path("detail")
+                        .asText())
+                .contains("REQUIRED_CONFIG");
+        assertThat(draftVersion(fixture.tenant(), copiedId)).isEqualTo(1);
     }
 
     /** 负向节点类型与执行配置全部被接口拒绝，不落库（AC-24、IT-WF-111）。 */
@@ -360,7 +400,7 @@ class WorkflowValidationApiTest extends ApiIntegrationTestSupport {
                                 fixture.owner(),
                                 workflowId,
                                 1,
-                                TEMPLATE_GRAPH.replace("\"resultFrom\":\"report\"", "\"resultFrom\":\"missing\""))
+                                CONDITION_GRAPH.replace("\"resultFrom\":\"modelTrue\"", "\"resultFrom\":\"missing\""))
                         .path("detail")
                         .asText())
                 .contains("RESULT_INVALID");
@@ -453,6 +493,16 @@ class WorkflowValidationApiTest extends ApiIntegrationTestSupport {
                   {"id":"e2","source":"tool","target":"end"}
                 ]}
                 """.formatted(toolId);
+    }
+
+    /**
+     * 给模板等价图填入已授权工具 ID。
+     *
+     * @param toolId 工具 ID
+     * @return JSON
+     */
+    private static String templateGraph(UUID toolId) {
+        return TEMPLATE_GRAPH.replace("\"toolId\":null", "\"toolId\":\"" + toolId + "\"");
     }
 
     /**
@@ -591,6 +641,24 @@ class WorkflowValidationApiTest extends ApiIntegrationTestSupport {
                 Map.of());
         assertThat(response.status()).as(response.body()).isEqualTo(201);
         return client.json(response).path("id").asText();
+    }
+
+    /**
+     * 从内置模板创建草稿并断言 201。
+     *
+     * @param session 会话
+     * @param templateId 模板 ID
+     * @return 草稿详情
+     */
+    private JsonNode createDraftFromTemplate(LoginSession session, UUID templateId) {
+        ApiTestClient.ApiResponse response = client.post(
+                "/api/v1/workflows",
+                client.jsonBody("templateId", templateId.toString()),
+                session.sessionCookie(),
+                session.csrfToken(),
+                Map.of());
+        assertThat(response.status()).as(response.body()).isEqualTo(201);
+        return client.json(response);
     }
 
     /**
