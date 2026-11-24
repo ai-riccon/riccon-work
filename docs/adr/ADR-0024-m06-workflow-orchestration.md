@@ -739,12 +739,13 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 **受支持回滚**：
 
 1. 关闭 `RICCON_WORKFLOW_ENABLED`；新运行/重试/审批决定 503，**取消仍可用**，历史/审计只读。
-2. **取消 `WAITING_APPROVAL` 并断言 0**：审批不过期，旧 Worker 不会接管；用保留的 M06 API 取消所有等待审批运行，确认 `SELECT COUNT(*) FROM workflow_run WHERE status='WAITING_APPROVAL'` = 0。不能只“等待终态”。
-3. **处理 `PENDING`/`RUNNING`**：优先用 M06 API 取消或等待终态；无法在窗口内清空时，记录 runId 清单（状态/版本/当前节点）作为滞留恢复清单。旧 Worker 不认 `workflow_run`，不会领取这些行；下一次 M06 部署按租约过期重领/人工重试恢复。滞留清单的 owner 为发起人/租户管理员（取消）与 Ops（恢复核对）。
-4. **回滚 Worker 前断言**：`WAITING_APPROVAL=0`，且 `PENDING/RUNNING` 为 0 或已登记滞留清单；T16b 演练脚本按此顺序断言。
+2. **停止领取并等待在途 claim 结束**：关闭 `RICCON_WORKFLOW_CLAIM_ENABLED`（或停止 Worker 领取），按 `RICCON_WORKFLOW_SHUTDOWN_GRACE_SECONDS` 等待在途 claim/节点到边界；宽限后不得再有新 claim。
+3. **取消 `WAITING_APPROVAL` 并断言 0**：审批不过期，旧 Worker 不会接管；用保留的 M06 API 取消所有等待审批运行，确认 `SELECT COUNT(*) FROM workflow_run WHERE status='WAITING_APPROVAL'` = 0。
+4. **清零 PENDING/RUNNING**：`PENDING` 必须取消或标记终态；`RUNNING` 必须等待终态或取消（含 MCP 超时）；回滚 Worker 前断言 `WAITING_APPROVAL=0 AND PENDING=0 AND RUNNING=0`。**不再允许“已登记滞留清单”放行**；可重复步骤 3–4 直至三者均 0；无法清零则不得回滚 Worker，继续等待/取消并记录 runId。
 5. 回滚 Worker 到 M06 前版本：旧 Worker 不认识 `workflow_run` 表，不会领取；回滚窗口按 ADR-0021 的 schema 校验开关流程（仅人工核对 `MAX(version)=15`、登记工单）。
-6. **保留 M06 API** 以继续提供运行历史/审批/审计读取；或对 API 前向修复。
-7. V15 表/触发器/权限保留；对象存储无新增类别；J1/J2 不受影响。
+6. **回滚后复断言**：保留 M06 API 处于可用状态，再次确认 `WAITING_APPROVAL=0 AND PENDING=0 AND RUNNING=0`；若出现新行（例如在途节点收尾），先取消/等待直到 0，再宣告回滚完成。
+7. **保留 M06 API** 以继续提供运行历史/审批/审计读取；或对 API 前向修复。
+8. V15 表/触发器/权限保留；对象存储无新增类别；J1/J2 不受影响。
 
 **不支持**：在存在 workflow 运行/审批/审计行后把 API 回滚到 M06 前版本——旧 API 的 `AuditDetailsReader` 对未知 `workflow.*` 动作 fail-closed，审计查询/导出会失败；且旧 API 无 workflow 端点，**历史运行不可读**（与 AC-23 冲突）。因此 AC-23 的“应用回滚”按“关闭开关 + 回滚 Worker + 保留/前向修复 API”解释；DEC-0047=A 已确认本口径，AC-23 文本由 Product 同步。
 
@@ -775,11 +776,11 @@ SELECT
 4. 审批等待占满 10 槽的发现与解除（最老等待 >24h、取消、审批人配置）；审批等待与执行并发的区别。
 5. 失败节点重试/写工具重审批/`WF_SIDE_EFFECT_UNKNOWN`/`WF_INTERNAL` 终态与恢复。
 6. V15 迁移预检（TRIGGER/binlog/MDL/包大小/备份）、单迁移失败处置、`flyway repair`/备份恢复。
-7. 受支持回滚（DEC-0047=A）：**关开关（取消仍可用）→ 取消 `WAITING_APPROVAL` 并断言 0 → 处理/登记 `PENDING`/`RUNNING` → 回滚 Worker → 保留/前向修复 API**；判定 SQL/拒绝路径；旧 Worker schema 15 窗口。
-8. 全量 API 回滚/应急 drop 的无数据判定与拒绝路径；全局/租户 drop 分段。
+7. 受支持回滚（DEC-0047=A）：**关 ENABLED（取消仍可用）→ 关 CLAIM_ENABLED/停止领取并等宽限 → 取消 `WAITING_APPROVAL` 并断言 0 → 清零/取消 PENDING 与 RUNNING，断言 WAITING=PENDING=RUNNING=0 → 回滚 Worker → 用保留 API 复断言 0 → 保留/前向修复 API**；判定 SQL/拒绝路径；旧 Worker schema 15 窗口。无“滞留清单”放行。
+8. 全量 API 回滚/应急 drop 的无数据判定与拒绝路径；全局/租户 drop 分段。**首次 `ENABLED=false` 启动会写 `workflow.feature.changed`，此后“全 0”不可达**：试发布失败只能恢复 V15 前备份；不得把该审计行排除出判定（除非用户新决策）。
 9. 保留到期不可见与 M09 物理清理边界；“未物理删除”标准答复。
 10. 5 MiB/`max_allowed_packet`/JDBC `maxAllowedPacket` 预检、容量公式（runs/day × 结果大小分位数 × 保留天数）、binlog/备份体积；指标/告警阈值与处置（§10.2）。
-11. 发布/回滚演练（`OPS-M06-01`）：造运行/审批/审计 → 关闭 → 回滚 Worker → 历史可读/J1/J2 正常 → schema 15 核对 → 恢复。
+11. 发布/回滚演练（`OPS-M06-01`）：**先在未首次禁用启动的空栈验证“无数据允许”，再在独立栈/备份夹具验证“有数据拒绝”**；有数据侧不能与首次禁用启动共用同一库。随后按无窗口顺序演练（关 ENABLED → 关 CLAIM/宽限 → 取消 WAITING 断言 0 → 清零 PENDING/RUNNING 断言 0 → 回滚 Worker → 复断言 0）→ 历史可读/J1/J2 正常 → schema 15 核对 → 恢复；旧 Worker 来源（tag/镜像 digest）必须记录。
 
 ## 11. 可访问性（a11y）
 
@@ -816,7 +817,7 @@ SELECT
 
 | ID | 内容 | 依赖 | 风险 | h | AC | 证据 | write_scope（glob） |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| T-M06-01 | 契约 `1.6.0-m06`、常量/枚举、V15 迁移、权限/角色回填、模板种子、审计白名单（含 feature.changed 的 instanceId/observedAt + 关闭态启动审计断言）、schema 15、§10.1 全部 `RICCON_WORKFLOW_*`/DB 键一次性写入两个 `application.yml`、V15 联动断言（CI/`ApiApplicationTests`/`SchemaVersionCheckerTest`/`restore-drill`）、V15MigrationTest（含应急 drop SQL 内联断言）、平台租户 404 guard、契约测试骨架 | — | 高 | 9 | 02/03/06/16/17/22 | `IT-WF-101`、迁移测试、`WorkflowContractM06Test`、V15 断言测试 | `platform/platform-domain/src/main/java/com/riccon/platform/domain/workflow/**`、`platform/platform-domain/src/main/java/com/riccon/platform/domain/{identity,audit}/**`、`apps/api/src/main/resources/db/migration/V15__workflow_studio.sql`、`apps/api/src/main/java/com/riccon/api/audit/domain/AuditDetailsPolicy.java`、`apps/api/src/main/java/com/riccon/api/identity/domain/RoleDefinitions.java`、`apps/api/src/main/java/com/riccon/api/workflow/web/**`、`apps/api/src/main/resources/application.yml`、`apps/worker/src/main/resources/application.yml`、`apps/api/src/test/java/com/riccon/api/contract/WorkflowContractM06Test.java`、`apps/api/src/test/java/com/riccon/api/migration/**`、`apps/api/src/test/java/com/riccon/api/workflow/web/**`、`apps/api/src/test/java/com/riccon/api/ApiApplicationTests.java`、`apps/worker/src/test/java/com/riccon/worker/persistence/SchemaVersionCheckerTest.java`、`apps/worker/src/main/java/com/riccon/worker/persistence/SchemaVersionChecker.java`、`.github/workflows/ci.yml`、`scripts/ops/restore-drill.mjs` |
+| T-M06-01 | 契约 `1.6.0-m06`、常量/枚举、V15 迁移、权限/角色回填、模板种子、审计白名单（含 feature.changed 的 instanceId/observedAt + 关闭态启动审计断言）、schema 15、§10.1 全部 `RICCON_WORKFLOW_*`/DB 键一次性写入两个 `application.yml`（worker Hikari `RICCON_DB_POOL_SIZE` 10→16，或按规则 fail-closed）、V15 联动断言（CI/`ApiApplicationTests`/`SchemaVersionCheckerTest`/`restore-drill`）、V15MigrationTest（含应急 drop SQL 内联断言）、平台租户 404 guard、契约测试骨架 | — | 高 | 9 | 02/03/06/16/17/22 | `IT-WF-101`、迁移测试、`WorkflowContractM06Test`、V15 断言测试 | `platform/platform-domain/src/main/java/com/riccon/platform/domain/workflow/**`、`platform/platform-domain/src/main/java/com/riccon/platform/domain/{identity,audit}/**`、`apps/api/src/main/resources/db/migration/V15__workflow_studio.sql`、`apps/api/src/main/java/com/riccon/api/audit/domain/AuditDetailsPolicy.java`、`apps/api/src/main/java/com/riccon/api/identity/domain/RoleDefinitions.java`、`apps/api/src/main/java/com/riccon/api/workflow/web/**`、`apps/api/src/main/java/com/riccon/api/config/**`、`apps/api/src/main/resources/application.yml`、`apps/worker/src/main/resources/application.yml`、`apps/api/src/test/java/com/riccon/api/contract/WorkflowContractM06Test.java`、`apps/api/src/test/java/com/riccon/api/migration/**`、`apps/api/src/test/java/com/riccon/api/workflow/web/**`、`apps/api/src/test/java/com/riccon/api/config/**`、`apps/api/src/test/java/com/riccon/api/ApiApplicationTests.java`、`apps/worker/src/test/java/com/riccon/worker/persistence/SchemaVersionCheckerTest.java`、`apps/worker/src/main/java/com/riccon/worker/persistence/SchemaVersionChecker.java`、`.github/workflows/ci.yml`、`scripts/ops/restore-drill.mjs` |
 | T-M06-02 | 定义/草稿领域与仓储、草稿 API、乐观锁、另存副本 | T01 | 高 | 6 | 01 | `IT-WF-101`、`E2E-M06-01` | `apps/api/src/main/java/com/riccon/api/workflow/definition/**`、`apps/api/src/main/java/com/riccon/api/workflow/domain/WorkflowGraph*.java`、`apps/api/src/main/java/com/riccon/api/workflow/persistence/WorkflowDefinition*.java`、`apps/api/src/test/java/com/riccon/api/workflow/definition/**` |
 | T-M06-03 | 校验器：结构/必填/模型/工具/审批可达/条件/结果/限制；负向节点/脚本/HTTP/并行/循环/定时入口（`IT-WF-111`） | T01,T02 | 高 | 6 | 02/06/09/18/24 | `IT-WF-101`、`IT-WF-111`、`SEC-WF-005` | `apps/api/src/main/java/com/riccon/api/workflow/validation/**`、`apps/api/src/test/java/com/riccon/api/workflow/validation/**` |
 | T-M06-04 | 发布/版本/停用启用/移交/范围与审计 | T02,T03 | 高 | 6 | 03/15/16 | `IT-WF-102`、`IT-WF-112` | `apps/api/src/main/java/com/riccon/api/workflow/version/**`、`.../workflow/publish/**`、`apps/api/src/test/java/com/riccon/api/workflow/version/**`、`apps/api/src/test/java/com/riccon/api/workflow/publish/**` |
@@ -833,9 +834,9 @@ SELECT
 | T-M06-12b | 前端发布/版本/运行历史/重试/取消 | T05,T06b | 高 | 5 | 03/12/13/19 | `E2E-M06-02/05/08` | `apps/web/src/pages/workflow/history/**` |
 | T-M06-13 | 前端审批待办/详情/决定、空态/错误态/键盘 | T09,T10 | 中 | 4 | 05/06/19/20 | `E2E-M06-04`、`@a11y` | `apps/web/src/pages/workflow/approvals/**` |
 | T-M06-14 | 内置模板（J2 等价）+ 复制 + 模板列表（`visibility=BUILT_IN`） | T01,T02 | 中 | 4 | 10 | `E2E-M06-07` | `apps/api/src/main/java/com/riccon/api/workflow/template/**`、`apps/api/src/test/java/com/riccon/api/workflow/template/**`、`apps/api/src/main/resources/workflow-templates/**`、`apps/web/src/pages/workflow/templates/**` |
-| T-M06-15 | 运行限制/开关/指标/启动校验/RUNBOOK：claim/heartbeat/scheduler 不变量、Hikari 连接池规则、lease/3、包大小预检、队列/租约/审批等待/hikaricp 指标与告警、Worker 停止领取、`docs/RUNBOOK.md` M06 章节（V1–V15、57/58 表、4 触发器、restore-drill 15/4、`RICCON_WORKFLOW_SCHEDULER_POOL_SIZE` 与 `RICCON_WORKER_SCHEDULER_POOL_SIZE` 不同池） | T05,T06a | 中 | 4 | 16/17/23 | `IT-WF-109/110`、`OPS-M06-01` | `apps/api/src/main/java/com/riccon/api/workflow/runtime/**`、`apps/worker/src/main/java/com/riccon/worker/workflow/metrics/**`、`apps/worker/src/main/java/com/riccon/worker/workflow/config/**`、`apps/api/src/main/java/com/riccon/api/config/Workflow*.java`、`apps/api/src/test/java/com/riccon/api/workflow/runtime/**`、`apps/worker/src/test/java/com/riccon/worker/workflow/metrics/**`、`docs/RUNBOOK.md` |
+| T-M06-15 | 运行限制/开关/指标/启动校验/RUNBOOK：claim/heartbeat/scheduler 不变量、Hikari 连接池规则、lease/3、包大小预检、队列/租约/审批等待/hikaricp 指标与告警、Worker 停止领取、`docs/RUNBOOK.md` M06 章节（V1–V15、57/58 表、4 触发器、restore-drill 15/4、`RICCON_WORKFLOW_SCHEDULER_POOL_SIZE` 与 `RICCON_WORKER_SCHEDULER_POOL_SIZE` 不同池、无窗口回滚顺序、首次禁用后备份恢复） | T05,T06a | 中 | 4 | 16/17/23 | `IT-WF-109/110`、`OPS-M06-01` | `apps/api/src/main/java/com/riccon/api/workflow/runtime/**`、`apps/worker/src/main/java/com/riccon/worker/workflow/metrics/**`、`apps/worker/src/main/java/com/riccon/worker/workflow/config/**`、`apps/api/src/test/java/com/riccon/api/workflow/runtime/**`、`apps/worker/src/test/java/com/riccon/worker/workflow/metrics/**`、`docs/RUNBOOK.md` |
 | T-M06-16a | E2E/axe/键盘/50 并发 perf/越权/注入/重试 harness；安全套件 `TEN-M06-01`/`DEPT-M06-01`/`SEC-WF-002/003/006` 落 surefire XML、`IT-AUDIT-M06-01` 归审计测试；`scripts/real-stack/run.mjs` 显式注入 M06 env 并登记 `real-stack-env.json` 快照（`RICCON_WORKFLOW_ENABLED`、`CLAIM_ENABLED`、`RESULT_MAX_BYTES`、心跳/租约/并发/轮询/连接池等，含默认值与来源）；零 skip/零 xfail | T10..T15 | 高 | 7 | 15/16/18/19/20/21/22/24 | `E2E-M06-01..10`、`@a11y`、`PERF-M06-001`、`SEC-WF-002/003/006`、`TEN-M06-01`、`DEPT-M06-01`、`IT-AUDIT-M06-01` | `e2e/**`、`scripts/real-stack/**`、`e2e/perf/**`、`apps/api/src/test/java/com/riccon/api/security/**`、`apps/api/src/test/java/com/riccon/api/audit/**` |
-| T-M06-16b | 回滚演练/5 MiB 容量/包大小预检：`scripts/ops/workflow-rollback-drill.mjs`、AC-23 判定 SQL/拒绝路径、回滚顺序断言、近 5 MiB result_json 真实插入容量报告 | T16a,T15 | 高 | 4 | 23 | `OPS-M06-01`、`IT-WF-110` | `scripts/ops/workflow-*.mjs` |
+| T-M06-16b | 回滚演练/5 MiB 容量/包大小预检：`scripts/ops/workflow-rollback-drill.mjs`；AC-23 判定 SQL/拒绝路径；**无窗口顺序断言**（关 ENABLED → 关 CLAIM/宽限 → WAITING=0 → PENDING/RUNNING=0 → 回滚 Worker → 复断言 0）；**“无数据允许”必须在首次禁用启动前/独立空栈，有数据拒绝用独立栈/备份夹具，首次禁用后全 0 不可达只能备份恢复**；近 5 MiB result_json 真实插入容量报告 | T16a,T15 | 高 | 4 | 23 | `OPS-M06-01`、`IT-WF-110` | `scripts/ops/workflow-*.mjs` |
 | T-M06-17 | 独立 Verifier 任务评审、模块 gate、全量回归、回滚/威胁模型核对 | 全部 | 高 | 7 | 22/23 + 全量 | review 文件、gate EV、`OPS-M06-01` | `.riccon/reviews/**`（verifier 写） |
 - 合计 **120h**；关键路径 T01→T02→T03→T04→T05→T06a→T06b→T07a→T07b→T16a→T16b→T17 ≈ **75h**；前端链 T01→T02→T10→T11→T12a→T12b→T13 ≈ 41h，可与后端并行。2–3 builder 时墙钟预计 77–92h，留修复/评审余量。
 - **OPS-M06-013 / F-007 工时调剂**：T11 画布 5h→2h（-3h）、T15 3h→4h（+1h）、T16 8h→10h（+2h，拆 6+4）；F-007 安全/审计套件使 T16a 6h→7h、T17 8h→7h，总额仍 120h；关键路径仍 75h。画布只保留最小增强，列表/表单仍是等价主路径。若再超支，候选后移：运行历史高级过滤（-2h）、模板列表合并（-1h）；不得缩减 AC-15/16/17/18/21/23/24，也不得删 RUNBOOK 回滚/预检章节。
@@ -969,9 +970,9 @@ U-01/U-02 已由 DEC-0047=A / DEC-0048=A 解决；U-03..U-13 仍未决，不得�
 
 ---
 
-## 17. OPS 评审响应（REV-M06-OPS-001/002）
+## 17. OPS 评审响应（REV-M06-OPS-001/002/003）
 
-REV-M06-OPS-001 基线 `751d384`、HEAD `a694979`，结论 `fail`；REV-M06-OPS-002 基线/HEAD `4e575a0`，结论 `fail`（1 P1 open、5 P2 open、1 P3 accepted）。OPS-001..016 由 OPS-002 复评判 fixed/accepted（以评审文件为准）；本节记录 OPS-017..023 的**设计响应**，不声称 fixed，由 Ops 只审 delta。
+REV-M06-OPS-001 基线 `751d384`、HEAD `a694979`，结论 `fail`；REV-M06-OPS-002 基线/HEAD `4e575a0`，结论 `fail`；REV-M06-OPS-003 基线 `48211e7`、HEAD `06b3db2`，0 open P1，OPS-017..020/022 fixed、OPS-023 accepted，剩 OPS-021（P2）与 OPS-024/025（P3）。OPS-001..016 状态以 OPS-002 评审为准；本节记录 OPS-017..025 的设计响应，不声称 fixed，由 Ops 只审 delta。
 
 | Finding | 严重度 | 处理 | 修改位置/证据 | Owner / Due / 备注 |
 | --- | --- | --- | --- | --- |
@@ -995,9 +996,11 @@ REV-M06-OPS-001 基线 `751d384`、HEAD `a694979`，结论 `fail`；REV-M06-OPS-
 | OPS-M06-018 | P2 | 设计已补：T16a 明确 `scripts/real-stack/run.mjs` 显式注入 M06 env，并把键/默认值/来源登记到 `real-stack-env.json`；写范围含 `scripts/real-stack/**` | §13.1 T16a | T16a；开工前 |
 | OPS-M06-019 | P2 | 设计已补：§8.1 `workflow.feature.changed` details 白名单加 `instanceId`/`observedAt`；T01 同步 AuditDetailsPolicy + 启动审计断言（关闭态不抛错） | §4.8、§8.1、T01 | T01；完成前 |
 | OPS-M06-020 | P2 | 设计已补：§3.5 拆为“可执行断言与 V15 同提交；RUNBOOK 由 T15 在 M06 gate 前更新”；T15 验收列明 V1–V15/57/58/4、restore 15/4、MAX=15 | §3.5、§13.1 T15 | T15；gate 前 |
-| OPS-M06-021 | P2 | 设计已补：§10.4/§10.5 统一为“关开关（取消可用）→ 取消 WAITING 并断言 0 → 处理/登记 PENDING/RUNNING → 回滚 Worker”；T16b 按序断言 | §10.4、§10.5、T16b | T15/T16b；T15 完成前 |
-| OPS-M06-022 | P2 | 设计已补：Hikari 容量规则（worker 默认 16、≥并发+4）、claim 轮询/空队列退避、hikaricp pending/timeout 指标；T06a/T15 验收 | §4.3、§10.1、§10.2、§10.5 | T06a/T15；T06a 开工前 |
+| OPS-M06-021 | P2 | 设计已补（本轮去窗口）：关 ENABLED → 关 CLAIM_ENABLED/停止领取并等宽限 → 取消 WAITING 断言 0 → 清零/取消 PENDING/RUNNING 断言三者均 0 → 回滚 Worker → 用保留 API 复断言 0；删除“滞留清单”放行；T16b 按静默前提断言 | §10.4、§10.5、T16b | T15/T16b；T15 完成前 |
+| OPS-M06-022 | P2 | 设计已补：Hikari 容量规则（T01 将 worker 默认 10→16、≥并发+4）、claim 轮询/空队列退避、hikaricp pending/timeout 指标；T06a/T15 验收 | §4.3、§10.1、§10.2、§10.5 | T06a/T15；T06a 开工前 |
 | OPS-M06-023 | P3 | **accepted（Ops 已接受）** + 文案补充：AC-23 映射加 T16b；restore fixtures triggers 2/1→4/3；§10.3 首次发布固定 false；T15 工时说明；5 MiB 实插归 T16b；RUNBOOK 说明两个 scheduler pool 不同 | §3.5、§10.3、§10.5、§13.1、§14 | Lead/T15/T16b；建卡时 |
+| OPS-M06-024 | P3 | 设计已补：选择 T01 承接启动观测组件；T01 scope 加 `apps/api/src/main/java/com/riccon/api/config/**` 与 `apps/api/src/test/java/com/riccon/api/config/**`，T15 移除该 config scope，避免双写 | §13.1 T01/T15 | T01；建卡前 |
+| OPS-M06-025 | P3 | 设计已补：§10.5/T16b 明确首次 `ENABLED=false` 启动会写 `workflow.feature.changed`，之后“全 0”不可达；“无数据允许”必须在首次禁用启动前/独立空栈，有数据拒绝用独立栈/备份夹具，试发布失败恢复 V15 前备份 | §10.4、§10.5、T16b | T15/T16b；完成前 |
 
 ### 17.1 REV-M06-ARCH-001（Verifier）
 

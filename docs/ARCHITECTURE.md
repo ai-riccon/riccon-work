@@ -46,7 +46,7 @@
 | Lead 完整性/合同一致性      | pending | 待 Lead 检查：23+2 条 AC 归属、120h + 48h 预算与 DEC-0046=A、V15、契约 `1.6.0-m06`；DEC-0047=A 已确认回滚口径、DEC-0048=A 已确认配额按运行 1 单位 |
 | 用户批准（不可逆/高成本项） | pass | DEC-0046=A（2026-11-25）：拆分 M06 120h + M06b/M26 48h、25 条 AC、non-goals、角色模型、16 条 OQ 默认值、代码执行不开放；DEC-0047=A 确认 AC-23 回滚口径；DEC-0048=A 确认配额按运行准入 1 单位 |
 | Verifier 可测试性/安全边界  | changes-requested | REV-M06-ARCH-001 fail（7 P1/8 P2/4 P3）；REV-M06-ARCH-002 剩 F-007 open（TEN/DEPT/SEC-WF/IT-AUDIT 套件写范围）；ADR §17.1/§13.1 已补 T16a 安全/审计测试落点，待复验 |
-| Ops 可运维/可回滚 | changes-requested | REV-M06-OPS-002 fail（OPS-001..016 判 fixed/accepted；剩 1 P1 OPS-017 + 5 P2 open + 1 P3 accepted）；ADR §17 已补 T01 migration 测试目录、T16a env/安全套件、RUNBOOK 时序、回滚顺序、Hikari/claim 节奏，待 delta 复验 |
+| Ops 可运维/可回滚 | changes-requested | REV-M06-OPS-003 fail（0 P1；OPS-021 P2 + OPS-024/025 P3 open；OPS-017..020/022 fixed、OPS-023 accepted）；ADR §10.4/§10.5 已改无窗口回滚、T01 承接启动审计、T16b 演练顺序与首次禁用备份恢复，待 delta 复验 |
 | 安全/合规评审（如适用）     | pending | 待安全：TM-72..TM-85、B-27..B-30、提示注入/canary、工具参数加密/plan 绑定、审批理由入审计（U-05）                                                                                                      |
 
 > ADR-0024 未评审前不进入 M06 实现；本表不声称 M06 已批准或已交付。M06b/M26 在 M06 用户验收后另行设计/评审。
