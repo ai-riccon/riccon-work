@@ -110,6 +110,20 @@ function highContrastTagStyle(color: string): CSSProperties | undefined {
 }
 
 /**
+ * danger 按钮的高对比配色。
+ *
+ * antd 6 的 danger 默认使用 `colorError`（#ff4d4f）：白底红字与红底白字都只有 3.27:1，
+ * 低于 WCAG 2.1 AA 的 4.5:1（axe color-contrast，serious）。这里通过 antd 6 Button 的
+ * CSS 变量把基色/悬停/按下改为 red-7/8/9（对白底 5.57:1 / 7.75:1 / 10.72:1），
+ * 只作用于本页删除按钮与删除确认按钮，不修改全局 token，避免影响其他页面。
+ */
+const DANGER_BUTTON_STYLES = {
+  '--ant-btn-color-base': '#cf1322',
+  '--ant-btn-color-hover': '#a8071a',
+  '--ant-btn-color-active': '#820014',
+} as CSSProperties;
+
+/**
  * 生成删除确认文案中的文档处置说明。
  *
  * @param disposition 处置
@@ -155,6 +169,8 @@ export default function ConnectorsPage({
   const [departmentsLoading, setDepartmentsLoading] = useState(false);
   const [departmentsError, setDepartmentsError] = useState<string | null>(null);
   const requestSequence = useRef(0);
+  // 记录打开条目抽屉的按钮：Drawer 关闭后把焦点还给触发元素（F-004）。
+  const itemsTriggerRef = useRef<HTMLElement | null>(null);
 
   const session = auth.session;
   const permissions = session?.permissions ?? [];
@@ -624,7 +640,9 @@ export default function ConnectorsPage({
       title: '名称',
       dataIndex: 'name',
       key: 'name',
-      fixed: 'left',
+      // 不固定列：375px 下固定的左列（210）与右列（330）会互相遮挡行操作，
+      // 鼠标无法点击“条目/删除”。取消固定后由表格横向滚动承载宽表，
+      // 鼠标与键盘都能到达操作列（F-003）。
       width: 210,
       render: (name: string) => <Typography.Text strong>{name}</Typography.Text>,
     },
@@ -749,7 +767,7 @@ export default function ConnectorsPage({
     {
       title: '操作',
       key: 'actions',
-      fixed: 'right',
+      // 与“名称”列一致不固定：窄屏下右固定列会盖住左侧内容与行按钮（F-003）。
       width: 330,
       render: (_: unknown, connector: Connector) => {
         const syncing = isConnectorSyncInProgress(connector);
@@ -779,7 +797,11 @@ export default function ConnectorsPage({
               aria-label={`条目 ${connector.name}`}
               autoInsertSpace={false}
               disabled={deleting}
-              onClick={() => setItemsConnectorId(connector.id)}
+              onClick={(event) => {
+                // 先记录触发按钮，再打开抽屉；关闭后由 Drawer 归还焦点（F-004）。
+                itemsTriggerRef.current = event.currentTarget;
+                setItemsConnectorId(connector.id);
+              }}
               size="small"
             >
               条目
@@ -810,6 +832,7 @@ export default function ConnectorsPage({
               disabled={!canManage || busy !== null || deleting}
               onClick={() => openDelete(connector)}
               size="small"
+              style={DANGER_BUTTON_STYLES}
             >
               删除
             </Button>
@@ -1018,13 +1041,14 @@ export default function ConnectorsPage({
         api={api}
         connector={itemsConnector}
         onClose={() => setItemsConnectorId(null)}
+        returnFocusRef={itemsTriggerRef}
       />
 
       <Modal
         cancelText="取消"
         confirmLoading={deleting}
         destroyOnHidden
-        okButtonProps={{ danger: true }}
+        okButtonProps={{ danger: true, style: DANGER_BUTTON_STYLES }}
         okText="确认删除"
         onCancel={() => setDeleteTarget(null)}
         onOk={() => void handleDelete()}

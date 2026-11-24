@@ -13,6 +13,7 @@ import {
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 import type {
   Connector,
   ConnectorApi,
@@ -39,6 +40,8 @@ export interface ConnectorItemsDrawerProps {
   connector: Connector | null;
   /** 关闭抽屉。 */
   onClose: () => void;
+  /** 打开抽屉的触发元素；关闭后把焦点归还给它。 */
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }
 
 /** 差异过滤器；`ALL` 表示不传 status。 */
@@ -74,6 +77,44 @@ function highContrastTagStyle(color: string) {
   return HIGH_CONTRAST_TAG_STYLES[color as keyof typeof HIGH_CONTRAST_TAG_STYLES];
 }
 
+/** 抽屉内可聚焦元素选择器；用于 Tab 循环，避免引入额外依赖。 */
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+/**
+ * 收集容器内可键盘聚焦的元素。
+ *
+ * 只按 DOM 顺序返回可用元素，不计算可见性：jsdom 没有布局信息，且 Drawer 打开时
+ * 隐藏的兄弟面板会被 antd 卸载或带有 `aria-hidden`，不会进入焦点循环。
+ *
+ * @param container 抽屉面板
+ * @returns 可聚焦元素列表
+ */
+function queryFocusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (element) => element.getAttribute('aria-hidden') !== 'true' && !element.hasAttribute('hidden'),
+  );
+}
+
+/**
+ * 从抽屉内容容器向上解析出 role=dialog 的面板。
+ *
+ * 不直接使用 antd 的 panelRef：该 ref 在首次打开与关闭动画期间存在未挂载的空档，
+ * 而内容容器在抽屉打开期间始终存在，向上查找更稳定。
+ *
+ * @param content 抽屉内容根节点
+ * @returns 抽屉面板或 null
+ */
+function resolveDrawerPanel(content: HTMLElement | null): HTMLElement | null {
+  return content?.closest<HTMLElement>('[role="dialog"]') ?? null;
+}
+
 /**
  * 连接器同步条目抽屉。
  *
@@ -81,10 +122,15 @@ function highContrastTagStyle(color: string) {
  * `externalId` 只展示末两段或 32 字符，不展示对象原文、完整对象 key、bucket 或端点。
  * 同步进行中时提示管理员等待，页面会禁用重复触发。
  *
- * @param props API、连接器与关闭回调
+ * @param props API、连接器、关闭回调与触发按钮引用
  * @returns 条目抽屉
  */
-export function ConnectorItemsDrawer({ api, connector, onClose }: ConnectorItemsDrawerProps) {
+export function ConnectorItemsDrawer({
+  api,
+  connector,
+  onClose,
+  returnFocusRef,
+}: ConnectorItemsDrawerProps) {
   const [phase, setPhase] = useState<ItemsPhase>('loading');
   const [items, setItems] = useState<ConnectorItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -93,6 +139,12 @@ export function ConnectorItemsDrawer({ api, connector, onClose }: ConnectorItems
   const [filter, setFilter] = useState<ItemStatusFilter>('ALL');
   const [error, setError] = useState<string | null>(null);
   const sequence = useRef(0);
+  // 抽屉内容根节点；向上可解析出 role=dialog 面板，用于初始焦点与 Tab 循环。
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  // 包裹条目表格，用于给 antd 的横向滚动容器补可聚焦属性（F-002）。
+  const tableHostRef = useRef<HTMLDivElement | null>(null);
+  // 标记抽屉曾经打开，避免初始关闭状态误把焦点移走。
+  const wasOpenRef = useRef(false);
 
   const open = connector !== null;
   const connectorId = connector?.id;
@@ -152,6 +204,119 @@ export function ConnectorItemsDrawer({ api, connector, onClose }: ConnectorItems
     setTotal(0);
     void loadItems(1, 10, 'ALL');
   }, [open, connectorId, loadItems]);
+
+  /**
+   * 抽屉内容挂载回调：把焦点移入抽屉（优先关闭按钮）。
+   *
+   * antd Drawer 的 portal 可能晚于父组件 effect 才提交内容，只用 effect 会在首次
+   * 打开时遇到空 ref；ref 回调在节点插入后执行，能稳定找到关闭按钮（F-004）。
+   *
+   * @param node 抽屉内容根节点；卸载时为 null
+   */
+  const handleContentRef = useCallback((node: HTMLDivElement | null) => {
+    contentRef.current = node;
+    if (!node) {
+      return;
+    }
+    const panel = resolveDrawerPanel(node);
+    if (!panel) {
+      return;
+    }
+    const closeButton = panel.querySelector<HTMLElement>('.ant-drawer-close');
+    (closeButton ?? panel).focus({ preventScroll: true });
+  }, []);
+
+  // 抽屉已打开时切换连接器或重新打开：内容未重新挂载也能把焦点移回关闭按钮。
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const panel = resolveDrawerPanel(contentRef.current);
+    if (!panel) {
+      return;
+    }
+    const closeButton = panel.querySelector<HTMLElement>('.ant-drawer-close');
+    (closeButton ?? panel).focus({ preventScroll: true });
+  }, [open, connectorId]);
+
+  // 抽屉内 Tab 循环：焦点在抽屉内时拦截首/尾的 Tab，避免焦点逃到页面 BODY
+  // （antd Drawer 的默认焦点锁只处理 focusin，焦点移出文档时不可靠）。
+  // 只在焦点已位于抽屉内时处理，不干扰 Select 等挂到 body 的浮层。
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    /**
+     * 处理文档级 Tab 键；首尾环绕。
+     *
+     * @param event 键盘事件
+     */
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Tab') {
+        return;
+      }
+      const panel = resolveDrawerPanel(contentRef.current);
+      if (!panel) {
+        return;
+      }
+      const active = document.activeElement as HTMLElement | null;
+      if (!active || !panel.contains(active)) {
+        return;
+      }
+      const focusable = queryFocusableElements(panel);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        panel.focus({ preventScroll: true });
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (active === first || active === panel)) {
+        event.preventDefault();
+        last.focus({ preventScroll: true });
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus({ preventScroll: true });
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [open]);
+
+  // 关闭后把焦点还给触发按钮；覆盖 Escape、遮罩、关闭按钮与父级联动关闭（F-004）。
+  // 延后一拍，等 antd 释放焦点锁与关闭动画开始，避免焦点又被拉回抽屉。
+  useEffect(() => {
+    if (open) {
+      wasOpenRef.current = true;
+      return;
+    }
+    if (!wasOpenRef.current) {
+      return;
+    }
+    wasOpenRef.current = false;
+    const trigger = returnFocusRef?.current;
+    if (!trigger) {
+      return;
+    }
+    const timer = window.setTimeout(() => trigger.focus({ preventScroll: true }), 0);
+    return () => window.clearTimeout(timer);
+  }, [open, returnFocusRef]);
+
+  // antd Table 的横向滚动容器 `.ant-table-content` 默认不可聚焦，axe 会报
+  // scrollable-region-focusable（serious）。条目表格没有其他可聚焦内容，因此在表格
+  // 渲染后补 tabindex/role 与可读名称，让键盘用户可聚焦并用方向键横向滚动（F-002）。
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const scroller = tableHostRef.current?.querySelector<HTMLElement>('.ant-table-content');
+    if (!scroller) {
+      return;
+    }
+    scroller.setAttribute('tabindex', '0');
+    scroller.setAttribute('role', 'region');
+    scroller.setAttribute('aria-label', '同步条目表格（可横向滚动）');
+  }, [open, phase, items, page, pageSize, filter]);
 
   /**
    * 切换状态筛选；回到第一页重新加载。
@@ -243,13 +408,14 @@ export function ConnectorItemsDrawer({ api, connector, onClose }: ConnectorItems
   return (
     <Drawer
       destroyOnHidden
+      focusable={{ trap: true, focusTriggerAfterClose: true }}
       onClose={onClose}
       open={open}
       title={`同步条目：${connector?.name ?? ''}`}
       size="min(860px, 100vw)"
     >
       {connector && (
-        <Flex gap={16} orientation="vertical">
+        <Flex gap={16} orientation="vertical" ref={handleContentRef}>
           {isConnectorSyncInProgress(connector) && (
             <Alert
               description="同步已受理，Worker 正在异步执行。完成前不要重复触发手动同步，否则会被服务端以 409 拒绝。"
@@ -355,23 +521,25 @@ export function ConnectorItemsDrawer({ api, connector, onClose }: ConnectorItems
               }
             />
           ) : (
-            <Table<ConnectorItem>
-              columns={columns}
-              dataSource={items}
-              loading={phase === 'loading'}
-              pagination={{
-                current: page,
-                pageSize,
-                total,
-                showSizeChanger: true,
-                pageSizeOptions: [10, 20, 50],
-                onChange: handlePaginationChange,
-                showTotal: (count) => `共 ${count} 条`,
-              }}
-              rowKey="id"
-              scroll={{ x: 980 }}
-              size="small"
-            />
+            <div ref={tableHostRef}>
+              <Table<ConnectorItem>
+                columns={columns}
+                dataSource={items}
+                loading={phase === 'loading'}
+                pagination={{
+                  current: page,
+                  pageSize,
+                  total,
+                  showSizeChanger: true,
+                  pageSizeOptions: [10, 20, 50],
+                  onChange: handlePaginationChange,
+                  showTotal: (count) => `共 ${count} 条`,
+                }}
+                rowKey="id"
+                scroll={{ x: 980 }}
+                size="small"
+              />
+            </div>
           )}
         </Flex>
       )}
