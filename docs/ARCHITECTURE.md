@@ -45,8 +45,8 @@
 | Architect 草案              | draft   | ADR-0024 `proposed`（2026-11-25）：`workflow_*` 9 张表（V15）、串行 + 条件求值、新建 `workflow_approval`、`WORKFLOW_EDITOR` 角色、`1.6.0-m06`、`workflow_run` 持久运行队列（TM-85 跨租户领取例外）、TM-72..TM-85、120h/48h 任务拆分 |
 | Lead 完整性/合同一致性      | pending | 待 Lead 检查：23+2 条 AC 归属、120h + 48h 预算与 DEC-0046=A、V15、契约 `1.6.0-m06`；DEC-0047=A 已确认回滚口径、DEC-0048=A 已确认配额按运行 1 单位 |
 | 用户批准（不可逆/高成本项） | pass | DEC-0046=A（2026-11-25）：拆分 M06 120h + M06b/M26 48h、25 条 AC、non-goals、角色模型、16 条 OQ 默认值、代码执行不开放；DEC-0047=A 确认 AC-23 回滚口径；DEC-0048=A 确认配额按运行准入 1 单位 |
-| Verifier 可测试性/安全边界  | changes-requested | REV-M06-ARCH-001 fail（7 P1/8 P2/4 P3）；ADR §17.1 设计响应待复验；403/404、契约 schema、审批字段、工具策略、测试写范围仍需复核；`SEC-WF-001..006`、`TEN-M06-01`、`DEPT-M06-01` |
-| Ops 可运维/可回滚 | changes-requested | REV-M06-OPS-001 fail（5 P1/8 P2 open + 2 accepted/1 P3）；ADR §17 设计响应待复验；队列参数/心跳池、指标、V15 联动断言、迁移失败处置、RUNBOOK 写范围已补；DEC-0047=A 已确认回滚口径，AC-23 文本由 Product 同步 |
+| Verifier 可测试性/安全边界  | changes-requested | REV-M06-ARCH-001 fail（7 P1/8 P2/4 P3）；REV-M06-ARCH-002 剩 F-007 open（TEN/DEPT/SEC-WF/IT-AUDIT 套件写范围）；ADR §17.1/§13.1 已补 T16a 安全/审计测试落点，待复验 |
+| Ops 可运维/可回滚 | changes-requested | REV-M06-OPS-002 fail（OPS-001..016 判 fixed/accepted；剩 1 P1 OPS-017 + 5 P2 open + 1 P3 accepted）；ADR §17 已补 T01 migration 测试目录、T16a env/安全套件、RUNBOOK 时序、回滚顺序、Hikari/claim 节奏，待 delta 复验 |
 | 安全/合规评审（如适用）     | pending | 待安全：TM-72..TM-85、B-27..B-30、提示注入/canary、工具参数加密/plan 绑定、审批理由入审计（U-05）                                                                                                      |
 
 > ADR-0024 未评审前不进入 M06 实现；本表不声称 M06 已批准或已交付。M06b/M26 在 M06 用户验收后另行设计/评审。
@@ -529,7 +529,7 @@ Studio 编辑（列表/表单为主，画布增强）
 
 ### 交付与预算
 
-- M06 = 21 个任务、**120h**，关键路径 ≈75h（T01→T02→T03→T04→T05→T06a→T06b→T07a→T07b→T16a→T16b→T17）；M06b/M26 = 6 个任务、**48h**（AC-11/25，M06 用户验收后启动）。任务边界/写范围/AC/证据见 ADR-0024 §13；T15 3→4h、T16 8→10h 由 T11 画布 5→2h 调剂。
+- M06 = 21 个任务、**120h**，关键路径 ≈75h（T01→T02→T03→T04→T05→T06a→T06b→T07a→T07b→T16a→T16b→T17）；M06b/M26 = 6 个任务、**48h**（AC-11/25，M06 用户验收后启动）。任务边界/写范围/AC/证据见 ADR-0024 §13；T15 3→4h、T16 8→10h 由 T11 画布 5→2h 调剂；T16a 7h/T17 7h 为安全/审计套件落点调剂。
 - M06 gate：AC-01..10、12..24；AC-11/25 不进 M06 gate。AC-19/20/21/23/24 仍须在模块 gate 与 release 前验证（T4 决策不新增 DoD key）。
 
 ### 风险
