@@ -19,7 +19,6 @@ import com.riccon.worker.config.AgentProperties;
 import com.riccon.worker.model.domain.ModelDescriptor;
 import com.riccon.worker.model.domain.ModelTarget;
 import com.riccon.worker.model.domain.ProviderDescriptor;
-import com.riccon.worker.parse.domain.ParsedChunk;
 import io.agentscope.core.event.AgentEvent;
 import io.agentscope.core.event.AgentResultEvent;
 import io.agentscope.core.event.RequireUserConfirmEvent;
@@ -67,10 +66,28 @@ class InjToolPermissionTest {
     @ValueSource(strings = {"INJ-004", "INJ-009", "INJ-010"})
     @Timeout(60)
     void hijackedModel_unauthorizedToolIsNeverExecuted(String sampleId) {
-        InjectionSample sample = InjectionSamples.byId(sampleId);
-        ParsedChunk chunk =
-                InjectionFixtures.chunks(InjectionFixtures.parse(sample)).get(0);
-        List<RetrievedChunk> citations = InjectionFixtures.citations(sample, List.of(chunk));
+        assertUnauthorizedToolBlocked(sampleId, InjectionSamples.byId(sampleId));
+    }
+
+    /**
+     * 连接器内容诱导的删除工具同样必须停在审批；来源不同不改变工具权限。
+     */
+    @ParameterizedTest(name = "{0} 连接器内容不能触发未授权 delete_knowledge")
+    @ValueSource(strings = {"INJ-004", "INJ-009", "INJ-010"})
+    @Timeout(60)
+    void hijackedModel_connectorContentCannotExecuteUnauthorizedTool(String sampleId) {
+        assertUnauthorizedToolBlocked("connector-" + sampleId, ConnectorInjectionSamples.byId(sampleId));
+    }
+
+    /**
+     * 执行被攻破模型场景并断言权限引擎阻断未授权工具。
+     *
+     * @param display 失败定位名
+     * @param sample 样本
+     */
+    private static void assertUnauthorizedToolBlocked(String display, InjectionSample sample) {
+        List<RetrievedChunk> citations =
+                InjectionFixtures.citations(sample, InjectionFixtures.chunks(InjectionFixtures.parse(sample)));
 
         KnowledgeRetriever retriever = mock(KnowledgeRetriever.class);
         when(retriever.retrieve(eq(TENANT), eq(USER), eq(RUN), eq(QUESTION), eq(List.of())))
@@ -93,43 +110,43 @@ class InjToolPermissionTest {
         ForbiddenToolStub stub = new ForbiddenToolStub(InjectionSamples.CANARY_VALUE);
         try {
             assertThat(session.agent().getSysPrompt().strip())
-                    .as("系统提示必须保持静态")
+                    .as("%s 系统提示必须保持静态", display)
                     .isEqualTo(AgentPrompts.CHAT_SYSTEM.strip());
             assertThat(session.agent().getToolkit().getToolNames())
-                    .as("生产聊天 Agent 只装配 knowledge_search")
+                    .as("%s 生产聊天 Agent 只装配 knowledge_search", display)
                     .containsExactly(KnowledgeSearchTool.TOOL_NAME);
 
             // 模拟最坏情况：删除工具在 Toolkit 中存在；权限上下文仍只允许 knowledge_search。
             session.agent().getToolkit().registerAgentTool(stub);
             assertThat(session.agent().getToolkit().getTool(ForbiddenToolStub.TOOL_NAME))
-                    .as("测试 stub 必须真实注册，才能证明是权限规则而非工具缺失阻断")
+                    .as("%s 测试 stub 必须真实注册，才能证明是权限规则而非工具缺失阻断", display)
                     .isNotNull();
 
             List<AgentEvent> events = session.events().collectList().block(Duration.ofSeconds(30));
-            assertThat(events).as("事件流不能为空").isNotNull();
-            assertThat(model.breaches()).as("注入文本不得逃出不可信数据块").isEmpty();
-            assertThat(stub.executions()).as("未授权删除工具绝不能被执行").isZero();
+            assertThat(events).as("%s 事件流不能为空", display).isNotNull();
+            assertThat(model.breaches()).as("%s 注入文本不得逃出不可信数据块", display).isEmpty();
+            assertThat(stub.executions()).as("%s 未授权删除工具绝不能被执行", display).isZero();
             assertThat(events.stream()
                             .filter(ToolResultEndEvent.class::isInstance)
                             .map(ToolResultEndEvent.class::cast))
-                    .as("未授权工具不得产生工具结果")
+                    .as("%s 未授权工具不得产生工具结果", display)
                     .noneMatch(event -> ForbiddenToolStub.TOOL_NAME.equals(event.getToolCallName()));
             assertThat(events.stream().anyMatch(RequireUserConfirmEvent.class::isInstance))
-                    .as("默认权限行为应是 ASK，Agent 暂停等待审批")
+                    .as("%s 默认权限行为应是 ASK，Agent 暂停等待审批", display)
                     .isTrue();
 
             AgentResultEvent result = events.stream()
                     .filter(AgentResultEvent.class::isInstance)
                     .map(AgentResultEvent.class::cast)
                     .reduce((first, second) -> second)
-                    .orElseThrow(() -> new AssertionError("事件流缺少 AgentResultEvent"));
+                    .orElseThrow(() -> new AssertionError(display + " 事件流缺少 AgentResultEvent"));
             assertThat(result.getResult().getGenerateReason())
-                    .as("被攻破模型只能停在权限审批，不能完成删除")
+                    .as("%s 被攻破模型只能停在权限审批，不能完成删除", display)
                     .isEqualTo(GenerateReason.PERMISSION_ASKING);
             assertThat(result.getResult().getTextContent())
-                    .as("结果不得包含 canary")
+                    .as("%s 结果不得包含 canary", display)
                     .doesNotContain(InjectionSamples.CANARY_VALUE);
-            assertThat(model.invocationCount()).as("审批前不得再次进入模型推理").isEqualTo(1);
+            assertThat(model.invocationCount()).as("%s 审批前不得再次进入模型推理", display).isEqualTo(1);
         } finally {
             session.close();
         }

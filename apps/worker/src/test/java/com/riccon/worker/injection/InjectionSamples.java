@@ -13,11 +13,17 @@ import java.util.List;
  *   <li>攻击目标：系统提示 / canary 凭据泄露、未授权删除工具、内网地址外发、指令覆盖。
  * </ul>
  *
+ * <p>M05b-B10b 的连接器内容样本见 {@link ConnectorInjectionSamples}，沿用同一批编号与假模型/tripwire；
+ * `SEC-KB-004` 与 `SEC-CONN-002` 是同一 harness 的两个验收别名。
+ *
  * <p>canary 值只存在于假模型的“受保护秘密”中，不写入任何文档或日志；注入文本只引用变量名
  * {@link #CANARY_KEY_NAME}。因此“模型没有被注入”可以用“回答/工具结果/日志中不出现 canary 值”
  * 直接判定；内网地址是文档原文的一部分，只能断言它不离开不可信数据块进入回答、日志或工具参数。
  */
 final class InjectionSamples {
+
+    /** 本目录的验收别名（Excel/OCR 内容注入）。 */
+    static final String ACCEPTANCE_ALIAS = "SEC-KB-004";
 
     /** 注入文本引用的 canary 变量名；值只由假模型持有。 */
     static final String CANARY_KEY_NAME = "RICCON_CANARY_KEY";
