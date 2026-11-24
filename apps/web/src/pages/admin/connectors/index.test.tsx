@@ -100,6 +100,20 @@ function relativeLuminance(color: string): number {
 }
 
 /**
+ * 计算两个颜色的 WCAG 对比度。
+ *
+ * @param first 颜色一（hex 或 rgb）
+ * @param second 颜色二（hex 或 rgb）
+ * @returns 对比度（1–21）
+ */
+function contrastRatio(first: string, second: string): number {
+  const [lighter, darker] = [relativeLuminance(first), relativeLuminance(second)].sort(
+    (a, b) => b - a,
+  );
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/**
  * 断言 Tag 前景/背景对比度达到 WCAG 2.1 AA（12px 正文 4.5:1）。
  *
  * 对应 axe `color-contrast`：antd 6 filled 绿色/金色 Tag 是该问题的真实来源。
@@ -110,10 +124,53 @@ function expectAATagContrast(tag: HTMLElement): void {
   const { color, backgroundColor } = tag.style;
   expect(color).not.toBe('');
   expect(backgroundColor).not.toBe('');
-  const [lighter, darker] = [relativeLuminance(color), relativeLuminance(backgroundColor)].sort(
-    (a, b) => b - a,
+  expect(contrastRatio(color, backgroundColor)).toBeGreaterThanOrEqual(4.5);
+}
+
+/**
+ * 断言 danger 按钮通过 antd 6 CSS 变量覆盖为 AA 对比度。
+ *
+ * antd 默认 `colorError`（#ff4d4f）对白底只有 3.27:1；页面把基色/悬停/按下改为
+ * red-7/8/9。jsdom 不解析 CSS 变量，因此直接读取按钮内联的自定义属性。
+ *
+ * @param button danger 按钮
+ */
+function expectAADangerButton(button: HTMLElement): void {
+  for (const variable of [
+    '--ant-btn-color-base',
+    '--ant-btn-color-hover',
+    '--ant-btn-color-active',
+  ]) {
+    const color = button.style.getPropertyValue(variable);
+    expect(color, `${variable} 必须有高对比配色`).not.toBe('');
+    expect(contrastRatio(color, '#ffffff'), `${variable} 对白底不足 4.5:1`).toBeGreaterThanOrEqual(
+      4.5,
+    );
+  }
+  expect(button.style.getPropertyValue('--ant-btn-color-base')).toBe('#cf1322');
+}
+
+/**
+ * 收集容器内可键盘聚焦的元素；与抽屉实现的 Tab 循环选择器一致。
+ *
+ * @param container 抽屉面板
+ * @returns 可聚焦元素
+ */
+function focusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(
+      [
+        'a[href]',
+        'button:not([disabled])',
+        'input:not([disabled]):not([type="hidden"])',
+        'select:not([disabled])',
+        'textarea:not([disabled])',
+        '[tabindex]:not([tabindex="-1"])',
+      ].join(','),
+    ),
+  ).filter(
+    (element) => element.getAttribute('aria-hidden') !== 'true' && !element.hasAttribute('hidden'),
   );
-  expect((lighter + 0.05) / (darker + 0.05)).toBeGreaterThanOrEqual(4.5);
 }
 
 describe('知识库连接器页', () => {
@@ -552,6 +609,79 @@ describe('知识库连接器页', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /刷新/ }));
     await waitFor(() => expect(api.listConnectors).toHaveBeenLastCalledWith({ page: 2, size: 10 }));
+  });
+
+  it('删除按钮（行内与确认弹窗）使用 WCAG AA 的高对比 danger 配色', async () => {
+    renderPage(createFakeConnectorApi());
+    await screen.findByText('销售合同归档');
+
+    const rowDelete = screen.getByRole('button', { name: '删除 销售合同归档' });
+    expectAADangerButton(rowDelete);
+
+    fireEvent.click(rowDelete);
+    // 确认删除使用 antd primary + danger 实心按钮，同样需要 4.5:1。
+    const confirmDelete = await screen.findByRole('button', { name: '确认删除' });
+    expectAADangerButton(confirmDelete);
+  });
+
+  it('条目表格的横向滚动区域可键盘聚焦并带可读名称', async () => {
+    const api = createFakeConnectorApi({
+      listConnectorItems: vi.fn(async () => connectorItemPage([makeConnectorItem()])),
+    });
+    renderPage(api);
+    await screen.findByText('销售合同归档');
+    fireEvent.click(screen.getByRole('button', { name: '条目 销售合同归档' }));
+
+    const region = await screen.findByRole('region', { name: '同步条目表格（可横向滚动）' });
+    expect(region).toHaveClass('ant-table-content');
+    expect(region).toHaveAttribute('tabindex', '0');
+    region.focus();
+    expect(region).toHaveFocus();
+  });
+
+  it('列表不使用固定列，窄屏下鼠标可直接打开行操作', async () => {
+    const { container } = renderPage(createFakeConnectorApi());
+    await screen.findByText('销售合同归档');
+
+    const table = container.querySelector('.connectors-table');
+    expect(table).not.toBeNull();
+    // 375px 下 fixed-left(210) + fixed-right(330) 会互相遮挡并拦截行按钮点击（F-003）。
+    expect(table?.querySelector('.ant-table-cell-fix-left')).toBeNull();
+    expect(table?.querySelector('.ant-table-cell-fix-right')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: '条目 销售合同归档' }));
+    expect(await screen.findByText('同步条目：销售合同归档')).toBeVisible();
+  });
+
+  it('条目抽屉 Tab 焦点循环，并在 Escape 关闭后归还触发按钮', async () => {
+    renderPage(createFakeConnectorApi());
+    await screen.findByText('销售合同归档');
+    const trigger = screen.getByRole('button', { name: '条目 销售合同归档' });
+    fireEvent.click(trigger);
+
+    const title = await screen.findByText('同步条目：销售合同归档');
+    const dialog = title.closest('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    const panel = dialog as HTMLElement;
+    const closeButton = within(panel).getByRole('button', { name: '关闭' });
+    // 打开后焦点进入抽屉，键盘用户有明确起点。
+    await waitFor(() => expect(closeButton).toHaveFocus());
+
+    const focusable = focusableElements(panel);
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    expect(first).toBe(closeButton);
+
+    // 最后一个元素 Tab 回到第一个；第一个元素 Shift+Tab 回到最后一个。
+    last.focus();
+    fireEvent.keyDown(last, { key: 'Tab' });
+    expect(first).toHaveFocus();
+    fireEvent.keyDown(first, { key: 'Tab', shiftKey: true });
+    expect(last).toHaveFocus();
+
+    // Escape 关闭后焦点归还“条目”按钮（F-004）。
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 
   it('行操作按钮可访问名称与可见文字一致', async () => {
