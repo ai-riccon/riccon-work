@@ -124,7 +124,7 @@ findings:
       worktree 取证；EV note 记录了 cwd/commit，worktree 例外成立。人工核对 3cc6c0c/e789504/a75b689
       均只改 injection 测试文件，没有越权；需要 Lead 在 gate 前修正任务卡或固化例外理由。
       另评审期间 verifier 的 EV-0852 与 TASK-0169 verifier 并发撞号，已重编号为 EV-0853；
-      旧 EV-0852 副本移入 `.riccon/archive/evidence/TASK-0172/EV-0852-superseded-by-EV-0853.json` 与同名日志，
+      旧 EV-0852 副本已重编号为 EV-0989 并归档为 `.riccon/archive/evidence/TASK-0172/EV-0989-superseded-by-EV-0853.json` 与同名日志，
       active evidence 中 EV-0852 只属于 TASK-0169。
 created_at: "2026-11-23T14:09:00+08:00"
 ---
@@ -184,7 +184,7 @@ created_at: "2026-11-23T14:09:00+08:00"
   `d4a1e2ccfd4daf365d6d9003aefd47800d0ec3a2787b2089091d37940ddb9f55` 与 JSON 一致；
   `spotless injection exit=0`，23 tests 全绿。该 EV 原在隔离 worktree 分配为 EV-0852，与并发
   TASK-0169 verifier 的 EV-0852 撞号；已按“保留 superseded 副本”重编号为 EV-0853，active evidence
-  中 EV-0852 仅属于 TASK-0169，旧副本在 `.riccon/archive/evidence/TASK-0172/`。
+  中 EV-0852 仅属于 TASK-0169；旧副本重编号为 EV-0989 并归档在 `.riccon/archive/evidence/TASK-0172/`。
 - 无 `@Disabled`、`assumeTrue`、空 `@Test` 或仅日志断言；12 条参数化 sample 均带稳定 display 名，失败可定位。
 - 额外检查：`trivy fs --scanners secret ... apps/worker/src/test/java/com/riccon/worker/injection` exit 0，
   未把合成 canary `sk-inj-canary-...` 误报为真实密钥。
