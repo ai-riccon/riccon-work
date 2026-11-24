@@ -77,6 +77,16 @@ const m05Connector = m05ConnectorEnabled
     }
   : null;
 
+/**
+ * ACL 写场景开关；M05b 正式取证把 ACL 写 residual 单列时设置 `PERF_M05_ACL_WRITES=0`，
+ * k6 不再启动 ACL 读写场景，也不对缺席的 ACL 指标做阈值断言。
+ */
+const m05AclWrites = Number(__ENV.PERF_M05_ACL_WRITES ?? '10');
+if (!Number.isInteger(m05AclWrites) || m05AclWrites < 0) {
+  fail(`PERF_M05_ACL_WRITES must be a non-negative integer, got ${__ENV.PERF_M05_ACL_WRITES}`);
+}
+const m05AclWriteEnabled = m05AclWrites > 0;
+
 const m05AclUserIds = (() => {
   try {
     const parsed = JSON.parse(__ENV.PERF_M05_ACL_USER_IDS || '[]');
@@ -193,7 +203,7 @@ function buildThresholds() {
   if (scenario === 'knowledge') {
     // 检索 p95 不在 k6 阈值内：ADR-0023 §9 要求先量测，超 500ms 由 run.mjs 标记
     // decisionRequired 并触发 FTS/OpenSearch 决策，不在这里静默放宽或伪造阈值。
-    return {
+    const thresholds = {
       m05_first_token_ms: ['p(95)<3000'],
       m05_first_token_ok: ['rate>0.99'],
       // 注意：k6 对 SSE 是整段缓冲，timings.waiting 接近完整流，不能当作首字预算。
@@ -202,15 +212,19 @@ function buildThresholds() {
       m05_api_ok: ['rate>0.99'],
       m05_list_ok: ['rate>0.99'],
       m05_detail_ok: ['rate>0.99'],
-      m05_acl_get_ok: ['rate>0.99'],
-      m05_acl_write_ms: ['p(95)<500'],
-      m05_acl_write_ok: ['rate==1'],
-      m05_acl_get_ms: ['p(95)<500'],
-      m05_acl_get_ok: ['rate==1'],
       m05_download_ok: ['rate>0.99'],
       m05_denied_404: ['rate==1'],
       m05_chat_citations: ['rate>0.99'],
     };
+    if (m05AclWriteEnabled) {
+      // ACL 写/读只在独立场景启用时断言；`PERF_M05_ACL_WRITES=0` 时指标不存在，
+      // 不能把“未执行”当成通过，也不能让缺失指标制造假失败。
+      thresholds.m05_acl_write_ms = ['p(95)<500'];
+      thresholds.m05_acl_write_ok = ['rate==1'];
+      thresholds.m05_acl_get_ms = ['p(95)<500'];
+      thresholds.m05_acl_get_ok = ['rate==1'];
+    }
+    return thresholds;
   }
   fail(`unknown PERF_M04_SCENARIO: ${scenario}`);
 }
@@ -241,7 +255,7 @@ function buildOptions() {
       },
     },
     knowledge: {
-      // 主负载：50 VU 同时做知识库聊天（内部触发检索）、列表、详情、ACL 读与下载；
+      // 主负载：50 VU 同时做知识库聊天（内部触发检索）、列表、详情与下载；
       // ACL 写由独立单 VU 场景并行执行，避免把写频率混入员工读路径。
       knowledge: {
         executor: 'constant-vus',
@@ -249,15 +263,19 @@ function buildOptions() {
         duration: __ENV.PERF_M05_DURATION || '60s',
         exec: 'knowledgeWorkload',
       },
-      knowledge_acl_write: {
-        executor: 'per-vu-iterations',
-        vus: 1,
-        iterations: Number(__ENV.PERF_M05_ACL_WRITES || '10'),
-        // 避开 50 VU 同时登录的 bcrypt/凭据行锁冷启动，只测稳态 ACL 写。
-        startTime: __ENV.PERF_M05_ACL_START || '15s',
-        maxDuration: '60s',
-        exec: 'knowledgeAclWrite',
-      },
+      ...(m05AclWriteEnabled
+        ? {
+            knowledge_acl_write: {
+              executor: 'per-vu-iterations',
+              vus: 1,
+              iterations: m05AclWrites,
+              // 避开 50 VU 同时登录的 bcrypt/凭据行锁冷启动，只测稳态 ACL 写。
+              startTime: __ENV.PERF_M05_ACL_START || '15s',
+              maxDuration: '60s',
+              exec: 'knowledgeAclWrite',
+            },
+          }
+        : {}),
     },
   };
   return {
@@ -590,17 +608,19 @@ function requireKnowledgeInputs() {
   if (!m05DocumentId) {
     missing.push('PERF_M05_DOC_ID');
   }
-  if (!m05AclDocumentId) {
-    missing.push('PERF_M05_ACL_DOC_ID');
+  if (m05AclWriteEnabled) {
+    if (!m05AclDocumentId) {
+      missing.push('PERF_M05_ACL_DOC_ID');
+    }
+    if (m05AclUserIds.length === 0) {
+      missing.push('PERF_M05_ACL_USER_IDS');
+    }
   }
   if (!m05HiddenDocumentId) {
     missing.push('PERF_M05_HIDDEN_DOC_ID');
   }
   if (!m05DownloadDocumentId) {
     missing.push('PERF_M05_DOWNLOAD_DOC_ID');
-  }
-  if (m05AclUserIds.length === 0) {
-    missing.push('PERF_M05_ACL_USER_IDS');
   }
   if (missing.length > 0) {
     fail(
@@ -1178,7 +1198,10 @@ export function handleSummary(data) {
       hiddenDocumentId: m05HiddenDocumentId,
       downloadDocumentId: m05DownloadDocumentId,
       aclUserCount: m05AclUserIds.length,
-      concurrency: { knowledgeVus: 50, aclWriteVus: 1 },
+      concurrency: {
+        knowledgeVus: 50,
+        aclWriteVus: m05AclWriteEnabled ? 1 : 0,
+      },
       duration: __ENV.PERF_M05_DURATION || '60s',
       // M05b 连接器同步结果由 run.mjs 在 k6 结束后写回；这里只记录本次负载对应的
       // 连接器元数据，便于单看 k6 报告也能区分“普通 M05 段”和“M05b 整条复验”。

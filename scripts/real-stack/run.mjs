@@ -106,7 +106,7 @@ const CONNECTOR_DEFAULTS = {
   region: "us-east-1",
   accessKey: "riccon_test_only",
   secretKey: "riccon_test_only_secret",
-  uploadConcurrency: 16,
+  uploadConcurrency: 8,
   token: "QCONNB11B",
   syncBudgetMs: 15 * 60_000,
   queueWaitBudgetMs: 5 * 60_000,
@@ -439,6 +439,47 @@ async function s3Request(input) {
 }
 
 /**
+ * 带有限重试的 S3 调用；只重试网络异常、429 与 5xx，4xx 立即返回由调用方记录。
+ *
+ * <p>1000 对象上传会建立大量短连接；测试栈在高负载或 RustFS 短暂抖动时可能出现
+ * `fetch failed`。夹具层重试可避免把一次瞬时网络错误误报成连接器功能失败。
+ *
+ * @param {object} input s3Request 参数
+ * @param {number} [attempts] 最大尝试次数
+ * @returns {Promise<Response>} 响应
+ */
+async function s3RequestWithRetry(input, attempts = 3) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const response = await s3Request(input);
+      if (response.status === 429 || response.status >= 500) {
+        // 消费失败响应体，避免 undici 连接被未读流占用。
+        await response.text().catch(() => "");
+        lastError = new Error(`S3 ${response.status}`);
+        if (attempt < attempts) {
+          await sleep(100 * attempt);
+          continue;
+        }
+      }
+      // 成功/幂等冲突响应也必须消费 body：1000 个短 PUT 若留下未读流，会耗尽
+      // undici 连接池并在后续请求抛出 fetch failed。4xx 交给调用方读取错误详情。
+      if (response.ok || [404, 409].includes(response.status)) {
+        await response.arrayBuffer().catch(() => undefined);
+      }
+      return response;
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) {
+        await sleep(100 * attempt);
+        continue;
+      }
+    }
+  }
+  throw lastError ?? new Error("S3 request failed");
+}
+
+/**
  * 创建桶；已存在（409）视为成功，便于重复运行。
  *
  * @param {string} bucket 桶名
@@ -446,7 +487,7 @@ async function s3Request(input) {
  * @returns {Promise<void>}
  */
 async function createS3Bucket(bucket, options = {}) {
-  const response = await s3Request({
+  const response = await s3RequestWithRetry({
     method: "PUT",
     bucket,
     ...options,
@@ -607,6 +648,16 @@ function shanghaiIso(date = new Date()) {
 function truncateText(value, max = 400) {
   const text = String(value ?? "").trim();
   return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+/**
+ * 异步等待；只用于夹具上传重试与终态轮询。
+ *
+ * @param {number} ms 毫秒
+ * @returns {Promise<void>}
+ */
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -1561,7 +1612,7 @@ async function seedConnectorSourceBucket(config) {
     config.uploadConcurrency,
     async (key, index) => {
       const body = connectorObjectBody(index + 1, config);
-      const response = await s3Request({
+      const response = await s3RequestWithRetry({
         method: "PUT",
         bucket: config.bucket,
         key,
@@ -1572,7 +1623,8 @@ async function seedConnectorSourceBucket(config) {
         secretKey: config.secretKey,
       });
       if (![200, 201].includes(response.status)) {
-        failures.push(`${key}:${response.status}`);
+        const detail = truncateText(await response.text().catch(() => ""), 200);
+        failures.push(`${key}:${response.status}:${detail}`);
         return;
       }
       uploaded += 1;
@@ -1611,7 +1663,7 @@ async function cleanupConnectorSourceBucket(config) {
     keys,
     config.uploadConcurrency,
     async (key) => {
-      const response = await s3Request({
+      const response = await s3RequestWithRetry({
         method: "DELETE",
         bucket: config.bucket,
         key,
@@ -1624,7 +1676,7 @@ async function cleanupConnectorSourceBucket(config) {
     },
   );
   const failed = statuses.filter((status) => ![200, 204, 404].includes(status));
-  const bucketResponse = await s3Request({
+  const bucketResponse = await s3RequestWithRetry({
     method: "DELETE",
     bucket: config.bucket,
     host: config.host,
@@ -2041,15 +2093,20 @@ async function runConnectorPerfBranch(admin, config) {
     queueWait: null,
     cleanup: null,
     error: null,
+    stage: null,
   };
   let syncTerminal = false;
   try {
+    result.stage = "source";
     result.source = await seedConnectorSourceBucket(config);
+    result.stage = "createConnector";
     const fixture = await createConnectorFixture(admin, config);
     result.connector = fixture;
+    result.stage = "triggerSync";
     const trigger = await triggerConnectorSync(admin, fixture.id);
     result.trigger = trigger;
 
+    result.stage = "waitSync";
     const polled = await pollConnectorSyncFinished(admin, fixture.id, config);
     syncTerminal = !polled.timedOut;
     if (polled.timedOut) {
@@ -2089,6 +2146,7 @@ async function runConnectorPerfBranch(admin, config) {
         endToEndMs !== null && endToEndMs <= config.syncBudgetMs,
     };
     result.items = readConnectorItemCounts(fixture.id);
+    result.stage = "indexing";
     const indexed = await waitConnectorDocumentsIndexed(fixture.id, config);
     result.indexing = {
       counts: indexed.counts,
@@ -2097,9 +2155,11 @@ async function runConnectorPerfBranch(admin, config) {
       elapsedMs: indexed.elapsedMs,
       timedOut: indexed.timedOut,
     };
+    result.stage = "queueWait";
     result.queueWait = readConnectorQueueWait(fixture.id, config);
+    result.stage = "done";
   } catch (error) {
-    result.error = truncateText(error, 600);
+    result.error = `${result.stage ?? "unknown"}: ${truncateText(error, 900)}`;
   } finally {
     // 未触发同步（夹具/连接器创建失败）时源桶可安全清理；已触发但未到终态时保留，
     // 避免 worker 仍在读取时删除源对象。
@@ -2148,6 +2208,10 @@ async function runConnectorPerfBranch(admin, config) {
     result.error === null && syncOk && indexingOk && queueOk
       ? "passed"
       : "failed";
+  // 计数/预算不达标但流程未抛异常时，也给出可读的失败原因，避免 failure 文件只有 checks。
+  if (result.status !== "passed" && result.error === null) {
+    result.error = `checks failed: ${JSON.stringify(result.checks)}`;
+  }
   return result;
 }
 
@@ -2384,6 +2448,11 @@ function launchK6(context, scenario, extra = {}) {
       process.env.PERF_M05_THINK_TIME ??
       String(KNOWLEDGE_DEFAULTS.thinkTimeSeconds),
     PERF_M05_REPORT_FILE: reportFile,
+    // 父进程的 PERF_M05_CONNECTOR 只控制编排；k6 只有在 run.mjs 注入完整连接器元数据
+    // （connectorId/syncId/对象数）时才允许启用分支。默认显式置 0，避免分支失败后
+    // k6 继承父 env 继续要求缺失的 ID，把真实错误覆盖成“缺少 PERF_M05_CONNECTOR_ID”。
+    PERF_M05_CONNECTOR: "0",
+    PERF_M05_ACL_WRITES: process.env.PERF_M05_ACL_WRITES ?? "10",
     ...extra,
   };
   const args = ["run"];
@@ -2726,6 +2795,21 @@ async function runKnowledgePerf(context) {
   if (context.connectorPerf) {
     connector = await runConnectorPerfBranch(admin, context.connectorConfig);
     phases.connectorSync = connector.status === "passed" ? "passed" : "failed";
+    if (connector.status !== "passed") {
+      // 连接器分支失败必须在这里显式落盘并打到 stdout；否则 k6 的“缺少 ID”错误
+      // 会覆盖真实根因（例如 RustFS 建桶/PUT 失败或连接器 API 4xx）。
+      const connectorFailureFile = path.join(
+        evidenceDir,
+        "perf-m05-connector-failure.json",
+      );
+      writeFileSync(
+        connectorFailureFile,
+        `${JSON.stringify(connector, null, 2)}\n`,
+      );
+      console.error(
+        `[real-stack] connector branch failed: status=${connector.status} stage=${connector.stage ?? "unknown"} error=${connector.error ?? "unknown"} failure=${path.relative(repoRoot, connectorFailureFile)}`,
+      );
+    }
   }
 
   // OCR 只在本宿主原生库可用时测量；不可用写入报告，不伪造单页/索引耗时。
@@ -2793,8 +2877,12 @@ async function runKnowledgePerf(context) {
       : "failed";
 
   if (!existsSync(reportFile)) {
+    const connectorDetail =
+      connector && connector.status !== "passed"
+        ? `; connector status=${connector.status} stage=${connector.stage ?? "unknown"} error=${connector.error ?? "unknown"}`
+        : "";
     throw new Error(
-      `k6 knowledge report missing (exit ${k6Result.status}); see ${path.relative(repoRoot, k6Result.log)}`,
+      `k6 knowledge report missing (exit ${k6Result.status})${connectorDetail}; see ${path.relative(repoRoot, k6Result.log)}`,
     );
   }
   const report = JSON.parse(readFileSync(reportFile, "utf8"));
@@ -2921,11 +3009,14 @@ async function runKnowledgePerf(context) {
       aclWriteP95Ms: aclWriteP95,
       aclGetP95Ms: aclGetP95,
       aclBudgetMs: 500,
+      // `PERF_M05_ACL_WRITES=0` 时 ACL 读写场景不启动；不能用 null/false 冒充通过或失败。
       aclWithinBudget:
-        aclWriteP95 !== null &&
-        aclWriteP95 <= 500 &&
-        aclGetP95 !== null &&
-        aclGetP95 <= 500,
+        Number(process.env.PERF_M05_ACL_WRITES ?? "10") > 0
+          ? aclWriteP95 !== null &&
+            aclWriteP95 <= 500 &&
+            aclGetP95 !== null &&
+            aclGetP95 <= 500
+          : null,
       downloadP95Ms: metrics.m05_download_ms?.["p(95)"] ?? null,
       indexNoOcrP95Ms: indexP95,
       indexBudgetMs: 60_000,
@@ -2949,6 +3040,11 @@ async function runKnowledgePerf(context) {
       "下载是流式代理，单独记录 m05_download_ms，不并入 JSON API p95。",
       "检索 p95 来自 MySQL slow_log 中 AgentContextJdbc FULLTEXT MATCH + ACL 谓词的实际执行时间；不含网络与结果映射。",
       "slow_log 在 API/Worker 建连前开启（long_query_time=0.001s）；它会给测试栈带来额外写开销，结果偏保守。",
+      ...(Number(process.env.PERF_M05_ACL_WRITES ?? "10") > 0
+        ? []
+        : [
+            "PERF_M05_ACL_WRITES=0：ACL 写 residual 按既有问题单列，本报告未执行 ACL 读写场景，aclWithinBudget=null 表示未量测，不是通过。",
+          ]),
       context.connectorPerf
         ? `M05b 连接器同步分支：${context.connectorConfig.objects} 对象同步与索引在 k6 前串行完成，随后用同一套 50 并发 knowledge 负载复验整条 AC-20；slow_log 全程开启，连接器阶段结果偏保守。`
         : "M05 不启用连接器分支。",
@@ -2999,6 +3095,11 @@ async function runKnowledgePerf(context) {
       context.connectorPerf
         ? `PERF-M05-003：连接器同步 ${context.connectorConfig.objects} 对象 ≤15min；PERF-M05-004：heavy 通道队列等待 p95 ≤5min。`
         : "PERF-M05-003/004：连接器同步分支未启用；本报告不声称已量测连接器同步或队列等待。",
+      ...(Number(process.env.PERF_M05_ACL_WRITES ?? "10") > 0
+        ? []
+        : [
+            "PERF_M05_ACL_WRITES=0：ACL 写 residual 未在本任务判据内执行，aclWithinBudget=null 表示未量测。",
+          ]),
       "OpenSearch 使用 v2 索引并核对别名目标与 bbox/acl mapping 字段；检索仍以 MySQL FULLTEXT + ACL 为准。",
       context.connectorPerf
         ? "连接器分支启用时检索 p95 >500ms 直接失败（M05b 整条复验判据），不降级为 passed-with-decision。"
