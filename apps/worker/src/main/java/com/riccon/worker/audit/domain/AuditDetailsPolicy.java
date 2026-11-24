@@ -2,6 +2,8 @@ package com.riccon.worker.audit.domain;
 
 import com.riccon.platform.domain.audit.AuditActions;
 import com.riccon.platform.domain.knowledge.KnowledgeVisibility;
+import com.riccon.platform.domain.workflow.WorkflowApprovalActionKind;
+import com.riccon.platform.domain.workflow.WorkflowRunStatus;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -16,6 +18,11 @@ import java.util.UUID;
  * <p>M04（ADR-0021 §7.4）：Worker 新增降级与凭据自动失效动作；{@code model.invocation.failed}
  * 增加 {@code emitted} 以区分首字后失败。数组与 nullable 规则与 API 侧
  * {@code com.riccon.api.audit.domain.AuditDetailsPolicy} 保持同一语义，避免写入端与读取端漂移。
+ *
+ * <p>M06（ADR-0024 §8.1）：Worker 写运行/审批生命周期审计（{@code workflow.run.started/completed/
+ * failed/cancelled}、{@code workflow.approval.requested}），并给 {@code mcp.tool.invoked} 追加可选
+ * {@code workflowRunId}/{@code workflowNodeId}。只允许 ID、枚举、计数与脱敏摘要；枚举与必填键
+ * fail-closed，未登记动作仍只允许空 details，与 API 读取白名单保持对称。
  */
 public final class AuditDetailsPolicy {
 
@@ -31,7 +38,14 @@ public final class AuditDetailsPolicy {
                     Set.of("modelId", "durationMs", "errorCode", "retryable", "emitted", "reason")),
             Map.entry(
                     AuditActions.MCP_TOOL_INVOKED,
-                    Set.of("toolName", "paramsSha256", "resultSha256", "durationMs", "approvalId")),
+                    Set.of(
+                            "toolName",
+                            "paramsSha256",
+                            "resultSha256",
+                            "durationMs",
+                            "approvalId",
+                            "workflowRunId",
+                            "workflowNodeId")),
             Map.entry(AuditActions.ARTIFACT_SAVED, Set.of("artifactId", "reportRunId", "version")),
             Map.entry(WorkerAuditActions.TENANT_ACCESS_DENIED, Set.of("attemptedTenant", "reason")),
             Map.entry(WorkerAuditActions.USER_ACCESS_DENIED, Set.of("userId", "reason")),
@@ -46,13 +60,53 @@ public final class AuditDetailsPolicy {
             // M05 U8：管理员检索绕过文档 ACL 时写入；不写标题、片段、正文或名单。
             Map.entry(
                     AuditActions.KNOWLEDGE_DOCUMENT_ADMIN_READ,
-                    Set.of("scope", "documentId", "visibility", "aclUserCount", "resultCount", "reason")));
+                    Set.of("scope", "documentId", "visibility", "aclUserCount", "resultCount", "reason")),
+            // M06 运行/审批生命周期（ADR-0024 §8.1）：只写 ID、枚举、计数与脱敏摘要；不写输入输出、
+            // 图 JSON、工具参数或凭据。
+            Map.entry(AuditActions.WORKFLOW_RUN_STARTED, Set.of("workflowRunId", "workflowId")),
+            Map.entry(
+                    AuditActions.WORKFLOW_RUN_COMPLETED,
+                    Set.of("workflowRunId", "status", "durationMs", "nodeCount", "resultBytes")),
+            Map.entry(AuditActions.WORKFLOW_RUN_FAILED, Set.of("workflowRunId", "errorCode", "failedNodeId")),
+            Map.entry(AuditActions.WORKFLOW_RUN_CANCELLED, Set.of("workflowRunId", "previousStatus", "reason")),
+            Map.entry(
+                    AuditActions.WORKFLOW_APPROVAL_REQUESTED,
+                    Set.of(
+                            "workflowRunId",
+                            "workflowApprovalId",
+                            "nodeId",
+                            "assigneeCount",
+                            "actionKind",
+                            "targetToolName")));
 
     /**
-     * 允许 JSON null 的动作级键；M04 Worker 写入的动作没有 nullable 字段，保留空表以与 API 侧
-     * 校验语义一致，新增时必须显式登记。
+     * 允许 JSON null 的动作级键；没有 nullable 字段的动作不登记，新增时必须显式加入。
+     *
+     * <p>M06：失败节点、取消原因与目标工具名按 ADR-0024 §8.1 的 “?” 字段允许空；
+     * {@code mcp.tool.invoked} 的 workflowRunId/workflowNodeId 只在工作流调用时写入，J2 调用可显式置空。
      */
-    private static final Map<String, Set<String>> NULLABLE_KEYS = Map.of();
+    private static final Map<String, Set<String>> NULLABLE_KEYS = Map.ofEntries(
+            Map.entry(AuditActions.WORKFLOW_RUN_FAILED, Set.of("failedNodeId")),
+            Map.entry(AuditActions.WORKFLOW_RUN_CANCELLED, Set.of("reason")),
+            Map.entry(AuditActions.WORKFLOW_APPROVAL_REQUESTED, Set.of("targetToolName")),
+            Map.entry(AuditActions.MCP_TOOL_INVOKED, Set.of("workflowRunId", "workflowNodeId")));
+
+    /**
+     * 封闭枚举值的动作级校验。
+     *
+     * <p>与 API 读取白名单保持同一语义：写入非法枚举会让 M10 读取 fail-closed，因此在写入端提前拒绝。
+     */
+    private static final Map<String, Map<String, Set<String>>> ENUM_VALUES = Map.ofEntries(
+            Map.entry(
+                    AuditActions.WORKFLOW_RUN_COMPLETED,
+                    Map.of(
+                            "status",
+                            Set.of(
+                                    WorkflowRunStatus.SUCCEEDED.name(),
+                                    WorkflowRunStatus.FAILED.name(),
+                                    WorkflowRunStatus.CANCELLED.name()))),
+            Map.entry(AuditActions.WORKFLOW_RUN_CANCELLED, Map.of("previousStatus", runStatusValues())),
+            Map.entry(AuditActions.WORKFLOW_APPROVAL_REQUESTED, Map.of("actionKind", approvalActionKindValues())));
 
     /**
      * 允许受限数组的动作级键；M04 Worker 写入的动作没有数组字段，数组能力保留用于未来
@@ -115,8 +169,29 @@ public final class AuditDetailsPolicy {
                 throw new IllegalArgumentException("audit detail key is not allowed for " + action + ": " + key);
             }
             validateValue(key, entry.getValue(), nullable.contains(key), arrays.contains(key));
+            validateEnumValue(action, key, entry.getValue());
         }
         validateRequiredDetails(action, safeDetails);
+    }
+
+    /**
+     * 校验封闭枚举字段。
+     *
+     * @param action 审计动作
+     * @param key 字段名
+     * @param value 字段值；null 已由 nullable 白名单处理
+     */
+    private static void validateEnumValue(String action, String key, Object value) {
+        if (value == null) {
+            return;
+        }
+        Set<String> allowedValues = ENUM_VALUES.getOrDefault(action, Map.of()).get(key);
+        if (allowedValues == null) {
+            return;
+        }
+        if (!(value instanceof String text) || !allowedValues.contains(text)) {
+            throw new IllegalArgumentException("audit detail value is not allowed for " + action + ": " + key);
+        }
     }
 
     /**
@@ -129,6 +204,39 @@ public final class AuditDetailsPolicy {
      * @param details 已通过白名单校验的字段
      */
     private static void validateRequiredDetails(String action, Map<String, Object> details) {
+        // M06：运行/审批审计的核心 ID 与枚举必填，避免写入无法归属的审计行（ADR-0024 §8.1/§8.2）。
+        switch (action) {
+            case AuditActions.WORKFLOW_RUN_STARTED -> {
+                requireText(details, "workflowRunId");
+                requireText(details, "workflowId");
+                return;
+            }
+            case AuditActions.WORKFLOW_RUN_COMPLETED -> {
+                requireText(details, "workflowRunId");
+                requireText(details, "status");
+                return;
+            }
+            case AuditActions.WORKFLOW_RUN_FAILED -> {
+                requireText(details, "workflowRunId");
+                requireText(details, "errorCode");
+                return;
+            }
+            case AuditActions.WORKFLOW_RUN_CANCELLED -> {
+                requireText(details, "workflowRunId");
+                requireText(details, "previousStatus");
+                return;
+            }
+            case AuditActions.WORKFLOW_APPROVAL_REQUESTED -> {
+                requireText(details, "workflowRunId");
+                requireText(details, "workflowApprovalId");
+                requireText(details, "nodeId");
+                requireText(details, "actionKind");
+                return;
+            }
+            default -> {
+                // 其他动作继续走下方 admin_read 分支或只依赖白名单。
+            }
+        }
         if (!AuditActions.KNOWLEDGE_DOCUMENT_ADMIN_READ.equals(action)) {
             return;
         }
@@ -149,6 +257,36 @@ public final class AuditDetailsPolicy {
         if (!(details.get("resultCount") instanceof Number resultCount) || resultCount.longValue() < 0) {
             throw new IllegalArgumentException("admin_read resultCount must be a non-negative number");
         }
+    }
+
+    /**
+     * 校验必填文本键非空。
+     *
+     * @param details 已通过白名单校验的字段
+     * @param key 字段名
+     */
+    private static void requireText(Map<String, Object> details, String key) {
+        if (!(details.get(key) instanceof String text) || text.isBlank()) {
+            throw new IllegalArgumentException("audit detail key is required: " + key);
+        }
+    }
+
+    /** 返回运行状态枚举名集合，供取消动作的 previousStatus 校验使用。 */
+    private static Set<String> runStatusValues() {
+        java.util.List<String> values = new java.util.ArrayList<>();
+        for (WorkflowRunStatus status : WorkflowRunStatus.values()) {
+            values.add(status.name());
+        }
+        return Set.copyOf(values);
+    }
+
+    /** 返回审批动作类型枚举名集合，供 request 动作的 actionKind 校验使用。 */
+    private static Set<String> approvalActionKindValues() {
+        java.util.List<String> values = new java.util.ArrayList<>();
+        for (WorkflowApprovalActionKind kind : WorkflowApprovalActionKind.values()) {
+            values.add(kind.name());
+        }
+        return Set.copyOf(values);
     }
 
     /**

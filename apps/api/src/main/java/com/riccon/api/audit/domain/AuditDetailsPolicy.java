@@ -154,7 +154,15 @@ public final class AuditDetailsPolicy {
                     Set.of("modelId", "durationMs", "errorCode", "retryable", "emitted", "reason")),
             Map.entry(
                     AuditActions.MCP_TOOL_INVOKED,
-                    Set.of("toolName", "paramsSha256", "resultSha256", "durationMs", "approvalId")),
+                    // M06：工作流工具调用复用同一动作，追加可选 workflowRunId/workflowNodeId（ADR-0024 §8.1）。
+                    Set.of(
+                            "toolName",
+                            "paramsSha256",
+                            "resultSha256",
+                            "durationMs",
+                            "approvalId",
+                            "workflowRunId",
+                            "workflowNodeId")),
             Map.entry(AuditActions.ARTIFACT_SAVED, Set.of("artifactId", "reportRunId", "version")),
             // M04 模型路由/模型/降级/key 池/开关（ADR-0021 §7.4）：只写 ID、枚举、版本与掩码，不写
             // baseUrl、provider code、key、Authorization、提示词或原文。
@@ -353,7 +361,9 @@ public final class AuditDetailsPolicy {
             Map.entry(AuditActions.WORKFLOW_RUN_CANCELLED, Set.of("reason")),
             Map.entry(AuditActions.WORKFLOW_APPROVAL_REQUESTED, Set.of("targetToolName")),
             Map.entry(AuditActions.WORKFLOW_APPROVAL_DECIDED, Set.of("targetToolName", "decisionComment")),
-            Map.entry(AuditActions.WORKFLOW_FEATURE_CHANGED, Set.of("reason")));
+            Map.entry(AuditActions.WORKFLOW_FEATURE_CHANGED, Set.of("reason")),
+            // M06：J2 工具调用不带工作流引用；显式 null 与省略等价，避免写入端为空值失败。
+            Map.entry(AuditActions.MCP_TOOL_INVOKED, Set.of("workflowRunId", "workflowNodeId")));
 
     /**
      * 允许受限数组的动作级键。

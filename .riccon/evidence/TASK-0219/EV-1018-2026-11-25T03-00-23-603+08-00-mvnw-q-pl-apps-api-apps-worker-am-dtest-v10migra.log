@@ -1,0 +1,931 @@
+# command: ./mvnw -q -pl apps/api,apps/worker -am -Dtest='V10MigrationTest,V11MigrationTest,V12MigrationTest,V15MigrationTest,WorkflowContractM06Test,ModelContract108aTest,ModelContract108bTest,KnowledgeContractM05Test,ConnectorContractM05bTest,WorkflowPlatformTenantFilterTest,WorkflowFeatureStartupAuditorTest,WorkflowFeatureDisabledStartupTest,ApiApplicationTests,RoleDefinitionsTest,TenantIsolationTest,ResearchTaskApiTest,ApprovalApiTest,M04V2VerifierBoundaryTest,SchemaVersionCheckerTest' -Dsurefire.failIfNoSpecifiedTests=false test
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-25T02:56:36.791+08:00
+# finished_at: 2026-11-25T03:00:22.686+08:00
+# duration_ms: 225894
+# exit_code: 0
+
+# --- stdout ---
+02:56:50.144 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.TenantIsolationTest]: TenantIsolationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+02:56:50.372 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.TenantIsolationTest
+02:56:50.530 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.TenantIsolationTest]: TenantIsolationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+02:56:50.531 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+02:56:50.534 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.TenantIsolationTest
+02:56:50.652 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+02:56:50.656 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+02:56:50.691 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+02:56:52.174 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+02:56:52.176 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+02:56:52.204 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+02:56:52.417 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+02:56:52.908 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: b0315140e17cfa3a70391b11e148de13fb2e24f50c63eeeb4d48a9238df13469
+02:56:53.659 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT1.241237S
+02:56:53.668 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+02:56:53.668 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+02:56:53.670 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+02:56:53.670 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+02:56:53.786 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: 08e54bc24459d81733c43a03d43f672d06783796b72add009460b8b1372ba8a2
+02:56:54.114 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:55234/riccon using query 'SELECT 1'
+02:57:04.292 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT10.622159S
+02:57:04.292 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:55234/riccon)
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-25T02:57:04.803+08:00  INFO 50160 --- [riccon-api] [           main] com.riccon.api.TenantIsolationTest       : Starting TenantIsolationTest using Java 21.0.13 with PID 50160 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-25T02:57:04.805+08:00  INFO 50160 --- [riccon-api] [           main] com.riccon.api.TenantIsolationTest       : The following 1 profile is active: "test"
+2026-11-25T02:57:07.456+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-25T02:57:07.483+08:00  INFO 50160 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-25T02:57:07.483+08:00  INFO 50160 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-25T02:57:07.558+08:00  INFO 50160 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2722 ms
+2026-11-25T02:57:07.893+08:00  INFO 50160 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-25T02:57:07.922+08:00  INFO 50160 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-25T02:57:07.967+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:55234/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:57:08.141+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon`.`flyway_schema_history` does not exist yet
+2026-11-25T02:57:08.155+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.053s)
+2026-11-25T02:57:08.187+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon`.`flyway_schema_history` ...
+2026-11-25T02:57:08.277+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: << Empty Schema >>
+2026-11-25T02:57:08.288+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "1 - baseline"
+2026-11-25T02:57:08.357+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "2 - identity and workspace"
+2026-11-25T02:57:08.587+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "3 - files knowledge and conversation"
+2026-11-25T02:57:08.843+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "4 - research runs and artifacts"
+2026-11-25T02:57:09.153+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "5 - model gateway and mcp"
+2026-11-25T02:57:09.422+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "6 - audit event"
+2026-11-25T02:57:09.713+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "7 - spring session"
+2026-11-25T02:57:09.811+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "8 - approval params envelope"
+2026-11-25T02:57:09.919+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "9 - organization and workspace scope"
+2026-11-25T02:57:10.290+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "10 - audit query export"
+2026-11-25T02:57:10.525+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "11 - model gateway depth"
+2026-11-25T02:57:10.927+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "12 - knowledge depth"
+2026-11-25T02:57:11.358+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "13 - citation chunk link"
+2026-11-25T02:57:11.421+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "14 - knowledge fulltext search"
+2026-11-25T02:57:11.559+08:00  WARN 50160 --- [riccon-api] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: InnoDB rebuilding table to add column FTS_DOC_ID (SQL State: HY000 - Error Code: 124)
+2026-11-25T02:57:11.752+08:00  WARN 50160 --- [riccon-api] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: InnoDB rebuilding table to add column FTS_DOC_ID (SQL State: HY000 - Error Code: 124)
+2026-11-25T02:57:11.781+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "15 - workflow studio"
+2026-11-25T02:57:12.160+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 15 migrations to schema `riccon`, now at version v15 (execution time 00:03.436s)
+2026-11-25T02:57:12.927+08:00  INFO 50160 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-25T02:57:13.214+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-25T02:57:13.214+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-25T02:57:13.214+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter workflowPlatformTenantFilterRegistration was not registered (disabled)
+2026-11-25T02:57:13.214+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-25T02:57:13.215+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-25T02:57:13.495+08:00  WARN 50160 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist is empty; mode=DEMO allowLegacyEndpoints=true
+2026-11-25T02:57:13.496+08:00  INFO 50160 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=0
+2026-11-25T02:57:13.553+08:00  INFO 50160 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-test, previousKey=true, fingerprintPepper=true
+2026-11-25T02:57:14.833+08:00  INFO 50160 --- [riccon-api] [           main] c.r.a.k.c.config.ConnectorProperties     : connector endpoint allowlist loaded; enabled=false endpoints=0 syncIntervalMinutes=60
+2026-11-25T02:57:16.460+08:00  INFO 50160 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-25T02:57:16.558+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 55373 (http) with context path '/'
+2026-11-25T02:57:16.573+08:00  INFO 50160 --- [riccon-api] [           main] com.riccon.api.TenantIsolationTest       : Started TenantIsolationTest in 12.233 seconds (process running for 31.095)
+2026-11-25T02:57:16.650+08:00  WARN 50160 --- [riccon-api] [           main] c.r.api.config.KnowledgeAclStartupCheck  : RICCON-KB-001 knowledge acl enforcement disabled; DEPT/USERS documents are visible to all tenant members until RICCON_KB_ACL_ENFORCEMENT_ENABLED=true (ADR-0023 5.8)
+2026-11-25T02:57:16.990+08:00  INFO 50160 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin created
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-25T02:57:18.174+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-25T02:57:18.175+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-25T02:57:18.177+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-11-25T02:57:19.483+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=eef27503-4538-4414-b607-ce4144ea18ca path=/api/v1/admin/tenants
+2026-11-25T02:57:20.259+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=a9adcf7b-6c1c-4052-8698-e5a3802982e7 path=/api/v1/users
+2026-11-25T02:57:23.565+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=c4f886f9-00e3-403e-8fb2-a976a7396412 path=/api/v1/users/01a20eeb-7a36-7e57-8783-b77eadda056b
+2026-11-25T02:57:25.324+08:00  INFO 50160 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.ResearchTaskApiTest]: ResearchTaskApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T02:57:25.325+08:00  INFO 50160 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.ResearchTaskApiTest
+2026-11-25T02:57:25.327+08:00  INFO 50160 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.ResearchTaskApiTest]: ResearchTaskApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T02:57:25.327+08:00  INFO 50160 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ResearchApiTestSupport]: ResearchApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T02:57:25.327+08:00  INFO 50160 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T02:57:25.329+08:00  INFO 50160 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.ResearchTaskApiTest
+2026-11-25T02:57:26.193+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-6] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=ta15df6ed8cbc taskId=01a20eeb-86a7-70e7-8fbb-8c5abb5d0769 runId=01a20eeb-86a7-7db8-a621-863c94e7c1f1 workspaceId=01a20eeb-8653-742e-bb91-df2483b9854b toolId=01a20eeb-8665-7db0-8511-d015fde25daf
+2026-11-25T02:57:27.047+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-6] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=t703a275db05c taskId=01a20eeb-8a03-79cf-94d7-024dfb057dbb runId=01a20eeb-8a03-73b6-94b4-0c1462c77053 workspaceId=01a20eeb-89b8-7121-a983-0c8d09597bb4 toolId=01a20eeb-89db-710b-94a4-43adc67e0488
+2026-11-25T02:57:27.100+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-7] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=t703a275db05c taskId=01a20eeb-8a36-7d24-ac5c-f32cd9396321 runId=01a20eeb-8a36-73ea-986e-b15fb19f660c workspaceId=01a20eeb-89b8-7121-a983-0c8d09597bb4 toolId=01a20eeb-89db-710b-94a4-43adc67e0488
+2026-11-25T02:57:28.073+08:00  INFO 50160 --- [riccon-api] [-auto-1-exec-10] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=te617eb989420 taskId=01a20eeb-8e03-7d7b-ab15-983d51837d00 runId=01a20eeb-8e03-7638-875e-208cbe6b2132 workspaceId=01a20eeb-8dc5-7279-98ea-8ac5d154f975 toolId=01a20eeb-8dd7-7b44-b91c-cd8be519d9e5
+2026-11-25T02:57:28.140+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=4e5b8d5e-7cb5-4ec1-9f47-030b27c6bf75 path=/api/v1/workspaces/01a20eeb-8dc5-7279-98ea-8ac5d154f975/research-tasks
+2026-11-25T02:57:28.161+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=8053ef9e-6461-4815-aa83-267463a13db0 path=/api/v1/workspaces/01a20eeb-8dc5-7279-98ea-8ac5d154f975/research-tasks
+2026-11-25T02:57:28.183+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=265e958b-c686-4d8a-a368-8c85b46db778 path=/api/v1/workspaces/01a20eeb-8dc5-7279-98ea-8ac5d154f975/research-tasks
+2026-11-25T02:57:28.210+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=4d2d16cc-eb05-47db-bcb1-4219a78b39c1 path=/api/v1/workspaces/01a20eeb-8dc5-7279-98ea-8ac5d154f975/research-tasks
+2026-11-25T02:57:28.981+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-4] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=tef9d7b282e8d taskId=01a20eeb-9190-7dc1-af30-ce32e1e01eb3 runId=01a20eeb-9190-7049-9600-c683f3013198 workspaceId=01a20eeb-9145-7149-b872-5b3281d5494b toolId=01a20eeb-916b-78f6-82c0-6de76e563042
+2026-11-25T02:57:29.835+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-4] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=t51d0921c1cc9 taskId=01a20eeb-94e7-76b8-aed3-38df510c06bc runId=01a20eeb-94e7-7818-aa98-8fc06cc41aab workspaceId=01a20eeb-949c-7a4d-b182-963ecbf25683 toolId=01a20eeb-94c1-7a86-8938-bfcb74d62171
+2026-11-25T02:57:30.672+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-4] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=t5799bb807ccf taskId=01a20eeb-982d-7c7e-92bd-a87f2e917275 runId=01a20eeb-982d-7dee-89d2-12275f2c9197 workspaceId=01a20eeb-97fe-721e-a553-98ab21b1e962 toolId=01a20eeb-980b-745d-b297-a3ab18a30ecc
+2026-11-25T02:57:32.143+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-1] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=td06fe9bff439 taskId=01a20eeb-9deb-74f6-a0f7-33636555748d runId=01a20eeb-9deb-763c-ba21-af7cbba1745e workspaceId=01a20eeb-9ae2-7596-9c6d-c18eb6990d8f toolId=01a20eeb-9dc9-7744-86e4-003ed6117752
+2026-11-25T02:57:32.163+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=943d96ed-b9b4-4eae-8a04-91c98374ecfc path=/api/v1/research-tasks/01a20eeb-9deb-74f6-a0f7-33636555748d
+2026-11-25T02:57:32.188+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=cbc1c90f-6ef8-4aad-950f-7b007d727bdf path=/api/v1/research-tasks/01a20eeb-9deb-74f6-a0f7-33636555748d
+2026-11-25T02:57:32.207+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=fb2b7f07-470f-490e-a601-c5ebe9524245 path=/api/v1/research-tasks/57379d07-5e69-40cf-845c-d8e03b109bd1
+2026-11-25T02:57:32.227+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=f71ce348-5395-4605-84fe-1d467c6d0353 path=/api/v1/workspaces/01a20eeb-9ae2-7596-9c6d-c18eb6990d8f/research-tasks
+2026-11-25T02:57:32.252+08:00  WARN 50160 --- [riccon-api] [           main] c.r.a.c.WorkflowFeatureStartupAuditor    : RICCON-WORKFLOW-010 workflow feature disabled at startup; see audit workflow.feature.changed
+2026-11-25T02:57:32.260+08:00 ERROR 50160 --- [riccon-api] [           main] c.r.a.c.WorkflowFeatureStartupAuditor    : RICCON-WORKFLOW-001 workflow feature startup audit failed; API continues with feature disabled
+
+java.lang.IllegalStateException: audit store unavailable
+	at com.riccon.api.config.WorkflowFeatureStartupAuditorTest.lambda$auditFailureDoesNotBlockStartup$0(WorkflowFeatureStartupAuditorTest.java:100) ~[test-classes/:na]
+	at com.riccon.api.config.WorkflowFeatureStartupAuditor.lambda$run$1(WorkflowFeatureStartupAuditor.java:119) ~[classes/:na]
+	at com.riccon.platform.common.tenant.TenantContext.runWithTenant(TenantContext.java:108) ~[classes/:na]
+	at com.riccon.api.config.WorkflowFeatureStartupAuditor.run(WorkflowFeatureStartupAuditor.java:117) ~[classes/:na]
+	at com.riccon.api.config.WorkflowFeatureStartupAuditorTest.auditFailureDoesNotBlockStartup(WorkflowFeatureStartupAuditorTest.java:104) ~[test-classes/:na]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:701) ~[junit-platform-commons-6.0.3.jar:6.0.3]
+	at org.junit.platform.commons.support.ReflectionSupport.invokeMethod(ReflectionSupport.java:502) ~[junit-platform-commons-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.support.MethodReflectionUtils.invoke(MethodReflectionUtils.java:45) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:61) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:124) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:163) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:148) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:123) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:105) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:99) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:66) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:47) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:39) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:104) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:98) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invokeVoid(InterceptingExecutableInvoker.java:71) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$0(TestMethodTestDescriptor.java:219) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:215) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:157) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:70) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:176) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:138) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596) ~[na:na]
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:138) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596) ~[na:na]
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:138) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:36) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:52) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:58) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.executeEngine(EngineExecutionOrchestrator.java:246) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.failOrExecuteEngine(EngineExecutionOrchestrator.java:218) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:179) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:108) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:66) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:157) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:65) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:125) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:114) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:58) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$2(InterceptingLauncher.java:57) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:56) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:58) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.apache.maven.surefire.api.util.ReflectionUtils.invokeMethodWithArray(ReflectionUtils.java:125) ~[surefire-api-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.executeWithCancellationToken(LauncherAdapter.java:68) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.execute(LauncherAdapter.java:54) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.execute(JUnitPlatformProvider.java:203) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invokeAllTests(JUnitPlatformProvider.java:168) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:136) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385) ~[surefire-booter-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162) ~[surefire-booter-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507) ~[surefire-booter-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495) ~[surefire-booter-3.5.6.jar:3.5.6]
+
+2026-11-25T02:57:32.278+08:00  WARN 50160 --- [riccon-api] [           main] c.r.a.c.WorkflowFeatureStartupAuditor    : RICCON-WORKFLOW-010 workflow feature disabled at startup; see audit workflow.feature.changed
+2026-11-25T02:57:32.280+08:00  WARN 50160 --- [riccon-api] [           main] c.r.a.c.WorkflowFeatureStartupAuditor    : RICCON-WORKFLOW-010 workflow feature disabled at startup; see audit workflow.feature.changed
+2026-11-25T02:57:32.284+08:00  INFO 50160 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.config.WorkflowFeatureDisabledStartupTest]: WorkflowFeatureDisabledStartupTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T02:57:32.344+08:00  INFO 50160 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.config.WorkflowFeatureDisabledStartupTest
+2026-11-25T02:57:32.345+08:00  INFO 50160 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.config.WorkflowFeatureDisabledStartupTest]: WorkflowFeatureDisabledStartupTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T02:57:32.345+08:00  INFO 50160 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T02:57:32.346+08:00  INFO 50160 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.config.WorkflowFeatureDisabledStartupTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-25T02:57:32.378+08:00  INFO 50160 --- [riccon-api] [           main] r.a.c.WorkflowFeatureDisabledStartupTest : Starting WorkflowFeatureDisabledStartupTest using Java 21.0.13 with PID 50160 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-25T02:57:32.378+08:00  INFO 50160 --- [riccon-api] [           main] r.a.c.WorkflowFeatureDisabledStartupTest : The following 1 profile is active: "test"
+2026-11-25T02:57:33.076+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-25T02:57:33.077+08:00  INFO 50160 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-25T02:57:33.077+08:00  INFO 50160 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-25T02:57:33.096+08:00  INFO 50160 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 716 ms
+2026-11-25T02:57:33.125+08:00  INFO 50160 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Starting...
+2026-11-25T02:57:33.134+08:00  INFO 50160 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Start completed.
+2026-11-25T02:57:33.142+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:55234/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:57:33.181+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.023s)
+2026-11-25T02:57:33.193+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: 15
+2026-11-25T02:57:33.195+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Schema `riccon` is up to date. No migration necessary.
+2026-11-25T02:57:33.519+08:00  INFO 50160 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-25T02:57:33.572+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-25T02:57:33.572+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-25T02:57:33.572+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter workflowPlatformTenantFilterRegistration was not registered (disabled)
+2026-11-25T02:57:33.572+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-25T02:57:33.572+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-25T02:57:33.588+08:00  WARN 50160 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist is empty; mode=DEMO allowLegacyEndpoints=true
+2026-11-25T02:57:33.588+08:00  INFO 50160 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=0
+2026-11-25T02:57:33.593+08:00  INFO 50160 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-test, previousKey=true, fingerprintPepper=true
+2026-11-25T02:57:33.648+08:00  INFO 50160 --- [riccon-api] [           main] c.r.a.k.c.config.ConnectorProperties     : connector endpoint allowlist loaded; enabled=false endpoints=0 syncIntervalMinutes=60
+2026-11-25T02:57:33.903+08:00  INFO 50160 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-25T02:57:33.923+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 55389 (http) with context path '/'
+2026-11-25T02:57:33.927+08:00  INFO 50160 --- [riccon-api] [           main] r.a.c.WorkflowFeatureDisabledStartupTest : Started WorkflowFeatureDisabledStartupTest in 1.575 seconds (process running for 48.449)
+2026-11-25T02:57:33.929+08:00  WARN 50160 --- [riccon-api] [           main] c.r.api.config.KnowledgeAclStartupCheck  : RICCON-KB-001 knowledge acl enforcement disabled; DEPT/USERS documents are visible to all tenant members until RICCON_KB_ACL_ENFORCEMENT_ENABLED=true (ADR-0023 5.8)
+2026-11-25T02:57:33.932+08:00  WARN 50160 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin skipped: platform admin already exists
+2026-11-25T02:57:33.941+08:00  WARN 50160 --- [riccon-api] [           main] c.r.a.c.WorkflowFeatureStartupAuditor    : RICCON-WORKFLOW-010 workflow feature disabled at startup; see audit workflow.feature.changed
+2026-11-25T02:57:33.947+08:00  INFO 50160 --- [riccon-api] [o-auto-2-exec-1] o.a.c.c.C.[Tomcat-1].[localhost].[/]     : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-25T02:57:33.947+08:00  INFO 50160 --- [riccon-api] [o-auto-2-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-25T02:57:33.950+08:00  INFO 50160 --- [riccon-api] [o-auto-2-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-11-25T02:57:34.049+08:00  INFO 50160 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.security.m04verify.M04V2VerifierBoundaryTest]: M04V2VerifierBoundaryTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T02:57:34.086+08:00  INFO 50160 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.security.m04verify.M04V2VerifierBoundaryTest
+2026-11-25T02:57:34.087+08:00  INFO 50160 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.security.m04verify.M04V2VerifierBoundaryTest]: M04V2VerifierBoundaryTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T02:57:34.087+08:00  INFO 50160 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T02:57:34.088+08:00  INFO 50160 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.security.m04verify.M04V2VerifierBoundaryTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-25T02:57:34.114+08:00  INFO 50160 --- [riccon-api] [           main] c.r.a.s.m.M04V2VerifierBoundaryTest      : Starting M04V2VerifierBoundaryTest using Java 21.0.13 with PID 50160 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-25T02:57:34.115+08:00  INFO 50160 --- [riccon-api] [           main] c.r.a.s.m.M04V2VerifierBoundaryTest      : The following 1 profile is active: "test"
+2026-11-25T02:57:34.539+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-25T02:57:34.539+08:00  INFO 50160 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-25T02:57:34.540+08:00  INFO 50160 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-25T02:57:34.557+08:00  INFO 50160 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 441 ms
+2026-11-25T02:57:34.590+08:00  INFO 50160 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-3 - Starting...
+2026-11-25T02:57:34.600+08:00  INFO 50160 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-3 - Start completed.
+2026-11-25T02:57:34.607+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:55234/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:57:34.639+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.014s)
+2026-11-25T02:57:34.650+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: 15
+2026-11-25T02:57:34.650+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Schema `riccon` is up to date. No migration necessary.
+2026-11-25T02:57:35.360+08:00  INFO 50160 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-25T02:57:35.519+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-25T02:57:35.520+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-25T02:57:35.520+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter workflowPlatformTenantFilterRegistration was not registered (disabled)
+2026-11-25T02:57:35.520+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-25T02:57:35.520+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-25T02:57:35.595+08:00  INFO 50160 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-25T02:57:35.614+08:00  INFO 50160 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-test, previousKey=true, fingerprintPepper=true
+2026-11-25T02:57:35.790+08:00  INFO 50160 --- [riccon-api] [           main] c.r.a.k.c.config.ConnectorProperties     : connector endpoint allowlist loaded; enabled=false endpoints=0 syncIntervalMinutes=60
+2026-11-25T02:57:36.436+08:00  INFO 50160 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-25T02:57:36.475+08:00  INFO 50160 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 55394 (http) with context path '/'
+2026-11-25T02:57:36.483+08:00  INFO 50160 --- [riccon-api] [           main] c.r.a.s.m.M04V2VerifierBoundaryTest      : Started M04V2VerifierBoundaryTest in 2.392 seconds (process running for 51.005)
+2026-11-25T02:57:36.486+08:00  WARN 50160 --- [riccon-api] [           main] c.r.api.config.KnowledgeAclStartupCheck  : RICCON-KB-001 knowledge acl enforcement disabled; DEPT/USERS documents are visible to all tenant members until RICCON_KB_ACL_ENFORCEMENT_ENABLED=true (ADR-0023 5.8)
+2026-11-25T02:57:36.491+08:00  WARN 50160 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin skipped: platform admin already exists
+2026-11-25T02:57:36.577+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-1] o.a.c.c.C.[Tomcat-2].[localhost].[/]     : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-25T02:57:36.577+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-25T02:57:36.581+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 4 ms
+2026-11-25T02:57:36.855+08:00 ERROR 50160 --- [riccon-api] [o-auto-3-exec-4] c.riccon.api.web.GlobalExceptionHandler  : unexpected error traceId=e609d707-3554-436a-8f35-09e8e34c24e4 path=/api/v1/admin/model-routing/CHAT
+
+org.springframework.dao.DataAccessResourceFailureException: audit storage unavailable
+	at com.riccon.api.security.m04verify.M04V2VerifierBoundaryTest.lambda$setUp$0(M04V2VerifierBoundaryTest.java:95) ~[test-classes/:na]
+	at org.mockito.internal.stubbing.StubbedInvocationMatcher.answer(StubbedInvocationMatcher.java:42) ~[mockito-core-5.23.0.jar:na]
+	at org.mockito.internal.handler.MockHandlerImpl.handle(MockHandlerImpl.java:103) ~[mockito-core-5.23.0.jar:na]
+	at org.mockito.internal.handler.NullResultGuardian.handle(NullResultGuardian.java:29) ~[mockito-core-5.23.0.jar:na]
+	at org.mockito.internal.handler.InvocationNotifierHandler.handle(InvocationNotifierHandler.java:34) ~[mockito-core-5.23.0.jar:na]
+	at org.mockito.internal.creation.bytebuddy.access.MockMethodInterceptor.doIntercept(MockMethodInterceptor.java:84) ~[mockito-core-5.23.0.jar:na]
+	at org.mockito.internal.creation.bytebuddy.MockMethodAdvice.handle(MockMethodAdvice.java:143) ~[mockito-core-5.23.0.jar:na]
+	at com.riccon.api.audit.repository.AuditRepository.append(AuditRepository.java:34) ~[classes/:na]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:359) ~[spring-aop-7.0.10.jar:7.0.10]
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:190) ~[spring-aop-7.0.10.jar:7.0.10]
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:158) ~[spring-aop-7.0.10.jar:7.0.10]
+	at org.springframework.dao.support.PersistenceExceptionTranslationInterceptor.invoke(PersistenceExceptionTranslationInterceptor.java:135) ~[spring-tx-7.0.10.jar:7.0.10]
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:179) ~[spring-aop-7.0.10.jar:7.0.10]
+	at org.springframework.aop.framework.CglibAopProxy$DynamicAdvisedInterceptor.intercept(CglibAopProxy.java:714) ~[spring-aop-7.0.10.jar:7.0.10]
+	at com.riccon.api.audit.repository.AuditRepository$$SpringCGLIB$$0.append(<generated>) ~[classes/:na]
+	at com.riccon.api.audit.service.AuditService.append(AuditService.java:37) ~[classes/:na]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:359) ~[spring-aop-7.0.10.jar:7.0.10]
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:190) ~[spring-aop-7.0.10.jar:7.0.10]
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:158) ~[spring-aop-7.0.10.jar:7.0.10]
+	at org.springframework.transaction.interceptor.TransactionInterceptor$1.proceedWithInvocation(TransactionInterceptor.java:133) ~[spring-tx-7.0.10.jar:7.0.10]
+	at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:371) ~[spring-tx-7.0.10.jar:7.0.10]
+	at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:130) ~[spring-tx-7.0.10.jar:7.0.10]
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:179) ~[spring-aop-7.0.10.jar:7.0.10]
+	at org.springframework.aop.framework.CglibAopProxy$DynamicAdvisedInterceptor.intercept(CglibAopProxy.java:714) ~[spring-aop-7.0.10.jar:7.0.10]
+	at com.riccon.api.audit.service.AuditService$$SpringCGLIB$$0.append(<generated>) ~[classes/:na]
+	at com.riccon.api.admin.model.routing.service.ModelRoutingService.lambda$appendAudit$3(ModelRoutingService.java:202) ~[classes/:na]
+	at com.riccon.platform.common.tenant.TenantContext.runWithTenant(TenantContext.java:108) ~[classes/:na]
+	at com.riccon.api.admin.model.routing.service.ModelRoutingService.appendAudit(ModelRoutingService.java:200) ~[classes/:na]
+	at com.riccon.api.admin.model.routing.service.ModelRoutingService.saveChain(ModelRoutingService.java:170) ~[classes/:na]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:359) ~[spring-aop-7.0.10.jar:7.0.10]
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:190) ~[spring-aop-7.0.10.jar:7.0.10]
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:158) ~[spring-aop-7.0.10.jar:7.0.10]
+	at org.springframework.transaction.interceptor.TransactionInterceptor$1.proceedWithInvocation(TransactionInterceptor.java:133) ~[spring-tx-7.0.10.jar:7.0.10]
+	at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:371) ~[spring-tx-7.0.10.jar:7.0.10]
+	at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:130) ~[spring-tx-7.0.10.jar:7.0.10]
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:179) ~[spring-aop-7.0.10.jar:7.0.10]
+	at org.springframework.aop.framework.CglibAopProxy$DynamicAdvisedInterceptor.intercept(CglibAopProxy.java:714) ~[spring-aop-7.0.10.jar:7.0.10]
+	at com.riccon.api.admin.model.routing.service.ModelRoutingService$$SpringCGLIB$$0.saveChain(<generated>) ~[classes/:na]
+	at com.riccon.api.admin.model.routing.controller.ModelRoutingController.updateChain(ModelRoutingController.java:92) ~[classes/:na]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:252) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:184) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:117) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:934) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:853) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:86) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:963) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:866) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1000) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at org.springframework.web.servlet.FrameworkServlet.doPut(FrameworkServlet.java:914) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:650) ~[tomcat-embed-core-11.0.27.jar:6.1]
+	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:874) ~[spring-webmvc-7.0.10.jar:7.0.10]
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:710) ~[tomcat-embed-core-11.0.27.jar:6.1]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:132) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:59) ~[tomcat-embed-websocket-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:108) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.FilterChainProxy.lambda$doFilterInternal$2(FilterChainProxy.java:235) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$FilterObservation$SimpleFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:491) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:353) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator.lambda$wrapSecured$0(ObservationFilterChainDecorator.java:84) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:131) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.intercept.AuthorizationFilter.doFilter(AuthorizationFilter.java:101) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:126) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:120) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:132) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.SessionManagementFilter.doFilter(SessionManagementFilter.java:86) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AnonymousAuthenticationFilter.doFilter(AnonymousAuthenticationFilter.java:101) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter.doFilter(SecurityContextHolderAwareRequestFilter.java:181) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:246) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:240) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter.doFilterInternal(OAuth2AuthorizationRequestRedirectFilter.java:195) ~[spring-security-oauth2-client-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:101) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.csrf.CsrfFilter.doFilterInternal(CsrfFilter.java:135) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at com.riccon.api.web.OriginCheckFilter.doFilterInternal(OriginCheckFilter.java:61) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:91) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:76) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at com.riccon.api.workflow.web.WorkflowPlatformTenantFilter.doFilterInternal(WorkflowPlatformTenantFilter.java:67) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at com.riccon.api.auth.controller.TenantContextFilter.doFilterInternal(TenantContextFilter.java:159) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:230) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:243) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$0(ObservationFilterChainDecorator.java:336) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:140) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:237) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:195) ~[spring-security-web-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.ServletRequestPathFilter.doFilter(ServletRequestPathFilter.java:52) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.security.config.annotation.web.configuration.WebSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebSecurityConfiguration.java:317) ~[spring-security-config-7.1.2.jar:7.1.2]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.session.web.http.SessionRepositoryFilter.doFilterInternal(SessionRepositoryFilter.java:143) ~[spring-session-core-4.1.1.jar:4.1.1]
+	at org.springframework.session.web.http.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:82) ~[spring-session-core-4.1.1.jar:4.1.1]
+	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:355) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:272) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:110) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:199) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at com.riccon.api.web.TraceIdFilter.doFilterInternal(TraceIdFilter.java:52) ~[classes/:na]
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-7.0.10.jar:7.0.10]
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:111) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:164) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:77) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:540) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:86) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:71) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:347) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:411) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:71) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:1308) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:2202) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:74) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:947) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:481) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:74) ~[tomcat-embed-core-11.0.27.jar:11.0.27]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+
+2026-11-25T02:57:38.659+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=bfc20c9f-1af5-44c2-9b85-db96cd31f6c2 path=/api/v1/quotas
+2026-11-25T02:57:38.685+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=6c2d1031-4ad7-47a9-8484-fd1ce0a37161 path=/api/v1/quotas/users
+2026-11-25T02:57:38.714+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=14b1fefd-990b-481f-9c55-0582d08e4001 path=/api/v1/admin/tenants/m04v2qad61fd44d3601/quotas
+2026-11-25T02:57:38.738+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=ebc0675a-d1c8-4e81-83ad-013188b09f85 path=/api/v1/admin/tenants/m04v2qad61fd44d3601/users/01a20eeb-b381-7cdd-bca3-3bc12cdb7dcd/quotas
+2026-11-25T02:57:38.761+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=f98864be-81d7-4f3e-b32d-675b1c458da1 path=/api/v1/admin/tenants/m04v2qad61fd44d3601/quotas
+2026-11-25T02:57:38.785+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=6632dac1-e948-4cb0-b919-2146f09bcf03 path=/api/v1/admin/tenants/m04v2qad61fd44d3601/users/01a20eeb-b381-7cdd-bca3-3bc12cdb7dcd/quotas
+2026-11-25T02:57:38.808+08:00  INFO 50160 --- [riccon-api] [-auto-3-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=b876efe8-b6dc-4dc0-8289-443ed86ca6e9 path=/api/v1/admin/quotas
+2026-11-25T02:57:38.843+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=ad90b765-e1d4-4f19-a474-16362fedd8cc path=/api/v1/admin/tenants/m04v2qad61fd44d3601/users/01a20eeb-b5f0-7f86-b0ef-6448b2b9f7fb/quotas
+2026-11-25T02:57:38.927+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-COST-400 traceId=3ffea5f8-eccc-4774-a341-ff771a36b348 path=/api/v1/admin/costs
+2026-11-25T02:57:39.790+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=e7d29f0f-279d-4404-9864-55575a17faab path=/api/v1/admin/model-routing
+2026-11-25T02:57:39.814+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=9f0c4ed7-dfce-48af-9271-07f5b2ec474a path=/api/v1/admin/model-routing/CHAT
+2026-11-25T02:57:39.835+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=cb2d3f8b-ad90-4089-a913-6732e52f7309 path=/api/v1/admin/model-providers
+2026-11-25T02:57:39.859+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=bc7ba65d-daa5-49d9-884c-adb6ed6cf371 path=/api/v1/admin/models
+2026-11-25T02:57:39.885+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=1ea7d0bc-690d-4998-ae04-78d993dd4204 path=/api/v1/admin/models/01a20eeb-b8d2-7a34-8e02-dbc975f4852f
+2026-11-25T02:57:39.907+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=919ae467-899c-44f4-b2e2-c578b9fa230e path=/api/v1/admin/model-providers/01a20eeb-b8ce-7efe-bb6e-87b5c8d06efc/credentials
+2026-11-25T02:57:39.927+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=0785d2bb-df44-458b-907e-4ac6e4d8ebeb path=/api/v1/admin/model-gateway/switches
+2026-11-25T02:57:39.951+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=f9107fef-e554-46b2-a598-5c5136bf1c3e path=/api/v1/admin/model-gateway/switches
+2026-11-25T02:57:39.970+08:00  INFO 50160 --- [riccon-api] [-auto-3-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=6d1e2102-7137-4b4a-9631-ba0e40ab5759 path=/api/v1/admin/model-routing
+2026-11-25T02:57:39.990+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=05617512-adcb-47cc-80c7-76b92273948b path=/api/v1/admin/model-routing/CHAT
+2026-11-25T02:57:40.012+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=f625a07c-5d39-4bdb-a1a5-13fcf6b8a2f6 path=/api/v1/admin/model-providers
+2026-11-25T02:57:40.033+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=c99adf19-2979-4ce0-9d0b-526c20f708de path=/api/v1/admin/models
+2026-11-25T02:57:40.055+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=d6bccabd-90d9-4b6f-8c3a-5a78f47fdeac path=/api/v1/admin/models/01a20eeb-b8d2-7a34-8e02-dbc975f4852f
+2026-11-25T02:57:40.075+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=18131b05-ee0a-4e95-8095-83dd97d49594 path=/api/v1/admin/model-providers/01a20eeb-b8ce-7efe-bb6e-87b5c8d06efc/credentials
+2026-11-25T02:57:40.095+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=924bcdaa-b7d5-4104-9924-bc671ff712f7 path=/api/v1/admin/model-gateway/switches
+2026-11-25T02:57:40.116+08:00  INFO 50160 --- [riccon-api] [o-auto-3-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=c2e33bec-9ac2-415f-a92e-9c507d6c3778 path=/api/v1/admin/model-gateway/switches
+2026-11-25T02:57:40.259+08:00  INFO 50160 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.ApprovalApiTest]: ApprovalApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T02:57:40.262+08:00  INFO 50160 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.ApprovalApiTest
+2026-11-25T02:57:40.264+08:00  INFO 50160 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.ApprovalApiTest]: ApprovalApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T02:57:40.264+08:00  INFO 50160 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ResearchApiTestSupport]: ResearchApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T02:57:40.264+08:00  INFO 50160 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T02:57:40.266+08:00  INFO 50160 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.ApprovalApiTest
+2026-11-25T02:57:41.146+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-4] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=t78ccd608eed7 taskId=01a20eeb-c114-7460-b95c-c14e3f0f933b runId=01a20eeb-c114-73d1-87b1-b5c2b69ffa95 workspaceId=01a20eeb-c0d9-7662-87c5-bd8a7f5c22b8 toolId=01a20eeb-c0e8-7a89-8559-de606569c28b
+2026-11-25T02:57:41.222+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-5] c.r.a.research.service.ApprovalService   : research.approval.decided tenantId=t78ccd608eed7 approvalId=01a20eeb-c12b-7667-bbb4-e87295cd4ff2 taskId=01a20eeb-c114-7460-b95c-c14e3f0f933b runId=01a20eeb-c114-73d1-87b1-b5c2b69ffa95 decision=REJECT
+2026-11-25T02:57:42.119+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-4] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=td5e84841e0c0 taskId=01a20eeb-c4e2-73ff-8cbf-d5dd1c47e6ac runId=01a20eeb-c4e2-7ffc-b913-0bbdbe126755 workspaceId=01a20eeb-c4a8-7a5a-a119-b6449864c61d toolId=01a20eeb-c4b8-7fe6-aa7a-428d51917db1
+2026-11-25T02:57:42.992+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-4] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=t4212902158a9 taskId=01a20eeb-c84b-773d-bc1f-2a0a7fc9bdb2 runId=01a20eeb-c84b-7cfe-a671-f86c9774d9b7 workspaceId=01a20eeb-c813-7a6a-aba1-3d391da6d22b toolId=01a20eeb-c823-788c-afd3-da8e406fd219
+2026-11-25T02:57:43.031+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-5] c.r.a.research.service.ApprovalService   : research.approval.decided tenantId=t4212902158a9 approvalId=01a20eeb-c85d-79b2-a78f-c2bcce78e1fc taskId=01a20eeb-c84b-773d-bc1f-2a0a7fc9bdb2 runId=01a20eeb-c84b-7cfe-a671-f86c9774d9b7 decision=APPROVE
+2026-11-25T02:57:43.082+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=58c4ec89-669f-4f80-8d2d-2717303ec932 path=/api/v1/approvals/01a20eeb-c85d-79b2-a78f-c2bcce78e1fc/decision
+2026-11-25T02:57:44.584+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-4] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=t5fc75c186efd taskId=01a20eeb-ce83-73d5-b0ff-698df1775f67 runId=01a20eeb-ce83-76f9-a450-7ae3b1a9f9ee workspaceId=01a20eeb-cb90-79bb-8088-6d0ba5495000 toolId=01a20eeb-ce5f-7132-92ce-f000fd6a5faa
+2026-11-25T02:57:44.615+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=d77c5044-6f6a-4bd8-b255-86ba0e17d9c1 path=/api/v1/approvals/01a20eeb-ce95-7646-a3c7-606e98cbeaf9/decision
+2026-11-25T02:57:44.657+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-6] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=t5fc75c186efd taskId=01a20eeb-cecc-7a27-be07-2b3eafbdfa86 runId=01a20eeb-cecc-7610-9c14-65be67a73157 workspaceId=01a20eeb-cb90-79bb-8088-6d0ba5495000 toolId=01a20eeb-ce5f-7132-92ce-f000fd6a5faa
+2026-11-25T02:57:44.688+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=f1a3137d-7cec-495b-bedf-efcac9e8bdd9 path=/api/v1/approvals/01a20eeb-cede-781b-bdd4-74cc41dad44a/decision
+2026-11-25T02:57:44.713+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-REQUEST-400 traceId=c8de085a-7979-4e73-af8e-0318833dfe28 path=/api/v1/approvals/01a20eeb-cede-781b-bdd4-74cc41dad44a/decision
+2026-11-25T02:57:44.742+08:00  INFO 50160 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-CONFLICT-409 traceId=c7abdd44-48ed-4c60-aa1e-598a71900b4b path=/api/v1/approvals/01a20eeb-cede-781b-bdd4-74cc41dad44a/decision
+2026-11-25T02:57:44.756+08:00  INFO 50160 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.ApiApplicationTests]: ApiApplicationTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T02:57:44.757+08:00  INFO 50160 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.ApiApplicationTests
+2026-11-25T02:57:44.758+08:00  INFO 50160 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.ApiApplicationTests]: ApiApplicationTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T02:57:44.759+08:00  INFO 50160 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T02:57:44.759+08:00  INFO 50160 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.ApiApplicationTests
+2026-11-25T02:57:44.842+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Creating container for image: mysql:8.4.13
+2026-11-25T02:57:44.939+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Container mysql:8.4.13 is starting: 4ac4db1c0d63c27fda224acceebab5debd8ea73d9a7a075269385f8933d0743c
+2026-11-25T02:57:45.294+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Waiting for database connection to become available at jdbc:mysql://localhost:55408/riccon using query 'SELECT 1'
+2026-11-25T02:57:56.878+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Container mysql:8.4.13 started in PT12.036243S
+2026-11-25T02:57:56.879+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Container is started (JDBC URL: jdbc:mysql://localhost:55408/riccon)
+2026-11-25T02:57:56.935+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:55408/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:57:56.992+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon`.`flyway_schema_history` does not exist yet
+2026-11-25T02:57:56.994+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.029s)
+2026-11-25T02:57:57.017+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon`.`flyway_schema_history` ...
+2026-11-25T02:57:57.074+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: << Empty Schema >>
+2026-11-25T02:57:57.079+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "1 - baseline"
+2026-11-25T02:57:57.117+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "2 - identity and workspace"
+2026-11-25T02:57:57.419+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "3 - files knowledge and conversation"
+2026-11-25T02:57:57.734+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "4 - research runs and artifacts"
+2026-11-25T02:57:58.080+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "5 - model gateway and mcp"
+2026-11-25T02:57:58.382+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "6 - audit event"
+2026-11-25T02:57:58.724+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "7 - spring session"
+2026-11-25T02:57:58.843+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "8 - approval params envelope"
+2026-11-25T02:57:58.936+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "9 - organization and workspace scope"
+2026-11-25T02:57:59.349+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "10 - audit query export"
+2026-11-25T02:57:59.614+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 10 migrations to schema `riccon`, now at version v10 (execution time 00:02.255s)
+2026-11-25T02:58:00.313+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:55408/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:00.342+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.012s)
+2026-11-25T02:58:00.354+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: 10
+2026-11-25T02:58:00.365+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "11 - model gateway depth"
+2026-11-25T02:58:00.843+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 1 migration to schema `riccon`, now at version v11 (execution time 00:00.464s)
+2026-11-25T02:58:00.904+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:55408/riccon_rollback?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:00.928+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon_rollback`.`flyway_schema_history` does not exist yet
+2026-11-25T02:58:00.930+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.009s)
+2026-11-25T02:58:00.945+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon_rollback`.`flyway_schema_history` ...
+2026-11-25T02:58:00.998+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_rollback`: << Empty Schema >>
+2026-11-25T02:58:01.003+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "1 - baseline"
+2026-11-25T02:58:01.035+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "2 - identity and workspace"
+2026-11-25T02:58:01.462+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "3 - files knowledge and conversation"
+2026-11-25T02:58:01.712+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "4 - research runs and artifacts"
+2026-11-25T02:58:01.990+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "5 - model gateway and mcp"
+2026-11-25T02:58:02.234+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "6 - audit event"
+2026-11-25T02:58:02.609+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "7 - spring session"
+2026-11-25T02:58:02.701+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "8 - approval params envelope"
+2026-11-25T02:58:02.808+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "9 - organization and workspace scope"
+2026-11-25T02:58:03.185+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "10 - audit query export"
+2026-11-25T02:58:03.438+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 10 migrations to schema `riccon_rollback`, now at version v10 (execution time 00:02.214s)
+2026-11-25T02:58:04.105+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:55408/riccon_rollback?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:04.136+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.014s)
+2026-11-25T02:58:04.150+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_rollback`: 10
+2026-11-25T02:58:04.160+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "11 - model gateway depth"
+2026-11-25T02:58:04.718+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 1 migration to schema `riccon_rollback`, now at version v11 (execution time 00:00.543s)
+2026-11-25T02:58:05.101+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:55408/riccon_fresh?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:05.123+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon_fresh`.`flyway_schema_history` does not exist yet
+2026-11-25T02:58:05.124+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.008s)
+2026-11-25T02:58:05.137+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon_fresh`.`flyway_schema_history` ...
+2026-11-25T02:58:05.173+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_fresh`: << Empty Schema >>
+2026-11-25T02:58:05.177+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "1 - baseline"
+2026-11-25T02:58:05.201+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "2 - identity and workspace"
+2026-11-25T02:58:05.417+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "3 - files knowledge and conversation"
+2026-11-25T02:58:05.704+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "4 - research runs and artifacts"
+2026-11-25T02:58:05.984+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "5 - model gateway and mcp"
+2026-11-25T02:58:06.267+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "6 - audit event"
+2026-11-25T02:58:06.608+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "7 - spring session"
+2026-11-25T02:58:06.702+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "8 - approval params envelope"
+2026-11-25T02:58:06.796+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "9 - organization and workspace scope"
+2026-11-25T02:58:07.157+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "10 - audit query export"
+2026-11-25T02:58:07.410+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "11 - model gateway depth"
+2026-11-25T02:58:07.834+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "12 - knowledge depth"
+2026-11-25T02:58:08.173+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "13 - citation chunk link"
+2026-11-25T02:58:08.219+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "14 - knowledge fulltext search"
+2026-11-25T02:58:08.356+08:00  WARN 50160 --- [riccon-api] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: InnoDB rebuilding table to add column FTS_DOC_ID (SQL State: HY000 - Error Code: 124)
+2026-11-25T02:58:08.473+08:00  WARN 50160 --- [riccon-api] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: InnoDB rebuilding table to add column FTS_DOC_ID (SQL State: HY000 - Error Code: 124)
+2026-11-25T02:58:08.487+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 14 migrations to schema `riccon_fresh`, now at version v14 (execution time 00:03.013s)
+2026-11-25T02:58:09.002+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:55408/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:09.063+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:55408/riccon_fresh?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:10.010+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:55408/riccon_rollback?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:10.047+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:55408/riccon_rollback?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:10.177+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Creating container for image: mysql:8.4.13
+2026-11-25T02:58:10.291+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Container mysql:8.4.13 is starting: 4d43bfe0c70bacf371fca63550fe94d430a44b3aadfab83c811eddda74338528
+2026-11-25T02:58:10.642+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Waiting for database connection to become available at jdbc:mysql://localhost:55850/riccon using query 'SELECT 1'
+2026-11-25T02:58:20.039+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Container mysql:8.4.13 started in PT9.862056S
+2026-11-25T02:58:20.039+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Container is started (JDBC URL: jdbc:mysql://localhost:55850/riccon)
+2026-11-25T02:58:20.075+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:55850/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:20.099+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon`.`flyway_schema_history` does not exist yet
+2026-11-25T02:58:20.101+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.007s)
+2026-11-25T02:58:20.117+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon`.`flyway_schema_history` ...
+2026-11-25T02:58:20.161+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: << Empty Schema >>
+2026-11-25T02:58:20.165+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "1 - baseline"
+2026-11-25T02:58:20.187+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "2 - identity and workspace"
+2026-11-25T02:58:20.375+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "3 - files knowledge and conversation"
+2026-11-25T02:58:20.621+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "4 - research runs and artifacts"
+2026-11-25T02:58:20.882+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "5 - model gateway and mcp"
+2026-11-25T02:58:21.121+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "6 - audit event"
+2026-11-25T02:58:21.468+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "7 - spring session"
+2026-11-25T02:58:21.582+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "8 - approval params envelope"
+2026-11-25T02:58:21.668+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "9 - organization and workspace scope"
+2026-11-25T02:58:22.023+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "10 - audit query export"
+2026-11-25T02:58:22.250+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "11 - model gateway depth"
+2026-11-25T02:58:22.644+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 11 migrations to schema `riccon`, now at version v11 (execution time 00:02.284s)
+2026-11-25T02:58:22.755+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:55850/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:22.778+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.008s)
+2026-11-25T02:58:22.790+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: 11
+2026-11-25T02:58:22.797+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "12 - knowledge depth"
+2026-11-25T02:58:23.158+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 1 migration to schema `riccon`, now at version v12 (execution time 00:00.347s)
+2026-11-25T02:58:23.201+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:55850/riccon_rollback?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:23.230+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon_rollback`.`flyway_schema_history` does not exist yet
+2026-11-25T02:58:23.232+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.008s)
+2026-11-25T02:58:23.247+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon_rollback`.`flyway_schema_history` ...
+2026-11-25T02:58:23.289+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_rollback`: << Empty Schema >>
+2026-11-25T02:58:23.292+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "1 - baseline"
+2026-11-25T02:58:23.319+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "2 - identity and workspace"
+2026-11-25T02:58:23.595+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "3 - files knowledge and conversation"
+2026-11-25T02:58:23.830+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "4 - research runs and artifacts"
+2026-11-25T02:58:24.093+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "5 - model gateway and mcp"
+2026-11-25T02:58:24.331+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "6 - audit event"
+2026-11-25T02:58:24.670+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "7 - spring session"
+2026-11-25T02:58:24.760+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "8 - approval params envelope"
+2026-11-25T02:58:24.856+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "9 - organization and workspace scope"
+2026-11-25T02:58:25.248+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "10 - audit query export"
+2026-11-25T02:58:25.485+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "11 - model gateway depth"
+2026-11-25T02:58:25.863+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 11 migrations to schema `riccon_rollback`, now at version v11 (execution time 00:02.352s)
+2026-11-25T02:58:25.972+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:55850/riccon_rollback?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:25.999+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.009s)
+2026-11-25T02:58:26.008+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_rollback`: 11
+2026-11-25T02:58:26.016+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "12 - knowledge depth"
+2026-11-25T02:58:26.382+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 1 migration to schema `riccon_rollback`, now at version v12 (execution time 00:00.351s)
+2026-11-25T02:58:26.871+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:55850/riccon_fresh?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:26.895+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon_fresh`.`flyway_schema_history` does not exist yet
+2026-11-25T02:58:26.897+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.007s)
+2026-11-25T02:58:26.908+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon_fresh`.`flyway_schema_history` ...
+2026-11-25T02:58:26.951+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_fresh`: << Empty Schema >>
+2026-11-25T02:58:26.954+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "1 - baseline"
+2026-11-25T02:58:26.977+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "2 - identity and workspace"
+2026-11-25T02:58:27.186+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "3 - files knowledge and conversation"
+2026-11-25T02:58:27.430+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "4 - research runs and artifacts"
+2026-11-25T02:58:27.717+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "5 - model gateway and mcp"
+2026-11-25T02:58:27.963+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "6 - audit event"
+2026-11-25T02:58:28.258+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "7 - spring session"
+2026-11-25T02:58:28.352+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "8 - approval params envelope"
+2026-11-25T02:58:28.457+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "9 - organization and workspace scope"
+2026-11-25T02:58:28.835+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "10 - audit query export"
+2026-11-25T02:58:29.118+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "11 - model gateway depth"
+2026-11-25T02:58:29.503+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "12 - knowledge depth"
+2026-11-25T02:58:29.910+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "13 - citation chunk link"
+2026-11-25T02:58:29.963+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "14 - knowledge fulltext search"
+2026-11-25T02:58:30.072+08:00  WARN 50160 --- [riccon-api] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: InnoDB rebuilding table to add column FTS_DOC_ID (SQL State: HY000 - Error Code: 124)
+2026-11-25T02:58:30.202+08:00  WARN 50160 --- [riccon-api] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: InnoDB rebuilding table to add column FTS_DOC_ID (SQL State: HY000 - Error Code: 124)
+2026-11-25T02:58:30.216+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 14 migrations to schema `riccon_fresh`, now at version v14 (execution time 00:02.991s)
+2026-11-25T02:58:30.360+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:55850/riccon_rollback?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:30.960+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:55850/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:31.406+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Creating container for image: mysql:8.4.13
+2026-11-25T02:58:31.501+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Container mysql:8.4.13 is starting: 43dab3ac1ece4d3f19be90c89914225fdb079288f1884ace6c8c1bfaf3cd370d
+2026-11-25T02:58:31.795+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Waiting for database connection to become available at jdbc:mysql://localhost:56201/riccon using query 'SELECT 1'
+2026-11-25T02:58:42.810+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Container mysql:8.4.13 started in PT11.403911S
+2026-11-25T02:58:42.810+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Container is started (JDBC URL: jdbc:mysql://localhost:56201/riccon)
+2026-11-25T02:58:42.860+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56201/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:42.902+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon`.`flyway_schema_history` does not exist yet
+2026-11-25T02:58:42.904+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.023s)
+2026-11-25T02:58:42.923+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon`.`flyway_schema_history` ...
+2026-11-25T02:58:42.977+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: << Empty Schema >>
+2026-11-25T02:58:42.982+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "1 - baseline"
+2026-11-25T02:58:43.007+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "2 - identity and workspace"
+2026-11-25T02:58:43.220+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "3 - files knowledge and conversation"
+2026-11-25T02:58:43.505+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "4 - research runs and artifacts"
+2026-11-25T02:58:43.776+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "5 - model gateway and mcp"
+2026-11-25T02:58:44.039+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "6 - audit event"
+2026-11-25T02:58:44.370+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "7 - spring session"
+2026-11-25T02:58:44.462+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "8 - approval params envelope"
+2026-11-25T02:58:44.547+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 8 migrations to schema `riccon`, now at version v8 (execution time 00:01.414s)
+2026-11-25T02:58:44.738+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56201/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:44.760+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.008s)
+2026-11-25T02:58:44.769+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: 8
+2026-11-25T02:58:44.774+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "9 - organization and workspace scope"
+2026-11-25T02:58:45.135+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 1 migration to schema `riccon`, now at version v9 (execution time 00:00.349s)
+2026-11-25T02:58:45.226+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56201/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:45.248+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.008s)
+2026-11-25T02:58:45.256+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: 9
+2026-11-25T02:58:45.263+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "10 - audit query export"
+2026-11-25T02:58:45.501+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 1 migration to schema `riccon`, now at version v10 (execution time 00:00.226s)
+2026-11-25T02:58:45.514+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56201/riccon_rollback?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:45.532+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon_rollback`.`flyway_schema_history` does not exist yet
+2026-11-25T02:58:45.534+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.007s)
+2026-11-25T02:58:45.546+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon_rollback`.`flyway_schema_history` ...
+2026-11-25T02:58:45.586+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_rollback`: << Empty Schema >>
+2026-11-25T02:58:45.589+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "1 - baseline"
+2026-11-25T02:58:45.611+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "2 - identity and workspace"
+2026-11-25T02:58:45.799+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "3 - files knowledge and conversation"
+2026-11-25T02:58:46.052+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "4 - research runs and artifacts"
+2026-11-25T02:58:46.355+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "5 - model gateway and mcp"
+2026-11-25T02:58:46.604+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "6 - audit event"
+2026-11-25T02:58:46.918+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "7 - spring session"
+2026-11-25T02:58:47.016+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "8 - approval params envelope"
+2026-11-25T02:58:47.107+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 8 migrations to schema `riccon_rollback`, now at version v8 (execution time 00:01.357s)
+2026-11-25T02:58:47.303+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56201/riccon_rollback?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:47.325+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.008s)
+2026-11-25T02:58:47.334+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_rollback`: 8
+2026-11-25T02:58:47.339+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "9 - organization and workspace scope"
+2026-11-25T02:58:47.703+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 1 migration to schema `riccon_rollback`, now at version v9 (execution time 00:00.349s)
+2026-11-25T02:58:47.795+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56201/riccon_rollback?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:47.818+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.010s)
+2026-11-25T02:58:47.830+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_rollback`: 9
+2026-11-25T02:58:47.836+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_rollback` to version "10 - audit query export"
+2026-11-25T02:58:48.079+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 1 migration to schema `riccon_rollback`, now at version v10 (execution time 00:00.225s)
+2026-11-25T02:58:48.192+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56201/riccon_fresh?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:48.209+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon_fresh`.`flyway_schema_history` does not exist yet
+2026-11-25T02:58:48.210+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.007s)
+2026-11-25T02:58:48.221+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon_fresh`.`flyway_schema_history` ...
+2026-11-25T02:58:48.263+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_fresh`: << Empty Schema >>
+2026-11-25T02:58:48.268+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "1 - baseline"
+2026-11-25T02:58:48.296+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "2 - identity and workspace"
+2026-11-25T02:58:48.501+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "3 - files knowledge and conversation"
+2026-11-25T02:58:48.740+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "4 - research runs and artifacts"
+2026-11-25T02:58:49.024+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "5 - model gateway and mcp"
+2026-11-25T02:58:49.301+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "6 - audit event"
+2026-11-25T02:58:49.606+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "7 - spring session"
+2026-11-25T02:58:49.698+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "8 - approval params envelope"
+2026-11-25T02:58:49.784+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "9 - organization and workspace scope"
+2026-11-25T02:58:50.141+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "10 - audit query export"
+2026-11-25T02:58:50.383+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "11 - model gateway depth"
+2026-11-25T02:58:50.735+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "12 - knowledge depth"
+2026-11-25T02:58:51.082+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "13 - citation chunk link"
+2026-11-25T02:58:51.133+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "14 - knowledge fulltext search"
+2026-11-25T02:58:51.339+08:00  WARN 50160 --- [riccon-api] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: InnoDB rebuilding table to add column FTS_DOC_ID (SQL State: HY000 - Error Code: 124)
+2026-11-25T02:58:51.473+08:00  WARN 50160 --- [riccon-api] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: InnoDB rebuilding table to add column FTS_DOC_ID (SQL State: HY000 - Error Code: 124)
+2026-11-25T02:58:51.505+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_fresh` to version "15 - workflow studio"
+2026-11-25T02:58:51.881+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 15 migrations to schema `riccon_fresh`, now at version v15 (execution time 00:03.301s)
+2026-11-25T02:58:51.896+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56201/riccon_failure?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:51.916+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon_failure`.`flyway_schema_history` does not exist yet
+2026-11-25T02:58:51.917+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.007s)
+2026-11-25T02:58:51.930+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon_failure`.`flyway_schema_history` ...
+2026-11-25T02:58:51.970+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_failure`: << Empty Schema >>
+2026-11-25T02:58:51.973+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_failure` to version "1 - baseline"
+2026-11-25T02:58:51.996+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_failure` to version "2 - identity and workspace"
+2026-11-25T02:58:52.194+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_failure` to version "3 - files knowledge and conversation"
+2026-11-25T02:58:52.465+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_failure` to version "4 - research runs and artifacts"
+2026-11-25T02:58:52.739+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_failure` to version "5 - model gateway and mcp"
+2026-11-25T02:58:53.001+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_failure` to version "6 - audit event"
+2026-11-25T02:58:53.378+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_failure` to version "7 - spring session"
+2026-11-25T02:58:53.480+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_failure` to version "8 - approval params envelope"
+2026-11-25T02:58:53.567+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_failure` to version "9 - organization and workspace scope"
+2026-11-25T02:58:53.935+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 9 migrations to schema `riccon_failure`, now at version v9 (execution time 00:01.781s)
+2026-11-25T02:58:54.133+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56201/riccon_rollback?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:54.165+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56201/riccon_rollback?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:54.253+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56201/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:54.340+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56201/riccon_failure?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:54.362+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.008s)
+2026-11-25T02:58:54.373+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_failure`: 9
+2026-11-25T02:58:54.378+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_failure` to version "10 - audit query export"
+2026-11-25T02:58:54.440+08:00 ERROR 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migration of schema `riccon_failure` to version "10 - audit query export" failed! Please restore backups and roll back database and code!
+2026-11-25T02:58:54.561+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56201/riccon_failure?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:54.596+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbRepair       : Successfully repaired schema history table `riccon_failure`.`flyway_schema_history` (execution time 00:00.023s).
+2026-11-25T02:58:54.596+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbRepair       : Manual cleanup of the remaining effects of the failed migration may still be required.
+2026-11-25T02:58:54.606+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56201/riccon_failure?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:54.627+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.008s)
+2026-11-25T02:58:54.637+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_failure`: 9
+2026-11-25T02:58:54.643+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_failure` to version "10 - audit query export"
+2026-11-25T02:58:54.835+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 1 migration to schema `riccon_failure`, now at version v10 (execution time 00:00.179s)
+2026-11-25T02:58:54.845+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56201/riccon_failure?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:54.988+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56201/riccon_fresh?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:58:55.819+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Creating container for image: mysql:8.4.13
+2026-11-25T02:58:55.920+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Container mysql:8.4.13 is starting: 2e0a25a19c6fbe9563cbe692fd6a50b6997b8bf71a888068b04d1c5ec1e3df61
+2026-11-25T02:58:56.325+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Waiting for database connection to become available at jdbc:mysql://localhost:56616/riccon using query 'SELECT 1'
+2026-11-25T02:59:06.706+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Container mysql:8.4.13 started in PT10.886464S
+2026-11-25T02:59:06.706+08:00  INFO 50160 --- [riccon-api] [           main] tc.mysql:8.4.13                          : Container is started (JDBC URL: jdbc:mysql://localhost:56616/riccon)
+2026-11-25T02:59:06.753+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56616/riccon_v15_forward?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:59:06.779+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon_v15_forward`.`flyway_schema_history` does not exist yet
+2026-11-25T02:59:06.780+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.007s)
+2026-11-25T02:59:06.799+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon_v15_forward`.`flyway_schema_history` ...
+2026-11-25T02:59:06.852+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_v15_forward`: << Empty Schema >>
+2026-11-25T02:59:06.856+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_forward` to version "1 - baseline"
+2026-11-25T02:59:06.882+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_forward` to version "2 - identity and workspace"
+2026-11-25T02:59:07.076+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_forward` to version "3 - files knowledge and conversation"
+2026-11-25T02:59:07.320+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_forward` to version "4 - research runs and artifacts"
+2026-11-25T02:59:07.599+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_forward` to version "5 - model gateway and mcp"
+2026-11-25T02:59:07.837+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_forward` to version "6 - audit event"
+2026-11-25T02:59:08.144+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_forward` to version "7 - spring session"
+2026-11-25T02:59:08.234+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_forward` to version "8 - approval params envelope"
+2026-11-25T02:59:08.343+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_forward` to version "9 - organization and workspace scope"
+2026-11-25T02:59:08.739+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_forward` to version "10 - audit query export"
+2026-11-25T02:59:08.985+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_forward` to version "11 - model gateway depth"
+2026-11-25T02:59:09.415+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_forward` to version "12 - knowledge depth"
+2026-11-25T02:59:09.757+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_forward` to version "13 - citation chunk link"
+2026-11-25T02:59:09.806+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_forward` to version "14 - knowledge fulltext search"
+2026-11-25T02:59:09.913+08:00  WARN 50160 --- [riccon-api] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: InnoDB rebuilding table to add column FTS_DOC_ID (SQL State: HY000 - Error Code: 124)
+2026-11-25T02:59:10.044+08:00  WARN 50160 --- [riccon-api] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: InnoDB rebuilding table to add column FTS_DOC_ID (SQL State: HY000 - Error Code: 124)
+2026-11-25T02:59:10.059+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 14 migrations to schema `riccon_v15_forward`, now at version v14 (execution time 00:02.936s)
+2026-11-25T02:59:10.141+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56616/riccon_v15_forward?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:59:10.165+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.009s)
+2026-11-25T02:59:10.176+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_v15_forward`: 14
+2026-11-25T02:59:10.187+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_forward` to version "15 - workflow studio"
+2026-11-25T02:59:10.592+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 1 migration to schema `riccon_v15_forward`, now at version v15 (execution time 00:00.390s)
+2026-11-25T02:59:10.620+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56616/riccon_v15_fresh?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:59:10.638+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon_v15_fresh`.`flyway_schema_history` does not exist yet
+2026-11-25T02:59:10.640+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.006s)
+2026-11-25T02:59:10.655+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon_v15_fresh`.`flyway_schema_history` ...
+2026-11-25T02:59:10.702+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_v15_fresh`: << Empty Schema >>
+2026-11-25T02:59:10.705+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_fresh` to version "1 - baseline"
+2026-11-25T02:59:10.730+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_fresh` to version "2 - identity and workspace"
+2026-11-25T02:59:10.933+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_fresh` to version "3 - files knowledge and conversation"
+2026-11-25T02:59:11.175+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_fresh` to version "4 - research runs and artifacts"
+2026-11-25T02:59:11.615+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_fresh` to version "5 - model gateway and mcp"
+2026-11-25T02:59:11.857+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_fresh` to version "6 - audit event"
+2026-11-25T02:59:12.142+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_fresh` to version "7 - spring session"
+2026-11-25T02:59:12.233+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_fresh` to version "8 - approval params envelope"
+2026-11-25T02:59:12.348+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_fresh` to version "9 - organization and workspace scope"
+2026-11-25T02:59:12.707+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_fresh` to version "10 - audit query export"
+2026-11-25T02:59:12.968+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_fresh` to version "11 - model gateway depth"
+2026-11-25T02:59:13.354+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_fresh` to version "12 - knowledge depth"
+2026-11-25T02:59:13.745+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_fresh` to version "13 - citation chunk link"
+2026-11-25T02:59:13.795+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_fresh` to version "14 - knowledge fulltext search"
+2026-11-25T02:59:13.912+08:00  WARN 50160 --- [riccon-api] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: InnoDB rebuilding table to add column FTS_DOC_ID (SQL State: HY000 - Error Code: 124)
+2026-11-25T02:59:14.047+08:00  WARN 50160 --- [riccon-api] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: InnoDB rebuilding table to add column FTS_DOC_ID (SQL State: HY000 - Error Code: 124)
+2026-11-25T02:59:14.070+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_fresh` to version "15 - workflow studio"
+2026-11-25T02:59:14.519+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 15 migrations to schema `riccon_v15_fresh`, now at version v15 (execution time 00:03.507s)
+2026-11-25T02:59:14.532+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56616/riccon_v15_drop?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:59:14.553+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon_v15_drop`.`flyway_schema_history` does not exist yet
+2026-11-25T02:59:14.554+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.006s)
+2026-11-25T02:59:14.567+08:00  INFO 50160 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon_v15_drop`.`flyway_schema_history` ...
+2026-11-25T02:59:14.607+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_v15_drop`: << Empty Schema >>
+2026-11-25T02:59:14.612+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_drop` to version "1 - baseline"
+2026-11-25T02:59:14.635+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_drop` to version "2 - identity and workspace"
+2026-11-25T02:59:14.822+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_drop` to version "3 - files knowledge and conversation"
+2026-11-25T02:59:15.064+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_drop` to version "4 - research runs and artifacts"
+2026-11-25T02:59:15.342+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_drop` to version "5 - model gateway and mcp"
+2026-11-25T02:59:15.609+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_drop` to version "6 - audit event"
+2026-11-25T02:59:15.925+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_drop` to version "7 - spring session"
+2026-11-25T02:59:16.016+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_drop` to version "8 - approval params envelope"
+2026-11-25T02:59:16.110+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_drop` to version "9 - organization and workspace scope"
+2026-11-25T02:59:16.484+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_drop` to version "10 - audit query export"
+2026-11-25T02:59:16.713+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_drop` to version "11 - model gateway depth"
+2026-11-25T02:59:17.090+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_drop` to version "12 - knowledge depth"
+2026-11-25T02:59:17.472+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_drop` to version "13 - citation chunk link"
+2026-11-25T02:59:17.526+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_drop` to version "14 - knowledge fulltext search"
+2026-11-25T02:59:17.634+08:00  WARN 50160 --- [riccon-api] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: InnoDB rebuilding table to add column FTS_DOC_ID (SQL State: HY000 - Error Code: 124)
+2026-11-25T02:59:17.755+08:00  WARN 50160 --- [riccon-api] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: InnoDB rebuilding table to add column FTS_DOC_ID (SQL State: HY000 - Error Code: 124)
+2026-11-25T02:59:17.781+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon_v15_drop` to version "15 - workflow studio"
+2026-11-25T02:59:18.167+08:00  INFO 50160 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 15 migrations to schema `riccon_v15_drop`, now at version v15 (execution time 00:03.280s)
+2026-11-25T02:59:18.404+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56616/riccon_v15_forward?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:59:18.937+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56616/riccon_v15_drop?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-25T02:59:18.998+08:00  INFO 50160 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:56616/riccon_v15_fresh?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+02:59:28.161 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+02:59:28.170 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+02:59:28.204 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+02:59:29.781 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+02:59:29.783 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+02:59:29.815 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+02:59:30.042 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+02:59:30.501 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: 91fa84901d8400c9955c8391c05fc10ba77d540ce3a3a66c74307156f5ebc849
+02:59:31.046 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT1.004394S
+02:59:31.054 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+02:59:31.055 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+02:59:31.055 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+02:59:31.056 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+02:59:31.130 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: b2301479000ad465e702d9bc652d6f865c5283d24eeaea566082f82263f5c4da
+02:59:31.475 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:56928/riccon using query 'SELECT 1'
+02:59:43.802 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT12.745812S
+02:59:43.802 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:56928/riccon)
+02:59:43.806 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Creating container for image: opensearchproject/opensearch:3.9.0
+02:59:43.893 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 is starting: 21c64037383511f5d1d4d62634437db1ea232c63260a67a0bef974697cf7db7d
+02:59:44.217 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /nifty_hoover: Waiting for 180 seconds for URL: http://localhost:57045/_cluster/health?wait_for_status=yellow&timeout=120s (where port 57045 maps to container port 9200)
+03:00:14.742 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 started in PT30.935617S
+03:00:14.742 [main] INFO tc.rustfs/rustfs:1.0.6 -- Creating container for image: rustfs/rustfs:1.0.6
+03:00:14.927 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 is starting: 2927fa616282af1f69447e901ef46e339665acb01448c09374307c1ceeac9422
+03:00:15.445 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /pensive_visvesvaraya: Waiting for 60 seconds for URL: http://localhost:57134/health (where port 57134 maps to container port 9000)
+03:00:15.753 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 started in PT1.010169S
+03:00:22.060 [main] WARN com.riccon.worker.persistence.SchemaVersionChecker -- RICCON-WORKER-002 schema validation disabled; worker is running in rollback window, expected schema version=15
+03:00:22.274 [main] INFO com.riccon.worker.persistence.SchemaVersionChecker -- schema.version.checked expected=15 actual=15
+03:00:22.281 [main] INFO com.riccon.worker.persistence.SchemaVersionChecker -- schema.version.checked expected=15 actual=15
+03:00:22.471 [main] INFO com.riccon.worker.persistence.SchemaVersionChecker -- schema.version.checked expected=15 actual=15
+
+# --- stderr ---
+

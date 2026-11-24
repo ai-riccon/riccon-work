@@ -207,6 +207,165 @@ class AuditDetailsPolicyTest {
                 .hasMessageContaining("not allowed for " + AuditActions.QUOTA_LIMIT_CHANGED);
     }
 
+    /** M06 运行生命周期：开始/完成/失败/取消的白名单字段可写入，可选字段允许空。 */
+    @Test
+    void validate_workflowRunLifecycle_passes() {
+        String runId = UUID.randomUUID().toString();
+        String workflowId = UUID.randomUUID().toString();
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AuditActions.WORKFLOW_RUN_STARTED, Map.of("workflowRunId", runId, "workflowId", workflowId)))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AuditActions.WORKFLOW_RUN_COMPLETED,
+                        Map.of(
+                                "workflowRunId",
+                                runId,
+                                "status",
+                                "SUCCEEDED",
+                                "durationMs",
+                                1200,
+                                "nodeCount",
+                                7,
+                                "resultBytes",
+                                4096)))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AuditActions.WORKFLOW_RUN_FAILED, Map.of("workflowRunId", runId, "errorCode", "WF_INTERNAL")))
+                .doesNotThrowAnyException();
+        Map<String, Object> failedWithNode = new HashMap<>();
+        failedWithNode.put("workflowRunId", runId);
+        failedWithNode.put("errorCode", "WF_INTERNAL");
+        failedWithNode.put("failedNodeId", null);
+        assertThatCode(() -> AuditDetailsPolicy.validate(AuditActions.WORKFLOW_RUN_FAILED, failedWithNode))
+                .doesNotThrowAnyException();
+        Map<String, Object> cancelledWithoutReason = new HashMap<>();
+        cancelledWithoutReason.put("workflowRunId", runId);
+        cancelledWithoutReason.put("previousStatus", "WAITING_APPROVAL");
+        cancelledWithoutReason.put("reason", null);
+        assertThatCode(() -> AuditDetailsPolicy.validate(AuditActions.WORKFLOW_RUN_CANCELLED, cancelledWithoutReason))
+                .doesNotThrowAnyException();
+    }
+
+    /** M06 审批请求：actionKind 封闭枚举，目标工具名允许空；缺核心 ID 必须 fail-closed。 */
+    @Test
+    void validate_workflowApprovalRequested_passesAndValidatesEnum() {
+        String runId = UUID.randomUUID().toString();
+        String approvalId = UUID.randomUUID().toString();
+        Map<String, Object> request = new HashMap<>();
+        request.put("workflowRunId", runId);
+        request.put("workflowApprovalId", approvalId);
+        request.put("nodeId", "approval-1");
+        request.put("assigneeCount", 2);
+        request.put("actionKind", "MCP_TOOL");
+        request.put("targetToolName", null);
+        assertThatCode(() -> AuditDetailsPolicy.validate(AuditActions.WORKFLOW_APPROVAL_REQUESTED, request))
+                .doesNotThrowAnyException();
+
+        assertThatThrownBy(() -> AuditDetailsPolicy.validate(
+                        AuditActions.WORKFLOW_APPROVAL_REQUESTED,
+                        Map.of(
+                                "workflowRunId",
+                                runId,
+                                "workflowApprovalId",
+                                approvalId,
+                                "nodeId",
+                                "approval-1",
+                                "actionKind",
+                                "SCRIPT")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not allowed")
+                .hasMessageContaining("actionKind");
+        assertThatThrownBy(() -> AuditDetailsPolicy.validate(
+                        AuditActions.WORKFLOW_APPROVAL_REQUESTED,
+                        Map.of("workflowRunId", runId, "nodeId", "approval-1", "actionKind", "MCP_TOOL")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("required")
+                .hasMessageContaining("workflowApprovalId");
+    }
+
+    /** M06 必填键与停止/取消枚举：缺 ID、非法 status/previousStatus 必须拒绝。 */
+    @Test
+    void validate_workflowRunRequiredFieldsAndEnums_fail() {
+        assertThatThrownBy(() -> AuditDetailsPolicy.validate(
+                        AuditActions.WORKFLOW_RUN_STARTED,
+                        Map.of("workflowId", UUID.randomUUID().toString())))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("required")
+                .hasMessageContaining("workflowRunId");
+        assertThatThrownBy(() -> AuditDetailsPolicy.validate(
+                        AuditActions.WORKFLOW_RUN_COMPLETED,
+                        Map.of("workflowRunId", UUID.randomUUID().toString(), "status", "PENDING")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not allowed")
+                .hasMessageContaining("status");
+        assertThatThrownBy(() -> AuditDetailsPolicy.validate(
+                        AuditActions.WORKFLOW_RUN_CANCELLED,
+                        Map.of("workflowRunId", UUID.randomUUID().toString(), "previousStatus", "DONE")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not allowed")
+                .hasMessageContaining("previousStatus");
+    }
+
+    /** mcp.tool.invoked 复用动作接受工作流引用；J2 调用可省略或显式置空。 */
+    @Test
+    void validate_mcpToolInvoked_acceptsWorkflowReference() {
+        assertThatCode(() -> AuditDetailsPolicy.validate(
+                        AuditActions.MCP_TOOL_INVOKED,
+                        Map.of(
+                                "toolName",
+                                "market_data",
+                                "paramsSha256",
+                                "a".repeat(64),
+                                "durationMs",
+                                12,
+                                "approvalId",
+                                UUID.randomUUID().toString(),
+                                "workflowRunId",
+                                UUID.randomUUID().toString(),
+                                "workflowNodeId",
+                                "tool-1")))
+                .doesNotThrowAnyException();
+        Map<String, Object> j2Invocation = new HashMap<>();
+        j2Invocation.put("toolName", "market_data");
+        j2Invocation.put("paramsSha256", "a".repeat(64));
+        j2Invocation.put("workflowRunId", null);
+        j2Invocation.put("workflowNodeId", null);
+        assertThatCode(() -> AuditDetailsPolicy.validate(AuditActions.MCP_TOOL_INVOKED, j2Invocation))
+                .doesNotThrowAnyException();
+    }
+
+    /** API 侧编排动作（创建/发布/开关观测/审批决定）不得由 Worker 写入。 */
+    @Test
+    void validate_apiOnlyWorkflowActions_failClosedOnWorker() {
+        assertThatThrownBy(() -> AuditDetailsPolicy.validate(
+                        AuditActions.WORKFLOW_PUBLISHED,
+                        Map.of("workflowId", UUID.randomUUID().toString(), "runScope", "TENANT", "nodeCount", 3)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not allowed for " + AuditActions.WORKFLOW_PUBLISHED);
+        assertThatThrownBy(() -> AuditDetailsPolicy.validate(
+                        AuditActions.WORKFLOW_FEATURE_CHANGED,
+                        Map.of(
+                                "enabled",
+                                false,
+                                "source",
+                                "DEPLOYMENT_CONFIG",
+                                "instanceId",
+                                "api-1",
+                                "observedAt",
+                                "2026-11-25T10:00+08:00")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not allowed for " + AuditActions.WORKFLOW_FEATURE_CHANGED);
+    }
+
+    /** 未登记动作即使 details 形状合法也必须 fail-closed（与 API 读取白名单对称）。 */
+    @Test
+    void validate_unregisteredAction_failsClosed() {
+        assertThatThrownBy(
+                        () -> AuditDetailsPolicy.validate("workflow.unknown.action", Map.of("workflowRunId", "run-1")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not allowed for workflow.unknown.action");
+    }
+
     /** 事件必填字段与版本校验。 */
     @Test
     void event_invalidFields_fail() {
