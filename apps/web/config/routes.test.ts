@@ -24,6 +24,7 @@ describe('路由表', () => {
       '/admin/users',
       '/admin/model-routing',
       '/admin/model-keys',
+      '/admin/connectors',
       '/admin/audit',
       '/admin/audit-exports',
       '/admin/settings',
@@ -97,6 +98,7 @@ describe('管理端导航权限过滤', () => {
     expect(byPath.get('/admin/users')?.permissions).toEqual(['tenant.user.manage']);
     expect(byPath.get('/admin/model-routing')?.permissions).toEqual(['platform.model.read']);
     expect(byPath.get('/admin/model-keys')?.permissions).toEqual(['platform.model.read']);
+    expect(byPath.get('/admin/connectors')?.permissions).toEqual(['knowledge.connector.read']);
     expect(byPath.get('/admin/audit')?.permissions).toEqual(['audit.read']);
     expect(byPath.get('/admin/audit-exports')?.permissions).toEqual(['audit.export.approve']);
     expect(byPath.get('/admin/overview')?.permissions).toBeUndefined();
@@ -116,15 +118,24 @@ describe('管理端导航权限过滤', () => {
     ]);
   });
 
-  it('租户管理员看到用户管理、审计查询与租户审计导出，但看不到平台模型入口', () => {
-    expect(visiblePaths(['tenant.user.manage', 'audit.read', 'audit.export.approve'])).toEqual([
+  it('租户管理员看到用户管理、连接器、审计查询与租户审计导出，但看不到平台模型入口', () => {
+    expect(
+      visiblePaths([
+        'tenant.user.manage',
+        'knowledge.connector.read',
+        'audit.read',
+        'audit.export.approve',
+      ]),
+    ).toEqual([
       '/admin/overview',
       '/admin/tenants',
       '/admin/users',
+      '/admin/connectors',
       '/admin/audit',
       '/admin/audit-exports',
       '/admin/settings',
     ]);
+    expect(findRouteByPath('/admin/connectors')?.title).toBe('知识库连接器');
   });
 
   it('平台管理员看到模型路由与模型 key，菜单不落到 404', () => {

@@ -1,0 +1,42 @@
+/**
+ * 连接器管理页样式。
+ *
+ * 列表使用 antd Table 的横向滚动承载多列；工具栏与行操作在窄屏（375px）换行，
+ * 避免按钮溢出或把主要操作挤出视口。
+ */
+
+.connectors-toolbar {
+  margin-top: 16px;
+  row-gap: 8px;
+}
+
+.connectors-toolbar .ant-select {
+  flex: 0 1 200px;
+  min-width: 140px;
+}
+
+.connectors-table .ant-table-cell {
+  vertical-align: top;
+}
+
+.connectors-actions {
+  max-width: 320px;
+}
+
+@media (max-width: 575px) {
+  .connectors-toolbar {
+    align-items: stretch;
+  }
+
+  .connectors-toolbar > .ant-flex {
+    width: 100%;
+  }
+
+  .connectors-toolbar .ant-select {
+    flex: 1 1 100%;
+  }
+
+  .connectors-toolbar .ant-btn-primary {
+    width: 100%;
+  }
+}
