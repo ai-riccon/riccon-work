@@ -47,7 +47,13 @@ const repoRoot = process.cwd();
 
 /** 证据任务目录；复验时用 REAL_EVIDENCE_TASK 隔离新旧日志。 */
 const evidenceTask = process.env.REAL_EVIDENCE_TASK ?? "TASK-0024";
-const evidenceDir = path.join(repoRoot, ".riccon/evidence", evidenceTask);
+/**
+ * 证据目录。默认写入 `.riccon/evidence/<task>`；性能复验可用 `REAL_EVIDENCE_DIR`
+ * 指向工作区外目录，避免把大规模 fixtures 日志/报告混入状态仓库（如 M05b-B11b 的 perf-b11b）。
+ */
+const evidenceDir =
+  process.env.REAL_EVIDENCE_DIR ??
+  path.join(repoRoot, ".riccon/evidence", evidenceTask);
 mkdirSync(evidenceDir, { recursive: true });
 
 /** 端口；与 compose/前端默认端口区分。 */
@@ -84,6 +90,28 @@ const KNOWLEDGE_QUERY = process.env.PERF_M05_QUERY ?? "QXZJKW";
 /** 含检索词的文档间隔；默认每 100 篇命中 1%（1000 chunk），代表选择性关键词查询。 */
 const KNOWLEDGE_MATCH_EVERY = Number(process.env.PERF_M05_MATCH_EVERY ?? 100);
 
+/**
+ * M05b 连接器同步 perf 夹具默认值。
+ *
+ * <p>1000 个对象是 ADR-0023 §9 的 `PERF-M05-003` 口径；脚本允许减小规模做冒烟，
+ * 但报告会记录实际规模，不把缩小规模冒充 1000 对象通过。
+ */
+const CONNECTOR_DEFAULTS = {
+  objects: 1000,
+  bucket: "riccon-perf-b11b-source",
+  prefix: "perf-b11b/",
+  endpointId: "rustfs-perf-b11b",
+  connectorName: "PERF-M05b 连接器同步",
+  host: "127.0.0.1:19000",
+  region: "us-east-1",
+  accessKey: "riccon_test_only",
+  secretKey: "riccon_test_only_secret",
+  uploadConcurrency: 16,
+  token: "QCONNB11B",
+  syncBudgetMs: 15 * 60_000,
+  queueWaitBudgetMs: 5 * 60_000,
+};
+
 /** 证据文件。 */
 const SEED_FILE = path.join(evidenceDir, "real-stack-seed.json");
 const ENV_SNAPSHOT_FILE = path.join(evidenceDir, "real-stack-env.json");
@@ -119,6 +147,7 @@ function usage() {
 
 环境变量:
   REAL_EVIDENCE_TASK             证据目录任务号（默认 TASK-0024）
+  REAL_EVIDENCE_DIR              证据目录绝对/相对路径；设置后覆盖 REAL_EVIDENCE_TASK 目录
   REAL_API_PORT/REAL_WORKER_PORT/REAL_WEB_PORT/REAL_MODEL_PORT
   REAL_PLAYWRIGHT_GREP           只过滤浏览器用例；全量 gate 不设置
   REAL_PERF_DURATION             perf 首字/降级场景时长（默认 45s）
@@ -128,6 +157,12 @@ function usage() {
   PERF_M05_DOCS/PERF_M05_CHUNKS_PER_DOC  语料规模（默认 5000/20）
   PERF_M05_BACKLOG               knowledge 运行期间并发上传的索引积压文档数（默认 6）
   PERF_M05_SEARCH_ENFORCE=1      检索 p95 >500ms 时硬失败（默认只标记 decisionRequired）
+  PERF_M05_CONNECTOR=1           在 knowledge 场景前增加连接器同步分支（PERF-M05-003/004）
+  PERF_M05_CONNECTOR_OBJECTS     源桶对象数（默认 1000；冒烟可减小，报告记录实际值）
+  PERF_M05_CONNECTOR_BUCKET/PREFIX/ENDPOINT_ID  源桶、前缀与允许列表端点 ID
+  PERF_M05_CONNECTOR_SYNC_TIMEOUT_MS  等待同步终态上限（默认 20min）
+  PERF_M05_CONNECTOR_INDEX_TIMEOUT_MS 等待连接器文档索引完成上限（默认 20min）
+  PERF_M05_CONNECTOR_CLEANUP=0   保留源桶对象（默认 1，同步结束后清理，下一次 down -v 也会清理）
   RICCON_OCR_LANG                宿主 OCR 探测语言（默认 chi_sim+eng）
 
 示例:
@@ -319,27 +354,28 @@ async function stopChildren() {
 }
 
 /**
- * 使用 SigV4 创建测试桶；RustFS 不提供免认证建桶。
+ * 生成 S3 SigV4 请求头；只用于本地测试栈（RustFS）与 perf 夹具。
  *
- * @returns {Promise<void>}
+ * @param {object} input 签名输入
+ * @param {string} input.method HTTP 方法
+ * @param {string} input.host 主机（含端口）
+ * @param {string} input.canonicalPath 已编码的 canonical URI
+ * @param {string} input.payloadHash 请求体 SHA-256
+ * @param {string} input.accessKey 访问键
+ * @param {string} input.secretKey 访问密钥
+ * @param {string} input.region 区域
+ * @returns {Record<string,string>} 请求头
  */
-async function createBucket() {
-  const host = "127.0.0.1:19000";
-  const accessKey = "riccon_test_only";
-  const secretKey = "riccon_test_only_secret";
-  const bucket = "riccon-test";
-  const region = "us-east-1";
-  const service = "s3";
-  const payloadHash = createHash("sha256").update("").digest("hex");
+function s3AuthHeaders(input) {
   const amzDate = new Date()
     .toISOString()
     .replace(/[-:]/g, "")
     .replace(/\.\d{3}/, "");
   const date = amzDate.slice(0, 8);
-  const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${amzDate}\n`;
+  const canonicalHeaders = `host:${input.host}\nx-amz-content-sha256:${input.payloadHash}\nx-amz-date:${amzDate}\n`;
   const signedHeaders = "host;x-amz-content-sha256;x-amz-date";
-  const canonicalRequest = `PUT\n/${bucket}\n\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
-  const scope = `${date}/${region}/${service}/aws4_request`;
+  const canonicalRequest = `${input.method}\n${input.canonicalPath}\n\n${canonicalHeaders}\n${signedHeaders}\n${input.payloadHash}`;
+  const scope = `${date}/${input.region}/s3/aws4_request`;
   const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${scope}\n${createHash(
     "sha256",
   )
@@ -347,27 +383,88 @@ async function createBucket() {
     .digest("hex")}`;
   const hmac = (key, value) => createHmac("sha256", key).update(value).digest();
   const signingKey = hmac(
-    hmac(hmac(hmac(`AWS4${secretKey}`, date), region), service),
+    hmac(hmac(hmac(`AWS4${input.secretKey}`, date), input.region), "s3"),
     "aws4_request",
   );
   const signature = createHmac("sha256", signingKey)
     .update(stringToSign)
     .digest("hex");
-  const authorization = `AWS4-HMAC-SHA256 Credential=${accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
-  const response = await fetch(`http://${host}/${bucket}`, {
+  return {
+    Host: input.host,
+    "x-amz-content-sha256": input.payloadHash,
+    "x-amz-date": amzDate,
+    Authorization: `AWS4-HMAC-SHA256 Credential=${input.accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+  };
+}
+
+/**
+ * 调用测试栈 S3 兼容接口；只支持 perf 夹具需要的 PUT/DELETE。
+ *
+ * @param {object} input 请求参数
+ * @param {'PUT'|'DELETE'} input.method 方法
+ * @param {string} input.bucket 桶
+ * @param {string} [input.key] 对象 key；空表示桶操作
+ * @param {string} [input.body] 请求体
+ * @param {string} [input.host] 主机（含端口）
+ * @param {string} [input.region] 区域
+ * @param {string} [input.accessKey] 访问键
+ * @param {string} [input.secretKey] 访问密钥
+ * @returns {Promise<Response>} 响应
+ */
+async function s3Request(input) {
+  const host = input.host ?? CONNECTOR_DEFAULTS.host;
+  const region = input.region ?? CONNECTOR_DEFAULTS.region;
+  const payload = input.body ?? "";
+  const payloadHash = createHash("sha256").update(payload).digest("hex");
+  const canonicalPath = input.key
+    ? `/${input.bucket}/${input.key
+        .split("/")
+        .map((segment) => encodeURIComponent(segment))
+        .join("/")}`
+    : `/${input.bucket}`;
+  const headers = s3AuthHeaders({
+    method: input.method,
+    host,
+    canonicalPath,
+    payloadHash,
+    accessKey: input.accessKey ?? CONNECTOR_DEFAULTS.accessKey,
+    secretKey: input.secretKey ?? CONNECTOR_DEFAULTS.secretKey,
+    region,
+  });
+  return fetch(`http://${host}${canonicalPath}`, {
+    method: input.method,
+    headers,
+    body: input.method === "PUT" ? payload : undefined,
+  });
+}
+
+/**
+ * 创建桶；已存在（409）视为成功，便于重复运行。
+ *
+ * @param {string} bucket 桶名
+ * @param {object} [options] 主机/区域/凭据覆盖
+ * @returns {Promise<void>}
+ */
+async function createS3Bucket(bucket, options = {}) {
+  const response = await s3Request({
     method: "PUT",
-    headers: {
-      Host: host,
-      "x-amz-content-sha256": payloadHash,
-      "x-amz-date": amzDate,
-      Authorization: authorization,
-    },
+    bucket,
+    ...options,
   });
   if (![200, 409].includes(response.status)) {
     throw new Error(
       `create bucket failed: ${response.status} ${await response.text()}`,
     );
   }
+}
+
+/**
+ * 使用 SigV4 创建测试桶；RustFS 不提供免认证建桶。
+ *
+ * @returns {Promise<void>}
+ */
+async function createBucket() {
+  await createS3Bucket("riccon-test");
 }
 
 /**
@@ -707,6 +804,32 @@ function buildEnvSnapshot(context) {
             chatMaxStreams: 50,
             fakeModel: 1,
             aclEnforcement: true,
+            // 复现命令只列非密钥参数；主密钥/pepper/服务令牌由脚本每次随机生成，
+            // 报告不保存，验证者复验时也不需要复用同一份。
+            reproduceCommand: [
+              "PERF_M05_SCENARIO=knowledge",
+              context.connectorPerf ? "PERF_M05_CONNECTOR=1" : null,
+              context.connectorPerf
+                ? `PERF_M05_CONNECTOR_OBJECTS=${context.connectorConfig.objects}`
+                : null,
+              context.connectorPerf
+                ? `PERF_M05_CONNECTOR_BUCKET=${context.connectorConfig.bucket}`
+                : null,
+              `PERF_M05_DOCS=${context.knowledgeDataset?.documents ?? ""}`,
+              `PERF_M05_CHUNKS_PER_DOC=${context.knowledgeDataset?.chunksPerDocument ?? ""}`,
+              `PERF_M05_DURATION=${process.env.PERF_M05_DURATION ?? KNOWLEDGE_DEFAULTS.duration}`,
+              `PERF_M05_BACKLOG=${process.env.PERF_M05_BACKLOG ?? KNOWLEDGE_DEFAULTS.backlogUploads}`,
+              "REAL_PERF_SKIP_M04=1",
+              "node scripts/real-stack/run.mjs --mode=perf",
+            ]
+              .filter(Boolean)
+              .join(" "),
+            connector: context.connectorPerf
+              ? {
+                  enabled: true,
+                  ...publicConnectorConfig(context.connectorConfig),
+                }
+              : { enabled: false },
           }
         : null,
   };
@@ -748,6 +871,20 @@ function sharedModelEnv(context) {
             context.openSearchIndexVersion ?? "v2",
           RICCON_OPENSEARCH_INDEX_PREFIX:
             context.openSearchIndexPrefix ?? "riccon-kb",
+        }
+      : {}),
+    // M05b 连接器同步分支：API 与 Worker 共用允许列表与开关；端点只来自部署 env，
+    // 连接器只保存 endpointId。关闭定时调度避免 perf 运行期间出现额外同步。
+    ...(context.connectorPerf
+      ? {
+          RICCON_CONNECTOR_ENABLED: "true",
+          RICCON_CONNECTOR_ENDPOINTS: JSON.stringify(
+            context.connectorEndpoints,
+          ),
+          RICCON_CONNECTOR_SYNC_INTERVAL_MINUTES: "60",
+          RICCON_CONNECTOR_SCHEDULER_ENABLED: "false",
+          RICCON_CONNECTOR_PATH_STYLE: "true",
+          RICCON_CONNECTOR_DEFAULT_REGION: context.connectorConfig.region,
         }
       : {}),
   };
@@ -1255,6 +1392,763 @@ class KnowledgePerfClient {
     }
     throw new Error(`knowledge index timeout: ${documentId}`);
   }
+}
+
+/**
+ * 读取 M05b 连接器 perf 配置；未显式开启时返回 `{enabled:false}`，不影响既有 knowledge 场景。
+ *
+ * @returns {object} 配置
+ */
+function connectorPerfConfig() {
+  if (process.env.PERF_M05_CONNECTOR !== "1") {
+    return { enabled: false };
+  }
+  const objects = Number(
+    process.env.PERF_M05_CONNECTOR_OBJECTS ?? CONNECTOR_DEFAULTS.objects,
+  );
+  if (!Number.isInteger(objects) || objects < 1 || objects > 5_000) {
+    throw new Error(
+      `PERF_M05_CONNECTOR_OBJECTS invalid: ${process.env.PERF_M05_CONNECTOR_OBJECTS} (1-5000)`,
+    );
+  }
+  const prefixRaw =
+    process.env.PERF_M05_CONNECTOR_PREFIX ?? CONNECTOR_DEFAULTS.prefix;
+  const prefix =
+    prefixRaw === "" || prefixRaw.endsWith("/") ? prefixRaw : `${prefixRaw}/`;
+  const endpointId =
+    process.env.PERF_M05_CONNECTOR_ENDPOINT_ID ?? CONNECTOR_DEFAULTS.endpointId;
+  if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(endpointId)) {
+    throw new Error(`PERF_M05_CONNECTOR_ENDPOINT_ID invalid: ${endpointId}`);
+  }
+  return {
+    enabled: true,
+    objects,
+    bucket: process.env.PERF_M05_CONNECTOR_BUCKET ?? CONNECTOR_DEFAULTS.bucket,
+    prefix,
+    endpointId,
+    endpointUrl: `http://${process.env.PERF_M05_CONNECTOR_S3_HOST ?? CONNECTOR_DEFAULTS.host}`,
+    host: process.env.PERF_M05_CONNECTOR_S3_HOST ?? CONNECTOR_DEFAULTS.host,
+    region:
+      process.env.PERF_M05_CONNECTOR_S3_REGION ?? CONNECTOR_DEFAULTS.region,
+    accessKey:
+      process.env.PERF_M05_CONNECTOR_S3_ACCESS_KEY ??
+      CONNECTOR_DEFAULTS.accessKey,
+    secretKey:
+      process.env.PERF_M05_CONNECTOR_S3_SECRET_KEY ??
+      CONNECTOR_DEFAULTS.secretKey,
+    connectorName:
+      process.env.PERF_M05_CONNECTOR_NAME ?? CONNECTOR_DEFAULTS.connectorName,
+    uploadConcurrency: Number(
+      process.env.PERF_M05_CONNECTOR_UPLOAD_CONCURRENCY ??
+        CONNECTOR_DEFAULTS.uploadConcurrency,
+    ),
+    token: process.env.PERF_M05_CONNECTOR_TOKEN ?? CONNECTOR_DEFAULTS.token,
+    syncBudgetMs: Number(
+      process.env.PERF_M05_CONNECTOR_SYNC_BUDGET_MS ??
+        CONNECTOR_DEFAULTS.syncBudgetMs,
+    ),
+    queueWaitBudgetMs: Number(
+      process.env.PERF_M05_CONNECTOR_QUEUE_BUDGET_MS ??
+        CONNECTOR_DEFAULTS.queueWaitBudgetMs,
+    ),
+    syncTimeoutMs: Number(
+      process.env.PERF_M05_CONNECTOR_SYNC_TIMEOUT_MS ?? 20 * 60_000,
+    ),
+    indexTimeoutMs: Number(
+      process.env.PERF_M05_CONNECTOR_INDEX_TIMEOUT_MS ?? 20 * 60_000,
+    ),
+    cleanup: process.env.PERF_M05_CONNECTOR_CLEANUP !== "0",
+  };
+}
+
+/**
+ * 返回可写入报告的连接器配置（不含凭据）。
+ *
+ * @param {object} config 连接器配置
+ * @returns {object} 脱敏配置
+ */
+function publicConnectorConfig(config) {
+  return {
+    objects: config.objects,
+    bucket: config.bucket,
+    prefix: config.prefix,
+    endpointId: config.endpointId,
+    connectorName: config.connectorName,
+    syncBudgetMs: config.syncBudgetMs,
+    queueWaitBudgetMs: config.queueWaitBudgetMs,
+    cleanup: config.cleanup,
+  };
+}
+
+/**
+ * 构造源桶对象 key 列表。
+ *
+ * @param {object} config 连接器配置
+ * @returns {string[]} key 列表
+ */
+function connectorObjectKeys(config) {
+  return Array.from(
+    { length: config.objects },
+    (_, index) =>
+      `${config.prefix}doc-${String(index + 1).padStart(4, "0")}.txt`,
+  );
+}
+
+/**
+ * 生成连接器源对象内容；每个对象唯一，避免把内容去重误当同步失败。
+ *
+ * @param {number} index 序号（从 1 开始）
+ * @param {object} config 连接器配置
+ * @returns {string} 文本内容
+ */
+function connectorObjectBody(index, config) {
+  return [
+    `PERF-M05b connector sync object ${index}`,
+    `${config.token} 协同办公 市场调研 数据`,
+    `fixture=${config.bucket}/${config.prefix}`,
+    "",
+  ].join("\n");
+}
+
+/**
+ * 以有限并发执行异步任务；顺序与输入一致。
+ *
+ * @param {Array} items 输入
+ * @param {number} limit 并发上限
+ * @param {function(any, number): Promise<any>} worker 任务
+ * @returns {Promise<Array>} 结果
+ */
+async function mapWithConcurrency(items, limit, worker) {
+  const results = new Array(items.length);
+  let cursor = 0;
+  const runners = Array.from(
+    { length: Math.max(1, Math.min(limit, items.length)) },
+    async () => {
+      while (true) {
+        const index = cursor;
+        cursor += 1;
+        if (index >= items.length) {
+          return;
+        }
+        results[index] = await worker(items[index], index);
+      }
+    },
+  );
+  await Promise.all(runners);
+  return results;
+}
+
+/**
+ * 构造源桶 1000 个小对象；失败立即抛出，避免同步阶段拿到残缺数据集。
+ *
+ * @param {object} config 连接器配置
+ * @returns {Promise<object>} 上传摘要
+ */
+async function seedConnectorSourceBucket(config) {
+  const startedAt = Date.now();
+  await createS3Bucket(config.bucket, {
+    host: config.host,
+    region: config.region,
+    accessKey: config.accessKey,
+    secretKey: config.secretKey,
+  });
+  const keys = connectorObjectKeys(config);
+  const failures = [];
+  let uploaded = 0;
+  let bytes = 0;
+  await mapWithConcurrency(
+    keys,
+    config.uploadConcurrency,
+    async (key, index) => {
+      const body = connectorObjectBody(index + 1, config);
+      const response = await s3Request({
+        method: "PUT",
+        bucket: config.bucket,
+        key,
+        body,
+        host: config.host,
+        region: config.region,
+        accessKey: config.accessKey,
+        secretKey: config.secretKey,
+      });
+      if (![200, 201].includes(response.status)) {
+        failures.push(`${key}:${response.status}`);
+        return;
+      }
+      uploaded += 1;
+      bytes += Buffer.byteLength(body);
+    },
+  );
+  if (failures.length > 0) {
+    throw new Error(
+      `connector source object upload failed (${failures.length}/${keys.length}): ${failures.slice(0, 5).join(",")}`,
+    );
+  }
+  return {
+    bucket: config.bucket,
+    prefix: config.prefix,
+    objects: keys.length,
+    uploaded,
+    bytes,
+    elapsedMs: Date.now() - startedAt,
+    token: config.token,
+  };
+}
+
+/**
+ * 清理源桶对象与桶；只在上传成功且同步已结束时调用。
+ *
+ * @param {object} config 连接器配置
+ * @returns {Promise<object>} 清理结果
+ */
+async function cleanupConnectorSourceBucket(config) {
+  if (!config.cleanup) {
+    return { skipped: true, reason: "PERF_M05_CONNECTOR_CLEANUP=0" };
+  }
+  const startedAt = Date.now();
+  const keys = connectorObjectKeys(config);
+  const statuses = await mapWithConcurrency(
+    keys,
+    config.uploadConcurrency,
+    async (key) => {
+      const response = await s3Request({
+        method: "DELETE",
+        bucket: config.bucket,
+        key,
+        host: config.host,
+        region: config.region,
+        accessKey: config.accessKey,
+        secretKey: config.secretKey,
+      });
+      return response.status;
+    },
+  );
+  const failed = statuses.filter((status) => ![200, 204, 404].includes(status));
+  const bucketResponse = await s3Request({
+    method: "DELETE",
+    bucket: config.bucket,
+    host: config.host,
+    region: config.region,
+    accessKey: config.accessKey,
+    secretKey: config.secretKey,
+  });
+  return {
+    skipped: false,
+    attempted: keys.length,
+    failed: failed.length,
+    bucketStatus: bucketResponse.status,
+    elapsedMs: Date.now() - startedAt,
+  };
+}
+
+/**
+ * 通过 API 创建连接器并启用；创建请求显式带 `defaultVisibility` 与凭据。
+ *
+ * @param {KnowledgePerfClient} admin 管理员会话
+ * @param {object} config 连接器配置
+ * @returns {Promise<object>} 连接器与测试结果
+ */
+async function createConnectorFixture(admin, config) {
+  const created = await admin.post("/api/v1/knowledge/connectors", {
+    name: config.connectorName,
+    type: "S3",
+    endpointId: config.endpointId,
+    config: {
+      bucket: config.bucket,
+      prefix: config.prefix,
+      region: config.region,
+      includeExtensions: ["txt"],
+      excludeGlobs: [],
+    },
+    defaultVisibility: "TENANT",
+    scheduleEnabled: false,
+    credential: {
+      accessKeyId: config.accessKey,
+      secretAccessKey: config.secretKey,
+    },
+  });
+  if (created.status !== 201) {
+    throw new Error(
+      `create connector failed: ${created.status} ${truncateText(created.text)}`,
+    );
+  }
+  const connectorId = created.data?.id;
+  if (!connectorId) {
+    throw new Error("create connector response missing id");
+  }
+  const activated = await admin.request(
+    "PATCH",
+    `/api/v1/knowledge/connectors/${connectorId}`,
+    { json: { status: "ACTIVE" } },
+  );
+  if (activated.status !== 200) {
+    throw new Error(
+      `activate connector failed: ${activated.status} ${truncateText(activated.text)}`,
+    );
+  }
+  const tested = await admin.post(
+    `/api/v1/knowledge/connectors/${connectorId}/test`,
+    {},
+  );
+  if (tested.status !== 200) {
+    throw new Error(
+      `connector test failed: ${tested.status} ${truncateText(tested.text)}`,
+    );
+  }
+  if (tested.data?.success !== true) {
+    throw new Error(
+      `connector test unsuccessful: category=${tested.data?.category} message=${truncateText(tested.data?.message)}`,
+    );
+  }
+  return {
+    id: connectorId,
+    created: created.data,
+    test: tested.data,
+  };
+}
+
+/**
+ * 触发手动同步；返回 202 的 syncId 与受理时间。
+ *
+ * @param {KnowledgePerfClient} admin 管理员会话
+ * @param {string} connectorId 连接器 ID
+ * @returns {Promise<{syncId: string, acceptedAt: string, triggeredAtMs: number}>} 受理结果
+ */
+async function triggerConnectorSync(admin, connectorId) {
+  const triggeredAtMs = Date.now();
+  const response = await admin.post(
+    `/api/v1/knowledge/connectors/${connectorId}/sync`,
+    {},
+  );
+  if (response.status !== 202) {
+    throw new Error(
+      `trigger connector sync failed: ${response.status} ${truncateText(response.text)}`,
+    );
+  }
+  if (!response.data?.syncId) {
+    throw new Error("connector sync response missing syncId");
+  }
+  return {
+    syncId: response.data.syncId,
+    acceptedAt: response.data.acceptedAt,
+    triggeredAtMs,
+  };
+}
+
+/**
+ * 从连接器列表读取指定连接器；列表响应包含同步状态/计数，避免额外详情端点。
+ *
+ * @param {KnowledgePerfClient} admin 管理员会话
+ * @param {string} connectorId 连接器 ID
+ * @returns {Promise<object|null>} 连接器
+ */
+async function findConnectorById(admin, connectorId) {
+  const response = await admin.get(
+    "/api/v1/knowledge/connectors?page=1&size=100",
+  );
+  if (response.status !== 200) {
+    throw new Error(`list connectors failed: ${response.status}`);
+  }
+  return (response.data?.items ?? []).find((item) => item.id === connectorId);
+}
+
+/**
+ * 轮询同步终态；完成、失败或超时都返回最后一次快照，由调用方判定。
+ *
+ * @param {KnowledgePerfClient} admin 管理员会话
+ * @param {string} connectorId 连接器 ID
+ * @param {object} config 连接器配置
+ * @returns {Promise<{connector: object|null, observedAt: string, timedOut: boolean}>} 终态
+ */
+async function pollConnectorSyncFinished(admin, connectorId, config) {
+  const deadline = Date.now() + config.syncTimeoutMs;
+  let connector = null;
+  while (Date.now() < deadline) {
+    connector = await findConnectorById(admin, connectorId);
+    if (connector?.lastSyncFinishedAt) {
+      return {
+        connector,
+        observedAt: new Date().toISOString(),
+        timedOut: false,
+      };
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
+  return {
+    connector,
+    observedAt: new Date().toISOString(),
+    timedOut: true,
+  };
+}
+
+/**
+ * 解析 MySQL batch 输出为对象数组。
+ *
+ * @param {string} stdout 输出
+ * @returns {Array<Record<string,string>>} 行
+ */
+function readTabularRows(stdout) {
+  const lines = String(stdout ?? "")
+    .trim()
+    .split("\n")
+    .filter(Boolean);
+  if (lines.length === 0) {
+    return [];
+  }
+  const headers = lines[0].split("\t");
+  return lines.slice(1).map((line) => {
+    const cells = line.split("\t");
+    const row = {};
+    headers.forEach((header, index) => {
+      row[header] = cells[index] ?? "";
+    });
+    return row;
+  });
+}
+
+/**
+ * 读取连接器条目状态计数。
+ *
+ * @param {string} connectorId 连接器 ID
+ * @returns {object} 计数
+ */
+function readConnectorItemCounts(connectorId) {
+  const rows = readTabularRows(
+    runSql(
+      `
+SELECT status, COUNT(*) AS count
+  FROM kb_connector_item
+ WHERE tenant_id = 'tenant-alpha'
+   AND connector_id = ${binaryUuidLiteral(connectorId)}
+ GROUP BY status;`,
+      { repoRoot },
+    ).stdout,
+  );
+  const counts = {};
+  for (const row of rows) {
+    counts[row.status] = Number(row.count) || 0;
+  }
+  return counts;
+}
+
+/**
+ * 读取连接器文档状态计数；轮询期间只查这一条，避免每秒扫描 1000 行索引耗时。
+ *
+ * @param {string} connectorId 连接器 ID
+ * @returns {object} 计数
+ */
+function readConnectorDocumentCounts(connectorId) {
+  const countsRow =
+    readTabularRows(
+      runSql(
+        `
+SELECT COUNT(*) AS total,
+       COALESCE(SUM(status = 'INDEXED'), 0) AS indexed,
+       COALESCE(SUM(status = 'FAILED'), 0) AS failed,
+       COALESCE(SUM(status IN ('PENDING', 'INDEXING')), 0) AS pending
+  FROM knowledge_document
+ WHERE tenant_id = 'tenant-alpha'
+   AND connector_id = ${binaryUuidLiteral(connectorId)}
+   AND deleted_at IS NULL;`,
+        { repoRoot },
+      ).stdout,
+    )[0] ?? {};
+  return {
+    total: Number(countsRow.total) || 0,
+    indexed: Number(countsRow.indexed) || 0,
+    failed: Number(countsRow.failed) || 0,
+    pending: Number(countsRow.pending) || 0,
+  };
+}
+
+/**
+ * 读取连接器文档状态计数、索引耗时与命中夹具 token 的 chunk 数。
+ *
+ * @param {string} connectorId 连接器 ID
+ * @param {string} token 夹具检索词
+ * @returns {{counts: object, latency: object, chunksWithToken: number}} 索引结果
+ */
+function readConnectorDocumentResults(connectorId, token) {
+  const counts = readConnectorDocumentCounts(connectorId);
+  const latencyRows = readTabularRows(
+    runSql(
+      `
+SELECT ROUND(TIMESTAMPDIFF(MICROSECOND, created_at, indexed_at) / 1000, 3) AS latency_ms
+  FROM knowledge_document
+ WHERE tenant_id = 'tenant-alpha'
+   AND connector_id = ${binaryUuidLiteral(connectorId)}
+   AND status = 'INDEXED'
+   AND indexed_at IS NOT NULL;`,
+      { repoRoot },
+    ).stdout,
+  );
+  const latencySamples = latencyRows
+    .map((row) => Number(row.latency_ms))
+    .filter((value) => Number.isFinite(value));
+  const chunkRow =
+    readTabularRows(
+      runSql(
+        `
+SELECT COUNT(*) AS chunks
+  FROM knowledge_chunk c
+  JOIN knowledge_document d
+    ON d.tenant_id = c.tenant_id AND d.id = c.document_id
+ WHERE c.tenant_id = 'tenant-alpha'
+   AND d.connector_id = ${binaryUuidLiteral(connectorId)}
+   AND c.content LIKE ${sqlString(`%${token}%`)};`,
+        { repoRoot },
+      ).stdout,
+    )[0] ?? {};
+  return {
+    counts,
+    latency: {
+      samples: latencySamples.length,
+      p50Ms: percentile(latencySamples, 50),
+      p95Ms: percentile(latencySamples, 95),
+      maxMs: latencySamples.length > 0 ? Math.max(...latencySamples) : null,
+    },
+    chunksWithToken: Number(chunkRow.chunks) || 0,
+  };
+}
+
+/**
+ * 轮询索引终态；按文档状态收敛，不把“同步完成”误当“索引完成”。
+ *
+ * @param {string} connectorId 连接器 ID
+ * @param {object} config 连接器配置
+ * @returns {Promise<object>} 索引结果
+ */
+async function waitConnectorDocumentsIndexed(connectorId, config) {
+  const startedAt = Date.now();
+  const deadline = startedAt + config.indexTimeoutMs;
+  let counts = readConnectorDocumentCounts(connectorId);
+  while (Date.now() < deadline && counts.pending > 0) {
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+    counts = readConnectorDocumentCounts(connectorId);
+  }
+  const result = readConnectorDocumentResults(connectorId, config.token);
+  return {
+    ...result,
+    counts,
+    elapsedMs: Date.now() - startedAt,
+    timedOut: counts.pending > 0,
+  };
+}
+
+/**
+ * 汇总毫秒样本。
+ *
+ * @param {number[]} samples 样本
+ * @returns {object} 汇总
+ */
+function summarizeMsSamples(samples) {
+  return {
+    samples: samples.length,
+    p50Ms: percentile(samples, 50),
+    p95Ms: percentile(samples, 95),
+    maxMs: samples.length > 0 ? Math.max(...samples) : null,
+    avgMs:
+      samples.length > 0
+        ? Number(
+            (
+              samples.reduce((sum, value) => sum + value, 0) / samples.length
+            ).toFixed(3),
+          )
+        : null,
+  };
+}
+
+/**
+ * 从 agent_run 的 created_at→started_at 计算 heavy 通道队列等待。
+ *
+ * <p>事件入队时写 `agent_run.created_at`，领取后写 `started_at`；两者差值就是排队时间。
+ * 索引事件通过 outbox payload 的 documentId 关联到连接器文档，避免把同时段上传积压混入。
+ *
+ * @param {string} connectorId 连接器 ID
+ * @param {object} config 连接器配置
+ * @returns {object} 队列等待
+ */
+function readConnectorQueueWait(connectorId, config) {
+  const syncRows = readTabularRows(
+    runSql(
+      `
+SELECT ROUND(TIMESTAMPDIFF(MICROSECOND, r.created_at, r.started_at) / 1000, 3) AS wait_ms
+  FROM agent_run r
+  JOIN agent_run_outbox o
+    ON o.tenant_id = r.tenant_id AND o.run_id = r.id
+ WHERE r.tenant_id = 'tenant-alpha'
+   AND r.started_at IS NOT NULL
+   AND o.event_type = 'riccon.knowledge.connector.sync.requested.v1'
+   AND o.idempotency_key LIKE ${sqlString(`connector:${connectorId}:sync:%`)};`,
+      { repoRoot },
+    ).stdout,
+  );
+  const indexRows = readTabularRows(
+    runSql(
+      `
+SELECT ROUND(TIMESTAMPDIFF(MICROSECOND, r.created_at, r.started_at) / 1000, 3) AS wait_ms
+  FROM agent_run r
+  JOIN agent_run_outbox o
+    ON o.tenant_id = r.tenant_id AND o.run_id = r.id
+  JOIN knowledge_document d
+    ON d.tenant_id = r.tenant_id
+   AND d.id = UNHEX(REPLACE(JSON_UNQUOTE(JSON_EXTRACT(o.payload, '$.documentId')), '-', ''))
+ WHERE r.tenant_id = 'tenant-alpha'
+   AND r.started_at IS NOT NULL
+   AND o.event_type = 'riccon.knowledge.index.requested.v1'
+   AND d.connector_id = ${binaryUuidLiteral(connectorId)};`,
+      { repoRoot },
+    ).stdout,
+  );
+  const syncSamples = syncRows
+    .map((row) => Number(row.wait_ms))
+    .filter((value) => Number.isFinite(value));
+  const indexSamples = indexRows
+    .map((row) => Number(row.wait_ms))
+    .filter((value) => Number.isFinite(value));
+  const combined = [...syncSamples, ...indexSamples];
+  const summary = summarizeMsSamples(combined);
+  return {
+    source:
+      "agent_run.created_at（事件入队）→ started_at（heavy 通道领取）；sync 事件 + 连接器文档索引事件",
+    sync: summarizeMsSamples(syncSamples),
+    index: summarizeMsSamples(indexSamples),
+    combined: summary,
+    budgetMs: config.queueWaitBudgetMs,
+    withinBudget:
+      summary.p95Ms !== null && summary.p95Ms <= config.queueWaitBudgetMs,
+  };
+}
+
+/**
+ * 执行 M05b 连接器同步分支：源桶种子 → 连接器/凭据 → 手动同步 → 索引收敛 → 清理。
+ *
+ * @param {KnowledgePerfClient} admin 管理员会话
+ * @param {object} config 连接器配置
+ * @returns {Promise<object>} 分支结果
+ */
+async function runConnectorPerfBranch(admin, config) {
+  const result = {
+    enabled: true,
+    status: "failed",
+    config: publicConnectorConfig(config),
+    source: null,
+    connector: null,
+    trigger: null,
+    sync: null,
+    items: null,
+    indexing: null,
+    queueWait: null,
+    cleanup: null,
+    error: null,
+  };
+  let syncTerminal = false;
+  try {
+    result.source = await seedConnectorSourceBucket(config);
+    const fixture = await createConnectorFixture(admin, config);
+    result.connector = fixture;
+    const trigger = await triggerConnectorSync(admin, fixture.id);
+    result.trigger = trigger;
+
+    const polled = await pollConnectorSyncFinished(admin, fixture.id, config);
+    syncTerminal = !polled.timedOut;
+    if (polled.timedOut) {
+      throw new Error(
+        `connector sync timeout after ${config.syncTimeoutMs}ms; lastStatus=${polled.connector?.lastSyncStatus ?? "UNKNOWN"}`,
+      );
+    }
+    const connector = polled.connector;
+    const syncStartedMs = Date.parse(connector.lastSyncStartedAt ?? "");
+    const syncFinishedMs = Date.parse(connector.lastSyncFinishedAt ?? "");
+    const acceptedMs = Date.parse(trigger.acceptedAt ?? "");
+    const processingMs =
+      Number.isFinite(syncStartedMs) && Number.isFinite(syncFinishedMs)
+        ? syncFinishedMs - syncStartedMs
+        : null;
+    const endToEndMs = Number.isFinite(syncFinishedMs)
+      ? syncFinishedMs - trigger.triggeredAtMs
+      : null;
+    const acceptedToFinishedMs =
+      Number.isFinite(acceptedMs) && Number.isFinite(syncFinishedMs)
+        ? syncFinishedMs - acceptedMs
+        : null;
+    result.sync = {
+      syncId: trigger.syncId,
+      status: connector.lastSyncStatus,
+      complete: connector.lastSyncComplete,
+      summary: connector.lastSyncSummary ?? null,
+      lastSyncStartedAt: connector.lastSyncStartedAt,
+      lastSyncFinishedAt: connector.lastSyncFinishedAt,
+      acceptedToFinishedMs,
+      processingMs,
+      endToEndMs,
+      budgetMs: config.syncBudgetMs,
+      withinBudget:
+        processingMs !== null && processingMs <= config.syncBudgetMs,
+      endToEndWithinBudget:
+        endToEndMs !== null && endToEndMs <= config.syncBudgetMs,
+    };
+    result.items = readConnectorItemCounts(fixture.id);
+    const indexed = await waitConnectorDocumentsIndexed(fixture.id, config);
+    result.indexing = {
+      counts: indexed.counts,
+      latency: indexed.latency,
+      chunksWithToken: indexed.chunksWithToken,
+      elapsedMs: indexed.elapsedMs,
+      timedOut: indexed.timedOut,
+    };
+    result.queueWait = readConnectorQueueWait(fixture.id, config);
+  } catch (error) {
+    result.error = truncateText(error, 600);
+  } finally {
+    // 未触发同步（夹具/连接器创建失败）时源桶可安全清理；已触发但未到终态时保留，
+    // 避免 worker 仍在读取时删除源对象。
+    if (!result.trigger || syncTerminal) {
+      try {
+        result.cleanup = await cleanupConnectorSourceBucket(config);
+      } catch (error) {
+        result.cleanup = { skipped: false, error: truncateText(error, 300) };
+      }
+    } else {
+      result.cleanup = {
+        skipped: true,
+        reason:
+          "connector sync did not reach terminal state; source bucket kept for diagnosis",
+      };
+    }
+  }
+
+  const summary = result.sync?.summary;
+  const countsOk =
+    summary !== null &&
+    summary !== undefined &&
+    summary.scanned === config.objects &&
+    summary.created === config.objects &&
+    summary.updated === 0 &&
+    summary.skipped === 0 &&
+    summary.failed === 0 &&
+    summary.deleted === 0 &&
+    summary.complete === true;
+  const syncOk =
+    result.sync !== null &&
+    result.sync.status !== "ERROR" &&
+    result.sync.withinBudget === true &&
+    countsOk;
+  const indexingOk =
+    result.indexing !== null &&
+    result.indexing.counts.total === config.objects &&
+    result.indexing.counts.indexed === config.objects &&
+    result.indexing.counts.failed === 0 &&
+    result.indexing.counts.pending === 0 &&
+    result.indexing.timedOut === false &&
+    result.indexing.chunksWithToken > 0;
+  const queueOk = result.queueWait?.withinBudget === true;
+  result.checks = { countsOk, syncOk, indexingOk, queueOk };
+  result.status =
+    result.error === null && syncOk && indexingOk && queueOk
+      ? "passed"
+      : "failed";
+  return result;
 }
 
 /**
@@ -1822,6 +2716,18 @@ async function runKnowledgePerf(context) {
   ];
   const reportFile = path.join(evidenceDir, "perf-m05-knowledge.json");
 
+  // M05b 连接器同步分支在 50 并发 knowledge 负载之前串行执行：
+  // - 同步/索引墙钟不受 k6 并发干扰；
+  // - 连接器文档入库后再跑同一套 k6，检索/首字口径覆盖“连接器文档已在库”的整条 AC-20；
+  // - 既有上传积压仍在 k6 期间执行，继续验证 heavy 通道不阻塞 chat。
+  // slow_log 从 API/Worker 启动前一直开启：MySQL 的 long_query_time 是会话变量，中途关闭再开启
+  // 会让连接池中新建连接停留在默认 10s，导致 k6 检索样本漏采；连接器阶段的日志开销写入报告备注。
+  let connector = null;
+  if (context.connectorPerf) {
+    connector = await runConnectorPerfBranch(admin, context.connectorConfig);
+    phases.connectorSync = connector.status === "passed" ? "passed" : "failed";
+  }
+
   // OCR 只在本宿主原生库可用时测量；不可用写入报告，不伪造单页/索引耗时。
   const ocrAvailable = Boolean(context.ocrProbe?.available);
   const backlogDocuments = Number(
@@ -1840,6 +2746,18 @@ async function runKnowledgePerf(context) {
       PERF_M05_DOWNLOAD_DOC_ID: baseline.documentId,
       PERF_M05_ACL_USER_IDS: JSON.stringify(aclUserIds),
       PERF_M05_QUERY: KNOWLEDGE_QUERY,
+      // 只有连接器夹具与同步 id 都存在时才启用 k6 侧标记；分支失败时仍跑 M05 基线，
+      // 但不会把缺失的连接器元数据当成通过。
+      ...(connector?.connector?.id && connector?.trigger?.syncId
+        ? {
+            PERF_M05_CONNECTOR: "1",
+            PERF_M05_CONNECTOR_OBJECTS: String(context.connectorConfig.objects),
+            PERF_M05_CONNECTOR_ID: connector.connector.id,
+            PERF_M05_CONNECTOR_SYNC_ID: connector.trigger.syncId,
+            PERF_M05_CONNECTOR_BUCKET: context.connectorConfig.bucket,
+            PERF_M05_CONNECTOR_PREFIX: context.connectorConfig.prefix,
+          }
+        : {}),
     });
     // 等 k6 进入负载后再提交积压；默认 8s 避开 50 VU 登录/首轮检索的峰值。
     await new Promise((resolve) =>
@@ -1906,7 +2824,10 @@ async function runKnowledgePerf(context) {
     retrieval.p95Ms === null || retrieval.p95Ms > searchBudgetMs;
   const indexBudgetExceeded =
     docxSamples.length >= 5 && indexP95 !== null && indexP95 > 60_000;
-  const enforceSearch = process.env.PERF_M05_SEARCH_ENFORCE === "1";
+  const enforceSearch =
+    process.env.PERF_M05_SEARCH_ENFORCE === "1" || context.connectorPerf;
+  const connectorFailed =
+    context.connectorPerf && connector?.status !== "passed";
 
   report.m05 = {
     ...(report.m05 ?? {}),
@@ -1968,6 +2889,8 @@ async function runKnowledgePerf(context) {
       backlogFailures: backlogFailed,
       backlogDuringLoad: true,
     },
+    // M05b 连接器同步分支：同步/索引/队列等待；未启用时为 null，不伪造“已执行”。
+    connectorSync: connector,
     retrieval: {
       ...retrieval,
       budgetMs: searchBudgetMs,
@@ -2007,6 +2930,16 @@ async function runKnowledgePerf(context) {
       indexNoOcrP95Ms: indexP95,
       indexBudgetMs: 60_000,
       sseBufferedRequestP95Ms: userFirstTokenP95,
+      // M05b：同步总时长与 heavy 通道队列等待是独立预算；索引延迟只记录（连接器
+      // 文档可能排在同步事件之后，不能用上传的 60s create→INDEXED 预算替代）。
+      connectorSyncProcessingMs: connector?.sync?.processingMs ?? null,
+      connectorSyncBudgetMs: connector?.sync?.budgetMs ?? null,
+      connectorSyncWithinBudget: connector?.sync?.withinBudget ?? null,
+      connectorQueueWaitP95Ms: connector?.queueWait?.combined?.p95Ms ?? null,
+      connectorQueueWaitBudgetMs: connector?.queueWait?.budgetMs ?? null,
+      connectorQueueWaitWithinBudget:
+        connector?.queueWait?.withinBudget ?? null,
+      connectorIndexP95Ms: connector?.indexing?.latency?.p95Ms ?? null,
       note: "首字用 retrieval p95 + 服务端模型首字 p95 估算；k6 对 SSE 整段缓冲，m05_chat_submit_ttfb_ms 不是首字口径",
     },
     thresholds: report.thresholds,
@@ -2016,7 +2949,9 @@ async function runKnowledgePerf(context) {
       "下载是流式代理，单独记录 m05_download_ms，不并入 JSON API p95。",
       "检索 p95 来自 MySQL slow_log 中 AgentContextJdbc FULLTEXT MATCH + ACL 谓词的实际执行时间；不含网络与结果映射。",
       "slow_log 在 API/Worker 建连前开启（long_query_time=0.001s）；它会给测试栈带来额外写开销，结果偏保守。",
-      "M05 不启用连接器分支。",
+      context.connectorPerf
+        ? "M05b 连接器同步分支：1000 对象同步与索引在 k6 前串行完成，随后用同一套 50 并发 knowledge 负载复验整条 AC-20；slow_log 全程开启，连接器阶段结果偏保守。"
+        : "M05 不启用连接器分支。",
     ],
   };
   if (os.loadavg()[0] > os.cpus().length) {
@@ -2031,6 +2966,7 @@ async function runKnowledgePerf(context) {
       k6Result.status === 0 &&
       !indexBudgetExceeded &&
       !openSearchMismatch &&
+      !connectorFailed &&
       (!decisionRequired || !enforceSearch)
         ? decisionRequired
           ? "passed-with-decision"
@@ -2046,6 +2982,7 @@ async function runKnowledgePerf(context) {
     retrieval,
     budgets: report.m05.budgets,
     indexing: report.m05.indexing,
+    connector: connector,
     openSearch: report.m05.openSearchDetail,
     openSearchMismatch,
     load: {
@@ -2059,8 +2996,11 @@ async function runKnowledgePerf(context) {
     decision: report.m05.retrieval.decision,
     notes: [
       "PERF-M05-001：首字/API/ACL 写/检索量测；PERF-M05-002：索引延迟（无 OCR 与 OCR 单页）。",
+      "PERF-M05-003：连接器同步 1000 对象 ≤15min；PERF-M05-004：heavy 通道队列等待 p95 ≤5min。",
       "OpenSearch 使用 v2 索引并核对别名目标与 bbox/acl mapping 字段；检索仍以 MySQL FULLTEXT + ACL 为准。",
-      "检索 >500ms 时 status 为 passed-with-decision（ADR-0023 §9 未预设通过阈值）；设置 PERF_M05_SEARCH_ENFORCE=1 可按 500ms 硬失败。",
+      context.connectorPerf
+        ? "连接器分支启用时检索 p95 >500ms 直接失败（M05b 整条复验判据），不降级为 passed-with-decision。"
+        : "检索 >500ms 时 status 为 passed-with-decision（ADR-0023 §9 未预设通过阈值）；设置 PERF_M05_SEARCH_ENFORCE=1 可按 500ms 硬失败。",
       "OCR 不可用时 ocr.measured=false，不把未执行当通过。",
     ],
   };
@@ -2074,6 +3014,7 @@ async function runKnowledgePerf(context) {
     k6Result.status !== 0 ||
     indexBudgetExceeded ||
     openSearchMismatch ||
+    connectorFailed ||
     (enforceSearch && decisionRequired);
   return {
     status: failed ? "failed" : matrix.status,
@@ -2464,11 +3405,32 @@ async function runPerf() {
   const endpoints = buildModelEndpoints();
   const initialKeys = buildModelKeys(options.perfModes[0]);
   const knowledgePerf = process.env.PERF_M05_SCENARIO === "knowledge";
+  const connectorConfig = connectorPerfConfig();
+  if (connectorConfig.enabled && !knowledgePerf) {
+    throw new Error(
+      "PERF_M05_CONNECTOR=1 requires PERF_M05_SCENARIO=knowledge",
+    );
+  }
+  const connectorPerf = connectorConfig.enabled;
+  const connectorEndpoints = connectorPerf
+    ? [
+        {
+          id: connectorConfig.endpointId,
+          url: connectorConfig.endpointUrl,
+          label: "RustFS perf B11b",
+          allowHttp: true,
+          production: false,
+        },
+      ]
+    : [];
   // 宿主没有 libtesseract 时 Worker 会在 OCR 引擎构造期失败；先探测再决定开关。
   const ocrProbe = probeOcr();
   const context = {
     mode: "perf",
     knowledgePerf,
+    connectorPerf,
+    connectorConfig,
+    connectorEndpoints,
     endpoints: endpoints.endpoints,
     endpointHash: endpoints.hash,
     modelKeysEnv: { REAL_MODEL_KEYS: initialKeys.json },
