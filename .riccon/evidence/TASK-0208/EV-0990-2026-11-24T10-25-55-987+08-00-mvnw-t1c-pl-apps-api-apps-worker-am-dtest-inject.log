@@ -1,0 +1,257 @@
+# command: ./mvnw -T1C -pl apps/api,apps/worker -am -Dtest='InjectionHarnessTest,InjCatalogTest,InjNegativeControlTest,InjResearchPromptTest,InjToolPermissionTest,ConnectorCitationInjectionTest' -Dsurefire.failIfNoSpecifiedTests=false test
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-24T10:24:18.494+08:00
+# finished_at: 2026-11-24T10:25:55.100+08:00
+# duration_ms: 96603
+# exit_code: 0
+
+# --- stdout ---
+[INFO] Scanning for projects...
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] riccon-parent                                                      [pom]
+[INFO] riccon-platform-common                                             [jar]
+[INFO] riccon-platform-domain                                             [jar]
+[INFO] riccon-api                                                         [jar]
+[INFO] riccon-worker                                                      [jar]
+[INFO] 
+[INFO] Using the MultiThreadedBuilder implementation with a thread count of 12
+[INFO] 
+[INFO] ----------------------< com.riccon:riccon-parent >----------------------
+[INFO] Building riccon-parent 0.1.0-SNAPSHOT                              [1/5]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (enforce-toolchain) @ riccon-parent ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.version.RequireJavaVersion passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.version.RequireMavenVersion passed
+[INFO] 
+[INFO] --- jacoco:0.8.16:prepare-agent (prepare-agent) @ riccon-parent ---
+[INFO] Loaded 64 auto-discovered prefixes for remote repository apache.snapshots (prefixes-apache.snapshots.txt)
+[INFO] argLine set to -javaagent:/Users/ricky/.m2/repository/org/jacoco/org.jacoco.agent/0.8.16/org.jacoco.agent-0.8.16-runtime.jar=destfile=/Users/ricky/Documents/projects/riccon-work/target/jacoco.exec
+[INFO] 
+[INFO] 
+[INFO] -----------------< com.riccon:riccon-platform-domain >------------------
+[INFO] -----------------< com.riccon:riccon-platform-common >------------------
+[INFO] Building riccon-platform-domain 0.1.0-SNAPSHOT                     [2/5]
+[INFO] Building riccon-platform-common 0.1.0-SNAPSHOT                     [3/5]
+[INFO]   from platform/platform-domain/pom.xml
+[INFO]   from platform/platform-common/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (enforce-toolchain) @ riccon-platform-domain ---
+[INFO] --- enforcer:3.7.0:enforce (enforce-toolchain) @ riccon-platform-common ---
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (banned-agentscope) @ riccon-platform-common ---
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (banned-platform-domain-dependencies) @ riccon-platform-domain ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- jacoco:0.8.16:prepare-agent (prepare-agent) @ riccon-platform-common ---
+[INFO] 
+[INFO] --- jacoco:0.8.16:prepare-agent (prepare-agent) @ riccon-platform-domain ---
+[INFO] argLine set to -javaagent:/Users/ricky/.m2/repository/org/jacoco/org.jacoco.agent/0.8.16/org.jacoco.agent-0.8.16-runtime.jar=destfile=/Users/ricky/Documents/projects/riccon-work/platform/platform-common/target/jacoco.exec
+[INFO] argLine set to -javaagent:/Users/ricky/.m2/repository/org/jacoco/org.jacoco.agent/0.8.16/org.jacoco.agent-0.8.16-runtime.jar=destfile=/Users/ricky/Documents/projects/riccon-work/platform/platform-domain/target/jacoco.exec
+[INFO] 
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ riccon-platform-common ---
+[INFO] --- resources:3.5.0:resources (default-resources) @ riccon-platform-domain ---
+[INFO] skip non existing resourceDirectory /Users/ricky/Documents/projects/riccon-work/platform/platform-common/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/ricky/Documents/projects/riccon-work/platform/platform-domain/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/ricky/Documents/projects/riccon-work/platform/platform-common/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/ricky/Documents/projects/riccon-work/platform/platform-domain/src/main/resources
+[INFO] 
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ riccon-platform-domain ---
+[INFO] --- compiler:3.15.0:compile (default-compile) @ riccon-platform-common ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ riccon-platform-common ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ riccon-platform-domain ---
+[INFO] skip non existing resourceDirectory /Users/ricky/Documents/projects/riccon-work/platform/platform-domain/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ riccon-platform-domain ---
+[INFO] skip non existing resourceDirectory /Users/ricky/Documents/projects/riccon-work/platform/platform-common/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ riccon-platform-common ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ riccon-platform-common ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ riccon-platform-domain ---
+[INFO] 
+[INFO] 
+[INFO] -----------------------< com.riccon:riccon-api >------------------------
+[INFO] ----------------------< com.riccon:riccon-worker >----------------------
+[INFO] Building riccon-api 0.1.0-SNAPSHOT                                 [4/5]
+[INFO] Building riccon-worker 0.1.0-SNAPSHOT                              [5/5]
+[INFO]   from apps/api/pom.xml
+[INFO]   from apps/worker/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] Loaded 24597 auto-discovered prefixes for remote repository maven-central (prefixes-maven-central.txt)
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (enforce-toolchain) @ riccon-worker ---
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (banned-worker-orm) @ riccon-worker ---
+[WARNING] Could not transfer metadata /.meta/prefixes.txt from/to flyway-community-db-support (https://maven.pkg.github.com/flyway/flyway-community-db-support): HTTP Status: 401
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- jacoco:0.8.16:prepare-agent (prepare-agent) @ riccon-worker ---
+[INFO] argLine set to -javaagent:/Users/ricky/.m2/repository/org/jacoco/org.jacoco.agent/0.8.16/org.jacoco.agent-0.8.16-runtime.jar=destfile=/Users/ricky/Documents/projects/riccon-work/apps/worker/target/jacoco.exec
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ riccon-worker ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ riccon-worker ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ riccon-worker ---
+[INFO] Copying 2 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ riccon-worker ---
+[INFO] Recompiling the module because of changed source code.
+[WARNING] Could not transfer metadata /.meta/prefixes.txt from/to MavenFeed (https://red-gate.pkgs.visualstudio.com/MavenFeed/_packaging/MavenFeed/maven/v1/): HTTP Status: 401
+[INFO] Loaded 7 auto-discovered prefixes for remote repository shibboleth-repo (prefixes-shibboleth-repo.txt)
+[INFO] Compiling 145 source files with javac [debug parameters release 21] to target/test-classes
+[INFO] Loaded 24597 auto-discovered prefixes for remote repository maven_central (prefixes-maven_central.txt)
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (enforce-toolchain) @ riccon-api ---
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (banned-agentscope) @ riccon-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- jacoco:0.8.16:prepare-agent (prepare-agent) @ riccon-api ---
+[INFO] argLine set to -javaagent:/Users/ricky/.m2/repository/org/jacoco/org.jacoco.agent/0.8.16/org.jacoco.agent-0.8.16-runtime.jar=destfile=/Users/ricky/Documents/projects/riccon-work/apps/api/target/jacoco.exec
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ riccon-api ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 14 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ riccon-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ riccon-api ---
+[INFO] Copying 1 resource from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ riccon-api ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 180 source files with javac [debug parameters release 21] to target/test-classes
+[INFO] /Users/ricky/Documents/projects/riccon-work/apps/worker/src/test/java/com/riccon/worker/actuator/InfoLoopbackAccessTest.java: 某些输入文件使用或覆盖了已过时的 API。
+[INFO] /Users/ricky/Documents/projects/riccon-work/apps/worker/src/test/java/com/riccon/worker/actuator/InfoLoopbackAccessTest.java: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+[INFO] /Users/ricky/Documents/projects/riccon-work/apps/worker/src/test/java/com/riccon/worker/research/HitlIntegrationTest.java: /Users/ricky/Documents/projects/riccon-work/apps/worker/src/test/java/com/riccon/worker/research/HitlIntegrationTest.java使用了未经检查或不安全的操作。
+[INFO] /Users/ricky/Documents/projects/riccon-work/apps/worker/src/test/java/com/riccon/worker/research/HitlIntegrationTest.java: 有关详细信息, 请使用 -Xlint:unchecked 重新编译。
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ riccon-worker ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.riccon.worker.injection.InjectionHarnessTest
+[INFO] /Users/ricky/Documents/projects/riccon-work/apps/api/src/test/java/com/riccon/api/support/ApiIntegrationTestSupport.java: 某些输入文件使用或覆盖了已过时的 API。
+[INFO] /Users/ricky/Documents/projects/riccon-work/apps/api/src/test/java/com/riccon/api/support/ApiIntegrationTestSupport.java: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+[INFO] /Users/ricky/Documents/projects/riccon-work/apps/api/src/test/java/com/riccon/api/admin/model/routing/ModelRoutingServiceRaceTest.java: 某些输入文件使用了未经检查或不安全的操作。
+[INFO] /Users/ricky/Documents/projects/riccon-work/apps/api/src/test/java/com/riccon/api/admin/model/routing/ModelRoutingServiceRaceTest.java: 有关详细信息, 请使用 -Xlint:unchecked 重新编译。
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ riccon-api ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+10:25:29.445 [main] WARN org.apache.poi.openxml4j.util.ZipSecureFile -- setting max text size greater than 10485760 can be risky; set to 268435456 chars
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+[INFO] Running com.riccon.api.injection.ConnectorCitationInjectionTest
+10:25:38.144 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.138 s -- in com.riccon.api.injection.ConnectorCitationInjectionTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+10:25:43.316 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:43.880 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:44.172 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:45.236 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:45.453 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:47.597 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:47.618 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:47.642 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:47.665 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:47.721 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:50.418 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:50.443 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:50.459 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:50.934 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:50.949 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:51.146 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:51.163 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:52.072 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:52.126 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:52.138 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:52.150 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:52.164 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:52.226 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:53.662 [main] INFO com.riccon.worker.index.service.KnowledgeIndexService -- knowledge.index.completed tenantId=tenant-inj documentId=00000000-0000-4000-8000-000000000b10 mode=FULL chunks=2 dimensions=3 force=false parseEngine=NONE
+[INFO] Tests run: 25, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 31.17 s -- in com.riccon.worker.injection.InjectionHarnessTest
+[INFO] Running com.riccon.worker.injection.InjResearchPromptTest
+10:25:53.692 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:53.717 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:53.842 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:53.875 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:53.898 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.240 s -- in com.riccon.worker.injection.InjResearchPromptTest
+[INFO] Running com.riccon.worker.injection.InjCatalogTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.077 s -- in com.riccon.worker.injection.InjCatalogTest
+[INFO] Running com.riccon.worker.injection.InjToolPermissionTest
+10:25:54.012 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:54.017 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'delete_knowledge' in group 'ungrouped'
+10:25:54.040 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:54.040 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'delete_knowledge' in group 'ungrouped'
+10:25:54.051 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:54.052 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'delete_knowledge' in group 'ungrouped'
+10:25:54.110 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:54.110 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'delete_knowledge' in group 'ungrouped'
+10:25:54.132 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:54.132 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'delete_knowledge' in group 'ungrouped'
+10:25:54.147 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'knowledge_search' in group 'ungrouped'
+10:25:54.147 [main] INFO io.agentscope.core.tool.Toolkit -- Registered tool 'delete_knowledge' in group 'ungrouped'
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.150 s -- in com.riccon.worker.injection.InjToolPermissionTest
+[INFO] Running com.riccon.worker.injection.InjNegativeControlTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.066 s -- in com.riccon.worker.injection.InjNegativeControlTest
+10:25:54.259 [agentscope-jvm-shutdown-hook] INFO io.agentscope.core.shutdown.GracefulShutdownManager -- Graceful shutdown initiated, 0 active request(s), timeout=infinite
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 46, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for riccon-parent 0.1.0-SNAPSHOT:
+[INFO] 
+[INFO] riccon-parent ...................................... SUCCESS [  3.281 s]
+[INFO] riccon-platform-common ............................. SUCCESS [  1.911 s]
+[INFO] riccon-platform-domain ............................. SUCCESS [  1.911 s]
+[INFO] riccon-api ......................................... SUCCESS [01:07 min]
+[INFO] riccon-worker ...................................... SUCCESS [01:23 min]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:29 min (Wall Clock)
+[INFO] Finished at: 2026-11-24T10:25:54+08:00
+[INFO] ------------------------------------------------------------------------
+
+# --- stderr ---
+
