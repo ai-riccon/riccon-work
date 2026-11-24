@@ -1,0 +1,99 @@
+# command: set -e; RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=b9b-builder ./mvnw -q -T1C -pl apps/api,apps/worker -am -Dtest='com.riccon.api.chat.CitationStatusApiTest,com.riccon.api.research.CitationStatusApiTest,ReportArtifactIntegrationTest#connectorSourceUpdate_persistsVersionSnapshotPerReport' -Dsurefire.failIfNoSpecifiedTests=false test
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-24T10:24:02.791+08:00
+# finished_at: 2026-11-24T10:26:07.606+08:00
+# duration_ms: 124813
+# exit_code: 0
+
+# --- stdout ---
+10:24:55.202 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.research.ReportArtifactIntegrationTest]: ReportArtifactIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+10:24:56.352 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.research.ReportArtifactIntegrationTest
+10:24:57.091 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.research.ReportArtifactIntegrationTest]: ReportArtifactIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+10:24:57.093 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+10:24:57.102 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.research.ReportArtifactIntegrationTest
+10:25:07.531 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.research.CitationStatusApiTest]: CitationStatusApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+10:25:08.939 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.research.CitationStatusApiTest
+10:25:09.683 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.research.CitationStatusApiTest]: CitationStatusApiTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+10:25:09.685 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ResearchApiTestSupport]: ResearchApiTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+10:25:09.694 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+10:25:09.702 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.research.CitationStatusApiTest
+10:25:10.027 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+10:25:10.042 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-24T10:25:11.101+08:00  INFO 98139 --- [riccon-worker] [           main] c.r.w.r.ReportArtifactIntegrationTest    : Starting ReportArtifactIntegrationTest using Java 21.0.13 with PID 98139 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/worker)
+2026-11-24T10:25:11.106+08:00  INFO 98139 --- [riccon-worker] [           main] c.r.w.r.ReportArtifactIntegrationTest    : The following 1 profile is active: "test"
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-24T10:25:17.274+08:00  INFO 98194 --- [riccon-api] [           main] c.r.api.research.CitationStatusApiTest   : Starting CitationStatusApiTest using Java 21.0.13 with PID 98194 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-24T10:25:17.291+08:00  INFO 98194 --- [riccon-api] [           main] c.r.api.research.CitationStatusApiTest   : The following 1 profile is active: "test"
+2026-11-24T10:25:24.734+08:00  INFO 98139 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-24T10:25:26.006+08:00  INFO 98139 --- [riccon-worker] [           main] c.r.w.c.config.ConnectorProperties       : worker connector configuration loaded; enabled=false endpoints=0 maxObjects=5000 maxObjectBytes=104857600 syncTimeoutMinutes=60 schedulerEnabled=true
+2026-11-24T10:25:28.106+08:00  WARN 98139 --- [riccon-worker] [           main] o.a.poi.openxml4j.util.ZipSecureFile     : setting max text size greater than 10485760 can be risky; set to 268435456 chars
+2026-11-24T10:25:30.479+08:00  INFO 98194 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-24T10:25:30.602+08:00  INFO 98194 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-24T10:25:30.604+08:00  INFO 98194 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-24T10:25:30.809+08:00  INFO 98194 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 13296 ms
+2026-11-24T10:25:31.966+08:00  INFO 98194 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-24T10:25:32.165+08:00  INFO 98194 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-24T10:25:32.377+08:00  INFO 98194 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://127.0.0.1:13306/riccon_test_b9b_builder_api?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-24T10:25:33.395+08:00  INFO 98194 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 14 migrations (execution time 00:00.328s)
+2026-11-24T10:25:33.583+08:00  INFO 98194 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon_test_b9b_builder_api`: 14
+2026-11-24T10:25:33.602+08:00  INFO 98194 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Schema `riccon_test_b9b_builder_api` is up to date. No migration necessary.
+2026-11-24T10:25:38.390+08:00  INFO 98194 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-24T10:25:40.182+08:00  INFO 98194 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-24T10:25:40.182+08:00  INFO 98194 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-24T10:25:40.183+08:00  INFO 98194 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-24T10:25:40.183+08:00  INFO 98194 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-24T10:25:40.353+08:00  INFO 98139 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-24T10:25:40.355+08:00  INFO 98139 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-24T10:25:40.502+08:00  INFO 98139 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-24T10:25:40.631+08:00  INFO 98139 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 275 ms
+2026-11-24T10:25:41.521+08:00  WARN 98194 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist is empty; mode=DEMO allowLegacyEndpoints=true
+2026-11-24T10:25:41.526+08:00  INFO 98194 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=0
+2026-11-24T10:25:41.678+08:00  INFO 98139 --- [riccon-worker] [           main] c.r.w.r.ReportArtifactIntegrationTest    : Started ReportArtifactIntegrationTest in 33.302 seconds (process running for 59.982)
+2026-11-24T10:25:42.008+08:00  INFO 98194 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-test, previousKey=true, fingerprintPepper=true
+2026-11-24T10:25:42.406+08:00  INFO 98139 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-24T10:25:42.564+08:00  INFO 98139 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-24T10:25:42.735+08:00  INFO 98139 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=14 actual=14
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-24T10:25:48.450+08:00  INFO 98139 --- [riccon-worker] [           main] c.r.w.r.service.ReportArtifactService    : research.artifact.saved tenantId=tenant-a-cc4fb98544 taskId=01a20b5f-a698-7c72-96c0-b1b1a788f80f artifactId=01a20b5f-a8f2-77ff-aa2c-480e5a06e483 version=1 citations=1
+2026-11-24T10:25:48.645+08:00  INFO 98194 --- [riccon-api] [           main] c.r.a.k.c.config.ConnectorProperties     : connector endpoint allowlist loaded; enabled=false endpoints=0 syncIntervalMinutes=60
+2026-11-24T10:25:49.293+08:00  INFO 98139 --- [riccon-worker] [           main] c.r.w.r.service.ReportArtifactService    : research.artifact.saved tenantId=tenant-a-cc4fb98544 taskId=01a20b5f-a698-7c72-96c0-b1b1a788f80f artifactId=01a20b5f-a8f2-77ff-aa2c-480e5a06e483 version=2 citations=1
+2026-11-24T10:25:52.852+08:00  INFO 98194 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-24T10:25:53.044+08:00  INFO 98194 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 62365 (http) with context path '/'
+2026-11-24T10:25:53.072+08:00  INFO 98194 --- [riccon-api] [           main] c.r.api.research.CitationStatusApiTest   : Started CitationStatusApiTest in 38.608 seconds (process running for 60.301)
+2026-11-24T10:25:53.287+08:00  WARN 98194 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin skipped: platform admin already exists
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-24T10:25:55.385+08:00  INFO 98194 --- [riccon-api] [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-24T10:25:55.386+08:00  INFO 98194 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-24T10:25:55.391+08:00  INFO 98194 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 4 ms
+2026-11-24T10:25:59.678+08:00  INFO 98194 --- [riccon-api] [-auto-1-exec-10] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=t2fba0f3a890a taskId=01a20b5f-d56f-7d88-b1e7-e057b7fafa10 runId=01a20b5f-d56f-703a-bd44-720a758f1edd workspaceId=01a20b5f-d4f5-7bd8-81fb-4af0a03fcdf7 toolId=01a20b5f-d50d-7c37-8deb-b28f30b4daff
+2026-11-24T10:26:04.709+08:00  INFO 98194 --- [riccon-api] [o-auto-1-exec-5] c.r.a.r.service.ResearchTaskService      : research.task.created tenantId=tdb06bf1ed6ab taskId=01a20b5f-e91c-71b2-996b-2724862c54cf runId=01a20b5f-e91c-7276-b62b-5b4f11011bdd workspaceId=01a20b5f-e6fc-7516-9ed4-f9c8366d7893 toolId=01a20b5f-e8d6-7b9e-a143-312d7acecceb
+
+# --- stderr ---
+
