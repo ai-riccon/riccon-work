@@ -65,7 +65,7 @@ info:
 
     ## 编排 Studio（M06）
     - 仅手动触发；串行执行 + 条件分支；节点类型 `START/END/RETRIEVAL/MODEL/MCP_TOOL/APPROVAL/CONDITION`。不支持代码执行/脚本/任意 HTTP、并行/循环/子流程、定时/事件触发、跨租户模板市场、审批通知/代理；接口与 UI 均不提供入口。
-    - 图约束：恰好 1 个 `START`、≥1 个 `END`；每个节点入边 ≤1（不允许合并/并行）；`CONDITION` 恰好 2 条出边 `TRUE`/`FALSE`；无环、无孤立；节点 ≤50、边 ≤100；保存、发布、运行三处校验。
+    - 图约束：恰好 1 个 `START`、≥1 个 `END`；每个节点入边 ≤1（不允许合并/并行）；`CONDITION` 恰好 2 条出边 `TRUE`/`FALSE`；无环、无孤立；节点 ≤50、边 ≤100。校验 profile：**SAVE 为编辑级**（结构/必填/节点配置/模型/工具/条件/结果/限制），**VALIDATE 与 PUBLISH 为完整发布口径**（再加审批可达/NO_APPROVER/发布范围），运行前再做一次执行前校验。
     - 版本：草稿 `version` 乐观锁；发布版本不可变并绑定 `runScope`（`ONLY_SELF`/`DEPARTMENT`/`TENANT`）；运行绑定发布版本；草稿修改不影响在跑运行；旧版本仍可运行，除非流程停用。
     - 审批：审批节点指定角色/人；发起人不得审批自己的运行（403）；无可用审批人时保持等待、不自动放行；写工具/高风险工具必须经过前置审批，重试重新审批；审批摘要只显示脱敏参数与审批人有权访问的引用。
     - 运行：`PENDING/RUNNING/WAITING_APPROVAL/SUCCEEDED/FAILED/CANCELLED`；节点级时间线；失败可重试失败节点，上游不重跑；取消保留已完成结果；运行默认保留 180 天，到期统一不可见，无在线删除。
@@ -2640,7 +2640,8 @@ paths:
       summary: 保存流程草稿
       description: |
         `version` 为草稿乐观锁；不一致返回 409 `RICCON-WF-409`，前端可另存副本或放弃。
-        保存不做完整发布校验（允许未完成草稿），非法结构在 validate/publish 拒绝。
+        校验 profile 为**编辑级**：结构、必填、节点配置、模型、工具授权、条件、结果与资源限制。非法图返回 400 `RICCON-WF-400`，**不写草稿、不写审计**；不得把“保存成功”理解为已通过发布校验。
+        编辑级校验允许仅发布级问题（例如尚未配置可用的非发起人审批人）暂不阻断保存，但节点配置本身必须合法（不允许脚本/任意 HTTP/未知节点/缺失必填）。逐项 issues 与 `POST /validate` 同口径；SAVE 的 400 沿用 `ProblemDetail`（`code`/`detail`/`field`），调用方可重读草稿后调用 `/validate` 获取完整 `WorkflowValidationResult`（本契约不新增错误 body schema）。
       x-riccon-permission: workflow.edit
       parameters:
         - $ref: "#/components/parameters/WorkflowId"
@@ -2709,7 +2710,9 @@ paths:
       tags: [Workflow]
       operationId: validateWorkflow
       summary: 校验流程草稿
-      description: 返回逐项问题（节点、原因、修正字段）；画布与列表/表单共用同一结果。
+      description: |
+        校验 profile 与 PUBLISH **完全同口径**：结构、必填、节点配置、模型、工具授权、条件、结果与限制，以及审批可达性/NO_APPROVER、发布范围。返回 `WorkflowValidationResult{valid,issues}`（节点、原因、修正字段）；画布与列表/表单共用同一结果。
+        只读：不改变 `draftVersion`、不写草稿、不产生版本、不写审计。
       x-riccon-permission: workflow.edit
       parameters:
         - $ref: "#/components/parameters/WorkflowId"
@@ -2732,7 +2735,9 @@ paths:
       tags: [Workflow]
       operationId: publishWorkflow
       summary: 发布流程版本
-      description: 校验通过后生成不可变版本；`runScope` 受角色限制；有审批节点但无可用审批人时返回 400 `RICCON-WF-400`。
+      description: |
+        先执行与 VALIDATE 相同的**完整发布校验**：结构、必填、节点配置、模型、工具授权、条件、结果与限制，以及审批可达性/NO_APPROVER、`runScope` 角色/部门范围。
+        校验失败返回 400 `RICCON-WF-400`，**不产生 `workflow_version`、不改变当前发布版本**；有审批节点但无可用非发起人审批人时同样阻断。校验通过后才生成不可变版本。
       x-riccon-permission: workflow.publish
       parameters:
         - $ref: "#/components/parameters/WorkflowId"

@@ -125,10 +125,10 @@ contracts/
 | GET/POST | `/api/v1/workflows`                                      | `workflow.read` / `workflow.edit` | 列表（`view=MINE/RUNNABLE/ALL`）/ 新建草稿或从模板复制        |
 | GET      | `/api/v1/workflows/runtime-limits`                       | `workflow.read`                   | 生效限制、保留、开关；租户只读；字面路径优先于 `{workflowId}` |
 | GET      | `/api/v1/workflows/{workflowId}`                         | `workflow.read`                   | 详情 + `draftGraph`（仅所有者/租户管理员）                    |
-| PUT      | `/api/v1/workflows/{workflowId}/draft`                   | `workflow.edit`                   | 保存草稿；`version` 乐观锁，冲突 409                          |
+| PUT      | `/api/v1/workflows/{workflowId}/draft`                   | `workflow.edit`                   | 保存草稿；编辑级校验（非法 400 不写库）；`version` 乐观锁，冲突 409 |
 | POST     | `/api/v1/workflows/{workflowId}/duplicate`               | `workflow.edit`                   | 另存副本                                                      |
-| POST     | `/api/v1/workflows/{workflowId}/validate`                | `workflow.edit`                   | 逐项校验问题                                                  |
-| POST     | `/api/v1/workflows/{workflowId}/publish`                 | `workflow.publish`                | 发布不可变版本；`runScope` 受角色/部门限制                    |
+| POST     | `/api/v1/workflows/{workflowId}/validate`                | `workflow.edit`                   | 完整发布口径逐项校验（同 PUBLISH）；只读，不改变草稿版本      |
+| POST     | `/api/v1/workflows/{workflowId}/publish`                 | `workflow.publish`                | 完整校验（含 NO_APPROVER/范围）；失败不产生版本               |
 | GET      | `/api/v1/workflows/{workflowId}/versions`                | `workflow.read`                   | 版本列表                                                      |
 | POST     | `/api/v1/workflows/{workflowId}/disable`、`/enable`      | `workflow.publish`                | 停用/启用；审计前后状态                                       |
 | POST     | `/api/v1/workflows/{workflowId}/transfer`                | `workflow.manage`                 | 移交所有权（仅租户管理员）                                    |
@@ -141,7 +141,7 @@ contracts/
 | GET      | `/api/v1/workflow-templates`                             | `workflow.read`                   | 内置模板列表（M06 至少 1 个）                                 |
 | POST     | `/api/v1/workflow-templates/{templateId}/copy`           | `workflow.edit`                   | 复制为当前用户草稿                                            |
 
-- 图约束：1 个 `START`、≥1 个 `END`、每个节点入边 ≤1、`CONDITION` 出边恰好 `TRUE/FALSE`、无环/无孤立、节点 ≤50、边 ≤100；保存/发布/运行三处校验。
+- 图约束：1 个 `START`、≥1 个 `END`、每个节点入边 ≤1、`CONDITION` 出边恰好 `TRUE/FALSE`、无环/无孤立、节点 ≤50、边 ≤100。**校验 profile**：SAVE=编辑级（结构/必填/节点配置/模型/工具/条件/结果/限制；非法 400 不写库/不写审计）；VALIDATE=PUBLISH=完整发布口径（再加审批可达/NO_APPROVER/发布范围；VALIDATE 只读，PUBLISH 失败不产生版本）；运行前再做一次执行前校验。SAVE 不替代发布校验，也不允许非法图。
 - 版本：发布不可变；运行绑定版本；`runScope` 为版本属性，变更需发布新版本；旧版本仍可运行，除非流程停用。
 - 审批：指定 `USER` 或 `ROLE`（`TENANT_ADMIN`/`WORKFLOW_EDITOR`/`MEMBER`）；发起人不得审批；无可用审批人保持等待；写工具/高风险工具必须前置审批，重试重新审批；审批摘要按审批人 ACL 最小可见。
 - 运行：默认 180 天保留、到期不可见、无在线删除；节点/步数/超时/并发/5 MiB 限制由部署配置；超限 `RICCON-WF-429` 或 `WF_*` 稳定码。队列执行不变量（batch=1/槽位、心跳≤lease/3、独立调度/心跳池）属于实现/运维约束，不在 REST 契约暴露；指标/RUNBOOK 见 ADR-0024 §10。
@@ -187,7 +187,7 @@ M05b 契约测试位置（B2b 交付）：`apps/api/src/test/java/com/riccon/api
 ./mvnw -q -T1C -pl apps/api -am test -Dtest='*Contract*Test' -Dsurefire.failIfNoSpecifiedTests=false
 ```
 
-M06 契约测试位置（T-M06-01 交付）：`apps/api/src/test/java/com/riccon/api/contract/WorkflowContractM06Test`，覆盖 `listWorkflows`/`createWorkflow`/`getWorkflowRuntimeLimits`/`getWorkflow`/`saveWorkflowDraft`/`duplicateWorkflow`/`validateWorkflow`/`publishWorkflow`/`listWorkflowVersions`/`disableWorkflow`/`enableWorkflow`/`transferWorkflow`/`listWorkflowRunsForWorkflow`/`createWorkflowRun`/`listWorkflowRuns`/`getWorkflowRun`/`cancelWorkflowRun`/`retryWorkflowRunNode`/`listWorkflowApprovals`/`getWorkflowApproval`/`decideWorkflowApproval`/`listWorkflowTemplates`/`copyWorkflowTemplate` 的 schema、枚举、错误码与 `x-riccon-permission`。
+M06 契约测试位置（T-M06-01 交付）：`apps/api/src/test/java/com/riccon/api/contract/WorkflowContractM06Test`，覆盖 `listWorkflows`/`createWorkflow`/`getWorkflowRuntimeLimits`/`getWorkflow`/`saveWorkflowDraft`/`duplicateWorkflow`/`validateWorkflow`/`publishWorkflow`/`listWorkflowVersions`/`disableWorkflow`/`enableWorkflow`/`transferWorkflow`/`listWorkflowRunsForWorkflow`/`createWorkflowRun`/`listWorkflowRuns`/`getWorkflowRun`/`cancelWorkflowRun`/`retryWorkflowRunNode`/`listWorkflowApprovals`/`getWorkflowApproval`/`decideWorkflowApproval`/`listWorkflowTemplates`/`copyWorkflowTemplate` 的 schema、枚举、错误码与 `x-riccon-permission`；并断言校验 profile：SAVE 非法图返回 400 `RICCON-WF-400` 且不写库/审计，VALIDATE 返回 `WorkflowValidationResult{valid,issues}` 且不改草稿版本，PUBLISH 完整校验失败不产生版本。
 
 ## 7. 所有者与变更流程
 
