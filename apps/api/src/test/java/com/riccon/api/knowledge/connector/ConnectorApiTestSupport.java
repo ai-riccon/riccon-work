@@ -37,9 +37,17 @@ abstract class ConnectorApiTestSupport extends ApiIntegrationTestSupport {
     /** JSON 序列化。 */
     protected static final ObjectMapper JSON = new ObjectMapper();
 
-    /** 测试桶名；带随机后缀，避免共享 RustFS 时互相干扰。 */
+    /** 连接器源桶名；带随机后缀，避免共享 RustFS 时互相干扰。 */
     protected static final String BUCKET =
             "riccon-connector-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+
+    /**
+     * 平台桶名；与连接器源桶分离。
+     *
+     * <p>连接器同步把对象写入平台桶，因此下载用例必须证明读取的是平台桶而不是连接器源桶；
+     * external 模式下带 namespace，避免并行 agent 共用对象。
+     */
+    protected static final String PLATFORM_BUCKET = ExternalTestServices.bucketName();
 
     /** 本地 S3 端点 ID。 */
     protected static final String ENDPOINT_ID = "local-rustfs";
@@ -72,7 +80,8 @@ abstract class ConnectorApiTestSupport extends ApiIntegrationTestSupport {
         if (!ExternalTestServices.enabled()) {
             OBJECT_STORAGE.start();
         }
-        createBucket();
+        createBucket(BUCKET);
+        createBucket(PLATFORM_BUCKET);
     }
 
     /**
@@ -85,7 +94,7 @@ abstract class ConnectorApiTestSupport extends ApiIntegrationTestSupport {
         registry.add("riccon.storage.endpoint", ConnectorApiTestSupport::endpoint);
         registry.add("riccon.storage.access-key", ExternalTestServices::storageAccessKey);
         registry.add("riccon.storage.secret-key", ExternalTestServices::storageSecretKey);
-        registry.add("riccon.storage.bucket", () -> BUCKET);
+        registry.add("riccon.storage.bucket", () -> PLATFORM_BUCKET);
         registry.add("riccon.storage.path-style", () -> "true");
         registry.add("riccon.connector.enabled", () -> "true");
         registry.add("riccon.connector.endpoints", ConnectorApiTestSupport::endpointJson);
@@ -535,10 +544,14 @@ abstract class ConnectorApiTestSupport extends ApiIntegrationTestSupport {
                 .build();
     }
 
-    /** 创建测试桶；已存在视为成功。 */
-    private static void createBucket() {
+    /**
+     * 创建测试桶；已存在视为成功。
+     *
+     * @param bucket 桶名
+     */
+    private static void createBucket(String bucket) {
         try (S3Client s3 = s3Client()) {
-            s3.createBucket(CreateBucketRequest.builder().bucket(BUCKET).build());
+            s3.createBucket(CreateBucketRequest.builder().bucket(bucket).build());
         } catch (BucketAlreadyOwnedByYouException | BucketAlreadyExistsException exception) {
             // 共享 RustFS 复用。
         } catch (S3Exception exception) {
