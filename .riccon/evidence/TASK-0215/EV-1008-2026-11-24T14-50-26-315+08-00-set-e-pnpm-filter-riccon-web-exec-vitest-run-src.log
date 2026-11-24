@@ -1,0 +1,38 @@
+# command: set -e; pnpm --filter @riccon/web exec vitest run src/pages/admin/connectors --reporter=dot; pnpm --filter @riccon/web typecheck; pnpm --filter @riccon/web lint
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-24T14:49:44.678+08:00
+# finished_at: 2026-11-24T14:50:25.881+08:00
+# duration_ms: 41202
+# exit_code: 0
+
+# --- stdout ---
+
+ RUN  v5.1.0 /Users/ricky/Documents/projects/riccon-work/apps/web
+
+································
+
+ Test Files  2 passed (2)
+      Tests  32 passed (32)
+   Start at  14:49:45
+   Duration  16.15s (tests 45%, import 33%, environment 12%, transform 5%, setup 4%)
+
+
+> @riccon/web@0.1.0 typecheck /Users/ricky/Documents/projects/riccon-work/apps/web
+> max setup && tsc --noEmit
+
+info  - [你知道吗？] 如果你需要使用 Tailwind CSS, max g tailwindcss 就可以一键完成配置，详见 https://umijs.org/docs/guides/generator#tailwind-css-配置生成器
+info  - generate files
+info  - Preparing...
+
+> @riccon/web@0.1.0 lint /Users/ricky/Documents/projects/riccon-work/apps/web
+> eslint --max-warnings=0 . && prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+
+# --- stderr ---
+stderr | src/pages/admin/connectors/index.test.tsx
+Warning: [antdx: XNotification] Notification API is not supported in this environment.
+
+(node:73843) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
