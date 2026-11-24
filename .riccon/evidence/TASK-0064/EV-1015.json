@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-1015",
+  "task_id": "TASK-0064",
+  "command": "node scripts/test-services.mjs reset --namespace m10-p1 && RICCON_TEST_SERVICES=external RICCON_TEST_SERVICES_NAMESPACE=m10-p1 ./mvnw -q -T1C -pl apps/api,apps/worker -am -Dtest=OidcStartupValidationTest,OidcConfigurationParserTest,SchemaVersionCheckerTest,RoleDefinitionsTest,V10MigrationTest -Dsurefire.failIfNoSpecifiedTests=false test && grep -q 'expected_tables' .github/workflows/ci.yml && grep -q 'v10_table' .github/workflows/ci.yml && grep -q 'V10 生产迁移' docs/RUNBOOK.md && grep -q 'OPS-004 协调切换顺序' docs/RUNBOOK.md && grep -q 'EXPECTED_SCHEMA_VERSION = 14' apps/worker/src/main/java/com/riccon/worker/persistence/SchemaVersionChecker.java",
+  "manual": false,
+  "commit": "9a5651efca5b9b13e06888cd31da11de0b445559",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0064/EV-1015-2026-11-24T21-03-42-984+08-00-node-scripts-test-services-mjs-reset-namespace-m.log",
+  "output_sha256": "5a0caed68c925532b859ee72fdc3e678011d615446a88371dfdf920c927f2f2d",
+  "output_bytes": 91240,
+  "agent": "riccon/verifier",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-24T21:02:32.342+08:00",
+  "finished_at": "2026-11-24T21:03:41.960+08:00",
+  "duration_ms": 69617,
+  "note": "M10 P1 复验：OPS-001 CI/RUNBOOK 结构断言、OPS-002 worker schema 锁定 14、OPS-003 OIDC 启动脱敏、OPS-004 协调切换；工作树仅 AGENTS.md 为内核同步未提交文档差异，取证期间临时还原、结束后恢复；.riccon 不参与 dirty",
+  "recorded_at": "2026-11-24T21:03:42.985+08:00"
+}
