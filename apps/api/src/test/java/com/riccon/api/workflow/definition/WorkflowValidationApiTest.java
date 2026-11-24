@@ -6,10 +6,12 @@ import com.riccon.api.common.UuidV7;
 import com.riccon.api.persistence.BinaryUuids;
 import com.riccon.api.support.ApiIntegrationTestSupport;
 import com.riccon.api.support.ApiTestClient;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
@@ -29,6 +31,42 @@ class WorkflowValidationApiTest extends ApiIntegrationTestSupport {
 
     /** 保存非法图统一错误码。 */
     private static final String WF_400 = "RICCON-WF-400";
+
+    /** 本测试创建的模型 ID，用于清理全局目录。 */
+    private final List<UUID> createdModelIds = new ArrayList<>();
+
+    /** 本测试创建的 provider ID，用于清理全局目录。 */
+    private final List<UUID> createdProviderIds = new ArrayList<>();
+
+    /**
+     * 清理测试写入的全局模型目录，避免污染同 JVM 的其他模型目录用例。
+     *
+     * <p>只删除本测试创建的 provider/model/routing 行；不触碰租户数据与 MCP 目录。
+     */
+    @AfterEach
+    void cleanGlobalModelCatalog() {
+        if (createdModelIds.isEmpty()) {
+            return;
+        }
+        List<byte[]> modelIds =
+                createdModelIds.stream().map(BinaryUuids::toBytes).toList();
+        jdbcClient
+                .sql("DELETE FROM model_routing_entry WHERE model_id IN (:ids)")
+                .param("ids", modelIds)
+                .update();
+        jdbcClient
+                .sql("DELETE FROM model WHERE id IN (:ids)")
+                .param("ids", modelIds)
+                .update();
+        List<byte[]> providerIds =
+                createdProviderIds.stream().map(BinaryUuids::toBytes).toList();
+        jdbcClient
+                .sql("DELETE FROM model_provider WHERE id IN (:ids)")
+                .param("ids", providerIds)
+                .update();
+        createdModelIds.clear();
+        createdProviderIds.clear();
+    }
 
     /** 合法模板等价图：开始→检索→草稿模型→审批→工具（工具留空）→报告模型→结束。 */
     private static final String TEMPLATE_GRAPH = """
@@ -447,6 +485,8 @@ class WorkflowValidationApiTest extends ApiIntegrationTestSupport {
     private UUID createModel(String status, boolean inReportChain) {
         UUID providerId = UuidV7.generate();
         UUID modelId = UuidV7.generate();
+        createdProviderIds.add(providerId);
+        createdModelIds.add(modelId);
         String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         jdbcClient
                 .sql("""
