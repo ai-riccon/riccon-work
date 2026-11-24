@@ -56,7 +56,8 @@
 ## 5. 评审
 
 - 模块评审：`.riccon/reviews/<module>-review.md`，由 `review.schema.json` 校验，参与模块 gate。
-- 任务级/架构级独立评审：`.riccon/reviews/tasks/<task>-review.md`，由 `task-review.schema.json` 校验；不参与模块 gate，由 Lead 在任务 closeout 核对。
+- 任务级/架构级独立评审：`.riccon/reviews/tasks/<task>-review.md`，由 `task-review.schema.json` 校验；不替代模块评审，由 Lead 在任务 closeout 核对。
+- 模块 gate 会读取每个任务最新 task review 的 verdict 和 findings；verdict 非 pass、P0/P1 未 fixed、新 task review 的 open P2/P3 都会失败；旧 task review 的 P2/P3 只 warning。
 - Review 必须绑定当前模块、最新证据，reviewer 独立，verdict 为 pass；`reviewer.session` 填真实 `ses_...` 会话 ID。0.1.9 起新 review 使用 `ses_verifier_*`、`ses_xxx` 等非真实 ID 会让 gate 失败；2026-11-20 之前的旧 review 只产生 warning。
 - pass 时不得保留 open finding：P0/P1 必须 fixed；P2/P3 必须 fixed 或 accepted，accepted 必须写 owner、due、accepted_reason。模块评审用 `reviewed_task_reviews` 列出每个已有 task review 的最新 review_id。影响 AC 的 accepted finding 必须写成 `pass (with residual)`。
 - 替换模块评审前先归档旧文件到 `.riccon/archive/reviews/`；`previous_review` 找不到会让 `state validate` warning。

@@ -374,7 +374,7 @@ budget:
 | 运行、部署、回滚 | `docs/RUNBOOK.md` |
 | 沙箱和隔离边界 | `docs/SANDBOX.md` |
 | 执行状态、任务、证据、评审、handoff | `.riccon/state.json` 和最新 handoff |
-| 团队内核、命令和 skills | 已安装的 `~/.config/opencode/riccon/` |
+| 团队内核、命令和 skills | 已安装的 `~/.config/opencode/riccon/`（Windows：`%USERPROFILE%\.config\opencode\riccon/`） |
 
 ## 硬规则
 
@@ -382,10 +382,10 @@ budget:
 
 - 合同是技术栈、命令、工具和约束的唯一事实源；合同里没有的目录、命令或工具不要假设。
 - 每个任务都有 `write_scope` 和验收标准；不要静默扩大任何一项。并行 builder 使用实例 owner（例如 `riccon/builder-b2`）；同一 owner 同时只能有一个 `in_progress`，不要用 `--force` 绕过。
-- 先提交，再 `riccon evidence run`；strict 下 dirty 证据、空命令、占位命令和掩盖失败的写法不能让 gate 通过。模块 gate 的 `test` 和 `coverage` 优先共用同一条 coverage 全量 EV；长命令移到后台后结束回合等通知，禁止 `sleep`/`tail`/`ps` 轮询。
+- 先提交，再 `riccon evidence run`；strict 下 dirty 证据、空命令、占位命令和掩盖失败的写法不能让 gate 通过。模块 gate 的 `test` 和 `coverage` 优先共用同一条 coverage 全量 EV；长命令移到后台后结束回合等通知，禁止 `sleep`/`tail`/`ps` 轮询。Windows 下证据命令在 `cmd.exe` 中执行，`cmd /c`、`powershell -Command`、`pwsh -Command` 包装会被展开检查，`exit /b N` 与 `exit N` 等价。
 - Product 的 brief/AC/non-goals 必须经过 Lead、用户、Architect、Verifier 的评审链；未批准不进入模块实现。
 - Architect 的架构/ADR 必须经过 Lead、用户（不可逆项）、Verifier、Ops 评审；未评审的 ADR 保持 `proposed`。
-- Builder 只把任务移到 `review`，不自己 `done`；高风险任务在 done 前必须有独立 Verifier 评审。
+- Builder 只把任务移到 `review`，不自己 `done`；高风险任务在 done 前必须有独立 Verifier 评审。模块 gate 会读取每个任务最新 task review 的 verdict 和 findings，P0/P1 未 fixed 不能通过。
 - gate 通过后、模块 done 前，Product 预验收必须 `pass`；done 后再做用户最终验收，用户未 `accepted` 前不启动下一个用户可见模块。
 - 验收失败用 `kind: fix` + `fixes_module`，或在显式决策后重新打开；不要只靠标题或 `depends_on`。
 - 不把密钥写进仓库、`.riccon/`、日志、任务卡、证据、提示词或 handoff。
