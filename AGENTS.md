@@ -359,23 +359,22 @@ budget:
 - `opencode`：仅当需要修改团队配置或排查 OpenCode 自身行为时加载。
 
 <!-- riccon:team:start -->
-
 ## 内容索引
 
 本文件保留合同和硬规则；详细协作规则按下面索引读取。开始或恢复任何模块前，必须读 Project Contract 和 `docs/COLLABORATION.md`。
 
-| 内容                                              | 位置                                  |
-| ------------------------------------------------- | ------------------------------------- |
-| 技术栈、命令、工具、DoD、预算                     | `AGENTS.md#project-contract`          |
-| 角色边界、模块/任务生命周期、验收顺序、评审、证据 | `docs/COLLABORATION.md`               |
-| 产品目标、用户、MVC、non-goals、AC                | `docs/PRODUCT.md`                     |
-| 架构、数据模型、API/事件契约、ADR                 | `docs/ARCHITECTURE.md`、`docs/adr/`   |
-| 编码规范、注释、覆盖率门槛                        | `docs/CODING-STANDARDS.md`            |
-| 产品验收和用户验收                                | `docs/ACCEPTANCE.md`                  |
-| 运行、部署、回滚                                  | `docs/RUNBOOK.md`                     |
-| 沙箱和隔离边界                                    | `docs/SANDBOX.md`                     |
-| 执行状态、任务、证据、评审、handoff               | `.riccon/state.json` 和最新 handoff   |
-| 团队内核、命令和 skills                           | 已安装的 `~/.config/opencode/riccon/` |
+| 内容 | 位置 |
+|---|---|
+| 技术栈、命令、工具、DoD、预算 | `AGENTS.md#project-contract` |
+| 角色边界、模块/任务生命周期、验收顺序、评审、证据 | `docs/COLLABORATION.md` |
+| 产品目标、用户、MVC、non-goals、AC | `docs/PRODUCT.md` |
+| 架构、数据模型、API/事件契约、ADR | `docs/ARCHITECTURE.md`、`docs/adr/` |
+| 编码规范、注释、覆盖率门槛 | `docs/CODING-STANDARDS.md` |
+| 产品验收和用户验收 | `docs/ACCEPTANCE.md` |
+| 运行、部署、回滚 | `docs/RUNBOOK.md` |
+| 沙箱和隔离边界 | `docs/SANDBOX.md` |
+| 执行状态、任务、证据、评审、handoff | `.riccon/state.json` 和最新 handoff |
+| 团队内核、命令和 skills | 已安装的 `~/.config/opencode/riccon/` |
 
 ## 硬规则
 
@@ -393,7 +392,6 @@ budget:
 - 产品范围、不可逆技术选择、生产发布、花钱和破坏性操作由用户拥有；其余授权给团队。
 - 文档、注释、commit message、决策包、评审包和 handoff 默认中文；代码注释必须中文，标识符、命令、字段名保持英文。
 - 所有时间默认北京时间（`Asia/Shanghai`，UTC+08:00）；API/日志/UI 使用带偏移时间，数据库按合同/ADR 使用带时区类型或显式存储偏移。
-
 <!-- riccon:team:end -->
 
 ## 项目补充
