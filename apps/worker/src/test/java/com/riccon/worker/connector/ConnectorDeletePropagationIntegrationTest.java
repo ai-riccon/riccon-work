@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
 
 import com.riccon.platform.common.tenant.TenantContext;
 import com.riccon.platform.common.tenant.TenantId;
@@ -21,6 +23,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -35,16 +38,16 @@ class ConnectorDeletePropagationIntegrationTest extends WorkerIntegrationTestBas
     @MockitoBean
     private ConnectorAuditWriter auditWriter;
 
-    /** 事件 mock。 */
-    @MockitoBean
+    /** 事件 spy；默认执行真实幂等分支，失败用例再 doThrow。 */
+    @MockitoSpyBean
     private ConnectorEventPublisher eventPublisher;
 
     /** 传播服务。 */
     @Autowired
     private ConnectorDeletePropagationService propagationService;
 
-    /** 仓储。 */
-    @Autowired
+    /** 仓储 spy；默认真实执行，用于验证幂等分支确实查询了事件。 */
+    @MockitoSpyBean
     private ConnectorRepository connectorRepository;
 
     @Test
@@ -122,6 +125,9 @@ class ConnectorDeletePropagationIntegrationTest extends WorkerIntegrationTestBas
         }
         assertThat(itemStatus(fixture)).isEqualTo("DELETED");
         assertThat(documentDeletedAt(fixture)).isNotNull();
+        // 证明真实 publisher 的 enqueueDelete 被调用，并在 hasDeleteIndexEvent 命中后提前返回。
+        verify(eventPublisher).enqueueDelete(any(), any(), anyInt(), any(), any(), any());
+        verify(connectorRepository).hasDeleteIndexEvent(any(), eq(fixture.documentId()), eq(1));
         assertThat(jdbcClient
                         .sql("""
                         SELECT COUNT(*) FROM agent_run_outbox
