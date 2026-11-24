@@ -1252,9 +1252,102 @@ config 含探针与 `internal: true` 网络；第 2 步路由表仅表头、`ext
 - **失败语义**：退避重试后置 `ERROR`，失败也写 finish（含计数与错误码）；不完整的 list 不删除文档；
   超时后下一轮增量继续。重试只处理失败项，不重复建文档（B6 `IT-CONN-104/105`）。
 - **凭据 30 天置空**：连接器软删除后 `credential_ciphertext` 保留 30 天供误删恢复，随后由 **M09 维护任务**置空并
-  审计（owner `riccon/ops`，due M09 gate）；M05b 不提供在线清除端点。脚本与细化步骤归 **O2b**（`scripts/ops/**`）。
+  审计（owner `riccon/ops`，due M09 gate）；M05b 不提供在线清除端点。执行脚本与演练步骤见 **M05b-6**
+  （O2b，`scripts/ops/blank-connector-credentials.mjs`）。
   在 M09 任务就绪前，到期未置空记为 **release blocker**；禁止手工
   `UPDATE kb_connector SET credential_ciphertext = NULL` 绕过审计。
+
+### M05b-6 凭据 30 天置空（O2b/M09）
+
+依据 ADR-0023 §6.4/§10：连接器软删除后 `credential_ciphertext` 保留 **30 天**供误删恢复，随后置空并审计。
+**O2b 只交付执行脚本与流程；M09 负责生产调度与物理清理。** M05/M05b 没有在线凭据清除端点，本脚本
+**不是**常驻自动任务，不能被 API 调用或挂进请求路径。
+
+**触发条件**
+
+- 连接器在管理端软删除（`kb_connector.deleted_at` 非空）满 30 天后仍保留密文，即为到期；
+- M09 维护任务（建议每日一次、单实例）调用本脚本；故障后可按变更单手工补跑；
+- 不因“连接器看起来没用了”提前执行：窗口内允许误删恢复，置空后**不可逆**。
+
+**边界与不变量**
+
+- 只改 `kb_connector` 的 `credential_ciphertext` / `credential_key_id` / `credential_masked_hint` 三列；
+- 只处理 `deleted_at IS NOT NULL AND deleted_at <= now - 30 天 AND credential_ciphertext IS NOT NULL`；
+- 不处理未软删除（`ACTIVE`/`PAUSED`/`ERROR`）与未满 30 天的行；
+- 不删除连接器行、知识文档、分块、tombstone 或对象存储正文；不读、不解密、不打印凭据；
+- 审计与置空**同一事务**：审计写入失败整批回滚（exit 1），不会出现“已置空但无审计”的行；
+- 幂等：条件更新 + 每批 CHECK 断言“审计条数 = 实际置空行数”；重复执行 0 变更、0 审计。
+
+**命令**
+
+```bash
+# 1) dry-run（默认，只读）：核对到期数量、按租户分布与 ID 样本（不含密文）
+node scripts/ops/blank-connector-credentials.mjs
+#    测试栈/namespace：加 --database riccon_test_<ns>_api
+#    客户环境：加 --via=client（需 RICCON_DB_HOST/USER/PASSWORD）与 --database riccon
+
+# 2) apply：确认 dry-run 数字符合预期，且确已越过 30 天窗口
+node scripts/ops/blank-connector-credentials.mjs --apply
+
+# 3) 复核：到期行应无密文；SYSTEM 置空审计条数 = 置空行数
+```
+
+```sql
+-- 剩余到期行；期望 0（仅当上次达单次上限时才可能 > 0，再跑一次即可）
+SELECT COUNT(*) AS due_left
+  FROM kb_connector
+ WHERE deleted_at IS NOT NULL
+   AND deleted_at <= UTC_TIMESTAMP(6) - INTERVAL 30 DAY
+   AND credential_ciphertext IS NOT NULL;
+
+-- 维护置空审计（与管理员轮换用 actor_type / trace_id 区分）
+SELECT COUNT(*) AS blank_audits
+  FROM audit_event
+ WHERE action = 'knowledge.connector.credential.changed'
+   AND actor_type = 'SYSTEM'
+   AND trace_id = 'connector-credential-blank';
+```
+
+**审计与保留**
+
+- 动作 `knowledge.connector.credential.changed`，target `KNOWLEDGE_CONNECTOR`，`target_id` = connectorId，
+  `actor_type=SYSTEM`、`actor_id=system`、`trace_id=connector-credential-blank`；
+- details 仅 `connectorId` / `type` / `credentialKeyId` / `maskedHint`（置空前的值），均在 ADR-0023 §5.6
+  白名单内，不含密文、对象 key 或正文；
+- 管理员轮换写同一动作但 `actor_type=USER` 且 trace_id 不同；排查时用 actor/trace 区分“维护置空”与“轮换”；
+- 审计 ≥180 天 append-only，不随置空删除；到期按分区 DROP 清理归 M09。
+
+**批量与幂等**
+
+- 默认 100 行/批 × 100 批 = 单次最多 10 000 行；`--batch-size`（≤1000）与 `--max-batches` 可调；
+- 达单次上限时输出 `truncated=true`、exit 0，余量留待下次；不要把批量调到很大来“一次跑完”。
+
+**失败处理**
+
+| 现象                            | 处理                                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------------------- |
+| exit 1 + `mysql 执行失败`       | DB 不可达/权限不足/审计写入被拒。整批已回滚；修复后重跑，**不要**手工 UPDATE 绕过审计 |
+| exit 1 + 计数断言失败           | `chk_blank_credential_guard` 或 `审计与置空行数不一致`；事务已回滚，停止并排查并发写  |
+| exit 2                          | 参数或环境错误（未知参数、`--via=client` 缺 `RICCON_DB_*`、非法数据库名）             |
+| exit 0 且 `truncated=true`      | 正常分批结果，不是失败；再次运行处理剩余行                                            |
+
+**与 M09 物理清理/备份/回滚的边界**
+
+- 本脚本**不**物理删除连接器行、文档、分块、tombstone 或对象存储；这些归 M09（ADR-0023 §10，release blocker）；
+- 置空**不可逆**：备份里的旧库仍含窗口前的密文，整库恢复会把已置空凭据一并带回。若误置空且源端凭据仍在
+  客户密钥库，只能由管理员在管理端重新录入；**不要**用恢复备份“回滚”这一步；
+- 禁止用 `UPDATE ... SET credential_ciphertext = <旧值>` 手工塞回密文（会与 DEK/AAD 不一致且绕过审计）；
+- M09 上线前，生产“到期未置空”记为 release blocker；调度建议每日一次、单实例、与备份窗口错开，
+  且首次生产 `--apply` 前必须先 dry-run 并由变更单批准。
+
+**O2b 验证记录（2026-11-24，测试栈 MySQL 8.4.13，独立库 `riccon_test_o2b_check_api`）**
+
+构造四类行（软删除 40 天有密文、软删除 10 天有密文、`ACTIVE` 有密文、软删除 40 天已置空）：
+dry-run 计数 `dueWithCiphertext=1` / `withinWindowWithCiphertext=1` / `activeWithCiphertext=1` /
+`dueWithoutCiphertext=1`；`--apply` 后 `processed=1`、`auditEvents=1`，仅第一类三列被置空；重复 apply
+`processed=0`、审计仍 1 条；用 `--batch-size 1 --max-batches 1` 验证分批（`truncated=true`）与续跑；
+用审计表 `BEFORE INSERT` 触发器模拟审计失败，apply exit 1 且密文与审计均未变（同事务回滚）；
+`--self-test` exit 0。测试库为临时库，未接入生产，也未接触真实凭据。
 
 ## 生产
 
