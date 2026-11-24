@@ -3,6 +3,7 @@ package com.riccon.worker.index.domain;
 import com.riccon.platform.domain.knowledge.KnowledgeDocumentStatus;
 import com.riccon.platform.domain.knowledge.KnowledgeVisibility;
 import com.riccon.platform.domain.knowledge.ParseEngine;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -14,7 +15,8 @@ import java.util.UUID;
  *
  * @param id 文档 ID
  * @param title 文档标题
- * @param fileId 来源文件 ID；演示语料可为空
+ * @param fileId 来源文件 ID；演示语料与连接器文档为空
+ * @param createdAt 文档创建时间（UTC），连接器对象 key 的年份来源
  * @param status 当前索引状态
  * @param visibility 可见范围
  * @param departmentId 可见部门；仅 {@code DEPT} 非空
@@ -27,6 +29,7 @@ public record KnowledgeDocumentRecord(
         UUID id,
         String title,
         UUID fileId,
+        Instant createdAt,
         KnowledgeDocumentStatus status,
         KnowledgeVisibility visibility,
         UUID departmentId,
@@ -68,7 +71,17 @@ public record KnowledgeDocumentRecord(
      */
     public KnowledgeDocumentRecord withParseEngine(ParseEngine engine) {
         return new KnowledgeDocumentRecord(
-                id, title, fileId, status, visibility, departmentId, aclVersion, sourceType, connectorId, engine);
+                id,
+                title,
+                fileId,
+                createdAt,
+                status,
+                visibility,
+                departmentId,
+                aclVersion,
+                sourceType,
+                connectorId,
+                engine);
     }
 
     /**
@@ -83,6 +96,8 @@ public record KnowledgeDocumentRecord(
                 id,
                 title,
                 null,
+                // 兼容入口不参与连接器对象读取；索引文档不使用创建时间，固定纪元避免非确定性值。
+                Instant.EPOCH,
                 KnowledgeDocumentStatus.INDEXED,
                 KnowledgeVisibility.TENANT,
                 null,

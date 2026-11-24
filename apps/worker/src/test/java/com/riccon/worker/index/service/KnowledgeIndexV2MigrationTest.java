@@ -11,7 +11,9 @@ import com.riccon.worker.config.OpenSearchProperties;
 import com.riccon.worker.index.domain.EmbeddingModel;
 import com.riccon.worker.index.repository.KnowledgeRepository;
 import com.riccon.worker.parse.repository.FileRepository;
+import com.riccon.worker.parse.service.DocumentParserRegistry;
 import com.riccon.worker.parse.service.FileContentExtractor;
+import com.riccon.worker.parse.service.S3FileContentReader;
 import com.riccon.worker.parse.service.TextChunker;
 import com.riccon.worker.persistence.UuidBinary;
 import com.riccon.worker.run.domain.ClaimedOutboxEvent;
@@ -74,6 +76,14 @@ class KnowledgeIndexV2MigrationTest extends WorkerIntegrationTestBase {
     @Autowired
     private FileContentExtractor contentExtractor;
 
+    /** 平台对象读取器；v2 服务构造需要。 */
+    @Autowired
+    private S3FileContentReader contentReader;
+
+    /** 解析器注册表；v2 服务构造需要。 */
+    @Autowired
+    private DocumentParserRegistry parserRegistry;
+
     /** 文本切分器。 */
     @Autowired
     private TextChunker textChunker;
@@ -125,6 +135,8 @@ class KnowledgeIndexV2MigrationTest extends WorkerIntegrationTestBase {
                 knowledgeRepository,
                 fileRepository,
                 contentExtractor,
+                contentReader,
+                parserRegistry,
                 textChunker,
                 embeddingModel,
                 v2Client,
