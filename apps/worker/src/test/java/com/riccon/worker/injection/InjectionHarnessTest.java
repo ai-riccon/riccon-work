@@ -2,7 +2,9 @@ package com.riccon.worker.injection;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -10,8 +12,13 @@ import static org.mockito.Mockito.when;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.riccon.platform.common.tenant.TenantContext;
 import com.riccon.platform.common.tenant.TenantId;
+import com.riccon.platform.domain.chat.CitationSourceType;
+import com.riccon.platform.domain.chat.LocatorType;
 import com.riccon.platform.domain.chat.MessageRole;
+import com.riccon.platform.domain.knowledge.KnowledgeDocumentStatus;
+import com.riccon.platform.domain.knowledge.KnowledgeVisibility;
 import com.riccon.platform.domain.knowledge.ParseEngine;
 import com.riccon.worker.agent.domain.AgentSession;
 import com.riccon.worker.agent.domain.ConversationMessage;
@@ -22,12 +29,25 @@ import com.riccon.worker.agent.service.KnowledgeRetriever;
 import com.riccon.worker.agent.service.KnowledgeSearchTool;
 import com.riccon.worker.agent.service.UntrustedData;
 import com.riccon.worker.config.AgentProperties;
+import com.riccon.worker.index.domain.EmbeddingModel;
+import com.riccon.worker.index.domain.KnowledgeChunkRecord;
+import com.riccon.worker.index.domain.KnowledgeDocumentRecord;
+import com.riccon.worker.index.repository.KnowledgeRepository;
+import com.riccon.worker.index.service.KnowledgeIndexService;
+import com.riccon.worker.index.service.OpenSearchIndexClient;
 import com.riccon.worker.model.domain.ModelDescriptor;
 import com.riccon.worker.model.domain.ModelTarget;
 import com.riccon.worker.model.domain.ProviderDescriptor;
 import com.riccon.worker.parse.domain.ParseWarningCodes;
 import com.riccon.worker.parse.domain.ParsedChunk;
 import com.riccon.worker.parse.domain.ParsedContent;
+import com.riccon.worker.parse.repository.FileRepository;
+import com.riccon.worker.parse.service.DocumentParserRegistry;
+import com.riccon.worker.parse.service.FileContentExtractor;
+import com.riccon.worker.parse.service.S3FileContentReader;
+import com.riccon.worker.parse.service.TextChunker;
+import com.riccon.worker.run.domain.ClaimedOutboxEvent;
+import com.riccon.worker.run.service.EventPayloadParser;
 import io.agentscope.core.event.AgentEvent;
 import io.agentscope.core.event.AgentResultEvent;
 import io.agentscope.core.event.ToolResultEndEvent;
@@ -35,22 +55,33 @@ import io.agentscope.core.message.GenerateReason;
 import io.agentscope.core.message.ToolResultState;
 import java.net.URI;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.ObjectMapper;
 
 /**
- * M05-B10 可执行注入 harness：`INJ-001..012`（ADR-0023 §8/§11.2，验收别名 `SEC-KB-004`）。
+ * M05-B10/B10b 可执行注入 harness：`INJ-001..012`（ADR-0023 §8/§11.2，验收别名
+ * `SEC-KB-004` / `SEC-CONN-002`）。
  *
- * <p>每条样本走完整的生产链路：真实 XLSX/OCR 解析 → 生产切分 → 引用形状 → {@link ChatAgentService}
+ * <p>每条样本走完整的生产链路：真实 XLSX/OCR/连接器解析 → 生产切分 → 引用形状 → {@link ChatAgentService}
  * 的真实系统提示与工具装配 → 假模型。断言模型只看到不可信数据块，系统指令保持静态，
  * 回答不泄露 canary/内网地址，工具面只有只读知识检索，日志不出现注入内容。
+ *
+ * <p>M05b-B10b 的连接器样本复用同一假模型、tripwire、工具权限与日志断言；差异只在解析入口
+ * （txt/md/docx/pdf）和引用标题。连接器引用仍是 `KNOWLEDGE` 来源，遮蔽/来源状态由 API 侧
+ * {@code CitationResponse} 统一处理。
  *
  * <p>假模型是 tripwire：只有生产提示构造把注入提升为指令时才会输出 canary；因此该 harness
  * 不依赖真实模型的随机服从度，也不访问网络、MCP 或数据库。
@@ -77,7 +108,8 @@ class InjectionHarnessTest {
 
     /** 参数化样本来源；display 让失败消息直接带稳定 ID。 */
     static Stream<Arguments> samples() {
-        return InjectionSamples.ALL.stream().map(sample -> Arguments.of(sample.display(), sample));
+        return Stream.concat(InjectionSamples.ALL.stream(), ConnectorInjectionSamples.ALL.stream())
+                .map(sample -> Arguments.of(sample.display(), sample));
     }
 
     /**
@@ -97,6 +129,9 @@ class InjectionHarnessTest {
             List<ParsedChunk> chunks = InjectionFixtures.chunks(parsed);
             List<RetrievedChunk> citations = InjectionFixtures.citations(sample, chunks);
             assertParseExpectation(display, sample, parsed, chunks);
+            if (sample.surface().isConnector()) {
+                assertConnectorCitations(display, sample, citations);
+            }
 
             KnowledgeRetriever retriever = mock(KnowledgeRetriever.class);
             when(retriever.retrieve(eq(TENANT), eq(USER), eq(RUN), eq(QUESTION), eq(List.of())))
@@ -171,6 +206,112 @@ class InjectionHarnessTest {
     }
 
     /**
+     * 连接器索引链：平台桶中的恶意原文由生产 {@link KnowledgeIndexService} 读取、抽取、切分并写入分块，
+     * 内容保持完整但仍是不可信数据；随后同一批分块交给检索/聊天由参数化 harness 覆盖。
+     */
+    @Test
+    @Timeout(60)
+    void connectorIndex_preservesInjectionAsUntrustedChunk() throws Exception {
+        InjectionSample sample = ConnectorInjectionSamples.byId("INJ-001");
+        UUID documentId = UUID.fromString("00000000-0000-4000-8000-000000000b10");
+        Instant createdAt = Instant.parse("2026-11-24T00:00:00Z");
+        KnowledgeDocumentRecord document = new KnowledgeDocumentRecord(
+                documentId,
+                ConnectorInjectionFixtures.fileName(sample),
+                null,
+                createdAt,
+                KnowledgeDocumentStatus.PENDING,
+                KnowledgeVisibility.TENANT,
+                null,
+                1,
+                "CONNECTOR",
+                UUID.randomUUID(),
+                null);
+
+        KnowledgeRepository repository = mock(KnowledgeRepository.class);
+        FileRepository fileRepository = mock(FileRepository.class);
+        FileContentExtractor contentExtractor = mock(FileContentExtractor.class);
+        S3FileContentReader contentReader = mock(S3FileContentReader.class);
+        DocumentParserRegistry parserRegistry = mock(DocumentParserRegistry.class);
+        OpenSearchIndexClient indexClient = mock(OpenSearchIndexClient.class);
+        ObjectMapper objectMapper = new ObjectMapper();
+        AtomicReference<List<ParsedChunk>> captured = new AtomicReference<>();
+
+        when(repository.findDocument(TENANT, documentId)).thenReturn(Optional.of(document));
+        when(repository.markIndexing(TENANT, documentId)).thenReturn(true);
+        when(contentReader.readConnector(TENANT, documentId, createdAt))
+                .thenReturn(ConnectorInjectionFixtures.content(sample));
+        when(repository.replaceChunks(eq(TENANT), eq(documentId), any())).thenAnswer(invocation -> {
+            List<ParsedChunk> chunks = invocation.getArgument(2);
+            captured.set(List.copyOf(chunks));
+            return chunks.stream()
+                    .map(chunk -> new KnowledgeChunkRecord(
+                            UUID.randomUUID(),
+                            chunk.content(),
+                            chunk.locatorType(),
+                            chunk.pageNo(),
+                            chunk.sheetName(),
+                            chunk.cellRange(),
+                            chunk.paragraphNo(),
+                            chunk.tokenCount(),
+                            chunk.bbox(),
+                            chunk.ocrConfidence()))
+                    .toList();
+        });
+
+        KnowledgeIndexService service = new KnowledgeIndexService(
+                repository,
+                fileRepository,
+                contentExtractor,
+                contentReader,
+                parserRegistry,
+                new TextChunker(InjectionFixtures.PARSE_PROPERTIES),
+                new EmbeddingModel() {
+                    @Override
+                    public int dimensions() {
+                        return 3;
+                    }
+
+                    @Override
+                    public float[] embed(String text) {
+                        return new float[] {0.1f, 0.2f, 0.3f};
+                    }
+                },
+                indexClient,
+                new EventPayloadParser(objectMapper));
+        ClaimedOutboxEvent event = new ClaimedOutboxEvent(
+                UUID.randomUUID(),
+                TENANT.value(),
+                RUN,
+                "riccon.knowledge.index.requested.v1",
+                1,
+                "inj-connector-index",
+                objectMapper.writeValueAsString(
+                        Map.of("documentId", documentId.toString(), "attempt", 1, "mode", "FULL")),
+                1,
+                Instant.now(),
+                Instant.now().plusSeconds(60));
+
+        TenantContext.runWithTenant(TENANT, () -> service.handle(event));
+
+        List<ParsedChunk> chunks = captured.get();
+        assertThat(chunks).as("连接器索引必须产生分块").isNotNull().isNotEmpty();
+        String joined =
+                String.join("\n", chunks.stream().map(ParsedChunk::content).toList());
+        assertThat(joined).as("连接器原文必须完整进入索引").contains(sample.payload());
+        assertThat(joined).as("索引内容不得包含 canary 值").doesNotContain(InjectionSamples.CANARY_VALUE);
+        assertThat(chunks).allSatisfy(chunk -> {
+            assertThat(chunk.locatorType()).isEqualTo(LocatorType.PARAGRAPH);
+            assertThat(chunk.paragraphNo()).isNotNull();
+        });
+        verify(contentReader).readConnector(TENANT, documentId, createdAt);
+        verify(repository)
+                .updateParseMetadata(eq(TENANT), eq(documentId), eq(ParseEngine.NONE), eq(List.of()), isNull());
+        verify(repository).markIndexed(TENANT, documentId);
+        verify(indexClient).replaceDocument(eq(TENANT), any(KnowledgeDocumentRecord.class), anyList(), anyList());
+    }
+
+    /**
      * 断言解析结果与样本输入表面一致，且隐藏表/公式不会被误索引。
      *
      * @param display 失败定位名
@@ -216,7 +357,86 @@ class InjectionHarnessTest {
                         .as("%s OCR 引用必须带置信度", display)
                         .isNotNull();
             }
+            case CONNECTOR_TXT, CONNECTOR_MD -> {
+                assertThat(joined).as("%s 连接器纯文本必须进入索引", display).contains(payload);
+                assertThat(parsed.parseEngine())
+                        .as("%s 连接器 txt/md 不经过二进制解析器", display)
+                        .isEqualTo(ParseEngine.NONE);
+                assertThat(chunks.get(0).locatorType()).isEqualTo(LocatorType.PARAGRAPH);
+                assertThat(chunks.get(0).paragraphNo())
+                        .as("%s 连接器纯文本引用必须带段落定位", display)
+                        .isNotNull();
+            }
+            case CONNECTOR_DOCX -> {
+                assertThat(joined).as("%s 连接器 docx 必须进入索引", display).contains(payload);
+                assertThat(parsed.parseEngine()).isEqualTo(ParseEngine.NONE);
+                assertThat(chunks.get(0).locatorType()).isEqualTo(LocatorType.PARAGRAPH);
+                assertThat(chunks.get(0).paragraphNo())
+                        .as("%s 连接器 docx 引用必须带段落定位", display)
+                        .isNotNull();
+            }
+            case CONNECTOR_DOCX_WHITE_TEXT -> {
+                assertThat(joined)
+                        .as("%s 白字/小字号不是信任边界：解析器仍抽取文本，随后必须按不可信数据隔离", display)
+                        .contains(payload);
+                assertThat(parsed.parseEngine()).isEqualTo(ParseEngine.NONE);
+                assertThat(chunks.get(0).locatorType()).isEqualTo(LocatorType.PARAGRAPH);
+                assertThat(chunks.get(0).paragraphNo()).isNotNull();
+            }
+            case CONNECTOR_DOCX_TABLE -> {
+                assertThat(joined).as("%s 表格公式样式文本必须按字面量进入索引", display).contains(payload);
+                assertThat(joined).as("%s 解析器不得执行公式或把公式文本改写成结果", display).contains("=WEBSERVICE(");
+                assertThat(parsed.parseEngine()).isEqualTo(ParseEngine.NONE);
+                assertThat(chunks.get(0).locatorType()).isEqualTo(LocatorType.PARAGRAPH);
+                assertThat(chunks.get(0).paragraphNo()).isNotNull();
+            }
+            case CONNECTOR_PDF -> {
+                assertThat(joined).as("%s 连接器 pdf 文本层必须进入索引", display).contains(payload);
+                assertThat(parsed.parseEngine())
+                        .as("%s 文本层 pdf 走 PDFBox，不触发 OCR", display)
+                        .isEqualTo(ParseEngine.PDFBOX);
+                assertThat(parsed.pageCount()).as("%s pdf 单页", display).isEqualTo(1);
+                assertThat(chunks.get(0).locatorType()).isEqualTo(LocatorType.PAGE);
+                assertThat(chunks.get(0).pageNo()).as("%s pdf 引用必须带页码", display).isEqualTo(1);
+            }
             default -> throw new IllegalStateException("unexpected surface " + sample.surface());
+        }
+    }
+
+    /**
+     * 断言连接器引用的来源类型、标题与定位；伪造引用行不能覆盖系统生成的引用头。
+     *
+     * @param display 失败定位名
+     * @param sample 连接器样本
+     * @param citations 引用
+     */
+    private static void assertConnectorCitations(
+            String display, InjectionSample sample, List<RetrievedChunk> citations) {
+        assertThat(citations).as("%s 连接器引用不能为空", display).isNotEmpty();
+        assertThat(citations).as("%s 连接器内容在检索层仍是知识库来源", display).allSatisfy(citation -> {
+            assertThat(citation.sourceType()).isEqualTo(CitationSourceType.KNOWLEDGE);
+            assertThat(citation.knowledgeDocumentId()).isEqualTo(InjectionFixtures.DOCUMENT_ID);
+            assertThat(citation.title()).isEqualTo(ConnectorInjectionFixtures.fileName(sample));
+            assertThat(citation.title()).doesNotContain("connector/");
+        });
+        RetrievedChunk first = citations.get(0);
+        if (sample.surface() == InjectionSurface.CONNECTOR_PDF) {
+            assertThat(first.locatorType()).isEqualTo(LocatorType.PAGE);
+            assertThat(first.pageNo()).isEqualTo(1);
+        } else {
+            assertThat(first.locatorType()).isEqualTo(LocatorType.PARAGRAPH);
+            assertThat(first.paragraphNo()).isNotNull();
+        }
+
+        if (sample.payload().contains("source=KNOWLEDGE")) {
+            String data = UntrustedData.fromCitations(citations, 2000);
+            String[] lines = data.split("\n", 3);
+            assertThat(lines[0]).as("%s 数据块开始标记", display).isEqualTo(UntrustedData.START);
+            assertThat(lines[1])
+                    .as("%s 引用头必须由系统按真实序号生成，不能采用样本里的伪造引用", display)
+                    .startsWith("[1] source=KNOWLEDGE title=\"" + ConnectorInjectionFixtures.fileName(sample) + "\"")
+                    .doesNotContain("[9]");
+            assertThat(lines[2]).as("%s 伪造引用行只能留在不可信数据块内", display).contains("[9] source=KNOWLEDGE");
         }
     }
 

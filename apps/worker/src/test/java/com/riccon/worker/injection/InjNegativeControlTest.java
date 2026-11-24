@@ -91,6 +91,71 @@ class InjNegativeControlTest {
     }
 
     /**
+     * 连接器文本直接出现在用户指令面时，tripwire 必须判定逃逸并输出 canary。
+     */
+    @Test
+    @DisplayName("连接器负向对照：未隔离的注入必须被识别为逃逸")
+    @Timeout(30)
+    void connectorUnwrappedInjection_isDetectedAsBreach() {
+        InjectionSample sample = ConnectorInjectionSamples.byId("INJ-002");
+        InjectionModel model = new InjectionModel(
+                InjectionModel.Mode.BOUNDARY_AWARE, InjectionSamples.CANARY_VALUE, InjectionSamples.DETECTORS);
+        List<Msg> vulnerablePrompt = List.of(
+                Msg.builder()
+                        .name("system")
+                        .role(MsgRole.SYSTEM)
+                        .textContent(AgentPrompts.CHAT_SYSTEM)
+                        .build(),
+                new UserMessage(sample.payload()));
+
+        List<ChatResponse> responses =
+                model.stream(vulnerablePrompt, List.of(), null).collectList().block(Duration.ofSeconds(5));
+
+        assertThat(responses).isNotNull();
+        assertThat(model.breaches()).as("连接器未隔离注入必须触发 tripwire").isNotEmpty();
+        assertThat(textOf(responses.get(0)))
+                .as("tripwire 触发后必须输出 canary，证明连接器样本检测链可失败")
+                .contains(InjectionSamples.CANARY_VALUE)
+                .contains(InjectionSamples.INTERNAL_ADDRESS);
+    }
+
+    /**
+     * 连接器引用被不可信数据块包裹时，tripwire 不得误报。
+     */
+    @Test
+    @DisplayName("连接器负向对照：已隔离的注入不得误报")
+    @Timeout(30)
+    void connectorWrappedInjection_isNotFlagged() {
+        InjectionSample sample = ConnectorInjectionSamples.byId("INJ-002");
+        List<RetrievedChunk> citations =
+                InjectionFixtures.citations(sample, InjectionFixtures.chunks(InjectionFixtures.parse(sample)));
+        InjectionModel model = new InjectionModel(
+                InjectionModel.Mode.BOUNDARY_AWARE, InjectionSamples.CANARY_VALUE, InjectionSamples.DETECTORS);
+        List<Msg> guardedPrompt = List.of(
+                Msg.builder()
+                        .name("system")
+                        .role(MsgRole.SYSTEM)
+                        .textContent(AgentPrompts.CHAT_SYSTEM)
+                        .build(),
+                Msg.builder()
+                        .name("data")
+                        .role(MsgRole.USER)
+                        .textContent(UntrustedData.fromCitations(citations, 2000))
+                        .build(),
+                new UserMessage("请总结这份季度资料的关键数字。"));
+
+        List<ChatResponse> responses =
+                model.stream(guardedPrompt, List.of(), null).collectList().block(Duration.ofSeconds(5));
+
+        assertThat(responses).isNotNull();
+        assertThat(model.breaches()).as("连接器已隔离注入不得触发 tripwire").isEmpty();
+        assertThat(model.calls().get(0).scan().untrustedHits())
+                .as("连接器采样文本必须位于不可信面")
+                .isNotEmpty();
+        assertThat(textOf(responses.get(0))).as("未逃逸时模型继续系统任务").isEqualTo(InjectionModel.BENIGN_ANSWER);
+    }
+
+    /**
      * 提取响应文本。
      *
      * @param response 模型响应

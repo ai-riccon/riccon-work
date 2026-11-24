@@ -60,6 +60,9 @@ final class InjectionFixtures {
      * @return 解析结果
      */
     static ParsedContent parse(InjectionSample sample) {
+        if (sample.surface().isConnector()) {
+            return ConnectorInjectionFixtures.parse(sample);
+        }
         return switch (sample.surface()) {
             case XLSX_VISIBLE_CELL, XLSX_HIDDEN_SHEET, XLSX_FORMULA_CELL -> {
                 byte[] content = workbook(sample);
@@ -69,6 +72,7 @@ final class InjectionFixtures {
                 byte[] content = TestDocuments.png();
                 yield parseImage(sample, content);
             }
+            default -> throw new IllegalArgumentException("unexpected surface " + sample.surface());
         };
     }
 
@@ -92,6 +96,8 @@ final class InjectionFixtures {
     static List<RetrievedChunk> citations(InjectionSample sample, List<ParsedChunk> chunks) {
         List<RetrievedChunk> citations = new ArrayList<>(chunks.size());
         int ordinal = 1;
+        String title =
+                sample.surface().isConnector() ? ConnectorInjectionFixtures.fileName(sample) : "注入样本 " + sample.id();
         for (ParsedChunk chunk : chunks) {
             citations.add(new RetrievedChunk(
                     ordinal,
@@ -104,7 +110,7 @@ final class InjectionFixtures {
                     chunk.sheetName(),
                     chunk.cellRange(),
                     chunk.paragraphNo(),
-                    "注入样本 " + sample.id(),
+                    title,
                     chunk.content(),
                     0.9));
             ordinal++;

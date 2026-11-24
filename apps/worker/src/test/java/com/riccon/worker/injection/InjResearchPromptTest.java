@@ -24,14 +24,17 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * J2 报告生成阶段的注入边界：Excel/OCR 引用与已批准工具结果都必须作为不可信数据块进入模型。
+ * J2 报告生成阶段的注入边界：Excel/OCR/连接器引用与已批准工具结果都必须作为不可信数据块进入模型。
  *
  * <p>与聊天链不同，{@code ResearchAgentService.prepareGenerationStage} 把引用与工具结果拼进
  * 同一条用户消息；任一遗漏 {@link UntrustedData#fromCitations}/{@link UntrustedData#fromToolResult}
@@ -63,7 +66,35 @@ class InjResearchPromptTest {
     @ValueSource(strings = {"INJ-002", "INJ-007"})
     @Timeout(60)
     void generationStage_wrapsExcelAndOcrCitations(String sampleId) {
-        InjectionSample sample = InjectionSamples.byId(sampleId);
+        assertGenerationStage(sampleId, InjectionSamples.byId(sampleId));
+    }
+
+    /**
+     * 连接器引用在报告生成阶段必须与上传内容使用同一不可信数据边界。
+     *
+     * @param display 失败定位名
+     * @param sample 连接器样本
+     */
+    @ParameterizedTest(name = "{0} 连接器引用在报告生成阶段仍被隔离")
+    @MethodSource("connectorSamples")
+    @Timeout(60)
+    void generationStage_wrapsConnectorCitations(String display, InjectionSample sample) {
+        assertGenerationStage(display, sample);
+    }
+
+    /** 连接器报告生成阶段样本：英文 md 与英文 pdf，覆盖纯文本与页码定位。 */
+    static Stream<Arguments> connectorSamples() {
+        return Stream.of("INJ-002", "INJ-007")
+                .map(id -> Arguments.of("connector-" + id, ConnectorInjectionSamples.byId(id)));
+    }
+
+    /**
+     * 执行报告生成阶段并断言引用隔离、系统提示与回答。
+     *
+     * @param display 失败定位名
+     * @param sample 样本
+     */
+    private static void assertGenerationStage(String display, InjectionSample sample) {
         List<ParsedChunk> chunks = InjectionFixtures.chunks(InjectionFixtures.parse(sample));
         List<RetrievedChunk> citations = InjectionFixtures.citations(sample, chunks);
         InjectionModel model = new InjectionModel(
@@ -73,17 +104,17 @@ class InjResearchPromptTest {
         try {
             List<AgentEvent> events = session.events().collectList().block(Duration.ofSeconds(30));
             assertThat(events).as("事件流不能为空").isNotNull();
-            assertThat(model.breaches()).as("%s 报告生成阶段不得被注入", sampleId).isEmpty();
+            assertThat(model.breaches()).as("%s 报告生成阶段不得被注入", display).isEmpty();
             assertAgentPrompt(session, model, AgentPrompts.RESEARCH_GENERATION_SYSTEM);
 
             PromptScan scan = model.calls().get(0).scan();
             assertThat(scan.startMarkers()).as("引用块与工具结果块各一个开始标记").isEqualTo(2);
             assertThat(scan.endMarkers()).as("引用块与工具结果块各一个结束标记").isEqualTo(2);
-            assertThat(scan.untrustedHits()).as("%s 样本必须到达不可信面", sampleId).isNotEmpty();
+            assertThat(scan.untrustedHits()).as("%s 样本必须到达不可信面", display).isNotEmpty();
             assertThat(scan.untrustedTexts())
-                    .as("%s 引用原文必须位于数据块内", sampleId)
+                    .as("%s 引用原文必须位于数据块内", display)
                     .anySatisfy(text -> assertThat(text).contains(sample.payload()));
-            assertBenignAnswer(events, sampleId);
+            assertBenignAnswer(events, display);
             assertCitationLocator(sample, citations);
         } finally {
             session.close();
@@ -170,7 +201,14 @@ class InjResearchPromptTest {
      */
     private static void assertCitationLocator(InjectionSample sample, List<RetrievedChunk> citations) {
         assertThat(citations).as("引用不能为空").isNotEmpty();
-        if (sample.sheetName() != null) {
+        if (sample.surface().isConnector()) {
+            assertThat(citations.get(0).title()).isEqualTo(ConnectorInjectionFixtures.fileName(sample));
+            if (sample.surface() == InjectionSurface.CONNECTOR_PDF) {
+                assertThat(citations.get(0).pageNo()).isEqualTo(1);
+            } else {
+                assertThat(citations.get(0).paragraphNo()).isNotNull();
+            }
+        } else if (sample.sheetName() != null) {
             assertThat(citations.get(0).sheetName()).isEqualTo(sample.sheetName());
             assertThat(citations.get(0).cellRange()).isNotBlank();
         } else {
