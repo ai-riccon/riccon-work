@@ -1,0 +1,202 @@
+/**
+ * 流程编辑器样式（表单为主路径）。
+ *
+ * 375px 目标：节点/配置双栏改为单列；节点行、连线行、校验问题与发布工具栏全部允许换行；
+ * 不使用固定宽度表格，页面无横向滚动。焦点样式沿用 global.css 的 :focus-visible。
+ */
+
+.workflow-editor-loading {
+  margin-top: 16px;
+}
+
+.workflow-editor-header {
+  margin-bottom: 12px;
+}
+
+.workflow-editor-title {
+  margin-bottom: 4px;
+}
+
+.workflow-editor-title h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.workflow-editor-meta {
+  display: block;
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
+}
+
+.workflow-editor-alert {
+  margin-bottom: 12px;
+}
+
+.workflow-editor-card {
+  margin-bottom: 16px;
+  min-width: 0;
+}
+
+.workflow-editor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.workflow-node-list,
+.workflow-edge-list,
+.workflow-issue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.workflow-node-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fafafa;
+  min-width: 0;
+}
+
+.workflow-node-row-selected {
+  border-color: #0958d9;
+  background: #f0f7ff;
+}
+
+.workflow-node-order {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #e6f4ff;
+  color: #0958d9;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.workflow-node-main {
+  display: flex;
+  flex: 1 1 220px;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.workflow-node-name {
+  height: auto;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.workflow-node-summary {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.workflow-node-actions {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.workflow-config-heading {
+  margin-bottom: 12px;
+}
+
+.workflow-config-actions {
+  margin-top: 12px;
+}
+
+.workflow-catalog-warning {
+  margin-bottom: 12px;
+}
+
+.workflow-edge-field {
+  flex: 1 1 200px;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.workflow-edge-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fafafa;
+  min-width: 0;
+}
+
+.workflow-issue-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #ffccc7;
+  border-radius: 8px;
+  background: #fff2f0;
+  min-width: 0;
+}
+
+.workflow-issue-locate {
+  height: auto;
+  padding: 0;
+  text-align: left;
+  white-space: normal;
+}
+
+.workflow-scope-hint {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
+/* 375px：运行范围分段控件只占满可用宽度，必要时自身滚动，避免撑破页面。 */
+.workflow-editor-card .ant-segmented {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+@media (max-width: 900px) {
+  .workflow-editor-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 575px) {
+  .workflow-editor-header .ant-space,
+  .workflow-editor-header .ant-space-item,
+  .workflow-editor-header .ant-btn {
+    max-width: 100%;
+  }
+
+  .workflow-node-row,
+  .workflow-edge-row,
+  .workflow-issue-row {
+    align-items: stretch;
+  }
+
+  .workflow-node-actions,
+  .workflow-node-actions .ant-btn {
+    width: 100%;
+  }
+}

@@ -1,0 +1,118 @@
+/**
+ * 编排 Studio 列表页样式。
+ *
+ * 375px 目标：列表使用卡片而不是固定列宽表格；工具栏、卡片元数据与操作区全部允许换行，
+ * 长名称/说明使用 anywhere 换行，页面不产生横向滚动。
+ */
+
+.workflow-page {
+  width: 100%;
+  max-width: 1200px;
+  min-width: 0;
+  margin: 0 auto;
+  overflow-wrap: anywhere;
+  box-sizing: border-box;
+}
+
+.workflow-page-heading {
+  margin-bottom: 16px;
+}
+
+.workflow-page-heading h1 {
+  margin: 0 0 4px;
+  font-size: 24px;
+  line-height: 1.35;
+}
+
+.workflow-toolbar {
+  margin-bottom: 16px;
+  row-gap: 8px;
+}
+
+.workflow-toolbar .ant-segmented {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.workflow-permission-note,
+.workflow-template-note {
+  margin-bottom: 16px;
+}
+
+.workflow-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px 16px;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.workflow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+  margin: 0 0 16px;
+  list-style: none;
+}
+
+.workflow-list-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  min-width: 0;
+}
+
+.workflow-list-main {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.workflow-list-name {
+  height: auto;
+  padding: 0;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.workflow-list-description,
+.workflow-list-meta {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.workflow-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 窄屏：操作按钮占满一行，避免固定在右侧时被长名称挤出视口。 */
+@media (max-width: 575px) {
+  .workflow-list-item {
+    flex-direction: column;
+  }
+
+  .workflow-list-actions {
+    width: 100%;
+  }
+
+  .workflow-list-actions .ant-btn {
+    width: 100%;
+  }
+}

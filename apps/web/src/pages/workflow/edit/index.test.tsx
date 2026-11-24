@@ -1,0 +1,498 @@
+// @vitest-environment jsdom
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '@/services/api/errors';
+import type { Department, SessionInfo } from '@/services/api/types';
+import { authStore } from '@/services/auth/auth-store';
+import { DEMO_SESSION, pageOf } from '@/test/fake-api';
+import { withProviders } from '@/test/render';
+import type {
+  WorkflowApi,
+  WorkflowDefinitionDetail,
+  WorkflowGraph,
+  WorkflowValidationResult,
+  WorkflowVersion,
+} from '../list/workflow-api';
+import WorkflowEditorPage from './index';
+
+/**
+ * 流程编辑器测试。
+ *
+ * 覆盖表单主路径、保存前规范化（F-003）、服务端校验 panel、409 另存副本、
+ * 发布成功/400、只读/无权限/关闭/不存在状态、目录降级与 375px/键盘基线。
+ */
+
+/** 编辑器会话：具备编排、发布与管理权限。 */
+const EDITOR_SESSION: SessionInfo = {
+  ...DEMO_SESSION,
+  user: { ...DEMO_SESSION.user, id: 'editor-1', displayName: '李强' },
+  roles: ['TENANT_ADMIN'],
+  permissions: [
+    'workflow.read',
+    'workflow.edit',
+    'workflow.publish',
+    'workflow.run',
+    'workflow.approve',
+    'workflow.manage',
+    'department.read',
+    'model.read',
+    'mcp.read',
+  ],
+};
+
+/** 最小有效图。 */
+const VALID_GRAPH: WorkflowGraph = {
+  schemaVersion: 1,
+  nodes: [
+    { id: 'start', type: 'START', name: '开始', config: {}, position: { x: 0, y: 0 } },
+    {
+      id: 'retrieval-1',
+      type: 'RETRIEVAL',
+      name: '检索知识库',
+      config: { queryTemplate: '{{input.topic}}', topK: 5 },
+      position: { x: 220, y: 0 },
+    },
+    {
+      id: 'end',
+      type: 'END',
+      name: '结束',
+      config: { resultFrom: 'retrieval-1', resultTitle: '市场调研报告' },
+      position: { x: 440, y: 0 },
+    },
+  ],
+  edges: [
+    { id: 'e1', source: 'start', target: 'retrieval-1' },
+    { id: 'e2', source: 'retrieval-1', target: 'end' },
+  ],
+};
+
+/** 流程详情。 */
+function makeDetail(overrides: Partial<WorkflowDefinitionDetail> = {}): WorkflowDefinitionDetail {
+  return {
+    id: 'workflow-1',
+    name: '销售部市场调研',
+    description: '检索知识库并生成报告',
+    ownerUserId: 'editor-1',
+    status: 'ACTIVE',
+    draftVersion: 1,
+    publishedVersionId: null,
+    publishedVersionNo: null,
+    hasUnpublishedChanges: true,
+    createdAt: '2026-11-25T08:00:00+08:00',
+    updatedAt: '2026-11-25T08:00:00+08:00',
+    draftGraph: VALID_GRAPH,
+    latestVersion: null,
+    canEdit: true,
+    canPublish: true,
+    canRun: false,
+    ...overrides,
+  };
+}
+
+/** 发布版本。 */
+function makeVersion(overrides: Partial<WorkflowVersion> = {}): WorkflowVersion {
+  return {
+    id: 'version-1',
+    workflowId: 'workflow-1',
+    versionNo: 1,
+    runScope: 'ONLY_SELF',
+    graphSha256: 'a'.repeat(64),
+    nodeCount: 3,
+    publishedBy: 'editor-1',
+    publishedAt: '2026-11-25T09:00:00+08:00',
+    ...overrides,
+  };
+}
+
+/** 部门。 */
+const DEPARTMENT: Department = {
+  id: 'dept-1',
+  name: '销售部',
+  status: 'ACTIVE',
+  managerUserId: 'editor-1',
+  managerDisplayName: '李强',
+  memberCount: 8,
+  createdAt: '2026-11-25T08:00:00+08:00',
+  updatedAt: '2026-11-25T08:00:00+08:00',
+};
+
+/** 构造编辑器 API 替身。 */
+function createFakeApi(overrides: Partial<WorkflowApi> = {}): WorkflowApi {
+  return {
+    listWorkflows: vi.fn(async () => pageOf([])),
+    createWorkflow: vi.fn(async () => makeDetail()),
+    getWorkflow: vi.fn(async () => makeDetail()),
+    saveDraft: vi.fn(async (_id, input) => ({
+      ...makeDetail(),
+      draftVersion: input.version + 1,
+      name: input.name ?? '销售部市场调研',
+      draftGraph: input.graph,
+    })),
+    duplicateWorkflow: vi.fn(async () => makeDetail({ id: 'copy-1' })),
+    validateWorkflow: vi.fn(async () => ({ valid: true, issues: [] })),
+    publishWorkflow: vi.fn(async () => makeVersion()),
+    listModels: vi.fn(async () => pageOf([])),
+    listMcpTools: vi.fn(async () => pageOf([])),
+    listDepartments: vi.fn(async () => pageOf([DEPARTMENT])),
+    ...overrides,
+  };
+}
+
+/** 渲染编辑器。 */
+function renderEditor(api: WorkflowApi, navigate = vi.fn(), session = EDITOR_SESSION) {
+  authStore.setAuthenticated(session);
+  return {
+    navigate,
+    ...render(
+      withProviders(<WorkflowEditorPage api={api} workflowId="workflow-1" navigate={navigate} />),
+    ),
+  };
+}
+
+/** 等待编辑器主区域出现。 */
+async function waitForEditor(): Promise<void> {
+  expect(await screen.findByRole('heading', { name: '销售部市场调研' })).toBeVisible();
+  expect(screen.getByRole('button', { name: '开始' })).toBeVisible();
+  expect(screen.getByText('开始 → 检索知识库')).toBeVisible();
+}
+
+describe('流程编辑器', () => {
+  beforeEach(() => {
+    authStore.reset();
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
+  });
+
+  it('以表单为主路径展示节点、配置与连线，不依赖画布', async () => {
+    const api = createFakeApi();
+    renderEditor(api);
+    await waitForEditor();
+
+    expect(screen.getByRole('button', { name: '检索知识库' })).toBeVisible();
+    expect(screen.getByText('检索知识库 → 结束')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '检索知识库' }));
+    expect(await screen.findByText('知识库检索 · retrieval-1')).toBeVisible();
+    expect(document.querySelector('[data-testid="workflow-canvas"]')).toBeNull();
+    expect(api.getWorkflow).toHaveBeenCalledWith('workflow-1');
+  });
+
+  it('修改节点配置后保存草稿：位置 x/y 完整、空字段被省略（F-003）', async () => {
+    const saveDraft = vi.fn<WorkflowApi['saveDraft']>(async (_id, input) => ({
+      ...makeDetail(),
+      draftVersion: input.version + 1,
+      name: input.name ?? '销售部市场调研',
+      draftGraph: input.graph,
+    }));
+    const api = createFakeApi({ saveDraft });
+    renderEditor(api);
+    await waitForEditor();
+
+    fireEvent.change(screen.getByLabelText('流程名称'), { target: { value: '  新流程名  ' } });
+    fireEvent.click(screen.getByRole('button', { name: '检索知识库' }));
+    fireEvent.change(await screen.findByLabelText('查询模板'), {
+      target: { value: '  销售部主题  ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '保存节点配置' }));
+    fireEvent.click(screen.getByRole('button', { name: '保存草稿' }));
+
+    await waitFor(() => {
+      expect(saveDraft).toHaveBeenCalledTimes(1);
+    });
+    const [workflowId, payload] = saveDraft.mock.calls[0];
+    expect(workflowId).toBe('workflow-1');
+    expect(payload.version).toBe(1);
+    expect(payload.name).toBe('新流程名');
+    const retrieval = payload.graph.nodes.find((node) => node.id === 'retrieval-1');
+    expect(retrieval?.config.queryTemplate).toBe('销售部主题');
+    expect(retrieval?.config).not.toHaveProperty('promptTemplate');
+    expect(retrieval?.position).toEqual({ x: 220, y: 0 });
+    expect(typeof retrieval?.position?.x).toBe('number');
+    expect(await screen.findByText('草稿已保存（版本 v2）。')).toBeVisible();
+  });
+
+  it('校验面板展示服务端问题计数、中文文案并可定位节点', async () => {
+    const invalid: WorkflowValidationResult = {
+      valid: false,
+      issues: [
+        {
+          code: 'REQUIRED_CONFIG',
+          nodeId: 'retrieval-1',
+          field: 'config.topK',
+          message: 'RETRIEVAL node requires topK',
+        },
+      ],
+    };
+    const api = createFakeApi({ validateWorkflow: vi.fn(async () => invalid) });
+    renderEditor(api);
+    await waitForEditor();
+
+    fireEvent.click(screen.getByRole('button', { name: '校验' }));
+    expect(await screen.findByText('流程还有 1 个问题，修正后才能发布。')).toBeVisible();
+    expect(screen.getByText('节点缺少必填配置，请补充。（检索命中数）')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: /定位到/ }));
+    expect(await screen.findByText('知识库检索 · retrieval-1')).toBeVisible();
+  });
+
+  it('服务端校验通过时显示成功提示', async () => {
+    const api = createFakeApi();
+    renderEditor(api);
+    await waitForEditor();
+    fireEvent.click(screen.getByRole('button', { name: '校验' }));
+    expect(await screen.findByText('校验通过，可以保存或发布。')).toBeVisible();
+  });
+
+  it('409 冲突提供另存副本，副本保存本地图后跳转', async () => {
+    const duplicateWorkflow = vi.fn(async () => makeDetail({ id: 'copy-1' }));
+    const saveDraft = vi
+      .fn<WorkflowApi['saveDraft']>()
+      .mockRejectedValueOnce(
+        new ApiError('draft version does not match', {
+          status: 409,
+          code: 'RICCON-WF-409',
+        }),
+      )
+      .mockImplementationOnce(async (_id, input) => ({
+        ...makeDetail({ id: 'copy-1' }),
+        draftVersion: input.version + 1,
+        draftGraph: input.graph,
+      }));
+    const api = createFakeApi({ duplicateWorkflow, saveDraft });
+    const { navigate } = renderEditor(api);
+    await waitForEditor();
+
+    fireEvent.change(screen.getByLabelText('流程名称'), { target: { value: '冲突后的流程' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存草稿' }));
+    expect(await screen.findByText('草稿已被其他会话修改')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '另存副本' }));
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledWith('/workflows/copy-1/edit');
+    });
+    expect(duplicateWorkflow).toHaveBeenCalledWith('workflow-1', {
+      name: '冲突后的流程 副本',
+    });
+    expect(saveDraft).toHaveBeenLastCalledWith(
+      'copy-1',
+      expect.objectContaining({ version: 1, name: '冲突后的流程 副本' }),
+    );
+  });
+
+  it('发布调用 validate 后 publish，并提示版本与范围', async () => {
+    const validateWorkflow = vi.fn(async () => ({ valid: true, issues: [] }));
+    const publishWorkflow = vi.fn(async () => makeVersion());
+    const api = createFakeApi({ validateWorkflow, publishWorkflow });
+    renderEditor(api);
+    await waitForEditor();
+
+    fireEvent.click(screen.getByRole('button', { name: '发布' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '发布' }));
+
+    await waitFor(() => {
+      expect(publishWorkflow).toHaveBeenCalledWith('workflow-1', {
+        runScope: 'ONLY_SELF',
+        departmentId: undefined,
+      });
+    });
+    expect(await screen.findByText('发布成功：v1（仅自己）。')).toBeVisible();
+  });
+
+  it('发布 400 在弹窗内展示失败原因', async () => {
+    const publishWorkflow = vi.fn(async () => {
+      throw new ApiError('workflow validation failed with 1 issue(s)', {
+        status: 400,
+        code: 'RICCON-WF-400',
+        retryable: false,
+      });
+    });
+    const api = createFakeApi({ publishWorkflow });
+    renderEditor(api);
+    await waitForEditor();
+
+    fireEvent.click(screen.getByRole('button', { name: '发布' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '发布' }));
+
+    expect(
+      await screen.findByText('发布失败（400）：workflow validation failed with 1 issue(s)'),
+    ).toBeInTheDocument();
+  });
+
+  it('目录加载失败时降级为手动填写 UUID', async () => {
+    const api = createFakeApi({
+      listModels: vi.fn(async () => {
+        throw new ApiError('forbidden', { status: 403, code: 'RICCON-AUTH-403' });
+      }),
+      listMcpTools: vi.fn(async () => {
+        throw new ApiError('forbidden', { status: 403, code: 'RICCON-AUTH-403' });
+      }),
+    });
+    renderEditor(api);
+    await waitForEditor();
+    expect(
+      await screen.findByText('模型与工具目录加载失败：可直接填写 UUID，或刷新页面重试。'),
+    ).toBeVisible();
+  });
+
+  it('添加节点、调整顺序、删除并重新添加连线', async () => {
+    const api = createFakeApi();
+    renderEditor(api);
+    await waitForEditor();
+
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: '节点类型' }));
+    fireEvent.click(await screen.findByText('人工审批'));
+    fireEvent.click(screen.getByRole('button', { name: '添加节点' }));
+    expect(await screen.findByText('人工审批 · approval-1')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: '上移节点 检索知识库' }));
+    const nodeItems = within(screen.getByRole('list', { name: '流程节点列表' })).getAllByRole(
+      'listitem',
+    );
+    expect(nodeItems[0].textContent).toContain('检索知识库');
+
+    fireEvent.click(screen.getByRole('button', { name: '删除连线 start 到 retrieval-1' }));
+    expect(screen.queryByText('开始 → 检索知识库')).toBeNull();
+
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: '连线源节点' }));
+    const sourceOptions = await screen.findAllByText('开始（开始）');
+    fireEvent.click(sourceOptions[sourceOptions.length - 1]);
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: '连线目标节点' }));
+    const targetOptions = await screen.findAllByText('检索知识库（知识库检索）');
+    fireEvent.click(targetOptions[targetOptions.length - 1]);
+    fireEvent.click(screen.getByRole('button', { name: '添加连线' }));
+    expect(await screen.findByText('开始 → 检索知识库')).toBeVisible();
+  });
+
+  it('本部门范围未选部门时校验给出提示', async () => {
+    const validateWorkflow = vi.fn(async () => ({ valid: true, issues: [] }));
+    const api = createFakeApi({ validateWorkflow });
+    renderEditor(api);
+    await waitForEditor();
+    await waitFor(() => {
+      expect(screen.getByRole('radio', { name: '本部门' })).toBeEnabled();
+    });
+    fireEvent.click(screen.getByRole('radio', { name: '本部门' }));
+    fireEvent.click(screen.getByRole('button', { name: '校验' }));
+    expect(await screen.findByText('请选择发布部门后再校验。')).toBeVisible();
+    expect(validateWorkflow).not.toHaveBeenCalled();
+  });
+
+  it('发布前校验失败会阻止 publish 并展示问题计数', async () => {
+    const validation: WorkflowValidationResult = {
+      valid: false,
+      issues: [
+        {
+          code: 'NO_APPROVER',
+          nodeId: 'retrieval-1',
+          field: 'config.assigneeRole',
+          message: 'approval node requires an approver',
+        },
+      ],
+    };
+    const validateWorkflow = vi.fn(async () => validation);
+    const publishWorkflow = vi.fn(async () => makeVersion());
+    const api = createFakeApi({ validateWorkflow, publishWorkflow });
+    renderEditor(api);
+    await waitForEditor();
+
+    fireEvent.click(screen.getByRole('button', { name: '发布' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '发布' }));
+
+    expect(
+      (await screen.findAllByText('流程还有 1 个问题，修正后才能发布。')).length,
+    ).toBeGreaterThan(0);
+    expect(publishWorkflow).not.toHaveBeenCalled();
+  });
+
+  it('409 后可放弃本地修改并重新加载服务端草稿', async () => {
+    const saveDraft = vi.fn(async () => {
+      throw new ApiError('draft version does not match', {
+        status: 409,
+        code: 'RICCON-WF-409',
+      });
+    });
+    const getWorkflow = vi.fn(async () => makeDetail());
+    const api = createFakeApi({ saveDraft, getWorkflow });
+    renderEditor(api);
+    await waitForEditor();
+
+    fireEvent.change(screen.getByLabelText('流程名称'), { target: { value: '本地修改' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存草稿' }));
+    expect(await screen.findByText('草稿已被其他会话修改')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '放弃本地修改并加载最新草稿' }));
+
+    await waitFor(() => {
+      expect(getWorkflow).toHaveBeenCalledTimes(2);
+    });
+    expect((screen.getByLabelText('流程名称') as HTMLInputElement).value).toBe('销售部市场调研');
+  });
+
+  it('只读流程不渲染编辑入口', async () => {
+    const api = createFakeApi({
+      getWorkflow: vi.fn(async () =>
+        makeDetail({ canEdit: false, canPublish: false, draftGraph: undefined }),
+      ),
+    });
+    renderEditor(api);
+    expect(
+      await screen.findByText(
+        '只有流程所有者与租户管理员可以编辑草稿。你可以查看流程状态，但不能修改节点或参数。',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByRole('button', { name: '保存草稿' })).toBeNull();
+  });
+
+  it('403/404/503 分别显示无权限、不可见与编排关闭', async () => {
+    const forbidden = createFakeApi({
+      getWorkflow: vi.fn(async () => {
+        throw new ApiError('forbidden', { status: 403, code: 'RICCON-AUTH-403' });
+      }),
+    });
+    const first = renderEditor(forbidden);
+    expect(await screen.findByText('没有访问权限')).toBeVisible();
+    first.unmount();
+
+    const missing = createFakeApi({
+      getWorkflow: vi.fn(async () => {
+        throw new ApiError('missing', { status: 404, code: 'RICCON-TENANT-404' });
+      }),
+    });
+    const second = renderEditor(missing);
+    expect(await screen.findByText('流程不存在或不可见')).toBeVisible();
+    second.unmount();
+
+    const disabled = createFakeApi({
+      getWorkflow: vi.fn(async () => {
+        throw new ApiError('disabled', { status: 503, code: 'RICCON-WF-503' });
+      }),
+    });
+    const third = renderEditor(disabled);
+    expect(await screen.findByText('编排功能已关闭')).toBeVisible();
+    third.unmount();
+
+    const failed = createFakeApi({
+      getWorkflow: vi.fn(async () => {
+        throw new ApiError('boom', { status: 500, code: 'RICCON-INTERNAL-500' });
+      }),
+    });
+    renderEditor(failed);
+    expect(await screen.findByText('流程加载失败')).toBeVisible();
+  });
+
+  it('375px 保持单列结构，关键按钮可聚焦', async () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 375 });
+    const api = createFakeApi();
+    renderEditor(api);
+    await waitForEditor();
+
+    const save = screen.getByRole('button', { name: '保存草稿' });
+    const validate = screen.getByRole('button', { name: '校验' });
+    const publish = screen.getByRole('button', { name: '发布' });
+    for (const button of [save, validate, publish]) {
+      expect(button).toBeEnabled();
+      expect(button.getAttribute('tabindex')).not.toBe('-1');
+    }
+    expect(screen.getByRole('list', { name: '流程节点列表' })).toBeVisible();
+    expect(screen.getByRole('list', { name: '流程连线列表' })).toBeVisible();
+  });
+});
