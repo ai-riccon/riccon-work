@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0248",
+  "module_id": "M06",
+  "title": "M06 T16a-F1 前端 a11y 修复（axe serious）",
+  "owner": "riccon/builder-b3",
+  "status": "review",
+  "write_scope": [
+    "apps/web/src/pages/workflow/**",
+    "apps/web/src/components/workflow/**",
+    "apps/web/src/layouts/workspace/**"
+  ],
+  "acceptance": [
+    "修复 REV-T16a F-01：流程列表/编辑器/运行详情绿色 Tag 对比度 ≥4.5:1；编辑器发布/上移/删除、模板复制、运行历史主按钮的 aria-label 与可见文本一致（AntD 中文空格）；E2E-M06-09a axe 五界面 + 模板库/审批/历史无 serious/critical。",
+    "关闭 REV-TASK-0230-001 F-004：保存 400 时校验面板可达/可展开，显示后端 issues 或明确入口；补组件测试。",
+    "只改前端 pages/workflow、components/workflow、layouts/workspace；不改后端/contracts/PRODUCT/AGENTS；pnpm web test/typecheck/lint/build；提交取证，任务只移 review。"
+  ],
+  "evidence": [
+    "EV-1132",
+    "EV-1133",
+    "EV-1134",
+    "EV-1135",
+    "EV-1136",
+    "EV-1137",
+    "EV-1138",
+    "EV-1139"
+  ],
+  "tools_used": [
+    "codegraph",
+    "serena",
+    "pnpm",
+    "git"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-26T03:40:39.822+08:00",
+  "updated_at": "2026-11-26T04:11:34.246+08:00",
+  "baseline_commit": "ef3f5006",
+  "end_commit": "214cdc6a"
+}
