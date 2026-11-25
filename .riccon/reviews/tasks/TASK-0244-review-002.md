@@ -214,9 +214,9 @@ F-002)`，不把它当作真实浏览器已通过。
 - **T16a 未跑**：真实浏览器 `/workflows/templates` 加载、列表/编辑器↔模板库跳转、无权限 403、
   刷新深链、375px 无横向滚动、axe serious/critical=0、键盘旅程和 M06 stub 账号，均归 T16a；
   本评审不据此判 fail，但也不把它们写成已通过。
-- **T14 依赖**：T14 已重录 clean EV-1064/1065，但其复审（REV-TASK-0235-002 或等价）未在本评审
-  范围；M06 模块 gate 仍需 T14 与 T14b 的 clean 证据、T16a E2E/a11y/perf、模块 coverage/security
-  和 Product 预验收分别完成。
+- **T14 依赖**：T14 已重录 clean EV-1064/1065，并已有 `REV-TASK-0235-002` pass；T14 的复审细节
+  不在本评审范围。M06 模块 gate 仍需 T16a E2E/a11y/perf、模块 coverage/security 和 Product
+  预验收分别完成。
 - **历史文件**：EV-1061/EV-1062 文件仍在证据目录但未被任务卡引用；当前 gate 聚合只看 task.evidence，
   不影响本任务；后续不要把它们重新加入任务卡。
 - **未验证**：coverage、安全扫描、k6 性能、迁移回滚属 M06 模块 gate；本任务未产生这些证据。
@@ -225,5 +225,5 @@ F-002)`，不把它当作真实浏览器已通过。
 
 1. Lead 可将 TASK-0244 从 review 推进到 done（本评审 verdict pass；F-002 已按 P3 accepted 记录）。
 2. T16a 完成真实浏览器 E2E/axe/375px/键盘与 M06 stub 账号后，在模块评审对账 F-002 residual。
-3. M06 模块 gate 继续等待 T14 复审、模块全量 coverage/security/perf 与 Product 预验收；本评审
-   不代表模块级通过。
+3. M06 模块 gate 继续等待 T16a E2E/a11y/perf、模块全量 coverage/security 与 Product 预验收；
+   本评审不代表模块级通过。
