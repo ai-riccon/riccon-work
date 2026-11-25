@@ -129,7 +129,7 @@ describe('WorkflowApprovalsPage', () => {
     renderPage(api);
 
     fireEvent.click(
-      await screen.findByRole('button', { name: '查看审批详情：市场调研流程 · 人工审批' }),
+      await screen.findByRole('button', { name: /查看审批详情：市场调研流程 · 人工审批/ }),
     );
     expect(await screen.findByRole('heading', { name: '审批详情', level: 1 })).toBeVisible();
     expect(api.getApproval).toHaveBeenCalledWith('approval-1');
@@ -145,7 +145,7 @@ describe('WorkflowApprovalsPage', () => {
     renderPage(api);
 
     fireEvent.click(
-      await screen.findByRole('button', { name: '查看审批详情：市场调研流程 · 人工审批' }),
+      await screen.findByRole('button', { name: /查看审批详情：市场调研流程 · 人工审批/ }),
     );
     fireEvent.click(await screen.findByRole('button', { name: '批准' }));
 
@@ -161,7 +161,7 @@ describe('WorkflowApprovalsPage', () => {
     renderPage(api);
 
     fireEvent.click(
-      await screen.findByRole('button', { name: '查看审批详情：市场调研流程 · 人工审批' }),
+      await screen.findByRole('button', { name: /查看审批详情：市场调研流程 · 人工审批/ }),
     );
     fireEvent.change(await screen.findByLabelText(/审批意见/), {
       target: { value: '引用资料不足' },

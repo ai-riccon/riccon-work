@@ -18,6 +18,7 @@ import {
   Typography,
 } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { WorkflowTag } from '@/components/workflow/accessible-tag';
 import { api as defaultApi } from '@/services/api';
 import { ApiError, describeApiError } from '@/services/api/errors';
 import { formatOffsetDateTime } from '@/services/api/time';
@@ -327,7 +328,12 @@ export default function WorkflowListPage({
           title="没有访问权限"
           subTitle="你没有编排权限，请联系租户管理员申请。"
           extra={[
-            <Button key="retry" aria-label="重试" onClick={() => void load()}>
+            <Button
+              key="retry"
+              aria-label="重试"
+              autoInsertSpace={false}
+              onClick={() => void load()}
+            >
               重试
             </Button>,
           ]}
@@ -353,7 +359,13 @@ export default function WorkflowListPage({
           title="流程列表加载失败"
           subTitle={error ?? '请稍后重试。'}
           extra={[
-            <Button key="retry" type="primary" aria-label="重试" onClick={() => void load()}>
+            <Button
+              key="retry"
+              type="primary"
+              aria-label="重试"
+              autoInsertSpace={false}
+              onClick={() => void load()}
+            >
               重试
             </Button>,
           ]}
@@ -390,11 +402,13 @@ export default function WorkflowListPage({
                       {workflow.name}
                     </Button>
                     <Space wrap size={[6, 6]}>
-                      <Tag color={display.color}>{display.label}</Tag>
+                      <WorkflowTag color={display.color}>{display.label}</WorkflowTag>
                       {workflow.publishedVersionNo == null ? (
                         <Tag>未发布</Tag>
                       ) : (
-                        <Tag color="green">已发布 v{workflow.publishedVersionNo}</Tag>
+                        <WorkflowTag color="green">
+                          已发布 v{workflow.publishedVersionNo}
+                        </WorkflowTag>
                       )}
                     </Space>
                     <Typography.Text type="secondary" className="workflow-list-description">

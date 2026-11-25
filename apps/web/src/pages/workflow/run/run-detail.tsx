@@ -9,6 +9,7 @@ import {
 } from '@ant-design/icons';
 import { Alert, Button, Descriptions, Empty, Space, Tag, Typography } from 'antd';
 import { useEffect, useRef, useState } from 'react';
+import { WorkflowTag } from '@/components/workflow/accessible-tag';
 import type { Citation } from '@/services/api/types';
 import { formatOffsetDateTime } from '@/services/api/time';
 import { CitationDetailDrawer } from '@/pages/knowledge/components/citation-detail-drawer';
@@ -158,13 +159,17 @@ export function WorkflowRunDetailView({
           {detail.workflowName || '未命名流程'}
         </Typography.Paragraph>
         <Space wrap size={[8, 8]} className="workflow-run-heading-tags">
-          <Tag color={RUN_STATUS_COLORS[detail.status]}>{runStatusLabel(detail.status)}</Tag>
+          <WorkflowTag color={RUN_STATUS_COLORS[detail.status]}>
+            {runStatusLabel(detail.status)}
+          </WorkflowTag>
           <Tag>版本 v{detail.versionNo}</Tag>
-          {currentNodeName ? <Tag color="processing">当前节点：{currentNodeName}</Tag> : null}
+          {currentNodeName ? (
+            <WorkflowTag color="processing">当前节点：{currentNodeName}</WorkflowTag>
+          ) : null}
           {detail.approvalStatus ? (
-            <Tag color={approvalStatusColor(detail.approvalStatus)}>
+            <WorkflowTag color={approvalStatusColor(detail.approvalStatus)}>
               审批：{approvalStatusLabel(detail.approvalStatus)}
-            </Tag>
+            </WorkflowTag>
           ) : null}
         </Space>
       </header>
@@ -179,7 +184,9 @@ export function WorkflowRunDetailView({
             key: 'status',
             label: '运行状态',
             children: (
-              <Tag color={RUN_STATUS_COLORS[detail.status]}>{runStatusLabel(detail.status)}</Tag>
+              <WorkflowTag color={RUN_STATUS_COLORS[detail.status]}>
+                {runStatusLabel(detail.status)}
+              </WorkflowTag>
             ),
           },
           { key: 'version', label: '绑定版本', children: `v${detail.versionNo}` },
@@ -310,14 +317,14 @@ export function WorkflowRunDetailView({
                       {index + 1}. {node.name}
                     </Typography.Text>
                     <Tag>{nodeTypeLabel(node)}</Tag>
-                    <Tag
+                    <WorkflowTag
                       color={NODE_STATUS_COLORS[node.status]}
                       icon={<NodeStatusIcon status={node.status} />}
                     >
                       {nodeStatusLabel(node.status)}
-                    </Tag>
+                    </WorkflowTag>
                     <Tag>第 {node.attempt} 次尝试</Tag>
-                    {current ? <Tag color="processing">当前节点</Tag> : null}
+                    {current ? <WorkflowTag color="processing">当前节点</WorkflowTag> : null}
                   </div>
 
                   <div className="workflow-run-node-meta">
@@ -450,9 +457,9 @@ export function WorkflowRunDetailView({
               <li key={approval.id} className="workflow-run-approval">
                 <div className="workflow-run-approval-header">
                   <Typography.Text strong>{approval.nodeName}</Typography.Text>
-                  <Tag color={approvalStatusColor(approval.status)}>
+                  <WorkflowTag color={approvalStatusColor(approval.status)}>
                     {approvalStatusLabel(approval.status)}
-                  </Tag>
+                  </WorkflowTag>
                   <Typography.Text type="secondary">
                     {describeApprovalAction(approval)}
                   </Typography.Text>

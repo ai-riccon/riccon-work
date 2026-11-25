@@ -15,6 +15,7 @@ import {
   Typography,
 } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { WorkflowTag } from '@/components/workflow/accessible-tag';
 import { api as defaultApi } from '@/services/api';
 import { ApiError, describeApiError } from '@/services/api/errors';
 import { formatOffsetDateTime } from '@/services/api/time';
@@ -256,7 +257,12 @@ export default function WorkflowTemplatesPage({
           title="没有访问权限"
           subTitle="你没有模板库的读取权限，请联系租户管理员申请。"
           extra={[
-            <Button key="retry" aria-label="重试" onClick={() => void load()}>
+            <Button
+              key="retry"
+              aria-label="重试"
+              autoInsertSpace={false}
+              onClick={() => void load()}
+            >
               重试
             </Button>,
           ]}
@@ -269,7 +275,13 @@ export default function WorkflowTemplatesPage({
           title="模板库加载失败"
           subTitle={error ?? '请稍后重试。'}
           extra={[
-            <Button key="retry" type="primary" aria-label="重试" onClick={() => void load()}>
+            <Button
+              key="retry"
+              type="primary"
+              aria-label="重试"
+              autoInsertSpace={false}
+              onClick={() => void load()}
+            >
               重试
             </Button>,
           ]}
@@ -296,7 +308,7 @@ export default function WorkflowTemplatesPage({
                     {template.name}
                   </Typography.Title>
                   <Space wrap size={[6, 6]}>
-                    <Tag color="blue">内置模板</Tag>
+                    <WorkflowTag color="blue">内置模板</WorkflowTag>
                     <Tag>{template.scenario}</Tag>
                   </Space>
                   <Typography.Text type="secondary" className="workflow-templates-description">
@@ -311,7 +323,7 @@ export default function WorkflowTemplatesPage({
                   <Button
                     type="primary"
                     icon={<CopyOutlined />}
-                    aria-label={`复制模板：${template.name}`}
+                    aria-label={`复制模板：${template.name} 复制为草稿`}
                     title={canEdit ? undefined : '需要编排权限'}
                     disabled={!canEdit}
                     loading={copyingId === template.id}

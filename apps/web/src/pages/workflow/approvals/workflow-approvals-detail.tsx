@@ -1,5 +1,6 @@
 import { ArrowLeftOutlined, ReloadOutlined } from '@ant-design/icons';
-import { Alert, Button, Descriptions, Input, Result, Skeleton, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Descriptions, Input, Result, Skeleton, Space, Typography } from 'antd';
+import { WorkflowTag } from '@/components/workflow/accessible-tag';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { ApiError, describeApiError } from '@/services/api/errors';
 import { formatOffsetDateTime } from '@/services/api/time';
@@ -193,7 +194,13 @@ export function ApprovalDetail({
           title="审批详情加载失败"
           subTitle={error ?? '请稍后重试。'}
           extra={[
-            <Button key="retry" type="primary" aria-label="重试" onClick={() => void load()}>
+            <Button
+              key="retry"
+              type="primary"
+              aria-label="重试"
+              autoInsertSpace={false}
+              onClick={() => void load()}
+            >
               重试
             </Button>,
             <Button key="back" onClick={onBack}>
@@ -239,7 +246,7 @@ export function ApprovalDetail({
           审批详情
         </h1>
         <Space wrap size={[8, 8]}>
-          <Tag color={APPROVAL_STATUS_COLORS[approval.status]}>{statusLabel}</Tag>
+          <WorkflowTag color={APPROVAL_STATUS_COLORS[approval.status]}>{statusLabel}</WorkflowTag>
           <Typography.Text type="secondary">
             审批 {formatShortId(approval.id)} · 创建于 {formatOffsetDateTime(approval.createdAt)}
           </Typography.Text>
@@ -257,7 +264,11 @@ export function ApprovalDetail({
           {
             key: 'status',
             label: '状态',
-            children: <Tag color={APPROVAL_STATUS_COLORS[approval.status]}>{statusLabel}</Tag>,
+            children: (
+              <WorkflowTag color={APPROVAL_STATUS_COLORS[approval.status]}>
+                {statusLabel}
+              </WorkflowTag>
+            ),
           },
           {
             key: 'requestedBy',
@@ -441,6 +452,7 @@ export function ApprovalDetail({
             <Button
               type="primary"
               aria-label="批准"
+              autoInsertSpace={false}
               disabled={pendingDecision !== null}
               loading={pendingDecision === 'APPROVE'}
               onClick={() => void handleDecide('APPROVE')}
@@ -450,6 +462,7 @@ export function ApprovalDetail({
             <Button
               danger
               aria-label="拒绝"
+              autoInsertSpace={false}
               disabled={pendingDecision !== null}
               loading={pendingDecision === 'REJECT'}
               onClick={() => void handleDecide('REJECT')}

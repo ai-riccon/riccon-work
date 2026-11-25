@@ -98,6 +98,40 @@ function renderPage(api: WorkflowApi, navigate = vi.fn(), session = EDITOR_SESSI
   };
 }
 
+/**
+ * 解析 rgb()/hex 颜色为 WCAG 相对亮度。
+ *
+ * @param color 内联样式颜色
+ * @returns 相对亮度（0–1）
+ */
+function relativeLuminance(color: string): number {
+  const channels = color.startsWith('rgb')
+    ? (color.match(/\d+/g) ?? []).slice(0, 3).map(Number)
+    : [1, 3, 5].map((offset) => Number.parseInt(color.slice(offset, offset + 2), 16));
+  const [r, g, b] = channels.map((value) => {
+    const channel = value / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * 断言 Tag 前景/背景对比度达到 WCAG 2.1 AA 4.5:1。
+ *
+ * 对应 axe `color-contrast`：antd 6 filled 绿色/橙色 Tag 是真实问题来源。
+ *
+ * @param tag 状态或发布 Tag
+ */
+function expectAATagContrast(tag: HTMLElement): void {
+  expect(tag.style.color).not.toBe('');
+  expect(tag.style.backgroundColor).not.toBe('');
+  const [lighter, darker] = [
+    relativeLuminance(tag.style.color),
+    relativeLuminance(tag.style.backgroundColor),
+  ].sort((left, right) => right - left);
+  expect((lighter + 0.05) / (darker + 0.05)).toBeGreaterThanOrEqual(4.5);
+}
+
 describe('流程列表页', () => {
   beforeEach(() => {
     authStore.reset();
@@ -252,5 +286,31 @@ describe('流程列表页', () => {
     expect(list).toHaveAttribute('data-layout', 'cards');
     expect(screen.getByRole('button', { name: '打开编辑' })).toBeVisible();
     expect(screen.getByRole('button', { name: '销售部市场调研' })).toBeVisible();
+  });
+
+  it('状态与发布 Tag 达到 AA 对比度，入口按可见名称可查', async () => {
+    const api = createFakeApi({
+      listWorkflows: vi.fn(async () =>
+        pageOf<WorkflowDefinition>([
+          makeWorkflow(),
+          makeWorkflow({
+            id: 'workflow-2',
+            name: '已发布流程',
+            draftVersion: 3,
+            publishedVersionNo: 2,
+            hasUnpublishedChanges: false,
+          }),
+        ]),
+      ),
+    });
+    renderPage(api);
+
+    expect(await screen.findByText('已发布 v2')).toBeVisible();
+    const coloredTags = Array.from(
+      document.querySelectorAll<HTMLElement>('.workflow-list .ant-tag'),
+    ).filter((tag) => tag.style.color !== '');
+    expect(coloredTags.length).toBeGreaterThanOrEqual(3);
+    coloredTags.forEach(expectAATagContrast);
+    expect(screen.getByRole('button', { name: '已发布流程' })).toBeVisible();
   });
 });

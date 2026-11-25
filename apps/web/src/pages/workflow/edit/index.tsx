@@ -21,6 +21,7 @@ import {
   Typography,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { WorkflowTag } from '@/components/workflow/accessible-tag';
 import { WorkflowCanvas } from '@/components/workflow/canvas';
 import { ApiError, describeApiError } from '@/services/api/errors';
 import { formatOffsetDateTime } from '@/services/api/time';
@@ -929,6 +930,16 @@ export default function WorkflowEditorPage({
         setConflictOpen(true);
         return false;
       }
+      if (caught instanceof ApiError && caught.status === 400) {
+        // 服务端校验失败：ProblemDetail.detail 已带逐项问题摘要，同时把校验面板切到 error
+        // 并给出“查看校验问题”入口，避免用户只看到 400 detail 却找不到面板
+        // （REV-TASK-0230-001 F-004）。
+        const message = caught.message || '服务端校验未通过，请按校验结果修正后重试。';
+        setSaveError(`保存失败（400）：${message}`);
+        setPanelPhase('error');
+        setPanelError(message);
+        return false;
+      }
       setSaveError(editorErrorMessage(caught, '保存草稿失败，请稍后重试。'));
       return false;
     } finally {
@@ -1144,6 +1155,18 @@ export default function WorkflowEditorPage({
     (control ?? container)?.focus();
   };
 
+  /**
+   * 把焦点移到校验结果面板。
+   *
+   * 保存被服务端 400 拒绝后，页面把 detail 同步写入面板并提供“查看校验问题”入口；
+   * 这里滚动到面板并聚焦，键盘与屏幕阅读器用户无需手动 Tab 穿越整页。
+   */
+  const focusValidationPanel = (): void => {
+    const panel = document.getElementById('workflow-validation-panel');
+    panel?.scrollIntoView({ block: 'start' });
+    panel?.focus();
+  };
+
   const backButton = (
     <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/workflows')}>
       返回流程列表
@@ -1261,6 +1284,7 @@ export default function WorkflowEditorPage({
           </Button>
           <Button
             aria-label="校验"
+            autoInsertSpace={false}
             onClick={() => void handleValidate()}
             loading={validating}
             disabled={publishing}
@@ -1270,6 +1294,7 @@ export default function WorkflowEditorPage({
           <Button
             type="primary"
             aria-label="发布"
+            autoInsertSpace={false}
             onClick={openPublish}
             disabled={!detail?.canPublish || !scopeEvaluation.allowed || publishing}
           >
@@ -1280,8 +1305,8 @@ export default function WorkflowEditorPage({
 
       <Flex className="workflow-editor-title" wrap gap={8} align="center">
         <Typography.Title level={2}>{name || detail?.name}</Typography.Title>
-        {display ? <Tag color={display.color}>{display.label}</Tag> : null}
-        {dirty ? <Tag color="orange">有未保存修改</Tag> : null}
+        {display ? <WorkflowTag color={display.color}>{display.label}</WorkflowTag> : null}
+        {dirty ? <WorkflowTag color="orange">有未保存修改</WorkflowTag> : null}
       </Flex>
       <Typography.Text type="secondary" className="workflow-editor-meta">
         草稿 v{draftVersion}
@@ -1296,7 +1321,19 @@ export default function WorkflowEditorPage({
         <Alert className="workflow-editor-alert" type="success" showIcon title={notice} />
       ) : null}
       {saveError ? (
-        <Alert className="workflow-editor-alert" type="error" showIcon title={saveError} />
+        <Alert
+          className="workflow-editor-alert"
+          type="error"
+          showIcon
+          title={saveError}
+          action={
+            panelPhase === 'error' || panelPhase === 'invalid' ? (
+              <Button size="small" onClick={focusValidationPanel}>
+                查看校验问题
+              </Button>
+            ) : undefined
+          }
+        />
       ) : null}
 
       <Card title="流程信息" className="workflow-editor-card">
@@ -1393,9 +1430,9 @@ export default function WorkflowEditorPage({
                       </Button>
                       <Space wrap size={[4, 4]}>
                         <Tag>{NODE_TYPE_LABELS[node.type]}</Tag>
-                        <Tag color={nodeIssues.length > 0 ? 'orange' : 'green'}>
+                        <WorkflowTag color={nodeIssues.length > 0 ? 'orange' : 'green'}>
                           {nodeIssues.length > 0 ? '待修正' : '已配置'}
-                        </Tag>
+                        </WorkflowTag>
                       </Space>
                       <Typography.Text type="secondary" className="workflow-node-summary">
                         {nodeConfigSummary(node)}
@@ -1405,6 +1442,7 @@ export default function WorkflowEditorPage({
                       <Button
                         size="small"
                         aria-label={`上移节点 ${node.name}`}
+                        autoInsertSpace={false}
                         disabled={index === 0}
                         onClick={() => handleMoveNode(node.id, -1)}
                       >
@@ -1413,6 +1451,7 @@ export default function WorkflowEditorPage({
                       <Button
                         size="small"
                         aria-label={`下移节点 ${node.name}`}
+                        autoInsertSpace={false}
                         disabled={index === graph.nodes.length - 1}
                         onClick={() => handleMoveNode(node.id, 1)}
                       >
@@ -1425,7 +1464,12 @@ export default function WorkflowEditorPage({
                         cancelText="取消"
                         onConfirm={() => handleRemoveNode(node.id)}
                       >
-                        <Button size="small" danger aria-label={`删除节点 ${node.name}`}>
+                        <Button
+                          size="small"
+                          danger
+                          aria-label={`删除节点 ${node.name}`}
+                          autoInsertSpace={false}
+                        >
                           删除
                         </Button>
                       </Popconfirm>
@@ -1527,11 +1571,12 @@ export default function WorkflowEditorPage({
                   <Typography.Text>
                     {source?.name ?? edge.source} → {target?.name ?? edge.target}
                   </Typography.Text>
-                  {edge.branch ? <Tag color="blue">{edge.branch}</Tag> : null}
+                  {edge.branch ? <WorkflowTag color="blue">{edge.branch}</WorkflowTag> : null}
                   <Button
                     size="small"
                     danger
                     aria-label={`删除连线 ${edge.source} 到 ${edge.target}`}
+                    autoInsertSpace={false}
                     onClick={() => handleRemoveEdge(edge.id)}
                   >
                     删除
@@ -1552,7 +1597,12 @@ export default function WorkflowEditorPage({
           </Button>
         }
       >
-        <div aria-live="polite">
+        <div
+          id="workflow-validation-panel"
+          className="workflow-validation-panel"
+          tabIndex={-1}
+          aria-live="polite"
+        >
           {panelPhase === 'idle' ? (
             <Typography.Text type="secondary">
               尚未校验。点击“校验”保存草稿并检查流程。
@@ -1578,7 +1628,7 @@ export default function WorkflowEditorPage({
                     key={`${issue.code}-${issue.nodeId ?? 'graph'}-${issue.field ?? ''}-${index}`}
                     className="workflow-issue-row"
                   >
-                    <Tag color="red">{issueCodeLabel(issue.code)}</Tag>
+                    <WorkflowTag color="red">{issueCodeLabel(issue.code)}</WorkflowTag>
                     {issue.nodeId ? (
                       <Button
                         type="link"
@@ -1687,7 +1737,11 @@ export default function WorkflowEditorPage({
         open={publishOpen}
         okText="发布"
         cancelText="取消"
-        okButtonProps={{ 'aria-label': '发布', disabled: !scopeEvaluation.allowed }}
+        okButtonProps={{
+          'aria-label': '发布',
+          autoInsertSpace: false,
+          disabled: !scopeEvaluation.allowed,
+        }}
         confirmLoading={publishing}
         onOk={() => void handlePublish()}
         onCancel={() => {

@@ -23,6 +23,7 @@ import {
   Typography,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { WorkflowTag } from '@/components/workflow/accessible-tag';
 import { ApiError, describeApiError } from '@/services/api/errors';
 import { formatOffsetDateTime } from '@/services/api/time';
 import type { Department, SessionInfo } from '@/services/api/types';
@@ -566,7 +567,12 @@ export function ReleasePanel({
           description={workflowOptionsError}
           action={
             onReloadOptions ? (
-              <Button size="small" aria-label="重试加载流程目录" onClick={onReloadOptions}>
+              <Button
+                size="small"
+                aria-label="重试加载流程目录"
+                autoInsertSpace={false}
+                onClick={onReloadOptions}
+              >
                 重试
               </Button>
             ) : undefined
@@ -595,7 +601,13 @@ export function ReleasePanel({
           title="没有访问权限"
           subTitle="查看流程版本需要 workflow.read 权限，请联系租户管理员申请。"
           extra={[
-            <Button key="retry" type="primary" aria-label="重试" onClick={() => void loadDetail()}>
+            <Button
+              key="retry"
+              type="primary"
+              aria-label="重试"
+              autoInsertSpace={false}
+              onClick={() => void loadDetail()}
+            >
               重试
             </Button>,
             <Button key="back" onClick={goToList}>
@@ -611,7 +623,12 @@ export function ReleasePanel({
           title="流程不存在或你无权查看"
           subTitle="流程可能已删除、跨租户，或不在你的发布范围；为保护数据，页面不提示是否存在。"
           extra={[
-            <Button key="retry" aria-label="重试" onClick={() => void loadDetail()}>
+            <Button
+              key="retry"
+              aria-label="重试"
+              autoInsertSpace={false}
+              onClick={() => void loadDetail()}
+            >
               重试
             </Button>,
             <Button key="back" type="primary" onClick={goToList}>
@@ -627,7 +644,12 @@ export function ReleasePanel({
           title="编排功能已关闭"
           subTitle={WORKFLOW_UNAVAILABLE_MESSAGE}
           extra={[
-            <Button key="retry" type="primary" aria-label="重试" onClick={() => void loadDetail()}>
+            <Button
+              key="retry"
+              type="primary"
+              aria-label="重新加载"
+              onClick={() => void loadDetail()}
+            >
               重新加载
             </Button>,
             <Button key="back" onClick={goToList}>
@@ -643,7 +665,13 @@ export function ReleasePanel({
           title="流程详情加载失败"
           subTitle={detailError ?? '请稍后重试。'}
           extra={[
-            <Button key="retry" type="primary" aria-label="重试" onClick={() => void loadDetail()}>
+            <Button
+              key="retry"
+              type="primary"
+              aria-label="重试"
+              autoInsertSpace={false}
+              onClick={() => void loadDetail()}
+            >
               重试
             </Button>,
             <Button key="back" onClick={goToList}>
@@ -665,7 +693,7 @@ export function ReleasePanel({
                 key: 'status',
                 label: '流程状态',
                 children: statusDisplay ? (
-                  <Tag color={statusDisplay.color}>{statusDisplay.label}</Tag>
+                  <WorkflowTag color={statusDisplay.color}>{statusDisplay.label}</WorkflowTag>
                 ) : (
                   '—'
                 ),
@@ -886,6 +914,7 @@ export function ReleasePanel({
                   <Button
                     size="small"
                     aria-label="重试加载版本列表"
+                    autoInsertSpace={false}
                     onClick={() => void loadVersions()}
                   >
                     重试
@@ -912,7 +941,7 @@ export function ReleasePanel({
                         <div className="workflow-history-version-main">
                           <Space wrap size={[6, 6]}>
                             <Typography.Text strong>v{version.versionNo}</Typography.Text>
-                            {isCurrent ? <Tag color="green">当前发布</Tag> : null}
+                            {isCurrent ? <WorkflowTag color="green">当前发布</WorkflowTag> : null}
                             <Tag>{describeVersionScope(version, departments)}</Tag>
                           </Space>
                           <dl className="workflow-history-version-meta">

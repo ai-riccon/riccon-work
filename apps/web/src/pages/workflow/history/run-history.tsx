@@ -22,6 +22,7 @@ import {
   Typography,
 } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { WorkflowTag } from '@/components/workflow/accessible-tag';
 import { ApiError, describeApiError } from '@/services/api/errors';
 import { formatOffsetDateTime } from '@/services/api/time';
 import type { SessionInfo } from '@/services/api/types';
@@ -433,7 +434,12 @@ export function RunHistoryPanel({
             </Checkbox>
           </Form.Item>
           <Space wrap size={[8, 8]}>
-            <Button htmlType="submit" type="primary" aria-label="查询运行历史">
+            <Button
+              htmlType="submit"
+              type="primary"
+              aria-label="查询运行历史"
+              autoInsertSpace={false}
+            >
               查询
             </Button>
             <Button onClick={handleReset}>清除筛选</Button>
@@ -463,7 +469,13 @@ export function RunHistoryPanel({
           title="没有访问权限"
           subTitle="运行历史需要 workflow.read 权限，请联系租户管理员申请。"
           extra={[
-            <Button key="retry" type="primary" aria-label="重试" onClick={() => void load()}>
+            <Button
+              key="retry"
+              type="primary"
+              aria-label="重试"
+              autoInsertSpace={false}
+              onClick={() => void load()}
+            >
               重试
             </Button>,
             <Button key="back" onClick={onBackToStudio}>
@@ -479,7 +491,12 @@ export function RunHistoryPanel({
           title="没有可查看的运行"
           subTitle="运行不存在、已到期，或当前账号无权访问；为保护数据，页面不提示对象是否存在。"
           extra={[
-            <Button key="retry" aria-label="重试" onClick={() => void load()}>
+            <Button
+              key="retry"
+              aria-label="重试"
+              autoInsertSpace={false}
+              onClick={() => void load()}
+            >
               重试
             </Button>,
             <Button key="back" type="primary" onClick={onBackToStudio}>
@@ -495,7 +512,7 @@ export function RunHistoryPanel({
           title="编排功能已关闭"
           subTitle="已有运行记录仍可查看；新运行、重试与取消会暂时不可用。请联系运维人员开启编排功能。"
           extra={[
-            <Button key="retry" type="primary" aria-label="重试" onClick={() => void load()}>
+            <Button key="retry" type="primary" aria-label="重新加载" onClick={() => void load()}>
               重新加载
             </Button>,
             <Button key="back" onClick={onBackToStudio}>
@@ -511,7 +528,13 @@ export function RunHistoryPanel({
           title="运行历史加载失败"
           subTitle={error ?? '请稍后重试。'}
           extra={[
-            <Button key="retry" type="primary" aria-label="重试" onClick={() => void load()}>
+            <Button
+              key="retry"
+              type="primary"
+              aria-label="重试"
+              autoInsertSpace={false}
+              onClick={() => void load()}
+            >
               重试
             </Button>,
             <Button key="back" onClick={onBackToStudio}>
@@ -556,14 +579,14 @@ export function RunHistoryPanel({
                       <Typography.Title level={2} className="workflow-history-item-name">
                         {workflowName}
                       </Typography.Title>
-                      <Tag color={RUN_STATUS_COLORS[run.status]}>
+                      <WorkflowTag color={RUN_STATUS_COLORS[run.status]}>
                         {RUN_STATUS_LABELS[run.status]}
-                      </Tag>
+                      </WorkflowTag>
                       <Tag>版本 v{run.versionNo}</Tag>
                       {run.approvalStatus ? (
-                        <Tag color={approvalStatusColor(run.approvalStatus)}>
+                        <WorkflowTag color={approvalStatusColor(run.approvalStatus)}>
                           审批：{approvalStatusLabel(run.approvalStatus)}
-                        </Tag>
+                        </WorkflowTag>
                       ) : null}
                     </div>
                     <dl className="workflow-history-meta">

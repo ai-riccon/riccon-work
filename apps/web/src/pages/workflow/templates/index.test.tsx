@@ -86,6 +86,38 @@ function renderPage(
   };
 }
 
+/**
+ * 解析 rgb()/hex 颜色为 WCAG 相对亮度。
+ *
+ * @param color 内联样式颜色
+ * @returns 相对亮度（0–1）
+ */
+function relativeLuminance(color: string): number {
+  const channels = color.startsWith('rgb')
+    ? (color.match(/\d+/g) ?? []).slice(0, 3).map(Number)
+    : [1, 3, 5].map((offset) => Number.parseInt(color.slice(offset, offset + 2), 16));
+  const [r, g, b] = channels.map((value) => {
+    const channel = value / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * 断言 Tag 前景/背景对比度达到 WCAG 2.1 AA 4.5:1。
+ *
+ * @param tag 状态 Tag
+ */
+function expectAATagContrast(tag: HTMLElement): void {
+  expect(tag.style.color).not.toBe('');
+  expect(tag.style.backgroundColor).not.toBe('');
+  const [lighter, darker] = [
+    relativeLuminance(tag.style.color),
+    relativeLuminance(tag.style.backgroundColor),
+  ].sort((left, right) => right - left);
+  expect((lighter + 0.05) / (darker + 0.05)).toBeGreaterThanOrEqual(4.5);
+}
+
 describe('模板库页面', () => {
   beforeEach(() => {
     authStore.reset();
@@ -101,7 +133,7 @@ describe('模板库页面', () => {
     expect(screen.getByText('市场调研')).toBeVisible();
     expect(screen.getByText(/内置版本 v1 · 更新于 2026-11-25 08:00:00 \+08:00/)).toBeVisible();
     expect(screen.getByText(/检索知识库并调用 1 个 MCP 数据工具/)).toBeVisible();
-    expect(screen.getByRole('button', { name: '复制模板：市场调研报告' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /复制模板：市场调研报告/ })).toBeEnabled();
     expect(api.listTemplates).toHaveBeenCalledWith({ page: 1, size: 20 });
   });
 
@@ -148,14 +180,14 @@ describe('模板库页面', () => {
     expect(
       await screen.findByText('你没有编排权限，无法复制模板；请联系租户管理员申请。'),
     ).toBeVisible();
-    expect(screen.getByRole('button', { name: '复制模板：市场调研报告' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /复制模板：市场调研报告/ })).toBeDisabled();
   });
 
   it('复制成功提示不改源模板并跳转编辑器', async () => {
     const api = createFakeApi();
     const { navigate } = renderPage(api);
 
-    fireEvent.click(await screen.findByRole('button', { name: '复制模板：市场调研报告' }));
+    fireEvent.click(await screen.findByRole('button', { name: /复制模板：市场调研报告/ }));
 
     expect(api.copyTemplate).toHaveBeenCalledWith(TEMPLATE_ID);
     // antd message 在 jsdom 中以动画容器渲染，可见性由浏览器动画决定；这里断言提示文本已进入 DOM。
@@ -173,7 +205,7 @@ describe('模板库页面', () => {
     });
     const { navigate } = renderPage(api);
 
-    fireEvent.click(await screen.findByRole('button', { name: '复制模板：市场调研报告' }));
+    fireEvent.click(await screen.findByRole('button', { name: /复制模板：市场调研报告/ }));
 
     expect(
       await screen.findByText('你没有编排权限，无法复制模板，请联系租户管理员申请。'),
@@ -209,6 +241,20 @@ describe('模板库页面', () => {
 
     expect(await screen.findByTestId('workflow-template-list')).toBeVisible();
     expect(screen.getByTestId('workflow-templates-page')).toBeVisible();
-    expect(screen.getByRole('button', { name: '复制模板：市场调研报告' })).toBeVisible();
+    expect(screen.getByRole('button', { name: /复制模板：市场调研报告/ })).toBeVisible();
+  });
+
+  it('内置模板 Tag 达到 AA 对比度，复制按钮名称包含可见文本', async () => {
+    const api = createFakeApi();
+    renderPage(api);
+
+    const tag = await screen.findByText('内置模板');
+    expect(tag).toHaveClass('ant-tag-blue');
+    expectAATagContrast(tag);
+
+    const copy = screen.getByRole('button', { name: /复制模板：市场调研报告/ });
+    const visibleText = (copy.textContent ?? '').trim();
+    expect(visibleText).toBe('复制为草稿');
+    expect(copy.getAttribute('aria-label')).toContain(visibleText);
   });
 });

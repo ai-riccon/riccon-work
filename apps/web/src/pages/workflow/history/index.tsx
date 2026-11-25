@@ -188,6 +188,7 @@ export default function WorkflowHistoryPage({
               key="retry"
               type="primary"
               aria-label="重试"
+              autoInsertSpace={false}
               onClick={() => void authStore.restore(sessionReader)}
             >
               重试

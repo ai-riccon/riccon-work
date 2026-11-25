@@ -1,6 +1,7 @@
 import { ReloadOutlined } from '@ant-design/icons';
-import { Button, Empty, Pagination, Result, Skeleton, Space, Tag, Typography } from 'antd';
+import { Button, Empty, Pagination, Result, Skeleton, Space, Typography } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { WorkflowTag } from '@/components/workflow/accessible-tag';
 import { ApiError, describeApiError } from '@/services/api/errors';
 import { formatOffsetDateTime } from '@/services/api/time';
 import type { WorkflowApproval, WorkflowApprovalApi } from './approval-api';
@@ -162,7 +163,13 @@ export function ApprovalInbox({
           title="没有审批权限"
           subTitle="你没有审批权限，请联系租户管理员申请。"
           extra={[
-            <Button key="retry" type="primary" aria-label="重试" onClick={() => void load()}>
+            <Button
+              key="retry"
+              type="primary"
+              aria-label="重试"
+              autoInsertSpace={false}
+              onClick={() => void load()}
+            >
               重试
             </Button>,
             <Button key="back" onClick={onBackToStudio}>
@@ -181,7 +188,12 @@ export function ApprovalInbox({
             <Button key="back" type="primary" onClick={onBackToStudio}>
               返回编排 Studio
             </Button>,
-            <Button key="retry" aria-label="重试" onClick={() => void load()}>
+            <Button
+              key="retry"
+              aria-label="重试"
+              autoInsertSpace={false}
+              onClick={() => void load()}
+            >
               重试
             </Button>,
           ]}
@@ -194,7 +206,13 @@ export function ApprovalInbox({
           title="审批待办加载失败"
           subTitle={error ?? '请稍后重试。'}
           extra={[
-            <Button key="retry" type="primary" aria-label="重试" onClick={() => void load()}>
+            <Button
+              key="retry"
+              type="primary"
+              aria-label="重试"
+              autoInsertSpace={false}
+              onClick={() => void load()}
+            >
               重试
             </Button>,
             <Button key="back" onClick={onBackToStudio}>
@@ -229,9 +247,9 @@ export function ApprovalInbox({
                       <Typography.Title level={2} className="workflow-approvals-item-name">
                         {workflowName}
                       </Typography.Title>
-                      <Tag color={APPROVAL_STATUS_COLORS[approval.status]}>
+                      <WorkflowTag color={APPROVAL_STATUS_COLORS[approval.status]}>
                         {APPROVAL_STATUS_LABELS[approval.status]}
-                      </Tag>
+                      </WorkflowTag>
                     </div>
                     <dl className="workflow-approvals-meta">
                       <div>
@@ -261,7 +279,7 @@ export function ApprovalInbox({
                   <div className="workflow-approvals-item-actions">
                     <Button
                       type="primary"
-                      aria-label={`查看审批详情：${workflowName} · ${approval.nodeName}`}
+                      aria-label={`查看审批详情：${workflowName} · ${approval.nodeName} 查看详情`}
                       onClick={() => onOpen(approval.id)}
                     >
                       查看详情

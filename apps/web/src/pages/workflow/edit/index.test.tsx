@@ -249,6 +249,38 @@ async function waitForEditor(): Promise<void> {
   expect(within(edgeList).getByText('开始 → 检索知识库')).toBeVisible();
 }
 
+/**
+ * 解析 rgb()/hex 颜色为 WCAG 相对亮度。
+ *
+ * @param color 内联样式颜色
+ * @returns 相对亮度（0–1）
+ */
+function relativeLuminance(color: string): number {
+  const channels = color.startsWith('rgb')
+    ? (color.match(/\d+/g) ?? []).slice(0, 3).map(Number)
+    : [1, 3, 5].map((offset) => Number.parseInt(color.slice(offset, offset + 2), 16));
+  const [r, g, b] = channels.map((value) => {
+    const channel = value / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * 断言 Tag 前景/背景对比度达到 WCAG 2.1 AA 4.5:1。
+ *
+ * @param tag 状态 Tag
+ */
+function expectAATagContrast(tag: HTMLElement): void {
+  expect(tag.style.color).not.toBe('');
+  expect(tag.style.backgroundColor).not.toBe('');
+  const [lighter, darker] = [
+    relativeLuminance(tag.style.color),
+    relativeLuminance(tag.style.backgroundColor),
+  ].sort((left, right) => right - left);
+  expect((lighter + 0.05) / (darker + 0.05)).toBeGreaterThanOrEqual(4.5);
+}
+
 describe('流程编辑器', () => {
   beforeEach(() => {
     authStore.reset();
@@ -797,5 +829,55 @@ describe('流程编辑器', () => {
     // 小于 768px 直接进入表单视图：画布不渲染，也没有可横向滚动的 SVG。
     expect(screen.queryByTestId('workflow-canvas-visual')).toBeNull();
     expect(screen.getByText('小屏请使用列表/表单编辑；画布在 768px 以上显示。')).toBeVisible();
+  });
+
+  it('状态 Tag 达到 AA 对比度，节点与发布按钮按可见名称可查', async () => {
+    renderEditor(createFakeApi());
+    await waitForEditor();
+
+    const coloredTags = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        '.workflow-editor-title .ant-tag, .workflow-node-row .ant-tag',
+      ),
+    ).filter((tag) => tag.style.color !== '');
+    expect(coloredTags.length).toBeGreaterThanOrEqual(3);
+    coloredTags.forEach(expectAATagContrast);
+
+    // 两字中文按钮关闭 antd 自动空格；aria-label 以可见文本开头并补充节点上下文。
+    for (const name of [
+      '校验',
+      '发布',
+      '上移节点 开始',
+      '下移节点 开始',
+      '删除节点 开始',
+      '删除连线 start 到 retrieval-1',
+    ]) {
+      expect(screen.getByRole('button', { name })).toBeVisible();
+    }
+  });
+
+  it('保存 400 时校验面板可达并展示服务端问题（F-004）', async () => {
+    const detailMessage =
+      'workflow validation failed with 1 issue(s): REQUIRED_CONFIG node=retrieval-1 field=config.topK: topK required';
+    const saveDraft = vi.fn(async () => {
+      throw new ApiError(detailMessage, {
+        status: 400,
+        code: 'RICCON-WF-400',
+        retryable: false,
+      });
+    });
+    renderEditor(createFakeApi({ saveDraft }));
+    await waitForEditor();
+
+    fireEvent.change(screen.getByLabelText('流程名称'), { target: { value: '触发服务端校验' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存草稿' }));
+
+    expect(await screen.findByText(`保存失败（400）：${detailMessage}`)).toBeVisible();
+    const panel = document.getElementById('workflow-validation-panel');
+    expect(panel).not.toBeNull();
+    expect(within(panel as HTMLElement).getByText(detailMessage)).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: '查看校验问题' }));
+    expect(panel).toHaveFocus();
   });
 });

@@ -170,6 +170,32 @@
   margin-bottom: 0;
 }
 
+/* 保存 400 后“查看校验问题”会把焦点移到面板：保留可见焦点环与滚动留白。 */
+.workflow-validation-panel {
+  scroll-margin-top: 16px;
+}
+
+.workflow-validation-panel:focus-visible {
+  outline: 2px solid #0958d9;
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+/*
+ * antd 6 danger 文本按钮默认 #ff4d4f 对白底约 3.3:1，低于 WCAG AA 4.5:1
+ * （T16a E2E-M06-09a 的删除节点/连线 color-contrast）。删除类按钮改用 red-8/9，
+ * 悬停时回到 red-7 并保留边框反馈；禁用态继续由 antd 处理。
+ */
+.workflow-editor-card .ant-btn-dangerous:not(:disabled) {
+  color: #a8071a;
+  border-color: #ffa39e;
+}
+
+.workflow-editor-card .ant-btn-dangerous:not(:disabled):hover {
+  color: #cf1322;
+  border-color: #ff7875;
+}
+
 /* 375px：运行范围分段控件只占满可用宽度，必要时自身滚动，避免撑破页面。 */
 .workflow-editor-card .ant-segmented {
   max-width: 100%;

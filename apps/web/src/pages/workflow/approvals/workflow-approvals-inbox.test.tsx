@@ -81,6 +81,38 @@ function renderInbox(
   return { onBackToStudio, onOpen };
 }
 
+/**
+ * 解析 rgb()/hex 颜色为 WCAG 相对亮度。
+ *
+ * @param color 内联样式颜色
+ * @returns 相对亮度（0–1）
+ */
+function relativeLuminance(color: string): number {
+  const channels = color.startsWith('rgb')
+    ? (color.match(/\d+/g) ?? []).slice(0, 3).map(Number)
+    : [1, 3, 5].map((offset) => Number.parseInt(color.slice(offset, offset + 2), 16));
+  const [r, g, b] = channels.map((value) => {
+    const channel = value / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * 断言 Tag 前景/背景对比度达到 WCAG 2.1 AA 4.5:1。
+ *
+ * @param tag 状态 Tag
+ */
+function expectAATagContrast(tag: HTMLElement): void {
+  expect(tag.style.color).not.toBe('');
+  expect(tag.style.backgroundColor).not.toBe('');
+  const [lighter, darker] = [
+    relativeLuminance(tag.style.color),
+    relativeLuminance(tag.style.backgroundColor),
+  ].sort((left, right) => right - left);
+  expect((lighter + 0.05) / (darker + 0.05)).toBeGreaterThanOrEqual(4.5);
+}
+
 describe('ApprovalInbox', () => {
   beforeEach(() => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
@@ -196,7 +228,7 @@ describe('ApprovalInbox', () => {
     const { onOpen } = renderInbox(api);
 
     fireEvent.click(
-      await screen.findByRole('button', { name: '查看审批详情：市场调研流程 · 人工审批' }),
+      await screen.findByRole('button', { name: /查看审批详情：市场调研流程 · 人工审批/ }),
     );
     expect(onOpen).toHaveBeenCalledWith('approval-1');
   });
@@ -216,10 +248,26 @@ describe('ApprovalInbox', () => {
 
     expect(await screen.findByTestId('workflow-approval-list')).toBeVisible();
     const button = screen.getByRole('button', {
-      name: '查看审批详情：市场调研流程 · 人工审批',
+      name: /查看审批详情：市场调研流程 · 人工审批/,
     });
     expect(button).toBeVisible();
     button.focus();
     expect(button).toHaveFocus();
+  });
+
+  it('待审批 Tag 达到 AA 对比度，查看详情名称包含可见文本', async () => {
+    const api = createFakeApi();
+    renderInbox(api);
+
+    const tag = await screen.findByText('待审批');
+    expect(tag).toHaveClass('ant-tag-gold');
+    expectAATagContrast(tag);
+
+    const button = screen.getByRole('button', {
+      name: /查看审批详情：市场调研流程 · 人工审批/,
+    });
+    const visibleText = (button.textContent ?? '').trim();
+    expect(visibleText).toBe('查看详情');
+    expect(button.getAttribute('aria-label')).toContain(visibleText);
   });
 });

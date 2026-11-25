@@ -1,4 +1,5 @@
 import { ApiError, describeApiError } from '@/services/api/errors';
+import type { WorkflowTagColor } from '@/components/workflow/accessible-tag';
 import { runScopeLabel } from '../list/format';
 import type { WorkflowApprovalActionKind } from '../list/workflow-api';
 import type {
@@ -24,7 +25,7 @@ export const APPROVAL_STATUS_LABELS: Record<WorkflowApprovalStatus, string> = {
 };
 
 /** 审批状态标签颜色；同时配合文字，不只靠颜色表达状态（a11y 基线）。 */
-export const APPROVAL_STATUS_COLORS: Record<WorkflowApprovalStatus, string> = {
+export const APPROVAL_STATUS_COLORS: Record<WorkflowApprovalStatus, WorkflowTagColor> = {
   PENDING: 'gold',
   APPROVED: 'green',
   REJECTED: 'red',

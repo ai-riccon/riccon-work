@@ -6,6 +6,7 @@ import {
   formatParamsPreview,
   formatShortId,
 } from '../approvals/format';
+import type { WorkflowTagColor } from '@/components/workflow/accessible-tag';
 import { NODE_TYPE_LABELS } from '../list/format';
 import type {
   WorkflowApprovalStatus,
@@ -38,7 +39,7 @@ export const RUN_STATUS_LABELS: Record<WorkflowRunStatus, string> = {
 };
 
 /** 运行状态标签颜色；同时配合文字与图标，不只靠颜色表达状态。 */
-export const RUN_STATUS_COLORS: Record<WorkflowRunStatus, string> = {
+export const RUN_STATUS_COLORS: Record<WorkflowRunStatus, WorkflowTagColor> = {
   PENDING: 'default',
   RUNNING: 'processing',
   WAITING_APPROVAL: 'gold',
@@ -59,7 +60,7 @@ export const NODE_STATUS_LABELS: Record<WorkflowNodeStatus, string> = {
 };
 
 /** 节点状态标签颜色。 */
-export const NODE_STATUS_COLORS: Record<WorkflowNodeStatus, string> = {
+export const NODE_STATUS_COLORS: Record<WorkflowNodeStatus, WorkflowTagColor> = {
   PENDING: 'default',
   RUNNING: 'processing',
   WAITING_APPROVAL: 'gold',
@@ -204,7 +205,7 @@ export function approvalStatusLabel(status: WorkflowApprovalStatus): string {
  * @param status 审批状态
  * @returns Tag 颜色
  */
-export function approvalStatusColor(status: WorkflowApprovalStatus): string {
+export function approvalStatusColor(status: WorkflowApprovalStatus): WorkflowTagColor {
   return APPROVAL_STATUS_COLORS[status];
 }
 

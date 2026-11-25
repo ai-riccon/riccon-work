@@ -357,7 +357,12 @@ export default function WorkflowRunDetailPage({
           title="编排功能已关闭"
           subTitle="已有运行记录仍可读取；新运行、重试与审批决定会暂时不可用。请联系运维人员开启编排功能。"
           extra={[
-            <Button key="retry" aria-label="重试" onClick={() => void load(false)}>
+            <Button
+              key="retry"
+              aria-label="重试"
+              autoInsertSpace={false}
+              onClick={() => void load(false)}
+            >
               重试
             </Button>,
             <Button key="back" onClick={goBack}>
@@ -371,7 +376,13 @@ export default function WorkflowRunDetailPage({
           title="运行详情加载失败"
           subTitle={error ?? '请稍后重试。'}
           extra={[
-            <Button key="retry" type="primary" aria-label="重试" onClick={() => void load(false)}>
+            <Button
+              key="retry"
+              type="primary"
+              aria-label="重试"
+              autoInsertSpace={false}
+              onClick={() => void load(false)}
+            >
               重试
             </Button>,
             <Button key="back" onClick={goBack}>

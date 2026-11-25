@@ -90,6 +90,38 @@ function renderDetail(api: WorkflowApprovalApi) {
   return { onBack, onDecided };
 }
 
+/**
+ * 解析 rgb()/hex 颜色为 WCAG 相对亮度。
+ *
+ * @param color 内联样式颜色
+ * @returns 相对亮度（0–1）
+ */
+function relativeLuminance(color: string): number {
+  const channels = color.startsWith('rgb')
+    ? (color.match(/\d+/g) ?? []).slice(0, 3).map(Number)
+    : [1, 3, 5].map((offset) => Number.parseInt(color.slice(offset, offset + 2), 16));
+  const [r, g, b] = channels.map((value) => {
+    const channel = value / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * 断言 Tag 前景/背景对比度达到 WCAG 2.1 AA 4.5:1。
+ *
+ * @param tag 状态 Tag
+ */
+function expectAATagContrast(tag: HTMLElement): void {
+  expect(tag.style.color).not.toBe('');
+  expect(tag.style.backgroundColor).not.toBe('');
+  const [lighter, darker] = [
+    relativeLuminance(tag.style.color),
+    relativeLuminance(tag.style.backgroundColor),
+  ].sort((left, right) => right - left);
+  expect((lighter + 0.05) / (darker + 0.05)).toBeGreaterThanOrEqual(4.5);
+}
+
 describe('ApprovalDetail', () => {
   beforeEach(() => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
@@ -331,5 +363,21 @@ describe('ApprovalDetail', () => {
     expect(await screen.findByText(/symbol: 600519/)).toBeVisible();
     expect(screen.getByRole('button', { name: '批准' })).toBeVisible();
     expect(screen.getByRole('button', { name: '拒绝' })).toBeVisible();
+  });
+
+  it('待审批 Tag 达到 AA 对比度，决定按钮按可见名称可查', async () => {
+    renderDetail(createFakeApi());
+
+    const tags = await screen.findAllByText('待审批');
+    expect(tags.length).toBeGreaterThan(0);
+    tags.forEach((tag) => {
+      expect(tag).toHaveClass('ant-tag-gold');
+      expectAATagContrast(tag);
+    });
+
+    const approve = screen.getByRole('button', { name: '批准' });
+    const reject = screen.getByRole('button', { name: '拒绝' });
+    expect(approve.textContent).toBe('批准');
+    expect(reject.textContent).toBe('拒绝');
   });
 });
