@@ -374,6 +374,7 @@ describe('WorkflowRunDetailView', () => {
     renderView(
       makeDetail({
         nodes: [makeNode()],
+        approvals: [makeApproval({ paramsPreview: { symbol: '600519', limit: 20 } })],
         resultStatus: 'SAVED',
         result: {
           format: 'MARKDOWN',
@@ -386,10 +387,12 @@ describe('WorkflowRunDetailView', () => {
 
     fireEvent.click(screen.getByText('输入摘要'));
     fireEvent.click(screen.getByText('输出摘要'));
+    fireEvent.click(screen.getByText('脱敏参数摘要（仅审批人可见）'));
     const inputRegion = screen.getByRole('region', { name: '节点生成报告输入摘要' });
     const outputRegion = screen.getByRole('region', { name: '节点生成报告输出摘要' });
+    const approvalRegion = screen.getByRole('region', { name: '审批参数摘要：人工审批' });
     const resultRegion = screen.getByRole('region', { name: '运行结果全文' });
-    for (const region of [inputRegion, outputRegion, resultRegion]) {
+    for (const region of [inputRegion, outputRegion, approvalRegion, resultRegion]) {
       expect(region).toHaveAttribute('tabindex', '0');
       region.focus();
       expect(region).toHaveFocus();

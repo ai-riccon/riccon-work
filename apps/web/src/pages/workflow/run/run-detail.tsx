@@ -510,7 +510,14 @@ export function WorkflowRunDetailView({
                 {approval.paramsPreview ? (
                   <details className="workflow-run-summary-block">
                     <summary>脱敏参数摘要（仅审批人可见）</summary>
-                    <pre>{formatApprovalParams(approval.paramsPreview)}</pre>
+                    {/* 审批参数可能超过 240px 并滚动；可聚焦区域让键盘用户能滚动查看（axe scrollable-region-focusable）。 */}
+                    <pre
+                      tabIndex={0}
+                      role="region"
+                      aria-label={`审批参数摘要：${approval.nodeName}`}
+                    >
+                      {formatApprovalParams(approval.paramsPreview)}
+                    </pre>
                   </details>
                 ) : null}
               </li>
