@@ -363,7 +363,7 @@ test.describe('M06 运行与审批', () => {
     expect(nodeStatus(hit, 'modelFalse')).toBe('SKIPPED');
     expect(nodeStatus(hit, 'endFalse')).toBe('SKIPPED');
     const skipped = hit.nodes.find((node) => node.nodeId === 'modelFalse');
-    expect(skipped?.outputSummary ?? '').toContain('跳过');
+    expect(skipped?.outputSummary ?? '').toContain('未执行');
 
     // 未命中分支：不存在的关键词，只执行 FALSE 分支。
     const missRun = await createRun(page, hitWorkflow.id, { topic: 'ZZZZ-NOT-FOUND-9999' });

@@ -3606,11 +3606,24 @@ async function runFull() {
   const phases = {};
   const endpoints = buildModelEndpoints();
   const modelKeys = buildModelKeys("ok");
+  // 宿主缺少 libtesseract 时关闭 OCR，避免 Worker 启动失败；探测结果写入 env 快照。
+  const ocrProbe = probeOcr();
   const context = {
     mode: "full",
     endpoints: endpoints.endpoints,
     endpointHash: endpoints.hash,
     modelKeysEnv: { REAL_MODEL_KEYS: modelKeys.json },
+    ocrProbe,
+    ocrEnv: ocrProbe.available
+      ? {
+          RICCON_OCR_ENABLED: "true",
+          RICCON_OCR_LANG: ocrProbe.language,
+          RICCON_OCR_TESSDATA_PATH: process.env.RICCON_OCR_TESSDATA_PATH ?? "",
+          RICCON_OCR_MAX_CONCURRENCY:
+            process.env.RICCON_OCR_MAX_CONCURRENCY ?? "2",
+          OMP_THREAD_LIMIT: "1",
+        }
+      : { RICCON_OCR_ENABLED: "0" },
   };
   context.envSnapshot = buildEnvSnapshot(context);
   writeFileSync(
