@@ -157,7 +157,7 @@ FILTER="$(node scripts/test-shards.mjs --shard 0 --print-test-filter)"
 
 - 分片只跑 `test`，不用 `verify`/`jacoco:report`：分片覆盖率不完整，覆盖率仍由 CI `backend-coverage` 与 verifier 的 canonical gate 采集。`-Djacoco.skip=true` 只关闭采集代理，不改变测试内容与断言。
 - `-Dtest` 用 Surefire 3.5.6 的排除语法（`!FQCN`）：每片运行“除其他 3 片之外的所有类”。未登记到基线的新测试类不会被任何排除列表命中，会在 4 片全部执行，合并时以“重复类/额外类”失败，靠运行时集合校验防漏跑，不依赖源码命名扫描。
-- 迁移、回滚与 schema 版本测试（`V9/V10/V11/V12/V13/V14MigrationTest`、`SchemaVersionCheckerTest` 的 external 分支）仍使用一次性容器，不受热栈影响；迁移冒烟在 `backend-smoke` 用默认 `riccon` 库，不读写 namespace。
+- 迁移、回滚与 schema 版本测试（`V9/V10/V11/V12/V13/V14/V15MigrationTest`、`SchemaVersionCheckerTest` 的 external 分支）仍使用一次性容器，不受热栈影响；迁移冒烟在 `backend-smoke` 用默认 `riccon` 库，不读写 namespace。
 - 本地复用共享热栈时只 `stop`（保留数据卷），不要照抄 CI 的 `down -v`，否则会清空其他 agent 的数据。
 
 ### 分片基线与合并校验（M19 P2）
@@ -223,7 +223,7 @@ node scripts/test-timings.mjs --reports-root "$TMPDIR/empty"
 # 1. 启动测试栈（MySQL 已在 compose 中固定审计触发器所需参数，无需手工 SET GLOBAL）
 docker compose -f deploy/compose/docker-compose.test.yml up -d --wait
 
-# 2. 启动 API（默认端口 8080，连接 13306 的 MySQL；启动时执行 Flyway V1–V14）
+# 2. 启动 API（默认端口 8080，连接 13306 的 MySQL；启动时执行 Flyway V1–V15）
 ./mvnw -q -pl apps/api spring-boot:run
 
 # 3. 启动 Worker（默认端口 8081；M01 无数据库依赖，M02 持久化实现任务加入 JDBC 后需要 MySQL）
@@ -252,7 +252,7 @@ export RICCON_BOOTSTRAP_ADMIN_PASSWORD='<至少 12 位，部署时注入，禁�
 
 ### 迁移与审计触发器
 
-- 迁移只由 `apps/api` 执行；Worker 不包含迁移文件，只校验 `SchemaVersionChecker.EXPECTED_SCHEMA_VERSION`（M05 起为 14）；worker 期望版本与 DB 不一致时拒绝启动（`RICCON-WORKER-001`）。
+- 迁移只由 `apps/api` 执行；Worker 不包含迁移文件，只校验 `SchemaVersionChecker.EXPECTED_SCHEMA_VERSION`（M06 起为 15）；worker 期望版本与 DB 不一致时拒绝启动（`RICCON-WORKER-001`）。
 - V6 创建 `audit_event` 触发器；若 MySQL 返回 `ERROR 1419`，说明迁移账号缺少 `TRIGGER` 或 `log_bin_trust_function_creators` 未开启。不得删除触发器绕过。
 - 已应用的迁移文件禁止修改；新增迁移同步 `SchemaVersion.EXPECTED`（ADR-0010）。
 - Spring Session 表由 V7 创建，必须保持 `spring.session.jdbc.initialize-schema=never`，禁止应用自动建表。
@@ -265,7 +265,7 @@ export RICCON_BOOTSTRAP_ADMIN_PASSWORD='<至少 12 位，部署时注入，禁�
   `knowledge_document.title` 建 InnoDB FULLTEXT ngram 索引（`ft_knowledge_chunk_content`、
   `ft_knowledge_document_title`）；只加索引、不改列、不回填。锁与回滚见下文“V14 FULLTEXT 检索迁移”。
 
-#### 测试栈迁移演练（V1–V14，可复制）
+#### 测试栈迁移演练（V1–V15，可复制）
 
 > **仅测试栈。** 以下参数与凭据只属于 `deploy/compose/docker-compose.test.yml`。生产迁移账号是否具备 `TRIGGER`、是否开启 `log_bin_trust_function_creators`（或改用 DBA 预建触发器）由 M09 决定，禁止直接照搬本节配置。
 
@@ -286,7 +286,7 @@ docker compose -f deploy/compose/docker-compose.test.yml exec -T \
   -e MYSQL_PWD="${RICCON_DB_PASSWORD:-riccon_test_only}" \
   mysql mysql --user=riccon -e "SHOW VARIABLES LIKE 'log_bin_trust_function_creators';"
 
-# 4. 按 Flyway 版本号顺序执行 V1..V14（不能用 shell 字典序：V10 会排到 V2 之前，
+# 4. 按 Flyway 版本号顺序执行 V1..V15（不能用 shell 字典序：V10 会排到 V2 之前，
 #    导致外键引用尚未创建的 app_user）；任一步失败立即中断，不吞错误
 set -euo pipefail
 migrations="$(printf '%s\n' apps/api/src/main/resources/db/migration/V*.sql | sort -V)"
@@ -297,7 +297,7 @@ while IFS= read -r migration; do
     mysql mysql --user=riccon --database=riccon --batch --show-warnings < "${migration}"
 done <<< "${migrations}"
 
-# 5. 校验结构：48 张表（Flyway 口径 49）、2 个触发器、V10/V12/V13/V14 对象
+# 5. 校验结构：57 张表（Flyway 口径 58）、4 个触发器、V10/V12/V13/V14/V15 对象
 docker compose -f deploy/compose/docker-compose.test.yml exec -T \
   -e MYSQL_PWD="${RICCON_DB_PASSWORD:-riccon_test_only}" \
   mysql mysql --user=riccon --database=riccon --batch -e "
@@ -318,7 +318,20 @@ docker compose -f deploy/compose/docker-compose.test.yml exec -T \
      WHERE table_schema='riccon' AND table_name='artifact_citation' AND column_name='chunk_id';
     SELECT COUNT(*) AS v14_ft_indexes FROM information_schema.statistics
      WHERE table_schema='riccon'
-       AND index_name IN ('ft_knowledge_chunk_content','ft_knowledge_document_title');"
+       AND index_name IN ('ft_knowledge_chunk_content','ft_knowledge_document_title');
+    SELECT COUNT(*) AS v15_tables FROM information_schema.tables
+     WHERE table_schema='riccon'
+       AND table_name IN ('workflow_definition','workflow_version','workflow_run','workflow_node_run',
+                          'workflow_approval','workflow_approval_assignee','workflow_tool_invocation',
+                          'workflow_template','workflow_user_template');
+    SELECT COUNT(*) AS v15_model_invocation_columns FROM information_schema.columns
+     WHERE table_schema='riccon' AND table_name='model_invocation'
+       AND column_name IN ('workflow_run_id','workflow_node_run_id');
+    SELECT COUNT(DISTINCT index_name) AS v15_model_invocation_index FROM information_schema.statistics
+     WHERE table_schema='riccon' AND table_name='model_invocation'
+       AND index_name='idx_model_invocation_workflow';
+    SELECT COUNT(*) AS v15_permissions FROM permission WHERE code LIKE 'workflow.%';
+    SELECT COUNT(*) AS v15_builtin_template FROM workflow_template WHERE code='market-research';"
 
 # 6. 校验 append-only：先插入一行，再验证 UPDATE/DELETE 都被触发器拒绝（两条命令都必须 exit 1）
 docker compose -f deploy/compose/docker-compose.test.yml exec -T \
@@ -345,18 +358,23 @@ docker compose -f deploy/compose/docker-compose.test.yml down -v
 
 预期结果：
 
-| 检查项                            | 期望                                                                                                     |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `log_bin_trust_function_creators` | `ON`                                                                                                     |
-| 迁移输出                          | V1–V14 逐条无错误；不得出现 `ERROR 1419`                                                                 |
-| `table_count`                     | 48（手工重放不含 `flyway_schema_history`；API 经 Flyway 启动后为 49；V13/V14 只加列与索引，不新增表） |
-| `trigger_count`                   | 2（`trg_audit_event_no_update`、`trg_audit_event_no_delete`）                                            |
-| `v10_tables` / `v10_indexes`      | 1（`audit_export_request`）/ 2（两条 `audit_event` 复合索引）                                            |
-| `v10_permissions`                 | 2（`audit.export.approve`、`platform.audit.export.approve`）                                             |
-| `v12_tables`                      | 3（`knowledge_document_acl`、`kb_connector`、`kb_connector_item`）                                       |
-| `v13_citation_chunk`              | 1（`artifact_citation.chunk_id` 可空列）                                                                 |
-| `v14_ft_indexes`                  | 2（`ft_knowledge_chunk_content`、`ft_knowledge_document_title`，ngram）                                  |
-| UPDATE / DELETE                   | 均 exit 1，`ERROR 1644 (45000): audit_event is append-only`，行仍存在                                    |
+| 检查项                            | 期望                                                                                                                                                                                                              |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `log_bin_trust_function_creators` | `ON`                                                                                                                                                                                                              |
+| 迁移输出                          | V1–V15 逐条无错误；不得出现 `ERROR 1419`                                                                                                                                                                          |
+| `table_count`                     | 57（手工重放不含 `flyway_schema_history`；API 经 Flyway 启动后为 58；V13/V14 只加列与索引，V15 新增 9 张 workflow 表）                                                                                            |
+| `trigger_count`                   | 4（`trg_audit_event_no_update`、`trg_audit_event_no_delete`、`trg_workflow_version_no_update`、`trg_workflow_version_no_delete`）                                                                                 |
+| `v10_tables` / `v10_indexes`      | 1（`audit_export_request`）/ 2（两条 `audit_event` 复合索引）                                                                                                                                                     |
+| `v10_permissions`                 | 2（`audit.export.approve`、`platform.audit.export.approve`）                                                                                                                                                      |
+| `v12_tables`                      | 3（`knowledge_document_acl`、`kb_connector`、`kb_connector_item`）                                                                                                                                                |
+| `v13_citation_chunk`              | 1（`artifact_citation.chunk_id` 可空列）                                                                                                                                                                          |
+| `v14_ft_indexes`                  | 2（`ft_knowledge_chunk_content`、`ft_knowledge_document_title`，ngram）                                                                                                                                           |
+| `v15_tables`                      | 9（`workflow_definition`、`workflow_version`、`workflow_run`、`workflow_node_run`、`workflow_approval`、`workflow_approval_assignee`、`workflow_tool_invocation`、`workflow_template`、`workflow_user_template`） |
+| `v15_model_invocation_columns`    | 2（`workflow_run_id`、`workflow_node_run_id`，可空）                                                                                                                                                              |
+| `v15_model_invocation_index`      | 1（`idx_model_invocation_workflow`）                                                                                                                                                                              |
+| `v15_permissions`                 | 6（`workflow.read/edit/publish/run/approve/manage`）                                                                                                                                                              |
+| `v15_builtin_template`            | 1（`market-research`，`visibility=BUILT_IN`）                                                                                                                                                                     |
+| UPDATE / DELETE                   | 均 exit 1，`ERROR 1644 (45000): audit_event is append-only`，行仍存在                                                                                                                                             |
 
 手工重放只用于演练与 CI 冒烟，不会写入 `flyway_schema_history`。**不要在同一数据卷上随即启动 API**：Flyway 会因“非空 schema 但无历史表”拒绝迁移；需要继续用 API 验证时先 `down -v` 再 `up -d --wait`。
 
@@ -391,6 +409,7 @@ CI 的 `backend-smoke` job 使用同一个 compose 文件做冒烟（`.github/wo
 
   回滚后检索退回 `LIKE`（仍可用，只是慢）；不删除数据。V13 回滚见迁移文件头注释
   （先删 `idx_artifact_citation_chunk`、再删 `chunk_id`、最后删 history 13）。
+
 - 与索引 v2（OpenSearch）是两条独立路径：V14 只加速 MySQL 检索；别名切换/回切见
   “M05 索引 v2 部署与重灌”。
 
@@ -688,8 +707,10 @@ node scripts/ops/rewrap-credentials.mjs --apply --via=client
 ### M04-9 备份恢复演练（preview RPO ≤24h、RTO ≤4h）
 
 预览/测试环境基线：RPO ≤24h、RTO ≤4h；客户生产可由 SOW 覆盖，覆盖值必须写进交付文档，
-但不得放宽到无备份窗口。`restore-drill` 通过判据：表数一致、触发器 2 个、一行 credential 可解密、
-J1 冒烟通过、`MAX(version)=14`、RTO ≤4h（`restore-drill.mjs` 的 `EXPECTED_SCHEMA_VERSION=14`；V13/V14 为 additive，脚本只核对版本与表数，不感知对象清单）。
+但不得放宽到无备份窗口。`restore-drill` 通过判据：表数一致（Flyway 库 58；脚本 self-test 夹具 58/57）、
+触发器 4 个、一行 credential 可解密、J1 冒烟通过、`MAX(version)=15`、RTO ≤4h（`restore-drill.mjs` 的
+`EXPECTED_SCHEMA_VERSION=15`；V15 新增 9 张 workflow 表与 2 个不可变触发器，脚本按版本、表数与触发器数核对，
+不感知具体对象清单）。
 
 ```bash
 # 完整演练（推荐）：演练库 riccon_restore_drill 导入源库快照，API 指向演练库后跑 J1
@@ -1007,6 +1028,7 @@ M05 gate 证据（`SEC-KB-001`）：EV 命令必须包含 `docker build … -t r
   ```bash
   curl -fsS "$RICCON_OPENSEARCH_URL/_cat/indices/riccon-kb-*?v&h=index,docs.count,store.size"
   ```
+
 - `ensureIndex` **不会**自动把别名从 v1 切到 v2：它只创建目标版本索引，并在别名不存在时建立别名；
   切换必须由重灌脚本完成，避免灰度期读写指向不同版本。
 - 只有 Worker 读写 OpenSearch（API 只读 MySQL 元数据），所以该键只需在 Worker 生效；迁移期不要让
@@ -1089,6 +1111,7 @@ curl -fsS "$RICCON_OPENSEARCH_URL/_cat/indices/riccon-kb-*?v&h=index,docs.count,
     grep -q "\"$field\"" <<< "$mapping" || { echo "mapping 缺少 $field"; exit 1; }
   done
   ```
+
 - **索引回滚/回切 v1**（别名级，秒级完成，v1 未删除）：
   `node scripts/ops/reindex-knowledge.mjs --tenant <t> --apply --alias-only --index-version v1`
   （全租户用 `--all-tenants`）。v1 至少保留 7 天（ADR-0023 §7.1）后再丢弃 v2 索引。
@@ -1145,15 +1168,15 @@ curl -fsS "$RICCON_OPENSEARCH_URL/_cat/indices/riccon-kb-*?v&h=index,docs.count,
 
 ### M05b-2 校验与拒绝规则（判定归 B6，Ops 不绕过）
 
-| 规则           | 期望行为                                                                                  |
-| -------------- | ----------------------------------------------------------------------------------------- |
-| 仅 HTTPS       | 非 `https` 一律拒绝；仅 `allowHttp=true` 的显式内部端点例外                               |
-| 无 userinfo    | `user:pass@host` 拒绝                                                                     |
-| 无 query       | 带查询串的 URL 拒绝                                                                       |
-| 无重定向       | 不跟随 3xx；S3 客户端禁用区域/跨域自动重定向，或对每个 `Location` 重做同一校验            |
-| 永不允许       | 解析后的 IP 命中 `169.254.0.0/16`（云元数据）、`::1`、`fe80::/10` 即拒绝                  |
+| 规则           | 期望行为                                                                                                                |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 仅 HTTPS       | 非 `https` 一律拒绝；仅 `allowHttp=true` 的显式内部端点例外                                                             |
+| 无 userinfo    | `user:pass@host` 拒绝                                                                                                   |
+| 无 query       | 带查询串的 URL 拒绝                                                                                                     |
+| 无重定向       | 不跟随 3xx；S3 客户端禁用区域/跨域自动重定向，或对每个 `Location` 重做同一校验                                          |
+| 永不允许       | 解析后的 IP 命中 `169.254.0.0/16`（云元数据）、`::1`、`fe80::/10` 即拒绝                                                |
 | RFC1918        | 仅当端点本身在允许列表中显式列出时放行；未列入 allowlist 的主机名/重定向目标解析到 RFC1918 一律拒绝（防 DNS rebinding） |
-| 不接受任意 URL | 连接器只能引用允许列表内的 `endpoint_id`                                                  |
+| 不接受任意 URL | 连接器只能引用允许列表内的 `endpoint_id`                                                                                |
 
 - **私网解析正例**：allowlist 中显式列出的端点允许解析到 RFC1918。本地测试 RustFS `object-storage`
   （`allowHttp=true`、`production=false`）在 compose 内解析为 `172.x.x.x` 属预期，**仅限本地测试**；
@@ -1324,12 +1347,12 @@ SELECT COUNT(*) AS blank_audits
 
 **失败处理**
 
-| 现象                            | 处理                                                                                  |
-| ------------------------------- | ------------------------------------------------------------------------------------- |
-| exit 1 + `mysql 执行失败`       | DB 不可达/权限不足/审计写入被拒。整批已回滚；修复后重跑，**不要**手工 UPDATE 绕过审计 |
-| exit 1 + 计数断言失败           | `chk_blank_credential_guard` 或 `审计与置空行数不一致`；事务已回滚，停止并排查并发写  |
-| exit 2                          | 参数或环境错误（未知参数、`--via=client` 缺 `RICCON_DB_*`、非法数据库名）             |
-| exit 0 且 `truncated=true`      | 正常分批结果，不是失败；再次运行处理剩余行                                            |
+| 现象                       | 处理                                                                                  |
+| -------------------------- | ------------------------------------------------------------------------------------- |
+| exit 1 + `mysql 执行失败`  | DB 不可达/权限不足/审计写入被拒。整批已回滚；修复后重跑，**不要**手工 UPDATE 绕过审计 |
+| exit 1 + 计数断言失败      | `chk_blank_credential_guard` 或 `审计与置空行数不一致`；事务已回滚，停止并排查并发写  |
+| exit 2                     | 参数或环境错误（未知参数、`--via=client` 缺 `RICCON_DB_*`、非法数据库名）             |
+| exit 0 且 `truncated=true` | 正常分批结果，不是失败；再次运行处理剩余行                                            |
 
 **与 M09 物理清理/备份/回滚的边界**
 
@@ -1348,6 +1371,305 @@ dry-run 计数 `dueWithCiphertext=1` / `withinWindowWithCiphertext=1` / `activeW
 `processed=0`、审计仍 1 条；用 `--batch-size 1 --max-batches 1` 验证分批（`truncated=true`）与续跑；
 用审计表 `BEFORE INSERT` 触发器模拟审计失败，apply exit 1 且密文与审计均未变（同事务回滚）；
 `--self-test` exit 0。测试库为临时库，未接入生产，也未接触真实凭据。
+
+## M06 编排 Studio 发布、运行与回滚（单模块）
+
+本节覆盖 M06 的部署配置、开关、队列/租约/审批指标、V15 迁移、受支持回滚与发布演练。设计依据
+`docs/adr/ADR-0024-m06-workflow-orchestration.md` §4.3/§4.8/§10；数字口径：V1–V15、Flyway 库 58 张表
+（手工重放 57 张）、4 个触发器、`MAX(version)=15`、restore-drill 15/4。
+
+### M06-0 适用范围与前置
+
+- 适用对象：`apps/api`（受理、准入、历史、审批 API）与 `apps/worker`（运行队列/引擎/MCP 代理）。
+- 前置：V15 已由 API 成功执行、Worker 期望 schema 15、备份可恢复、`RICCON_MASTER_KEY` 等密钥由部署注入。
+- M06 不使用 outbox、不新增内部端点；API 与 Worker 只通过 `workflow_run` 状态与租约协作（ADR-0024 §4.9）。
+- 不承诺能力：任意脚本/表达式/HTTP 节点、并行/循环/子流程、在线删除工作流运行、把 `workflow_*` 表
+  回滚到 M06 前版本（见 M06-9）。
+
+### M06-1 部署配置与启动校验
+
+所有键来自部署环境，租户管理员只能通过 `GET /api/v1/workflows/runtime-limits` 只读查看；修改只能
+走部署变更（进程重启/滚动发布），没有热更新入口。
+
+| 键                                           | 默认       | 启动校验 / 生效方式                                                         | 说明                                                             |
+| -------------------------------------------- | ---------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `RICCON_WORKFLOW_ENABLED`                    | `true`     | API/Worker 重启生效                                                         | kill switch；关闭时新运行/重试/审批决定/复制模板 503             |
+| `RICCON_WORKFLOW_DISABLED_REASON`            | 空         | ≤200 字符，否则 API/Worker 拒绝启动；未配置时回退固定文案                   | 只读展示给租户，不落业务数据                                     |
+| `RICCON_INSTANCE_ID`                         | 空         | 空值时使用主机名 + 随机后缀/PID                                             | `workflow.feature.changed` 审计的 `instanceId`                   |
+| `RICCON_WORKFLOW_MAX_NODES`                  | `50`       | ≥1                                                                          | 单流程节点上限                                                   |
+| `RICCON_WORKFLOW_MAX_STEPS`                  | `200`      | ≥1                                                                          | 单运行节点尝试步数，超过 → `WF_STEP_LIMIT`                       |
+| `RICCON_WORKFLOW_MODEL_TIMEOUT_SECONDS`      | `300`      | ≥1                                                                          | 模型节点超时                                                     |
+| `RICCON_WORKFLOW_RETRIEVAL_TIMEOUT_SECONDS`  | `120`      | ≥1                                                                          | 检索节点超时                                                     |
+| `RICCON_WORKFLOW_MCP_TIMEOUT_SECONDS`        | `60`       | ≥1                                                                          | MCP 工具节点超时                                                 |
+| `RICCON_WORKFLOW_RUN_TIMEOUT_MINUTES`        | `30`       | ≥1 且 ≤ `Integer.MAX_VALUE/60`（防 `runTimeoutSeconds` 溢出）               | 执行超时，审批等待不计                                           |
+| `RICCON_WORKFLOW_TENANT_CONCURRENCY`         | `10`       | ≥1                                                                          | 租户准入并发，**包含等待审批**                                   |
+| `RICCON_WORKFLOW_FLOW_CONCURRENCY`           | `5`        | ≥1                                                                          | 单流程准入并发，包含等待审批                                     |
+| `RICCON_WORKFLOW_RESULT_MAX_BYTES`           | `5242880`  | ≥1，且 ≤ `RICCON_DB_MAX_ALLOWED_PACKET - 1 MiB`                             | 单次运行全部节点输出 + 最终结果；超限 `WF_RESULT_LIMIT`          |
+| `RICCON_WORKFLOW_WORKER_CONCURRENCY`         | `10`       | ≥1                                                                          | worker 运行队列槽位数                                            |
+| `RICCON_WORKFLOW_CLAIM_BATCH`                | `1`        | 必须为 `1`；>1 启动失败                                                     | v1 每槽位只领 1 个 run，禁止“领一批再串行”                       |
+| `RICCON_WORKFLOW_CLAIM_POLL_INTERVAL_MS`     | `1000`     | >0                                                                          | 空闲槽位轮询周期                                                 |
+| `RICCON_WORKFLOW_CLAIM_IDLE_BACKOFF_MAX_MS`  | `5000`     | ≥ 轮询周期                                                                  | 空队列指数退避上限，避免 10 槽空转打满 DB                        |
+| `RICCON_WORKFLOW_SCHEDULER_POOL_SIZE`        | `10`       | ≥ `WORKER_CONCURRENCY`                                                      | **M06 独立**运行槽位池；不是 `RICCON_WORKER_SCHEDULER_POOL_SIZE` |
+| `RICCON_WORKFLOW_HEARTBEAT_CONCURRENCY`      | `10`       | ≥ `WORKER_CONCURRENCY`                                                      | 独立心跳池，与执行槽位解耦                                       |
+| `RICCON_WORKFLOW_HEARTBEAT_INTERVAL_SECONDS` | `30`       | ≥1 且 `×3 ≤ LEASE_SECONDS`                                                  | 续期间隔；领取后立即首次续期                                     |
+| `RICCON_WORKFLOW_LEASE_SECONDS`              | `90`       | ≥3                                                                          | 执行租约；崩溃实例由租约过期后重领                               |
+| `RICCON_WORKFLOW_CLAIM_ENABLED`              | `true`     | Worker 重启生效                                                             | Worker 停止领取开关；`false` 时不注册槽位                        |
+| `RICCON_WORKFLOW_SHUTDOWN_GRACE_SECONDS`     | `120`      | ≥0                                                                          | 停止领取/关闭时等待在途 claim 的上限                             |
+| `RICCON_WORKFLOW_RETENTION_DAYS`             | `180`      | ≥1                                                                          | 租户 `retention_days` 优先；M06 无租户修改入口                   |
+| `RICCON_DB_MAX_ALLOWED_PACKET`               | `16777216` | ≥8 MiB 且 ≥ `RESULT_MAX_BYTES + 1 MiB`；API/Worker 启动失败                 | JDBC `maxAllowedPacket`；服务端变量需 ≥ 同值（T16b 预检）        |
+| `RICCON_DB_POOL_SIZE`                        | `16`       | ≥ `WORKER_CONCURRENCY + 4`（心跳/outbox/健康检查余量）；API/Worker 启动失败 | worker Hikari 共用池；不是每类任务各一个池                       |
+
+**三个线程池与 Hikari 不是一回事（OPS-M06-023f）**
+
+| 池 / 资源         | 配置键                                  | 默认 | 用途                                                       | 不要混用                         |
+| ----------------- | --------------------------------------- | ---- | ---------------------------------------------------------- | -------------------------------- |
+| M06 运行槽位池    | `RICCON_WORKFLOW_SCHEDULER_POOL_SIZE`   | 10   | 每槽位领取/执行一个 run；线程数应等于 `WORKER_CONCURRENCY` | 不与 Spring 共享调度池合并       |
+| M06 心跳池        | `RICCON_WORKFLOW_HEARTBEAT_CONCURRENCY` | 10   | 租约续期、取消检查；执行槽位占满时仍须能续期               | 不占用运行槽位池                 |
+| Spring 共享调度池 | `RICCON_WORKER_SCHEDULER_POOL_SIZE`     | 4    | outbox 分通道与 `@Scheduled`                               | 不是 workflow 槽位池/心跳池      |
+| Hikari 连接池     | `RICCON_DB_POOL_SIZE`                   | 16   | 上述所有 DB 操作共用                                       | 执行槽位只在节点 DB 操作时取连接 |
+
+容量关系：`RICCON_DB_POOL_SIZE >= RICCON_WORKFLOW_WORKER_CONCURRENCY + 4`。调大并发时必须同时调大
+槽位池、心跳池与 Hikari；只调并发会让心跳拿不到连接、续期超过 30s，最终租约丢失/重复领取
+（OPS-M06-002/OPS-M06-022）。测试栈或客户单独覆盖 `spring.datasource.hikari.maximum-pool-size` 时，
+Worker 暴露 `riccon_workflow_db_pool_shortfall`（0 为满足）并记录 `RICCON-WORKFLOW-022` WARN；部署键仍是
+合同口径，启动 fail-closed 以 `RICCON_DB_POOL_SIZE` 为准。
+
+### M06-2 首次发布（首次固定 `ENABLED=false`）
+
+顺序不能反（ADR-0024 §10.3）：
+
+1. 备份并记录 `SELECT MAX(version) FROM flyway_schema_history`（应为 14）；确认备份可恢复。
+2. 由 API 执行一次性 V15（新 API 启动时 Flyway 自动执行；迁移只由 API 执行，Worker 关闭 Flyway）。
+3. 发布新 API，**首次固定 `RICCON_WORKFLOW_ENABLED=false`**；完成只读检查后再显式打开，不做“默认 true 直接放量”。
+4. 只读检查：`GET /workflows/runtime-limits` 返回 `featureEnabled=false` 与部署原因；创建运行返回 503；
+   取消已有运行返回 202；J1/J2 正常；审计出现 `workflow.feature.changed`。
+5. 发布新 Worker（期望 schema 15，`CLAIM_ENABLED=true` 开始轮询）。
+6. 打开 `ENABLED=true`（API/Worker 滚动重启）→ 内置模板 `market-research` smoke → J1/J2 回归。
+7. 记录发布变更与被回滚的旧 Worker 镜像 tag/digest。
+
+> **首次 `ENABLED=false` 启动会写 `workflow.feature.changed` 审计（actor=SYSTEM，tenant=platform，
+> details 带 `source=DEPLOYMENT_CONFIG`、`instanceId`、`observedAt`）。此后 AC-23 判定 SQL 的
+> `workflow_audit_events` 不再为 0，“全 0”不可达；试发布失败只能恢复 V15 前备份，不得把该审计行排除出
+> 判定（OPS-M06-025）。**
+
+审计核对：
+
+```sql
+SELECT occurred_at, actor_type, actor_id, outcome, details
+  FROM audit_event
+ WHERE action = 'workflow.feature.changed'
+ ORDER BY occurred_at DESC
+ LIMIT 5;
+```
+
+### M06-3 开关、Worker 停止领取与优雅停机
+
+| 动作             | 配置                                            | 影响面                                                                                                      | 保留能力                                                                          |
+| ---------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| 关闭编排受理     | `RICCON_WORKFLOW_ENABLED=false`（API/Worker）   | 新运行、重试、审批决定、复制模板 503 `RICCON-WF-503`；编辑器只读                                            | 取消仍可用；列表/历史/审批记录/审计可读；已受理在途运行继续到终态；J1/J2 不受影响 |
+| 停止 Worker 领取 | `RICCON_WORKFLOW_CLAIM_ENABLED=false`（Worker） | 不注册槽位、不再 claim 新 run；在途最多等待 `SHUTDOWN_GRACE_SECONDS`                                        | 其他实例可继续领取；未完成运行靠租约过期恢复                                      |
+| 优雅停机         | 向 Worker 发 SIGTERM                            | `@PreDestroy` 取消后续槽位任务，等待在途到宽限；超时日志 `workflow.queue.scheduler.shutdown_grace_exceeded` | 未完成运行由租约过期重领；不得用“缩容到 0”作为唯一停止手段                        |
+
+- 关闭受理后先观察 `riccon_workflow_feature_enabled{instance}`：API 为 0 而 Worker 仍为 1 说明 Worker 未滚动完成；
+  `riccon_workflow_claim_enabled` 为 1 表示仍在领取。
+- 优雅停机宽限耗尽不是“数据丢失”：租约到期后其他实例可重领；`lease_lost_total` 增长说明可能有重复执行风险，
+  必须按 M06-4 排查，而不是重试掩盖。
+- 关闭受理与停止领取是**两步**：只关闭 `ENABLED` 时 Worker 仍可领取旧 PENDING 并收尾；回滚顺序见 M06-8。
+
+### M06-4 队列积压、租约与连接池排障
+
+| 指标                                                                                                      | 建议阈值               | 含义与处置                                                                                                                                                                                     |
+| --------------------------------------------------------------------------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `riccon_workflow_queue_depth{status="PENDING"}`                                                           | >50 持续 10min         | 检查 Worker 存活、`CLAIM_ENABLED`、`riccon_workflow_runs_active` 是否长期等于并发；需要扩容时同时调大 `WORKER_CONCURRENCY`、槽位池、心跳池与 `RICCON_DB_POOL_SIZE`。禁止把 `CLAIM_BATCH` 调 >1 |
+| `riccon_workflow_queue_oldest_pending_age_seconds`                                                        | >300s 告警，>900s 升级 | 最老 PENDING 年龄；与队列深度、执行槽位占用一起看；持续增长先停止发布并检查 DB/心跳                                                                                                            |
+| `riccon_workflow_lease_lost_total`                                                                        | 任何增长               | 续期返回 0 或续期异常；可能有重复执行。查日志 `workflow.heartbeat.*` 的 runId/tenantId，检查 DB 延迟、GC、心跳池是否被占满；必要时 `CLAIM_ENABLED=false` 止损                                  |
+| `riccon_workflow_heartbeat_renew_failures_total`                                                          | >0                     | 租约丢失前置信号；先于 `lease_lost` 增长处理                                                                                                                                                   |
+| `riccon_workflow_claim_exhausted_total`                                                                   | >0                     | `claim_attempts` 超过 5，运行进入 `FAILED`/`WF_INTERNAL`；查失败节点与租约竞争，修复后按 M06-6 重试                                                                                            |
+| `riccon_workflow_claim_failures_total{reason}`                                                            | >0                     | `INVALID_TENANT`：`workflow_run.tenant_id` 非法，已写 platform denied 审计且不读取业务列；`DB_ERROR`/`CLAIM_EXCEPTION`：DB 或领取 SQL 异常                                                     |
+| `riccon_workflow_runs_active`                                                                             | 长期等于并发           | 执行槽位饱和；先确认是否存在长模型/MCP 调用，再评估扩容；扩容遵守连接池公式                                                                                                                    |
+| `riccon_workflow_db_pool_shortfall`                                                                       | >0                     | Hikari 实际池小于并发 + 4；对齐 `RICCON_DB_POOL_SIZE` 与 `spring.datasource.hikari.maximum-pool-size`                                                                                          |
+| `hikaricp_connections_pending`                                                                            | >0 持续                | 连接等待；检查长事务、慢查询、outbox heavy 任务与连接泄漏。不要只调大 Hikari 而不查根因                                                                                                        |
+| `hikaricp_connections_timeout_total`                                                                      | 增长                   | 连接超时；与 pending、DB 延迟一起处置；必要时临时降并发或暂停领取                                                                                                                              |
+| `riccon_workflow_runs_total{status}` / `run_duration_seconds` / `node_duration_seconds{node_type,status}` | 失败率/耗时基线        | 定位失败节点类型与耗时；节点耗时接近超时（模型 300s/检索 120s/MCP 60s）时先缩 prompt/查询                                                                                                      |
+
+**领取/重复执行语义**：claim 使用 `FOR UPDATE SKIP LOCKED` + 条件更新，租约持有者不匹配或状态非 `RUNNING`
+时当前槽位放弃并丢弃结果；重复领取不会产生第二次成功终态。`lease_lost_total` 只应作为异常信号，不应通过
+自动重试把重复执行当成正常恢复。**空队列退避**从 1000ms 指数到 5000ms；不要为了“更快”把退避调到 0。
+
+### M06-5 审批等待占满准入
+
+- **准入并发**（`TENANT_CONCURRENCY=10` / `FLOW_CONCURRENCY=5`）包含 `WAITING_APPROVAL`；**执行并发**
+  （worker 槽位）不包含等待审批。审批堆积会占满准入，导致同一租户/流程的新运行 429，但不会占执行槽位。
+- 发现：`riccon_workflow_approvals_pending` 持续增长、`riccon_workflow_approval_oldest_wait_seconds > 86400`
+  （24h）或 `queue_depth{status="WAITING_APPROVAL"}=10`。先确认审批人角色/用户配置是否存在
+  （`assignee_type=ROLE` 需要对应角色成员；`assignee_type=USER` 需要账号可用）。
+- 解除：补审批人/角色成员；由发起人或租户管理员取消长期等待的运行（关闭开关后取消仍可用）；必要时
+  关闭流程（`DISABLED`）阻止新运行。审批**不会自动过期**，不得用“自动放行”绕过（U-12 已由 DEC-0046=A 批准）。
+- 最老等待超过 24h 时按 OPS-M06-007 提示租户管理员；这是通知，不是自动审批。
+
+### M06-6 失败节点重试、工具重审批与未知副作用
+
+- `POST /workflow-runs/{id}/retry` 只允许运行 `FAILED` 且指定节点最新尝试 `FAILED`；新增 `attempt+1`
+  的 `PENDING` 节点，运行回 `PENDING`；上游已成功节点不重跑，下游 `SKIPPED` 恢复为 `PENDING`。
+- 写工具（`risk_level=WRITE` 或 `requires_approval=TRUE`）每次尝试都需要**新审批**；旧审批/旧调用不可复用，
+  审批详情会标注“重试”，提示可能重复外部副作用。一个审批最多执行一次。
+- `WF_SIDE_EFFECT_UNKNOWN` 表示外部工具可能已执行但结果未知：**不自动重放**，人工核对外部系统后再决定是否重试。
+- `WF_INTERNAL` 表示租约/领取次数耗尽或不可恢复内部错误：运行与当前节点已 `FAILED`，修复根因后可按上述重试；
+  不要手工改状态绕过审计。
+- 不存在自动无限重试；`claim_attempts >5` 直接进入 `WF_INTERNAL` 终态。
+
+### M06-7 V15 迁移预检与单迁移失败处置
+
+**生产预检（缺一不可）**
+
+```sql
+SELECT MAX(version) FROM flyway_schema_history;           -- 必须为 14
+SHOW GRANTS FOR CURRENT_USER();                            -- 必须含 TRIGGER（或 DBA 预建触发器）
+SHOW VARIABLES LIKE 'log_bin';                             -- ON 时需 log_bin_trust_function_creators=1 或等价 SUPER
+SHOW VARIABLES LIKE 'max_allowed_packet';                  -- ≥8 MiB 且 ≥ RESULT_MAX_BYTES + 1 MiB
+```
+
+- 无长事务/未提交 DDL；确认 MDL 等待与维护窗口；磁盘余量覆盖 V15 + 备份。
+- 备份可恢复，记录 schema 14 与备份位置；生产迁移账号最小权限，禁止用 root 绕过。
+- V15 内容：9 张 `workflow_*` 表、`model_invocation` 两个可空列 + `idx_model_invocation_workflow`、
+  6 个权限与角色回填、内置模板 `market-research`、2 个 `workflow_version` 不可变触发器（总触发器 4）、
+  Worker 期望 schema 15。V15 只增不删，不做 down migration。
+
+**单迁移失败处置**（MySQL DDL 非事务）
+
+| 失败点                  | 残留               | 处置                                                                                                                   |
+| ----------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| 建表/索引/列中途失败    | 已提交的表/列/索引 | 记录最后成功语句；按 FK 逆序 drop 半成品（全局模板与租户表分开）；删除 `success=0` 的 history 行；Flyway repair 后重跑 |
+| 权限/角色/模板 DML 冲突 | 部分回填           | 迁移内 DML 必须幂等；修复原因后 repair/重跑，不得手工重复回填                                                          |
+| 触发器失败（1419/权限） | 表已建、触发器缺失 | 补 `TRIGGER`/binlog 变量或 DBA 预建；单独重放触发器；不得删除审计触发器绕过                                            |
+| 包大小/超时/连接中断    | 取决于最后提交语句 | 提升 `max_allowed_packet`/维护窗口后 repair/重跑；无法可靠定位则备份恢复                                               |
+
+不得修改已应用的 V15 文件；修复走后续迁移或备份恢复（ADR-0010）。V15 之前的唯一恢复路径是“恢复 V15 前备份”。
+
+### M06-8 受支持回滚（DEC-0047=A，无“滞留清单”窗口）
+
+> 不支持把 API 回滚到 M06 前版本（旧 `AuditDetailsReader` 对 `workflow.*` 动作 fail-closed，且旧 API 无
+> workflow 端点，历史不可读）。受支持回滚 = **关闭受理 + 回滚 Worker + 保留/前向修复 API**。
+
+按顺序执行，不跳步：
+
+1. **关闭受理**：API/Worker 设 `RICCON_WORKFLOW_ENABLED=false` 并滚动重启；确认 `GET /workflows/runtime-limits`
+   返回 `featureEnabled=false`，创建运行 503，取消仍 202。保留 API 不降级。
+2. **停止领取并等宽限**：Worker 设 `RICCON_WORKFLOW_CLAIM_ENABLED=false`，等待
+   `RICCON_WORKFLOW_SHUTDOWN_GRACE_SECONDS`（默认 120s）；确认不再出现新领取日志/新的 `lease_owner`。
+3. **取消全部 `WAITING_APPROVAL`**：通过保留的 M06 API 取消，直到
+   `SELECT COUNT(*) FROM workflow_run WHERE status='WAITING_APPROVAL'` = 0。
+4. **清零 `PENDING`/`RUNNING`**：取消/等待（含 MCP 超时）直到
+   `WAITING_APPROVAL=0 AND PENDING=0 AND RUNNING=0`；可重复步骤 3–4。**没有“滞留清单”放行**；
+   无法清零则不得回滚 Worker，继续等待/取消并记录 runId。
+5. **回滚 Worker**：切到 M06 前版本镜像。旧 Worker 不认识 `workflow_run`，不会领取；V15 schema 保留，
+   旧 Worker 期望 14，回滚窗口按 ADR-0021 的 schema 校验开关流程人工核对 `MAX(version)=15` 并登记工单
+   （必要时临时关闭 worker schema 校验；不得执行迁移回退）。
+6. **回滚后复断言**：保留的 M06 API 再次确认 `WAITING_APPROVAL=0 AND PENDING=0 AND RUNNING=0`；若出现
+   在途节点收尾产生的新行，先取消/等待到 0 再宣告回滚完成。
+7. **保留/前向修复 API**：继续提供历史、审批、审计读取；V15 表/触发器/权限保留；对象存储无新增类别；
+   J1/J2 正常。
+8. 恢复：前向部署 M06 Worker/API，schema 仍 15，开关 smoke 通过后再打开。
+
+判定 SQL：
+
+```sql
+SELECT status, COUNT(*) AS runs FROM workflow_run GROUP BY status;
+SELECT COUNT(*) AS waiting FROM workflow_run WHERE status='WAITING_APPROVAL';
+SELECT COUNT(*) AS pending FROM workflow_run WHERE status='PENDING';
+SELECT COUNT(*) AS running FROM workflow_run WHERE status='RUNNING';
+```
+
+要求后三条均为 0；`runs` 中只允许 `SUCCEEDED/FAILED/CANCELLED` 终态。
+
+### M06-9 全量 API 回滚与应急 drop（仅无数据且用户书面同意）
+
+判定 SQL（任一 >0 必须拒绝全量 API 回滚/应急 drop，只允许 M06-8 受支持回滚）：
+
+```sql
+SELECT
+  (SELECT COUNT(*) FROM workflow_definition) AS definitions,
+  (SELECT COUNT(*) FROM workflow_version) AS versions,
+  (SELECT COUNT(*) FROM workflow_run) AS runs,
+  (SELECT COUNT(*) FROM workflow_node_run) AS node_runs,
+  (SELECT COUNT(*) FROM workflow_approval) AS approvals,
+  (SELECT COUNT(*) FROM workflow_tool_invocation) AS tool_invocations,
+  (SELECT COUNT(*) FROM workflow_user_template) AS user_templates,
+  (SELECT COUNT(*) FROM audit_event WHERE action LIKE 'workflow.%') AS workflow_audit_events;
+```
+
+- **首次 `ENABLED=false` 启动已写 `workflow.feature.changed` 审计后，`workflow_audit_events` 永远 >0**，
+  因此该栈不再满足“全 0”；试发布失败只能恢复 V15 前备份，不得把该审计行排除出判定（除非用户新决策）。
+- 操作脚本/流程必须在任一计数 >0 时以非 0 退出并拒绝；不应提供“强制”参数绕过。
+- 应急 drop 顺序（仅无数据 + 书面同意）：停 Worker → drop 触发器 → 按 FK 逆序 drop 租户子表/父表 →
+  删全局 `workflow_template` → 删 `model_invocation` 的 workflow 索引/列 → 删权限/角色回填 →
+  删 `flyway_schema_history` 的 15 → 回滚旧 Worker。生产优先备份恢复（ADR-0010）。
+- 全局 `workflow_template` 与租户表分两段 drop：先租户表，租户数据未清时不得删内置目录。
+
+### M06-10 保留到期与 M09 物理清理边界
+
+- 运行到期后对租户不可见（`workflow_run.retention_expires_at`），M06 **不做在线删除**；审计 append-only
+  ≥180 天，导出仍需审批（M10）。
+- 物理清理（运行/节点/审批/工具调用/模板行的实际 DELETE、分区/归档、备份保留）归 M09；M06 只保证
+  “到期不可见 + 指标/容量可观测 + 不提供在线删除入口”。
+- 标准答复（客户问“是否已删除”）：**“到期后不可见但未物理删除；按租户保留策略在 M09 的清理窗口处理，
+  删除请求按合同 30 天内完成；审计保留 ≥180 天且不可在线删除。”**
+- 到期数据仍占磁盘与备份体积，必须纳入 M06-11 的容量公式与磁盘告警；不得因“不可见”而忽略容量。
+
+### M06-11 5 MiB、包大小、容量与指标告警
+
+**大小与包**
+
+- 单节点 `output_json` ≤256 KiB；单次运行所有节点输出 + 最终结果合计 ≤ `RICCON_WORKFLOW_RESULT_MAX_BYTES`
+  （默认 5 MiB，`5242880`）。超限 → 运行 `FAILED`/`WF_RESULT_LIMIT`、`result_status=OVER_LIMIT`，不静默截断；
+  单次工具结果另限 ≤1 MiB（`WF_TOOL_RESULT_LIMIT`）。
+- 预检：`SELECT @@max_allowed_packet`、JDBC `RICCON_DB_MAX_ALLOWED_PACKET` 均须 ≥8 MiB 且
+  ≥ `RESULT_MAX_BYTES + 1 MiB`；服务端变量小会导致大结果写入失败，必须在发布前调大，不得靠“先上线再发现”。
+- 容量公式（用于磁盘/备份/告警容量，不是精确账单）：
+  `日容量 ≈ 每日运行数 × 结果大小 p95 × 保留天数 × (1 + 节点输出/审批/索引开销系数)`；
+  另加 binlog 与备份副本倍数（按客户备份策略，至少 2 倍）。用 `riccon_workflow_result_size_bytes`
+  分位数与 `workflow_run.result_size_bytes` 校准 p95，不拍脑袋。
+
+**指标与告警（M06 负责处置；M09 只做路由/长期容量）**
+
+| 指标                                                                                    | 告警建议                                         | 处置                                |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------ | ----------------------------------- |
+| `riccon_workflow_feature_enabled`                                                       | API 与 Worker 不一致                             | 检查滚动发布是否完成/配置漂移       |
+| `riccon_workflow_claim_enabled`                                                         | 受理已关但仍为 1 且 PENDING 不下降               | 确认回滚步骤 2 是否执行             |
+| `riccon_workflow_queue_depth{status}`                                                   | PENDING >50×10min；WAITING_APPROVAL 接近租户并发 | M06-4 / M06-5                       |
+| `riccon_workflow_queue_oldest_pending_age_seconds`                                      | >300s 告警，>900s 升级                           | M06-4                               |
+| `riccon_workflow_lease_lost_total`                                                      | 任何增长                                         | M06-4，必要时停止领取               |
+| `riccon_workflow_claim_exhausted_total`                                                 | >0                                               | M06-6                               |
+| `riccon_workflow_claim_failures_total{reason}`                                          | >0                                               | 非法 tenant/DB 异常，按 reason 分派 |
+| `riccon_workflow_heartbeat_renew_failures_total`                                        | >0                                               | 租约风险前置信号                    |
+| `riccon_workflow_approvals_pending` / `approval_oldest_wait_seconds`                    | 最老 >24h                                        | M06-5，通知租户管理员               |
+| `riccon_workflow_runs_total{status}` / `run_duration_seconds` / `node_duration_seconds` | 失败率/耗时异常                                  | 定位节点类型与超时                  |
+| `riccon_workflow_admission_rejected_total{scope}`                                       | 突增                                             | 租户/流程准入 429；确认是否审批堆积 |
+| `riccon_workflow_result_oversize_total` / `result_size_bytes`                           | 超限增长                                         | 提示精简结果；校准容量              |
+| `hikaricp_connections_pending` / `hikaricp_connections_timeout_total`                   | pending 持续或 timeout 增长                      | 连接池/慢 SQL/outbox 挤压           |
+| `riccon_workflow_db_pool_shortfall`                                                     | >0                                               | Hikari 实际键与部署键不一致         |
+
+`/actuator/prometheus` 仍仅内网/受控（M04 CIDR），不新增暴露面；告警规则由客户监控接入，M09 只做路由与长期容量。
+
+### M06-12 发布/回滚演练（OPS-M06-01）
+
+演练必须覆盖“无数据允许 / 有数据拒绝 / 无窗口顺序 / 恢复”四段；**两段无数据判定不能共用同一个已首次
+禁用启动的库**（首次禁用启动写审计后全 0 不可达）。
+
+1. **无数据允许**：在未执行过首次 `ENABLED=false` 启动的空栈上跑 M06-9 判定 SQL，全部为 0；应急 drop 演练
+   以 0 退出，允许执行。
+2. **有数据拒绝**：在独立栈或备份夹具中创建至少 1 个流程/运行/审批与 1 条 `workflow.*` 审计；同一判定 SQL
+   任一 >0；演练脚本/流程以非 0 退出并拒绝全量回滚。
+3. **无窗口顺序**：按 M06-8 步骤 1→6 演练：关 ENABLED → 关 CLAIM/等宽限 → 取消
+   `WAITING_APPROVAL` 断言 0 → 清零 `PENDING`/`RUNNING` 断言三者均 0 → 回滚 Worker → 用保留 API 复断言 0。
+4. **回滚后可用性**：M06 API 历史/审批/审计只读可用；J1/J2 冒烟通过；schema 15 核对
+   （`MAX(version)=15`、表 58/57、触发器 4）；对象存储无新增类别。
+5. **恢复**：前向部署 M06 Worker/API → 打开开关前先 `ENABLED=false` smoke → 打开 → 内置模板运行 → J1/J2。
+6. **记录**：旧 Worker 镜像 tag/digest、schema 版本、判定 SQL 输出、演练脚本退出码、恢复时间点；报告入
+   `.riccon/evidence/<task>/`，不写密钥。
+
+演练脚本由 T16b 交付（`scripts/ops/workflow-rollback-drill.mjs`，断言有数据拒绝、无数据允许）；本节是其
+操作口径与人工核对清单，脚本不能替代人工确认用户书面同意与备份可恢复。
 
 ## 生产
 
