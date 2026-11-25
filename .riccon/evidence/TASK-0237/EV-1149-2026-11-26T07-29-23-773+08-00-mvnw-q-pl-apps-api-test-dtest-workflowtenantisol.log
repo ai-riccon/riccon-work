@@ -1,0 +1,163 @@
+# command: ./mvnw -q -pl apps/api test -Dtest='WorkflowTenantIsolationTest,WorkflowDepartmentIsolationTest,WorkflowAuditM06Test,WorkflowValidationNegativeMatrixTest' -Dsurefire.failIfNoSpecifiedTests=false -Djacoco.skip=true
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-26T07:28:18.102+08:00
+# finished_at: 2026-11-26T07:29:22.511+08:00
+# duration_ms: 64408
+# exit_code: 0
+
+# --- stdout ---
+07:28:27.842 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.security.WorkflowValidationNegativeMatrixTest]: WorkflowValidationNegativeMatrixTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+07:28:28.063 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.security.WorkflowValidationNegativeMatrixTest
+07:28:28.169 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.security.WorkflowValidationNegativeMatrixTest]: WorkflowValidationNegativeMatrixTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+07:28:28.169 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.workflow.version.WorkflowVersionTestSupport]: WorkflowVersionTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+07:28:28.170 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+07:28:28.173 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.security.WorkflowValidationNegativeMatrixTest
+07:28:28.255 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+07:28:28.258 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+07:28:28.288 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+07:28:29.152 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+07:28:29.153 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+07:28:29.177 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+07:28:29.402 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+07:28:29.820 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: 7b9f6e8ad3e2a53cb58a02f96fe35177220d07585f32a3a0481aa58aae78a76f
+07:28:30.351 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT0.949477S
+07:28:30.360 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+07:28:30.360 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+07:28:30.361 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+07:28:30.361 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+07:28:30.446 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: f154f0cdf84cb6b2803fb0403ebb1d727661050a84fc9b4acab5ada71ada3df8
+07:28:30.817 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:54701/riccon using query 'SELECT 1'
+07:28:43.138 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT12.777074S
+07:28:43.139 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:54701/riccon)
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-26T07:28:43.817+08:00  INFO 14530 --- [riccon-api] [           main] a.s.WorkflowValidationNegativeMatrixTest : Starting WorkflowValidationNegativeMatrixTest using Java 21.0.13 with PID 14530 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/api)
+2026-11-26T07:28:43.818+08:00  INFO 14530 --- [riccon-api] [           main] a.s.WorkflowValidationNegativeMatrixTest : The following 1 profile is active: "test"
+2026-11-26T07:28:46.156+08:00  INFO 14530 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 0 (http)
+2026-11-26T07:28:46.177+08:00  INFO 14530 --- [riccon-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-26T07:28:46.177+08:00  INFO 14530 --- [riccon-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.27]
+2026-11-26T07:28:46.291+08:00  INFO 14530 --- [riccon-api] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2450 ms
+2026-11-26T07:28:46.537+08:00  INFO 14530 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-26T07:28:46.561+08:00  INFO 14530 --- [riccon-api] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-26T07:28:46.595+08:00  INFO 14530 --- [riccon-api] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:54701/riccon?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC (MySQL 8.4)
+2026-11-26T07:28:46.775+08:00  INFO 14530 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table `riccon`.`flyway_schema_history` does not exist yet
+2026-11-26T07:28:46.779+08:00  INFO 14530 --- [riccon-api] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 15 migrations (execution time 00:00.041s)
+2026-11-26T07:28:46.811+08:00  INFO 14530 --- [riccon-api] [           main] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table `riccon`.`flyway_schema_history` ...
+2026-11-26T07:28:46.892+08:00  INFO 14530 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `riccon`: << Empty Schema >>
+2026-11-26T07:28:46.903+08:00  INFO 14530 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "1 - baseline"
+2026-11-26T07:28:46.971+08:00  INFO 14530 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "2 - identity and workspace"
+2026-11-26T07:28:47.194+08:00  INFO 14530 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "3 - files knowledge and conversation"
+2026-11-26T07:28:47.454+08:00  INFO 14530 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "4 - research runs and artifacts"
+2026-11-26T07:28:47.768+08:00  INFO 14530 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "5 - model gateway and mcp"
+2026-11-26T07:28:48.065+08:00  INFO 14530 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "6 - audit event"
+2026-11-26T07:28:48.388+08:00  INFO 14530 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "7 - spring session"
+2026-11-26T07:28:48.485+08:00  INFO 14530 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "8 - approval params envelope"
+2026-11-26T07:28:48.583+08:00  INFO 14530 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "9 - organization and workspace scope"
+2026-11-26T07:28:48.968+08:00  INFO 14530 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "10 - audit query export"
+2026-11-26T07:28:49.203+08:00  INFO 14530 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "11 - model gateway depth"
+2026-11-26T07:28:49.676+08:00  INFO 14530 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "12 - knowledge depth"
+2026-11-26T07:28:50.052+08:00  INFO 14530 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "13 - citation chunk link"
+2026-11-26T07:28:50.109+08:00  INFO 14530 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "14 - knowledge fulltext search"
+2026-11-26T07:28:50.227+08:00  WARN 14530 --- [riccon-api] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: InnoDB rebuilding table to add column FTS_DOC_ID (SQL State: HY000 - Error Code: 124)
+2026-11-26T07:28:50.356+08:00  WARN 14530 --- [riccon-api] [           main] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: InnoDB rebuilding table to add column FTS_DOC_ID (SQL State: HY000 - Error Code: 124)
+2026-11-26T07:28:50.393+08:00  INFO 14530 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Migrating schema `riccon` to version "15 - workflow studio"
+2026-11-26T07:28:50.846+08:00  INFO 14530 --- [riccon-api] [           main] o.f.core.internal.command.DbMigrate      : Successfully applied 15 migrations to schema `riccon`, now at version v15 (execution time 00:03.514s)
+2026-11-26T07:28:51.518+08:00  INFO 14530 --- [riccon-api] [           main] c.r.api.oidc.service.OidcIdpRegistry     : oidc.idp.configured count=0 enabled=0
+2026-11-26T07:28:51.749+08:00  INFO 14530 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter tenantContextFilterRegistration was not registered (disabled)
+2026-11-26T07:28:51.749+08:00  INFO 14530 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter originCheckFilterRegistration was not registered (disabled)
+2026-11-26T07:28:51.749+08:00  INFO 14530 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter workflowPlatformTenantFilterRegistration was not registered (disabled)
+2026-11-26T07:28:51.749+08:00  INFO 14530 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcAuthorizePreflightFilterRegistration was not registered (disabled)
+2026-11-26T07:28:51.750+08:00  INFO 14530 --- [riccon-api] [           main] o.s.boot.web.servlet.RegistrationBean    : Filter oidcLoginRateLimitFilterRegistration was not registered (disabled)
+2026-11-26T07:28:51.961+08:00  WARN 14530 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist is empty; mode=DEMO allowLegacyEndpoints=true
+2026-11-26T07:28:51.962+08:00  INFO 14530 --- [riccon-api] [           main] c.r.a.m.catalog.ModelEndpointProperties  : model endpoint allowlist loaded; mode=DEMO endpoints=0
+2026-11-26T07:28:51.999+08:00  INFO 14530 --- [riccon-api] [           main] c.riccon.api.crypto.config.CryptoConfig  : envelope encryption ready: masterKeyId=mk-test, previousKey=true, fingerprintPepper=true
+2026-11-26T07:28:52.913+08:00  INFO 14530 --- [riccon-api] [           main] c.r.a.k.c.config.ConnectorProperties     : connector endpoint allowlist loaded; enabled=false endpoints=0 syncIntervalMinutes=60
+2026-11-26T07:28:54.621+08:00  INFO 14530 --- [riccon-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-26T07:28:54.703+08:00  INFO 14530 --- [riccon-api] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 54848 (http) with context path '/'
+2026-11-26T07:28:54.717+08:00  INFO 14530 --- [riccon-api] [           main] a.s.WorkflowValidationNegativeMatrixTest : Started WorkflowValidationNegativeMatrixTest in 11.328 seconds (process running for 28.125)
+2026-11-26T07:28:55.115+08:00  INFO 14530 --- [riccon-api] [           main] c.r.a.auth.service.BootstrapAdminRunner  : bootstrap admin created
+2026-11-26T07:28:55.120+08:00  WARN 14530 --- [riccon-api] [           main] c.r.api.config.KnowledgeAclStartupCheck  : RICCON-KB-001 knowledge acl enforcement disabled; DEPT/USERS documents are visible to all tenant members until RICCON_KB_ACL_ENFORCEMENT_ENABLED=true (ADR-0023 5.8)
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-26T07:28:56.154+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-26T07:28:56.154+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-26T07:28:56.155+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-11-26T07:28:59.376+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-WF-400 traceId=7bddad16-df58-4af5-ada9-d94251c9bf15 path=/api/v1/workflows/01a2150a-7f36-7d84-98fc-877fb5dd31d2/publish
+2026-11-26T07:29:00.877+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-WF-400 traceId=c53f33bf-ca6d-4df2-8f51-814ce2ea7240 path=/api/v1/workflows/01a2150a-859d-780a-8354-daf2dc2bdb32/draft
+2026-11-26T07:29:00.951+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-WF-400 traceId=0540a12b-c553-400b-b418-93304229530e path=/api/v1/workflows/01a2150a-859d-780a-8354-daf2dc2bdb32/draft
+2026-11-26T07:29:02.455+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-WF-400 traceId=c7825dcb-0b00-4e6b-9967-1c129452ed20 path=/api/v1/workflows/01a2150a-8bc9-7ca7-89df-2b9e2e007cf0/draft
+2026-11-26T07:29:02.522+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-WF-400 traceId=a7e64ddf-e16e-4785-bb65-e86fa2c3eac2 path=/api/v1/workflows/01a2150a-8bc9-7ca7-89df-2b9e2e007cf0/draft
+2026-11-26T07:29:02.572+08:00  INFO 14530 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.security.WorkflowTenantIsolationTest]: WorkflowTenantIsolationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-26T07:29:02.575+08:00  INFO 14530 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.security.WorkflowTenantIsolationTest
+2026-11-26T07:29:02.576+08:00  INFO 14530 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.security.WorkflowTenantIsolationTest]: WorkflowTenantIsolationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-26T07:29:02.577+08:00  INFO 14530 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.workflow.run.WorkflowRunTestSupport]: WorkflowRunTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-26T07:29:02.577+08:00  INFO 14530 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.workflow.version.WorkflowVersionTestSupport]: WorkflowVersionTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-26T07:29:02.578+08:00  INFO 14530 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-26T07:29:02.579+08:00  INFO 14530 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.security.WorkflowTenantIsolationTest
+2026-11-26T07:29:04.049+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=cf0abc30-0112-46fc-a57a-041c754592b5 path=/api/v1/workflows
+2026-11-26T07:29:04.295+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=c7960bfe-24f8-4082-a060-f205e1be77fd path=/api/v1/workflows/01a2150a-9264-7342-87a8-e27b3cf99e30/publish
+2026-11-26T07:29:04.315+08:00  INFO 14530 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=c60e8486-04f5-4207-96ef-3d9f8b551796 path=/api/v1/workflows/01a2150a-9264-7342-87a8-e27b3cf99e30/disable
+2026-11-26T07:29:04.357+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=876de90e-b2fc-4264-a858-551e5e63a080 path=/api/v1/workflows/01a2150a-9264-7342-87a8-e27b3cf99e30/disable
+2026-11-26T07:29:04.379+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=af38e745-271e-4903-8427-80dc50198cef path=/api/v1/workflows/01a2150a-9264-7342-87a8-e27b3cf99e30/transfer
+2026-11-26T07:29:04.400+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=59a7a464-a355-4f96-8777-2e7febef5b99 path=/api/v1/workflows/01a2150a-9264-7342-87a8-e27b3cf99e30/transfer
+2026-11-26T07:29:04.504+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-WF-400 traceId=28331234-6652-40e7-b298-8446ff6c8e4e path=/api/v1/workflows/01a2150a-9264-7342-87a8-e27b3cf99e30/runs
+2026-11-26T07:29:04.799+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=db7e8772-7fa6-4fa9-b2fb-c597ea64b1d6 path=/api/v1/workflow-runs/01a2150a-94e1-7b9a-9575-f622e222182b/cancel
+2026-11-26T07:29:04.831+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-403 traceId=9591d762-1b7e-45b2-815b-956e67527657 path=/api/v1/workflow-runs/01a2150a-94e1-7b9a-9575-f622e222182b/cancel
+2026-11-26T07:29:06.508+08:00  INFO 14530 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=a66e8654-ed04-464f-accb-862f0c9f4b20 path=/api/v1/workflow-runs/01a2150a-9ba7-74df-a567-bd7502bf40a8
+2026-11-26T07:29:06.538+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=a7e39304-93b0-4fdc-a759-f301fb8fc5a0 path=/api/v1/workflow-runs/01a2150a-9ba7-74df-a567-bd7502bf40a8
+2026-11-26T07:29:08.144+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=3ec35177-57c4-441a-9e0a-328d51231ce6 path=/api/v1/workflows/01a2150a-a1ed-7feb-bafd-391d18b5fe1e
+2026-11-26T07:29:08.174+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=ea9fccc5-a371-4763-bd01-ebddc0771488 path=/api/v1/workflows/01a2150a-a1ed-7feb-bafd-391d18b5fe1e
+2026-11-26T07:29:10.394+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=0a2fc308-0a57-4d88-92dc-2f57843701bb path=/api/v1/workflows/01a2150a-a7d9-7fcb-937b-ad4f717f719a
+2026-11-26T07:29:10.422+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=b11a85a8-81e1-4161-8eb2-d03d9438cf26 path=/api/v1/workflows/01a2150a-a7d9-7fcb-937b-ad4f717f719a/versions
+2026-11-26T07:29:10.452+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=e47a6e41-3246-429e-9034-577afc667d13 path=/api/v1/workflows/01a2150a-a7d9-7fcb-937b-ad4f717f719a/draft
+2026-11-26T07:29:10.483+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-8] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=8d5beab2-0fc4-4eba-bb4b-df5187d3e135 path=/api/v1/workflows/01a2150a-a7d9-7fcb-937b-ad4f717f719a/publish
+2026-11-26T07:29:10.527+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-9] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=0c32cd3c-5ea9-43ae-9fcc-c71bbbf82b03 path=/api/v1/workflows/01a2150a-a7d9-7fcb-937b-ad4f717f719a/runs
+2026-11-26T07:29:10.554+08:00  INFO 14530 --- [riccon-api] [-auto-1-exec-10] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=d223ba24-19ac-44e1-b526-d69ef2af64ff path=/api/v1/workflow-runs/01a2150a-a859-7aa0-978a-3972836b7166
+2026-11-26T07:29:10.586+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=843cc2eb-0552-458a-b7a1-b976a15f758e path=/api/v1/workflow-approvals/01a2150a-a868-7f43-99fc-8b2eee45cf16
+2026-11-26T07:29:10.615+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=94361e0d-d398-4aa7-8ef3-a74eb9606092 path=/api/v1/workflow-runs/01a2150a-a859-7aa0-978a-3972836b7166/cancel
+2026-11-26T07:29:10.748+08:00  INFO 14530 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.security.WorkflowDepartmentIsolationTest]: WorkflowDepartmentIsolationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-26T07:29:10.750+08:00  INFO 14530 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.security.WorkflowDepartmentIsolationTest
+2026-11-26T07:29:10.750+08:00  INFO 14530 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.security.WorkflowDepartmentIsolationTest]: WorkflowDepartmentIsolationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-26T07:29:10.751+08:00  INFO 14530 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.workflow.run.WorkflowRunTestSupport]: WorkflowRunTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-26T07:29:10.751+08:00  INFO 14530 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.workflow.version.WorkflowVersionTestSupport]: WorkflowVersionTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-26T07:29:10.751+08:00  INFO 14530 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-26T07:29:10.752+08:00  INFO 14530 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.security.WorkflowDepartmentIsolationTest
+2026-11-26T07:29:12.279+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-WF-400 traceId=0dda2004-2088-4dab-9c8a-544b2e85bab3 path=/api/v1/workflows/01a2150a-b20b-7b0b-b583-13d9cfdc36db/publish
+2026-11-26T07:29:12.377+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-WF-400 traceId=6eb0bd85-568b-4292-a405-53b7e5acff93 path=/api/v1/workflows/01a2150a-b272-76ac-aae2-18db567314aa/publish
+2026-11-26T07:29:12.490+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-7] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-WF-400 traceId=3ee70439-426b-46e8-b62e-f60c370b3000 path=/api/v1/workflows/01a2150a-b2dc-7223-9b6f-0926127b6bbb/publish
+2026-11-26T07:29:14.298+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=e07193ce-1140-4379-964b-88164e50d9a2 path=/api/v1/workflow-runs/01a2150a-b9f2-7b8f-853e-bf8b093fe4f7
+2026-11-26T07:29:14.326+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-2] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=a9321fc2-f600-4a71-8516-0e1d0882bb63 path=/api/v1/workflow-runs/01a2150a-b9f2-7b8f-853e-bf8b093fe4f7
+2026-11-26T07:29:14.370+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-3] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=0d29d233-a1aa-4a6a-a134-ac1b9e00c6f7 path=/api/v1/workflows/01a2150a-b923-7d05-b7ae-e6f2049da03a/runs
+2026-11-26T07:29:14.463+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=eadbe836-c5fe-4467-81ac-15a624ed1b58 path=/api/v1/workflows/01a2150a-b923-7d05-b7ae-e6f2049da03a/runs
+2026-11-26T07:29:14.623+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-1] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-TENANT-404 traceId=89aec93e-83f8-47fb-a370-14bd33a7441f path=/api/v1/workflows/01a2150a-b923-7d05-b7ae-e6f2049da03a/runs
+2026-11-26T07:29:14.703+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-4] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-401 traceId=ac3cdd85-7da0-4408-8ac7-29e3575b9cb6 path=/api/v1/workflow-runs/01a2150a-bb3a-7a40-b3d8-b23e7fde11e8
+2026-11-26T07:29:14.718+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-5] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-AUTH-401 traceId=c6bdc0d2-28b1-46db-9e34-280cde01e3ee path=/api/v1/workflows/01a2150a-b923-7d05-b7ae-e6f2049da03a/runs
+2026-11-26T07:29:14.764+08:00  INFO 14530 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.audit.WorkflowAuditM06Test]: WorkflowAuditM06Test does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-26T07:29:14.824+08:00  INFO 14530 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.audit.WorkflowAuditM06Test
+2026-11-26T07:29:14.825+08:00  INFO 14530 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.audit.WorkflowAuditM06Test]: WorkflowAuditM06Test does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-26T07:29:14.826+08:00  INFO 14530 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.workflow.approval.WorkflowApprovalTestSupport]: WorkflowApprovalTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-26T07:29:14.826+08:00  INFO 14530 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.workflow.run.WorkflowRunTestSupport]: WorkflowRunTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-26T07:29:14.826+08:00  INFO 14530 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.workflow.version.WorkflowVersionTestSupport]: WorkflowVersionTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-26T07:29:14.826+08:00  INFO 14530 --- [riccon-api] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.api.support.ApiIntegrationTestSupport]: ApiIntegrationTestSupport does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-26T07:29:14.827+08:00  INFO 14530 --- [riccon-api] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.api.ApiApplication for test class com.riccon.api.audit.WorkflowAuditM06Test
+2026-11-26T07:29:16.628+08:00  INFO 14530 --- [riccon-api] [o-auto-1-exec-6] c.riccon.api.web.GlobalExceptionHandler  : request rejected code=RICCON-WF-400 traceId=cf753e17-ed1b-4f6b-8d9b-b4d023ac0d80 path=/api/v1/workflow-approvals/01a2150a-c340-7dc4-9b92-d46e224fe162/decision
+
+# --- stderr ---
+
