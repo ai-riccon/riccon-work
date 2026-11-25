@@ -774,7 +774,6 @@ export function ReleasePanel({
               </Button>
               <Button
                 icon={<PlayCircleOutlined aria-hidden="true" />}
-                aria-label="运行最近发布版本"
                 disabled={!detail.canRun || !canRunPermission || detail.status !== 'ACTIVE'}
                 onClick={() => openRun()}
               >
@@ -936,7 +935,6 @@ export function ReleasePanel({
                         <div className="workflow-history-version-actions">
                           <Button
                             size="small"
-                            aria-label={`用版本 v${version.versionNo} 运行流程`}
                             disabled={
                               !detail.canRun || !canRunPermission || detail.status !== 'ACTIVE'
                             }
@@ -1036,7 +1034,6 @@ export function ReleasePanel({
         open={runOpen}
         okText="提交运行"
         cancelText="取消"
-        okButtonProps={{ 'aria-label': '确认运行流程' }}
         confirmLoading={runBusy}
         onOk={() => void handleRun()}
         onCancel={() => {

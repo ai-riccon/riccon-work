@@ -598,11 +598,7 @@ export function RunHistoryPanel({
                     ) : null}
                   </div>
                   <div className="workflow-history-item-actions">
-                    <Button
-                      type="link"
-                      aria-label={`查看运行详情：${workflowName}`}
-                      onClick={() => onOpenDetail(run.id)}
-                    >
+                    <Button type="link" onClick={() => onOpenDetail(run.id)}>
                       查看详情
                     </Button>
                     {operable && canCancelRun(run.status) ? (
@@ -689,7 +685,6 @@ export function RunHistoryPanel({
         okText="提交重试"
         cancelText="返回"
         okButtonProps={{
-          'aria-label': '确认重试失败节点',
           disabled: retryPhase !== 'ready' || !retryNodeId,
         }}
         confirmLoading={retryBusy}

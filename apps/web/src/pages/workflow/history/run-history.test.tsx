@@ -176,6 +176,24 @@ function renderPanel(
   return { onOpenDetail, onBackToStudio };
 }
 
+/**
+ * 断言按钮满足 axe `label-content-name-mismatch`：可见文本必须包含在可访问名称中。
+ *
+ * 本页对“查看详情/运行流程/用此版本运行/提交运行/提交重试”采用移除多余 aria-label、
+ * 以完整可见文本作为名称的方案；查询也按可见名称进行，避免测试固化错误标签
+ * （REV-TASK-0233-001 F-002）。
+ *
+ * @param button 按钮元素
+ */
+function expectLabelInName(button: HTMLElement): void {
+  const visibleText = (button.textContent ?? '').replace(/\s+/g, ' ').trim();
+  const accessibleName = (button.getAttribute('aria-label') ?? visibleText)
+    .replace(/\s+/g, ' ')
+    .trim();
+  expect(visibleText.length).toBeGreaterThan(0);
+  expect(accessibleName).toContain(visibleText);
+}
+
 describe('RunHistoryPanel', () => {
   beforeEach(() => {
     authStore.reset();
@@ -192,7 +210,9 @@ describe('RunHistoryPanel', () => {
     expect(screen.getByText('19.0 s')).toBeVisible();
     expect(api.listRuns).toHaveBeenCalledWith({ page: 1, size: 20 });
 
-    fireEvent.click(screen.getByRole('button', { name: '查看运行详情：市场调研流程' }));
+    const detailButton = screen.getByRole('button', { name: '查看详情' });
+    expectLabelInName(detailButton);
+    fireEvent.click(detailButton);
     expect(onOpenDetail).toHaveBeenCalledWith('run-1');
   });
 
@@ -316,9 +336,13 @@ describe('RunHistoryPanel', () => {
     renderPanel(createFakeApi({ cancelRun, listRuns }));
 
     await screen.findByText('市场调研流程');
-    fireEvent.click(screen.getByRole('button', { name: '取消运行：市场调研流程' }));
+    const cancelButton = screen.getByRole('button', { name: '取消运行：市场调研流程' });
+    expectLabelInName(cancelButton);
+    fireEvent.click(cancelButton);
     expect(await screen.findByText('确认取消运行')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '确认取消运行' }));
+    const confirmButton = screen.getByRole('button', { name: '确认取消运行' });
+    expectLabelInName(confirmButton);
+    fireEvent.click(confirmButton);
 
     await waitFor(() => expect(cancelRun).toHaveBeenCalledWith('run-1'));
     await waitFor(() => expect(listRuns).toHaveBeenCalledTimes(2));
@@ -361,7 +385,9 @@ describe('RunHistoryPanel', () => {
     renderPanel(createFakeApi({ getRunDetail, retryRunNode, listRuns }));
 
     await screen.findByText('市场调研流程');
-    fireEvent.click(screen.getByRole('button', { name: '重试失败节点：市场调研流程' }));
+    const retryButton = screen.getByRole('button', { name: '重试失败节点：市场调研流程' });
+    expectLabelInName(retryButton);
+    fireEvent.click(retryButton);
     expect(
       await screen.findByText('重试失败节点', { selector: '.ant-modal-title' }),
     ).toBeInTheDocument();
@@ -369,7 +395,9 @@ describe('RunHistoryPanel', () => {
     expect(await within(dialog).findByText(/查询数据/)).toBeInTheDocument();
     expect(within(dialog).queryByText(/生成报告/)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '确认重试失败节点' }));
+    const submitButton = screen.getByRole('button', { name: '提交重试' });
+    expectLabelInName(submitButton);
+    fireEvent.click(submitButton);
     await waitFor(() => expect(retryRunNode).toHaveBeenCalledWith('run-1', 'tool-1'));
     await waitFor(() => expect(listRuns).toHaveBeenCalledTimes(2));
   });
@@ -389,7 +417,7 @@ describe('RunHistoryPanel', () => {
     expect(
       await screen.findByText('运行已不在失败状态，请刷新列表后查看最新状态。'),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '确认重试失败节点' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '提交重试' })).toBeDisabled();
     expect(retryRunNode).not.toHaveBeenCalled();
   });
 

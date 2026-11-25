@@ -216,6 +216,23 @@ async function waitForDetail(): Promise<void> {
   expect(await screen.findByText('已发布版本')).toBeVisible();
 }
 
+/**
+ * 断言按钮满足 axe `label-content-name-mismatch`：可见文本必须包含在可访问名称中。
+ *
+ * 本页对“运行流程/用此版本运行/提交运行”采用移除多余 aria-label、以可见文本作为名称的
+ * 方案；查询也按可见名称进行（REV-TASK-0233-001 F-002）。
+ *
+ * @param button 按钮元素
+ */
+function expectLabelInName(button: HTMLElement): void {
+  const visibleText = (button.textContent ?? '').replace(/\s+/g, ' ').trim();
+  const accessibleName = (button.getAttribute('aria-label') ?? visibleText)
+    .replace(/\s+/g, ' ')
+    .trim();
+  expect(visibleText.length).toBeGreaterThan(0);
+  expect(accessibleName).toContain(visibleText);
+}
+
 describe('ReleasePanel', () => {
   beforeEach(() => {
     authStore.reset();
@@ -392,11 +409,16 @@ describe('ReleasePanel', () => {
     const { onOpenDetail } = renderPanel(createFakeApi({ createRun }));
     await waitForDetail();
 
-    fireEvent.click(screen.getByRole('button', { name: '用版本 v1 运行流程' }));
+    const versionButtons = screen.getAllByRole('button', { name: '用此版本运行' });
+    expect(versionButtons.length).toBeGreaterThan(0);
+    expectLabelInName(versionButtons[0]);
+    fireEvent.click(versionButtons[0]);
     expect(
       await screen.findByText('运行流程', { selector: '.ant-modal-title' }),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '确认运行流程' }));
+    const submitButton = screen.getByRole('button', { name: '提交运行' });
+    expectLabelInName(submitButton);
+    fireEvent.click(submitButton);
 
     await waitFor(() =>
       expect(createRun).toHaveBeenCalledWith('workflow-1', {
@@ -412,11 +434,11 @@ describe('ReleasePanel', () => {
     renderPanel(createFakeApi({ createRun }));
     await waitForDetail();
 
-    fireEvent.click(screen.getByRole('button', { name: '用版本 v1 运行流程' }));
+    fireEvent.click(screen.getAllByRole('button', { name: '用此版本运行' })[0]);
     fireEvent.change(await screen.findByRole('textbox', { name: '运行输入 JSON' }), {
       target: { value: '[' },
     });
-    fireEvent.click(screen.getByRole('button', { name: '确认运行流程' }));
+    fireEvent.click(screen.getByRole('button', { name: '提交运行' }));
 
     expect(await screen.findByText('运行输入必须是合法的 JSON 对象。')).toBeInTheDocument();
     expect(createRun).not.toHaveBeenCalled();
@@ -429,8 +451,8 @@ describe('ReleasePanel', () => {
     renderPanel(createFakeApi({ createRun }));
     await waitForDetail();
 
-    fireEvent.click(screen.getByRole('button', { name: '用版本 v1 运行流程' }));
-    fireEvent.click(await screen.findByRole('button', { name: '确认运行流程' }));
+    fireEvent.click(screen.getAllByRole('button', { name: '用此版本运行' })[0]);
+    fireEvent.click(await screen.findByRole('button', { name: '提交运行' }));
     expect(await screen.findByText(/同时运行的流程已达上限/)).toBeInTheDocument();
   });
 
@@ -446,11 +468,15 @@ describe('ReleasePanel', () => {
     );
     await waitForDetail();
 
-    fireEvent.click(screen.getByRole('button', { name: '运行最近发布版本' }));
+    const runButton = screen.getByRole('button', { name: '运行流程' });
+    expectLabelInName(runButton);
+    fireEvent.click(runButton);
     expect(
       await screen.findByText('运行流程', { selector: '.ant-modal-title' }),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '确认运行流程' }));
+    const submitButton = screen.getByRole('button', { name: '提交运行' });
+    expectLabelInName(submitButton);
+    fireEvent.click(submitButton);
 
     await waitFor(() =>
       expect(createRun).toHaveBeenCalledWith('workflow-1', {
@@ -476,7 +502,7 @@ describe('ReleasePanel', () => {
       }),
     );
     await waitForDetail();
-    expect(screen.getByRole('button', { name: '运行最近发布版本' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '运行流程' })).toBeDisabled();
   });
 
   it('版本列表失败显示告警并支持重试', async () => {

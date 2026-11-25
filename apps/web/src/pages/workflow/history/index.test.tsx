@@ -248,7 +248,7 @@ describe('WorkflowHistoryPage', () => {
     renderPage(api, { navigate });
 
     await screen.findByText('市场调研流程');
-    fireEvent.click(screen.getByRole('button', { name: '查看运行详情：市场调研流程' }));
+    fireEvent.click(screen.getByRole('button', { name: '查看详情' }));
     expect(navigate).toHaveBeenCalledWith('/workflows/runs/run-1');
   });
 
