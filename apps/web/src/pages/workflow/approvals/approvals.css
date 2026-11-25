@@ -1,0 +1,222 @@
+/**
+ * 审批待办/详情页面样式。
+ *
+ * 375px 目标：列表使用卡片而不是固定列宽表格；标题、元数据与操作区允许换行，
+ * 长标识与参数摘要使用 anywhere 换行；参数摘要自身可横向滚动但页面不产生横向滚动。
+ * 视觉口径与 T10 流程列表、T14 模板库保持一致。
+ */
+
+.workflow-approvals-page {
+  width: 100%;
+  max-width: 1200px;
+  min-width: 0;
+  margin: 0 auto;
+  overflow-wrap: anywhere;
+  box-sizing: border-box;
+}
+
+.workflow-approvals-heading {
+  margin-bottom: 16px;
+}
+
+.workflow-approvals-title {
+  margin: 0 0 4px;
+  font-size: 24px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+/* 程序化聚焦标题时保持可见焦点；键盘用户返回待办后能确认位置。 */
+.workflow-approvals-title:focus-visible,
+.workflow-approvals-title:focus {
+  outline: 2px solid #0958d9;
+  outline-offset: 4px;
+}
+
+.workflow-approvals-intro {
+  margin-bottom: 0;
+}
+
+.workflow-approvals-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  margin-bottom: 16px;
+}
+
+.workflow-approvals-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px 16px;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.workflow-approvals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+  margin: 0 0 16px;
+  list-style: none;
+}
+
+.workflow-approvals-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  min-width: 0;
+}
+
+.workflow-approvals-item-main {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workflow-approvals-item-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workflow-approvals-item-name.ant-typography {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.workflow-approvals-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  margin: 0;
+  min-width: 0;
+}
+
+.workflow-approvals-meta > div {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.workflow-approvals-meta dt {
+  flex: none;
+  color: #8c8c8c;
+}
+
+.workflow-approvals-meta dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.workflow-approvals-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.workflow-approvals-detail-toolbar {
+  margin-bottom: 16px;
+}
+
+.workflow-approvals-detail-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  min-width: 0;
+}
+
+.workflow-approvals-summary,
+.workflow-approvals-record {
+  margin-bottom: 16px;
+}
+
+.workflow-approvals-section {
+  margin-bottom: 16px;
+}
+
+.workflow-approvals-section-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.workflow-approvals-params {
+  max-width: 100%;
+  margin: 0 0 8px;
+  padding: 12px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+}
+
+.workflow-approvals-decision {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  min-width: 0;
+}
+
+.workflow-approvals-action-error {
+  margin-top: 4px;
+}
+
+.workflow-approvals-comment {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.workflow-approvals-comment label {
+  font-weight: 500;
+}
+
+/* 窄屏：操作按钮与列表卡片占满一行，避免被长名称挤出视口。 */
+@media (max-width: 575px) {
+  .workflow-approvals-item {
+    flex-direction: column;
+  }
+
+  .workflow-approvals-item-actions {
+    width: 100%;
+  }
+
+  .workflow-approvals-item-actions .ant-btn {
+    width: 100%;
+  }
+
+  .workflow-approvals-decision .ant-btn {
+    width: 100%;
+  }
+}
