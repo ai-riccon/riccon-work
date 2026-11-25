@@ -487,8 +487,18 @@ public final class AuditDetailsPolicy {
             "authorization",
             "baseurl");
 
-    /** details 单值最大长度，避免把原文写入审计。 */
+    /** details 单值默认最大长度，避免把原文写入审计。 */
     private static final int MAX_VALUE_LENGTH = 200;
+
+    /**
+     * 动作级字符串长度覆盖；未登记的键使用 {@link #MAX_VALUE_LENGTH}。
+     *
+     * <p>M06 审批理由 {@code workflow.approval.decided.decisionComment} 按契约、ADR-0024 §8.1/§8.3 与
+     * {@code workflow_approval.decision_comment VARCHAR(500)} 允许 1–500 字符；读取端复用同一策略，
+     * 避免 201–500 字符出现“写得进、读不出”（REV-TASK-0219-001 F-001、REV-TASK-0226-001 F-002）。
+     */
+    private static final Map<String, Map<String, Integer>> VALUE_LENGTH_LIMITS =
+            Map.of(AuditActions.WORKFLOW_APPROVAL_DECIDED, Map.of("decisionComment", 500));
 
     /** 未在 {@link #ARRAY_LIMITS} 登记时的数组元素上限；ADR-0021 §7.4 规定路由链最多 20 个 UUID。 */
     private static final int DEFAULT_MAX_ARRAY_ELEMENTS = 20;
@@ -635,6 +645,17 @@ public final class AuditDetailsPolicy {
         return ARRAY_LIMITS.getOrDefault(action, Map.of()).getOrDefault(key, DEFAULT_MAX_ARRAY_ELEMENTS);
     }
 
+    /**
+     * 返回动作级字符串长度上限。
+     *
+     * @param action 审计动作名
+     * @param key 字段名
+     * @return 长度上限；未登记时为 {@link #MAX_VALUE_LENGTH}
+     */
+    private static int valueLimit(String action, String key) {
+        return VALUE_LENGTH_LIMITS.getOrDefault(action, Map.of()).getOrDefault(key, MAX_VALUE_LENGTH);
+    }
+
     /** 返回知识库文档状态枚举名集合，供重索引审计校验使用。 */
     private static Set<String> documentStatusValues() {
         java.util.List<String> values = new java.util.ArrayList<>();
@@ -711,7 +732,7 @@ public final class AuditDetailsPolicy {
             throw new IllegalArgumentException("audit detail value must not be null: " + key);
         }
         if (value instanceof String text) {
-            if (text.length() > MAX_VALUE_LENGTH) {
+            if (text.codePointCount(0, text.length()) > valueLimit(action, key)) {
                 throw new IllegalArgumentException("audit detail value is too long: " + key);
             }
             return;
