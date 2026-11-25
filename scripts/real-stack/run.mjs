@@ -1509,7 +1509,7 @@ function runWorkflowPerfK6(context, fixture) {
     PERF_M06_REPORT_FILE: reportFile,
     PERF_M06_J1_VUS: process.env.PERF_M06_J1_VUS ?? "25",
     PERF_M06_J2_VUS: process.env.PERF_M06_J2_VUS ?? "3",
-    PERF_M06_STUDIO_VUS: process.env.PERF_M06_STUDIO_VUS ?? "22",
+    PERF_M06_STUDIO_VUS: process.env.PERF_M06_STUDIO_VUS ?? "21",
   };
   const args = ["run"];
   for (const [key, value] of Object.entries(envList)) {
@@ -4097,7 +4097,8 @@ async function runPerf() {
       concurrency: {
         j1Vus: 25,
         j2Vus: 3,
-        studioVus: 22,
+        studioVus: 21,
+        writeVus: 1,
         total: 50,
       },
       workflowLimits: workflowEnvSnapshot(),
