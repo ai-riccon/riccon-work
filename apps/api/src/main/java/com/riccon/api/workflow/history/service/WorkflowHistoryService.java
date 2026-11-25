@@ -6,6 +6,8 @@ import com.riccon.api.chat.domain.CitationSourceStatus;
 import com.riccon.api.chat.repository.CitationStatusRepository;
 import com.riccon.api.error.NotFoundException;
 import com.riccon.api.identity.dto.PageQuery;
+import com.riccon.api.workflow.definition.domain.WorkflowDefinitionActor;
+import com.riccon.api.workflow.definition.service.WorkflowDefinitionService;
 import com.riccon.api.workflow.history.domain.WorkflowApprovalCounts;
 import com.riccon.api.workflow.history.domain.WorkflowCitationSnapshot;
 import com.riccon.api.workflow.history.domain.WorkflowHistoryActor;
@@ -76,6 +78,9 @@ public class WorkflowHistoryService {
     /** 运行历史仓储。 */
     private final WorkflowHistoryRepository repository;
 
+    /** 流程定义服务，仅复用其可见性判定（owner/admin/latest run scope → 否则 404）。 */
+    private final WorkflowDefinitionService definitionService;
+
     /** 审计写入（同事务 fail-closed）。 */
     private final AuditService auditService;
 
@@ -92,6 +97,7 @@ public class WorkflowHistoryService {
      * 创建运行历史服务。
      *
      * @param repository 运行历史仓储
+     * @param definitionService 流程定义服务（复用可见性判定）
      * @param auditService 审计写入
      * @param citationStatusRepository 引用状态批量查询
      * @param objectMapper JSON 编解码
@@ -99,11 +105,13 @@ public class WorkflowHistoryService {
      */
     public WorkflowHistoryService(
             WorkflowHistoryRepository repository,
+            WorkflowDefinitionService definitionService,
             AuditService auditService,
             CitationStatusRepository citationStatusRepository,
             ObjectMapper objectMapper,
             Clock clock) {
         this.repository = Objects.requireNonNull(repository, "repository must not be null");
+        this.definitionService = Objects.requireNonNull(definitionService, "definitionService must not be null");
         this.auditService = Objects.requireNonNull(auditService, "auditService must not be null");
         this.citationStatusRepository =
                 Objects.requireNonNull(citationStatusRepository, "citationStatusRepository must not be null");
@@ -154,6 +162,41 @@ public class WorkflowHistoryService {
                     now, actor.tenantId(), actor.userId(), traceId, requestId));
         }
         return new WorkflowRunHistoryPageResponse(page.page(), page.size(), total, page.totalPages(total), items);
+    }
+
+    /**
+     * 读取指定流程的运行历史（契约 {@code GET /api/v1/workflows/{workflowId}/runs}）。
+     *
+     * <p>薄委托：先复用流程定义服务的可见性判定（所有者/租户管理员/当前发布版本范围，否则 404），
+     * 再委托全局历史列表的 workflowId 过滤，因此分页、倒序、保留期、审批聚合与管理性读取审计与
+     * {@code GET /api/v1/workflow-runs?workflowId=...} 完全一致；非所有者仅返回自己发起的运行
+     * （ADR-0024 §6.2/§7.2，REV-TASK-0228-001 F-001）。
+     *
+     * @param actor 当前主体
+     * @param workflowId 流程 ID
+     * @param page 分页参数
+     * @param traceId 追踪 ID
+     * @param requestId 请求 ID
+     * @return 运行分页
+     * @throws NotFoundException 流程不存在、跨租户或对当前主体不可见
+     */
+    @Transactional
+    public WorkflowRunHistoryPageResponse listForWorkflow(
+            WorkflowHistoryActor actor, UUID workflowId, PageQuery page, String traceId, String requestId) {
+        // 复用流程详情可见性：私有草稿、ONLY_SELF 他人流程、跨部门/跨租户统一 404，不泄露存在性。
+        definitionService.get(definitionActor(actor), workflowId);
+        return list(
+                actor, new WorkflowHistoryFilter(workflowId, null, null, null, null, null), page, traceId, requestId);
+    }
+
+    /**
+     * 把运行历史主体转换为流程定义主体；仅可见性判定使用 userId/tenantAdmin，能力位不参与。
+     *
+     * @param actor 运行历史主体
+     * @return 流程定义主体
+     */
+    private static WorkflowDefinitionActor definitionActor(WorkflowHistoryActor actor) {
+        return new WorkflowDefinitionActor(actor.userId(), actor.tenantId(), actor.tenantAdmin(), false, false, false);
     }
 
     /**

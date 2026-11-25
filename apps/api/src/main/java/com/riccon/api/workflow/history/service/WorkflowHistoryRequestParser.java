@@ -56,6 +56,21 @@ public class WorkflowHistoryRequestParser {
     }
 
     /**
+     * 解析路径中的流程 ID。
+     *
+     * @param value 路径参数
+     * @return 流程 ID
+     * @throws WorkflowRunBadRequestException 非 UUID
+     */
+    public UUID parseWorkflowId(String value) {
+        UUID workflowId = parseUuid(value, "workflowId");
+        if (workflowId == null) {
+            throw new WorkflowRunBadRequestException("workflowId is required");
+        }
+        return workflowId;
+    }
+
+    /**
      * 解析路径中的运行 ID。
      *
      * @param value 路径参数

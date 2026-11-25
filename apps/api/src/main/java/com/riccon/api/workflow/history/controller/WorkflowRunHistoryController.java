@@ -100,6 +100,35 @@ public class WorkflowRunHistoryController {
     }
 
     /**
+     * 读取指定流程的运行历史。
+     *
+     * <p>契约 {@code listWorkflowRunsForWorkflow}：参数只有分页；过滤、可见性、保留期、倒序与
+     * 管理性读取审计复用全局 `/workflow-runs` 逻辑。流程不存在/不可见/跨租户/平台统一 404。
+     *
+     * @param workflowId 流程 ID
+     * @param page 页码
+     * @param size 每页大小
+     * @param authentication 当前认证
+     * @param request HTTP 请求
+     * @return 运行分页
+     */
+    @GetMapping("/api/v1/workflows/{workflowId}/runs")
+    @RequirePermission(PermissionCodes.WORKFLOW_READ)
+    public WorkflowRunHistoryPageResponse listForWorkflow(
+            @PathVariable String workflowId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            Authentication authentication,
+            HttpServletRequest request) {
+        return service.listForWorkflow(
+                actor(authentication),
+                parser.parseWorkflowId(workflowId),
+                PageQuery.of(page, size),
+                RequestContext.traceId(request),
+                RequestContext.requestId(request));
+    }
+
+    /**
      * 读取运行详情。
      *
      * <p>节点时间线包含全部重试尝试；审批记录中的 {@code paramsPreview} 只对当前账号被指派的审批

@@ -531,6 +531,105 @@ class WorkflowRunHistoryApiTest extends WorkflowHistoryTestSupport {
                 .isTrue();
     }
 
+    @Test
+    @DisplayName("IT-WF-108 流程路径运行历史与全局端点同结果，复用过滤/分页/保留/管理性读取审计")
+    void listRunsForWorkflow_delegatesToGlobalList() {
+        Fixture fixture = fixture("whl");
+        String workflowId = publishHistoryWorkflow(fixture, WORKFLOW_NAME);
+        String otherWorkflow = publishHistoryWorkflow(fixture.otherEditor(), fixture, "其他流程");
+        UUID versionId = publishedVersionId(fixture.tenant(), workflowId);
+        UUID otherVersionId = publishedVersionId(fixture.tenant(), otherWorkflow);
+        UUID first = insertActiveRun(fixture.tenant(), workflowId, versionId, 1, fixture.ownerId(), "SUCCEEDED", "end");
+        UUID second =
+                insertActiveRun(fixture.tenant(), workflowId, versionId, 1, fixture.otherEditorId(), "FAILED", "draft");
+        UUID other = insertActiveRun(
+                fixture.tenant(), otherWorkflow, otherVersionId, 1, fixture.memberId(), "PENDING", "start");
+        Instant base = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        setCreatedAt(fixture.tenant(), first, base.minusSeconds(200));
+        setCreatedAt(fixture.tenant(), second, base.minusSeconds(100));
+        setCreatedAt(fixture.tenant(), other, base.minusSeconds(50));
+
+        JsonNode pathPage = listWorkflowRunsOk(fixture.owner(), workflowId, null);
+        JsonNode globalPage = listRunsOk(fixture.owner(), "workflowId=" + workflowId);
+        assertThat(ids(pathPage)).containsExactly(second.toString(), first.toString());
+        assertThat(ids(globalPage)).containsExactlyElementsOf(ids(pathPage));
+        assertThat(pathPage.path("total").asLong())
+                .isEqualTo(globalPage.path("total").asLong());
+        assertThat(pathPage.path("totalPages").asInt())
+                .isEqualTo(globalPage.path("totalPages").asInt());
+        assertThat(pathPage.path("items").get(0))
+                .isEqualTo(globalPage.path("items").get(0));
+        assertThat(ids(pathPage)).doesNotContain(other.toString());
+
+        JsonNode pathPageTwo = listWorkflowRunsOk(fixture.owner(), workflowId, "page=2&size=1");
+        JsonNode globalPageTwo = listRunsOk(fixture.owner(), "workflowId=" + workflowId + "&page=2&size=1");
+        assertThat(pathPageTwo.path("total").asLong()).isEqualTo(2);
+        assertThat(pathPageTwo.path("totalPages").asInt()).isEqualTo(2);
+        assertThat(ids(pathPageTwo)).containsExactlyElementsOf(ids(globalPageTwo));
+
+        // 保留期语义与全局端点一致：到期运行在路径端点同样不可见。
+        setRetention(fixture.tenant(), second, Instant.now().minusSeconds(5));
+        assertThat(ids(listWorkflowRunsOk(fixture.owner(), workflowId, null))).containsExactly(first.toString());
+        assertThat(listWorkflowRunsOk(fixture.tenantAdmin(), workflowId, null)
+                        .path("total")
+                        .asLong())
+                .isEqualTo(1);
+
+        // 管理员通过路径端点读取写一条 LIST 管理性读取审计（与全局端点同语义）。
+        List<AuditRow> audits = tenantAuditRows(fixture.tenant(), "workflow.run.admin_read");
+        assertThat(audits).hasSize(1);
+        assertThat(auditDetails(audits.getFirst()).path("scope").asText()).isEqualTo("LIST");
+    }
+
+    @Test
+    @DisplayName("IT-WF-108 流程路径：非所有者仅自己运行；ONLY_SELF/不存在/跨租户/平台 404")
+    void listRunsForWorkflow_visibilityAndNotFound() {
+        Fixture fixture = fixture("whl");
+        String workflowId = publishHistoryWorkflow(fixture, WORKFLOW_NAME);
+        UUID versionId = publishedVersionId(fixture.tenant(), workflowId);
+        UUID ownerRun =
+                insertActiveRun(fixture.tenant(), workflowId, versionId, 1, fixture.ownerId(), "SUCCEEDED", "end");
+        UUID editorRun =
+                insertActiveRun(fixture.tenant(), workflowId, versionId, 1, fixture.otherEditorId(), "FAILED", "draft");
+        Instant base = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        setCreatedAt(fixture.tenant(), ownerRun, base.minusSeconds(200));
+        setCreatedAt(fixture.tenant(), editorRun, base.minusSeconds(100));
+
+        assertThat(ids(listWorkflowRunsOk(fixture.owner(), workflowId, null)))
+                .containsExactly(editorRun.toString(), ownerRun.toString());
+        assertThat(ids(listWorkflowRunsOk(fixture.otherEditor(), workflowId, null)))
+                .containsExactly(editorRun.toString());
+        JsonNode memberPage = listWorkflowRunsOk(fixture.member(), workflowId, null);
+        assertThat(memberPage.path("total").asLong()).isZero();
+        assertThat(memberPage.path("items")).isEmpty();
+
+        String privateWorkflow =
+                createDraft(fixture.otherEditor(), "仅自己流程").path("id").asText();
+        saveDraft(fixture.otherEditor(), privateWorkflow, 1, defaultGraph(fixture));
+        publishOk(fixture.otherEditor(), privateWorkflow, "ONLY_SELF", null, "publish-" + UUID.randomUUID());
+        UUID privateVersion = publishedVersionId(fixture.tenant(), privateWorkflow);
+        UUID privateRun = insertActiveRun(
+                fixture.tenant(), privateWorkflow, privateVersion, 1, fixture.otherEditorId(), "SUCCEEDED", "end");
+        assertProblem(listWorkflowRuns(fixture.member(), privateWorkflow, null), 404, TENANT_404);
+        assertProblem(listWorkflowRuns(fixture.owner(), privateWorkflow, null), 404, TENANT_404);
+        assertThat(ids(listWorkflowRunsOk(fixture.otherEditor(), privateWorkflow, null)))
+                .containsExactly(privateRun.toString());
+        assertThat(listWorkflowRunsOk(fixture.tenantAdmin(), privateWorkflow, null)
+                        .path("total")
+                        .asLong())
+                .isEqualTo(1);
+
+        assertProblem(listWorkflowRuns(fixture.owner(), UUID.randomUUID().toString(), null), 404, TENANT_404);
+        Fixture other = fixture("whl");
+        assertProblem(listWorkflowRuns(other.tenantAdmin(), workflowId, null), 404, TENANT_404);
+        assertProblem(listWorkflowRuns(fixture.platform(), workflowId, null), 404, TENANT_404);
+        assertProblem(listWorkflowRuns(fixture.owner(), "not-a-uuid", null), 400, WF_400);
+        assertThat(listWorkflowRuns(fixture.owner(), workflowId, "page=0").status())
+                .isEqualTo(400);
+        assertThat(listWorkflowRuns(fixture.owner(), workflowId, "size=101").status())
+                .isEqualTo(400);
+    }
+
     /**
      * 构造引用 JSON 数组。
      *

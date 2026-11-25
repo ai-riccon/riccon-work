@@ -77,6 +77,33 @@ public abstract class WorkflowHistoryTestSupport extends WorkflowApprovalTestSup
     }
 
     /**
+     * 调用指定流程的运行历史端点。
+     *
+     * @param session 会话
+     * @param workflowId 流程 ID
+     * @param query 查询串；可空
+     * @return 原始响应
+     */
+    protected ApiTestClient.ApiResponse listWorkflowRuns(LoginSession session, String workflowId, String query) {
+        String suffix = query == null || query.isBlank() ? "" : "?" + query;
+        return client.get("/api/v1/workflows/" + workflowId + "/runs" + suffix, session.sessionCookie(), Map.of());
+    }
+
+    /**
+     * 调用指定流程的运行历史端点并断言 200。
+     *
+     * @param session 会话
+     * @param workflowId 流程 ID
+     * @param query 查询串；可空
+     * @return 响应 JSON
+     */
+    protected JsonNode listWorkflowRunsOk(LoginSession session, String workflowId, String query) {
+        ApiTestClient.ApiResponse response = listWorkflowRuns(session, workflowId, query);
+        assertThat(response.status()).as(response.body()).isEqualTo(200);
+        return client.json(response);
+    }
+
+    /**
      * 调用运行详情端点。
      *
      * @param session 会话
