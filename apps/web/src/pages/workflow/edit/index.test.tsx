@@ -149,30 +149,78 @@ function renderEditor(api: WorkflowApi, navigate = vi.fn(), session = EDITOR_SES
   };
 }
 
+/**
+ * 让画布断点跟随 jsdom 的 innerWidth。
+ *
+ * 画布只查询 `(min-width: 768px)`；其余查询保持 false，避免与 antd 默认行为互相影响。
+ */
+function installMatchMedia(): void {
+  window.matchMedia = ((query: string) => ({
+    matches: query === '(min-width: 768px)' ? window.innerWidth >= 768 : false,
+    media: query,
+    onchange: null,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}
+
 /** 等待编辑器主区域出现。 */
 async function waitForEditor(): Promise<void> {
   expect(await screen.findByRole('heading', { name: '销售部市场调研' })).toBeVisible();
   expect(screen.getByRole('button', { name: '开始' })).toBeVisible();
-  expect(screen.getByText('开始 → 检索知识库')).toBeVisible();
+  const edgeList = screen.getByRole('list', { name: '流程连线列表' });
+  expect(within(edgeList).getByText('开始 → 检索知识库')).toBeVisible();
 }
 
 describe('流程编辑器', () => {
   beforeEach(() => {
     authStore.reset();
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
+    installMatchMedia();
   });
-
-  it('以表单为主路径展示节点、配置与连线，不依赖画布', async () => {
+  it('表单为主路径，画布作为增强视图展示同一张图', async () => {
     const api = createFakeApi();
     renderEditor(api);
     await waitForEditor();
 
     expect(screen.getByRole('button', { name: '检索知识库' })).toBeVisible();
-    expect(screen.getByText('检索知识库 → 结束')).toBeVisible();
+    const pageEdges = within(screen.getByRole('list', { name: '流程连线列表' }));
+    expect(pageEdges.getByText('检索知识库 → 结束')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '检索知识库' }));
     expect(await screen.findByText('知识库检索 · retrieval-1')).toBeVisible();
-    expect(document.querySelector('[data-testid="workflow-canvas"]')).toBeNull();
+
+    // 画布只读展示同一张图，不是唯一入口；表单列表与连线表仍在页面中。
+    const canvas = screen.getByTestId('workflow-canvas');
+    expect(
+      within(canvas).getByRole('button', { name: '检索知识库，知识库检索，已配置' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('list', { name: '流程节点列表' })).toBeVisible();
+    expect(screen.getByRole('list', { name: '流程连线列表' })).toBeVisible();
     expect(api.getWorkflow).toHaveBeenCalledWith('workflow-1');
+  });
+
+  it('画布选中节点同步表单，键盘可回到表单继续配置与连线', async () => {
+    const api = createFakeApi();
+    renderEditor(api);
+    await waitForEditor();
+
+    const canvas = screen.getByTestId('workflow-canvas');
+    const retrievalNode = within(canvas).getByRole('button', {
+      name: '检索知识库，知识库检索，已配置',
+    });
+    retrievalNode.focus();
+    expect(retrievalNode).toHaveFocus();
+    fireEvent.keyDown(retrievalNode, { key: 'Enter' });
+    expect(await screen.findByText('知识库检索 · retrieval-1')).toBeVisible();
+
+    fireEvent.click(within(canvas).getByRole('button', { name: '在表单中编辑选中节点' }));
+    expect(screen.getByLabelText('节点名称')).toHaveFocus();
+
+    fireEvent.click(within(canvas).getByRole('button', { name: '在表单中编辑连线' }));
+    expect(screen.getByRole('combobox', { name: '连线源节点' })).toHaveFocus();
   });
 
   it('修改节点配置后保存草稿：位置 x/y 完整、空字段被省略（F-003）', async () => {
@@ -359,7 +407,11 @@ describe('流程编辑器', () => {
     const targetOptions = await screen.findAllByText('检索知识库（知识库检索）');
     fireEvent.click(targetOptions[targetOptions.length - 1]);
     fireEvent.click(screen.getByRole('button', { name: '添加连线' }));
-    expect(await screen.findByText('开始 → 检索知识库')).toBeVisible();
+    await waitFor(() => {
+      expect(
+        within(screen.getByRole('list', { name: '流程连线列表' })).getByText('开始 → 检索知识库'),
+      ).toBeVisible();
+    });
   });
 
   it('本部门范围未选部门时校验给出提示', async () => {
@@ -494,5 +546,8 @@ describe('流程编辑器', () => {
     }
     expect(screen.getByRole('list', { name: '流程节点列表' })).toBeVisible();
     expect(screen.getByRole('list', { name: '流程连线列表' })).toBeVisible();
+    // 小于 768px 直接进入表单视图：画布不渲染，也没有可横向滚动的 SVG。
+    expect(screen.queryByTestId('workflow-canvas-visual')).toBeNull();
+    expect(screen.getByText('小屏请使用列表/表单编辑；画布在 768px 以上显示。')).toBeVisible();
   });
 });

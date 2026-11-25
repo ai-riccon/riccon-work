@@ -163,8 +163,9 @@ export function replaceNode(graph: WorkflowGraph, node: WorkflowGraphNode): Work
 /**
  * 删除节点并清理所有引用。
  *
- * 除了删除关联边，还清空 END.resultFrom 与 APPROVAL.targetNodeKey 中指向该节点的值，
- * 避免用户删除节点后留下立即失效的悬空配置。
+ * 除了删除关联边，还清空 END.resultFrom、APPROVAL.targetNodeKey 与
+ * CONDITION.left.nodeId 中指向该节点的值，避免用户删除后被校验面板阻断、
+ * 或画布/表单显示指向不存在节点的悬空配置。
  *
  * @param graph 当前图
  * @param nodeId 要删除的节点 ID
@@ -177,17 +178,27 @@ export function removeNode(graph: WorkflowGraph, nodeId: string): WorkflowGraph 
       .filter((node) => node.id !== nodeId)
       .map((node) => {
         const config = node.config;
-        if (config.resultFrom === nodeId || config.targetNodeKey === nodeId) {
-          return {
-            ...node,
-            config: {
-              ...config,
-              ...(config.resultFrom === nodeId ? { resultFrom: undefined } : {}),
-              ...(config.targetNodeKey === nodeId ? { targetNodeKey: undefined } : {}),
-            },
-          };
+        const condition = config.condition;
+        const conditionReferencesNode =
+          condition?.left?.source === 'NODE_OUTPUT' && condition.left.nodeId === nodeId;
+        if (
+          config.resultFrom !== nodeId &&
+          config.targetNodeKey !== nodeId &&
+          !conditionReferencesNode
+        ) {
+          return node;
         }
-        return node;
+        return {
+          ...node,
+          config: {
+            ...config,
+            ...(config.resultFrom === nodeId ? { resultFrom: undefined } : {}),
+            ...(config.targetNodeKey === nodeId ? { targetNodeKey: undefined } : {}),
+            ...(conditionReferencesNode && condition
+              ? { condition: { ...condition, left: { ...condition.left, nodeId: undefined } } }
+              : {}),
+          },
+        };
       }),
     edges: graph.edges.filter((edge) => edge.source !== nodeId && edge.target !== nodeId),
   };

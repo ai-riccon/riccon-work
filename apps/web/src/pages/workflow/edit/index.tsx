@@ -21,6 +21,7 @@ import {
   Typography,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { WorkflowCanvas } from '@/components/workflow/canvas';
 import { ApiError, describeApiError } from '@/services/api/errors';
 import { formatOffsetDateTime } from '@/services/api/time';
 import { useAuth } from '@/services/auth/auth-store';
@@ -661,6 +662,12 @@ export default function WorkflowEditorPage({
 
   const selectedNode = graph.nodes.find((node) => node.id === selectedNodeId) ?? null;
   const liveIssues = useMemo(() => validateGraph(graph, tools), [graph, tools]);
+  // 画布只展示“待修正”状态；问题详情仍在下方校验面板，避免两个视图各写一套规则。
+  const invalidNodeIds = useMemo(
+    () =>
+      liveIssues.map((issue) => issue.nodeId).filter((nodeId): nodeId is string => Boolean(nodeId)),
+    [liveIssues],
+  );
   const display = detail
     ? workflowDisplayStatus({
         status: detail.status,
@@ -983,6 +990,31 @@ export default function WorkflowEditorPage({
     await loadDetail();
   };
 
+  /**
+   * 把键盘焦点移到节点配置表单的第一个可编辑控件。
+   *
+   * 画布选中节点后，用户 Tab 到画布下方“在表单中编辑选中节点”即可继续用键盘配置；
+   * 画布本身不复制表单字段，保证两条路径读写同一草稿。
+   */
+  const focusNodeForm = (): void => {
+    const container = document.getElementById('workflow-node-config');
+    const control = container?.querySelector<HTMLElement>(
+      'input:not([type="hidden"]), textarea, select, button',
+    );
+    (control ?? container)?.focus();
+  };
+
+  /**
+   * 把键盘焦点移到连线表单的第一个控件（源节点下拉）。
+   */
+  const focusEdgeForm = (): void => {
+    const container = document.getElementById('workflow-edge-form');
+    const control = container?.querySelector<HTMLElement>(
+      'input:not([type="hidden"]), textarea, select, button',
+    );
+    (control ?? container)?.focus();
+  };
+
   const backButton = (
     <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/workflows')}>
       返回流程列表
@@ -1178,6 +1210,21 @@ export default function WorkflowEditorPage({
         </Flex>
       </Card>
 
+      <Card
+        title="流程画布（增强）"
+        className="workflow-editor-card"
+        extra={<Tag>读写同一草稿</Tag>}
+      >
+        <WorkflowCanvas
+          graph={graph}
+          selectedNodeId={selectedNodeId}
+          invalidNodeIds={invalidNodeIds}
+          onSelectNode={setSelectedNodeId}
+          onRequestNodeForm={focusNodeForm}
+          onRequestEdgeForm={focusEdgeForm}
+        />
+      </Card>
+
       <div className="workflow-editor-grid">
         <Card
           title="节点"
@@ -1292,7 +1339,7 @@ export default function WorkflowEditorPage({
         <Typography.Paragraph type="secondary">
           连线定义串行执行顺序；条件节点的出边必须分别设置 TRUE 与 FALSE。
         </Typography.Paragraph>
-        <Form form={edgeForm} layout="vertical" onFinish={handleAddEdge}>
+        <Form id="workflow-edge-form" form={edgeForm} layout="vertical" onFinish={handleAddEdge}>
           <Flex wrap gap={12} align="flex-end">
             <Form.Item
               label="源节点"

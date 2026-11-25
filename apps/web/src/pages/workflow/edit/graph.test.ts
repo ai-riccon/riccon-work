@@ -98,6 +98,41 @@ describe('图状态基础操作', () => {
     expect(next.nodes[0].config.targetNodeKey).toBeUndefined();
   });
 
+  it('删除被条件节点引用的上游节点会清空 condition.left.nodeId（REV-TASK-0230-001 F-003）', () => {
+    const graph: WorkflowGraph = {
+      schemaVersion: 1,
+      nodes: [
+        node('model', 'MODEL', { promptTemplate: '生成分类', outputKind: 'TEXT' }),
+        node('cond', 'CONDITION', {
+          condition: {
+            left: {
+              source: 'NODE_OUTPUT',
+              nodeId: 'model',
+              path: 'output',
+              valueType: 'STRING',
+            },
+            operator: 'EQ',
+            right: { valueType: 'STRING', value: 'positive' },
+          },
+        }),
+        node('end', 'END', { resultFrom: 'model' }),
+      ],
+      edges: [
+        { id: 'e1', source: 'model', target: 'cond' },
+        { id: 'e2', source: 'cond', target: 'end', branch: 'TRUE' },
+      ],
+    };
+    const next = removeNode(graph, 'model');
+    expect(
+      next.nodes.find((item) => item.id === 'cond')?.config.condition?.left.nodeId,
+    ).toBeUndefined();
+    // 其他引用保持原有清理行为，不误伤无关字段。
+    expect(next.nodes.find((item) => item.id === 'end')?.config.resultFrom).toBeUndefined();
+    expect(next.nodes.find((item) => item.id === 'cond')?.config.condition?.left.path).toBe(
+      'output',
+    );
+  });
+
   it('创建/删除连线与计算后继、上游', () => {
     let graph = sampleGraph();
     expect(ancestorIds(graph, 'end')).toEqual(new Set(['retrieval', 'start']));
