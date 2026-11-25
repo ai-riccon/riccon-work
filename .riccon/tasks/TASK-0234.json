@@ -4,17 +4,17 @@
   "module_id": "M06",
   "title": "M06 T13 前端审批待办/详情/决定",
   "owner": "riccon/builder-b3",
-  "status": "in_progress",
+  "status": "review",
   "write_scope": [
     "apps/web/src/pages/workflow/approvals/**"
   ],
   "acceptance": [
     "实现审批待办/详情/决定、空态/错误态/键盘；AC-05/06/19/20；证据 E2E-M06-04、@a11y。",
-    "拒绝理由必填；自批入口不显示；dataScopeSummary 展示；受影响测试通过。"
+    "拒绝理由必填；自批入口不显示；dataScopeSummary 展示；受影响测试通过。",
+    "收口（2026-11-25）：T13 页面代码提交 ea5af615；clean 证据 EV-1089（dirty=false，commit b11e557d）覆盖 web test:coverage/typecheck/lint/build；write_scope 校验 baseline 设为 T08 提交 0511afd3，避免并行交错文件误报；EV-1085/1086 为并行工作树 dirty 期间旧证据，文件保留但不引用。"
   ],
   "evidence": [
-    "EV-1085",
-    "EV-1086"
+    "EV-1089"
   ],
   "tools_used": [
     "riccon",
@@ -25,8 +25,9 @@
     "codegraph",
     "antd"
   ],
-  "blocker": "并行 T08 的未提交改动（apps/api/src/main/java/com/riccon/api/workflow/history/** 与 workflow/approval/** 修改）导致 write_scope 校验失败，无法由本 agent 移 review；请在 T08 提交后调整 TASK-0234 baseline 或由 Lead 移 review。代码与 EV-1085/1086 已就绪。",
+  "blocker": null,
   "created_at": "2026-11-25T02:10:50.057+08:00",
-  "updated_at": "2026-11-25T19:06:24.620+08:00",
-  "baseline_commit": "8141c9247ca29b1571ffd75fcb0a01737f8a4c47"
+  "updated_at": "2026-11-25T19:38:02.988+08:00",
+  "baseline_commit": "0511afd3",
+  "end_commit": "d9a729d111049953708a7b3b0f40fbcaa6d77060"
 }
