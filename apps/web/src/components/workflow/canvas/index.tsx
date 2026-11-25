@@ -111,7 +111,7 @@ export function WorkflowCanvas({
     return (
       <div className="workflow-canvas" data-testid="workflow-canvas">
         <p className="workflow-canvas-hint">
-          还没有节点。请在上方节点列表添加节点，画布会自动生成预览；画布不是唯一入口。
+          还没有节点。请在下方的节点列表添加节点，画布会自动生成预览；画布不是唯一入口。
         </p>
       </div>
     );

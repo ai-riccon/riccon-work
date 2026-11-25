@@ -15,8 +15,8 @@ import type {
  * 画布（T11）与列表/表单（T10）读写同一 `WorkflowGraph`；本文件只提供纯函数，
  * 不依赖 React 或服务端，便于穷举测试结构变更与保存前规范化。
  *
- * 保存前规范化是 REV-TASK-0220-001 F-003 的关闭点：
- * - `position` 必须同时包含有限数字 x/y；
+ * 保存前规范化是 REV-TASK-0220-001 F-003 与 REV-TASK-0231-001 F-002 的关闭点：
+ * - `position` 可选；只有 x/y 均为有限数字时才保留，缺失/非有限坐标整体省略，交给画布网格回退；
  * - 可选文本字段去空白，空字符串直接省略，避免服务端 `minLength=1` 拒绝；
  * - 条件分支 `branch` 只保留在 CONDITION 出边且值必须是 TRUE/FALSE；
  * - 节点配置按类型只保留相关字段，防止切换类型后残留旧字段污染校验。
@@ -423,22 +423,46 @@ function compact<T extends Record<string, unknown>>(value: T): T {
 }
 
 /**
+ * 规范化节点坐标。
+ *
+ * 契约中 `WorkflowNode.position` 是可选的，V15 内置 market-research 模板也没有坐标。
+ * 这里不能把缺失/非有限坐标补成 (0,0)：否则模板创建流程首次打开编辑器时所有节点都会
+ * 叠在画布同一位置，并让 `computeCanvasLayout` 的网格回退失效（REV-TASK-0231-001 F-002）。
+ * 只有 x/y 同时为有限数字才保留；任一轴无效则整体省略，交由画布做确定性回退。
+ *
+ * @param position 原始坐标
+ * @returns 可持久化的坐标或 undefined
+ */
+function normalizePosition(
+  position: WorkflowGraphPosition | null | undefined,
+): WorkflowGraphPosition | undefined {
+  if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.y)) {
+    return undefined;
+  }
+  return { x: position.x, y: position.y };
+}
+
+/**
  * 规范化整张图，生成可安全提交给后端的草稿。
  *
  * @param graph 当前图
  * @returns 新图；不修改入参
  */
 export function normalizeGraphForSave(graph: WorkflowGraph): WorkflowGraph {
-  const nodes = graph.nodes.map((node) => ({
-    ...node,
-    id: node.id.trim(),
-    name: node.name.trim(),
-    config: normalizeNodeConfig(node.type, node.config),
-    position: {
-      x: Number.isFinite(node.position?.x) ? (node.position?.x as number) : 0,
-      y: Number.isFinite(node.position?.y) ? (node.position?.y as number) : 0,
-    },
-  }));
+  const nodes = graph.nodes.map((node) => {
+    const position = normalizePosition(node.position);
+    const normalized: WorkflowGraphNode = {
+      id: node.id.trim(),
+      type: node.type,
+      name: node.name.trim(),
+      config: normalizeNodeConfig(node.type, node.config),
+    };
+    // 缺失坐标不写入 position；服务端契约允许省略，画布会用网格回退渲染。
+    if (position) {
+      normalized.position = position;
+    }
+    return normalized;
+  });
   const typeById = new Map(nodes.map((node) => [node.id, node.type]));
   const edges = graph.edges
     .map((edge) => {

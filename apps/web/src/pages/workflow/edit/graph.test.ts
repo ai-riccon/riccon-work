@@ -152,7 +152,7 @@ describe('图状态基础操作', () => {
 });
 
 describe('保存前规范化（F-003）', () => {
-  it('始终补齐 position x/y，并去掉空文本', () => {
+  it('只在 x/y 均为有限数字时保留 position，缺失坐标不补 0（REV-TASK-0231-001 F-002）', () => {
     const graph: WorkflowGraph = {
       schemaVersion: 1,
       nodes: [
@@ -181,12 +181,41 @@ describe('保存前规范化（F-003）', () => {
     expect(normalized.nodes[0]).toMatchObject({
       id: 'start',
       name: '开始',
-      position: { x: 0, y: 2 },
     });
-    expect(normalized.nodes[1].position).toEqual({ x: 0, y: 0 });
+    // NaN/Infinity/缺失/null 一律整体省略，避免画布把所有节点叠到 (0,0)。
+    expect(normalized.nodes[0].position).toBeUndefined();
+    expect(normalized.nodes[1].position).toBeUndefined();
+    expect(normalized.nodes[2].position).toBeUndefined();
     expect(normalized.nodes[1].config).toEqual({ topK: 3 });
     expect(normalized.nodes[2].config).toEqual({});
     expect(normalized.edges[0]).toEqual({ id: 'e1', source: 'start', target: 'retrieval' });
+  });
+
+  it('保存往返保留有效坐标且不重建缺失坐标（REV-TASK-0231-001 F-002）', () => {
+    const graph: WorkflowGraph = {
+      schemaVersion: 1,
+      nodes: [
+        node('start', 'START', {}, { x: 12, y: 34 }),
+        { id: 'retrieval', type: 'RETRIEVAL', name: '检索', config: { queryTemplate: '主题' } },
+        {
+          id: 'end',
+          type: 'END',
+          name: '结束',
+          config: { resultFrom: 'retrieval' },
+          position: { x: Number.NaN, y: 5 },
+        },
+      ],
+      edges: [
+        { id: 'e1', source: 'start', target: 'retrieval' },
+        { id: 'e2', source: 'retrieval', target: 'end' },
+      ],
+    };
+    const saved = normalizeGraphForSave(graph);
+    expect(saved.nodes[0].position).toEqual({ x: 12, y: 34 });
+    expect(saved.nodes[1].position).toBeUndefined();
+    expect(saved.nodes[2].position).toBeUndefined();
+    // 保存响应再次进入编辑器时走同一规范化，已有坐标不被改写，缺失坐标也不会变成 0。
+    expect(normalizeGraphForSave(saved)).toEqual(saved);
   });
 
   it('按节点类型清理字段并按条件节点保留 branch', () => {

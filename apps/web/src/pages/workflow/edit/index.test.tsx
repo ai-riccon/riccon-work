@@ -66,6 +66,74 @@ const VALID_GRAPH: WorkflowGraph = {
   ],
 };
 
+/**
+ * V15 内置 `market-research` 模板的图形态；`graph_json` 中没有任何 position。
+ *
+ * 用于验证“模板创建 → 编辑器加载 → 画布”主路径不会把节点规范化到 (0,0)，
+ * 且保存往返不会凭空写入坐标（REV-TASK-0231-001 F-002）。
+ */
+const TEMPLATE_GRAPH: WorkflowGraph = {
+  schemaVersion: 1,
+  nodes: [
+    { id: 'start', type: 'START', name: '开始', config: {} },
+    {
+      id: 'retrieval',
+      type: 'RETRIEVAL',
+      name: '检索知识库',
+      config: { queryTemplate: '{{input.topic}}', topK: 5 },
+    },
+    {
+      id: 'draft',
+      type: 'MODEL',
+      name: '生成调研草稿',
+      config: {
+        promptTemplate: '根据检索结果整理市场调研要点：{{input.topic}}',
+        outputKind: 'TEXT',
+      },
+    },
+    {
+      id: 'approval',
+      type: 'APPROVAL',
+      name: '审批取数工具',
+      config: {
+        assigneeType: 'ROLE',
+        assigneeRole: 'TENANT_ADMIN',
+        actionKind: 'MCP_TOOL',
+        targetNodeKey: 'tool',
+      },
+    },
+    {
+      id: 'tool',
+      type: 'MCP_TOOL',
+      name: '获取市场数据',
+      config: { toolId: null, argsTemplate: { query: '{{input.topic}}' } },
+    },
+    {
+      id: 'report',
+      type: 'MODEL',
+      name: '生成调研报告',
+      config: {
+        promptTemplate: '整合草稿与工具结果，输出带引用的市场调研报告',
+        outputKind: 'TEXT',
+      },
+    },
+    {
+      id: 'end',
+      type: 'END',
+      name: '结束',
+      config: { resultFrom: 'report', resultTitle: '市场调研报告' },
+    },
+  ],
+  edges: [
+    { id: 'e1', source: 'start', target: 'retrieval' },
+    { id: 'e2', source: 'retrieval', target: 'draft' },
+    { id: 'e3', source: 'draft', target: 'approval' },
+    { id: 'e4', source: 'approval', target: 'tool' },
+    { id: 'e5', source: 'tool', target: 'report' },
+    { id: 'e6', source: 'report', target: 'end' },
+  ],
+};
+
 /** 流程详情。 */
 function makeDetail(overrides: Partial<WorkflowDefinitionDetail> = {}): WorkflowDefinitionDetail {
   return {
@@ -255,6 +323,50 @@ describe('流程编辑器', () => {
     expect(retrieval?.position).toEqual({ x: 220, y: 0 });
     expect(typeof retrieval?.position?.x).toBe('number');
     expect(await screen.findByText('草稿已保存（版本 v2）。')).toBeVisible();
+  });
+
+  it('无坐标模板经编辑器加载走画布网格回退，保存保留缺失坐标（REV-TASK-0231-001 F-002）', async () => {
+    const saveDraft = vi.fn<WorkflowApi['saveDraft']>(async (_id, input) => ({
+      ...makeDetail(),
+      draftVersion: input.version + 1,
+      name: input.name ?? '销售部市场调研',
+      draftGraph: input.graph,
+    }));
+    const api = createFakeApi({
+      getWorkflow: vi.fn(async () => makeDetail({ draftGraph: TEMPLATE_GRAPH })),
+      saveDraft,
+    });
+    renderEditor(api);
+    await waitForEditor();
+
+    const canvas = screen.getByTestId('workflow-canvas');
+    const boxCoordinates = (): string[] =>
+      Array.from(canvas.querySelectorAll('foreignObject')).map(
+        (box) => `${box.getAttribute('x')},${box.getAttribute('y')}`,
+      );
+    expect(boxCoordinates()).toHaveLength(TEMPLATE_GRAPH.nodes.length);
+    expect(new Set(boxCoordinates()).size).toBe(TEMPLATE_GRAPH.nodes.length);
+
+    // 内置模板故意不预填工具：按真实用户路径补选一个已授权工具后，客户端校验才允许保存。
+    const allowedToolId = '01990000-0000-7000-8000-000000000601';
+    fireEvent.click(screen.getByRole('button', { name: '获取市场数据' }));
+    fireEvent.change(await screen.findByLabelText('工具 ID'), {
+      target: { value: allowedToolId },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '保存节点配置' }));
+
+    fireEvent.change(screen.getByLabelText('流程名称'), { target: { value: '模板副本' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存草稿' }));
+    await waitFor(() => {
+      expect(saveDraft).toHaveBeenCalledTimes(1);
+    });
+    const payload = saveDraft.mock.calls[0][1];
+    expect(payload.graph.nodes.every((node) => !('position' in node))).toBe(true);
+    expect(await screen.findByText('草稿已保存（版本 v2）。')).toBeVisible();
+
+    // 保存响应回填后再规范化，缺失坐标仍保持缺失，画布继续使用网格回退而不是叠到 (0,0)。
+    expect(boxCoordinates()).toHaveLength(TEMPLATE_GRAPH.nodes.length);
+    expect(new Set(boxCoordinates()).size).toBe(TEMPLATE_GRAPH.nodes.length);
   });
 
   it('校验面板展示服务端问题计数、中文文案并可定位节点', async () => {

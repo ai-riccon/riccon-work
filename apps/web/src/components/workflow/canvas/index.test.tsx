@@ -39,6 +39,34 @@ const GRAPH: WorkflowGraph = {
 };
 
 /**
+ * 无坐标图：模拟 V15 内置 market-research 模板复制出的草稿（`graph_json` 中无 position）。
+ *
+ * 它必须触发画布网格回退，而不是让所有节点落到同一个 (0,0)。
+ */
+const UNPOSITIONED_GRAPH: WorkflowGraph = {
+  schemaVersion: 1,
+  nodes: [
+    { id: 'start', type: 'START', name: '开始', config: {} },
+    {
+      id: 'retrieval',
+      type: 'RETRIEVAL',
+      name: '检索知识库',
+      config: { queryTemplate: '{{input.topic}}', topK: 5 },
+    },
+    {
+      id: 'end',
+      type: 'END',
+      name: '结束',
+      config: { resultFrom: 'retrieval' },
+    },
+  ],
+  edges: [
+    { id: 'e1', source: 'start', target: 'retrieval' },
+    { id: 'e2', source: 'retrieval', target: 'end' },
+  ],
+};
+
+/**
  * 设置视口宽度并返回对应的 matchMedia 替身。
  *
  * 画布只查询 `(min-width: 768px)`；其余查询保持 false，避免影响 antd 默认行为。
@@ -102,6 +130,16 @@ describe('流程画布', () => {
     expect(within(canvas).getByRole('button', { name: '在表单中编辑连线' })).toBeInTheDocument();
   });
 
+  it('无坐标节点按回退网格渲染，不全部叠在 (0,0)（REV-TASK-0231-001 F-002）', () => {
+    renderCanvas({ graph: UNPOSITIONED_GRAPH });
+    const canvas = screen.getByTestId('workflow-canvas');
+    const coordinates = Array.from(canvas.querySelectorAll('foreignObject')).map(
+      (box) => `${box.getAttribute('x')},${box.getAttribute('y')}`,
+    );
+    expect(coordinates).toHaveLength(UNPOSITIONED_GRAPH.nodes.length);
+    expect(new Set(coordinates).size).toBe(UNPOSITIONED_GRAPH.nodes.length);
+  });
+
   it('点击、Enter 与空格都选中节点，并可从画布回到表单', () => {
     const onSelectNode = vi.fn();
     const onRequestNodeForm = vi.fn();
@@ -151,9 +189,12 @@ describe('流程画布', () => {
     expect(screen.queryByRole('button', { name: '检索知识库，知识库检索，已配置' })).toBeNull();
   });
 
-  it('空图给出添加入口提示，不渲染空白 SVG', () => {
+  it('空图提示指向下方节点列表，不渲染空白 SVG（REV-TASK-0231-001 F-001）', () => {
     renderCanvas({ graph: { schemaVersion: 1, nodes: [], edges: [] } });
-    expect(screen.getByText(/还没有节点/)).toBeVisible();
+    const hint = screen.getByText(/还没有节点/);
+    expect(hint).toBeVisible();
+    expect(hint).toHaveTextContent('请在下方的节点列表添加节点');
+    expect(hint).not.toHaveTextContent('上方节点列表');
     expect(screen.queryByTestId('workflow-canvas-visual')).toBeNull();
   });
 });
