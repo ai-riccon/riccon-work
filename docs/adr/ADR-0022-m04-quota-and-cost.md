@@ -3,7 +3,7 @@
 Status: accepted
 Date: 2026-11-20
 Reviewers: `riccon/lead`（范围/合同一致性）、`riccon/verifier`（并发、窗口边界、跨租户与金额可测试性）、`riccon/ops`（迁移/重置/保留/可观测性）、安全评审（越权、成本推断、denial-of-wallet）
-Approved-by: DEC-0024=B（2026-11-20）：准入即计费、默认限额、单币种、回滚窗口与单模块 48h 已批准。评审：REV-M04-ARCH-005 pass、REV-M04-OPS-006 pass（2026-11-20）
+Approved-by: DEC-0024=B（2026-11-20）：准入即计费、默认限额、单币种、回滚窗口与单模块 48h 已批准；DEC-0049=A（2026-11-26）：读 API p95≤500ms、M06 运行准入写路径 p95≤3s、不追加 20–40h。评审：REV-M04-ARCH-005 pass、REV-M04-OPS-006 pass（2026-11-20）
 Review-date: 2026-11-20（REV-M04-ARCH-005 pass、REV-M04-OPS-006 pass；M04 gate 前复核完成）
 Supersedes: none
 Scope: M04「模型网关纵深」的租户/用户配额与成本估算；路由/降级/多 key 见 ADR-0021
@@ -23,7 +23,7 @@ Scope: M04「模型网关纵深」的租户/用户配额与成本估算；路由
 >
 > 修订（2026-11-22，M05-gate 文档债务）：Context 摘要原写“跨租户统一 404”，与 §2.4 和 ADR-0009 的既有分工不一致；现澄清为“伪造 `tenantId`/`X-Tenant-Id` 与主体租户不一致 → 403 `RICCON-AUTH-403`；资源 ID（如 `userId`）指向其他租户 → 404 `RICCON-TENANT-404`”。只改摘要措辞，不改变 §2.4 的决策条文、AC-12 结果、错误码种类或契约；ADR 状态保持 `accepted`。
 >
-> 修订（2026-11-26，EV-1125 / T16a perf）：§1.3 的租户行 X 锁在 50 混合 VU 下使 M06 运行准入 p95=3394ms（预算 500ms；J1 chat p95=42ms）。新增 §1.3-R「预建行独立事务 + 热路径共享锁 + 行级原子更新」并取代 §1.3 的 2026-11-21 租户行锁算法；配额语义、限额、错误码、契约与 DEC-0023/DEC-0024 均不变。ADR 状态保持 `accepted`。**本修订待 Lead/Verifier/Ops delta 复审；未复审前 b1 不实现**；修复后由 T16a 复测取证。
+> 修订（2026-11-26，EV-1125/EV-1142/EV-1143，DEC-0049=A）：§1.3 的租户行 X 锁在 50 混合 VU 下使 M06 运行准入 p95=3394ms（当时 500ms 预算；J1 chat p95=42ms）。新增 §1.3-R「预建行独立事务 + 热路径共享锁 + 行级原子更新」并取代 §1.3 的 2026-11-21 租户行锁算法；TASK-0249 / commit `27c36e64` 已实现，EV-1142 定向测试通过，EV-1143 实测 A′ 准入 p95=2588.6ms（旧 500ms 阈值下 exit 1，按 DEC-0049 的 3s 写路径预算待 T16a 复跑重判）。DEC-0049=A 同时确认读 API 仍 ≤500ms、M06 运行准入写路径 ≤3s，不追加 20–40h；配额语义、限额、错误码、契约与 DEC-0023/DEC-0024 均不变。ADR 状态保持 `accepted`；本修订的 Lead/Verifier/Ops delta 复审与 T16a 新阈值复跑仍按流程进行。
 
 ## Context
 
@@ -162,7 +162,7 @@ else:
 
 #### 1.3-R 准入锁修订：预建行独立事务 + 热路径共享锁 + 行级原子更新（2026-11-26）
 
-**触发与根因（EV-1125）**：T16a perf 在 50 混合 VU 下测得 M06 运行准入 p95=3394ms（预算 500ms），J1 chat p95=42ms。原 §1.3 在业务事务最前面对 `tenant` 行取 X 锁并持有到提交，使同一租户的 J1/J2/M06 准入从幂等查询前严格串行；M06 的 4 窗口 × 2 维度循环、业务校验与审计把临界区放大到数十毫秒，50 并发排队即达秒级。ADR-0022 原「残余风险」已要求测量后另立更细粒度串行点，本修订即该收口。
+**触发与根因（EV-1125）**：T16a perf 在 50 混合 VU 下测得 M06 运行准入 p95=3394ms（当时预算 500ms；DEC-0049=A 后写路径预算为 3s，读 API 仍为 500ms），J1 chat p95=42ms。原 §1.3 在业务事务最前面对 `tenant` 行取 X 锁并持有到提交，使同一租户的 J1/J2/M06 准入从幂等查询前严格串行；M06 的 4 窗口 × 2 维度循环、业务校验与审计把临界区放大到数十毫秒，50 并发排队即达秒级。ADR-0022 原「残余风险」已要求测量后另立更细粒度串行点，本修订即该收口。
 
 **决策（A′）**：把「补行」与「计数」拆开；热路径的 tenant 锁从 X 改为 **S（共享）**，只保留 M06 重试与冷路径补行的短 X。
 
@@ -212,8 +212,8 @@ for boundary in [DAILY, MONTHLY]: for scope in [TENANT, USER]:
 - **重试策略**：`prepare` 的补行短事务允许**有限重试**（最多 2 次，带 10–50ms 抖动）捕获 `DeadlockLoserDataAccessException`/`CannotAcquireLockException`；补行只插入缺失行、幂等且不改计数。`admit` 主事务**不自动重试**（避免重复业务副作用）；死锁/锁超时仍映射 503 `RICCON-QUOTA-503` + `riccon_quota_store_failure_total{reason=deadlock|lock_wait}`。50 并发热/冷路径与混合负载用例要求 0 死锁。
 - `innodb_lock_wait_timeout` 仍必须小于 API 请求超时（建议 3s）；连接池/事务超时按 RUNBOOK 对齐。
 - `admit` 的条件 UPDATE 返回 0 时必须区分原因：行存在且 `used_count >= limit` → 429；行缺失 → 503 `QuotaUnavailableException`（fail-closed），不得把补行失败误报为“配额已满”。
-- **残余风险**：每次创建都要取 tenant S，会让租户元数据更新（如保留策略）短暂等待；50 VU 下可接受，若并发提升到数百需重新测量 S 锁争用。M06 重试的 tenant X 应放在只读校验之后、count/update 之前，避免把校验时间计入阻塞；若实现仍在事务开头取 X，必须用 T16a 混合负载证据证明 p95 不受影响。
-- **性能停止条件**：本修订不改变「计数与业务插入同事务」，`TENANT/DAILY` 行 X 仍覆盖 4 次配额更新 + 业务插入 + 审计。若 T16a 复测 M06 p95 仍 >500ms，**不得**静默把计数拆到独立事务（会改变「失败回滚计数」语义）或引入 reservation/退款；必须暂停并另立 ADR/用户决策，评估短事务计数 + 补偿、分片计数或放宽该预算。
+- **残余风险**：每次创建都要取 tenant S，会让租户元数据更新（如保留策略）短暂等待；50 VU 下可接受，若并发提升到数百需重新测量 S 锁争用。TASK-0249 已将 M06 重试的 tenant X 放在只读校验之后、count/update 之前；后续改动不得把 X 提前到事务开头。
+- **性能预算与停止条件（DEC-0049=A，2026-11-26）**：读 API（列表/详情/保存/发布/历史）p95 ≤500ms；M06 运行准入写路径 p95 ≤3s。A′ 实测 2588.6ms（EV-1143），余量约 412ms；EV-1143 的 exit 1 是旧 500ms 阈值造成，按新口径待 T16a 复跑重判。本修订不改变「计数与业务插入同事务」，`TENANT/DAILY` 行 X 仍覆盖 4 次配额更新 + 业务插入 + 审计。若未来写路径 p95 >3s，**不得**静默把计数拆到独立事务（会改变「失败回滚计数」语义）或引入 reservation/退款；必须暂停并另立 ADR/用户决策，评估短事务计数 + 补偿、分片计数或再次调整预算。R-M06-PERF-01（2588.6ms，基线 3394.4ms）保留为 residual，M06b/M09 再优化。
 
 **M06 并发上限**：
 
@@ -224,33 +224,34 @@ for boundary in [DAILY, MONTHLY]: for scope in [TENANT, USER]:
 **幂等**：
 
 - tenant S 不串行幂等查询，同键并发可能都通过首次查询。计数与业务插入仍在同一事务：唯一键冲突会使后到事务整体回滚（含其配额计数），不会双扣；捕获 duplicate key 或配额 429 后，在**新事务**重读既有对象并返回（不重复审计）。
-- Chat 仍先锁 `conversation` 行，同会话同 `clientMessageId` 由会话行串行；Research/M06 的幂等键由唯一键 + 上述回滚/重读兜底。
+- **Research 幂等热路径约束（TASK-0249 实测）**：热路径必须使用非锁定读 `findByIdempotencyKey`；**禁止**在缺失幂等键上 `SELECT ... FOR UPDATE`——缺失键的间隙锁会与并发插入意向锁交叉死锁。唯一键冲突/429 使业务事务（含配额计数）整体回滚后，在新事务用 `findByIdempotencyKeyForUpdate` 重读先到者；此时记录已存在，是记录锁而非缺失键间隙锁。只有重读命中才返回既有对象；未命中原样抛出原冲突/429。
+- M06 热路径同样使用非锁定读；冲突后在新事务重读既有运行（先到者已提交，不需要缺失键 `FOR UPDATE`）。Chat 仍先锁 `conversation` 行，同会话同 `clientMessageId` 由会话行串行。
 - 幂等命中不扣配额、不重复写审计的语义不变。
 
 **对 M02/M04/M06 的影响**：
 
 - M02 J1/J2：服务入口、错误码、审计、配额语义不变；J1 会话锁序不变；J2 增加同键并发冲突的重读路径。J1 chat p95 不得回退（基线 42ms）。
 - M04：`quota_limit`/`quota_usage` 表、端点、权限、限额解析、成本口径全部不变；无 V16/无迁移。B6 的 `IT-QUOTA-102` 断言更新为热/冷路径两套；新增混合负载。
-- M06：创建仍由 `TENANT/DAILY` 行 X 串行 count+insert；重试 tenant X 与创建 S 互斥，保持租户 10/单流程 5 精确；T16a 复测 M06 准入 p95 ≤500ms。
+- M06：创建仍由 `TENANT/DAILY` 行 X 串行 count+insert；重试 tenant X 与创建 S 互斥，保持租户 10/单流程 5 精确；按 DEC-0049=A，运行准入写路径 p95 ≤3s、读 API p95 ≤500ms；EV-1143 实测准入 2588.6ms，待 T16a 按新口径复跑重判。
 
-**测试清单（b1 交付）**：
+**测试清单（A′ 已交付，供 T16a/Verifier 复核）**：
 
-| 类型       | 断言                                                                                     | 编号                                           |
-| ---------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| 热路径并发 | 50 并发、剩余 1 次：恰好 1 成功、49×429、`used_count`=成功数、0 死锁/0×5xx               | `IT-QUOTA-102/106`                             |
-| 冷路径并发 | 4 窗口行缺失时 50 并发：prepare 串行补行、随后创建 S 并发、无 S→X 死锁、计数正确         | `IT-QUOTA-106`                                 |
-| 混合负载   | 50 VU（J1/J2/M06）：各 scope 计数=成功 run 数、无 5xx、M06 准入 p95≤500ms、J1 p95 不回退 | `IT-QUOTA-107`、`PERF-M04-002`、`PERF-M06-001` |
-| 幂等并发   | 同键 10 并发：1 个对象、1 次配额、其余返回既有；配额满时仍返回既有而非 429               | `IT-QUOTA-107`、`IT-WF-109`                    |
-| M06 并发   | 创建/重试并发（含跨日窗口）：租户 10、单流程 5 不超；重试不扣配额                        | `IT-WF-109`                                    |
-| 回归       | J1/J2 既有配额测试、拒绝审计、窗口边界、存储故障 503                                     | `IT-QUOTA-101..105`                            |
+| 类型       | 断言                                                                                                           | 编号                                           |
+| ---------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| 热路径并发 | 50 并发、剩余 1 次：恰好 1 成功、49×429、`used_count`=成功数、0 死锁/0×5xx                                     | `IT-QUOTA-102/106`                             |
+| 冷路径并发 | 4 窗口行缺失时 50 并发：prepare 串行补行、随后创建 S 并发、无 S→X 死锁、计数正确                               | `IT-QUOTA-106`                                 |
+| 混合负载   | 50 VU（J1/J2/M06）：各 scope 计数=成功 run 数、无 5xx、M06 准入写路径 p95≤3s、读 API p95≤500ms、J1 首字 p95≤3s | `IT-QUOTA-107`、`PERF-M04-002`、`PERF-M06-001` |
+| 幂等并发   | 同键 10 并发：1 个对象、1 次配额、其余返回既有；配额满时仍返回既有而非 429                                     | `IT-QUOTA-107`、`IT-WF-109`                    |
+| M06 并发   | 创建/重试并发（含跨日窗口）：租户 10、单流程 5 不超；重试不扣配额                                              | `IT-WF-109`                                    |
+| 回归       | J1/J2 既有配额测试、拒绝审计、窗口边界、存储故障 503                                                           | `IT-QUOTA-101..105`                            |
 
-**实现边界（b1，不写代码）**：
+**实现边界（TASK-0249 已落地，评审对照）**：
 
 - `apps/api/src/main/java/com/riccon/api/quota/service/QuotaAdmissionService.java`：新增 `prepare(tenantId, userId, now)` 与 `AdmissionContext`；新增 `lockTenantShared(tenantId)`/`lockTenantExclusive(tenantId)`；`admit` 改为接收 context、去掉 tenant 锁/ensure；删除/废弃无条件的 `lockTenant`。
 - `apps/api/src/main/java/com/riccon/api/quota/persistence/QuotaJdbc.java`：新增 `LOCK_TENANT_SHARED`（`FOR SHARE`）、`LOCK_TENANT_EXCLUSIVE`（`FOR UPDATE`，prepare/retry 复用）、「查 4 行存在性」「只插缺失行」SQL；保留 `INCREMENT_CONDITIONAL`/`INCREMENT_UNCONDITIONAL`。
 - `apps/api/src/main/java/com/riccon/api/quota/repository/QuotaRepository.java`：透传上述方法。
 - `apps/api/src/main/java/com/riccon/api/chat/service/ChatSubmissionService.java`、`.../research/service/ResearchTaskService.java`、`.../workflow/run/service/WorkflowRunService.java`：`prepare` 在业务事务开始前；J1/J2 在任何业务行锁前取 S，M06 创建在只读校验后、配额更新前取 S；M06 重试在只读校验之后、count/update 之前取 X（不得在持 X 前取得任何业务行锁）；`admit` 仍在业务事务内。事务边界用 `TransactionTemplate` 或拆分委托，禁止 `REQUIRES_NEW` 嵌套。
-- 幂等冲突：`WorkflowRunService.create`/`ResearchTaskService.create` 捕获唯一键冲突/429 后重读既有对象；不新增表、不改 schema/契约。
+- 幂等冲突：`WorkflowRunService.create`/`ResearchTaskService.create` 捕获唯一键冲突/429 后在新事务重读既有对象；`ResearchTaskJdbc.findByIdempotencyKey` 保持非锁定读，`findByIdempotencyKeyForUpdate` 只用于冲突回滚后的新事务重读，热路径不得在缺失键上 `FOR UPDATE`；不新增表、不改 schema/契约。
 - 测试：`apps/api/src/test/java/com/riccon/api/quota/**`、`.../chat/**`、`.../research/**`、`.../workflow/run/**`；`e2e/perf/**` 只读复用/扩展场景。
 
 **明确不做**：不新增 V16/幂等表；不改 `quota_usage` 结构；不引入 reservation/退款；不做跨实例分布式锁；不把限额判断下推到缓存。
@@ -445,20 +446,21 @@ cost = prompt_tokens * input_price_per_1m / 1_000_000
 
 ### 6. 测试策略
 
-| 类型            | 内容                                                                                 | 编号/工具                                      |
-| --------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------- |
-| 并发            | 热路径 50 并发剩余 1 次恰好 1 成功；冷路径 4 行缺失并发补行无死锁；日/月两级同时边界 | `IT-QUOTA-102/106`、`PERF-M04-002`             |
-| 窗口边界        | `2026-11-30T23:59:59.999+08` vs `2026-12-01T00:00:00+08`；日/月重置时间              | 固定 Clock 单测                                |
-| 权限/跨租户     | 租户管理员写 403；他租户 404；平台无用户明细；员工无入口                             | `IT-QUOTA-103`、`TEN-032/033`                  |
-| 失败关闭        | 配额表不可用 → 503，不创建 run；在途 run 继续                                        | `IT-QUOTA-104`                                 |
-| 拒绝审计        | 拒绝审计独立事务；审计故障 → 500，无 run；审计存在                                   | `IT-QUOTA-101`、`IT-QUOTA-103`                 |
-| 在途/重试       | 限额降低不影响已运行 run；同 run 重试不重复扣；幂等命中不扣                          | `IT-QUOTA-105`                                 |
-| 成本公式        | 6 位小数、展示舍入、合计未舍入；价格更新不改历史；固定样例                           | `IT-COST-101`                                  |
-| 未定价/缺 usage | PRICED/UNPRICED/USAGE_UNKNOWN、`unbucketedCalls`、不计金额、计数正确                 | `IT-COST-102`                                  |
-| 日桶            | `Asia/Shanghai` 边界；跨月                                                           | `IT-COST-103`                                  |
-| 聚合边界        | 平台租户聚合无用户字段；租户用户明细；金额/调用量一致                                | `IT-COST-104`、`TEN-033`                       |
-| 历史数据        | M04 前调用为 `USAGE_UNKNOWN`，不被猜测                                               | 迁移测试                                       |
-| 混合/性能       | J1/J2/M06 50 混合 VU；M06 运行准入 p95≤500ms；J1 p95 不回退；成本查询 30 天 p95      | `IT-QUOTA-107`、`PERF-M04-002`、`PERF-M06-001` |
+| 类型            | 内容                                                                                                                              | 编号/工具                                          |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| 并发            | 热路径 50 并发剩余 1 次恰好 1 成功；冷路径 4 行缺失并发补行无死锁；日/月两级同时边界                                              | `IT-QUOTA-102/106`、`PERF-M04-002`                 |
+| 窗口边界        | `2026-11-30T23:59:59.999+08` vs `2026-12-01T00:00:00+08`；日/月重置时间                                                           | 固定 Clock 单测                                    |
+| 权限/跨租户     | 租户管理员写 403；他租户 404；平台无用户明细；员工无入口                                                                          | `IT-QUOTA-103`、`TEN-032/033`                      |
+| 失败关闭        | 配额表不可用 → 503，不创建 run；在途 run 继续                                                                                     | `IT-QUOTA-104`                                     |
+| 拒绝审计        | 拒绝审计独立事务；审计故障 → 500，无 run；审计存在                                                                                | `IT-QUOTA-101`、`IT-QUOTA-103`                     |
+| 在途/重试       | 限额降低不影响已运行 run；同 run 重试不重复扣；幂等命中不扣                                                                       | `IT-QUOTA-105`                                     |
+| 幂等并发        | 同键 10 并发：1 对象/1 配额；Research 热路径非锁定读、冲突新事务 `FOR UPDATE` 重读、无缺失键间隙锁死锁                            | `IT-QUOTA-107`、`IT-WF-109`、`ResearchTaskApiTest` |
+| 成本公式        | 6 位小数、展示舍入、合计未舍入；价格更新不改历史；固定样例                                                                        | `IT-COST-101`                                      |
+| 未定价/缺 usage | PRICED/UNPRICED/USAGE_UNKNOWN、`unbucketedCalls`、不计金额、计数正确                                                              | `IT-COST-102`                                      |
+| 日桶            | `Asia/Shanghai` 边界；跨月                                                                                                        | `IT-COST-103`                                      |
+| 聚合边界        | 平台租户聚合无用户字段；租户用户明细；金额/调用量一致                                                                             | `IT-COST-104`、`TEN-033`                           |
+| 历史数据        | M04 前调用为 `USAGE_UNKNOWN`，不被猜测                                                                                            | 迁移测试                                           |
+| 混合/性能       | J1/J2/M06 50 混合 VU；M06 准入写路径 p95≤3s（DEC-0049=A；EV-1143 2588.6ms）；读 API p95≤500ms；J1 首字 p95≤3s；成本查询 30 天 p95 | `IT-QUOTA-107`、`PERF-M04-002`、`PERF-M06-001`     |
 
 - 并发测试使用真实 MySQL（Testcontainers/Compose），不用 H2；断言 `used_count` 与成功 run 数严格相等。
 - 金额断言用 `BigDecimal` 比较，不用 `double`；CSV/JSON 金额字符串按 6 位小数断言。
@@ -491,8 +493,10 @@ cost = prompt_tokens * input_price_per_1m / 1_000_000
 - `docs/security/THREAT-MODEL.md` TM-45..TM-48、ABUSE-09/11、R-24。
 - 现有实现：`apps/api/.../chat/service/ChatSubmissionService.java`、`ResearchTaskService.java`、`apps/worker/.../model/service/ModelInvocationService.java`、`V5__model_gateway_and_mcp.sql`。
 - 配额并发实测（2026-11-21）：`.riccon/evidence/TASK-0107/EV-0547.json`（加租户行锁后 50 并发 0 死锁、1×201/49×429、四窗口 `used_count=1`）；任务级独立评审 `REV-TASK-0107-001`（F-001，ADR §1.3 锁序修订依据）。
-- 混合负载反证（2026-11-25，T16a perf EV-1125）：50 混合 VU 下 M06 运行准入 p95=3394ms、J1 chat p95=42ms；根因是租户行 X 锁贯穿整个创建事务。§1.3-R 的修复证据由 b1 修复任务与 T16a 复测补充。
-- 决策：DEC-0023（A：产品范围/默认值）、DEC-0024（B：单模块 48h、准入计费/默认限额/单币种/回滚窗口已批准）。
+- 混合负载反证（2026-11-25，T16a perf EV-1125）：50 混合 VU 下 M06 运行准入 p95=3394ms、J1 chat p95=42ms；根因是租户行 X 锁贯穿整个创建事务。
+- A′ 修复（2026-11-26，TASK-0249 / commit `27c36e64`）：EV-1142 定向测试 exit 0（配额并发/混合负载/研究幂等/M06 准入/审计/窗口/存储故障）；EV-1143 A′ perf 实测 M06 运行准入 p95=2588.6ms、J1 首字 p95=51ms、创建 108/成功 108/无 5xx/无重复节点/无自批。EV-1143 exit 1 是旧 500ms 阈值导致；DEC-0049=A 将写路径预算定为 3s，按新口径待 T16a 复跑重判，2588.6ms 保留为 R-M06-PERF-01 residual。
+- 研究幂等死锁修复（TASK-0249）：热路径 `findByIdempotencyKey` 非锁定读；唯一键冲突/429 回滚后在新事务用 `findByIdempotencyKeyForUpdate` 重读先到者，避免缺失键 `FOR UPDATE` 间隙锁与插入意向锁交叉死锁。
+- 决策：DEC-0023（A：产品范围/默认值）、DEC-0024（B：单模块 48h、准入计费/默认限额/单币种/回滚窗口已批准）、DEC-0049=A（读 API p95≤500ms、M06 运行准入写路径 p95≤3s、不追加 20–40h）。
 
 ## 8. 不可逆/高成本项（DEC-0024=B 已答复）
 

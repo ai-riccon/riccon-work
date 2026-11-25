@@ -28,7 +28,7 @@ Scope: M06「编排 Studio 核心」的流程定义/版本、串行执行 + 条�
 | 检索入口 `AgentContextJdbc.search(tenantId, actorUserId, unrestricted, query, candidateLimit, limit)` 已带文档 ACL 谓词；MySQL FULLTEXT 为权威                                 | `AgentContextJdbc`、`V14`、`ADR-0023 §5.10.1`                                                                   | 检索节点直接复用该入口；运行发起人 ACL 是检索边界，不引入第二套检索                                    |
 | 审计 details 是 action-aware 白名单，未知动作 fail-closed；M10 读取同样白名单校验（`AuditDetailsReader`）                                                                      | `AuditDetailsPolicy`、`AuditDetailsReader`、`ADR-0020`                                                          | 新增 `workflow.*` 动作必须同时进写入与读取白名单；**旧 API 无法读取含新动作的审计行**，决定回滚口径    |
 | 内置角色只有 `PLATFORM_ADMIN/TENANT_ADMIN/MEMBER`；`department.manager_user_id` 是关系字段，不是 RBAC 角色；租户开通时由 `RoleDefinitions` 创建系统角色                        | `RoleDefinitions`、`V2`、`ADR-0018 §3`                                                                          | “流程编辑权限”必须显式授予，不能把部门负责人关系直接当权限；新增角色码需要为新租户创建、为存量租户回填 |
-| 配额准入在 API 侧 `QuotaAdmissionService`，按“每次 run 请求数”计费，先锁 `tenant` 行再条件累加                                                                                 | `ResearchTaskService`、`ADR-0022 §1.3`                                                                          | 工作流运行准入复用同一锁顺序；M06 不新增 token/成本配额                                                |
+| 配额准入在 API 侧 `QuotaAdmissionService`，按“每次 run 请求数”计费；A′ 为 `prepare` 独立短事务补行 + 创建 tenant S + 配额行条件累加（ADR-0022 §1.3-R）                                 | `ResearchTaskService`、`ADR-0022 §1.3-R`                                                                        | 工作流运行准入复用同一锁序；M06 不新增 token/成本配额                                                  |
 | 当前契约 `1.5.0-m05b`，最新迁移 `V14`，worker 期望 schema 14                                                                                                                   | `contracts/openapi.yaml`、`apps/api/.../db/migration`、`SchemaVersionChecker`                                   | M06 契约升 `1.6.0-m06`，迁移 `V15`，worker 期望 15                                                     |
 | 仓库不存在 workflow/orchestration 代码或表                                                                                                                                     | `rg workflow`、codegraph                                                                                        | M06 是 additive 绿地；不需要迁移历史数据                                                               |
 
@@ -396,11 +396,12 @@ run queue:        PENDING -> RUNNING（领取）；RUNNING + lease 过期 -> 可
 
 ### 4.8 运行准入、并发与 kill switch
 
-- 准入在 API `POST /workflow-runs` 同事务内：
-  1. `QuotaAdmissionService.lockTenant(tenantId)`（与 M04 相同锁顺序），随后 `admit(tenantId, userId)`（DEC-0048=A：按运行准入 1 单位）；
-  2. `SELECT COUNT(*) FROM workflow_run WHERE tenant_id=? AND status IN ('PENDING','RUNNING','WAITING_APPROVAL')` 与按 `workflow_id` 的计数；
+- 准入在 API `POST /workflow-runs` 同事务内，按 ADR-0022 §1.3-R：
+  1. 业务事务外 `QuotaAdmissionService.prepare(tenantId, userId, now)`（冷路径独立短事务补行）；业务事务内只读校验后取 `tenant` S，随后 `admit(context)`（DEC-0048=A：按运行准入 1 单位）；
+  2. `SELECT COUNT(*) FROM workflow_run WHERE tenant_id=? AND status IN ('PENDING','RUNNING','WAITING_APPROVAL')` 与按 `workflow_id` 的计数（在 `admit` 之后，由 `TENANT/DAILY` 行 X 串行）；
   3. 超过租户 10 / 单流程 5 → `429 RICCON-WF-429`，返回限制值与重试建议，不创建运行；
   4. 插入 `workflow_run`（`PENDING`）+ 审计；任一步失败整体回滚。
+  5. 重试不扣配额，但在只读校验后、count/update 前取 `tenant` X，与创建 S 互斥；跨日/跨月仍精确。
 - “运行准入并发”包含等待审批的运行；“执行并发”是 worker 运行队列并发（等待审批不占），两者在文档/UI 明确区分。
 - 停用流程（`status=DISABLED`）阻止新运行；在途运行继续；重新启用恢复。停用/启用由所有者和租户管理员执行并审计（AC-15/16）。
 - kill switch：`RICCON_WORKFLOW_ENABLED`（默认 `true`）。关闭时 API 拒绝创建/重试/审批决定/复制模板（503 `RICCON-WF-503`），但**取消仍可用**（否则无法清空在途）；编辑器只读，列表/历史/审批记录可读；J1/J2 不受影响；已受理的在途运行继续到终态。API 启动时若开关为关闭，写一条 `workflow.feature.changed` 审计（actor=SYSTEM，tenant=platform），details 带 `source=DEPLOYMENT_CONFIG`、`instanceId`、`observedAt`；语义是“启动观测”，不是变更日志，多实例/重启重复可接受。暴露 `riccon_workflow_feature_enabled` gauge，便于发现“API 已关但 Worker 仍在领”。Worker 侧 `RICCON_WORKFLOW_CLAIM_ENABLED` 控制停止领取与优雅停机（§4.3）。Ops 立场：保留部署配置，不升为用户决策（OPS-M06-009）。
@@ -738,7 +739,7 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 - 告警阈值与处置步骤写入 RUNBOOK（§10.5），M06 负责；M09 只做告警路由/长期容量，不把全部推给 M09。
 - `/actuator/prometheus` 仍仅内网/受控（M04 CIDR）；不新增暴露面。
 
-**性能预算（AC-21）**：沿用合同 `commands.perf` / `e2e/perf/mvc-smoke.js`，新增 `RICCON_PERF_SCENARIO=workflow`（或等价脚本）。50 并发为混合 J1/J2/M06 总负载（不要求 50 个 M06 同时执行，M06 并发上限单独记录）：J1 首字 p95 ≤3s；Studio 列表/详情/保存/发布/运行准入 API p95 ≤500ms（不含 SSE/TTFB）；审批等待不占执行并发；单流程 5 并发、租户 10 并发；超限 429。报告记录 `RICCON_FAKE_MODEL=1`、并发数、限制值、脚本参数与退出码，可复现。
+**性能预算（AC-21，DEC-0049=A）**：沿用合同 `commands.perf` / `e2e/perf/mvc-smoke.js`，新增 `RICCON_PERF_SCENARIO=workflow`（或等价脚本）。50 并发为混合 J1/J2/M06 总负载（不要求 50 个 M06 同时执行，M06 并发上限单独记录）：J1 首字 p95 ≤3s；Studio 读 API（列表/详情/保存/发布/历史）p95 ≤500ms；**M06 运行准入写路径 p95 ≤3s**（单列，不并入 500ms 读 API 预算；A′ EV-1143 实测 2588.6ms，R-M06-PERF-01 residual）；审批等待不占执行并发；单流程 5 并发、租户 10 并发；超限 429。报告记录 `RICCON_FAKE_MODEL=1`、并发数、限制值、脚本参数与退出码，可复现。
 
 ### 10.3 发布顺序
 
