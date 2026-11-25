@@ -108,7 +108,9 @@ public final class WorkflowGraphJson {
         }
         List<WorkflowGraphNode> nodes = parseNodes(requireArray(object, "nodes", "graph"));
         List<WorkflowGraphEdge> edges = parseEdges(requireArray(object, "edges", "graph"));
-        return new WorkflowGraph(nodes, edges, maxNodes);
+        // 部署可以收紧节点上限，但不能超过 ADR/契约的 50 节点硬上限。
+        int effectiveMax = Math.max(1, Math.min(maxNodes, WorkflowEngineLimits.MAX_GRAPH_NODES));
+        return new WorkflowGraph(nodes, edges, effectiveMax);
     }
 
     /**

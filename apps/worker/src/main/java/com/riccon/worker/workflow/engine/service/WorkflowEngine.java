@@ -8,7 +8,7 @@ import com.riccon.platform.domain.workflow.WorkflowNodeType;
 import com.riccon.platform.domain.workflow.WorkflowResultStatus;
 import com.riccon.platform.domain.workflow.WorkflowRunStatus;
 import com.riccon.worker.common.UuidV7;
-import com.riccon.worker.workflow.engine.config.WorkflowEngineProperties;
+import com.riccon.worker.workflow.config.WorkflowRuntimeProperties;
 import com.riccon.worker.workflow.engine.domain.WorkflowEngineLimits;
 import com.riccon.worker.workflow.engine.domain.WorkflowGraph;
 import com.riccon.worker.workflow.engine.domain.WorkflowGraphEdge;
@@ -102,7 +102,7 @@ public class WorkflowEngine implements WorkflowRunExecutor {
     private final WorkflowResultAssembler resultAssembler;
 
     /** 执行期配置。 */
-    private final WorkflowEngineProperties properties;
+    private final WorkflowRuntimeProperties properties;
 
     /** JSON 序列化。 */
     private final ObjectMapper objectMapper;
@@ -124,7 +124,7 @@ public class WorkflowEngine implements WorkflowRunExecutor {
             WorkflowEngineRepository repository,
             WorkflowNodeDispatcher dispatcher,
             WorkflowResultAssembler resultAssembler,
-            WorkflowEngineProperties properties,
+            WorkflowRuntimeProperties properties,
             ObjectMapper objectMapper,
             Clock clock) {
         this.repository = Objects.requireNonNull(repository, "repository must not be null");

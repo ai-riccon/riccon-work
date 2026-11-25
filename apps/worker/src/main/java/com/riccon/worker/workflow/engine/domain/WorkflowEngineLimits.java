@@ -5,9 +5,12 @@ package com.riccon.worker.workflow.engine.domain;
  *
  * <p>这些值是发布图结构与节点输出的协议常量，不是部署配置：单节点 {@code output_json}
  * 固定 256 KiB、引用单节点最多 20 条、摘要列固定 2000 字符。部署可调的上限（节点数、
- * 步数、节点/运行超时、运行结果总大小）由 {@code WorkflowEngineProperties} 提供。
+ * 步数、节点/运行超时、运行结果总大小）由 {@code WorkflowRuntimeProperties} 提供。
  */
 public final class WorkflowEngineLimits {
+
+    /** 单流程节点数上限：50（ADR-0024 §4.1，与契约/API 硬上限一致）。 */
+    public static final int MAX_GRAPH_NODES = 50;
 
     /** 单节点 {@code output_json} 上限：256 KiB。 */
     public static final int NODE_OUTPUT_MAX_BYTES = 256 * 1024;

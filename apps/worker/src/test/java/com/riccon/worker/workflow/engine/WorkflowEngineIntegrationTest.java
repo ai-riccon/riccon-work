@@ -15,7 +15,7 @@ import com.riccon.worker.workflow.engine.WorkflowEngineTestSupport.RunRow;
 import com.riccon.worker.workflow.engine.WorkflowEngineTestSupport.Seed;
 import com.riccon.worker.workflow.engine.WorkflowEngineTestSupport.StubExecutor;
 import com.riccon.worker.workflow.engine.WorkflowEngineTestSupport.TestLease;
-import com.riccon.worker.workflow.engine.config.WorkflowEngineProperties;
+import com.riccon.worker.workflow.config.WorkflowRuntimeProperties;
 import com.riccon.worker.workflow.engine.repository.WorkflowEngineRepository;
 import com.riccon.worker.workflow.engine.service.WorkflowEngine;
 import com.riccon.worker.workflow.node.domain.WorkflowNodeAbortedException;
@@ -428,7 +428,7 @@ class WorkflowEngineIntegrationTest extends WorkerIntegrationTestBase {
         String tenant = uniqueTenant("wf-engine-result-limit");
         Fixture fixture = fixture(tenant, singleModelGraph());
         model.behavior(execution -> modelSuccess("x".repeat(200)));
-        WorkflowEngine engine = engine(new WorkflowEngineProperties(50, 200, 300, 120, 30, 100));
+        WorkflowEngine engine = engine(new WorkflowRuntimeProperties(true, "", 50, 200, 300, 120, 60, 30, 10, 5, 100, 180));
 
         execute(engine, tenant, fixture.runId, new TestLease(fixture.runId, tenant));
 
@@ -479,7 +479,7 @@ class WorkflowEngineIntegrationTest extends WorkerIntegrationTestBase {
         String tenant = uniqueTenant("wf-engine-step-limit");
         Fixture fixture = fixture(tenant, twoModelGraph());
         support.insertPendingNode(tenant, fixture.runId, "b", WorkflowNodeType.MODEL, "模型B");
-        WorkflowEngine engine = engine(new WorkflowEngineProperties(50, 3, 300, 120, 30, 5_242_880));
+        WorkflowEngine engine = engine(new WorkflowRuntimeProperties(true, "", 50, 3, 300, 120, 60, 30, 10, 5, 5_242_880, 180));
 
         execute(engine, tenant, fixture.runId, new TestLease(fixture.runId, tenant));
 
@@ -872,7 +872,7 @@ class WorkflowEngineIntegrationTest extends WorkerIntegrationTestBase {
      * @param properties 配置
      * @return 引擎
      */
-    private WorkflowEngine engine(WorkflowEngineProperties properties) {
+    private WorkflowEngine engine(WorkflowRuntimeProperties properties) {
         return new WorkflowEngine(repository, dispatcher, assembler, properties, objectMapper, clock);
     }
 
@@ -881,8 +881,8 @@ class WorkflowEngineIntegrationTest extends WorkerIntegrationTestBase {
      *
      * @return 配置
      */
-    private static WorkflowEngineProperties defaultProperties() {
-        return new WorkflowEngineProperties(50, 200, 300, 120, 30, 5_242_880);
+    private static WorkflowRuntimeProperties defaultProperties() {
+        return new WorkflowRuntimeProperties(true, "", 50, 200, 300, 120, 60, 30, 10, 5, 5_242_880, 180);
     }
 
     /**

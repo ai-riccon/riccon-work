@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 import com.riccon.platform.domain.workflow.WorkflowNodeType;
+import com.riccon.worker.workflow.config.WorkflowRuntimeConfiguration;
+import com.riccon.worker.workflow.config.WorkflowRuntimeProperties;
 import com.riccon.worker.workflow.engine.repository.WorkflowEngineRepository;
 import com.riccon.worker.workflow.engine.service.WorkflowEngine;
 import com.riccon.worker.workflow.node.domain.WorkflowNodeExecution;
@@ -31,7 +33,7 @@ class WorkflowEngineWiringTest {
 
     /** 最小上下文运行器。 */
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
-            .withUserConfiguration(WorkflowEngineConfiguration.class, WorkflowEngine.class, WorkflowNodeDispatcher.class)
+            .withUserConfiguration(WorkflowRuntimeConfiguration.class, WorkflowEngine.class, WorkflowNodeDispatcher.class)
             .withBean(WorkflowEngineRepository.class, () -> mock(WorkflowEngineRepository.class))
             .withBean(WorkflowResultAssembler.class, () -> mock(WorkflowResultAssembler.class))
             .withBean(ObjectMapper.class, ObjectMapper::new)
@@ -46,7 +48,7 @@ class WorkflowEngineWiringTest {
             assertThat(context).hasNotFailed();
             assertThat(context).hasSingleBean(WorkflowRunExecutor.class);
             assertThat(context).hasSingleBean(WorkflowEngine.class);
-            assertThat(context).hasSingleBean(WorkflowEngineProperties.class);
+            assertThat(context).hasSingleBean(WorkflowRuntimeProperties.class);
             assertThat(context.getBean(WorkflowRunExecutor.class)).isInstanceOf(WorkflowEngine.class);
         });
     }
