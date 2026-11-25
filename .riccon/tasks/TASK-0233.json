@@ -4,7 +4,7 @@
   "module_id": "M06",
   "title": "M06 T12b 前端发布/版本/运行历史/重试/取消",
   "owner": "riccon/builder-b3",
-  "status": "planned",
+  "status": "review",
   "write_scope": [
     "apps/web/src/pages/workflow/history/**"
   ],
@@ -13,11 +13,28 @@
     "审批状态聚合/counts 展示；空态/错误态；受影响测试通过。",
     "高风险任务：done 前必须有独立 Verifier 任务级评审；只改 write_scope；不改 contracts/PRODUCT/AGENTS；不启动 M06b；提交后取证，任务只移到 review。",
     "关闭 REV-TASK-0230-001 F-001：重新打开 DEPARTMENT 范围流程时，部门目录未加载不得把范围重置为 ONLY_SELF；保留原范围或显式提示，发布前二次确认。",
-    "关闭 REV-TASK-0230-001 F-002/F-005：客户端补齐后端限制（IN 值/20、审批人 50、副本名 200）；运行范围 UI 与 WorkflowPublishScopeValidator 的 TENANT_ADMIN/WORKFLOW_EDITOR 口径一致，部门目录失败不得静默忽略。"
+    "关闭 REV-TASK-0230-001 F-002/F-005：客户端补齐后端限制（IN 值/20、审批人 50、副本名 200）；运行范围 UI 与 WorkflowPublishScopeValidator 的 TENANT_ADMIN/WORKFLOW_EDITOR 口径一致，部门目录失败不得静默忽略。",
+    "收口（2026-11-25）：T12b 代码提交 3667ee80；并行 T12a a11y 修复 fc5adcab/3175adc9 与本任务交错，write_scope 校验的 baseline/end 设为 clean 3175adc9 以避免把并行 run/** 改动误报为本任务越界；EV-1101..1105 在该 clean 提交录制。REV-TASK-0230-001 F-001/F-005 已在 history 发布范围 UI 关闭；编辑页与 run/** 的 F-002/F-004..F-007 残留见回执。"
   ],
-  "evidence": [],
-  "tools_used": [],
+  "evidence": [
+    "EV-1101",
+    "EV-1102",
+    "EV-1103",
+    "EV-1104",
+    "EV-1105"
+  ],
+  "tools_used": [
+    "riccon",
+    "git",
+    "node26",
+    "pnpm10",
+    "serena",
+    "codegraph",
+    "antd"
+  ],
   "blocker": null,
   "created_at": "2026-11-25T02:10:50.043+08:00",
-  "updated_at": "2026-11-25T08:19:28.384+08:00"
+  "updated_at": "2026-11-25T22:41:35.934+08:00",
+  "baseline_commit": "3175adc907af2dfa28522be307717ee54a8d61ec",
+  "end_commit": "3175adc907af2dfa28522be307717ee54a8d61ec"
 }
