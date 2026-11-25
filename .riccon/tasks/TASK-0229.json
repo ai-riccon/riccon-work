@@ -4,7 +4,7 @@
   "module_id": "M06",
   "title": "M06 T09 审批待办/详情/决定 API",
   "owner": "riccon/builder-b1",
-  "status": "planned",
+  "status": "in_progress",
   "write_scope": [
     "apps/api/src/main/java/com/riccon/api/workflow/approval/**",
     "apps/api/src/test/java/com/riccon/api/workflow/approval/**"
@@ -14,11 +14,14 @@
     "平台管理员 404；审批摘要按 ACL 最小可见；参照 ADR §5/§6；受影响测试通过。",
     "高风险任务：done 前必须有独立 Verifier 任务级评审；只改 write_scope；不改 contracts/PRODUCT/AGENTS；不启动 M06b；提交后取证，任务只移到 review。",
     "关闭 REV-TASK-0219-001 F-001：workflow.approval.decided.decisionComment 必须支持 201–500 字符；修正 AuditDetailsPolicy 全局 200 上限或明确截断策略并补 201/500 用例；若 U-05 改为 commentSha256，同步白名单与 AC-16。",
-    "关闭 REV-TASK-0219-001 F-002：更新 ConnectorContractM05bTest/KnowledgeContractM05Test/ModelContract108aTest/ModelContract108bTest 的 Javadoc 版本号为 1.6.0-m06。"
+    "关闭 REV-TASK-0219-001 F-002：更新 ConnectorContractM05bTest/KnowledgeContractM05Test/ModelContract108aTest/ModelContract108bTest 的 Javadoc 版本号为 1.6.0-m06。",
+    "关闭 REV-TASK-0226-001 F-002：API 与 Worker 的 decisionComment 审计上限一致（500）；与 T01 F-001 一并修，U-05 PII 在 gate 前有结论；不得出现 201–500 字符写不进/读不出。",
+    "关闭 REV-TASK-0226-001 F-003：T09 在 API 侧实现决定逻辑时复用 platform-domain 状态/错误码，保证与 Worker T07a 条件更新、自批、范围、幂等语义一致；补 API 端点证据，不复用 worker 测试当 API 证据。"
   ],
   "evidence": [],
   "tools_used": [],
   "blocker": null,
   "created_at": "2026-11-25T02:10:49.972+08:00",
-  "updated_at": "2026-11-25T03:26:34.972+08:00"
+  "updated_at": "2026-11-25T16:15:18.806+08:00",
+  "baseline_commit": "ae0267ab9e9a9c499fb364d328d62135e13dee4a"
 }
