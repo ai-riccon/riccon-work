@@ -1,5 +1,6 @@
 package com.riccon.api.workflow.approval.repository;
 
+import com.riccon.api.workflow.approval.domain.WorkflowApprovalCitationSnapshot;
 import com.riccon.api.workflow.approval.domain.WorkflowApprovalSnapshot;
 import com.riccon.api.workflow.approval.persistence.WorkflowApprovalCitationRow;
 import com.riccon.api.workflow.approval.persistence.WorkflowApprovalJdbc;
@@ -10,7 +11,10 @@ import com.riccon.platform.domain.workflow.WorkflowNodeStatus;
 import com.riccon.platform.domain.workflow.WorkflowNodeType;
 import com.riccon.platform.domain.workflow.WorkflowRunStatus;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -150,17 +154,27 @@ public class WorkflowApprovalRepository {
     }
 
     /**
-     * 批量读取一页待办涉及的运行节点引用快照。
+     * 批量读取一页待办涉及的运行节点引用快照，按运行分组。
      *
      * <p>列表接口一次查询覆盖全部运行，避免逐条审批查询（N+1）；服务层按每个审批的
-     * {@code createdAt} 过滤上游节点。
+     * {@code createdAt} 过滤上游节点。返回领域投影而不是持久化行，保证 service 不直接依赖
+     * {@code ..persistence..}（REV-TASK-0228-002 F-006）。
      *
      * @param tenantId 租户
      * @param runIds 运行 ID 集合
-     * @return 引用快照行
+     * @return 运行 ID 到引用快照的映射
      */
-    public List<WorkflowApprovalCitationRow> findSucceededCitationsByRuns(TenantId tenantId, List<UUID> runIds) {
-        return approvalJdbc.findSucceededCitationsByRuns(tenantId, runIds);
+    public Map<UUID, List<WorkflowApprovalCitationSnapshot>> findSucceededCitationsByRuns(
+            TenantId tenantId, List<UUID> runIds) {
+        List<WorkflowApprovalCitationRow> rows = approvalJdbc.findSucceededCitationsByRuns(tenantId, runIds);
+        Map<UUID, List<WorkflowApprovalCitationSnapshot>> byRun = new LinkedHashMap<>();
+        for (WorkflowApprovalCitationRow row : rows) {
+            WorkflowApprovalCitationSnapshot snapshot =
+                    new WorkflowApprovalCitationSnapshot(row.workflowRunId(), row.finishedAt(), row.citationsJson());
+            byRun.computeIfAbsent(snapshot.workflowRunId(), key -> new ArrayList<>())
+                    .add(snapshot);
+        }
+        return byRun;
     }
 
     /**

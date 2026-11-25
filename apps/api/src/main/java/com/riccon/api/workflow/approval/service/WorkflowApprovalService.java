@@ -6,12 +6,12 @@ import com.riccon.api.config.WorkflowProperties;
 import com.riccon.api.error.ForbiddenException;
 import com.riccon.api.identity.dto.PageQuery;
 import com.riccon.api.workflow.approval.domain.WorkflowApprovalActor;
+import com.riccon.api.workflow.approval.domain.WorkflowApprovalCitationSnapshot;
 import com.riccon.api.workflow.approval.domain.WorkflowApprovalDecisionCommand;
 import com.riccon.api.workflow.approval.domain.WorkflowApprovalSnapshot;
 import com.riccon.api.workflow.approval.dto.WorkflowApprovalPageResponse;
 import com.riccon.api.workflow.approval.dto.WorkflowApprovalResponse;
 import com.riccon.api.workflow.approval.dto.WorkflowDataScopeSummaryResponse;
-import com.riccon.api.workflow.approval.persistence.WorkflowApprovalCitationRow;
 import com.riccon.api.workflow.approval.repository.WorkflowApprovalRepository;
 import com.riccon.api.workflow.domain.WorkflowGraph;
 import com.riccon.api.workflow.domain.WorkflowGraphEdge;
@@ -36,7 +36,6 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -153,7 +152,7 @@ public class WorkflowApprovalService {
             List<WorkflowApprovalSnapshot> approvals =
                     repository.listInbox(tenantId, actor.userId(), now, page.size(), page.offset());
             // 一次批量读取本页涉及的运行引用，避免逐条审批查询造成 N+1（REV-TASK-0229-001 F-003）。
-            Map<UUID, List<WorkflowApprovalCitationRow>> citationsByRun = citationsByRun(tenantId, approvals);
+            Map<UUID, List<WorkflowApprovalCitationSnapshot>> citationsByRun = citationsByRun(tenantId, approvals);
             items = new ArrayList<>(approvals.size());
             for (WorkflowApprovalSnapshot approval : approvals) {
                 int documentReferences = documentReferenceCount(
@@ -622,24 +621,19 @@ public class WorkflowApprovalService {
     }
 
     /**
-     * 批量读取一页审批涉及运行的上游引用快照，按运行分组。
+     * 批量读取一页审批涉及运行的上游引用快照（仓储已完成按运行分组）。
      *
      * @param tenantId 租户
      * @param approvals 当页审批
-     * @return 运行 ID 到引用行的映射
+     * @return 运行 ID 到引用快照的映射
      */
-    private Map<UUID, List<WorkflowApprovalCitationRow>> citationsByRun(
+    private Map<UUID, List<WorkflowApprovalCitationSnapshot>> citationsByRun(
             TenantId tenantId, List<WorkflowApprovalSnapshot> approvals) {
         List<UUID> runIds = approvals.stream()
                 .map(WorkflowApprovalSnapshot::workflowRunId)
                 .distinct()
                 .toList();
-        List<WorkflowApprovalCitationRow> rows = repository.findSucceededCitationsByRuns(tenantId, runIds);
-        Map<UUID, List<WorkflowApprovalCitationRow>> byRun = new LinkedHashMap<>();
-        for (WorkflowApprovalCitationRow row : rows) {
-            byRun.computeIfAbsent(row.workflowRunId(), key -> new ArrayList<>()).add(row);
-        }
-        return byRun;
+        return repository.findSucceededCitationsByRuns(tenantId, runIds);
     }
 
     /**
@@ -652,9 +646,9 @@ public class WorkflowApprovalService {
      * @param createdAt 审批创建时间
      * @return 去重引用数
      */
-    private int documentReferenceCount(List<WorkflowApprovalCitationRow> rows, Instant createdAt) {
+    private int documentReferenceCount(List<WorkflowApprovalCitationSnapshot> rows, Instant createdAt) {
         Set<String> keys = new HashSet<>();
-        for (WorkflowApprovalCitationRow row : rows) {
+        for (WorkflowApprovalCitationSnapshot row : rows) {
             if (row.finishedAt().isAfter(createdAt)) {
                 continue;
             }
