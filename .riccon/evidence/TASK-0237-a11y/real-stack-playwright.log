@@ -7,24 +7,26 @@ Running 1 test using 1 worker
     Error: expect(received).toEqual(expected) // deep equality
 
     - Expected  - 1
-    + Received  + 3
+    + Received  + 8
 
     - Array []
     + Array [
     +   "流程列表: color-contrast (serious) .ant-space-item:nth-child(1) > .ant-tag.ant-tag-filled.ant-tag-green | .ant-space-item:nth-child(2) > .ant-tag.ant-tag-filled.ant-tag-green",
+    +   "流程编辑器: color-contrast (serious) .workflow-editor-title > .ant-tag-green.ant-tag.ant-tag-filled | .workflow-node-row-selected > .workflow-node-main > .ant-space.ant-space-horizontal.ant-space-align-center > .ant-space-item:nth-child(2) > .ant-tag-green.ant-tag.ant-tag-filled | button[aria-label=\"删除节点 开始\"] > span | .workflow-node-row:nth-child(2) > .workflow-node-main > .ant-space.ant-space-horizontal.ant-space-align-center > .ant-space-item:nth-child(2) > .ant-tag-green.ant-tag.ant-tag-filled | button[aria-label=\"删除节点 检索知识库\"] > span | .workflow-node-row:nth-child(3) > .workflow-node-main > .ant-space.ant-space-horizontal.ant-space-align-center > .ant-space-item:nth-child(2) > .ant-tag-green.ant-tag.ant-tag-filled | button[aria-label=\"删除节点 生成结果\"] > span | .workflow-node-row:nth-child(4) > .workflow-node-main > .ant-space.ant-space-horizontal.ant-space-align-center > .ant-space-item:nth-child(2) > .ant-tag-green.ant-tag.ant-tag-filled | button[aria-label=\"删除节点 结束\"] > span | button[aria-label=\"删除连线 start 到 retrieval\"] > span | button[aria-label=\"删除连线 retrieval 到 model\"] > span | button[aria-label=\"删除连线 model 到 end\"] > span",
+    +   "流程编辑器: label-content-name-mismatch (serious) button[aria-label=\"发布\"] | button[aria-label=\"上移节点 开始\"] | button[aria-label=\"删除节点 开始\"] | button[aria-label=\"上移节点 检索知识库\"] | button[aria-label=\"删除节点 检索知识库\"] | button[aria-label=\"上移节点 生成结果\"] | button[aria-label=\"删除节点 生成结果\"] | button[aria-label=\"上移节点 结束\"] | button[aria-label=\"删除节点 结束\"] | button[aria-label=\"删除连线 start 到 retrieval\"] | button[aria-label=\"删除连线 retrieval 到 model\"] | button[aria-label=\"删除连线 model 到 end\"]",
+    +   "模板库: label-content-name-mismatch (serious) button[aria-label=\"复制模板：市场调研报告\"]",
+    +   "运行历史: label-content-name-mismatch (serious) .ant-btn-primary",
+    +   "运行详情: color-contrast (serious) .ant-space-item:nth-child(1) > .ant-tag-green.ant-tag.ant-tag-filled | span > .ant-tag-green.ant-tag.ant-tag-filled | li[data-testid=\"workflow-run-node-start-1\"] > .workflow-run-node-header > .ant-tag-green.ant-tag.ant-tag-filled > span:nth-child(2) | li[data-testid=\"workflow-run-node-retrieval-1\"] > .workflow-run-node-header > .ant-tag-green.ant-tag.ant-tag-filled > span:nth-child(2) | li[data-testid=\"workflow-run-node-model-1\"] > .workflow-run-node-header > .ant-tag-green.ant-tag.ant-tag-filled > span:nth-child(2) | li[data-testid=\"workflow-run-node-end-1\"] > .workflow-run-node-header > .ant-tag-green.ant-tag.ant-tag-filled > span:nth-child(2)",
     + ]
 
-       at m06-support.ts:778
-
-      776 |           .join(' | ')}`,
-      777 |     ),
-    > 778 |   ).toEqual([]);
-          |     ^
-      779 | }
-      780 |
-      781 | /**
-        at expectAxeClean (/Users/ricky/Documents/projects/riccon-work/e2e/real/tests/m06-support.ts:778:5)
-        at /Users/ricky/Documents/projects/riccon-work/e2e/real/tests/m06-a11y.spec.ts:63:5
+      92 |     await expect(page.getByRole('heading', { name: '运行详情' })).toBeVisible();
+      93 |     violations.push(...(await axeViolations(page, '运行详情')));
+    > 94 |     expect(violations).toEqual([]);
+         |                        ^
+      95 |   });
+      96 |
+      97 |   test('E2E-M06-09b 五界面 375px 无横向滚动 @a11y', async ({ page }) => {
+        at /Users/ricky/Documents/projects/riccon-work/e2e/real/tests/m06-a11y.spec.ts:94:24
 
     attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
     test-results/m06-a11y-M06-可访问性与-375px-E-192ab-axe-无-serious-critical-a11y-chromium/test-failed-1.png
