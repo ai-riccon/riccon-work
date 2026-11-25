@@ -4,16 +4,18 @@
   "module_id": "M06",
   "title": "M06 T10b 前端路由与导航接入",
   "owner": "riccon/builder-b3",
-  "status": "review",
+  "status": "done",
   "write_scope": [
     "apps/web/config/routes.ts",
     "apps/web/src/layouts/workspace/**",
     "apps/web/src/pages/workflow/list/**",
-    "apps/web/src/pages/workflow/edit/**"
+    "apps/web/src/pages/workflow/edit/**",
+    "apps/web/config/routes.test.ts"
   ],
   "acceptance": [
     "接入 /workflows、/workflows/list、/workflows/:workflowId/edit 到 workspace layout；工作空间导航增加“编排 Studio”（workflow.read 权限），无权限隐藏/403；平台/租户/404 状态正确；生产构建包含这些页面。",
-    "补路由/导航测试（权限、路径、选中态、375px）；pnpm --filter @riccon/web test/typecheck/lint/build 通过；不改后端/contracts/PRODUCT/AGENTS；提交后取证，任务只移 review。"
+    "补路由/导航测试（权限、路径、选中态、375px）；pnpm --filter @riccon/web test/typecheck/lint/build 通过；不改后端/contracts/PRODUCT/AGENTS；提交后取证，任务只移 review。",
+    "写范围经 Lead 追认：routes.test.ts 曾临时加入后回退（净 diff 为零），纳入 scope 以避免 commit 范围误报。"
   ],
   "evidence": [
     "EV-1048",
@@ -27,6 +29,7 @@
   ],
   "blocker": null,
   "created_at": "2026-11-25T07:37:30.606+08:00",
-  "updated_at": "2026-11-25T08:13:18.774+08:00",
-  "baseline_commit": "a35d1f5"
+  "updated_at": "2026-11-25T08:13:26.533+08:00",
+  "baseline_commit": "a35d1f5",
+  "end_commit": "4448778"
 }
