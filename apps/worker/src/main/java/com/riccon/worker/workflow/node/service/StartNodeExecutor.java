@@ -45,11 +45,7 @@ public class StartNodeExecutor implements WorkflowNodeExecutor {
         execution.deadline().requireRemaining();
         renderer.requireInputs(execution.graph(), execution.inputs());
         String fields = inputFieldNames(execution.inputs());
-        return WorkflowNodeResult.of(
-                truncate("运行输入：" + fields),
-                "运行开始",
-                Map.of(),
-                List.of());
+        return WorkflowNodeResult.of(truncate("运行输入：" + fields), "运行开始", Map.of(), List.of());
     }
 
     /**

@@ -201,7 +201,9 @@ public final class WorkflowGraph {
      * @throws WorkflowGraphFormatException 任一结构规则不满足
      */
     public void validateForRun() {
-        long starts = nodes.stream().filter(node -> node.type() == WorkflowNodeType.START).count();
+        long starts = nodes.stream()
+                .filter(node -> node.type() == WorkflowNodeType.START)
+                .count();
         if (starts != 1) {
             throw new WorkflowGraphFormatException("发布图必须恰好有一个 START 节点");
         }
@@ -281,8 +283,12 @@ public final class WorkflowGraph {
         if (out.size() != 2) {
             throw new WorkflowGraphFormatException("条件节点必须恰好两条出边：" + node.name());
         }
-        long trueEdges = out.stream().filter(edge -> edge.branch() == WorkflowEdgeBranch.TRUE).count();
-        long falseEdges = out.stream().filter(edge -> edge.branch() == WorkflowEdgeBranch.FALSE).count();
+        long trueEdges = out.stream()
+                .filter(edge -> edge.branch() == WorkflowEdgeBranch.TRUE)
+                .count();
+        long falseEdges = out.stream()
+                .filter(edge -> edge.branch() == WorkflowEdgeBranch.FALSE)
+                .count();
         if (trueEdges != 1 || falseEdges != 1) {
             throw new WorkflowGraphFormatException("条件节点必须各有一条 TRUE/FALSE 出边：" + node.name());
         }

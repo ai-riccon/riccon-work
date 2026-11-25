@@ -162,22 +162,47 @@ public class WorkflowEngine implements WorkflowRunExecutor {
                 throw new WorkflowGraphFormatException("发布图节点数与版本快照不一致");
             }
         } catch (WorkflowGraphFormatException ex) {
-            LOG.warn("workflow.engine.graph_invalid runId={} tenantId={} reason={}", runId, tenantId.value(), ex.getMessage());
-            failRun(tenantId, claim, run.currentNodeKey(), WorkflowErrorCode.WF_INVALID_GRAPH, ex.getMessage(),
-                    WorkflowResultStatus.NONE, 0L, segmentStart);
+            LOG.warn(
+                    "workflow.engine.graph_invalid runId={} tenantId={} reason={}",
+                    runId,
+                    tenantId.value(),
+                    ex.getMessage());
+            failRun(
+                    tenantId,
+                    claim,
+                    run.currentNodeKey(),
+                    WorkflowErrorCode.WF_INVALID_GRAPH,
+                    ex.getMessage(),
+                    WorkflowResultStatus.NONE,
+                    0L,
+                    segmentStart);
             return;
         }
         JsonNode inputs;
         try {
             inputs = objectMapper.readTree(run.inputsJson());
         } catch (JacksonException ex) {
-            failRun(tenantId, claim, run.currentNodeKey(), WorkflowErrorCode.WF_INVALID_GRAPH,
-                    "运行输入不是合法 JSON", WorkflowResultStatus.NONE, 0L, segmentStart);
+            failRun(
+                    tenantId,
+                    claim,
+                    run.currentNodeKey(),
+                    WorkflowErrorCode.WF_INVALID_GRAPH,
+                    "运行输入不是合法 JSON",
+                    WorkflowResultStatus.NONE,
+                    0L,
+                    segmentStart);
             return;
         }
         if (inputs == null || !inputs.isObject()) {
-            failRun(tenantId, claim, run.currentNodeKey(), WorkflowErrorCode.WF_INVALID_GRAPH,
-                    "运行输入必须是对象", WorkflowResultStatus.NONE, 0L, segmentStart);
+            failRun(
+                    tenantId,
+                    claim,
+                    run.currentNodeKey(),
+                    WorkflowErrorCode.WF_INVALID_GRAPH,
+                    "运行输入必须是对象",
+                    WorkflowResultStatus.NONE,
+                    0L,
+                    segmentStart);
             return;
         }
         WorkflowExecutionState state;
@@ -185,8 +210,15 @@ public class WorkflowEngine implements WorkflowRunExecutor {
             state = WorkflowExecutionState.load(graph, repository.findNodeAttempts(tenantId, runId), objectMapper);
         } catch (WorkflowNodeFailureException ex) {
             LOG.error("workflow.engine.state_corrupt runId={} tenantId={}", runId, tenantId.value(), ex);
-            failRun(tenantId, claim, run.currentNodeKey(), ex.errorCode(), ex.getMessage(),
-                    WorkflowResultStatus.NONE, 0L, segmentStart);
+            failRun(
+                    tenantId,
+                    claim,
+                    run.currentNodeKey(),
+                    ex.errorCode(),
+                    ex.getMessage(),
+                    WorkflowResultStatus.NONE,
+                    0L,
+                    segmentStart);
             return;
         }
         String currentKey = run.currentNodeKey() == null || run.currentNodeKey().isBlank()
@@ -198,22 +230,34 @@ public class WorkflowEngine implements WorkflowRunExecutor {
         WorkflowNodeGuard guard = new LeaseGuard(lease);
         while (true) {
             if (lease.lost()) {
-                LOG.warn("workflow.engine.lease_lost runId={} tenantId={} nodeKey={}", runId, tenantId.value(), currentKey);
+                LOG.warn(
+                        "workflow.engine.lease_lost runId={} tenantId={} nodeKey={}",
+                        runId,
+                        tenantId.value(),
+                        currentKey);
                 return;
             }
             if (lease.cancelled()) {
                 cancelRemaining(tenantId, runId);
                 return;
             }
-            long elapsed = executionMs + Duration.between(segmentStart, clock.instant()).toMillis();
+            long elapsed = executionMs
+                    + Duration.between(segmentStart, clock.instant()).toMillis();
             if (elapsed >= runBudgetMs) {
                 handleRunTimeout(tenantId, claim, graph, state, currentKey, segmentStart);
                 return;
             }
             WorkflowGraphNode node = graph.findNode(currentKey).orElse(null);
             if (node == null) {
-                failRun(tenantId, claim, currentKey, WorkflowErrorCode.WF_INVALID_GRAPH,
-                        "当前节点不在发布图中", WorkflowResultStatus.NONE, 0L, segmentStart);
+                failRun(
+                        tenantId,
+                        claim,
+                        currentKey,
+                        WorkflowErrorCode.WF_INVALID_GRAPH,
+                        "当前节点不在发布图中",
+                        WorkflowResultStatus.NONE,
+                        0L,
+                        segmentStart);
                 return;
             }
             WorkflowExecutionState.NodeState latest = state.latest(currentKey).orElse(null);
@@ -222,8 +266,15 @@ public class WorkflowEngine implements WorkflowRunExecutor {
                 try {
                     next = nextKey(graph, node, state);
                 } catch (WorkflowGraphFormatException ex) {
-                    failRun(tenantId, claim, currentKey, WorkflowErrorCode.WF_INVALID_GRAPH, ex.getMessage(),
-                            WorkflowResultStatus.NONE, 0L, segmentStart);
+                    failRun(
+                            tenantId,
+                            claim,
+                            currentKey,
+                            WorkflowErrorCode.WF_INVALID_GRAPH,
+                            ex.getMessage(),
+                            WorkflowResultStatus.NONE,
+                            0L,
+                            segmentStart);
                     return;
                 }
                 if (next == null) {
@@ -253,9 +304,21 @@ public class WorkflowEngine implements WorkflowRunExecutor {
                 attempt = latest == null ? 1 : latest.attempt() + 1;
                 attemptId = UuidV7.generate();
                 Instant createdAt = clock.instant();
-                repository.insertNodeAttempt(tenantId, new WorkflowNodeAttemptInsert(
-                        attemptId, runId, currentKey, node.type(), node.name(), attempt,
-                        WorkflowNodeStatus.PENDING, null, null, null, null, createdAt));
+                repository.insertNodeAttempt(
+                        tenantId,
+                        new WorkflowNodeAttemptInsert(
+                                attemptId,
+                                runId,
+                                currentKey,
+                                node.type(),
+                                node.name(),
+                                attempt,
+                                WorkflowNodeStatus.PENDING,
+                                null,
+                                null,
+                                null,
+                                null,
+                                createdAt));
                 state.addAttempt(currentKey, attemptId, attempt, WorkflowNodeStatus.PENDING);
             }
             Instant nodeStart = clock.instant();
@@ -270,8 +333,19 @@ public class WorkflowEngine implements WorkflowRunExecutor {
             }
             WorkflowDeadline deadline = deadlineFor(node.type(), runBudgetMs - elapsed);
             WorkflowNodeExecution execution = new WorkflowNodeExecution(
-                    tenantId, runId, attemptId, run.requesterUserId(), traceId, inputs, graph, node,
-                    state.outputs(), state.outputBytesTotal(), state.aggregateCitations(graph), deadline, guard);
+                    tenantId,
+                    runId,
+                    attemptId,
+                    run.requesterUserId(),
+                    traceId,
+                    inputs,
+                    graph,
+                    node,
+                    state.outputs(),
+                    state.outputBytesTotal(),
+                    state.aggregateCitations(graph),
+                    deadline,
+                    guard);
             try {
                 WorkflowNodeResult result = dispatcher.execute(execution);
                 if (lease.lost()) {
@@ -283,16 +357,32 @@ public class WorkflowEngine implements WorkflowRunExecutor {
                     finalizeEnd(tenantId, claim, node, attempt, result, prepared, state, segmentStart);
                     return;
                 }
-                if (repository.finishNodeAttempt(tenantId, new WorkflowNodeFinish(
-                                runId, currentKey, attempt, WorkflowNodeStatus.SUCCEEDED,
-                                result.inputSummary(), result.outputSummary(), prepared.outputJson(),
-                                prepared.citationsJson(), null, null, clock.instant()))
+                if (repository.finishNodeAttempt(
+                                tenantId,
+                                new WorkflowNodeFinish(
+                                        runId,
+                                        currentKey,
+                                        attempt,
+                                        WorkflowNodeStatus.SUCCEEDED,
+                                        result.inputSummary(),
+                                        result.outputSummary(),
+                                        prepared.outputJson(),
+                                        prepared.citationsJson(),
+                                        null,
+                                        null,
+                                        clock.instant()))
                         == 0) {
                     LOG.warn("workflow.engine.node_finish_lost runId={} nodeKey={}", runId, currentKey);
                     return;
                 }
-                state.recordSuccess(currentKey, attempt, prepared.output(), result.outputSummary(),
-                        prepared.outputJson(), prepared.citationsJson(), result.citations());
+                state.recordSuccess(
+                        currentKey,
+                        attempt,
+                        prepared.output(),
+                        result.outputSummary(),
+                        prepared.outputJson(),
+                        prepared.citationsJson(),
+                        result.citations());
                 Instant now = clock.instant();
                 long delta = Math.max(0L, Duration.between(segmentStart, now).toMillis());
                 if (repository.addExecutionMs(tenantId, runId, claim.leaseOwner(), delta, now) == 0) {
@@ -310,9 +400,13 @@ public class WorkflowEngine implements WorkflowRunExecutor {
                 }
                 if (node.type() == WorkflowNodeType.CONDITION) {
                     WorkflowEdgeBranch branch = branchOf(state, currentKey);
-                    skipBranch(tenantId, claim, graph, state, node, branch == WorkflowEdgeBranch.TRUE
-                            ? WorkflowEdgeBranch.FALSE
-                            : WorkflowEdgeBranch.TRUE);
+                    skipBranch(
+                            tenantId,
+                            claim,
+                            graph,
+                            state,
+                            node,
+                            branch == WorkflowEdgeBranch.TRUE ? WorkflowEdgeBranch.FALSE : WorkflowEdgeBranch.TRUE);
                     currentKey = branchTarget(graph, node, branch);
                 } else {
                     currentKey = singleTarget(graph, node);
@@ -321,34 +415,64 @@ public class WorkflowEngine implements WorkflowRunExecutor {
                 if (lease.lost()) {
                     return;
                 }
-                finishNodeFailure(tenantId, runId, currentKey, attempt, WorkflowNodeStatus.FAILED,
-                        WorkflowErrorCode.WF_RESULT_LIMIT, ex.getMessage(), null, ex.getMessage());
+                finishNodeFailure(
+                        tenantId,
+                        runId,
+                        currentKey,
+                        attempt,
+                        WorkflowNodeStatus.FAILED,
+                        WorkflowErrorCode.WF_RESULT_LIMIT,
+                        ex.getMessage(),
+                        null,
+                        ex.getMessage());
                 skipDownstream(tenantId, claim, graph, state, currentKey, SKIPPED_SUMMARY);
-                failRun(tenantId, claim, currentKey, WorkflowErrorCode.WF_RESULT_LIMIT, ex.getMessage(),
-                        WorkflowResultStatus.OVER_LIMIT, ex.size(), segmentStart);
+                failRun(
+                        tenantId,
+                        claim,
+                        currentKey,
+                        WorkflowErrorCode.WF_RESULT_LIMIT,
+                        ex.getMessage(),
+                        WorkflowResultStatus.OVER_LIMIT,
+                        ex.size(),
+                        segmentStart);
                 return;
             } catch (WorkflowNodeAbortedException ex) {
                 if (ex.lost()) {
                     LOG.warn("workflow.engine.aborted_lease_lost runId={} nodeKey={}", runId, currentKey);
                     return;
                 }
-                finishNodeFailure(tenantId, runId, currentKey, attempt, WorkflowNodeStatus.CANCELLED,
-                        WorkflowErrorCode.WF_CANCELLED, CANCELLED_SUMMARY, null, CANCELLED_SUMMARY);
+                finishNodeFailure(
+                        tenantId,
+                        runId,
+                        currentKey,
+                        attempt,
+                        WorkflowNodeStatus.CANCELLED,
+                        WorkflowErrorCode.WF_CANCELLED,
+                        CANCELLED_SUMMARY,
+                        null,
+                        CANCELLED_SUMMARY);
                 cancelRemaining(tenantId, runId);
                 return;
             } catch (WorkflowNodeTimeoutException ex) {
                 if (lease.lost()) {
                     return;
                 }
-                long elapsedAtFailure =
-                        executionMs + Duration.between(segmentStart, clock.instant()).toMillis();
+                long elapsedAtFailure = executionMs
+                        + Duration.between(segmentStart, clock.instant()).toMillis();
                 boolean runExceeded = elapsedAtFailure >= runBudgetMs;
                 WorkflowErrorCode code =
                         runExceeded ? WorkflowErrorCode.WF_RUN_TIMEOUT : WorkflowErrorCode.WF_NODE_TIMEOUT;
                 String message = runExceeded ? runTimeoutMessage() : "节点执行超过超时上限";
-                finishNodeFailure(tenantId, runId, currentKey, attempt,
+                finishNodeFailure(
+                        tenantId,
+                        runId,
+                        currentKey,
+                        attempt,
                         runExceeded ? WorkflowNodeStatus.CANCELLED : WorkflowNodeStatus.FAILED,
-                        code, message, null, message);
+                        code,
+                        message,
+                        null,
+                        message);
                 skipDownstream(tenantId, claim, graph, state, currentKey, "上游节点超时未执行");
                 failRun(tenantId, claim, currentKey, code, message, WorkflowResultStatus.NONE, 0L, segmentStart);
                 return;
@@ -356,25 +480,59 @@ public class WorkflowEngine implements WorkflowRunExecutor {
                 if (lease.lost()) {
                     return;
                 }
-                finishNodeFailure(tenantId, runId, currentKey, attempt, WorkflowNodeStatus.FAILED,
-                        ex.errorCode(), ex.getMessage(), null, null);
+                finishNodeFailure(
+                        tenantId,
+                        runId,
+                        currentKey,
+                        attempt,
+                        WorkflowNodeStatus.FAILED,
+                        ex.errorCode(),
+                        ex.getMessage(),
+                        null,
+                        null);
                 skipDownstream(tenantId, claim, graph, state, currentKey, SKIPPED_SUMMARY);
-                failRun(tenantId, claim, currentKey, ex.errorCode(), ex.getMessage(),
-                        WorkflowResultStatus.NONE, 0L, segmentStart);
+                failRun(
+                        tenantId,
+                        claim,
+                        currentKey,
+                        ex.errorCode(),
+                        ex.getMessage(),
+                        WorkflowResultStatus.NONE,
+                        0L,
+                        segmentStart);
                 return;
             } catch (RuntimeException ex) {
                 if (lease.lost()) {
                     LOG.warn("workflow.engine.internal_after_lease_lost runId={} nodeKey={}", runId, currentKey);
                     return;
                 }
-                LOG.error("workflow.engine.node_internal_failed runId={} tenantId={} nodeKey={}",
-                        runId, tenantId.value(), currentKey, ex);
+                LOG.error(
+                        "workflow.engine.node_internal_failed runId={} tenantId={} nodeKey={}",
+                        runId,
+                        tenantId.value(),
+                        currentKey,
+                        ex);
                 String message = "节点执行发生内部错误";
-                finishNodeFailure(tenantId, runId, currentKey, attempt, WorkflowNodeStatus.FAILED,
-                        WorkflowErrorCode.WF_INTERNAL, message, null, null);
+                finishNodeFailure(
+                        tenantId,
+                        runId,
+                        currentKey,
+                        attempt,
+                        WorkflowNodeStatus.FAILED,
+                        WorkflowErrorCode.WF_INTERNAL,
+                        message,
+                        null,
+                        null);
                 skipDownstream(tenantId, claim, graph, state, currentKey, SKIPPED_SUMMARY);
-                failRun(tenantId, claim, currentKey, WorkflowErrorCode.WF_INTERNAL, message,
-                        WorkflowResultStatus.NONE, 0L, segmentStart);
+                failRun(
+                        tenantId,
+                        claim,
+                        currentKey,
+                        WorkflowErrorCode.WF_INTERNAL,
+                        message,
+                        WorkflowResultStatus.NONE,
+                        0L,
+                        segmentStart);
                 return;
             }
         }
@@ -422,10 +580,25 @@ public class WorkflowEngine implements WorkflowRunExecutor {
         WorkflowResultPayload payload = result.result();
         if (payload == null) {
             String message = "END 节点没有生成结果";
-            finishNodeFailure(tenantId, claim.runId(), node.id(), attempt, WorkflowNodeStatus.FAILED,
-                    WorkflowErrorCode.WF_INTERNAL, message, result.inputSummary(), message);
-            failRun(tenantId, claim, node.id(), WorkflowErrorCode.WF_INTERNAL, message,
-                    WorkflowResultStatus.NONE, 0L, segmentStart);
+            finishNodeFailure(
+                    tenantId,
+                    claim.runId(),
+                    node.id(),
+                    attempt,
+                    WorkflowNodeStatus.FAILED,
+                    WorkflowErrorCode.WF_INTERNAL,
+                    message,
+                    result.inputSummary(),
+                    message);
+            failRun(
+                    tenantId,
+                    claim,
+                    node.id(),
+                    WorkflowErrorCode.WF_INTERNAL,
+                    message,
+                    WorkflowResultStatus.NONE,
+                    0L,
+                    segmentStart);
             return;
         }
         String resultJson = resultJson(payload);
@@ -434,28 +607,63 @@ public class WorkflowEngine implements WorkflowRunExecutor {
         if (resultBytes > properties.resultMaxBytes() || totalBytes > properties.resultMaxBytes()) {
             long size = Math.max(resultBytes, totalBytes);
             String message = "运行结果超过大小上限，未保存完整结果";
-            finishNodeFailure(tenantId, claim.runId(), node.id(), attempt, WorkflowNodeStatus.FAILED,
-                    WorkflowErrorCode.WF_RESULT_LIMIT, message, result.inputSummary(), message);
-            failRun(tenantId, claim, node.id(), WorkflowErrorCode.WF_RESULT_LIMIT, message,
-                    WorkflowResultStatus.OVER_LIMIT, size, segmentStart);
+            finishNodeFailure(
+                    tenantId,
+                    claim.runId(),
+                    node.id(),
+                    attempt,
+                    WorkflowNodeStatus.FAILED,
+                    WorkflowErrorCode.WF_RESULT_LIMIT,
+                    message,
+                    result.inputSummary(),
+                    message);
+            failRun(
+                    tenantId,
+                    claim,
+                    node.id(),
+                    WorkflowErrorCode.WF_RESULT_LIMIT,
+                    message,
+                    WorkflowResultStatus.OVER_LIMIT,
+                    size,
+                    segmentStart);
             return;
         }
-        if (repository.finishNodeAttempt(tenantId, new WorkflowNodeFinish(
-                        claim.runId(), node.id(), attempt, WorkflowNodeStatus.SUCCEEDED,
-                        result.inputSummary(), result.outputSummary(), prepared.outputJson(),
-                        prepared.citationsJson(), null, null, clock.instant()))
+        if (repository.finishNodeAttempt(
+                        tenantId,
+                        new WorkflowNodeFinish(
+                                claim.runId(),
+                                node.id(),
+                                attempt,
+                                WorkflowNodeStatus.SUCCEEDED,
+                                result.inputSummary(),
+                                result.outputSummary(),
+                                prepared.outputJson(),
+                                prepared.citationsJson(),
+                                null,
+                                null,
+                                clock.instant()))
                 == 0) {
             LOG.warn("workflow.engine.node_finish_lost runId={} nodeKey={}", claim.runId(), node.id());
             return;
         }
-        state.recordSuccess(node.id(), attempt, prepared.output(), result.outputSummary(),
-                prepared.outputJson(), prepared.citationsJson(), result.citations());
+        state.recordSuccess(
+                node.id(),
+                attempt,
+                prepared.output(),
+                result.outputSummary(),
+                prepared.outputJson(),
+                prepared.citationsJson(),
+                result.citations());
         Instant now = clock.instant();
         long delta = Math.max(0L, Duration.between(segmentStart, now).toMillis());
-        if (repository.finishRunSucceeded(tenantId, claim.runId(), claim.leaseOwner(), node.id(),
-                resultJson, resultBytes, delta, now) == 0) {
-            LOG.warn("workflow.engine.run_finish_lost runId={} tenantId={} nodeKey={}",
-                    claim.runId(), tenantId.value(), node.id());
+        if (repository.finishRunSucceeded(
+                        tenantId, claim.runId(), claim.leaseOwner(), node.id(), resultJson, resultBytes, delta, now)
+                == 0) {
+            LOG.warn(
+                    "workflow.engine.run_finish_lost runId={} tenantId={} nodeKey={}",
+                    claim.runId(),
+                    tenantId.value(),
+                    node.id());
         }
     }
 
@@ -482,20 +690,34 @@ public class WorkflowEngine implements WorkflowRunExecutor {
             long resultBytes = bytes(resultJson);
             long totalBytes = state.outputBytesTotal() + resultBytes;
             if (resultBytes > properties.resultMaxBytes() || totalBytes > properties.resultMaxBytes()) {
-                failRun(tenantId, claim, node.id(), WorkflowErrorCode.WF_RESULT_LIMIT,
-                        "运行结果超过大小上限，未保存完整结果", WorkflowResultStatus.OVER_LIMIT,
-                        Math.max(resultBytes, totalBytes), segmentStart);
+                failRun(
+                        tenantId,
+                        claim,
+                        node.id(),
+                        WorkflowErrorCode.WF_RESULT_LIMIT,
+                        "运行结果超过大小上限，未保存完整结果",
+                        WorkflowResultStatus.OVER_LIMIT,
+                        Math.max(resultBytes, totalBytes),
+                        segmentStart);
                 return;
             }
             Instant now = clock.instant();
             long delta = Math.max(0L, Duration.between(segmentStart, now).toMillis());
-            if (repository.finishRunSucceeded(tenantId, claim.runId(), claim.leaseOwner(), node.id(),
-                    resultJson, resultBytes, delta, now) == 0) {
+            if (repository.finishRunSucceeded(
+                            tenantId, claim.runId(), claim.leaseOwner(), node.id(), resultJson, resultBytes, delta, now)
+                    == 0) {
                 LOG.warn("workflow.engine.run_finish_lost runId={} nodeKey={}", claim.runId(), node.id());
             }
         } catch (WorkflowNodeFailureException ex) {
-            failRun(tenantId, claim, node.id(), ex.errorCode(), ex.getMessage(),
-                    WorkflowResultStatus.NONE, 0L, segmentStart);
+            failRun(
+                    tenantId,
+                    claim,
+                    node.id(),
+                    ex.errorCode(),
+                    ex.getMessage(),
+                    WorkflowResultStatus.NONE,
+                    0L,
+                    segmentStart);
         }
     }
 
@@ -617,9 +839,21 @@ public class WorkflowEngine implements WorkflowRunExecutor {
             }
             WorkflowExecutionState.NodeState latest = state.latest(key).orElse(null);
             if (latest == null) {
-                repository.insertNodeAttempt(tenantId, new WorkflowNodeAttemptInsert(
-                        UuidV7.generate(), claim.runId(), key, node.type(), node.name(), 1,
-                        WorkflowNodeStatus.SKIPPED, null, summary, null, null, clock.instant()));
+                repository.insertNodeAttempt(
+                        tenantId,
+                        new WorkflowNodeAttemptInsert(
+                                UuidV7.generate(),
+                                claim.runId(),
+                                key,
+                                node.type(),
+                                node.name(),
+                                1,
+                                WorkflowNodeStatus.SKIPPED,
+                                null,
+                                summary,
+                                null,
+                                null,
+                                clock.instant()));
                 state.put(key, 1, WorkflowNodeStatus.SKIPPED);
                 continue;
             }
@@ -660,23 +894,55 @@ public class WorkflowEngine implements WorkflowRunExecutor {
         String message = runTimeoutMessage();
         WorkflowExecutionState.NodeState latest = state.latest(currentKey).orElse(null);
         if (latest != null && latest.status() == WorkflowNodeStatus.RUNNING) {
-            finishNodeFailure(tenantId, claim.runId(), currentKey, latest.attempt(),
-                    WorkflowNodeStatus.CANCELLED, WorkflowErrorCode.WF_RUN_TIMEOUT, message, null, message);
+            finishNodeFailure(
+                    tenantId,
+                    claim.runId(),
+                    currentKey,
+                    latest.attempt(),
+                    WorkflowNodeStatus.CANCELLED,
+                    WorkflowErrorCode.WF_RUN_TIMEOUT,
+                    message,
+                    null,
+                    message);
         } else if (latest != null && latest.status() == WorkflowNodeStatus.PENDING) {
-            repository.closePendingNode(tenantId, claim.runId(), currentKey, WorkflowNodeStatus.CANCELLED,
-                    WorkflowErrorCode.WF_RUN_TIMEOUT, message, clock.instant());
+            repository.closePendingNode(
+                    tenantId,
+                    claim.runId(),
+                    currentKey,
+                    WorkflowNodeStatus.CANCELLED,
+                    WorkflowErrorCode.WF_RUN_TIMEOUT,
+                    message,
+                    clock.instant());
             state.put(currentKey, latest.attempt(), WorkflowNodeStatus.CANCELLED);
         } else if (latest == null && graph.findNode(currentKey).isPresent()) {
             WorkflowGraphNode node = graph.requireNode(currentKey);
-            repository.insertNodeAttempt(tenantId, new WorkflowNodeAttemptInsert(
-                    UuidV7.generate(), claim.runId(), currentKey, node.type(), node.name(), 1,
-                    WorkflowNodeStatus.CANCELLED, null, message,
-                    WorkflowErrorCode.WF_RUN_TIMEOUT.name(), message, clock.instant()));
+            repository.insertNodeAttempt(
+                    tenantId,
+                    new WorkflowNodeAttemptInsert(
+                            UuidV7.generate(),
+                            claim.runId(),
+                            currentKey,
+                            node.type(),
+                            node.name(),
+                            1,
+                            WorkflowNodeStatus.CANCELLED,
+                            null,
+                            message,
+                            WorkflowErrorCode.WF_RUN_TIMEOUT.name(),
+                            message,
+                            clock.instant()));
             state.put(currentKey, 1, WorkflowNodeStatus.CANCELLED);
         }
         skipDownstream(tenantId, claim, graph, state, currentKey, "运行超时未执行");
-        failRun(tenantId, claim, currentKey, WorkflowErrorCode.WF_RUN_TIMEOUT, message,
-                WorkflowResultStatus.NONE, 0L, segmentStart);
+        failRun(
+                tenantId,
+                claim,
+                currentKey,
+                WorkflowErrorCode.WF_RUN_TIMEOUT,
+                message,
+                WorkflowResultStatus.NONE,
+                0L,
+                segmentStart);
     }
 
     /**
@@ -698,21 +964,58 @@ public class WorkflowEngine implements WorkflowRunExecutor {
             Instant segmentStart) {
         String message = "运行超过步数上限 " + properties.maxSteps();
         WorkflowExecutionState.NodeState latest = state.latest(currentKey).orElse(null);
-        if (latest != null && latest.status() == WorkflowNodeStatus.PENDING) {
-            repository.closePendingNode(tenantId, claim.runId(), currentKey, WorkflowNodeStatus.FAILED,
-                    WorkflowErrorCode.WF_STEP_LIMIT, message, clock.instant());
+        if (latest != null && latest.status() == WorkflowNodeStatus.RUNNING) {
+            // 步数耗尽发生在崩溃遗留 RUNNING 尝试清理之前：先写 FAILED，保证 POST /retry 可用。
+            finishNodeFailure(
+                    tenantId,
+                    claim.runId(),
+                    currentKey,
+                    latest.attempt(),
+                    WorkflowNodeStatus.FAILED,
+                    WorkflowErrorCode.WF_STEP_LIMIT,
+                    message,
+                    null,
+                    message);
+            state.put(currentKey, latest.attempt(), WorkflowNodeStatus.FAILED);
+        } else if (latest != null && latest.status() == WorkflowNodeStatus.PENDING) {
+            repository.closePendingNode(
+                    tenantId,
+                    claim.runId(),
+                    currentKey,
+                    WorkflowNodeStatus.FAILED,
+                    WorkflowErrorCode.WF_STEP_LIMIT,
+                    message,
+                    clock.instant());
             state.put(currentKey, latest.attempt(), WorkflowNodeStatus.FAILED);
         } else if (latest == null) {
             WorkflowGraphNode node = graph.requireNode(currentKey);
-            repository.insertNodeAttempt(tenantId, new WorkflowNodeAttemptInsert(
-                    UuidV7.generate(), claim.runId(), currentKey, node.type(), node.name(), 1,
-                    WorkflowNodeStatus.FAILED, null, message,
-                    WorkflowErrorCode.WF_STEP_LIMIT.name(), message, clock.instant()));
+            repository.insertNodeAttempt(
+                    tenantId,
+                    new WorkflowNodeAttemptInsert(
+                            UuidV7.generate(),
+                            claim.runId(),
+                            currentKey,
+                            node.type(),
+                            node.name(),
+                            1,
+                            WorkflowNodeStatus.FAILED,
+                            null,
+                            message,
+                            WorkflowErrorCode.WF_STEP_LIMIT.name(),
+                            message,
+                            clock.instant()));
             state.put(currentKey, 1, WorkflowNodeStatus.FAILED);
         }
         skipDownstream(tenantId, claim, graph, state, currentKey, SKIPPED_SUMMARY);
-        failRun(tenantId, claim, currentKey, WorkflowErrorCode.WF_STEP_LIMIT, message,
-                WorkflowResultStatus.NONE, 0L, segmentStart);
+        failRun(
+                tenantId,
+                claim,
+                currentKey,
+                WorkflowErrorCode.WF_STEP_LIMIT,
+                message,
+                WorkflowResultStatus.NONE,
+                0L,
+                segmentStart);
     }
 
     /**
@@ -738,9 +1041,20 @@ public class WorkflowEngine implements WorkflowRunExecutor {
             String message,
             String inputSummary,
             String outputSummary) {
-        int updated = repository.finishNodeAttempt(tenantId, new WorkflowNodeFinish(
-                runId, nodeKey, attempt, status, inputSummary, outputSummary, null, null,
-                errorCode.name(), message, clock.instant()));
+        int updated = repository.finishNodeAttempt(
+                tenantId,
+                new WorkflowNodeFinish(
+                        runId,
+                        nodeKey,
+                        attempt,
+                        status,
+                        inputSummary,
+                        outputSummary,
+                        null,
+                        null,
+                        errorCode.name(),
+                        message,
+                        clock.instant()));
         if (updated == 0) {
             LOG.warn("workflow.engine.node_finish_lost runId={} nodeKey={} attempt={}", runId, nodeKey, attempt);
         }
@@ -769,11 +1083,23 @@ public class WorkflowEngine implements WorkflowRunExecutor {
             Instant segmentStart) {
         Instant now = clock.instant();
         long delta = Math.max(0L, Duration.between(segmentStart, now).toMillis());
-        int updated = repository.finishRunFailed(tenantId, claim.runId(), claim.leaseOwner(), nodeKey,
-                errorCode, message, resultStatus, resultSizeBytes, delta, now);
+        int updated = repository.finishRunFailed(
+                tenantId,
+                claim.runId(),
+                claim.leaseOwner(),
+                nodeKey,
+                errorCode,
+                message,
+                resultStatus,
+                resultSizeBytes,
+                delta,
+                now);
         if (updated == 0) {
-            LOG.warn("workflow.engine.run_fail_lost runId={} tenantId={} status={}",
-                    claim.runId(), tenantId.value(), resultStatus);
+            LOG.warn(
+                    "workflow.engine.run_fail_lost runId={} tenantId={} status={}",
+                    claim.runId(),
+                    tenantId.value(),
+                    resultStatus);
         }
     }
 
@@ -805,8 +1131,9 @@ public class WorkflowEngine implements WorkflowRunExecutor {
         result.put("format", payload.format().name());
         result.put("text", payload.text());
         result.put("sizeBytes", payload.sizeBytes());
-        result.put("generatedAt", OffsetDateTime.ofInstant(clock.instant(), DISPLAY_ZONE)
-                .toString());
+        result.put(
+                "generatedAt",
+                OffsetDateTime.ofInstant(clock.instant(), DISPLAY_ZONE).toString());
         return serialize(result);
     }
 

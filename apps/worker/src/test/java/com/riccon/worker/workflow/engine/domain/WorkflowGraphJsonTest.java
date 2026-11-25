@@ -52,8 +52,7 @@ class WorkflowGraphJsonTest {
     @DisplayName("未知节点类型拒绝")
     void parse_unknownNodeType_rejected() {
         String graph = graph(
-                List.of(node("s", "START", "{}"), node("x", "SCRIPT", "{}")),
-                List.of(edge("e1", "s", "x", null)));
+                List.of(node("s", "START", "{}"), node("x", "SCRIPT", "{}")), List.of(edge("e1", "s", "x", null)));
 
         assertThatThrownBy(() -> WorkflowGraphJson.parse(graph, 50))
                 .isInstanceOf(WorkflowGraphFormatException.class)
@@ -108,7 +107,8 @@ class WorkflowGraphJsonTest {
                                         + "\"right\":{\"valueType\":\"NUMBER\",\"value\":1}}}"),
                         node("b", "MODEL", "{\"promptTemplate\":\"b\"}"),
                         node("e", "END", "{\"resultFrom\":\"b\"}")),
-                List.of(edge("e1", "s", "c", null), edge("e2", "c", "b", "TRUE"),
+                List.of(
+                        edge("e1", "s", "c", null), edge("e2", "c", "b", "TRUE"),
                         edge("e3", "c", "b", "FALSE"), edge("e4", "b", "e", null)));
         WorkflowGraph parsed = WorkflowGraphJson.parse(graph, 50);
 
@@ -122,7 +122,8 @@ class WorkflowGraphJsonTest {
     @DisplayName("条件节点缺少 FALSE 分支拒绝")
     void validate_conditionMissingBranch_rejected() {
         String graph = graph(
-                List.of(node("s", "START", "{}"),
+                List.of(
+                        node("s", "START", "{}"),
                         node(
                                 "c",
                                 "CONDITION",
@@ -149,8 +150,7 @@ class WorkflowGraphJsonTest {
                         node("e", "END", "{\"resultFrom\":\"m\"}"),
                         node("b", "MODEL", "{\"promptTemplate\":\"b\"}"),
                         node("e2", "END", "{\"resultFrom\":\"b\"}")),
-                List.of(edge("e1", "s", "m", null), edge("e2", "m", "e", null),
-                        edge("e3", "b", "e2", null)));
+                List.of(edge("e1", "s", "m", null), edge("e2", "m", "e", null), edge("e3", "b", "e2", null)));
         WorkflowGraph parsed = WorkflowGraphJson.parse(graph, 50);
 
         assertThatThrownBy(parsed::validateForRun)
@@ -175,8 +175,11 @@ class WorkflowGraphJsonTest {
                         node("f", "MODEL", "{\"promptTemplate\":\"f\"}"),
                         node("et", "END", "{\"resultFrom\":\"f\"}"),
                         node("ef", "END", "{\"resultFrom\":\"f\"}")),
-                List.of(edge("e1", "s", "c", null), edge("e2", "c", "t", "TRUE"),
-                        edge("e3", "c", "f", "FALSE"), edge("e4", "t", "et", null),
+                List.of(
+                        edge("e1", "s", "c", null),
+                        edge("e2", "c", "t", "TRUE"),
+                        edge("e3", "c", "f", "FALSE"),
+                        edge("e4", "t", "et", null),
                         edge("e5", "f", "ef", null)));
         WorkflowGraph parsed = WorkflowGraphJson.parse(graph, 50);
 
@@ -189,9 +192,8 @@ class WorkflowGraphJsonTest {
     @Test
     @DisplayName("END 缺少 resultFrom 拒绝")
     void validate_endMissingResultFrom_rejected() {
-        String graph = graph(
-                List.of(node("s", "START", "{}"), node("e", "END", "{}")),
-                List.of(edge("e1", "s", "e", null)));
+        String graph =
+                graph(List.of(node("s", "START", "{}"), node("e", "END", "{}")), List.of(edge("e1", "s", "e", null)));
         WorkflowGraph parsed = WorkflowGraphJson.parse(graph, 50);
 
         assertThatThrownBy(parsed::validateForRun)
@@ -203,9 +205,8 @@ class WorkflowGraphJsonTest {
     @Test
     @DisplayName("重复节点 key 拒绝")
     void parse_duplicateNodeKey_rejected() {
-        String graph = graph(
-                List.of(node("s", "START", "{}"), node("s", "MODEL", "{\"promptTemplate\":\"m\"}")),
-                List.of());
+        String graph =
+                graph(List.of(node("s", "START", "{}"), node("s", "MODEL", "{\"promptTemplate\":\"m\"}")), List.of());
 
         assertThatThrownBy(() -> WorkflowGraphJson.parse(graph, 50))
                 .isInstanceOf(WorkflowGraphFormatException.class)
@@ -244,7 +245,9 @@ class WorkflowGraphJsonTest {
     @DisplayName("非 END 节点缺少出边拒绝")
     void validate_nonEndWithoutOutgoing_rejected() {
         String graph = graph(
-                List.of(node("s", "START", "{}"), node("m", "MODEL", "{\"promptTemplate\":\"m\"}"),
+                List.of(
+                        node("s", "START", "{}"),
+                        node("m", "MODEL", "{\"promptTemplate\":\"m\"}"),
                         node("e", "END", "{\"resultFrom\":\"m\"}")),
                 List.of(edge("e1", "s", "m", null)));
         WorkflowGraph parsed = WorkflowGraphJson.parse(graph, 50);
@@ -259,10 +262,10 @@ class WorkflowGraphJsonTest {
     @DisplayName("条件节点缺少 condition 配置拒绝")
     void validate_conditionMissingConfig_rejected() {
         String graph = graph(
-                List.of(node("s", "START", "{}"), node("c", "CONDITION", "{}"),
+                List.of(
+                        node("s", "START", "{}"), node("c", "CONDITION", "{}"),
                         node("e", "END", "{\"resultFrom\":\"s\"}"), node("e2", "END", "{\"resultFrom\":\"s\"}")),
-                List.of(edge("e1", "s", "c", null), edge("e2", "c", "e", "TRUE"),
-                        edge("e3", "c", "e2", "FALSE")));
+                List.of(edge("e1", "s", "c", null), edge("e2", "c", "e", "TRUE"), edge("e3", "c", "e2", "FALSE")));
         WorkflowGraph parsed = WorkflowGraphJson.parse(graph, 50);
 
         assertThatThrownBy(parsed::validateForRun)
@@ -277,7 +280,8 @@ class WorkflowGraphJsonTest {
      */
     private static String serialGraph() {
         return graph(
-                List.of(node("s", "START", "{}"),
+                List.of(
+                        node("s", "START", "{}"),
                         node("m", "MODEL", "{\"promptTemplate\":\"写报告\",\"outputKind\":\"TEXT\"}"),
                         node("e", "END", "{\"resultFrom\":\"m\"}")),
                 List.of(edge("e1", "s", "m", null), edge("e2", "m", "e", null)));
@@ -290,7 +294,8 @@ class WorkflowGraphJsonTest {
      */
     private static String conditionGraph() {
         return graph(
-                List.of(node("s", "START", "{}"),
+                List.of(
+                        node("s", "START", "{}"),
                         node("r", "RETRIEVAL", "{\"queryTemplate\":\"{{input.topic}}\",\"topK\":3}"),
                         node(
                                 "c",
@@ -302,7 +307,8 @@ class WorkflowGraphJsonTest {
                         node("f", "MODEL", "{\"promptTemplate\":\"f\"}"),
                         node("et", "END", "{\"resultFrom\":\"t\"}"),
                         node("ef", "END", "{\"resultFrom\":\"f\"}")),
-                List.of(edge("e1", "s", "r", null), edge("e2", "r", "c", null),
+                List.of(
+                        edge("e1", "s", "r", null), edge("e2", "r", "c", null),
                         edge("e3", "c", "t", "TRUE"), edge("e4", "c", "f", "FALSE"),
                         edge("e5", "t", "et", null), edge("e6", "f", "ef", null)));
     }
@@ -341,7 +347,7 @@ class WorkflowGraphJsonTest {
      * @return JSON
      */
     private static String graph(List<String> nodes, List<String> edges) {
-        return "{\"schemaVersion\":1,\"nodes\":[" + String.join(",", nodes) + "],\"edges\":["
-                + String.join(",", edges) + "]}";
+        return "{\"schemaVersion\":1,\"nodes\":[" + String.join(",", nodes) + "],\"edges\":[" + String.join(",", edges)
+                + "]}";
     }
 }

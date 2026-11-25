@@ -112,13 +112,13 @@ class WorkflowTemplateRendererTest {
         com.riccon.worker.workflow.engine.domain.WorkflowGraph graph =
                 com.riccon.worker.workflow.engine.domain.WorkflowGraphJson.parse(
                         "{\"schemaVersion\":1,\"nodes\":["
-                        + "{\"id\":\"s\",\"type\":\"START\",\"name\":\"开始\",\"config\":{}},"
-                        + "{\"id\":\"m\",\"type\":\"MODEL\",\"name\":\"模型\","
-                        + "\"config\":{\"promptTemplate\":\"{{input.topic}}\"}},"
-                        + "{\"id\":\"e\",\"type\":\"END\",\"name\":\"结束\",\"config\":{\"resultFrom\":\"m\"}}],"
-                        + "\"edges\":[{\"id\":\"e1\",\"source\":\"s\",\"target\":\"m\"},"
-                        + "{\"id\":\"e2\",\"source\":\"m\",\"target\":\"e\"}]}",
-                50);
+                                + "{\"id\":\"s\",\"type\":\"START\",\"name\":\"开始\",\"config\":{}},"
+                                + "{\"id\":\"m\",\"type\":\"MODEL\",\"name\":\"模型\","
+                                + "\"config\":{\"promptTemplate\":\"{{input.topic}}\"}},"
+                                + "{\"id\":\"e\",\"type\":\"END\",\"name\":\"结束\",\"config\":{\"resultFrom\":\"m\"}}],"
+                                + "\"edges\":[{\"id\":\"e1\",\"source\":\"s\",\"target\":\"m\"},"
+                                + "{\"id\":\"e2\",\"source\":\"m\",\"target\":\"e\"}]}",
+                        50);
 
         assertThatThrownBy(() -> renderer.requireInputs(graph, inputs("{}")))
                 .isInstanceOf(WorkflowNodeFailureException.class)

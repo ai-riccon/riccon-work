@@ -62,8 +62,7 @@ final class WorkflowExecutionState {
         WorkflowExecutionState state = new WorkflowExecutionState();
         for (WorkflowNodeAttemptRow row : rows) {
             if (graph.findNode(row.nodeKey()).isEmpty()) {
-                throw new WorkflowNodeFailureException(
-                        WorkflowErrorCode.WF_INTERNAL, "节点尝试不属于发布图，拒绝继续执行");
+                throw new WorkflowNodeFailureException(WorkflowErrorCode.WF_INTERNAL, "节点尝试不属于发布图，拒绝继续执行");
             }
             state.attemptCount++;
             state.latest.put(row.nodeKey(), new NodeState(row.id(), row.attempt(), row.status()));
@@ -221,13 +220,14 @@ final class WorkflowExecutionState {
         JsonNode output;
         List<WorkflowCitation> nodeCitations;
         try {
-            output = row.outputJson() == null ? objectMapper.createObjectNode() : objectMapper.readTree(row.outputJson());
+            output = row.outputJson() == null
+                    ? objectMapper.createObjectNode()
+                    : objectMapper.readTree(row.outputJson());
             nodeCitations = row.citationsJson() == null
                     ? List.of()
                     : objectMapper.readValue(row.citationsJson(), new TypeReference<List<WorkflowCitation>>() {});
         } catch (JacksonException exception) {
-            throw new WorkflowNodeFailureException(
-                    WorkflowErrorCode.WF_INTERNAL, "节点输出快照损坏，无法恢复运行", exception);
+            throw new WorkflowNodeFailureException(WorkflowErrorCode.WF_INTERNAL, "节点输出快照损坏，无法恢复运行", exception);
         }
         recordSuccess(
                 row.nodeKey(),

@@ -40,6 +40,7 @@ import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import reactor.core.publisher.Flux;
 
 /**
@@ -50,8 +51,11 @@ import reactor.core.publisher.Flux;
  */
 class ModelNodeExecutorTest {
 
-    /** 模型 ID。 */
+    /** 模型 ID（链首）。 */
     private static final UUID MODEL_ID = UUID.fromString("01930000-0000-7000-8000-000000000030");
+
+    /** 备用模型 ID。 */
+    private static final UUID FALLBACK_MODEL_ID = UUID.fromString("01930000-0000-7000-8000-000000000032");
 
     /** 租户。 */
     private com.riccon.platform.common.tenant.TenantId tenantId;
@@ -105,8 +109,7 @@ class ModelNodeExecutorTest {
     @Test
     @DisplayName("文本模型使用 REPORT 路由并记录调用")
     void execute_text_succeeds() {
-        when(chatModel.stream(anyList(), anyList(), any()))
-                .thenReturn(Flux.just(response("写好的报告")));
+        when(chatModel.stream(anyList(), anyList(), any())).thenReturn(Flux.just(response("写好的报告")));
 
         WorkflowNodeResult result = executor.execute(execution("{\"promptTemplate\":\"写报告\",\"outputKind\":\"TEXT\"}"));
 
@@ -114,24 +117,71 @@ class ModelNodeExecutorTest {
         assertThat(result.outputSummary()).isEqualTo("写好的报告");
         assertThat(result.result()).isNull();
         verify(modelRouter).resolve(tenantId, ModelPurpose.REPORT, "workflow-run-test", null);
-        verify(repository).linkModelInvocation(
-                eq(tenantId),
-                eq(handle.id()),
-                eq(UUID.fromString("01930000-0000-7000-8000-000000000010")),
-                eq(UUID.fromString("01930000-0000-7000-8000-000000000011")));
-        verify(invocationService).succeeded(eq(handle), eq(MODEL_ID), eq("model-key"), eq("workflow-run-test"), eq(null),
-                eq(null), eq(null), eq(null), eq(1));
+        verify(repository)
+                .linkModelInvocation(
+                        eq(tenantId),
+                        eq(handle.id()),
+                        eq(UUID.fromString("01930000-0000-7000-8000-000000000010")),
+                        eq(UUID.fromString("01930000-0000-7000-8000-000000000011")));
+        verify(invocationService)
+                .succeeded(
+                        eq(handle),
+                        eq(MODEL_ID),
+                        eq("model-key"),
+                        eq("workflow-run-test"),
+                        eq(null),
+                        eq(null),
+                        eq(null),
+                        eq(null),
+                        eq(1));
+    }
+
+    /** 未配置 modelId：传给 M04 的必须是完整 REPORT 链，保留跨模型降级。 */
+    @Test
+    @DisplayName("未指定模型时传完整 REPORT 链")
+    void execute_withoutModelId_passesFullReportChain() {
+        ModelRoute chain = routeWithModels(2);
+        when(modelRouter.resolve(eq(tenantId), eq(ModelPurpose.REPORT), anyString(), any()))
+                .thenReturn(chain);
+        when(chatModel.stream(anyList(), anyList(), any())).thenReturn(Flux.just(response("文本")));
+
+        executor.execute(execution("{\"promptTemplate\":\"写报告\",\"outputKind\":\"TEXT\"}"));
+
+        ArgumentCaptor<ModelRoute> captor = ArgumentCaptor.forClass(ModelRoute.class);
+        verify(modelRouter).createModel(captor.capture(), any(), any(), anyString(), any(), eq(ModelPurpose.REPORT));
+        assertThat(captor.getValue().models())
+                .extracting(model -> model.target().model().id())
+                .containsExactly(MODEL_ID, FALLBACK_MODEL_ID);
+        assertThat(captor.getValue().failoverEnabled()).isTrue();
+    }
+
+    /** 指定 modelId：传给 M04 的是该模型在链中的后缀，仍可向后续备用模型降级。 */
+    @Test
+    @DisplayName("指定模型时传链后缀")
+    void execute_withModelId_passesSuffixChain() {
+        ModelRoute chain = routeWithModels(2);
+        when(modelRouter.resolve(eq(tenantId), eq(ModelPurpose.REPORT), anyString(), any()))
+                .thenReturn(chain);
+        when(chatModel.stream(anyList(), anyList(), any())).thenReturn(Flux.just(response("文本")));
+
+        executor.execute(execution("{\"promptTemplate\":\"写报告\",\"outputKind\":\"TEXT\","
+                + "\"modelId\":\"01930000-0000-7000-8000-000000000032\"}"));
+
+        ArgumentCaptor<ModelRoute> captor = ArgumentCaptor.forClass(ModelRoute.class);
+        verify(modelRouter).createModel(captor.capture(), any(), any(), anyString(), any(), eq(ModelPurpose.REPORT));
+        assertThat(captor.getValue().models())
+                .extracting(model -> model.target().model().id())
+                .containsExactly(FALLBACK_MODEL_ID);
     }
 
     /** 分类标签命中。 */
     @Test
     @DisplayName("分类输出命中标签")
     void execute_classification_matchesLabel() {
-        when(chatModel.stream(anyList(), anyList(), any()))
-                .thenReturn(Flux.just(response("正面")));
+        when(chatModel.stream(anyList(), anyList(), any())).thenReturn(Flux.just(response("正面")));
 
-        WorkflowNodeResult result = executor.execute(execution(
-                "{\"promptTemplate\":\"分类\",\"outputKind\":\"CLASSIFICATION\",\"labels\":[\"正面\",\"负面\"]}"));
+        WorkflowNodeResult result = executor.execute(
+                execution("{\"promptTemplate\":\"分类\",\"outputKind\":\"CLASSIFICATION\",\"labels\":[\"正面\",\"负面\"]}"));
 
         assertThat(result.output()).containsEntry("classificationLabel", "正面");
         assertThat(result.outputSummary()).isEqualTo("分类：正面");
@@ -141,8 +191,7 @@ class ModelNodeExecutorTest {
     @Test
     @DisplayName("分类输出未命中标签失败")
     void execute_classificationMismatch_fails() {
-        when(chatModel.stream(anyList(), anyList(), any()))
-                .thenReturn(Flux.just(response("中性")));
+        when(chatModel.stream(anyList(), anyList(), any())).thenReturn(Flux.just(response("中性")));
 
         assertThatThrownBy(() -> executor.execute(execution(
                         "{\"promptTemplate\":\"分类\",\"outputKind\":\"CLASSIFICATION\",\"labels\":[\"正面\",\"负面\"]}")))
@@ -150,8 +199,15 @@ class ModelNodeExecutorTest {
                 .satisfies(error -> assertThat(((WorkflowNodeFailureException) error).errorCode())
                         .isEqualTo(WorkflowErrorCode.WF_MODEL_OUTPUT_INVALID));
         verify(invocationService)
-                .failed(eq(handle), eq("workflow-run-test"), eq(null), eq("WF_MODEL_OUTPUT_INVALID"), eq(true),
-                        eq(null), eq(false), eq(1));
+                .failed(
+                        eq(handle),
+                        eq("workflow-run-test"),
+                        eq(null),
+                        eq("WF_MODEL_OUTPUT_INVALID"),
+                        eq(true),
+                        eq(null),
+                        eq(false),
+                        eq(1));
     }
 
     /** 节点 modelId 必须在 REPORT 链内。 */
@@ -185,30 +241,74 @@ class ModelNodeExecutorTest {
     @Test
     @DisplayName("模型超时映射 WF_NODE_TIMEOUT")
     void execute_timeout_mapsNodeTimeout() {
-        when(chatModel.stream(anyList(), anyList(), any()))
-                .thenReturn(Flux.error(new TimeoutException("timeout")));
+        when(chatModel.stream(anyList(), anyList(), any())).thenReturn(Flux.error(new TimeoutException("timeout")));
 
         assertThatThrownBy(() -> executor.execute(execution("{\"promptTemplate\":\"写报告\"}")))
                 .isInstanceOf(WorkflowNodeTimeoutException.class);
         verify(invocationService)
-                .failed(eq(handle), eq("workflow-run-test"), eq(null), eq("WF_NODE_TIMEOUT"), eq(true),
-                        eq(null), eq(false), eq(1));
+                .failed(
+                        eq(handle),
+                        eq("workflow-run-test"),
+                        eq(null),
+                        eq("WF_NODE_TIMEOUT"),
+                        eq(true),
+                        eq(null),
+                        eq(false),
+                        eq(1));
     }
 
     /** 模型调用失败映射 WF_MODEL_UNAVAILABLE。 */
     @Test
     @DisplayName("模型调用失败映射 WF_MODEL_UNAVAILABLE")
     void execute_modelError_mapsUnavailable() {
-        when(chatModel.stream(anyList(), anyList(), any()))
-                .thenReturn(Flux.error(new IllegalStateException("boom")));
+        when(chatModel.stream(anyList(), anyList(), any())).thenReturn(Flux.error(new IllegalStateException("boom")));
 
         assertThatThrownBy(() -> executor.execute(execution("{\"promptTemplate\":\"写报告\"}")))
                 .isInstanceOf(WorkflowNodeFailureException.class)
                 .satisfies(error -> assertThat(((WorkflowNodeFailureException) error).errorCode())
                         .isEqualTo(WorkflowErrorCode.WF_MODEL_UNAVAILABLE));
         verify(invocationService)
-                .failed(eq(handle), eq("workflow-run-test"), eq(null), eq("WF_MODEL_UNAVAILABLE"), eq(true),
-                        eq(null), eq(false), eq(1));
+                .failed(
+                        eq(handle),
+                        eq("workflow-run-test"),
+                        eq(null),
+                        eq("WF_MODEL_UNAVAILABLE"),
+                        eq(true),
+                        eq(null),
+                        eq(false),
+                        eq(1));
+    }
+
+    /**
+     * 构造包含两个模型的路由链。
+     *
+     * @param count 模型数量（1 或 2）
+     * @return 路由
+     */
+    private static ModelRoute routeWithModels(int count) {
+        List<RoutedModel> models = new java.util.ArrayList<>();
+        UUID[] ids = {MODEL_ID, FALLBACK_MODEL_ID};
+        for (int index = 0; index < count; index++) {
+            models.add(routedModel(ids[index], "model-" + index));
+        }
+        return new ModelRoute(ModelPurpose.REPORT, ModelRoutingMode.ROUTED, true, models);
+    }
+
+    /**
+     * 构造单个路由模型。
+     *
+     * @param modelId 模型 ID
+     * @param key 模型 key
+     * @return 路由模型
+     */
+    private static RoutedModel routedModel(UUID modelId, String key) {
+        ModelDescriptor descriptor = new ModelDescriptor(modelId, UUID.randomUUID(), key, "Model", 1024, 8192);
+        ProviderDescriptor provider = new ProviderDescriptor(
+                UUID.randomUUID(), "provider-" + key, "OPENAI_COMPATIBLE", URI.create("http://127.0.0.1:19090/v1"));
+        ModelTarget target = new ModelTarget(descriptor, provider, URI.create("http://127.0.0.1:19090/v1"), 1024);
+        ModelCredential credential =
+                new ModelCredential(UUID.randomUUID(), provider.id(), "cipher", "key", "mk", 1, "mask", 1);
+        return new RoutedModel(target, List.of(credential));
     }
 
     /**
@@ -222,13 +322,16 @@ class ModelNodeExecutorTest {
             return new ModelRoute(ModelPurpose.REPORT, ModelRoutingMode.ROUTED, true, List.of());
         }
         ModelDescriptor descriptor = new ModelDescriptor(MODEL_ID, UUID.randomUUID(), "model-key", "Model", 1024, 8192);
-        ProviderDescriptor provider =
-                new ProviderDescriptor(UUID.randomUUID(), "provider", "OPENAI_COMPATIBLE", URI.create("http://127.0.0.1:19090/v1"));
+        ProviderDescriptor provider = new ProviderDescriptor(
+                UUID.randomUUID(), "provider", "OPENAI_COMPATIBLE", URI.create("http://127.0.0.1:19090/v1"));
         ModelTarget target = new ModelTarget(descriptor, provider, URI.create("http://127.0.0.1:19090/v1"), 1024);
         ModelCredential credential =
                 new ModelCredential(UUID.randomUUID(), provider.id(), "cipher", "key", "mk", 1, "mask", 1);
         return new ModelRoute(
-                ModelPurpose.REPORT, ModelRoutingMode.ROUTED, true, List.of(new RoutedModel(target, List.of(credential))));
+                ModelPurpose.REPORT,
+                ModelRoutingMode.ROUTED,
+                true,
+                List.of(new RoutedModel(target, List.of(credential))));
     }
 
     /**
@@ -247,8 +350,8 @@ class ModelNodeExecutorTest {
     @Test
     @DisplayName("分类节点缺少 labels 失败")
     void execute_classificationWithoutLabels_fails() {
-        assertThatThrownBy(() -> executor.execute(execution(
-                        "{\"promptTemplate\":\"分类\",\"outputKind\":\"CLASSIFICATION\"}")))
+        assertThatThrownBy(() ->
+                        executor.execute(execution("{\"promptTemplate\":\"分类\",\"outputKind\":\"CLASSIFICATION\"}")))
                 .isInstanceOf(WorkflowNodeFailureException.class)
                 .satisfies(error -> assertThat(((WorkflowNodeFailureException) error).errorCode())
                         .isEqualTo(WorkflowErrorCode.WF_INVALID_GRAPH));
@@ -276,16 +379,23 @@ class ModelNodeExecutorTest {
                 .satisfies(error -> assertThat(((WorkflowNodeFailureException) error).errorCode())
                         .isEqualTo(WorkflowErrorCode.WF_INTERNAL));
         verify(invocationService)
-                .failed(eq(handle), eq("workflow-run-test"), eq(null), eq("WF_INTERNAL"), eq(false),
-                        eq(null), eq(false), eq(1));
+                .failed(
+                        eq(handle),
+                        eq("workflow-run-test"),
+                        eq(null),
+                        eq("WF_INTERNAL"),
+                        eq(false),
+                        eq(null),
+                        eq(false),
+                        eq(1));
     }
 
     /** 取消守卫在调用前中断。 */
     @Test
     @DisplayName("取消守卫中断模型节点")
     void execute_cancelledGuard_aborts() {
-        WorkflowNodeExecution execution = executionWithGuard(
-                "{\"promptTemplate\":\"写报告\"}", WorkflowNodeTestFixtures.guard(false, true));
+        WorkflowNodeExecution execution =
+                executionWithGuard("{\"promptTemplate\":\"写报告\"}", WorkflowNodeTestFixtures.guard(false, true));
 
         assertThatThrownBy(() -> executor.execute(execution))
                 .isInstanceOf(com.riccon.worker.workflow.node.domain.WorkflowNodeAbortedException.class);
@@ -316,12 +426,6 @@ class ModelNodeExecutorTest {
                 + "{\"id\":\"e\",\"type\":\"END\",\"name\":\"结束\",\"config\":{\"resultFrom\":\"m\"}}],"
                 + "\"edges\":[{\"id\":\"e1\",\"source\":\"m\",\"target\":\"e\"}]}";
         return WorkflowNodeTestFixtures.execution(
-                graph,
-                "m",
-                "{}",
-                Map.of(),
-                List.of(),
-                WorkflowNodeTestFixtures.futureDeadline(),
-                guard);
+                graph, "m", "{}", Map.of(), List.of(), WorkflowNodeTestFixtures.futureDeadline(), guard);
     }
 }

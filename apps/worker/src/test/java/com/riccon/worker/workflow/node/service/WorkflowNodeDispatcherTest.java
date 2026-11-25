@@ -27,9 +27,8 @@ class WorkflowNodeDispatcherTest {
     @Test
     @DisplayName("按节点类型分派执行器")
     void execute_dispatchesByType() {
-        WorkflowNodeDispatcher dispatcher = new WorkflowNodeDispatcher(List.of(
-                new StartNodeExecutor(new WorkflowTemplateRenderer()),
-                stub(WorkflowNodeType.MODEL)));
+        WorkflowNodeDispatcher dispatcher = new WorkflowNodeDispatcher(
+                List.of(new StartNodeExecutor(new WorkflowTemplateRenderer()), stub(WorkflowNodeType.MODEL)));
 
         WorkflowNodeResult result = dispatcher.execute(execution(WorkflowNodeType.MODEL));
 
@@ -40,8 +39,8 @@ class WorkflowNodeDispatcherTest {
     @Test
     @DisplayName("重复注册节点类型启动失败")
     void constructor_duplicateType_fails() {
-        assertThatThrownBy(() -> new WorkflowNodeDispatcher(List.of(
-                        stub(WorkflowNodeType.MODEL), stub(WorkflowNodeType.MODEL))))
+        assertThatThrownBy(() ->
+                        new WorkflowNodeDispatcher(List.of(stub(WorkflowNodeType.MODEL), stub(WorkflowNodeType.MODEL))))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("duplicate");
     }
@@ -85,8 +84,8 @@ class WorkflowNodeDispatcherTest {
      * @return 上下文
      */
     private static WorkflowNodeExecution execution(WorkflowNodeType type) {
-        String graph = "{\"schemaVersion\":1,\"nodes\":["
-                + "{\"id\":\"n\",\"type\":\"" + type.name() + "\",\"name\":\"节点\",\"config\":{}}],\"edges\":[]}";
+        String graph = "{\"schemaVersion\":1,\"nodes\":[" + "{\"id\":\"n\",\"type\":\"" + type.name()
+                + "\",\"name\":\"节点\",\"config\":{}}],\"edges\":[]}";
         return WorkflowNodeTestFixtures.execution(
                 graph,
                 "n",

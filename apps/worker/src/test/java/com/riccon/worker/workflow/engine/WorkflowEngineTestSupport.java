@@ -720,8 +720,8 @@ public final class WorkflowEngineTestSupport {
      * @return 图 JSON 文本
      */
     public static String graph(List<String> nodes, List<String> edges) {
-        return "{\"schemaVersion\":1,\"nodes\":[" + String.join(",", nodes) + "],\"edges\":["
-                + String.join(",", edges) + "]}";
+        return "{\"schemaVersion\":1,\"nodes\":[" + String.join(",", nodes) + "],\"edges\":[" + String.join(",", edges)
+                + "]}";
     }
 
     /**
@@ -981,8 +981,7 @@ public final class WorkflowEngineTestSupport {
          * @param type 节点类型
          * @param behavior 行为
          */
-        public StubExecutor(
-                WorkflowNodeType type, Function<WorkflowNodeExecution, WorkflowNodeResult> behavior) {
+        public StubExecutor(WorkflowNodeType type, Function<WorkflowNodeExecution, WorkflowNodeResult> behavior) {
             this.type = type;
             this.behavior = behavior;
         }

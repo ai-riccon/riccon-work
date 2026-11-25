@@ -244,8 +244,7 @@ class WorkflowConditionEvaluatorTest {
      * @param inputsJson 运行输入
      * @param outputs 上游输出
      */
-    private void assertInvalid(
-            String conditionJson, String inputsJson, Map<String, WorkflowNodeOutput> outputs) {
+    private void assertInvalid(String conditionJson, String inputsJson, Map<String, WorkflowNodeOutput> outputs) {
         assertThatThrownBy(() -> evaluate(conditionJson, inputsJson, outputs))
                 .isInstanceOf(WorkflowNodeFailureException.class)
                 .satisfies(error -> assertThat(((WorkflowNodeFailureException) error).errorCode())
@@ -262,9 +261,8 @@ class WorkflowConditionEvaluatorTest {
      */
     private static WorkflowNodeExecution execution(
             String conditionJson, String inputsJson, Map<String, WorkflowNodeOutput> outputs) {
-        String conditionConfig = conditionJson == null || conditionJson.isBlank()
-                ? "{}"
-                : "{\"condition\":" + conditionJson + "}";
+        String conditionConfig =
+                conditionJson == null || conditionJson.isBlank() ? "{}" : "{\"condition\":" + conditionJson + "}";
         String graph = "{\"schemaVersion\":1,\"nodes\":["
                 + "{\"id\":\"r\",\"type\":\"RETRIEVAL\",\"name\":\"检索\","
                 + "\"config\":{\"queryTemplate\":\"q\",\"topK\":3}},"

@@ -365,10 +365,14 @@ public class WorkflowEngineJdbc {
                 tenantId,
                 START_NODE_ATTEMPT_SQL,
                 Map.of(
-                        "runId", UuidBinary.toBytes(runId),
-                        "nodeKey", nodeKey,
-                        "attempt", attempt,
-                        "now", databaseTime(now)));
+                        "runId",
+                        UuidBinary.toBytes(runId),
+                        "nodeKey",
+                        nodeKey,
+                        "attempt",
+                        attempt,
+                        "now",
+                        databaseTime(now)));
     }
 
     /**
@@ -501,16 +505,19 @@ public class WorkflowEngineJdbc {
      * @param now 当前时间
      * @return 受影响行数；0 表示租约丢失
      */
-    public int updateCurrentNode(
-            TenantId tenantId, UUID runId, String leaseOwner, String nodeKey, Instant now) {
+    public int updateCurrentNode(TenantId tenantId, UUID runId, String leaseOwner, String nodeKey, Instant now) {
         return tenantJdbc.update(
                 tenantId,
                 UPDATE_CURRENT_NODE_SQL,
                 Map.of(
-                        "runId", UuidBinary.toBytes(runId),
-                        "leaseOwner", leaseOwner,
-                        "nodeKey", nodeKey,
-                        "now", databaseTime(now)));
+                        "runId",
+                        UuidBinary.toBytes(runId),
+                        "leaseOwner",
+                        leaseOwner,
+                        "nodeKey",
+                        nodeKey,
+                        "now",
+                        databaseTime(now)));
     }
 
     /**
@@ -523,8 +530,7 @@ public class WorkflowEngineJdbc {
      * @param now 当前时间
      * @return 受影响行数；0 表示租约丢失
      */
-    public int addExecutionMs(
-            TenantId tenantId, UUID runId, String leaseOwner, long deltaMs, Instant now) {
+    public int addExecutionMs(TenantId tenantId, UUID runId, String leaseOwner, long deltaMs, Instant now) {
         return tenantJdbc.update(
                 tenantId,
                 ADD_EXECUTION_MS_SQL,
@@ -655,8 +661,7 @@ public class WorkflowEngineJdbc {
                 tenantId,
                 sql.toString(),
                 params,
-                (rs, rowNum) -> Map.entry(
-                        UuidBinary.fromBytes(rs.getBytes("id")), rs.getString("checksum")));
+                (rs, rowNum) -> Map.entry(UuidBinary.fromBytes(rs.getBytes("id")), rs.getString("checksum")));
         Map<UUID, String> checksums = new LinkedHashMap<>(rows.size());
         for (Map.Entry<UUID, String> row : rows) {
             checksums.put(row.getKey(), row.getValue());

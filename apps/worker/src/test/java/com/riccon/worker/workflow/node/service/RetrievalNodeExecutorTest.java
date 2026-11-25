@@ -76,16 +76,14 @@ class RetrievalNodeExecutorTest {
     @Test
     @DisplayName("检索复用发起人 ACL 并固化引用")
     void execute_usesRequesterAclAndBuildsCitations() {
-        when(agentContextRepository.search(
-                        eq(tenantId), eq(requester), eq(false), eq("市场 报告"), anyInt(), eq(3)))
+        when(agentContextRepository.search(eq(tenantId), eq(requester), eq(false), eq("市场 报告"), anyInt(), eq(3)))
                 .thenReturn(List.of(chunk(1, "第一段正文"), chunk(2, "第二段正文")));
         when(engineRepository.findKnowledgeChecksums(eq(tenantId), any()))
                 .thenReturn(Map.of(documentId, "checksum-v1"));
 
         WorkflowNodeResult result = executor.execute(execution("{\"topic\":\"市场\"}", futureDeadline(), activeGuard()));
 
-        verify(agentContextRepository)
-                .search(tenantId, requester, false, "市场 报告", 60, 3);
+        verify(agentContextRepository).search(tenantId, requester, false, "市场 报告", 60, 3);
         assertThat(result.output()).containsEntry("hitCount", 2);
         assertThat(result.outputSummary()).isEqualTo("检索命中 2 条");
         assertThat(result.inputSummary()).contains("市场 报告");
@@ -105,7 +103,8 @@ class RetrievalNodeExecutorTest {
     @Test
     @DisplayName("引用版本读取失败映射稳定错误码")
     void execute_checksumFailure_mapsCode() {
-        when(agentContextRepository.search(any(), any(), org.mockito.ArgumentMatchers.anyBoolean(), any(), anyInt(), anyInt()))
+        when(agentContextRepository.search(
+                        any(), any(), org.mockito.ArgumentMatchers.anyBoolean(), any(), anyInt(), anyInt()))
                 .thenReturn(List.of(chunk(1, "正文")));
         when(engineRepository.findKnowledgeChecksums(eq(tenantId), any()))
                 .thenThrow(new IllegalStateException("db down"));
@@ -140,13 +139,7 @@ class RetrievalNodeExecutorTest {
     @DisplayName("缺少查询模板失败")
     void execute_missingQueryTemplate_fails() {
         WorkflowNodeExecution execution = WorkflowNodeTestFixtures.execution(
-                graph("{\"topK\":3}"),
-                "r",
-                "{}",
-                Map.of(),
-                List.of(),
-                futureDeadline(),
-                activeGuard());
+                graph("{\"topK\":3}"), "r", "{}", Map.of(), List.of(), futureDeadline(), activeGuard());
 
         assertThatThrownBy(() -> executor.execute(execution))
                 .isInstanceOf(WorkflowNodeFailureException.class)
@@ -157,7 +150,8 @@ class RetrievalNodeExecutorTest {
     @Test
     @DisplayName("检索异常映射稳定错误码")
     void execute_searchFailure_mapsCode() {
-        when(agentContextRepository.search(any(), any(), org.mockito.ArgumentMatchers.anyBoolean(), any(), anyInt(), anyInt()))
+        when(agentContextRepository.search(
+                        any(), any(), org.mockito.ArgumentMatchers.anyBoolean(), any(), anyInt(), anyInt()))
                 .thenThrow(new IllegalStateException("db down"));
 
         assertThatThrownBy(() -> executor.execute(execution("{\"topic\":\"市场\"}", futureDeadline(), activeGuard())))
@@ -188,10 +182,8 @@ class RetrievalNodeExecutorTest {
     @Test
     @DisplayName("取消守卫中断检索")
     void execute_cancelledGuard_aborts() {
-        assertThatThrownBy(() -> executor.execute(execution(
-                        "{\"topic\":\"市场\"}",
-                        futureDeadline(),
-                        WorkflowNodeTestFixtures.guard(false, true))))
+        assertThatThrownBy(() -> executor.execute(
+                        execution("{\"topic\":\"市场\"}", futureDeadline(), WorkflowNodeTestFixtures.guard(false, true))))
                 .isInstanceOf(WorkflowNodeAbortedException.class);
     }
 
@@ -248,13 +240,7 @@ class RetrievalNodeExecutorTest {
      */
     private WorkflowNodeExecution executionWithoutTopK() {
         return WorkflowNodeTestFixtures.execution(
-                graph("{\"queryTemplate\":\"q\"}"),
-                "r",
-                "{}",
-                Map.of(),
-                List.of(),
-                futureDeadline(),
-                activeGuard());
+                graph("{\"queryTemplate\":\"q\"}"), "r", "{}", Map.of(), List.of(), futureDeadline(), activeGuard());
     }
 
     /**

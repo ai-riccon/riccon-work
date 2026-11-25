@@ -5,17 +5,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.riccon.platform.common.tenant.TenantContext;
 import com.riccon.platform.common.tenant.TenantId;
 import com.riccon.platform.domain.workflow.WorkflowErrorCode;
-import com.riccon.platform.domain.workflow.WorkflowNodeStatus;
 import com.riccon.platform.domain.workflow.WorkflowNodeType;
 import com.riccon.platform.domain.workflow.WorkflowRunStatus;
 import com.riccon.worker.WorkerIntegrationTestBase;
+import com.riccon.worker.workflow.config.WorkflowRuntimeProperties;
 import com.riccon.worker.workflow.engine.WorkflowEngineTestSupport.MutableClock;
 import com.riccon.worker.workflow.engine.WorkflowEngineTestSupport.NodeRow;
 import com.riccon.worker.workflow.engine.WorkflowEngineTestSupport.RunRow;
 import com.riccon.worker.workflow.engine.WorkflowEngineTestSupport.Seed;
 import com.riccon.worker.workflow.engine.WorkflowEngineTestSupport.StubExecutor;
 import com.riccon.worker.workflow.engine.WorkflowEngineTestSupport.TestLease;
-import com.riccon.worker.workflow.config.WorkflowRuntimeProperties;
 import com.riccon.worker.workflow.engine.repository.WorkflowEngineRepository;
 import com.riccon.worker.workflow.engine.service.WorkflowEngine;
 import com.riccon.worker.workflow.node.domain.WorkflowNodeAbortedException;
@@ -102,9 +101,7 @@ class WorkflowEngineIntegrationTest extends WorkerIntegrationTestBase {
                         "检索命中 2 条",
                         numberOutput("hitCount", 2),
                         WorkflowEngineTestSupport.citations(2)));
-        model = new StubExecutor(
-                WorkflowNodeType.MODEL,
-                execution -> modelSuccess("模型输出"));
+        model = new StubExecutor(WorkflowNodeType.MODEL, execution -> modelSuccess("模型输出"));
         dispatcher = new WorkflowNodeDispatcher(List.of(
                 new StartNodeExecutor(renderer),
                 new EndNodeExecutor(assembler),
@@ -213,8 +210,8 @@ class WorkflowEngineIntegrationTest extends WorkerIntegrationTestBase {
     void condition_falseBranch_executesFalseSubtree() {
         String tenant = uniqueTenant("wf-engine-cond-false");
         Fixture fixture = fixture(tenant, conditionGraph());
-        retrieval.behavior(execution -> WorkflowNodeResult.of(
-                "检索查询", "检索命中 0 条", numberOutput("hitCount", 0), List.of()));
+        retrieval.behavior(
+                execution -> WorkflowNodeResult.of("检索查询", "检索命中 0 条", numberOutput("hitCount", 0), List.of()));
         model.behavior(execution -> modelSuccess(execution.node().id()));
 
         execute(tenant, fixture.runId, new TestLease(fixture.runId, tenant));
@@ -303,8 +300,7 @@ class WorkflowEngineIntegrationTest extends WorkerIntegrationTestBase {
                 .isEqualTo("SKIPPED");
 
         failB.set(false);
-        support.prepareRetry(
-                tenant, fixture.runId, "b", WorkflowNodeType.MODEL, "模型B", "test-lease");
+        support.prepareRetry(tenant, fixture.runId, "b", WorkflowNodeType.MODEL, "模型B", "test-lease");
         execute(tenant, fixture.runId, new TestLease(fixture.runId, tenant));
 
         RunRow retried = support.readRun(tenant, fixture.runId);
@@ -428,7 +424,8 @@ class WorkflowEngineIntegrationTest extends WorkerIntegrationTestBase {
         String tenant = uniqueTenant("wf-engine-result-limit");
         Fixture fixture = fixture(tenant, singleModelGraph());
         model.behavior(execution -> modelSuccess("x".repeat(200)));
-        WorkflowEngine engine = engine(new WorkflowRuntimeProperties(true, "", 50, 200, 300, 120, 60, 30, 10, 5, 100, 180));
+        WorkflowEngine engine =
+                engine(new WorkflowRuntimeProperties(true, "", 50, 200, 300, 120, 60, 30, 10, 5, 100, 180));
 
         execute(engine, tenant, fixture.runId, new TestLease(fixture.runId, tenant));
 
@@ -479,7 +476,8 @@ class WorkflowEngineIntegrationTest extends WorkerIntegrationTestBase {
         String tenant = uniqueTenant("wf-engine-step-limit");
         Fixture fixture = fixture(tenant, twoModelGraph());
         support.insertPendingNode(tenant, fixture.runId, "b", WorkflowNodeType.MODEL, "模型B");
-        WorkflowEngine engine = engine(new WorkflowRuntimeProperties(true, "", 50, 3, 300, 120, 60, 30, 10, 5, 5_242_880, 180));
+        WorkflowEngine engine =
+                engine(new WorkflowRuntimeProperties(true, "", 50, 3, 300, 120, 60, 30, 10, 5, 5_242_880, 180));
 
         execute(engine, tenant, fixture.runId, new TestLease(fixture.runId, tenant));
 
@@ -501,6 +499,31 @@ class WorkflowEngineIntegrationTest extends WorkerIntegrationTestBase {
                 .extracting(NodeRow::status)
                 .isEqualTo("SKIPPED");
         assertThat(model.invocations()).isEqualTo(1);
+    }
+
+    /** 步数耗尽时当前节点仍是崩溃遗留 RUNNING：置 FAILED，保证 POST /retry 可用。 */
+    @Test
+    @DisplayName("IT-WF-109 步数耗尽时遗留 RUNNING 节点置 FAILED")
+    void stepLimitWithStaleRunningNode_failsNode() {
+        String tenant = uniqueTenant("wf-engine-step-stale");
+        Fixture fixture = fixture(tenant, singleModelGraph());
+        support.insertRunningNode(tenant, fixture.runId, "s", WorkflowNodeType.START, "开始");
+        WorkflowEngine engine =
+                engine(new WorkflowRuntimeProperties(true, "", 50, 1, 300, 120, 60, 30, 10, 5, 5_242_880, 180));
+
+        execute(engine, tenant, fixture.runId, new TestLease(fixture.runId, tenant));
+
+        RunRow run = support.readRun(tenant, fixture.runId);
+        assertThat(run.status()).isEqualTo("FAILED");
+        assertThat(run.errorCode()).isEqualTo("WF_STEP_LIMIT");
+        assertThat(support.readNodes(tenant, fixture.runId, "s"))
+                .singleElement()
+                .satisfies(row -> {
+                    assertThat(row.status()).isEqualTo("FAILED");
+                    assertThat(row.errorCode()).isEqualTo("WF_STEP_LIMIT");
+                    assertThat(row.errorMessage()).contains("步数上限");
+                });
+        assertThat(model.invocations()).isZero();
     }
 
     /** 崩溃遗留 RUNNING 尝试：置 WF_INTERNAL 失败后以新尝试继续。 */
@@ -569,11 +592,7 @@ class WorkflowEngineIntegrationTest extends WorkerIntegrationTestBase {
         String graph = WorkflowEngineTestSupport.graph(
                 List.of(
                         WorkflowEngineTestSupport.node("s", "START", "开始", "{}"),
-                        WorkflowEngineTestSupport.node(
-                                "x",
-                                "SCRIPT",
-                                "脚本",
-                                "{\"promptTemplate\":\"x\"}")),
+                        WorkflowEngineTestSupport.node("x", "SCRIPT", "脚本", "{\"promptTemplate\":\"x\"}")),
                 List.of(WorkflowEngineTestSupport.edge("e1", "s", "x", null)));
         Fixture fixture = fixture(tenant, graph);
 
@@ -630,9 +649,13 @@ class WorkflowEngineIntegrationTest extends WorkerIntegrationTestBase {
         UUID invocationId = UUID.randomUUID();
         support.insertModelInvocation(tenant, invocationId, modelId);
 
-        TenantContext.runWithTenant(TenantId.of(tenant), () -> repository.linkModelInvocation(
-                TenantId.of(tenant), invocationId, UUID.fromString("01930000-0000-7000-8000-000000000001"),
-                UUID.fromString("01930000-0000-7000-8000-000000000002")));
+        TenantContext.runWithTenant(
+                TenantId.of(tenant),
+                () -> repository.linkModelInvocation(
+                        TenantId.of(tenant),
+                        invocationId,
+                        UUID.fromString("01930000-0000-7000-8000-000000000001"),
+                        UUID.fromString("01930000-0000-7000-8000-000000000002")));
 
         WorkflowEngineTestSupport.ModelLink link = support.readModelLink(tenant, invocationId);
         assertThat(link.workflowRunId()).isEqualTo(UUID.fromString("01930000-0000-7000-8000-000000000001"));
@@ -715,8 +738,7 @@ class WorkflowEngineIntegrationTest extends WorkerIntegrationTestBase {
     void stateCorrupt_failsClosed() {
         String tenant = uniqueTenant("wf-engine-corrupt");
         Fixture fixture = fixture(tenant, singleModelGraph());
-        support.insertSucceededNode(
-                tenant, fixture.runId, "ghost", WorkflowNodeType.START, "幽灵", "{}", "摘要", null);
+        support.insertSucceededNode(tenant, fixture.runId, "ghost", WorkflowNodeType.START, "幽灵", "{}", "摘要", null);
 
         execute(tenant, fixture.runId, new TestLease(fixture.runId, tenant));
 
@@ -735,8 +757,7 @@ class WorkflowEngineIntegrationTest extends WorkerIntegrationTestBase {
         support.insertSucceededNode(tenant, fixture.runId, "s", WorkflowNodeType.START, "开始", "{}", "运行开始", null);
         support.insertSucceededNode(
                 tenant, fixture.runId, "r", WorkflowNodeType.RETRIEVAL, "检索", "{\"hitCount\":2}", "命中两条", null);
-        support.insertSucceededNode(
-                tenant, fixture.runId, "c", WorkflowNodeType.CONDITION, "条件", "{}", "条件", null);
+        support.insertSucceededNode(tenant, fixture.runId, "c", WorkflowNodeType.CONDITION, "条件", "{}", "条件", null);
 
         execute(tenant, fixture.runId, new TestLease(fixture.runId, tenant));
 
@@ -819,11 +840,12 @@ class WorkflowEngineIntegrationTest extends WorkerIntegrationTestBase {
         Fixture fixture = fixture(tenant, singleModelGraph());
         WorkflowNodeDispatcher custom = new WorkflowNodeDispatcher(List.of(
                 new StartNodeExecutor(new WorkflowTemplateRenderer()),
-                new StubExecutor(WorkflowNodeType.END, execution -> WorkflowNodeResult.of("in", "out", Map.of(), List.of())),
+                new StubExecutor(
+                        WorkflowNodeType.END, execution -> WorkflowNodeResult.of("in", "out", Map.of(), List.of())),
                 new ConditionNodeExecutor(new WorkflowConditionEvaluator()),
                 model));
-        WorkflowEngine engine = new WorkflowEngine(
-                repository, custom, assembler, defaultProperties(), objectMapper, clock);
+        WorkflowEngine engine =
+                new WorkflowEngine(repository, custom, assembler, defaultProperties(), objectMapper, clock);
 
         execute(engine, tenant, fixture.runId, new TestLease(fixture.runId, tenant));
 
@@ -977,8 +999,7 @@ class WorkflowEngineIntegrationTest extends WorkerIntegrationTestBase {
                         WorkflowEngineTestSupport.node("s", "START", "开始", "{}"),
                         WorkflowEngineTestSupport.node(
                                 "r", "RETRIEVAL", "检索", "{\"queryTemplate\":\"{{input.topic}}\",\"topK\":3}"),
-                        WorkflowEngineTestSupport.node(
-                                "c", "CONDITION", "条件", "{\"condition\":" + condition + "}"),
+                        WorkflowEngineTestSupport.node("c", "CONDITION", "条件", "{\"condition\":" + condition + "}"),
                         WorkflowEngineTestSupport.node(
                                 "t", "MODEL", "真分支", "{\"promptTemplate\":\"true\",\"outputKind\":\"TEXT\"}"),
                         WorkflowEngineTestSupport.node(

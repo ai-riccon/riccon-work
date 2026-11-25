@@ -33,7 +33,8 @@ class WorkflowEngineWiringTest {
 
     /** 最小上下文运行器。 */
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
-            .withUserConfiguration(WorkflowRuntimeConfiguration.class, WorkflowEngine.class, WorkflowNodeDispatcher.class)
+            .withUserConfiguration(
+                    WorkflowRuntimeConfiguration.class, WorkflowEngine.class, WorkflowNodeDispatcher.class)
             .withBean(WorkflowEngineRepository.class, () -> mock(WorkflowEngineRepository.class))
             .withBean(WorkflowResultAssembler.class, () -> mock(WorkflowResultAssembler.class))
             .withBean(ObjectMapper.class, ObjectMapper::new)

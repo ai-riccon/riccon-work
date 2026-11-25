@@ -236,9 +236,7 @@ public final class WorkflowGraphJson {
                 rightValue,
                 values);
         return new WorkflowGraphCondition(
-                source,
-                requireEnum(condition, "operator", WorkflowConditionOperator.class, "condition"),
-                rightSide);
+                source, requireEnum(condition, "operator", WorkflowConditionOperator.class, "condition"), rightSide);
     }
 
     /**

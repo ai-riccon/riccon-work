@@ -47,8 +47,7 @@ public class WorkflowNodeDispatcher {
         for (WorkflowNodeExecutor executor : executors) {
             WorkflowNodeExecutor previous = map.put(executor.nodeType(), executor);
             if (previous != null) {
-                throw new IllegalStateException(
-                        "duplicate workflow node executor for " + executor.nodeType());
+                throw new IllegalStateException("duplicate workflow node executor for " + executor.nodeType());
             }
         }
         this.executors = Map.copyOf(map);
@@ -66,7 +65,8 @@ public class WorkflowNodeDispatcher {
         if (executor == null) {
             // T07a/T07b 落地前，含审批/工具节点的运行会明确失败，而不是卡在 RUNNING。
             throw new WorkflowNodeFailureException(
-                    WorkflowErrorCode.WF_INTERNAL, "当前版本不支持执行该节点类型：" + execution.node().type());
+                    WorkflowErrorCode.WF_INTERNAL,
+                    "当前版本不支持执行该节点类型：" + execution.node().type());
         }
         return executor.execute(execution);
     }

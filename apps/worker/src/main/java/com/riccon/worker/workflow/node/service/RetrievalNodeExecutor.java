@@ -102,8 +102,7 @@ public class RetrievalNodeExecutor implements WorkflowNodeExecutor {
             hits = agentContextRepository.search(
                     execution.tenantId(), execution.requesterUserId(), false, query, candidateLimit, topK);
         } catch (RuntimeException ex) {
-            throw new WorkflowNodeFailureException(
-                    WorkflowErrorCode.WF_RETRIEVAL_FAILED, "检索失败，请稍后重试或检查知识库检索配置", ex);
+            throw new WorkflowNodeFailureException(WorkflowErrorCode.WF_RETRIEVAL_FAILED, "检索失败，请稍后重试或检查知识库检索配置", ex);
         }
         execution.guard().requireActive();
         execution.deadline().requireRemaining();
@@ -111,10 +110,7 @@ public class RetrievalNodeExecutor implements WorkflowNodeExecutor {
         Map<String, Object> output = new LinkedHashMap<>();
         output.put("hitCount", hits.size());
         return WorkflowNodeResult.of(
-                truncate("检索查询：" + query, QUERY_SUMMARY_LENGTH),
-                "检索命中 " + hits.size() + " 条",
-                output,
-                citations);
+                truncate("检索查询：" + query, QUERY_SUMMARY_LENGTH), "检索命中 " + hits.size() + " 条", output, citations);
     }
 
     /**
@@ -140,8 +136,7 @@ public class RetrievalNodeExecutor implements WorkflowNodeExecutor {
                     ? Map.of()
                     : repository.findKnowledgeChecksums(execution.tenantId(), documentIds);
         } catch (RuntimeException ex) {
-            throw new WorkflowNodeFailureException(
-                    WorkflowErrorCode.WF_RETRIEVAL_FAILED, "引用版本信息读取失败，请稍后重试", ex);
+            throw new WorkflowNodeFailureException(WorkflowErrorCode.WF_RETRIEVAL_FAILED, "引用版本信息读取失败，请稍后重试", ex);
         }
         List<WorkflowCitation> citations = new ArrayList<>(limited.size());
         int ordinal = 1;

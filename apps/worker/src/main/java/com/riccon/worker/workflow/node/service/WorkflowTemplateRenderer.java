@@ -130,8 +130,7 @@ public class WorkflowTemplateRenderer {
         for (String field : required) {
             JsonNode value = inputs == null ? null : inputs.get(field);
             if (value == null || value.isNull()) {
-                throw new WorkflowNodeFailureException(
-                        WorkflowErrorCode.WF_INVALID_GRAPH, "运行输入缺少必填字段：" + field);
+                throw new WorkflowNodeFailureException(WorkflowErrorCode.WF_INVALID_GRAPH, "运行输入缺少必填字段：" + field);
             }
         }
     }
@@ -149,8 +148,7 @@ public class WorkflowTemplateRenderer {
             String field = requireInputField(token.substring(INPUT_PREFIX.length()));
             JsonNode value = inputs == null ? null : inputs.get(field);
             if (value == null || value.isNull() || value.isContainer()) {
-                throw new WorkflowNodeFailureException(
-                        WorkflowErrorCode.WF_INVALID_GRAPH, "运行输入字段缺失或不是标量：" + field);
+                throw new WorkflowNodeFailureException(WorkflowErrorCode.WF_INVALID_GRAPH, "运行输入字段缺失或不是标量：" + field);
             }
             return scalarText(value, field);
         }

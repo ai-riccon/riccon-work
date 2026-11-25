@@ -1,7 +1,6 @@
 package com.riccon.worker.workflow.node.service;
 
 import com.riccon.platform.domain.workflow.WorkflowErrorCode;
-import com.riccon.platform.domain.workflow.WorkflowNodeType;
 import com.riccon.worker.workflow.engine.domain.WorkflowGraph;
 import com.riccon.worker.workflow.engine.domain.WorkflowGraphNode;
 import com.riccon.worker.workflow.node.domain.WorkflowNodeFailureException;
@@ -60,14 +59,12 @@ public class WorkflowResultAssembler {
         if (resultFrom == null || resultFrom.isBlank()) {
             throw new WorkflowNodeFailureException(WorkflowErrorCode.WF_INVALID_GRAPH, "END 节点缺少结果来源");
         }
-        WorkflowGraphNode source = graph
-                .findNode(resultFrom)
-                .orElseThrow(() -> new WorkflowNodeFailureException(
-                        WorkflowErrorCode.WF_INVALID_GRAPH, "END 的结果来源不在发布图中"));
+        WorkflowGraphNode source = graph.findNode(resultFrom)
+                .orElseThrow(
+                        () -> new WorkflowNodeFailureException(WorkflowErrorCode.WF_INVALID_GRAPH, "END 的结果来源不在发布图中"));
         WorkflowNodeOutput output = upstreamOutputs.get(resultFrom);
         if (output == null) {
-            throw new WorkflowNodeFailureException(
-                    WorkflowErrorCode.WF_INVALID_GRAPH, "END 的结果来源节点尚未执行：" + resultFrom);
+            throw new WorkflowNodeFailureException(WorkflowErrorCode.WF_INVALID_GRAPH, "END 的结果来源节点尚未执行：" + resultFrom);
         }
         JsonNode nodeOutput = output.output();
         return switch (source.type()) {
@@ -75,16 +72,14 @@ public class WorkflowResultAssembler {
             case RETRIEVAL -> {
                 JsonNode hitCount = nodeOutput.get("hitCount");
                 if (hitCount == null || !hitCount.isNumber()) {
-                    throw new WorkflowNodeFailureException(
-                            WorkflowErrorCode.WF_INVALID_GRAPH, "检索节点输出缺少 hitCount");
+                    throw new WorkflowNodeFailureException(WorkflowErrorCode.WF_INVALID_GRAPH, "检索节点输出缺少 hitCount");
                 }
                 yield jsonResult(Map.of("hitCount", hitCount.intValue()));
             }
             case CONDITION -> {
                 JsonNode branch = nodeOutput.get("branch");
                 if (branch == null || !branch.isTextual()) {
-                    throw new WorkflowNodeFailureException(
-                            WorkflowErrorCode.WF_INVALID_GRAPH, "条件节点输出缺少 branch");
+                    throw new WorkflowNodeFailureException(WorkflowErrorCode.WF_INVALID_GRAPH, "条件节点输出缺少 branch");
                 }
                 yield jsonResult(Map.of("branch", branch.asString()));
             }
@@ -100,12 +95,11 @@ public class WorkflowResultAssembler {
      * @return 结果内容
      */
     private WorkflowResultPayload modelResult(WorkflowGraphNode source, JsonNode nodeOutput) {
-        if (source.config().outputKind() == com.riccon.worker.workflow.engine.domain.WorkflowNodeOutputKind
-                .CLASSIFICATION) {
+        if (source.config().outputKind()
+                == com.riccon.worker.workflow.engine.domain.WorkflowNodeOutputKind.CLASSIFICATION) {
             JsonNode label = nodeOutput.get("classificationLabel");
             if (label == null || !label.isTextual() || label.asString().isBlank()) {
-                throw new WorkflowNodeFailureException(
-                        WorkflowErrorCode.WF_INVALID_GRAPH, "模型节点输出缺少分类标签");
+                throw new WorkflowNodeFailureException(WorkflowErrorCode.WF_INVALID_GRAPH, "模型节点输出缺少分类标签");
             }
             return jsonResult(Map.of("classificationLabel", label.asString()));
         }
@@ -151,8 +145,7 @@ public class WorkflowResultAssembler {
         try {
             return objectMapper.writeValueAsString(value);
         } catch (JacksonException exception) {
-            throw new WorkflowNodeFailureException(
-                    WorkflowErrorCode.WF_INVALID_GRAPH, "结果无法序列化为 JSON", exception);
+            throw new WorkflowNodeFailureException(WorkflowErrorCode.WF_INVALID_GRAPH, "结果无法序列化为 JSON", exception);
         }
     }
 }

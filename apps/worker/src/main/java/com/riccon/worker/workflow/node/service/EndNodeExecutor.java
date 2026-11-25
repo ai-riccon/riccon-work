@@ -44,7 +44,8 @@ public class EndNodeExecutor implements WorkflowNodeExecutor {
         execution.guard().requireActive();
         execution.deadline().requireRemaining();
         String resultFrom = execution.node().config().resultFrom();
-        WorkflowResultPayload payload = assembler.assemble(execution.graph(), execution.node(), execution.upstreamOutputs());
+        WorkflowResultPayload payload =
+                assembler.assemble(execution.graph(), execution.node(), execution.upstreamOutputs());
         Map<String, Object> output = new LinkedHashMap<>();
         output.put("resultFrom", resultFrom);
         output.put("format", payload.format().name());
