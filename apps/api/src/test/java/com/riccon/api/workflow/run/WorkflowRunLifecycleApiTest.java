@@ -134,6 +134,9 @@ class WorkflowRunLifecycleApiTest extends WorkflowRunTestSupport {
         assertThat(replay.status()).as(replay.body()).isEqualTo(202);
         assertThat(nodeAttemptCount(fixture.tenant(), runId, "draft")).isEqualTo(2);
         assertThat(tenantAuditRows(fixture.tenant(), "workflow.run.retried")).hasSize(1);
+        // 重试只恢复活跃运行、不扣配额（tenant X 仅用于 count/update 串行）。
+        assertThat(quotaUsed(fixture.tenant(), "TENANT", fixture.tenant(), "DAILY"))
+                .isZero();
     }
 
     @Test

@@ -170,6 +170,20 @@ public abstract class QuotaApiTestSupport extends ResearchApiTestSupport {
     }
 
     /**
+     * 统计租户内配额用量行数；冷启动应为 4，热路径保持 4。
+     *
+     * @param tenant 租户
+     * @return 行数
+     */
+    protected long quotaRowCount(String tenant) {
+        return jdbcClient
+                .sql("SELECT COUNT(*) FROM quota_usage WHERE tenant_id = :tenantId")
+                .param("tenantId", tenant)
+                .query(Long.class)
+                .single();
+    }
+
+    /**
      * 统计租户内 run 数。
      *
      * @param tenant 租户

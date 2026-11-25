@@ -77,7 +77,20 @@ public class ResearchTaskRepository {
     }
 
     /**
-     * 按幂等键读取任务并加锁。
+     * 按幂等键读取任务（热路径，不加锁）。
+     *
+     * @param tenantId 当前租户
+     * @param createdBy 创建人
+     * @param idempotencyKey 幂等键
+     * @return 既有任务
+     */
+    public Optional<ResearchTaskSnapshot> findByIdempotencyKey(
+            TenantId tenantId, UUID createdBy, String idempotencyKey) {
+        return researchTaskJdbc.findByIdempotencyKey(tenantId, createdBy, idempotencyKey);
+    }
+
+    /**
+     * 按幂等键读取任务并加锁（只用于冲突回滚后的新事务重读）。
      *
      * @param tenantId 当前租户
      * @param createdBy 创建人

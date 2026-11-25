@@ -102,10 +102,13 @@ public class ResearchTaskJdbc {
             "SELECT " + COLUMNS + " FROM research_task WHERE tenant_id = :tenantId AND id = :taskId";
 
     /** 幂等查询使用当前读，绕过 REPEATABLE READ 快照，保证并发重复提交也能看到已提交任务。 */
+    /** 按幂等键读取任务；热路径使用非锁定读，避免缺失键间隙锁与插入意向锁交叉死锁。 */
     private static final String FIND_BY_IDEMPOTENCY = "SELECT " + COLUMNS
             + " FROM research_task"
-            + " WHERE tenant_id = :tenantId AND created_by = :createdBy AND idempotency_key = :idempotencyKey"
-            + " FOR UPDATE";
+            + " WHERE tenant_id = :tenantId AND created_by = :createdBy AND idempotency_key = :idempotencyKey";
+
+    /** 冲突回滚后的新事务重读；此时先到者已提交，记录锁不会演变成缺失键间隙锁。 */
+    private static final String FIND_BY_IDEMPOTENCY_FOR_UPDATE = FIND_BY_IDEMPOTENCY + " FOR UPDATE";
 
     /** 列表过滤条件；状态过滤作用于投影后的任务状态。 */
     private static final String LIST_FILTER = """
@@ -238,7 +241,29 @@ public class ResearchTaskJdbc {
     }
 
     /**
+     * 按创建人与幂等键读取任务，不加锁（ADR-0022 §1.3-R 幂等热路径）。
+     *
+     * <p>同键并发可能都通过本查询；唯一键与本事务回滚/新事务重读是最终守卫。热路径避免
+     * {@code SELECT ... FOR UPDATE} 在缺失键上留下间隙锁，否则多事务的插入意向锁会与彼此的间隙锁交叉死锁。
+     *
+     * @param tenantId 当前租户
+     * @param createdBy 创建人
+     * @param idempotencyKey 幂等键
+     * @return 既有任务
+     */
+    public Optional<ResearchTaskSnapshot> findByIdempotencyKey(
+            TenantId tenantId, UUID createdBy, String idempotencyKey) {
+        return tenantJdbc.queryOne(
+                tenantId,
+                FIND_BY_IDEMPOTENCY,
+                Map.of("createdBy", BinaryUuids.toBytes(createdBy), "idempotencyKey", idempotencyKey),
+                ResearchTaskJdbc::mapRow);
+    }
+
+    /**
      * 按创建人与幂等键读取任务并加锁。
+     *
+     * <p>只用于冲突回滚后的新事务重读：此时先到者已提交，记录锁不会演变成缺失键间隙锁。
      *
      * @param tenantId 当前租户
      * @param createdBy 创建人
@@ -249,7 +274,7 @@ public class ResearchTaskJdbc {
             TenantId tenantId, UUID createdBy, String idempotencyKey) {
         return tenantJdbc.queryOne(
                 tenantId,
-                FIND_BY_IDEMPOTENCY,
+                FIND_BY_IDEMPOTENCY_FOR_UPDATE,
                 Map.of("createdBy", BinaryUuids.toBytes(createdBy), "idempotencyKey", idempotencyKey),
                 ResearchTaskJdbc::mapRow);
     }

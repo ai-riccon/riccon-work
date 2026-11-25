@@ -26,11 +26,11 @@ import org.springframework.stereotype.Component;
  * <p>{@code quota_limit}/{@code quota_usage} 的租户范围读写全部经过 {@link TenantJdbc}，由它强制
  * {@code tenant_id = :tenantId} 与当前租户上下文一致。唯一例外是全局控制表 {@code model_gateway_switch}：
  * 它没有租户维度，且不属于 PlatformJdbc 的管理读路径，因此直接使用 {@link JdbcClient} 读取单个开关值；
- * 准入串行锁也直接锁全局 {@code tenant} 行（同样无租户业务内容），不读取任何租户业务数据。
+ * 租户行 S/X 锁也直接锁全局 {@code tenant} 行（同样无租户业务内容），不读取任何租户业务数据。
  *
- * <p>准入所需的“确保行存在 + 条件累加”拆成两条 SQL：先
- * {@code INSERT ... ON DUPLICATE KEY UPDATE used_count = used_count} 取得排他行锁，再执行带
- * {@code used_count < :limit} 的 UPDATE；不使用 {@code INSERT IGNORE}（ADR-0022 第 1.3 节）。
+ * <p>准入所需 SQL 按 ADR-0022 §1.3-R 拆分：业务事务之外用「查 4 行存在性 + 只插缺失行」完成冷路径补行；业务
+ * 事务内只做 4 条 {@code INCREMENT_*}/{@code INCREMENT_CONDITIONAL} 原子更新。补行仍使用
+ * {@code INSERT ... ON DUPLICATE KEY UPDATE used_count = used_count}，不使用 {@code INSERT IGNORE}。
  */
 @Component
 public class QuotaJdbc {
@@ -43,14 +43,20 @@ public class QuotaJdbc {
             "SELECT switch_value FROM model_gateway_switch WHERE switch_key = :switchKey";
 
     /**
-     * 租户级准入串行点。
+     * 租户行共享锁（ADR-0022 §1.3-R）。
      *
-     * <p>并发首次创建同一 {@code quota_usage} 行时，MySQL 的 {@code INSERT ... ON DUPLICATE KEY UPDATE}
-     * 会先取共享锁再升级排他锁，多个事务互相等待会触发死锁。先在 {@code tenant} 行上取排他锁，让同一租户的
-     * 准入严格串行（它们本来也会在租户日窗口热点行上串行），再按固定顺序创建/累加配额行，可消除这一升级死锁。
-     * 锁随 run 创建事务提交/回滚自动释放，不需要额外解锁。
+     * <p>创建 run 的业务事务在配额更新前取共享锁：多个创建事务的 S 相互兼容，不再串行；它只与冷路径补行的 X
+     * 和 M06 重试的 X 互斥，用来保证「补行/重试」看不到也不打断在途创建。锁随业务事务提交/回滚释放。
      */
-    private static final String LOCK_TENANT = "SELECT id FROM tenant WHERE id = :tenantId FOR UPDATE";
+    private static final String LOCK_TENANT_SHARED = "SELECT id FROM tenant WHERE id = :tenantId FOR SHARE";
+
+    /**
+     * 租户行排他锁（ADR-0022 §1.3-R）。
+     *
+     * <p>只用于两处短临界区：业务事务之外的冷路径补行（消除 ODKU 的 S→X 升级死锁），以及 M06 重试在
+     * count/update 之前串行化。禁止在已持有 tenant S 的事务内申请本锁（S→X 升级会死锁）。
+     */
+    private static final String LOCK_TENANT_EXCLUSIVE = "SELECT id FROM tenant WHERE id = :tenantId FOR UPDATE";
 
     /** 读取租户级 + 当前用户级显式限额。 */
     private static final String FIND_LIMITS = """
@@ -120,6 +126,21 @@ public class QuotaJdbc {
                AND window_start = :windowStart
             """;
 
+    /**
+     * 读取当前窗口集合中已存在的用量行（只看存在性，不取锁）。
+     *
+     * <p>用于业务事务之外的冷路径判定：4 个窗口行齐全时热路径不再进入补行短事务。查询包含
+     * {@code window_start} 与 {@code window_kind}，因为每月 1 日的日窗口与月窗口起点相同，不能只按时间区分。
+     */
+    private static final String FIND_WINDOW_USAGE_ROWS = """
+            SELECT tenant_id, scope_type, scope_id, window_kind, window_start, used_count
+              FROM quota_usage
+             WHERE tenant_id = :tenantId
+               AND window_start IN (:windowStarts)
+               AND ((scope_type = 'TENANT' AND scope_id = :tenantId)
+                    OR (scope_type = 'USER' AND scope_id = :userId))
+            """;
+
     /** 读取某一维度多个窗口的用量。 */
     private static final String FIND_USAGES = """
             SELECT tenant_id, scope_type, scope_id, window_kind, window_start, used_count
@@ -183,14 +204,29 @@ public class QuotaJdbc {
     }
 
     /**
-     * 在当前事务内锁定租户行，作为准入串行点。
+     * 在当前事务内对租户行取共享锁（创建路径）。
      *
      * @param tenantId 当前租户
      * @return 租户行存在时返回 true
      */
-    public boolean lockTenant(TenantId tenantId) {
+    public boolean lockTenantShared(TenantId tenantId) {
         return jdbcClient
-                .sql(LOCK_TENANT)
+                .sql(LOCK_TENANT_SHARED)
+                .param("tenantId", tenantId.value())
+                .query(String.class)
+                .optional()
+                .isPresent();
+    }
+
+    /**
+     * 在当前事务内对租户行取排他锁（冷路径补行、M06 重试）。
+     *
+     * @param tenantId 当前租户
+     * @return 租户行存在时返回 true
+     */
+    public boolean lockTenantExclusive(TenantId tenantId) {
+        return jdbcClient
+                .sql(LOCK_TENANT_EXCLUSIVE)
                 .param("tenantId", tenantId.value())
                 .query(String.class)
                 .optional()
@@ -313,6 +349,26 @@ public class QuotaJdbc {
                 FIND_USED,
                 usageParams(tenantId, scope, scopeId, window, windowStart),
                 (rs, rowNum) -> rs.getInt("used_count"));
+    }
+
+    /**
+     * 读取当前窗口集合中已存在的用量行（不取锁）。
+     *
+     * @param tenantId 当前租户
+     * @param userId 当前用户
+     * @param windowStarts 窗口起点集合（UTC）
+     * @return 已存在的用量行；缺失的窗口不会出现在结果中
+     */
+    public List<QuotaUsageRow> findWindowUsageRows(TenantId tenantId, UUID userId, List<Instant> windowStarts) {
+        if (windowStarts.isEmpty()) {
+            return List.of();
+        }
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("userId", userId.toString());
+        params.put(
+                "windowStarts",
+                windowStarts.stream().map(SqlTimestamps::toDatabase).toList());
+        return tenantJdbc.query(tenantId, FIND_WINDOW_USAGE_ROWS, params, QuotaJdbc::mapUsage);
     }
 
     /**

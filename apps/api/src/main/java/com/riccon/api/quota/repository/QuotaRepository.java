@@ -44,13 +44,23 @@ public class QuotaRepository {
     }
 
     /**
-     * 锁定租户行作为准入串行点。
+     * 对租户行取共享锁（创建路径，ADR-0022 §1.3-R）。
      *
      * @param tenantId 当前租户
      * @return 租户行存在时返回 true
      */
-    public boolean lockTenant(TenantId tenantId) {
-        return quotaJdbc.lockTenant(tenantId);
+    public boolean lockTenantShared(TenantId tenantId) {
+        return quotaJdbc.lockTenantShared(tenantId);
+    }
+
+    /**
+     * 对租户行取排他锁（补行、M06 重试，ADR-0022 §1.3-R）。
+     *
+     * @param tenantId 当前租户
+     * @return 租户行存在时返回 true
+     */
+    public boolean lockTenantExclusive(TenantId tenantId) {
+        return quotaJdbc.lockTenantExclusive(tenantId);
     }
 
     /**
@@ -153,6 +163,18 @@ public class QuotaRepository {
     public Optional<Integer> findUsed(
             TenantId tenantId, QuotaScope scope, String scopeId, QuotaWindow window, Instant windowStart) {
         return quotaJdbc.findUsed(tenantId, scope, scopeId, window, windowStart);
+    }
+
+    /**
+     * 读取当前窗口集合中已存在的用量行（不取锁）。
+     *
+     * @param tenantId 当前租户
+     * @param userId 当前用户
+     * @param windowStarts 窗口起点集合
+     * @return 已存在的用量行
+     */
+    public List<QuotaUsageRow> findWindowUsageRows(TenantId tenantId, UUID userId, List<Instant> windowStarts) {
+        return quotaJdbc.findWindowUsageRows(tenantId, userId, windowStarts);
     }
 
     /**

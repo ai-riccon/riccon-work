@@ -30,7 +30,8 @@ class QuotaStoreFailureApiTest extends QuotaApiTestSupport {
     /** 每个用例前让租户锁成功、开关读取抛存储异常。 */
     @BeforeEach
     void failStore() {
-        when(quotaJdbc.lockTenant(any())).thenReturn(true);
+        when(quotaJdbc.lockTenantExclusive(any())).thenReturn(true);
+        when(quotaJdbc.lockTenantShared(any())).thenReturn(true);
         doThrow(new DataAccessResourceFailureException("quota store unavailable"))
                 .when(quotaJdbc)
                 .findEnforcementSwitch();

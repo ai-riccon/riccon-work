@@ -40,14 +40,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * 发送消息的持久化阶段。
  *
- * <p>在会话行锁内完成：幂等检查、附件校验、seq 分配、用户消息与 assistant 占位插入、agent_run 创建、会话标题刷新
- * 与 {@code message.sent} 审计。本阶段不调用 Worker；事务提交后由 {@link ChatService} 打开 SSE，避免把网络等待
- * 放进数据库事务。M03 起共享空间成员都可向同一会话追加消息，写入前先经过工作空间访问判定。
+ * <p>按 ADR-0022 §1.3-R，冷路径补行 {@link QuotaAdmissionService#prepare} 在业务事务之外执行；随后由本类用
+ * {@link TransactionTemplate} 开启业务事务：先取 tenant S 锁，再锁会话行完成幂等检查、附件校验、seq 分配、
+ * 用户消息与 assistant 占位插入、配额准入、agent_run 创建、会话标题刷新与 {@code message.sent} 审计。
+ * 锁序固定为 tenant S → 会话行 → 配额行；本阶段不调用 Worker，事务提交后由 {@link ChatService} 打开 SSE，
+ * 避免把网络等待放进数据库事务。M03 起共享空间成员都可向同一会话追加消息，写入前先经过工作空间访问判定。
  *
  * <p>按 ADR-0008，J1 流式回答走 API → Worker 直连 SSE，不写 outbox；{@code riccon.agent.run.requested.v1}
  * 的 payload 要求 {@code researchTaskId}，只适用于 J2 报告任务，不能用于 CHAT。
@@ -91,6 +94,9 @@ public class ChatSubmissionService {
     /** 审计写入。 */
     private final AuditService auditService;
 
+    /** 业务事务模板；配额冷路径补行在模板之外完成。 */
+    private final TransactionTemplate transactionTemplate;
+
     /** UTC 时钟。 */
     private final Clock clock;
 
@@ -104,6 +110,7 @@ public class ChatSubmissionService {
      * @param workspaceService 工作空间可见性
      * @param quotaAdmissionService 配额准入
      * @param auditService 审计写入
+     * @param transactionManager 事务管理器
      * @param clock UTC 时钟
      */
     public ChatSubmissionService(
@@ -114,6 +121,7 @@ public class ChatSubmissionService {
             WorkspaceService workspaceService,
             QuotaAdmissionService quotaAdmissionService,
             AuditService auditService,
+            PlatformTransactionManager transactionManager,
             Clock clock) {
         this.conversationRepository = Objects.requireNonNull(conversationRepository, "conversationRepository");
         this.messageRepository = Objects.requireNonNull(messageRepository, "messageRepository");
@@ -122,11 +130,17 @@ public class ChatSubmissionService {
         this.workspaceService = Objects.requireNonNull(workspaceService, "workspaceService");
         this.quotaAdmissionService = Objects.requireNonNull(quotaAdmissionService, "quotaAdmissionService");
         this.auditService = Objects.requireNonNull(auditService, "auditService");
+        this.transactionTemplate = new TransactionTemplate(
+                Objects.requireNonNull(transactionManager, "transactionManager must not be null"));
         this.clock = Objects.requireNonNull(clock, "clock");
     }
 
     /**
      * 持久化用户消息、assistant 占位、运行与审计。
+     *
+     * <p>配额冷路径补行在业务事务之外完成（不能把 {@code REQUIRES_NEW} 嵌套进业务事务占用第二条连接）；
+     * 之后才开启业务事务，在事务内先取 tenant S、再锁会话行。会话不存在/无权访问仍在补行前拒绝，避免为无效
+     * 请求创建配额行。
      *
      * @param actor 当前员工
      * @param conversationId 会话 ID
@@ -138,7 +152,6 @@ public class ChatSubmissionService {
      * @throws ConflictException 同一 clientMessageId 已提交
      * @throws BadRequestException 内容、附件或幂等键不合法
      */
-    @Transactional
     public ChatSubmission prepare(
             RicconPrincipal actor, UUID conversationId, SendMessageRequest request, String traceId, String requestId) {
         Validation.requireBody(request);
@@ -153,9 +166,40 @@ public class ChatSubmissionService {
                 .findById(tenantId, conversationId)
                 .orElseThrow(() -> new NotFoundException("conversation"));
         workspaceService.requireAccessible(tenantId, conversation.workspaceId(), actor.userId());
-        // 在锁定会话行之前先取租户准入串行锁，保证所有 run 创建事务的加锁顺序一致（避免与配额/幂等行交叉死锁）。
-        quotaAdmissionService.lockTenant(tenantId);
-        conversation = conversationRepository
+        // 冷路径补行必须在任何业务事务之外；随后业务事务内先取 tenant S、再锁会话行（ADR-0022 §1.3-R）。
+        QuotaAdmissionService.AdmissionContext admission =
+                quotaAdmissionService.prepare(tenantId, actor.userId(), clock.instant());
+        return transactionTemplate.execute(status -> persistSubmission(
+                actor, tenantId, conversationId, content, clientMessageId, fileIds, traceId, requestId, admission));
+    }
+
+    /**
+     * 在业务事务内完成会话行锁、幂等检查、配额准入、消息/运行插入与审计。
+     *
+     * @param actor 当前员工
+     * @param tenantId 当前租户
+     * @param conversationId 会话 ID
+     * @param content 消息内容
+     * @param clientMessageId 客户端消息 ID
+     * @param fileIds 已规范化的附件 ID
+     * @param traceId 追踪 ID
+     * @param requestId 请求 ID
+     * @param admission 配额准入上下文
+     * @return 已持久化的提交
+     */
+    private ChatSubmission persistSubmission(
+            RicconPrincipal actor,
+            TenantId tenantId,
+            UUID conversationId,
+            String content,
+            String clientMessageId,
+            List<UUID> fileIds,
+            String traceId,
+            String requestId,
+            QuotaAdmissionService.AdmissionContext admission) {
+        // tenant S 必须早于会话行锁：S 相互兼容，只与冷路径补行/M06 重试的 X 互斥。
+        quotaAdmissionService.lockTenantShared(tenantId);
+        ConversationRecord conversation = conversationRepository
                 .findByIdForUpdate(tenantId, conversationId)
                 .orElseThrow(() -> new NotFoundException("conversation"));
         if (messageRepository
@@ -166,8 +210,8 @@ public class ChatSubmissionService {
         requireUsableFiles(tenantId, conversation, fileIds);
 
         // 配额准入放在幂等/权限/文件校验之后、任何消息与 run 插入之前：重复提交不会重复扣配额，
-        // 被拒绝时事务内尚未写入业务数据；计数与 run 插入同事务提交/回滚（ADR-0022 §1.4）。
-        quotaAdmissionService.admit(tenantId, actor.userId());
+        // 被拒绝时事务内尚未写入业务数据；计数与 run 插入同事务提交/回滚（ADR-0022 §1.4/§1.3-R）。
+        quotaAdmissionService.admit(admission);
 
         Instant now = clock.instant();
         long maxSeq = messageRepository.maxSeq(tenantId, conversation.id());
@@ -205,7 +249,7 @@ public class ChatSubmissionService {
             messageRepository.insert(tenantId, assistantMessage);
             runRepository.createChatPending(tenantId, runId, conversation.id(), actor.userId(), traceId, now);
         } catch (DuplicateKeyException exception) {
-            // 并发相同 clientMessageId：会话行锁已串行化，这里是对唯一键的最终守卫。
+            // 并发相同 clientMessageId：会话行锁已串行化，这里是对唯一键的最终守卫；抛错使配额与消息一并回滚。
             throw new ConflictException("clientMessageId was already submitted");
         }
         String autoTitle = ConversationService.autoTitle(content);

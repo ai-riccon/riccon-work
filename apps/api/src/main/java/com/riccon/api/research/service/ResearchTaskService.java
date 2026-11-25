@@ -16,6 +16,7 @@ import com.riccon.api.identity.domain.RicconPrincipal;
 import com.riccon.api.identity.dto.PageQuery;
 import com.riccon.api.outbox.domain.OutboxEvent;
 import com.riccon.api.outbox.repository.OutboxRepository;
+import com.riccon.api.quota.domain.QuotaExceededException;
 import com.riccon.api.quota.service.QuotaAdmissionService;
 import com.riccon.api.research.domain.ApprovalSnapshot;
 import com.riccon.api.research.domain.ArtifactCitationSnapshot;
@@ -64,14 +65,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * 报告任务创建、列表与详情。
  *
- * <p>创建在同一个事务内写 {@code research_task}、{@code agent_run}、outbox 事件与审计：任一步失败都不产生
- * “已受理”状态（ADR-0008 第 7 节）。Worker 只推进运行；任务状态与阶段在读取前由当前运行投影，避免列表
- * 永远显示 PENDING。租户与工作空间可见性统一 404，不区分“不存在”和“属于其他租户”。
+ * <p>创建按 ADR-0022 §1.3-R 分两段：配额冷路径补行在业务事务之外；业务事务内先取 tenant S，再查幂等记录
+ * 并写 {@code research_task}、{@code agent_run}、outbox 事件与审计，任一步失败都不产生“已受理”状态
+ * （ADR-0008 第 7 节）。唯一键冲突或配额 429 会使整个业务事务（含配额计数）回滚，随后在新事务按幂等键重读
+ * 既有任务；重读命中时返回既有对象，不重复扣配额、不重复写审计。Worker 只推进运行；任务状态与阶段在读取前
+ * 由当前运行投影，避免列表永远显示 PENDING。租户与工作空间可见性统一 404，不区分“不存在”和“属于其他租户”。
  */
 @Service
 public class ResearchTaskService {
@@ -124,6 +129,9 @@ public class ResearchTaskService {
     /** 审计写入。 */
     private final AuditService auditService;
 
+    /** 业务事务模板；配额冷路径补行在模板之外完成。 */
+    private final TransactionTemplate transactionTemplate;
+
     /** UTC 时钟。 */
     private final Clock clock;
 
@@ -142,6 +150,7 @@ public class ResearchTaskService {
      * @param workspaceService 工作空间可见性
      * @param quotaAdmissionService 配额准入
      * @param auditService 审计写入
+     * @param transactionManager 事务管理器
      * @param clock UTC 时钟
      */
     public ResearchTaskService(
@@ -157,6 +166,7 @@ public class ResearchTaskService {
             WorkspaceService workspaceService,
             QuotaAdmissionService quotaAdmissionService,
             AuditService auditService,
+            PlatformTransactionManager transactionManager,
             Clock clock) {
         this.researchTaskRepository = Objects.requireNonNull(researchTaskRepository, "researchTaskRepository");
         this.runRepository = Objects.requireNonNull(runRepository, "runRepository");
@@ -170,6 +180,8 @@ public class ResearchTaskService {
         this.workspaceService = Objects.requireNonNull(workspaceService, "workspaceService");
         this.quotaAdmissionService = Objects.requireNonNull(quotaAdmissionService, "quotaAdmissionService");
         this.auditService = Objects.requireNonNull(auditService, "auditService");
+        this.transactionTemplate = new TransactionTemplate(
+                Objects.requireNonNull(transactionManager, "transactionManager must not be null"));
         this.clock = Objects.requireNonNull(clock, "clock");
     }
 
@@ -177,7 +189,8 @@ public class ResearchTaskService {
      * 创建报告任务并入队。
      *
      * <p>幂等键与创建人绑定：同一用户重复提交同一键且主题/工具一致时返回既有任务；内容不同返回 409。
-     * 预先用 {@code SELECT ... FOR UPDATE} 做当前读，避免并发重复提交在快照读下看不到已提交任务。
+     * 幂等查询使用非锁定读，同键并发可能都通过；唯一键冲突或配额 429 后，本事务（含配额计数）整体回滚，
+     * 再在新事务重读既有对象。
      *
      * @param actor 当前员工
      * @param workspaceId 工作空间 ID
@@ -187,7 +200,6 @@ public class ResearchTaskService {
      * @param requestId 请求 ID
      * @return 已创建或既有的任务
      */
-    @Transactional
     public ResearchTaskResponse create(
             RicconPrincipal actor,
             UUID workspaceId,
@@ -201,12 +213,62 @@ public class ResearchTaskService {
 
         TenantId tenantId = TenantId.of(actor.tenantId());
         workspaceService.requireAccessible(tenantId, workspaceId, actor.userId());
-        // 在锁定幂等记录/插入任务之前先取租户准入串行锁，保证 run 创建事务的加锁顺序一致。
-        quotaAdmissionService.lockTenant(tenantId);
+        // 冷路径补行必须在业务事务之外：禁止 REQUIRES_NEW 嵌套进业务事务占用第二条连接（ADR-0022 §1.3-R）。
+        QuotaAdmissionService.AdmissionContext admission =
+                quotaAdmissionService.prepare(tenantId, actor.userId(), clock.instant());
+        try {
+            return Objects.requireNonNull(
+                    transactionTemplate.execute(status -> createInTransaction(
+                            actor,
+                            tenantId,
+                            workspaceId,
+                            topic,
+                            mcpToolId,
+                            idempotencyKey,
+                            traceId,
+                            requestId,
+                            admission)),
+                    "research task creation returned null");
+        } catch (DuplicateKeyException exception) {
+            // 并发同键：事务已回滚（含本请求的配额计数），在新事务重读先到者，避免双扣或半提交。
+            return replayAfterConflict(tenantId, actor, topic, mcpToolId, idempotencyKey, exception);
+        } catch (QuotaExceededException exception) {
+            // 同键先到者可能刚占满窗口：命中既有对象时返回它而不是 429；未命中则保留 429 由 Web 边界写拒绝审计。
+            return replayAfterConflict(tenantId, actor, topic, mcpToolId, idempotencyKey, exception);
+        }
+    }
+
+    /**
+     * 在业务事务内：tenant S → 幂等当前读 → 配额准入 → 任务/运行/outbox/审计。
+     *
+     * @param actor 当前员工
+     * @param tenantId 当前租户
+     * @param workspaceId 工作空间 ID
+     * @param topic 主题
+     * @param mcpToolId MCP 工具 ID
+     * @param idempotencyKey 幂等键
+     * @param traceId 追踪 ID
+     * @param requestId 请求 ID
+     * @param admission 配额准入上下文
+     * @return 新建或既有的任务
+     */
+    private ResearchTaskResponse createInTransaction(
+            RicconPrincipal actor,
+            TenantId tenantId,
+            UUID workspaceId,
+            String topic,
+            UUID mcpToolId,
+            String idempotencyKey,
+            String traceId,
+            String requestId,
+            QuotaAdmissionService.AdmissionContext admission) {
+        // tenant S 早于幂等记录的业务行锁；S 相互兼容，只与补行/M06 重试 X 互斥。
+        quotaAdmissionService.lockTenantShared(tenantId);
 
         // 先查幂等记录：重复提交应返回既有任务，即使该工具随后被停用，也不改变已受理结果。
+        // 热路径用非锁定读：同键并发可以都通过，唯一键 + 事务回滚 + 新事务重读兜底（ADR-0022 §1.3-R）。
         Optional<ResearchTaskSnapshot> existing =
-                researchTaskRepository.findByIdempotencyKeyForUpdate(tenantId, actor.userId(), idempotencyKey);
+                researchTaskRepository.findByIdempotencyKey(tenantId, actor.userId(), idempotencyKey);
         if (existing.isPresent()) {
             return replayOrConflict(tenantId, actor, existing.get(), topic, mcpToolId);
         }
@@ -215,7 +277,7 @@ public class ResearchTaskService {
         }
 
         // 幂等命中已在前面返回，此处只对新任务准入一次；计数与任务/运行/outbox 同事务回滚（ADR-0022 §1.4）。
-        quotaAdmissionService.admit(tenantId, actor.userId());
+        quotaAdmissionService.admit(admission);
 
         Instant now = clock.instant();
         UUID taskId = UuidV7.generate(now);
@@ -236,15 +298,7 @@ public class ResearchTaskService {
                 now,
                 null,
                 null);
-        try {
-            researchTaskRepository.insert(tenantId, task, idempotencyKey);
-        } catch (DuplicateKeyException exception) {
-            // 并发同键请求：唯一键是最后守卫；重新当前读，返回先到者或报告内容冲突。
-            ResearchTaskSnapshot winner = researchTaskRepository
-                    .findByIdempotencyKeyForUpdate(tenantId, actor.userId(), idempotencyKey)
-                    .orElseThrow(() -> new ConflictException("idempotency key is being processed concurrently"));
-            return replayOrConflict(tenantId, actor, winner, topic, mcpToolId);
-        }
+        researchTaskRepository.insert(tenantId, task, idempotencyKey);
         runRepository.createResearchPending(tenantId, runId, taskId, actor.userId(), traceId, now);
         outboxRepository.enqueue(
                 tenantId,
@@ -277,6 +331,37 @@ public class ResearchTaskService {
                 workspaceId,
                 mcpToolId);
         return ResearchTaskResponse.from(task);
+    }
+
+    /**
+     * 唯一键冲突或配额 429 回滚后，在新事务按幂等键重读既有任务。
+     *
+     * <p>只有重读命中才返回既有对象（不重复扣配额、不重复审计）；重读仍为空说明冲突并非同键并发，原样抛出
+     * 原异常，让 409/429 语义保持不变。
+     *
+     * @param tenantId 当前租户
+     * @param actor 当前员工
+     * @param topic 本次主题
+     * @param mcpToolId 本次工具
+     * @param idempotencyKey 幂等键
+     * @param original 回滚时的原始异常
+     * @return 既有任务响应
+     */
+    private ResearchTaskResponse replayAfterConflict(
+            TenantId tenantId,
+            RicconPrincipal actor,
+            String topic,
+            UUID mcpToolId,
+            String idempotencyKey,
+            RuntimeException original) {
+        Optional<ResearchTaskSnapshot> winner = Objects.requireNonNull(
+                transactionTemplate.execute(status ->
+                        researchTaskRepository.findByIdempotencyKeyForUpdate(tenantId, actor.userId(), idempotencyKey)),
+                "idempotency replay returned null");
+        if (winner.isEmpty()) {
+            throw original;
+        }
+        return replayOrConflict(tenantId, actor, winner.get(), topic, mcpToolId);
     }
 
     /**

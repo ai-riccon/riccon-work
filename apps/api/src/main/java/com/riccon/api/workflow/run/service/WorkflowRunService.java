@@ -9,6 +9,7 @@ import com.riccon.api.department.repository.DepartmentRepository;
 import com.riccon.api.error.ForbiddenException;
 import com.riccon.api.error.NotFoundException;
 import com.riccon.api.identity.domain.TenantRecord;
+import com.riccon.api.quota.domain.QuotaExceededException;
 import com.riccon.api.quota.service.QuotaAdmissionService;
 import com.riccon.api.workflow.definition.domain.WorkflowDefinitionActor;
 import com.riccon.api.workflow.domain.WorkflowGraph;
@@ -39,21 +40,29 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * 工作流运行准入、创建、取消与重试服务。
  *
- * <p>准入在同一事务内完成：先锁租户行（与 M04 配额锁顺序一致）→ 查创建幂等 → 配额按运行 1 单位准入 →
- * 统计租户/单流程活跃运行（含等待审批）→ 插入 {@code PENDING} 运行 → 写审计；任一步失败整体回滚
- * （ADR-0024 §4.8，DEC-0048=A）。
+ * <p>按 ADR-0022 §1.3-R，创建拆成两段：配额冷路径补行在业务事务之外；业务事务内先做幂等/定义/版本/范围
+ * 只读校验，再取 tenant S 锁，随后配额按运行 1 单位准入（4 条原子 UPDATE，命中 TENANT/DAILY 行 X 串行
+ * count+insert）、统计租户/单流程活跃运行、插入 {@code PENDING} 运行、写审计；任一步失败整体回滚
+ * （ADR-0024 §4.8，DEC-0048=A）。唯一键冲突或配额 429 后在新事务按幂等键重读既有运行，不重复扣配额/审计。
  *
- * <p>版本范围校验使用用户实际选择的 {@code workflow_version.run_scope + department_id}，而不是最近发布
- * 版本或草稿范围；范围外统一 404、同租户可见但无能力统一 403（ADR-0024 §6.2，T04 评审约束）。
+ * <p>重试不扣配额，但会把 FAILED 运行恢复为活跃：tenant X 在只读校验之后、count/update 之前取得，与所有创建
+ * 的 S 互斥，保证租户 10/单流程 5 精确。版本范围校验使用用户实际选择的
+ * {@code workflow_version.run_scope + department_id}，而不是最近发布版本或草稿范围；范围外统一 404、同租户
+ * 可见但无能力统一 403（ADR-0024 §6.2，T04 评审约束）。
  *
  * <p>关闭开关只拒绝新运行与重试，取消保持可用；取消先取消待审批再条件更新运行，与审批决定的加锁顺序
  * 一致（ADR-0024 §4.8/§5.4，AC-23）。
@@ -85,6 +94,9 @@ public class WorkflowRunService {
     /** 编排部署配置（并发上限、保留默认、kill switch）。 */
     private final WorkflowProperties properties;
 
+    /** 创建业务事务模板（READ_COMMITTED）；配额冷路径补行在模板之外完成。 */
+    private final TransactionTemplate transactionTemplate;
+
     /** 可注入 UTC 时钟。 */
     private final Clock clock;
 
@@ -97,6 +109,7 @@ public class WorkflowRunService {
      * @param departmentRepository 部门仓储
      * @param tenantDirectoryRepository 租户目录
      * @param properties 编排部署配置
+     * @param transactionManager 事务管理器
      * @param clock 可注入时钟
      */
     public WorkflowRunService(
@@ -106,6 +119,7 @@ public class WorkflowRunService {
             DepartmentRepository departmentRepository,
             TenantDirectoryRepository tenantDirectoryRepository,
             WorkflowProperties properties,
+            PlatformTransactionManager transactionManager,
             Clock clock) {
         this.repository = Objects.requireNonNull(repository, "repository must not be null");
         this.quotaAdmissionService =
@@ -116,14 +130,19 @@ public class WorkflowRunService {
         this.tenantDirectoryRepository =
                 Objects.requireNonNull(tenantDirectoryRepository, "tenantDirectoryRepository must not be null");
         this.properties = Objects.requireNonNull(properties, "properties must not be null");
+        this.transactionTemplate = new TransactionTemplate(
+                Objects.requireNonNull(transactionManager, "transactionManager must not be null"));
+        this.transactionTemplate.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
     /**
      * 创建运行。
      *
-     * <p>同一主体在同一流程用同一 {@code Idempotency-Key} 重放时返回既有运行，不重复扣配额、不重复写审计；
-     * 幂等查询在租户行锁之后、配额准入之前执行（ADR-0024 §4.6/§7.4）。
+     * <p>同一主体在同一流程用同一 {@code Idempotency-Key} 重放时返回既有运行，不重复扣配额、不重复写审计。
+     * 只读校验（幂等、定义、版本、范围）在 tenant S 之前完成；S 只与冷路径补行/M06 重试 X 互斥，创建之间不再
+     * 整体串行。唯一键冲突或配额 429 会让事务整体回滚，再由新事务重读既有运行（ADR-0024 §4.6/§7.4、
+     * ADR-0022 §1.3-R）。
      *
      * @param actor 当前主体
      * @param workflowId 流程 ID
@@ -137,7 +156,6 @@ public class WorkflowRunService {
      * @throws WorkflowRunBadRequestException 未发布、停用或输入/图非法
      * @throws WorkflowRunRateLimitedException 租户或流程并发超限
      */
-    @Transactional(isolation = Isolation.READ_COMMITTED)
     public WorkflowRunResponse create(
             WorkflowDefinitionActor actor,
             UUID workflowId,
@@ -148,8 +166,45 @@ public class WorkflowRunService {
         requireFeatureEnabled();
         requireRunPermission(actor);
         TenantId tenantId = TenantId.of(actor.tenantId());
-        // 先锁租户行：与 M04 配额准入相同锁顺序，并让同租户创建/重试串行化。
-        quotaAdmissionService.lockTenant(tenantId);
+        // 冷路径补行必须在业务事务之外；业务事务随后在只读校验后取 tenant S（ADR-0022 §1.3-R）。
+        QuotaAdmissionService.AdmissionContext admission =
+                quotaAdmissionService.prepare(tenantId, actor.userId(), clock.instant());
+        try {
+            return Objects.requireNonNull(
+                    transactionTemplate.execute(status -> createInTransaction(
+                            actor, tenantId, workflowId, command, idempotencyKey, traceId, requestId, admission)),
+                    "workflow run creation returned null");
+        } catch (DuplicateKeyException exception) {
+            // 并发同键：事务已整体回滚（含配额），在新事务重读先到者；仍缺失说明冲突不是幂等键。
+            return replayAfterConflict(tenantId, workflowId, actor, idempotencyKey, exception);
+        } catch (QuotaExceededException exception) {
+            // 同键先到者可能刚占满窗口：命中既有运行时返回它而不是 429；未命中则保留 429 由 Web 边界写拒绝审计。
+            return replayAfterConflict(tenantId, workflowId, actor, idempotencyKey, exception);
+        }
+    }
+
+    /**
+     * 在业务事务内：只读校验 → tenant S → 配额准入 → 并发上限 → 插入运行与审计。
+     *
+     * @param actor 当前主体
+     * @param tenantId 当前租户
+     * @param workflowId 流程 ID
+     * @param command 创建命令
+     * @param idempotencyKey 幂等键
+     * @param traceId 追踪 ID
+     * @param requestId 请求 ID
+     * @param admission 配额准入上下文
+     * @return 新建或既有的运行
+     */
+    private WorkflowRunResponse createInTransaction(
+            WorkflowDefinitionActor actor,
+            TenantId tenantId,
+            UUID workflowId,
+            WorkflowRunCreateCommand command,
+            String idempotencyKey,
+            String traceId,
+            String requestId,
+            QuotaAdmissionService.AdmissionContext admission) {
         var existing = repository.findByIdempotencyKey(tenantId, workflowId, actor.userId(), idempotencyKey);
         if (existing.isPresent()) {
             return WorkflowRunResponse.from(existing.get());
@@ -160,8 +215,11 @@ public class WorkflowRunService {
         WorkflowRunVersionSnapshot version = resolveVersion(tenantId, definition, command.versionId());
         requireRunnable(tenantId, actor, definition, version);
         String startNodeKey = startNodeKey(version.graph());
+        // 只读校验完成后才取 tenant S：S 相互兼容，创建之间不整体串行，只与补行/重试 X 互斥。
+        quotaAdmissionService.lockTenantShared(tenantId);
         // 配额按一次运行准入 1 单位；超限异常会使插入与计数一并回滚。
-        quotaAdmissionService.admit(tenantId, actor.userId());
+        quotaAdmissionService.admit(admission);
+        // 活跃运行 count 必须在配额行 X 之后：同一租户的 count+insert 由 TENANT/DAILY 行 X 串行，租户 10/流程 5 不超卖。
         requireAdmissionLimits(tenantId, workflowId);
         Instant now = clock.instant();
         TenantRecord tenant =
@@ -201,6 +259,35 @@ public class WorkflowRunService {
         auditService.append(WorkflowRunAuditEvents.requested(
                 now, tenantId.value(), actor.userId(), created, version.nodeCount(), traceId, requestId));
         return WorkflowRunResponse.from(created);
+    }
+
+    /**
+     * 唯一键冲突或配额 429 回滚后，在新事务按幂等键重读既有运行。
+     *
+     * <p>只有重读命中才返回既有运行（不重复扣配额、不重复审计）；重读仍为空说明冲突并非同键并发，原样抛出
+     * 原异常，让 409/429 语义保持不变。
+     *
+     * @param tenantId 当前租户
+     * @param workflowId 流程 ID
+     * @param actor 当前主体
+     * @param idempotencyKey 幂等键
+     * @param original 回滚时的原始异常
+     * @return 既有运行响应
+     */
+    private WorkflowRunResponse replayAfterConflict(
+            TenantId tenantId,
+            UUID workflowId,
+            WorkflowDefinitionActor actor,
+            String idempotencyKey,
+            RuntimeException original) {
+        Optional<WorkflowRunSnapshot> winner = Objects.requireNonNull(
+                transactionTemplate.execute(status ->
+                        repository.findByIdempotencyKey(tenantId, workflowId, actor.userId(), idempotencyKey)),
+                "workflow run idempotency replay returned null");
+        if (winner.isEmpty()) {
+            throw original;
+        }
+        return WorkflowRunResponse.from(winner.get());
     }
 
     /**
@@ -282,8 +369,6 @@ public class WorkflowRunService {
         requireFeatureEnabled();
         requireRunPermission(actor);
         TenantId tenantId = TenantId.of(actor.tenantId());
-        // 与创建共用租户锁，保证重试与并发计数串行；失败运行本身不占活跃槽位。
-        quotaAdmissionService.lockTenant(tenantId);
         WorkflowRunSnapshot run =
                 repository.findById(tenantId, runId).orElseThrow(() -> new NotFoundException("workflow run"));
         requireOwnerOrAdmin(actor, run);
@@ -305,6 +390,9 @@ public class WorkflowRunService {
                 .filter(candidate -> candidate.id().equals(command.nodeId()))
                 .findFirst()
                 .orElseThrow(() -> new WorkflowRunConflictException("node is not part of the run version"));
+        // 只读校验完成后才取 tenant X：与所有创建的 S 互斥，保证重试 count/update 期间没有并发创建在途；
+        // 此时尚未持有任何业务行锁，锁序仍为 tenant → 业务行。
+        quotaAdmissionService.lockTenantExclusive(tenantId);
         requireAdmissionLimits(tenantId, run.workflowId());
         Instant now = clock.instant();
         int updated = repository.markRetried(tenantId, runId, command.nodeId(), now);

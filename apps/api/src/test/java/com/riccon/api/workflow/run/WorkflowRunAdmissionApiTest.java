@@ -3,7 +3,14 @@ package com.riccon.api.workflow.run;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.riccon.api.support.ApiTestClient;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
@@ -245,6 +252,83 @@ class WorkflowRunAdmissionApiTest extends WorkflowRunTestSupport {
                 404,
                 TENANT_404);
         assertThat(runCount(fixture.tenant())).isZero();
+    }
+
+    @Test
+    @DisplayName("IT-WF-109 并发创建：单流程 5/租户 10 精确，被拒绝不扣配额")
+    void createRun_parallelAdmissionLimits_areExact() throws Exception {
+        Fixture fixture = fixture("wfr");
+        String workflowA = publishWorkflow(fixture, "并发上限A", "TENANT");
+        String workflowB = publishWorkflow(fixture, "并发上限B", "TENANT");
+        String workflowC = publishWorkflow(fixture, "并发上限C", "TENANT");
+        setQuotaEnforcement(true);
+        try {
+            setTenantQuota(fixture.platform(), fixture.tenant(), 1000, 1000);
+            setUserQuota(fixture.platform(), fixture.tenant(), fixture.ownerId(), 1000, 1000);
+
+            List<Integer> firstWave = runConcurrentCreates(fixture, workflowA, "wf-limit-a-", 10);
+            assertThat(firstWave).filteredOn(status -> status == 201).hasSize(5);
+            assertThat(firstWave).filteredOn(status -> status == 429).hasSize(5);
+            assertThat(firstWave).filteredOn(status -> status >= 500).isEmpty();
+            assertThat(runCount(fixture.tenant())).isEqualTo(5);
+
+            List<Integer> secondWave = runConcurrentCreates(fixture, workflowB, "wf-limit-b-", 5);
+            assertThat(secondWave).containsOnly(201);
+            assertThat(runCount(fixture.tenant())).isEqualTo(10);
+
+            // 租户活跃运行已达 10：第三条流程的创建被租户上限拒绝，且配额计数回滚。
+            ApiTestClient.ApiResponse rejected =
+                    createRun(fixture.owner(), workflowC, null, DEFAULT_INPUTS, "wf-limit-c-1");
+            assertThat(rejected.status()).as(rejected.body()).isEqualTo(429);
+            JsonNode problem = client.json(rejected);
+            assertThat(problem.path("code").asText()).isEqualTo(WF_429);
+            assertThat(problem.path("detail").asText()).contains("tenant").contains("limit=10");
+            assertThat(runCount(fixture.tenant(), workflowC)).isZero();
+
+            assertThat(quotaUsed(fixture.tenant(), "TENANT", fixture.tenant(), "DAILY"))
+                    .isEqualTo(10);
+            assertThat(quotaUsed(fixture.tenant(), "USER", fixture.ownerId().toString(), "DAILY"))
+                    .isEqualTo(10);
+            assertThat(tenantAuditRows(fixture.tenant(), "workflow.run.requested"))
+                    .hasSize(10);
+        } finally {
+            setQuotaEnforcement(false);
+        }
+    }
+
+    /**
+     * 并发创建同一流程的运行并返回状态码。
+     *
+     * @param fixture 夹具
+     * @param workflowId 流程 ID
+     * @param keyPrefix 幂等键前缀
+     * @param concurrency 并发数
+     * @return 状态码
+     * @throws Exception 并发执行失败
+     */
+    private List<Integer> runConcurrentCreates(Fixture fixture, String workflowId, String keyPrefix, int concurrency)
+            throws Exception {
+        ExecutorService executor = Executors.newFixedThreadPool(concurrency);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<Integer>> futures = new ArrayList<>(concurrency);
+        try {
+            for (int index = 0; index < concurrency; index++) {
+                int ordinal = index;
+                futures.add(executor.submit(() -> {
+                    start.await();
+                    return createRun(fixture.owner(), workflowId, null, DEFAULT_INPUTS, keyPrefix + ordinal)
+                            .status();
+                }));
+            }
+            start.countDown();
+            List<Integer> statuses = new ArrayList<>(concurrency);
+            for (Future<Integer> future : futures) {
+                statuses.add(future.get(120, TimeUnit.SECONDS));
+            }
+            return statuses;
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     @Test
