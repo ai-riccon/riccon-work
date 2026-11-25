@@ -1,0 +1,316 @@
+/**
+ * 运行历史与发布页样式。
+ *
+ * 约束：
+ * 1. 375 px 无横向滚动：所有容器 `min-width: 0`，长流程名、ID、错误摘要与 JSON 输入可换行；
+ * 2. 运行历史和版本列表使用卡片而不是固定列宽表格，窄屏自动单列；
+ * 3. 操作按钮在窄屏占满一行，保证键盘/触屏可点击面积；
+ * 4. 标题与按钮保留可见焦点轮廓，满足键盘基线。
+ */
+
+.workflow-history-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 1200px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 16px;
+  overflow-wrap: anywhere;
+  box-sizing: border-box;
+}
+
+.workflow-history-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.workflow-history-title {
+  margin: 0 !important;
+  font-size: 24px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.workflow-history-title:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: 2px;
+}
+
+.workflow-history-intro {
+  margin: 0 !important;
+  min-width: 0;
+}
+
+.workflow-history-card {
+  min-width: 0;
+}
+
+.workflow-history-card .ant-card-head {
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.workflow-history-card .ant-card-head-wrapper {
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workflow-history-card .ant-card-extra {
+  max-width: 100%;
+}
+
+.workflow-history-note,
+.workflow-history-count,
+.workflow-history-scope-hint {
+  display: block;
+  min-width: 0;
+}
+
+.workflow-history-count {
+  margin-bottom: 8px;
+}
+
+.workflow-history-alert {
+  margin: 12px 0;
+  min-width: 0;
+}
+
+.workflow-history-workflow-select {
+  min-width: 180px;
+  max-width: 100%;
+}
+
+.workflow-history-filter {
+  min-width: 0;
+}
+
+.workflow-history-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0 12px;
+  min-width: 0;
+}
+
+.workflow-history-filter-grid .ant-form-item {
+  min-width: 0;
+  margin-bottom: 12px;
+}
+
+.workflow-history-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  min-width: 0;
+  margin-bottom: 8px;
+}
+
+.workflow-history-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 32px 12px;
+  text-align: center;
+}
+
+.workflow-history-list,
+.workflow-history-versions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.workflow-history-item,
+.workflow-history-version {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+
+.workflow-history-item-main,
+.workflow-history-version-main {
+  display: flex;
+  flex: 1 1 280px;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workflow-history-item-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-width: 0;
+}
+
+.workflow-history-item-name {
+  margin: 0 !important;
+  font-size: 16px;
+  font-weight: 600;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.workflow-history-meta,
+.workflow-history-version-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  min-width: 0;
+  margin: 0;
+}
+
+.workflow-history-meta > div,
+.workflow-history-version-meta > div {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.workflow-history-meta dt,
+.workflow-history-version-meta dt {
+  flex: none;
+  color: #8c8c8c;
+}
+
+.workflow-history-meta dd,
+.workflow-history-version-meta dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.workflow-history-failure {
+  display: block;
+  min-width: 0;
+}
+
+.workflow-history-item-actions,
+.workflow-history-version-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workflow-history-release {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.workflow-history-release-summary {
+  min-width: 0;
+}
+
+.workflow-history-release-summary .ant-descriptions-item-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.workflow-history-release-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 8px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.workflow-history-section-title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.workflow-history-versions-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workflow-history-scope-select {
+  min-width: 130px;
+}
+
+.workflow-history-department-select {
+  min-width: 180px;
+  max-width: 100%;
+}
+
+/* 375px：筛选单列、卡片操作占满一行，避免按钮被长流程名挤出视口。 */
+@media (max-width: 575px) {
+  .workflow-history-page {
+    padding: 12px;
+  }
+
+  .workflow-history-title {
+    font-size: 20px;
+  }
+
+  .workflow-history-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workflow-history-filter-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .workflow-history-item,
+  .workflow-history-version {
+    flex-direction: column;
+  }
+
+  .workflow-history-item-actions,
+  .workflow-history-version-actions {
+    width: 100%;
+  }
+
+  .workflow-history-item-actions .ant-btn,
+  .workflow-history-version-actions .ant-btn {
+    width: 100%;
+  }
+
+  .workflow-history-workflow-select,
+  .workflow-history-scope-select,
+  .workflow-history-department-select {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* 键盘聚焦时按钮使用浏览器默认轮廓之外的高对比描边；不改变点击区域。 */
+.workflow-history-item-actions .ant-btn:focus-visible,
+.workflow-history-version-actions .ant-btn:focus-visible,
+.workflow-history-release .ant-btn:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: 2px;
+}
