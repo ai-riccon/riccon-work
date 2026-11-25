@@ -170,6 +170,8 @@ export async function loginAs(
   password: string,
   tenantCode = seed().tenants.alpha,
 ): Promise<void> {
+  // 同一页面切换账号时先清空 Cookie，避免已登录态把 /login 自动跳回工作空间。
+  await page.context().clearCookies();
   await page.goto('/login');
   await page.getByPlaceholder('例如 acme').fill(tenantCode);
   await page.getByPlaceholder('请输入账号').fill(username);

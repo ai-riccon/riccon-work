@@ -202,12 +202,12 @@ test.describe('M06 运行与审批', () => {
         .locator('li')
         .filter({ hasText: workflowName });
       await rejectRow.getByRole('button', { name: /查看审批详情/ }).click();
-      await approverPage.getByLabel('拒绝').click();
+      await approverPage.getByRole('button', { name: '拒绝', exact: true }).click();
       await expect(approverPage.getByText('拒绝时必须填写理由（1–500 字）。')).toBeVisible();
       await approverPage
         .getByLabel('审批意见（拒绝时必填，最多 500 字）')
         .fill('数据范围不符，拒绝本次取数');
-      await approverPage.getByLabel('拒绝').click();
+      await approverPage.getByRole('button', { name: '拒绝', exact: true }).click();
       await expect(
         approverPage.getByText('审批已拒绝，本次运行终止，后续节点未执行。'),
       ).toBeVisible();
@@ -323,7 +323,7 @@ test.describe('M06 运行与审批', () => {
 
     // 运行历史页重试失败节点；失败节点从 B 继续，A 不重跑，B 成功后 C 继续。
     await page.goto(M06_ROUTES.runs);
-    await expect(page.getByText('运行历史')).toBeVisible();
+    await expect(page.getByRole('heading', { name: '运行历史' })).toBeVisible();
     const historyRow = page
       .getByTestId('workflow-run-list')
       .locator('li')
