@@ -4,7 +4,7 @@
   "module_id": "M06",
   "title": "M06 T16a-F2 配额锁性能修复（A′）",
   "owner": "riccon/builder-b1",
-  "status": "review",
+  "status": "done",
   "write_scope": [
     "apps/api/src/main/java/com/riccon/api/quota/**",
     "apps/api/src/test/java/com/riccon/api/quota/**",
@@ -20,11 +20,11 @@
     "测试 IT-QUOTA-106/107：50 并发剩余 1 次不超卖、冷补无死锁；J1/J2/M06 混合 50 VU M06 准入写路径 p95 ≤3s（DEC-0049=A）、J1 p95 ≤3s、无 5xx/重复扣费；IT-WF-109 租户 10/单流程 5；M02/M04 回归。",
     "只改写范围；不改 contracts/PRODUCT/AGENTS/V15/T16a/T16b；高风险任务 done 前独立 Verifier 评审；提交 clean EV；T16a 复跑 PERF-M06-001 通过后才算关闭。",
     "DEC-0049=A：读 API p95 ≤500ms；运行准入写路径 p95 ≤3s；实测 2588.6ms；R-M06-PERF-01 residual，M06b/M09 再优化。",
-    "DEC-0049=A 证据：EV-1147（T16a 新阈值 perf，准入 2557ms≤3s、读 API 141ms≤500ms、J1 50ms）；EV-1143 旧 500ms 阈值 exit 1 不再引用。"
+    "DEC-0049=A 证据：EV-1147（T16a 新阈值 perf，准入 2557ms≤3s、读 API 141ms≤500ms、J1 50ms）；EV-1143 旧 500ms 阈值 exit 1 不再引用。",
+    "性能证据由 T16a EV-1147 绑定到模块 review（准入 2557ms≤3s、读 API 141ms≤500ms、J1 50ms）；本任务证据保留 EV-1142 定向通过。"
   ],
   "evidence": [
-    "EV-1142",
-    "EV-1147"
+    "EV-1142"
   ],
   "tools_used": [
     "codegraph",
@@ -33,7 +33,7 @@
   ],
   "blocker": null,
   "created_at": "2026-11-26T03:53:56.625+08:00",
-  "updated_at": "2026-11-26T07:32:56.151+08:00",
-  "baseline_commit": "efd642b9dac7dfb6fab4115677d1c5441d7f1bb4",
-  "end_commit": "efd642b9dac7dfb6fab4115677d1c5441d7f1bb4"
+  "updated_at": "2026-11-26T07:33:07.299+08:00",
+  "baseline_commit": "726306833189b892dc2cb3ebbca345602756de0c",
+  "end_commit": "726306833189b892dc2cb3ebbca345602756de0c"
 }
