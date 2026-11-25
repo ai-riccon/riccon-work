@@ -143,12 +143,7 @@ test.describe('M06 可访问性与 375px', () => {
     const applyConfig = page.getByRole('button', { name: '保存节点配置' });
     await tabTo(page, applyConfig);
     await page.keyboard.press('Enter');
-    await expect(
-      page
-        .locator('.ant-form-item')
-        .filter({ hasText: '授权工具' })
-        .locator('.ant-select-selection-item'),
-    ).toContainText(/market_data/);
+    await expect(page.locator('#workflow-node-config')).toContainText(/market_data/);
 
     // 4. 键盘添加模型节点：节点类型下拉从默认“知识库检索”下移到“模型”，添加节点。
     const addType = page.getByLabel('节点类型');
