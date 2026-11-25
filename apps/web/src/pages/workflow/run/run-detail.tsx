@@ -329,14 +329,18 @@ export function WorkflowRunDetailView({
                   {node.inputSummary ? (
                     <details className="workflow-run-summary-block">
                       <summary>输入摘要</summary>
-                      <pre>{node.inputSummary}</pre>
+                      <pre tabIndex={0} role="region" aria-label={`节点${node.name}输入摘要`}>
+                        {node.inputSummary}
+                      </pre>
                     </details>
                   ) : null}
 
                   {node.outputSummary ? (
                     <details className="workflow-run-summary-block">
                       <summary>输出摘要</summary>
-                      <pre>{node.outputSummary}</pre>
+                      <pre tabIndex={0} role="region" aria-label={`节点${node.name}输出摘要`}>
+                        {node.outputSummary}
+                      </pre>
                     </details>
                   ) : null}
 
@@ -389,7 +393,6 @@ export function WorkflowRunDetailView({
                     <Button
                       type="text"
                       className="workflow-run-citation-button"
-                      aria-label={`${citationListLabel(view)}，${citationAvailabilityLabel(view)}`}
                       onClick={() => setActiveCitation(view)}
                     >
                       <span className="workflow-run-citation-header">
@@ -563,7 +566,14 @@ export function WorkflowRunDetailView({
 
         {detail.resultStatus === 'SAVED' && resultText ? (
           <>
-            <pre className="workflow-run-result-text" data-testid="workflow-run-result-text">
+            {/* 结果区是 max-height + overflow:auto 的滚动容器；tabIndex/role 让键盘用户可聚焦并滚动查看。 */}
+            <pre
+              className="workflow-run-result-text"
+              data-testid="workflow-run-result-text"
+              tabIndex={0}
+              role="region"
+              aria-label="运行结果全文"
+            >
               {preview.text}
             </pre>
             {preview.truncated ? (
@@ -573,11 +583,7 @@ export function WorkflowRunDetailView({
                 title={`结果较长，当前仅显示前 ${RESULT_PREVIEW_LIMIT} 个字符`}
                 description={`完整结果共 ${preview.totalChars} 个字符；展开后在本区域内滚动查看，不影响服务端保存的内容。`}
                 action={
-                  <Button
-                    size="small"
-                    onClick={() => setResultExpanded(true)}
-                    aria-label="展开完整结果"
-                  >
+                  <Button size="small" onClick={() => setResultExpanded(true)}>
                     展开全文
                   </Button>
                 }

@@ -111,6 +111,22 @@ function renderView(detail: WorkflowRunDetail, onRetry?: () => void) {
   return render(withProviders(<WorkflowRunDetailView detail={detail} onRetry={onRetry} />));
 }
 
+/**
+ * 断言按钮满足 axe `label-content-name-mismatch`：可见文本必须包含在可访问名称中。
+ *
+ * 本页采用“移除 aria-label、以可见文本作为名称”的方案，因此可见文本与 textContent 一致。
+ *
+ * @param button 按钮元素
+ */
+function expectLabelInName(button: HTMLElement): void {
+  const visibleText = (button.textContent ?? '').replace(/\s+/g, ' ').trim();
+  const accessibleName = (button.getAttribute('aria-label') ?? visibleText)
+    .replace(/\s+/g, ' ')
+    .trim();
+  expect(visibleText.length).toBeGreaterThan(0);
+  expect(accessibleName).toContain(visibleText);
+}
+
 describe('WorkflowRunDetailView', () => {
   beforeEach(() => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
@@ -273,7 +289,9 @@ describe('WorkflowRunDetailView', () => {
     expect(preview.textContent).toHaveLength(RESULT_PREVIEW_LIMIT);
     expect(screen.getByText(`结果较长，当前仅显示前 ${RESULT_PREVIEW_LIMIT} 个字符`)).toBeVisible();
 
-    fireEvent.click(screen.getByRole('button', { name: '展开完整结果' }));
+    const expandButton = screen.getByRole('button', { name: '展开全文' });
+    expectLabelInName(expandButton);
+    fireEvent.click(expandButton);
 
     expect(screen.getByTestId('workflow-run-result-text').textContent).toBe(text);
     expect(screen.getByRole('button', { name: '收起结果' })).toBeVisible();
@@ -351,6 +369,33 @@ describe('WorkflowRunDetailView', () => {
     expect(screen.getByText(SECURITY_NOTICE)).toBeVisible();
   });
 
+  it('输入/输出摘要与结果滚动区可通过键盘聚焦', () => {
+    const text = `报告正文${'甲'.repeat(RESULT_PREVIEW_LIMIT)}`;
+    renderView(
+      makeDetail({
+        nodes: [makeNode()],
+        resultStatus: 'SAVED',
+        result: {
+          format: 'MARKDOWN',
+          text,
+          sizeBytes: text.length,
+          generatedAt: '2026-11-25T09:10:00+08:00',
+        },
+      }),
+    );
+
+    fireEvent.click(screen.getByText('输入摘要'));
+    fireEvent.click(screen.getByText('输出摘要'));
+    const inputRegion = screen.getByRole('region', { name: '节点生成报告输入摘要' });
+    const outputRegion = screen.getByRole('region', { name: '节点生成报告输出摘要' });
+    const resultRegion = screen.getByRole('region', { name: '运行结果全文' });
+    for (const region of [inputRegion, outputRegion, resultRegion]) {
+      expect(region).toHaveAttribute('tabindex', '0');
+      region.focus();
+      expect(region).toHaveFocus();
+    }
+  });
+
   it('标题自动聚焦，引用按钮可键盘聚焦；375px 下关键入口仍可见', () => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 375 });
     renderView(makeDetail({ citations: [makeCitation()] }));
@@ -359,8 +404,9 @@ describe('WorkflowRunDetailView', () => {
     expect(heading).toHaveFocus();
 
     const citationButton = screen.getByRole('button', {
-      name: /\[1\] 新能源行业报告\.pdf，可访问/,
+      name: /新能源行业报告\.pdf/,
     });
+    expectLabelInName(citationButton);
     citationButton.focus();
     expect(citationButton).toHaveFocus();
 
