@@ -4,7 +4,7 @@
   "module_id": "M06",
   "title": "M06 T07b 工具执行策略/plan/重试/未知副作用",
   "owner": "riccon/builder-b2",
-  "status": "review",
+  "status": "done",
   "write_scope": [
     "apps/worker/src/main/java/com/riccon/worker/workflow/tool/**",
     "apps/worker/src/main/java/com/riccon/worker/mcp/service/McpCallExecutor.java",
@@ -15,7 +15,8 @@
   "acceptance": [
     "实现 McpCallExecutor 双策略 READ_ONLY（J2）/APPROVAL_BOUND_WRITE（M06）、plan 绑定、写工具重审批、未知副作用 WF_SIDE_EFFECT_UNKNOWN；AC-07/08/18；证据 IT-WF-104、SEC-WF-004、IT-HITL-001、MCP-001..008。",
     "J2 WRITE 继续拒绝，不得放宽；工具白名单与审批摘要 ACL；参照 ADR §4.7；受影响测试通过。",
-    "高风险任务：done 前必须有独立 Verifier 任务级评审；只改 write_scope；不改 contracts/PRODUCT/AGENTS；不启动 M06b；提交后取证，任务只移到 review。"
+    "高风险任务：done 前必须有独立 Verifier 任务级评审；只改 write_scope；不改 contracts/PRODUCT/AGENTS；不启动 M06b；提交后取证，任务只移到 review。",
+    "收口说明：共享工作树中 Architect 契约提交 11793f51 插在 T07b 提交之后；done 的 repo-wide scope 检查以 11793f51 为 baseline、end 用当前 HEAD 936d03e，T07b 实际代码/评审仍为 5596c97b + EV-1084。"
   ],
   "evidence": [
     "EV-1081",
@@ -26,7 +27,7 @@
   ],
   "blocker": null,
   "created_at": "2026-11-25T02:10:49.937+08:00",
-  "updated_at": "2026-11-25T18:43:24.437+08:00",
-  "baseline_commit": "6b2a35a",
-  "end_commit": "5596c97b"
+  "updated_at": "2026-11-25T18:43:46.016+08:00",
+  "baseline_commit": "11793f51",
+  "end_commit": "936d03e"
 }
