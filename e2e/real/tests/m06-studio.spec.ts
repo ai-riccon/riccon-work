@@ -160,7 +160,7 @@ test.describe('M06 Studio 创建与发布', () => {
     if (await list.isVisible()) {
       await expect(list).not.toContainText(name);
     } else {
-      await expect(page.getByText(/当前没有可运行的流程/)).toBeVisible();
+      await expect(page.getByText(/还没有流程|当前没有可运行的流程/)).toBeVisible();
     }
 
     // 并发修改：同账号第二个会话保存后，第一个会话保存收到 409，可另存副本。
