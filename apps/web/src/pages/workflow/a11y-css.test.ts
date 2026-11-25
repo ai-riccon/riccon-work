@@ -96,4 +96,12 @@ describe('编排页面危险按钮颜色对比度', () => {
     const outline = /outline:\s*2px solid (#[0-9a-fA-F]{6});/.exec(focus ?? '')?.[1] ?? '';
     expect(contrastRatio(outline, '#ffffff')).toBeGreaterThanOrEqual(3);
   });
+
+  it('审批待办元信息标签对白底达到 WCAG AA 4.5:1', () => {
+    const block = declarationBlock(APPROVALS_CSS, '.workflow-approvals-meta dt');
+    expect(block, '必须存在审批元信息 dt 声明块').not.toBeNull();
+    const color = /color:\s*(#[0-9a-fA-F]{6});/.exec(block ?? '')?.[1] ?? '';
+    expect(contrastRatio(color, '#ffffff')).toBeGreaterThanOrEqual(4.5);
+    expect(APPROVALS_CSS.toLowerCase()).not.toContain('#8c8c8c');
+  });
 });
