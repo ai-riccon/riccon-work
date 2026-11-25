@@ -71,11 +71,12 @@ public class WorkflowApprovalJdbc {
               AND nr.attempt = a.attempt
             """;
 
-    /** 待办过滤：只含分配给当前用户、非本人发起、仍为 PENDING 的审批（AC-05）。 */
+    /** 待办过滤：只含分配给当前用户、非本人发起、仍为 PENDING 且运行未到期的审批（AC-05/14）。 */
     private static final String INBOX_FILTER = """
              WHERE a.tenant_id = :tenantId
                AND a.status = 'PENDING'
                AND a.requested_by <> :userId
+               AND r.retention_expires_at > :now
                AND (
                      (a.assignee_type = 'USER' AND EXISTS (
                          SELECT 1
@@ -126,14 +127,14 @@ public class WorkflowApprovalJdbc {
                AND r.code = :roleCode
             """;
 
-    /** 运行当前状态。 */
+    /** 运行当前状态（未到期）。 */
     private static final String RUN_STATE_SQL = """
             SELECT status
               FROM workflow_run
-             WHERE tenant_id = :tenantId AND id = :runId
+             WHERE tenant_id = :tenantId AND id = :runId AND retention_expires_at > :now
             """;
 
-    /** 运行绑定版本的发布图。 */
+    /** 运行绑定版本的发布图（未到期）。 */
     private static final String RUN_GRAPH_SQL = """
             SELECT v.graph_json
               FROM workflow_run r
@@ -141,7 +142,7 @@ public class WorkflowApprovalJdbc {
                 ON v.tenant_id = r.tenant_id
                AND v.id = r.workflow_version_id
                AND v.workflow_id = r.workflow_id
-             WHERE r.tenant_id = :tenantId AND r.id = :runId
+             WHERE r.tenant_id = :tenantId AND r.id = :runId AND r.retention_expires_at > :now
             """;
 
     /** 审批已执行上游节点的引用快照。 */
@@ -293,15 +294,21 @@ public class WorkflowApprovalJdbc {
     /**
      * 统计当前用户的待办数。
      *
+     * <p>与列表共用 {@code INBOX_FILTER}（含运行保留期条件）；JOIN 运行行以获得
+     * {@code retention_expires_at}，到期审批不再出现在待办（REV-TASK-0229-001 F-001）。
+     *
      * @param tenantId 租户
      * @param userId 当前用户
+     * @param now 当前时间
      * @return 待办数
      */
-    public long countInbox(TenantId tenantId, UUID userId) {
+    public long countInbox(TenantId tenantId, UUID userId, Instant now) {
         return tenantJdbc.count(
                 tenantId,
-                "SELECT COUNT(*) FROM workflow_approval a " + INBOX_FILTER,
-                Map.of("userId", BinaryUuids.toBytes(userId)));
+                "SELECT COUNT(*) FROM workflow_approval a"
+                        + " JOIN workflow_run r ON r.tenant_id = a.tenant_id AND r.id = a.workflow_run_id "
+                        + INBOX_FILTER,
+                Map.of("userId", BinaryUuids.toBytes(userId), "now", SqlTimestamps.toDatabase(now)));
     }
 
     /**
@@ -309,31 +316,43 @@ public class WorkflowApprovalJdbc {
      *
      * @param tenantId 租户
      * @param userId 当前用户
+     * @param now 当前时间
      * @param limit 每页大小
      * @param offset 偏移
      * @return 审批行
      */
-    public List<WorkflowApprovalRow> listInbox(TenantId tenantId, UUID userId, int limit, int offset) {
+    public List<WorkflowApprovalRow> listInbox(TenantId tenantId, UUID userId, Instant now, int limit, int offset) {
         return tenantJdbc.query(
                 tenantId,
                 "SELECT " + APPROVAL_COLUMNS + APPROVAL_FROM + INBOX_FILTER
                         + " ORDER BY a.created_at ASC, a.id ASC LIMIT :limit OFFSET :offset",
-                Map.of("userId", BinaryUuids.toBytes(userId), "limit", limit, "offset", offset),
+                Map.of(
+                        "userId",
+                        BinaryUuids.toBytes(userId),
+                        "now",
+                        SqlTimestamps.toDatabase(now),
+                        "limit",
+                        limit,
+                        "offset",
+                        offset),
                 WorkflowApprovalJdbc::mapApproval);
     }
 
     /**
-     * 按 ID 读取审批。
+     * 按 ID 读取未到期审批。
      *
      * @param tenantId 租户
      * @param approvalId 审批 ID
-     * @return 审批行；不存在为空
+     * @param now 当前时间
+     * @return 审批行；不存在或已到期为空
      */
-    public Optional<WorkflowApprovalRow> findById(TenantId tenantId, UUID approvalId) {
+    public Optional<WorkflowApprovalRow> findById(TenantId tenantId, UUID approvalId, Instant now) {
         return tenantJdbc.queryOne(
                 tenantId,
-                "SELECT " + APPROVAL_COLUMNS + APPROVAL_FROM + " WHERE a.tenant_id = :tenantId AND a.id = :approvalId",
-                Map.of("approvalId", BinaryUuids.toBytes(approvalId)),
+                "SELECT " + APPROVAL_COLUMNS + APPROVAL_FROM
+                        + " WHERE a.tenant_id = :tenantId AND a.id = :approvalId"
+                        + " AND r.retention_expires_at > :now",
+                Map.of("approvalId", BinaryUuids.toBytes(approvalId), "now", SqlTimestamps.toDatabase(now)),
                 WorkflowApprovalJdbc::mapApproval);
     }
 
@@ -391,32 +410,34 @@ public class WorkflowApprovalJdbc {
     }
 
     /**
-     * 读取运行当前状态。
+     * 读取运行当前状态（未到期）。
      *
      * @param tenantId 租户
      * @param runId 运行 ID
-     * @return 状态；运行不存在为空
+     * @param now 当前时间
+     * @return 状态；运行不存在或已到期为空
      */
-    public Optional<WorkflowRunStatus> findRunStatus(TenantId tenantId, UUID runId) {
+    public Optional<WorkflowRunStatus> findRunStatus(TenantId tenantId, UUID runId, Instant now) {
         return tenantJdbc.queryOne(
                 tenantId,
                 RUN_STATE_SQL,
-                Map.of("runId", BinaryUuids.toBytes(runId)),
+                Map.of("runId", BinaryUuids.toBytes(runId), "now", SqlTimestamps.toDatabase(now)),
                 (rs, rowNum) -> WorkflowRunStatus.valueOf(rs.getString("status")));
     }
 
     /**
-     * 读取运行绑定版本的发布图 JSON。
+     * 读取运行绑定版本的发布图 JSON（未到期）。
      *
      * @param tenantId 租户
      * @param runId 运行 ID
-     * @return 图 JSON；不存在为空
+     * @param now 当前时间
+     * @return 图 JSON；运行不存在或已到期为空
      */
-    public Optional<String> findRunGraphJson(TenantId tenantId, UUID runId) {
+    public Optional<String> findRunGraphJson(TenantId tenantId, UUID runId, Instant now) {
         return tenantJdbc.queryOne(
                 tenantId,
                 RUN_GRAPH_SQL,
-                Map.of("runId", BinaryUuids.toBytes(runId)),
+                Map.of("runId", BinaryUuids.toBytes(runId), "now", SqlTimestamps.toDatabase(now)),
                 (rs, rowNum) -> rs.getString("graph_json"));
     }
 
@@ -452,6 +473,39 @@ public class WorkflowApprovalJdbc {
                 ASSIGNEE_USERS_SQL,
                 Map.of("approvalId", BinaryUuids.toBytes(approvalId)),
                 (rs, rowNum) -> BinaryUuids.fromBytes(rs.getBytes("user_id")));
+    }
+
+    /**
+     * 批量读取多个运行下已执行上游节点的引用快照。
+     *
+     * <p>与 {@link #findSucceededCitations} 语义一致，但一次覆盖一页待办的全部运行；服务层再按每个
+     * 审批的创建时间过滤 {@code finishedAt <= createdAt}。调用方必须已过滤到期审批。
+     *
+     * @param tenantId 租户
+     * @param runIds 运行 ID 集合；不能为空
+     * @return 引用快照行
+     */
+    public List<WorkflowApprovalCitationRow> findSucceededCitationsByRuns(TenantId tenantId, List<UUID> runIds) {
+        if (runIds == null || runIds.isEmpty()) {
+            return List.of();
+        }
+        List<byte[]> ids = runIds.stream().map(BinaryUuids::toBytes).toList();
+        return tenantJdbc.query(
+                tenantId,
+                """
+                SELECT workflow_run_id, finished_at, citations_json
+                  FROM workflow_node_run
+                 WHERE tenant_id = :tenantId
+                   AND workflow_run_id IN (:runIds)
+                   AND status = 'SUCCEEDED'
+                   AND citations_json IS NOT NULL
+                   AND finished_at IS NOT NULL
+                """,
+                Map.of("runIds", ids),
+                (rs, rowNum) -> new WorkflowApprovalCitationRow(
+                        BinaryUuids.fromBytes(rs.getBytes("workflow_run_id")),
+                        instant(rs.getObject("finished_at", LocalDateTime.class)),
+                        rs.getString("citations_json")));
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.riccon.api.workflow.approval.repository;
 
 import com.riccon.api.workflow.approval.domain.WorkflowApprovalSnapshot;
+import com.riccon.api.workflow.approval.persistence.WorkflowApprovalCitationRow;
 import com.riccon.api.workflow.approval.persistence.WorkflowApprovalJdbc;
 import com.riccon.api.workflow.approval.persistence.WorkflowApprovalRow;
 import com.riccon.platform.common.tenant.TenantId;
@@ -41,10 +42,11 @@ public class WorkflowApprovalRepository {
      *
      * @param tenantId 租户
      * @param userId 当前用户
+     * @param now 当前时间
      * @return 待办数
      */
-    public long countInbox(TenantId tenantId, UUID userId) {
-        return approvalJdbc.countInbox(tenantId, userId);
+    public long countInbox(TenantId tenantId, UUID userId, Instant now) {
+        return approvalJdbc.countInbox(tenantId, userId, now);
     }
 
     /**
@@ -52,25 +54,28 @@ public class WorkflowApprovalRepository {
      *
      * @param tenantId 租户
      * @param userId 当前用户
+     * @param now 当前时间
      * @param limit 每页大小
      * @param offset 偏移
      * @return 审批快照
      */
-    public List<WorkflowApprovalSnapshot> listInbox(TenantId tenantId, UUID userId, int limit, int offset) {
-        return approvalJdbc.listInbox(tenantId, userId, limit, offset).stream()
+    public List<WorkflowApprovalSnapshot> listInbox(
+            TenantId tenantId, UUID userId, Instant now, int limit, int offset) {
+        return approvalJdbc.listInbox(tenantId, userId, now, limit, offset).stream()
                 .map(WorkflowApprovalRow::toSnapshot)
                 .toList();
     }
 
     /**
-     * 按 ID 读取审批。
+     * 按 ID 读取未到期审批。
      *
      * @param tenantId 租户
      * @param approvalId 审批 ID
-     * @return 审批快照；不存在为空
+     * @param now 当前时间
+     * @return 审批快照；不存在或已到期为空
      */
-    public Optional<WorkflowApprovalSnapshot> findById(TenantId tenantId, UUID approvalId) {
-        return approvalJdbc.findById(tenantId, approvalId).map(WorkflowApprovalRow::toSnapshot);
+    public Optional<WorkflowApprovalSnapshot> findById(TenantId tenantId, UUID approvalId, Instant now) {
+        return approvalJdbc.findById(tenantId, approvalId, now).map(WorkflowApprovalRow::toSnapshot);
     }
 
     /**
@@ -109,25 +114,27 @@ public class WorkflowApprovalRepository {
     }
 
     /**
-     * 读取运行当前状态。
+     * 读取运行当前状态（未到期）。
      *
      * @param tenantId 租户
      * @param runId 运行 ID
-     * @return 状态；运行不存在为空
+     * @param now 当前时间
+     * @return 状态；运行不存在或已到期为空
      */
-    public Optional<WorkflowRunStatus> findRunStatus(TenantId tenantId, UUID runId) {
-        return approvalJdbc.findRunStatus(tenantId, runId);
+    public Optional<WorkflowRunStatus> findRunStatus(TenantId tenantId, UUID runId, Instant now) {
+        return approvalJdbc.findRunStatus(tenantId, runId, now);
     }
 
     /**
-     * 读取运行绑定版本的发布图 JSON。
+     * 读取运行绑定版本的发布图 JSON（未到期）。
      *
      * @param tenantId 租户
      * @param runId 运行 ID
-     * @return 图 JSON；不存在为空
+     * @param now 当前时间
+     * @return 图 JSON；运行不存在或已到期为空
      */
-    public Optional<String> findRunGraphJson(TenantId tenantId, UUID runId) {
-        return approvalJdbc.findRunGraphJson(tenantId, runId);
+    public Optional<String> findRunGraphJson(TenantId tenantId, UUID runId, Instant now) {
+        return approvalJdbc.findRunGraphJson(tenantId, runId, now);
     }
 
     /**
@@ -140,6 +147,20 @@ public class WorkflowApprovalRepository {
      */
     public List<String> findSucceededCitations(TenantId tenantId, UUID runId, Instant createdAt) {
         return approvalJdbc.findSucceededCitations(tenantId, runId, createdAt);
+    }
+
+    /**
+     * 批量读取一页待办涉及的运行节点引用快照。
+     *
+     * <p>列表接口一次查询覆盖全部运行，避免逐条审批查询（N+1）；服务层按每个审批的
+     * {@code createdAt} 过滤上游节点。
+     *
+     * @param tenantId 租户
+     * @param runIds 运行 ID 集合
+     * @return 引用快照行
+     */
+    public List<WorkflowApprovalCitationRow> findSucceededCitationsByRuns(TenantId tenantId, List<UUID> runIds) {
+        return approvalJdbc.findSucceededCitationsByRuns(tenantId, runIds);
     }
 
     /**

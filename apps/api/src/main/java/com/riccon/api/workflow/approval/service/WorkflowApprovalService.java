@@ -11,6 +11,7 @@ import com.riccon.api.workflow.approval.domain.WorkflowApprovalSnapshot;
 import com.riccon.api.workflow.approval.dto.WorkflowApprovalPageResponse;
 import com.riccon.api.workflow.approval.dto.WorkflowApprovalResponse;
 import com.riccon.api.workflow.approval.dto.WorkflowDataScopeSummaryResponse;
+import com.riccon.api.workflow.approval.persistence.WorkflowApprovalCitationRow;
 import com.riccon.api.workflow.approval.repository.WorkflowApprovalRepository;
 import com.riccon.api.workflow.domain.WorkflowGraph;
 import com.riccon.api.workflow.domain.WorkflowGraphEdge;
@@ -35,6 +36,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -142,15 +144,21 @@ public class WorkflowApprovalService {
             return new WorkflowApprovalPageResponse(page.page(), page.size(), 0, page.totalPages(0), List.of());
         }
         TenantId tenantId = TenantId.of(actor.tenantId());
-        long total = repository.countInbox(tenantId, actor.userId());
+        Instant now = clock.instant();
+        long total = repository.countInbox(tenantId, actor.userId(), now);
         List<WorkflowApprovalResponse> items;
         if (total == 0) {
             items = List.of();
         } else {
-            items = new ArrayList<>();
-            for (WorkflowApprovalSnapshot approval :
-                    repository.listInbox(tenantId, actor.userId(), page.size(), page.offset())) {
-                items.add(response(approval, false, false, documentReferenceCount(tenantId, approval), null));
+            List<WorkflowApprovalSnapshot> approvals =
+                    repository.listInbox(tenantId, actor.userId(), now, page.size(), page.offset());
+            // 一次批量读取本页涉及的运行引用，避免逐条审批查询造成 N+1（REV-TASK-0229-001 F-003）。
+            Map<UUID, List<WorkflowApprovalCitationRow>> citationsByRun = citationsByRun(tenantId, approvals);
+            items = new ArrayList<>(approvals.size());
+            for (WorkflowApprovalSnapshot approval : approvals) {
+                int documentReferences = documentReferenceCount(
+                        citationsByRun.getOrDefault(approval.workflowRunId(), List.of()), approval.createdAt());
+                items.add(response(approval, false, false, documentReferences, null));
             }
         }
         return new WorkflowApprovalPageResponse(page.page(), page.size(), total, page.totalPages(total), items);
@@ -168,8 +176,9 @@ public class WorkflowApprovalService {
     public WorkflowApprovalResponse get(WorkflowApprovalActor actor, UUID approvalId) {
         requireApprovePermission(actor);
         TenantId tenantId = TenantId.of(actor.tenantId());
+        Instant now = clock.instant();
         WorkflowApprovalSnapshot approval = repository
-                .findById(tenantId, approvalId)
+                .findById(tenantId, approvalId, now)
                 .orElseThrow(() -> new WorkflowApprovalNotFoundException(APPROVAL_RESOURCE));
         requireAssignableVisibility(tenantId, approval, actor.userId());
         int documentReferences = documentReferenceCount(tenantId, approval);
@@ -215,21 +224,21 @@ public class WorkflowApprovalService {
         requireApprovePermission(actor);
         validateComment(command);
         TenantId tenantId = TenantId.of(actor.tenantId());
+        Instant now = clock.instant();
         WorkflowApprovalSnapshot approval = repository
-                .findById(tenantId, approvalId)
+                .findById(tenantId, approvalId, now)
                 .orElseThrow(() -> new WorkflowApprovalNotFoundException(APPROVAL_RESOURCE));
         requireApprover(tenantId, approval, actor, command, traceId, requestId);
         if (approval.status() != WorkflowApprovalStatus.PENDING) {
             throw new WorkflowApprovalConflictException(WorkflowApprovalConflictException.Reason.ALREADY_DECIDED);
         }
         WorkflowRunStatus runStatus = repository
-                .findRunStatus(tenantId, approval.workflowRunId())
+                .findRunStatus(tenantId, approval.workflowRunId(), now)
                 .orElseThrow(() -> new WorkflowApprovalNotFoundException(APPROVAL_RESOURCE));
         if (runStatus != WorkflowRunStatus.WAITING_APPROVAL) {
             throw new WorkflowApprovalConflictException(WorkflowApprovalConflictException.Reason.RUN_STATE_CONFLICT);
         }
-        WorkflowGraph graph = loadGraph(tenantId, approval.workflowRunId());
-        Instant now = clock.instant();
+        WorkflowGraph graph = loadGraph(tenantId, approval.workflowRunId(), now);
         long waitMs = waitMillis(approval.createdAt(), now);
         if (command.decision() == WorkflowApprovalDecision.APPROVE) {
             approve(tenantId, approval, graph, waitMs, now, actor.userId(), command.comment());
@@ -237,7 +246,7 @@ public class WorkflowApprovalService {
             reject(tenantId, approval, graph, waitMs, now, actor.userId(), command.comment());
         }
         WorkflowApprovalSnapshot decided = repository
-                .findById(tenantId, approval.id())
+                .findById(tenantId, approval.id(), now)
                 .orElseThrow(() -> new IllegalStateException("workflow approval disappeared after decision"));
         auditService.append(WorkflowApprovalAuditEvents.decided(
                 now,
@@ -482,9 +491,9 @@ public class WorkflowApprovalService {
      * @param runId 运行 ID
      * @return 图
      */
-    private WorkflowGraph loadGraph(TenantId tenantId, UUID runId) {
+    private WorkflowGraph loadGraph(TenantId tenantId, UUID runId, Instant now) {
         String graphJson = repository
-                .findRunGraphJson(tenantId, runId)
+                .findRunGraphJson(tenantId, runId, now)
                 .orElseThrow(() -> new IllegalStateException("workflow run version graph is missing"));
         try {
             return WorkflowGraphJson.parse(graphJson);
@@ -607,18 +616,70 @@ public class WorkflowApprovalService {
         Set<String> keys = new HashSet<>();
         for (String citationsJson :
                 repository.findSucceededCitations(tenantId, approval.workflowRunId(), approval.createdAt())) {
-            JsonNode array = readJson(citationsJson, "workflow citation snapshot");
-            if (!array.isArray()) {
-                throw new IllegalStateException("workflow citation snapshot is invalid");
-            }
-            for (JsonNode citation : array) {
-                String key = citationKey(citation);
-                if (key != null) {
-                    keys.add(key);
-                }
-            }
+            collectCitationKeys(citationsJson, keys);
         }
         return keys.size();
+    }
+
+    /**
+     * 批量读取一页审批涉及运行的上游引用快照，按运行分组。
+     *
+     * @param tenantId 租户
+     * @param approvals 当页审批
+     * @return 运行 ID 到引用行的映射
+     */
+    private Map<UUID, List<WorkflowApprovalCitationRow>> citationsByRun(
+            TenantId tenantId, List<WorkflowApprovalSnapshot> approvals) {
+        List<UUID> runIds = approvals.stream()
+                .map(WorkflowApprovalSnapshot::workflowRunId)
+                .distinct()
+                .toList();
+        List<WorkflowApprovalCitationRow> rows = repository.findSucceededCitationsByRuns(tenantId, runIds);
+        Map<UUID, List<WorkflowApprovalCitationRow>> byRun = new LinkedHashMap<>();
+        for (WorkflowApprovalCitationRow row : rows) {
+            byRun.computeIfAbsent(row.workflowRunId(), key -> new ArrayList<>()).add(row);
+        }
+        return byRun;
+    }
+
+    /**
+     * 计算审批创建前已执行上游节点的去重文档引用数（批量版本）。
+     *
+     * <p>只按文档、文件、分块主键去重计数，不返回标题、片段或正文；与逐条版本使用同一口径
+     * （ADR-0024 §3.3.5、REV-TASK-0229-001 F-003）。
+     *
+     * @param rows 运行下已成功节点的引用快照
+     * @param createdAt 审批创建时间
+     * @return 去重引用数
+     */
+    private int documentReferenceCount(List<WorkflowApprovalCitationRow> rows, Instant createdAt) {
+        Set<String> keys = new HashSet<>();
+        for (WorkflowApprovalCitationRow row : rows) {
+            if (row.finishedAt().isAfter(createdAt)) {
+                continue;
+            }
+            collectCitationKeys(row.citationsJson(), keys);
+        }
+        return keys.size();
+    }
+
+    /**
+     * 解析引用快照并收集去重键。
+     *
+     * @param citationsJson 引用 JSON
+     * @param keys 去重键集合（原地写入）
+     */
+    private void collectCitationKeys(String citationsJson, Set<String> keys) {
+        JsonNode array = readJson(citationsJson, "workflow citation snapshot");
+        if (!array.isArray()) {
+            throw new IllegalStateException("workflow citation snapshot is invalid");
+        }
+        for (JsonNode citation : array) {
+            String key = citationKey(citation);
+            if (key != null) {
+                keys.add(key);
+            }
+        }
     }
 
     /**
