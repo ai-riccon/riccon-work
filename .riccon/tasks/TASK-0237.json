@@ -4,7 +4,7 @@
   "module_id": "M06",
   "title": "M06 T16a E2E/a11y/键盘/50 并发 perf/越权/注入 harness",
   "owner": "riccon/verifier",
-  "status": "in_progress",
+  "status": "blocked",
   "write_scope": [
     "e2e/**",
     "scripts/real-stack/**",
@@ -24,10 +24,30 @@
     "关闭 REV-TASK-0227-001 F-001..F-003：补 mcp_tool.input_schema 执行前校验、READ+requires_approval=false 的 T03/T07b 语义一致、预算耗尽/输出上限/并发唯一键/PENDING/自绑目标直接用例；F-004 证据日志范围在模块 gate 前说明。",
     "关闭 REV-TASK-0247-001 F-001：补 astral 字符副本名（UTF-16 码元）边界用例；F-002 WORKFLOW_EDITOR 缺 department.read 的角色决策由 Lead 在 gate 前记录/接受。"
   ],
-  "evidence": [],
-  "tools_used": [],
-  "blocker": null,
+  "evidence": [
+    "EV-1120",
+    "EV-1121",
+    "EV-1122",
+    "EV-1123",
+    "EV-1124",
+    "EV-1125",
+    "EV-1126",
+    "EV-1127",
+    "EV-1128",
+    "EV-1129"
+  ],
+  "tools_used": [
+    "riccon",
+    "git",
+    "jdk21",
+    "maven",
+    "node26",
+    "pnpm10",
+    "docker",
+    "playwright-cli"
+  ],
+  "blocker": "AC-19/20 a11y 未通过：E2E-M06-09a 流程列表页 Tag green color-contrast serious（EV-1127），需 apps/web 修复后重跑；AC-21 perf 未达预算：50 混合 VU 下 M06 运行准入 p95 3394ms > 500ms（EV-1125，J1/J2/M06 共用租户行锁），需 M02/M06 性能修复。另有跨 write_scope 残余需 Lead 建修复任务：REV-TASK-0230-001 F-004（保存 400 校验面板，apps/web）、REV-TASK-0247-001 F-001（astral 副本名，apps/web）；REV-TASK-0221-001 F-003（contracts README 口径）、REV-TASK-0227-001 F-001..F-003（worker schema/边界）超出本任务范围。已交付 E2E-01..10/09b/09c、@a11y 负向、SEC/TEN/DEPT/IT-AUDIT、PERF harness 与证据。",
   "created_at": "2026-11-25T02:10:50.101+08:00",
-  "updated_at": "2026-11-26T00:03:32.090+08:00",
+  "updated_at": "2026-11-26T03:31:49.754+08:00",
   "baseline_commit": "caea5202644db53af3f08cefd8fcf57244aa4e24"
 }

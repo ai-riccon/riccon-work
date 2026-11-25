@@ -1,0 +1,348 @@
+{
+  "scenario": "workflow",
+  "failureMode": null,
+  "generatedAt": "2026-11-25T19:09:16.511Z",
+  "baseUrl": "http://127.0.0.1:18080",
+  "env": {
+    "generatedAt": "2026-11-25T19:07:09.096Z",
+    "mode": "perf",
+    "host": {
+      "platform": "darwin 24.6.0",
+      "arch": "x64",
+      "cpus": 12,
+      "cpuModel": "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz",
+      "memoryBytes": 17179869184,
+      "memoryGiB": 16,
+      "loadAverage": [
+        3.06,
+        4.12,
+        4.56
+      ],
+      "node": "v26.13.0"
+    },
+    "images": {
+      "compose": [
+        "opensearchproject/opensearch:3.9.0",
+        "rustfs/rustfs:1.0.6",
+        "mysql:8.4.13"
+      ],
+      "started": [
+        "mysql:8.4.13"
+      ]
+    },
+    "k6Version": "k6 v2.4.0 (commit/dd9395906d, go1.26.11, darwin/amd64)",
+    "scriptSha256": "5d9b114a5237ee4546cdae5b25a532373f1dca0e10e823457acdf1057b71138e",
+    "chatMaxStreams": 50,
+    "dbPoolSize": 50,
+    "fakeModel": 1,
+    "deploymentMode": "DEMO",
+    "workflow": {
+      "enabled": true,
+      "source": "scripts/real-stack/run.mjs WORKFLOW_ENV（默认值与 application.yml 一致；环境变量可覆盖）",
+      "env": {
+        "RICCON_WORKFLOW_ENABLED": "true",
+        "RICCON_WORKFLOW_MAX_NODES": "50",
+        "RICCON_WORKFLOW_MAX_STEPS": "200",
+        "RICCON_WORKFLOW_MODEL_TIMEOUT_SECONDS": "300",
+        "RICCON_WORKFLOW_RETRIEVAL_TIMEOUT_SECONDS": "120",
+        "RICCON_WORKFLOW_MCP_TIMEOUT_SECONDS": "60",
+        "RICCON_WORKFLOW_RUN_TIMEOUT_MINUTES": "30",
+        "RICCON_WORKFLOW_TENANT_CONCURRENCY": "10",
+        "RICCON_WORKFLOW_FLOW_CONCURRENCY": "5",
+        "RICCON_WORKFLOW_RESULT_MAX_BYTES": "5242880",
+        "RICCON_WORKFLOW_WORKER_CONCURRENCY": "10",
+        "RICCON_WORKFLOW_CLAIM_BATCH": "1",
+        "RICCON_WORKFLOW_CLAIM_POLL_INTERVAL_MS": "1000",
+        "RICCON_WORKFLOW_RETENTION_DAYS": "180"
+      },
+      "maxNodes": 50,
+      "maxSteps": 200,
+      "modelTimeoutSeconds": 300,
+      "retrievalTimeoutSeconds": 120,
+      "mcpTimeoutSeconds": 60,
+      "runTimeoutMinutes": 30,
+      "tenantConcurrency": 10,
+      "flowConcurrency": 5,
+      "resultMaxBytes": 5242880,
+      "workerConcurrency": 10,
+      "retentionDays": 180
+    },
+    "ocr": {
+      "available": false,
+      "exitCode": 4,
+      "engine": "tesseract",
+      "language": "chi_sim+eng",
+      "sample": "deploy/ocr/sample.png",
+      "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
+      "probedAt": "2026-11-26T03:07:08+08:00"
+    },
+    "startCommand": "node scripts/real-stack/run.mjs --mode=perf",
+    "startupCommands": [
+      "java -jar apps/api/target/riccon-api-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/MASTER_KEY_ID/FINGERPRINT_PEPPER/BILLING_CURRENCY/QUOTA_DEFAULT_*/DB_POOL)",
+      "java -jar apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/CHAT_MAX_STREAMS/DB_POOL_SIZE/MODEL_FIRST_TOKEN_TIMEOUT/PRE_FIRST_TOKEN_BUDGET)",
+      "node scripts/real-stack/fake-model.mjs --scenario ok --chunk-count 6"
+    ],
+    "perfProfile": {
+      "chatMaxStreams": 50,
+      "dbPoolSize": 50,
+      "dbPoolFloor": 25,
+      "fakeModel": 1,
+      "connectTimeout": "500ms",
+      "firstTokenTimeout": "1000ms",
+      "preFirstTokenBudget": "2500ms",
+      "maxAttempts": 3,
+      "retryDelays": "50ms,100ms",
+      "duration": "45s"
+    },
+    "openSearch": "excluded (perf mode; 2C4Gi sandbox 不足，主机规格见 host)",
+    "perfM05": null,
+    "perfM06": {
+      "scenario": "workflow",
+      "workflowId": "01a2141b-cf98-7abb-9191-4f881a5d9c3b",
+      "adminWorkflowId": "01a2141b-d086-7c5b-ac32-796c50a7f533",
+      "workflowName": "PERF-M06 流程 1795633696635",
+      "publishedVersionId": "01a2141b-d049-7fb4-96b2-31de849b2fef",
+      "concurrency": {
+        "j1Vus": 38,
+        "j2Vus": 1,
+        "studioVus": 10,
+        "writeVus": 1,
+        "total": 50
+      },
+      "workflowLimits": {
+        "enabled": true,
+        "source": "scripts/real-stack/run.mjs WORKFLOW_ENV（默认值与 application.yml 一致；环境变量可覆盖）",
+        "env": {
+          "RICCON_WORKFLOW_ENABLED": "true",
+          "RICCON_WORKFLOW_MAX_NODES": "50",
+          "RICCON_WORKFLOW_MAX_STEPS": "200",
+          "RICCON_WORKFLOW_MODEL_TIMEOUT_SECONDS": "300",
+          "RICCON_WORKFLOW_RETRIEVAL_TIMEOUT_SECONDS": "120",
+          "RICCON_WORKFLOW_MCP_TIMEOUT_SECONDS": "60",
+          "RICCON_WORKFLOW_RUN_TIMEOUT_MINUTES": "30",
+          "RICCON_WORKFLOW_TENANT_CONCURRENCY": "10",
+          "RICCON_WORKFLOW_FLOW_CONCURRENCY": "5",
+          "RICCON_WORKFLOW_RESULT_MAX_BYTES": "5242880",
+          "RICCON_WORKFLOW_WORKER_CONCURRENCY": "10",
+          "RICCON_WORKFLOW_CLAIM_BATCH": "1",
+          "RICCON_WORKFLOW_CLAIM_POLL_INTERVAL_MS": "1000",
+          "RICCON_WORKFLOW_RETENTION_DAYS": "180"
+        },
+        "maxNodes": 50,
+        "maxSteps": 200,
+        "modelTimeoutSeconds": 300,
+        "retrievalTimeoutSeconds": 120,
+        "mcpTimeoutSeconds": 60,
+        "runTimeoutMinutes": 30,
+        "tenantConcurrency": 10,
+        "flowConcurrency": 5,
+        "resultMaxBytes": 5242880,
+        "workerConcurrency": 10,
+        "retentionDays": 180
+      },
+      "fakeModel": 1,
+      "limitProbe": {
+        "configuredTenantConcurrency": 10,
+        "attempts": 12,
+        "accepted": 5,
+        "rejectedCode": [
+          "RICCON-WF-429",
+          "RICCON-WF-429",
+          "RICCON-WF-429",
+          "RICCON-WF-429",
+          "RICCON-WF-429",
+          "RICCON-WF-429",
+          "RICCON-WF-429"
+        ],
+        "durationMs": 661
+      },
+      "reproduceCommand": "PERF_M06_SCENARIO=workflow REAL_PERF_DURATION=45s REAL_PERF_SKIP_M04=1 node scripts/real-stack/run.mjs --mode=perf"
+    }
+  },
+  "thresholds": {
+    "m06_j1_first_token_ms": [
+      "p(95)<3000"
+    ],
+    "m06_j1_first_token_ok": [
+      "rate>0.99"
+    ],
+    "m06_api_ms": [
+      "p(95)<500"
+    ],
+    "m06_run_admission_ms": [
+      "p(95)<500"
+    ],
+    "m06_run_ok": [
+      "rate>0.99"
+    ],
+    "m06_run_completed_ok": [
+      "rate>0.99"
+    ],
+    "m06_j2_ok": [
+      "rate>0.99"
+    ]
+  },
+  "metrics": {
+    "m06_run_ok": {
+      "fails": 0,
+      "rate": 1,
+      "passes": 93
+    },
+    "m04_run_detail_ms": {
+      "p(90)": 82,
+      "p(95)": 91.59999999999991,
+      "max": 188,
+      "count": 485,
+      "avg": 69.14639175257732,
+      "min": 30,
+      "med": 67
+    },
+    "http_req_failed": {
+      "rate": 0.0020798668885191347,
+      "passes": 5,
+      "fails": 2399
+    },
+    "m04_api_ms": {
+      "avg": 68.83970309278354,
+      "min": 29.204,
+      "med": 67.171,
+      "p(90)": 82.0818,
+      "p(95)": 90.84439999999995,
+      "max": 187.411,
+      "count": 485
+    },
+    "m04_chat_submit_ttfb_ms": {
+      "p(95)": 3551.7092,
+      "max": 3963.354,
+      "count": 485,
+      "avg": 3225.867767010306,
+      "min": 857.408,
+      "med": 3307.494,
+      "p(90)": 3508.6854
+    },
+    "m06_api_ms": {
+      "med": 90,
+      "p(90)": 1470.4999999999964,
+      "p(95)": 3207.8999999999996,
+      "max": 3455,
+      "count": 962,
+      "avg": 393.6174636174636,
+      "min": 53
+    },
+    "m06_j1_first_token_ok": {
+      "fails": 0,
+      "rate": 1,
+      "passes": 485
+    },
+    "iterations": {
+      "count": 708,
+      "rate": 14.653473904025708
+    },
+    "m06_run_admission_ms": {
+      "min": 1322,
+      "med": 3207.5,
+      "p(90)": 3361.1,
+      "p(95)": 3394.3999999999996,
+      "max": 3455,
+      "count": 98,
+      "avg": 3055.2448979591836
+    },
+    "http_req_duration": {
+      "p(95)": 3563.3929000000003,
+      "max": 4121.023,
+      "count": 2404,
+      "avg": 924.6256797005013,
+      "min": 21.25,
+      "med": 89.253,
+      "p(90)": 3462.5510000000004
+    },
+    "m06_j2_ok": {
+      "rate": 1,
+      "passes": 7,
+      "fails": 0
+    },
+    "m06_j2_duration_ms": {
+      "avg": 6189.142857142857,
+      "min": 4844,
+      "med": 5469,
+      "p(90)": 8041.000000000002,
+      "p(95)": 9365.499999999996,
+      "max": 10690,
+      "count": 7
+    },
+    "m06_j1_first_token_ms": {
+      "min": 21,
+      "med": 30,
+      "p(90)": 37,
+      "p(95)": 42,
+      "max": 198,
+      "count": 485,
+      "avg": 31.95257731958763
+    },
+    "m06_run_completed_ok": {
+      "fails": 0,
+      "rate": 1,
+      "passes": 93
+    },
+    "m06_run_rejected": {
+      "rate": 0.10348498519792167,
+      "count": 5
+    },
+    "m04_chat_stream_ms": {
+      "min": 1057,
+      "med": 3460,
+      "p(90)": 3667,
+      "p(95)": 3704,
+      "max": 4121,
+      "count": 485,
+      "avg": 3378.762886597938
+    }
+  },
+  "m06": {
+    "workflowId": "01a2141b-cf98-7abb-9191-4f881a5d9c3b",
+    "adminWorkflowId": "01a2141b-d086-7c5b-ac32-796c50a7f533",
+    "workflowName": "PERF-M06 流程 1795633696635",
+    "concurrency": {
+      "j1Vus": 38,
+      "j2Vus": 1,
+      "studioVus": 10,
+      "writeVus": 1,
+      "total": 50
+    },
+    "fakeModel": 1,
+    "firstTokenSource": "run detail modelInvocation.firstTokenMs（不是 SSE TTFB）",
+    "apiBudget": "Studio 列表/详情/保存/发布/运行准入/审批查询/历史查询 p95 ≤ 500ms",
+    "runRejectedMetric": "m06_run_rejected 记录 RICCON-WF-429 次数，单列不并入成功率",
+    "workflowLimits": {
+      "enabled": true,
+      "source": "scripts/real-stack/run.mjs WORKFLOW_ENV（默认值与 application.yml 一致；环境变量可覆盖）",
+      "env": {
+        "RICCON_WORKFLOW_ENABLED": "true",
+        "RICCON_WORKFLOW_MAX_NODES": "50",
+        "RICCON_WORKFLOW_MAX_STEPS": "200",
+        "RICCON_WORKFLOW_MODEL_TIMEOUT_SECONDS": "300",
+        "RICCON_WORKFLOW_RETRIEVAL_TIMEOUT_SECONDS": "120",
+        "RICCON_WORKFLOW_MCP_TIMEOUT_SECONDS": "60",
+        "RICCON_WORKFLOW_RUN_TIMEOUT_MINUTES": "30",
+        "RICCON_WORKFLOW_TENANT_CONCURRENCY": "10",
+        "RICCON_WORKFLOW_FLOW_CONCURRENCY": "5",
+        "RICCON_WORKFLOW_RESULT_MAX_BYTES": "5242880",
+        "RICCON_WORKFLOW_WORKER_CONCURRENCY": "10",
+        "RICCON_WORKFLOW_CLAIM_BATCH": "1",
+        "RICCON_WORKFLOW_CLAIM_POLL_INTERVAL_MS": "1000",
+        "RICCON_WORKFLOW_RETENTION_DAYS": "180"
+      },
+      "maxNodes": 50,
+      "maxSteps": 200,
+      "modelTimeoutSeconds": 300,
+      "retrievalTimeoutSeconds": 120,
+      "mcpTimeoutSeconds": 60,
+      "runTimeoutMinutes": 30,
+      "tenantConcurrency": 10,
+      "flowConcurrency": 5,
+      "resultMaxBytes": 5242880,
+      "workerConcurrency": 10,
+      "retentionDays": 180
+    }
+  }
+}

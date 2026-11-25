@@ -1,0 +1,167 @@
+{
+  "apiBase": "http://127.0.0.1:18080",
+  "generatedAt": "2026-11-25T19:16:07.526Z",
+  "mode": "full",
+  "tenants": {
+    "alpha": "tenant-alpha",
+    "beta": "tenant-beta"
+  },
+  "users": {
+    "platformAdmin": "platform-admin",
+    "alphaAdmin": "alpha-admin",
+    "alphaAdmin2": "alpha-admin-2",
+    "alphaMember": "alpha-member",
+    "betaMember": "beta-member",
+    "alphaEditor": "alpha-editor",
+    "alphaApprover": "alpha-approver"
+  },
+  "userIds": {
+    "alphaAdmin": "01a21422-e0ad-7dc1-a982-dac456ead10a",
+    "alphaAdmin2": "01a21422-e313-7043-8ef9-0f9152874d9f",
+    "alphaMember": "01a21422-e1d8-7c01-905f-d7a6a89abb24",
+    "betaMember": "01a21422-e439-760a-bc1c-2937314fb284",
+    "alphaEditor": "01a21422-e55a-7526-bc12-a0e81ec72be2",
+    "alphaApprover": "01a21422-e68e-7957-816b-1da558afe3a8"
+  },
+  "passwords": {
+    "platformAdmin": "test-bootstrap-password-12",
+    "alphaAdmin": "alpha-admin-password-12",
+    "alphaAdmin2": "alpha-admin-2-password-12",
+    "alphaMember": "alpha-member-password-12",
+    "betaMember": "beta-member-password-12",
+    "alphaEditor": "alpha-editor-password-12",
+    "alphaApprover": "alpha-approver-password-12"
+  },
+  "tenantIds": {
+    "alpha": "tenant-alpha",
+    "beta": "tenant-beta"
+  },
+  "workspaces": {
+    "alpha": {
+      "id": "01a21422-ea15-78e2-9a2b-ef1ea964d914",
+      "kind": "PERSONAL",
+      "name": "Alpha 员工 的个人空间",
+      "description": null,
+      "ownerUserId": "01a21422-e1d8-7c01-905f-d7a6a89abb24",
+      "departmentId": null,
+      "departmentName": null,
+      "visibility": "PRIVATE",
+      "status": "ACTIVE",
+      "createdAt": "2026-11-25T19:16:02.197555Z",
+      "updatedAt": "2026-11-25T19:16:02.197555Z"
+    },
+    "beta": {
+      "id": "01a21422-eb75-7c13-814c-204d777af75e",
+      "kind": "PERSONAL",
+      "name": "Beta 员工 的个人空间",
+      "description": null,
+      "ownerUserId": "01a21422-e439-760a-bc1c-2937314fb284",
+      "departmentId": null,
+      "departmentName": null,
+      "visibility": "PRIVATE",
+      "status": "ACTIVE",
+      "createdAt": "2026-11-25T19:16:02.549107Z",
+      "updatedAt": "2026-11-25T19:16:02.549107Z"
+    }
+  },
+  "workflow": {
+    "department": {
+      "id": "01a21422-e7db-734f-95df-14668caea170",
+      "name": "Alpha 流程编排部",
+      "managerUserId": "01a21422-e55a-7526-bc12-a0e81ec72be2",
+      "memberUserIds": [
+        "01a21422-e55a-7526-bc12-a0e81ec72be2",
+        "01a21422-e68e-7957-816b-1da558afe3a8"
+      ]
+    },
+    "editorUserId": "01a21422-e55a-7526-bc12-a0e81ec72be2",
+    "approverUserId": "01a21422-e68e-7957-816b-1da558afe3a8",
+    "tenantAdminUserId": "01a21422-e0ad-7dc1-a982-dac456ead10a"
+  },
+  "catalog": {
+    "providerId": "0192f0a0-0000-7000-8000-000000000101",
+    "modelId": "0192f0a0-0000-7000-8000-000000000111",
+    "mcpServerId": "0192f0a0-0000-7000-8000-000000000003",
+    "mcpToolId": "0192f0a0-0000-7000-8000-000000000004",
+    "providers": [
+      {
+        "id": "0192f0a0-0000-7000-8000-000000000101",
+        "code": "fake-primary",
+        "name": "假模型主供应商（真实栈）",
+        "environmentLabel": "DEMO_ONLY",
+        "modelIds": [
+          "0192f0a0-0000-7000-8000-000000000111",
+          "0192f0a0-0000-7000-8000-000000000113"
+        ]
+      },
+      {
+        "id": "0192f0a0-0000-7000-8000-000000000102",
+        "code": "fake-secondary",
+        "name": "假模型备用供应商（真实栈）",
+        "environmentLabel": "DEMO_ONLY",
+        "modelIds": [
+          "0192f0a0-0000-7000-8000-000000000112"
+        ]
+      }
+    ],
+    "models": [
+      {
+        "id": "0192f0a0-0000-7000-8000-000000000111",
+        "modelKey": "fake-chat-primary",
+        "displayName": "假模型-主（真实栈）",
+        "status": "ACTIVE",
+        "pricing": "PRICED"
+      },
+      {
+        "id": "0192f0a0-0000-7000-8000-000000000112",
+        "modelKey": "fake-chat-secondary",
+        "displayName": "假模型-备用（真实栈）",
+        "status": "ACTIVE",
+        "pricing": "PRICED"
+      },
+      {
+        "id": "0192f0a0-0000-7000-8000-000000000113",
+        "modelKey": "fake-chat-disabled",
+        "displayName": "假模型-停用示例（真实栈）",
+        "status": "DISABLED",
+        "pricing": "UNPRICED"
+      }
+    ],
+    "routing": {
+      "CHAT": [
+        "0192f0a0-0000-7000-8000-000000000111",
+        "0192f0a0-0000-7000-8000-000000000112",
+        "0192f0a0-0000-7000-8000-000000000113"
+      ],
+      "REPORT": [
+        "0192f0a0-0000-7000-8000-000000000111",
+        "0192f0a0-0000-7000-8000-000000000112"
+      ]
+    },
+    "credentials": {
+      "fake-primary": [
+        {
+          "id": "0192f0a0-0000-7000-8000-000000000121",
+          "label": "主 key（真实栈）",
+          "priority": 10,
+          "maskedHint": "****0b4f"
+        }
+      ],
+      "fake-secondary": [
+        {
+          "id": "0192f0a0-0000-7000-8000-000000000122",
+          "label": "备用 key（真实栈）",
+          "priority": 10,
+          "maskedHint": "****66e2"
+        }
+      ]
+    }
+  },
+  "knowledge": {
+    "documentId": "01a21422-f554-7128-b9d6-b90a552493ff",
+    "status": "INDEXED",
+    "sourceFileId": "01a21422-ed13-7686-860f-a0a0f40ba964",
+    "title": "2025 中国企业协同办公市场研究"
+  },
+  "dbCounts": "item\ttotal\nproviders\t2\nmodels_active\t2\nmodels_priced\t2\nrouting_chat\t3\nrouting_report\t2\ncredentials_active\t2\nquota_limits\t8"
+}
