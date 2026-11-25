@@ -110,6 +110,28 @@ export const routes: RicconRoute[] = [
     ],
   },
   {
+    // 运行历史与运行详情是 Studio 的独立可访问视图：历史页需要可刷新/可收藏的 URL，
+    // 详情页还会被通知、审计与历史列表直接深链。沿用模板库、审批待办的“独立布局节点”写法，
+    // 不改变 /workflows 既有父子结构，避免影响 T10b 已验收的深链与路由回归。
+    path: '/workflows/runs',
+    component: '@/layouts/workspace',
+    routes: [
+      {
+        path: '/workflows/runs',
+        component: '@/pages/workflow/history',
+        wrappers: ['@/pages/workflow/templates/studio-nav'],
+        title: '运行历史',
+      },
+      {
+        // 动态段交给页面 `runId`：刷新与直接访问都定位到同一条运行，不用经过历史列表。
+        path: '/workflows/runs/:workflowRunId',
+        component: '@/pages/workflow/run/detail',
+        wrappers: ['@/pages/workflow/templates/studio-nav'],
+        title: '运行详情',
+      },
+    ],
+  },
+  {
     path: '/admin',
     component: '@/layouts/admin',
     routes: [

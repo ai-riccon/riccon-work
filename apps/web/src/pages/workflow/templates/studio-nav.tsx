@@ -20,31 +20,37 @@ interface StudioLink {
   permission?: string;
 }
 
-/** Studio 子导航链接；顺序与用户从列表进入模板库、审批待办的习惯一致。 */
+/** Studio 子导航链接；顺序与用户从列表进入模板库、运行历史与审批待办的习惯一致。 */
 const STUDIO_LINKS: readonly StudioLink[] = [
   { path: '/workflows/list', label: '流程列表' },
   { path: '/workflows/templates', label: '模板库' },
+  // 运行历史需要 workflow.read，与子导航本身同一权限；发布/运行等动作仍按各自权限在页面内显隐。
+  { path: '/workflows/runs', label: '运行历史' },
   { path: '/workflows/approvals', label: '审批待办', permission: WORKFLOW_PERMISSIONS.approve },
 ];
+
+/** 拥有独立入口的 Studio 子页面路径，用于让“流程列表”与它们互斥。 */
+const STUDIO_SUBPAGE_PATHS: readonly string[] = STUDIO_LINKS.filter(
+  (item) => item.path !== '/workflows/list',
+).map((item) => item.path);
 
 /**
  * 判断 Studio 子导航项是否处于选中态。
  *
- * “流程列表”覆盖 Studio 列表、编辑器以及其它 `/workflows/*` 页面（模板库与审批待办除外），
- * “模板库”“审批待办”只覆盖各自路径；三者互斥，避免同一页面出现多个 `aria-current="page"`。
+ * 除“流程列表”外的入口只覆盖各自路径及其下级深链（例如 `/workflows/runs/:id` 仍高亮运行历史）；
+ * “流程列表”覆盖 Studio 其余路径并排除这些子页面，保证任意页面最多一个 `aria-current="page"`。
  *
  * @param pathname 当前浏览器路径
  * @param path 子导航路径
  * @returns 是否为当前 Studio 子页面
  */
 function isStudioNavActive(pathname: string, path: string): boolean {
-  if (path === '/workflows/templates' || path === '/workflows/approvals') {
+  if (path !== '/workflows/list') {
     return isNavigationActive(pathname, path);
   }
   return (
     isNavigationActive(pathname, '/workflows') &&
-    !isNavigationActive(pathname, '/workflows/templates') &&
-    !isNavigationActive(pathname, '/workflows/approvals')
+    !STUDIO_SUBPAGE_PATHS.some((subpage) => isNavigationActive(pathname, subpage))
   );
 }
 
@@ -53,7 +59,8 @@ function isStudioNavActive(pathname: string, path: string): boolean {
  *
  * T14b 通过 Umi `wrappers` 把“流程列表 / 模板库”子导航挂到 Studio 的列表、编辑器与模板库
  * 三个页面；T13b 追加“审批待办”，只对持有 `workflow.approve` 的会话展示，用户可从任意
- * Studio 页面直接进入审核队列。外层仍按 `workflow.read` 过滤：无权限时不渲染子导航，
+ * Studio 页面直接进入审核队列；T12c 追加“运行历史”，挂载到历史页与运行详情深链，方便在
+ * 查看单条运行后切换流程或进入审核队列。外层仍按 `workflow.read` 过滤：无权限时不渲染子导航，
  * 页面自身守卫与服务端 403/404 仍然生效。
  *
  * 放在 `pages/workflow/templates/` 下是 T14b 写入范围（`templates/**`）的约束；

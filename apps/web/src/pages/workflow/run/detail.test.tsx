@@ -11,8 +11,19 @@ import type { WorkflowRunApi, WorkflowRunDetail } from './run-api';
 /**
  * 运行详情深链路由测试。
  *
- * 验证动态段注入与缺省情形；真实 Umi 路由注册不在 TASK-0232 写入范围，归后续路由接入任务。
+ * 验证动态段注入、`useParams` 读取与缺省情形；真实 Umi 路由注册与跨页跳转由
+ * `config/routes.test.ts` 与 T16a 的 E2E 覆盖。
  */
+
+/** 模拟 Umi 匹配 `/workflows/runs/:workflowRunId` 后提供的路由参数。 */
+const routeParams = vi.hoisted(() => ({ workflowRunId: undefined as string | undefined }));
+
+// 覆盖共享替身：生产环境由 Umi 按 `apps/web/config/routes.ts` 的动态段提供参数，
+// 这里用同名 `workflowRunId` 验证路由入口确实从 `useParams` 读取运行 ID。
+vi.mock('@umijs/max', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/test/umijs-max')>();
+  return { ...actual, useParams: () => routeParams };
+});
 
 /** 有 workflow.read 的会话。 */
 const READER_SESSION: SessionInfo = {
@@ -53,6 +64,8 @@ describe('WorkflowRunDetailRoute', () => {
   beforeEach(() => {
     authStore.reset();
     authStore.setAuthenticated(READER_SESSION);
+    // 每个用例从“路由未提供动态段”开始，需要时再显式设置。
+    routeParams.workflowRunId = undefined;
   });
 
   it('把注入的动态段传给页面并加载详情', async () => {
@@ -67,6 +80,23 @@ describe('WorkflowRunDetailRoute', () => {
       ),
     );
 
+    expect(await screen.findByRole('heading', { name: '运行详情', level: 1 })).toBeVisible();
+  });
+
+  it('未注入运行 ID 时从 useParams 的 workflowRunId 读取并加载详情', async () => {
+    routeParams.workflowRunId = 'run-from-params';
+    const api = createApi();
+    render(
+      withProviders(
+        <WorkflowRunDetailRoute
+          api={api}
+          pollIntervalMs={60_000}
+          sessionReader={{ getSession: async () => READER_SESSION }}
+        />,
+      ),
+    );
+
+    expect(api.getRunDetail).toHaveBeenCalledWith('run-from-params');
     expect(await screen.findByRole('heading', { name: '运行详情', level: 1 })).toBeVisible();
   });
 

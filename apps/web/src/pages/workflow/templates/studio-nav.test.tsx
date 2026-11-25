@@ -10,7 +10,7 @@ import WorkflowStudioNav from './studio-nav';
 /**
  * Studio 子导航测试。
  *
- * 覆盖列表/编辑器/模板库/审批待办入口可见性、选中态互斥、子路由出口与 375px 可聚焦；
+ * 覆盖列表/编辑器/模板库/运行历史/审批待办入口可见性、选中态互斥、子路由出口与 375px 可聚焦；
  * 真实 Umi 路由匹配与跨页跳转由 T16a 的 E2E 覆盖。
  */
 
@@ -137,14 +137,79 @@ describe('编排 Studio 子导航', () => {
     expect(screen.getByTestId('umi-outlet')).toBeInTheDocument();
   });
 
-  it('375px 下子导航换行展示且审批待办入口可聚焦', () => {
+  it('运行历史页高亮运行历史，流程列表与模板库不重复高亮', () => {
+    renderNav('/workflows/runs');
+
+    const nav = screen.getByRole('navigation', { name: '编排 Studio 导航' });
+    const runs = within(nav).getByRole('link', { name: '运行历史' });
+    expect(runs).toHaveAttribute('href', '/workflows/runs');
+    expect(runs).toHaveAttribute('aria-current', 'page');
+    expect(within(nav).getByRole('link', { name: '流程列表' })).not.toHaveAttribute('aria-current');
+    expect(within(nav).getByRole('link', { name: '模板库' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByTestId('umi-outlet')).toBeInTheDocument();
+  });
+
+  it('运行详情深链仍归属运行历史入口，且只有一项 aria-current', () => {
+    renderNav('/workflows/runs/run-1');
+
+    const nav = screen.getByRole('navigation', { name: '编排 Studio 导航' });
+    expect(within(nav).getByRole('link', { name: '运行历史' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(within(nav).getByRole('link', { name: '流程列表' })).not.toHaveAttribute('aria-current');
+    expect(within(nav).getByRole('link', { name: '模板库' })).not.toHaveAttribute('aria-current');
+    // 选中态互斥：深链页面上不应再出现第二个 aria-current。
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .filter((link) => link.hasAttribute('aria-current')),
+    ).toHaveLength(1);
+  });
+
+  it('流程列表与模板库把运行历史作为普通入口，不进入选中态', () => {
+    renderNav('/workflows/list');
+
+    let nav = screen.getByRole('navigation', { name: '编排 Studio 导航' });
+    const runsOnList = within(nav).getByRole('link', { name: '运行历史' });
+    expect(runsOnList).toHaveAttribute('href', '/workflows/runs');
+    expect(runsOnList).not.toHaveAttribute('aria-current');
+    expect(within(nav).getByRole('link', { name: '流程列表' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+
+    cleanup();
+    renderNav('/workflows/templates');
+    nav = screen.getByRole('navigation', { name: '编排 Studio 导航' });
+    expect(within(nav).getByRole('link', { name: '运行历史' })).not.toHaveAttribute('aria-current');
+    expect(within(nav).getByRole('link', { name: '模板库' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
+  it('无 workflow.read 时运行历史入口随子导航一起隐藏，深链由页面守卫兜底', () => {
+    renderNav('/workflows/runs/run-1', NO_PERMISSION_SESSION);
+
+    expect(screen.queryByRole('navigation', { name: '编排 Studio 导航' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '运行历史' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('umi-outlet')).toBeInTheDocument();
+  });
+
+  it('375px 下子导航换行展示且运行历史、审批待办入口可聚焦', () => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 375 });
-    renderNav('/workflows/list', APPROVER_SESSION);
+    renderNav('/workflows/runs', APPROVER_SESSION);
 
     const nav = screen.getByRole('navigation', { name: '编排 Studio 导航' });
     expect(nav).toBeVisible();
     const templates = within(nav).getByRole('link', { name: '模板库' });
     expect(templates).toBeVisible();
+    const runs = within(nav).getByRole('link', { name: '运行历史' });
+    expect(runs).toBeVisible();
+    expect(runs).toHaveAttribute('aria-current', 'page');
+    runs.focus();
+    expect(runs).toHaveFocus();
     const approvals = within(nav).getByRole('link', { name: '审批待办' });
     expect(approvals).toBeVisible();
     approvals.focus();

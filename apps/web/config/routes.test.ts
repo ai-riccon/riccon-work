@@ -226,6 +226,125 @@ describe('编排 Studio 审批待办路由与入口', () => {
   });
 });
 
+describe('编排 Studio 运行历史/详情路由与入口', () => {
+  /** Studio 子导航路由包装路径。 */
+  const STUDIO_NAV = '@/pages/workflow/templates/studio-nav';
+
+  /** 收集所有页面路由（真正渲染页面的节点）。 */
+  const collectPageRoutes = (nodes: typeof routes): typeof routes => {
+    const pages: typeof routes = [];
+    nodes.forEach((node) => {
+      if (node.path && node.component?.startsWith('@/pages/')) {
+        pages.push(node);
+      }
+      if (node.routes) {
+        pages.push(...collectPageRoutes(node.routes));
+      }
+    });
+    return pages;
+  };
+
+  it('运行历史与详情挂 workspace layout，详情使用 workflowRunId 动态段', () => {
+    const layout = findRouteByPath('/workflows/runs');
+    expect(layout?.component).toBe('@/layouts/workspace');
+    expect(layout?.routes?.map((route) => route.path)).toEqual([
+      '/workflows/runs',
+      '/workflows/runs/:workflowRunId',
+    ]);
+
+    const history = layout?.routes?.[0];
+    expect(history?.component).toBe('@/pages/workflow/history');
+    expect(history?.title).toBe('运行历史');
+    expect(history?.wrappers).toEqual([STUDIO_NAV]);
+
+    // 动态段名必须与 `pages/workflow/run/detail.tsx` 读取的 `params.workflowRunId` 一致，
+    // 否则深链会落到“缺少运行 ID”。
+    const detail = layout?.routes?.[1];
+    expect(detail?.path).toBe('/workflows/runs/:workflowRunId');
+    expect(detail?.component).toBe('@/pages/workflow/run/detail');
+    expect(detail?.title).toBe('运行详情');
+    expect(detail?.wrappers).toEqual([STUDIO_NAV]);
+  });
+
+  it('既有列表、编辑器、模板库、审批待办、问答、调研、管理端、登录与 404 兜底保持注册', () => {
+    // T10b 的 /workflows 父子结构与 T14b/T13b 的独立布局节点不因运行历史而变化。
+    expect(findRouteByPath('/workflows')?.routes?.map((route) => route.path)).toEqual([
+      '/workflows',
+      '/workflows/list',
+      '/workflows/:workflowId/edit',
+    ]);
+    expect(findRouteByPath('/workflows/list')?.component).toBe('@/pages/workflow/list');
+    expect(findRouteByPath('/workflows/:workflowId/edit')?.component).toBe('@/pages/workflow/edit');
+    expect(findRouteByPath('/workflows/templates')?.component).toBe('@/layouts/workspace');
+    expect(findRouteByPath('/workflows/templates')?.routes?.[0]?.component).toBe(
+      '@/pages/workflow/templates',
+    );
+    expect(findRouteByPath('/workflows/approvals')?.routes?.map((route) => route.path)).toEqual([
+      '/workflows/approvals',
+      '/workflows/approvals/:workflowApprovalId',
+    ]);
+    expect(findRouteByPath('/chat')?.component).toBe('@/pages/chat');
+    expect(findRouteByPath('/research/tasks')?.component).toBe('@/pages/research');
+    expect(findRouteByPath('/research/:researchTaskId')?.component).toBe('@/pages/research/detail');
+    expect(findRouteByPath('/admin/overview')?.component).toBe('@/pages/admin/overview');
+    expect(findRouteByPath('/login')?.component).toBe('@/pages/login');
+    // 兜底路由必须仍是最后一条通配页面，保证新增深链不吞掉 404。
+    expect(findRouteByPath('*')?.component).toBe('@/pages/404');
+    const pageRoutes = collectPageRoutes(routes);
+    expect(pageRoutes[pageRoutes.length - 1]?.path).toBe('*');
+  });
+
+  it('运行历史归入编排 Studio 分区：入口要求 workflow.read，选中态与面包屑覆盖列表和深链', () => {
+    // 不新增顶层导航项：运行历史由 Studio 子导航承载，避免与“编排 Studio”重复高亮。
+    expect(workspaceNavigation.map((item) => item.path)).toEqual([
+      '/chat',
+      '/research',
+      '/workflows',
+    ]);
+    expect(workspaceNavigation.find((item) => item.path === '/workflows')?.permissions).toEqual([
+      'workflow.read',
+    ]);
+    expect(filterWorkspaceNavigation(['workflow.read']).map((item) => item.path)).toEqual([
+      '/chat',
+      '/research',
+      '/workflows',
+    ]);
+    expect(filterWorkspaceNavigation(['workspace.read']).map((item) => item.path)).not.toContain(
+      '/workflows',
+    );
+
+    expect(isNavigationActive('/workflows/runs', '/workflows')).toBe(true);
+    expect(isNavigationActive('/workflows/runs/run-1', '/workflows')).toBe(true);
+    expect(buildWorkspaceBreadcrumb('/workflows/runs')).toEqual([
+      { label: '工作空间', path: '/chat' },
+      { label: '编排 Studio', path: '/workflows' },
+      { label: '运行历史' },
+    ]);
+    expect(buildWorkspaceBreadcrumb('/workflows/runs/run-1')).toEqual([
+      { label: '工作空间', path: '/chat' },
+      { label: '编排 Studio', path: '/workflows' },
+      { label: '运行详情' },
+    ]);
+  });
+
+  it('工作空间导航与 Studio 深链都有已注册路由，入口不会落到 404', () => {
+    workspaceNavigation.forEach((item) => {
+      expect(findRouteByPath(item.path), `${item.path} 未注册路由`).toBeDefined();
+    });
+    [
+      '/workflows/runs',
+      '/workflows/runs/run-1',
+      '/workflows/list',
+      '/workflows/workflow-1/edit',
+      '/workflows/templates',
+      '/workflows/approvals',
+      '/workflows/approvals/approval-1',
+    ].forEach((path) => {
+      expect(buildWorkspaceBreadcrumb(path).length, `${path} 缺少面包屑`).toBeGreaterThan(0);
+    });
+  });
+});
+
 describe('管理端导航权限过滤', () => {
   /** 读取指定权限下的可见菜单路径。 */
   const visiblePaths = (permissions?: readonly string[]): string[] =>

@@ -16,8 +16,8 @@ export interface WorkflowRunDetailRouteProps extends Omit<WorkflowRunDetailPageP
  * `/workflows/runs/:workflowRunId` 的路由入口。
  *
  * 动态段交给页面 `runId`，使运行历史链接、刷新与直接访问都能定位到同一条运行。
- * 具体路由需要在 `apps/web/config/routes.ts` 注册；该文件不在 TASK-0232 写入范围，
- * 由后续路由接入任务完成（页面本身已按默认导出可挂载组件提供）。
+ * 路由注册在 `apps/web/config/routes.ts`（T12c 接入），与动态段同名 `workflowRunId`；
+ * 页面本身仍按默认导出可挂载组件提供，便于测试与将来复用。
  *
  * @param props 运行 ID、API、会话读取、导航与轮询间隔注入
  * @returns 带深链参数解析的运行详情页面
