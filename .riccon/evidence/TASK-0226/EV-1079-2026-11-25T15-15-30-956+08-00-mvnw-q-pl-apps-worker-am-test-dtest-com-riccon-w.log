@@ -1,0 +1,94 @@
+# command: ./mvnw -q -pl apps/worker -am test -Dtest='com.riccon.worker.workflow.approval.**.*Test' -Dsurefire.failIfNoSpecifiedTests=false && ./mvnw -q -pl platform/platform-architecture-tests -am test -Dtest=ModuleBoundaryTest -Dsurefire.failIfNoSpecifiedTests=false && ./mvnw -q spotless:check
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-25T15:13:58.374+08:00
+# finished_at: 2026-11-25T15:15:29.947+08:00
+# duration_ms: 91571
+# exit_code: 0
+
+# --- stdout ---
+15:14:09.296 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.workflow.approval.service.WorkflowApprovalExecutorIntegrationTest]: WorkflowApprovalExecutorIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+15:14:09.554 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.workflow.approval.service.WorkflowApprovalExecutorIntegrationTest
+15:14:09.711 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.workflow.approval.service.WorkflowApprovalExecutorIntegrationTest]: WorkflowApprovalExecutorIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+15:14:09.711 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+15:14:09.715 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.workflow.approval.service.WorkflowApprovalExecutorIntegrationTest
+15:14:09.833 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+15:14:09.837 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+15:14:09.874 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+15:14:11.228 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+15:14:11.230 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+15:14:11.252 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+15:14:11.434 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+15:14:11.902 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: 8ddd966610b70cd6e170ddf63fe87b4d49bc9687f4c4bdbccd3edb1ba978eded
+15:14:12.430 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT0.996248S
+15:14:12.438 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+15:14:12.438 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+15:14:12.439 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+15:14:12.439 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+15:14:12.536 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: ad199d5e39e25f93f0589eeb48150ebf8f449e5cab09cf1be4b72acf71a732ea
+15:14:12.825 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:63449/riccon using query 'SELECT 1'
+15:14:23.516 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT11.076281S
+15:14:23.516 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:63449/riccon)
+15:14:23.519 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Creating container for image: opensearchproject/opensearch:3.9.0
+15:14:23.582 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 is starting: 77b897d61c42711e54b3b2271b6a855096be45b1a275dc74c43f5f95fba1c5de
+15:14:23.871 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /vigorous_jepsen: Waiting for 180 seconds for URL: http://localhost:63622/_cluster/health?wait_for_status=yellow&timeout=120s (where port 63622 maps to container port 9200)
+15:14:45.166 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 started in PT21.647474S
+15:14:45.167 [main] INFO tc.rustfs/rustfs:1.0.6 -- Creating container for image: rustfs/rustfs:1.0.6
+15:14:45.275 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 is starting: 8c716daf9fa3682ef8e1900562a78e37994fed82a6fcbbbc094ba371c050e652
+15:14:45.674 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /ecstatic_agnesi: Waiting for 60 seconds for URL: http://localhost:63771/health (where port 63771 maps to container port 9000)
+15:14:46.170 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 started in PT1.002834S
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-25T15:14:51.622+08:00  INFO 45190 --- [riccon-worker] [           main] .WorkflowApprovalExecutorIntegrationTest : Starting WorkflowApprovalExecutorIntegrationTest using Java 21.0.13 with PID 45190 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/worker)
+2026-11-25T15:14:51.623+08:00  INFO 45190 --- [riccon-worker] [           main] .WorkflowApprovalExecutorIntegrationTest : The following 1 profile is active: "test"
+2026-11-25T15:14:53.672+08:00  INFO 45190 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-25T15:14:53.909+08:00  INFO 45190 --- [riccon-worker] [           main] c.r.w.c.config.ConnectorProperties       : worker connector configuration loaded; enabled=false endpoints=0 maxObjects=5000 maxObjectBytes=104857600 syncTimeoutMinutes=60 schedulerEnabled=true
+2026-11-25T15:14:54.313+08:00  WARN 45190 --- [riccon-worker] [           main] o.a.poi.openxml4j.util.ZipSecureFile     : setting max text size greater than 10485760 can be risky; set to 268435456 chars
+2026-11-25T15:14:59.502+08:00  WARN 45190 --- [riccon-worker] [           main] c.r.w.w.c.WorkflowDatabasePoolGuard      : RICCON-WORKFLOW-022 workflow.db.pool.below_required actual=3 required=14 workerConcurrency=10 (RICCON_DB_POOL_SIZE is the authoritative deployment key)
+2026-11-25T15:14:59.551+08:00  INFO 45190 --- [riccon-worker] [           main] c.r.w.w.q.service.WorkflowRunScheduler   : workflow.queue.scheduler.disabled reason=CLAIM_ENABLED_FALSE
+2026-11-25T15:15:00.521+08:00  INFO 45190 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-25T15:15:00.521+08:00  INFO 45190 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-25T15:15:00.537+08:00  INFO 45190 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-25T15:15:00.548+08:00  INFO 45190 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 27 ms
+2026-11-25T15:15:00.716+08:00  INFO 45190 --- [riccon-worker] [           main] .WorkflowApprovalExecutorIntegrationTest : Started WorkflowApprovalExecutorIntegrationTest in 9.617 seconds (process running for 57.88)
+2026-11-25T15:15:00.792+08:00  INFO 45190 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-25T15:15:00.825+08:00  INFO 45190 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-25T15:15:00.864+08:00  INFO 45190 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=15 actual=15
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-25T15:15:02.024+08:00  WARN 45190 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a2118e-d072-7930-b72c-5bc8339556eb nodeKey=approval
+2026-11-25T15:15:02.344+08:00  WARN 45190 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a2118e-d214-70ae-87bb-1415fbb010f5 nodeKey=approval
+2026-11-25T15:15:02.559+08:00  WARN 45190 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a2118e-d2f1-7cfa-ad18-e5fb186a3ce8 nodeKey=approval
+2026-11-25T15:15:02.647+08:00  WARN 45190 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a2118e-d33e-74f2-b698-bf1be9c0757f nodeKey=approval
+2026-11-25T15:15:02.688+08:00  INFO 45190 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.workflow.approval.service.WorkflowApprovalDecisionServiceIntegrationTest]: WorkflowApprovalDecisionServiceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T15:15:02.692+08:00  INFO 45190 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.workflow.approval.service.WorkflowApprovalDecisionServiceIntegrationTest
+2026-11-25T15:15:02.693+08:00  INFO 45190 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.workflow.approval.service.WorkflowApprovalDecisionServiceIntegrationTest]: WorkflowApprovalDecisionServiceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T15:15:02.693+08:00  INFO 45190 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T15:15:02.695+08:00  INFO 45190 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.workflow.approval.service.WorkflowApprovalDecisionServiceIntegrationTest
+2026-11-25T15:15:02.777+08:00  WARN 45190 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a2118e-d3c5-7552-8812-08044a95456d nodeKey=approval
+2026-11-25T15:15:02.901+08:00  WARN 45190 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a2118e-d440-7dfc-bb3f-73acd659a0d5 nodeKey=approval
+2026-11-25T15:15:03.046+08:00  WARN 45190 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a2118e-d4dc-7f87-bbf1-bc97996f0ad1 nodeKey=approval
+2026-11-25T15:15:03.136+08:00  WARN 45190 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a2118e-d536-7d1a-bee5-3557056b3212 nodeKey=approval
+2026-11-25T15:15:03.219+08:00  WARN 45190 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a2118e-d588-7019-8b87-4f6c3d050ab6 nodeKey=approval
+2026-11-25T15:15:03.312+08:00  WARN 45190 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a2118e-d5e6-7d32-943b-cfbebe5ec978 nodeKey=approval
+2026-11-25T15:15:03.387+08:00  WARN 45190 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a2118e-d633-75f5-ac6c-9f75e22772a0 nodeKey=approval
+15:15:20.676 [main] INFO com.tngtech.archunit.core.PluginLoader -- Detected Java version 21.0.13
+
+# --- stderr ---
+
