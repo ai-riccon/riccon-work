@@ -404,6 +404,13 @@ budget:
 
 项目特定规则；不得削弱团队硬规则和 Project Contract。
 
+### 派单状态与会话（2026-11-25 教训）
+
+- 只有 Lead 派单。把任务置为 `in_progress` 前，必须先实际 spawn subagent 并拿到 `ses_...`；派单与状态更新必须在同一工作回合内完成，不能只改任务卡状态。
+- 每次派单后确认 OpenCode session 列表/运行通知里存在该会话；没有会话就视为未派单，先确认旧会话不存在，再补发。
+- 任务卡是 `in_progress` 不等于有人在做；任务状态不是派单证据，回执和 `ses_...` 会话才是。发现“无会话但有 in_progress 任务”时立即报告并补派，不要等到用户发现。
+- 同一 task 同一时间只允许一个 active subagent；旧会话可能仍在写入时，不要对同一 `write_scope` 重派。卡住先 follow-up 一次，仍无输出则标 blocked 并记录原因。
+
 ### 工具使用（Serena / CodeGraph）
 
 - 代码任务默认使用 Serena 做符号定位、引用查找、重命名与精确编辑；先 `initial_instructions` + `activate_project`，再 `s.lsp.find_symbol` / `find_referencing_symbols` / `rename_symbol` / `s.edit.replace_symbol_body`。整体调用链/影响面用 CodeGraph；grep/read 仅用于非代码文件或 MCP 降级，并在任务回执与 `tools_used` 记录原因。
