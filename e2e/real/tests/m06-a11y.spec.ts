@@ -227,7 +227,9 @@ test.describe('M06 可访问性与 375px', () => {
     await page.getByRole('button', { name: '运行流程' }).press('Enter');
     const runModal = page.locator('.ant-modal').filter({ hasText: '运行流程' }).last();
     await expect(runModal).toBeVisible();
-    await typeInto(runModal.getByLabel('运行输入 JSON'), JSON.stringify({ topic: '键盘市场调研' }));
+    const runInput = runModal.getByLabel('运行输入 JSON');
+    await runInput.pressSequentially(JSON.stringify({ topic: '键盘市场调研' }));
+    await expect(runInput).toHaveValue(JSON.stringify({ topic: '键盘市场调研' }));
     await runModal.getByRole('button', { name: '提交运行' }).press('Enter');
     await page.waitForURL(/\/workflows\/runs\/[0-9a-f-]{36}$/);
     await expect(page.getByRole('heading', { name: '运行详情' })).toBeVisible();
@@ -251,11 +253,9 @@ test.describe('M06 可访问性与 375px', () => {
         .getByRole('button', { name: /查看审批详情/ });
       await detailButton.press('Enter');
       await expect(approverPage.getByTestId('workflow-approval-detail')).toBeVisible();
-      await typeInto(
-        approverPage,
-        approverPage.getByLabel('审批意见（拒绝时必填，最多 500 字）'),
-        '键盘审批通过',
-      );
+      const comment = approverPage.getByLabel('审批意见（拒绝时必填，最多 500 字）');
+      await comment.pressSequentially('键盘审批通过');
+      await expect(comment).toHaveValue('键盘审批通过');
       await approverPage.getByRole('button', { name: '批准', exact: true }).press('Enter');
       await expect(
         approverPage.getByText('审批已批准，运行将继续执行后续节点并产出结果。'),
