@@ -310,7 +310,7 @@ J1/J2 Worker
 - `model_invocation` **不加 CHECK**（MySQL 8.4 ADD CHECK 只能 COPY、阻塞 DML）；`cost_status`/`cost_amount`/`attempt_count` 由应用层校验。小表保留 CHECK。
 - `provider_credential.fingerprint` = HMAC-SHA-256 + 独立 pepper，不使用裸 SHA-256；`V11` 先 DROP 旧 CHECK 再 `RETIRED→DISABLED`。
 - `model_invocation_attempt` 与 `model_invocation` 保留 ≥180 天，清理先 attempt；`quota_usage` 历史窗口同批清理；成本报告对 `cost_day IS NULL` 用 `unbucketedCalls` 显式呈现。
-- **配额准入锁序（B6）**：准入事务先 `SELECT id FROM tenant WHERE id=:tenantId FOR UPDATE`（必须先于任何业务行锁），再按 `TENANT/DAILY → USER/DAILY → TENANT/MONTHLY → USER/MONTHLY` 条件累加；租户锁只负责串行化、不判定准入，条件 `UPDATE ... WHERE used_count < :limit` 仍是唯一判据，锁等待/死锁映射 503 fail-closed。`innodb_lock_wait_timeout` 与同租户混合负载（含 FK 父行等待）由 B10（OPS-M04-014）测量，B6 的 50 并发只覆盖单租户争用（ADR-0022 §1.3）。
+- **配额准入锁序（B6；2026-11-26 修订，EV-1125）**：补行与计数拆开——`prepareAdmission` 在业务事务**之前**的独立短事务中，只对缺失的 4 个窗口行做 `INSERT ... ON DUPLICATE KEY UPDATE`（持 `tenant` X 仅消除 ODKU S→X 升级死锁，提交即释放）；业务事务内取 `tenant` S（共享，创建间不串行）、不再取 tenant X、不再补行，按 `TENANT/DAILY → USER/DAILY → TENANT/MONTHLY → USER/MONTHLY` 执行原子条件 UPDATE。`TENANT/DAILY` 行的 X 锁（首条 UPDATE 取得）成为配额串行点，只覆盖「配额更新 → 业务插入 → 审计」，不再覆盖校验/幂等查询；M06 创建在 `admit` 之后 count，故并发上限仍由该行锁串行；M06 重试在 count 前取 tenant X，与创建 S 互斥（跨日/跨月仍精确）。`prepare` 禁止在已有事务内调用（避免 `REQUIRES_NEW` 双连接耗尽 Hikari）；条件 `UPDATE ... WHERE used_count < :limit` 仍是唯一判据，锁等待/死锁 503 fail-closed。原 tenant X 全事务锁在 50 混合 VU 下 M06 准入 p95=3394ms（EV-1125），本修订替换；详见 ADR-0022 §1.3-R。
 
 ### API 摘要
 
@@ -582,7 +582,7 @@ Studio 编辑（列表/表单为主，画布增强）
 | 降级尝试上限   | 3（硬上限 5）                            | 单次模型调用（含首次）；per-attempt 计数                                                                                                                                                             |
 | 首字前总预算   | 生产 60s / perf 2.5s                     | AC-17 使用 perf profile；超出返回 503/504                                                                                                                                                            |
 | 成本查询 p95   | ≤ 2 s                                    | 30 天、租户/平台聚合；超时返回 503                                                                                                                                                                   |
-| 配额准入       | ≤ 20 ms                                  | 4 次条件 UPDATE + run 插入同事务                                                                                                                                                                     |
+| 配额准入       | ≤ 20 ms                                  | 热路径 tenant S + 4 次条件 UPDATE + run 插入同事务（不含排队）；冷路径补行在独立短事务，不占业务事务锁                                                                                               |
 | 指标抓取       | `/actuator/prometheus`                   | 仅内网/受控；M04 7 指标存在                                                                                                                                                                          |
 | ACL 检索增量   | ≤ 20%                                    | ACL 开启后检索/首字相对 M04 基线；`PERF-M05-001`                                                                                                                                                     |
 | 检索 p95       | **待量测，不预设阈值**                   | 10 万 chunk、50 并发；`LIKE` + ACL EXISTS 先量测；超 500ms 时 FTS/OpenSearch/单独预算需用户决策；`PERF-M05-005`                                                                                      |
@@ -641,7 +641,7 @@ Studio 编辑（列表/表单为主，画布增强）
 | 审计 CSV 公式注入                               | 低     | 中（客户端执行）          | 危险前缀单元格前置 `'`；`SEC-AUDIT-001` 扫描；CSV 元数据固定                                                                                        |
 | M04 受管端点被篡改或误配导致凭据发往错误地址    | 中     | 高（凭据外发）            | 部署允许列表 + 启动校验 + 调用前二次校验 + 禁止重定向/元数据地址；`SEC-M04-001..004`                                                                |
 | M04 首字后失败被自动重试产生重复内容            | 中     | 中（错误内容）            | 首字后绝不重试/重放；保留内容 + 新消息重试；`IT-MODEL-104`、`E2E-M04-03`                                                                            |
-| M04 配额并发超卖                                | 中     | 高（成本失控）            | 单条条件 UPDATE + 固定顺序事务；50 并发用例；`IT-QUOTA-102`、`PERF-M04-002`                                                                         |
+| M04 配额并发超卖                                | 中     | 高（成本失控）            | 预建行独立事务 + 单条条件 UPDATE + 固定顺序；热/冷路径与 J1/J2/M06 混合 50 并发；`IT-QUOTA-102/106/107`、`PERF-M04-002`、`PERF-M06-001`             |
 | M04 成本快照被价格更新污染或重复重算            | 中     | 高（账单不可信）          | 成功终态读取一次价格快照（M20/TASK-0140 修订，见 ADR-0022 §2.1；价格维护上线前必须重访）+ 只读历史；禁止 UPDATE `cost_amount`；`IT-COST-101`        |
 | M04 key 轮换失败或最后一个 key 被停用           | 中     | 高（模型不可用）          | 先插新 key 再停旧；HMAC fingerprint 去重/409；运行时跳到下一模型；`IT-MODEL-105/106`                                                                |
 | M04 降级风暴放大上游故障                        | 中     | 中（延迟/成本）           | 尝试上限/预算/退避抖动/key 冷却/`failoverEnabled` 开关；`PERF-M04-001`                                                                              |
