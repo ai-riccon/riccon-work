@@ -75,7 +75,7 @@ test.describe('M06 Studio 创建与发布', () => {
     await loginAs(page, 'alpha-editor', data.passwords.alphaEditor);
 
     await page.goto(M06_ROUTES.list);
-    await page.getByRole('button', { name: '新建空白流程' }).click();
+    await page.getByRole('button', { name: '新建空白流程' }).first().click();
     const createModal = page.locator('.ant-modal').filter({ hasText: '新建空白流程' }).last();
     await createModal.getByPlaceholder('例如：销售部市场调研').fill(name);
     await createModal.getByRole('button', { name: '创建并打开' }).click();
@@ -176,14 +176,17 @@ test.describe('M06 Studio 创建与发布', () => {
       await secondPage.getByPlaceholder('请输入密码').fill(data.passwords.alphaEditor);
       await secondPage.getByRole('button', { name: /登\s*录/ }).click();
       await secondPage.waitForURL(/\/chat$/);
+      // 第一会话先重新打开编辑器，持有当前草稿版本；第二会话随后保存，形成版本冲突。
+      await page.goto(M06_ROUTES.editor(workflowId!));
+      await expect(page.getByText('流程信息')).toBeVisible();
+      await page.getByLabel('流程名称').fill(`${name}（本地修改）`);
+
       await openEditor(secondPage, workflowId!);
       await secondPage.getByLabel('流程名称').fill(`${name}（第二会话）`);
       await secondPage.getByRole('button', { name: '保存草稿' }).click();
       await expect(secondPage.getByText(/草稿已保存（版本 v\d+）/)).toBeVisible();
 
-      await page.goto(M06_ROUTES.editor(workflowId!));
-      await expect(page.getByText('流程信息')).toBeVisible();
-      await page.getByLabel('流程名称').fill(`${name}（本地修改）`);
+
       await page.getByRole('button', { name: '保存草稿' }).click();
       const conflict = page
         .locator('.ant-modal')
