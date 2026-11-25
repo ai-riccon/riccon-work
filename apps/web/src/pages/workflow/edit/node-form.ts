@@ -1,5 +1,6 @@
 import type { McpTool } from '@/services/api/types';
 import { isUuid, normalizeNodeConfig } from './graph';
+import { MAX_ASSIGNEE_USER_IDS, MAX_CONDITION_IN_VALUES } from './limits';
 import type {
   WorkflowApprovalActionKind,
   WorkflowApprovalAssigneeType,
@@ -395,6 +396,12 @@ export function collectNodeFormErrors(
         errors.push({ field: 'assigneeUserIds', message: '请至少指定一名审批人。' });
       } else if (userIds.some((id) => !isUuid(id))) {
         errors.push({ field: 'assigneeUserIds', message: '审批人 ID 必须是 UUID。' });
+      } else if (userIds.length > MAX_ASSIGNEE_USER_IDS) {
+        // 契约 assigneeUserIds.maxItems=50；超过时后端会直接拒绝保存。
+        errors.push({
+          field: 'assigneeUserIds',
+          message: `审批人最多 ${MAX_ASSIGNEE_USER_IDS} 人。`,
+        });
       }
     }
     if (!values.actionKind) {
@@ -439,8 +446,29 @@ export function collectNodeFormErrors(
       });
     }
     if (values.conditionOperator === 'IN') {
-      if (splitList(values.conditionRightValuesText).length === 0) {
+      const items = splitList(values.conditionRightValuesText);
+      if (items.length === 0) {
         errors.push({ field: 'conditionRightValuesText', message: 'IN 算子至少需要一个值。' });
+      } else if (items.length > MAX_CONDITION_IN_VALUES) {
+        // 契约 values.maxItems=20；超过时后端拒绝保存，客户端必须先拦截。
+        errors.push({
+          field: 'conditionRightValuesText',
+          message: `IN 比较值集合最多 ${MAX_CONDITION_IN_VALUES} 个。`,
+        });
+      } else if (
+        values.conditionValueType === 'NUMBER' &&
+        items.some((item) => !Number.isFinite(Number(item)))
+      ) {
+        // 后端 WorkflowValidator 会逐个校验 values 与 valueType 一致（CONDITION_BRANCH_INVALID）。
+        errors.push({ field: 'conditionRightValuesText', message: 'IN 比较值必须都是数字。' });
+      } else if (
+        values.conditionValueType === 'BOOLEAN' &&
+        items.some((item) => !['true', 'false'].includes(item.toLowerCase()))
+      ) {
+        errors.push({
+          field: 'conditionRightValuesText',
+          message: 'IN 比较值必须都是 true 或 false。',
+        });
       }
     } else {
       const text = values.conditionRightValueText;

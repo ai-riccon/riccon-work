@@ -311,6 +311,57 @@ describe('节点表单校验', () => {
     ).toEqual([{ field: 'conditionRightValueText', message: '比较值必须是数字。' }]);
   });
 
+  it('IN 比较值限制数量与类型（F-002）', () => {
+    const base = {
+      conditionLeftSource: 'RUN_INPUT' as const,
+      conditionLeftPath: 'topic',
+      conditionValueType: 'NUMBER' as const,
+      conditionOperator: 'IN' as const,
+    };
+    const tooMany = Array.from({ length: 21 }, (_, index) => String(index)).join('、');
+    expect(
+      collectNodeFormErrors('CONDITION', values({ ...base, conditionRightValuesText: tooMany })),
+    ).toEqual([{ field: 'conditionRightValuesText', message: 'IN 比较值集合最多 20 个。' }]);
+    expect(
+      collectNodeFormErrors('CONDITION', values({ ...base, conditionRightValuesText: '1、abc' })),
+    ).toEqual([{ field: 'conditionRightValuesText', message: 'IN 比较值必须都是数字。' }]);
+    expect(
+      collectNodeFormErrors(
+        'CONDITION',
+        values({
+          ...base,
+          conditionValueType: 'BOOLEAN',
+          conditionRightValuesText: 'true、yes',
+        }),
+      ),
+    ).toEqual([
+      { field: 'conditionRightValuesText', message: 'IN 比较值必须都是 true 或 false。' },
+    ]);
+    expect(
+      collectNodeFormErrors('CONDITION', values({ ...base, conditionRightValuesText: '1、2' })),
+    ).toEqual([]);
+  });
+
+  it('按人审批最多 50 名审批人（F-002）', () => {
+    const userIds = (count: number): string[] =>
+      Array.from(
+        { length: count },
+        (_, index) => `01990000-0000-7000-8000-${String(index).padStart(12, '0')}`,
+      );
+    expect(
+      collectNodeFormErrors(
+        'APPROVAL',
+        values({ assigneeType: 'USER', assigneeUserIds: userIds(50), actionKind: 'CONTINUE' }),
+      ),
+    ).toEqual([]);
+    expect(
+      collectNodeFormErrors(
+        'APPROVAL',
+        values({ assigneeType: 'USER', assigneeUserIds: userIds(51), actionKind: 'CONTINUE' }),
+      ),
+    ).toEqual([{ field: 'assigneeUserIds', message: '审批人最多 50 人。' }]);
+  });
+
   it('结束节点校验结果来源与标题长度', () => {
     expect(collectNodeFormErrors('END', values())).toEqual([
       { field: 'resultFrom', message: '请选择结果来源节点。' },

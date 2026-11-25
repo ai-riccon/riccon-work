@@ -22,22 +22,28 @@ import WorkflowEditorPage from './index';
  * 发布成功/400、只读/无权限/关闭/不存在状态、目录降级与 375px/键盘基线。
  */
 
-/** 编辑器会话：具备编排、发布与管理权限。 */
+/** 流程编辑者会话：可发布“仅自己/本部门”，不具备“本租户”范围。 */
 const EDITOR_SESSION: SessionInfo = {
   ...DEMO_SESSION,
   user: { ...DEMO_SESSION.user, id: 'editor-1', displayName: '李强' },
-  roles: ['TENANT_ADMIN'],
+  roles: ['WORKFLOW_EDITOR'],
   permissions: [
     'workflow.read',
     'workflow.edit',
     'workflow.publish',
     'workflow.run',
     'workflow.approve',
-    'workflow.manage',
     'department.read',
     'model.read',
     'mcp.read',
   ],
+};
+
+/** 租户管理员会话：可发布“仅自己/本租户”，不能发布“本部门”（与 WorkflowPublishScopeValidator 同口径）。 */
+const TENANT_ADMIN_SESSION: SessionInfo = {
+  ...EDITOR_SESSION,
+  roles: ['TENANT_ADMIN'],
+  permissions: [...EDITOR_SESSION.permissions, 'workflow.manage'],
 };
 
 /** 最小有效图。 */
@@ -526,18 +532,148 @@ describe('流程编辑器', () => {
     });
   });
 
-  it('本部门范围未选部门时校验给出提示', async () => {
+  it('选择本部门后自动选中负责的部门并按该范围校验（F-005）', async () => {
     const validateWorkflow = vi.fn(async () => ({ valid: true, issues: [] }));
     const api = createFakeApi({ validateWorkflow });
     renderEditor(api);
     await waitForEditor();
+
+    // 非租户管理员只能发布“仅自己/本部门”，本租户范围必须与后端口径一致地禁用。
+    expect(screen.getByRole('radio', { name: '本租户' })).toBeDisabled();
     await waitFor(() => {
       expect(screen.getByRole('radio', { name: '本部门' })).toBeEnabled();
     });
     fireEvent.click(screen.getByRole('radio', { name: '本部门' }));
+    expect(await screen.findByRole('combobox', { name: '发布部门' })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '校验' }));
-    expect(await screen.findByText('请选择发布部门后再校验。')).toBeVisible();
-    expect(validateWorkflow).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(validateWorkflow).toHaveBeenCalledWith('workflow-1', {
+        runScope: 'DEPARTMENT',
+        departmentId: 'dept-1',
+      });
+    });
+  });
+
+  it('REV F-001：部门目录未加载时保留最近发布的本部门范围并二次确认', async () => {
+    const never = new Promise<never>(() => undefined);
+    const validateWorkflow = vi.fn(async () => ({ valid: true, issues: [] }));
+    const publishWorkflow = vi.fn(async () =>
+      makeVersion({ runScope: 'DEPARTMENT', departmentId: 'dept-1' }),
+    );
+    const api = createFakeApi({
+      listDepartments: vi.fn(() => never),
+      getWorkflow: vi.fn(async () =>
+        makeDetail({
+          latestVersion: makeVersion({ runScope: 'DEPARTMENT', departmentId: 'dept-1' }),
+        }),
+      ),
+      validateWorkflow,
+      publishWorkflow,
+    });
+    renderEditor(api);
+    await waitForEditor();
+
+    // 目录阻塞时不得把最近发布的本部门范围重置为“仅自己”。
+    expect(await screen.findByRole('radio', { name: '本部门' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: '仅自己' })).not.toBeChecked();
+    expect(
+      await screen.findByText(
+        '部门目录仍在加载；已保留最近发布版本的本部门范围，发布前会再次确认。',
+      ),
+    ).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: '发布' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent('本部门（dept-1）');
+    expect(dialog).toHaveTextContent('发布后该部门的成员可以运行该版本');
+    fireEvent.click(within(dialog).getByRole('button', { name: '发布' }));
+
+    await waitFor(() => {
+      expect(publishWorkflow).toHaveBeenCalledWith('workflow-1', {
+        runScope: 'DEPARTMENT',
+        departmentId: 'dept-1',
+      });
+    });
+  });
+
+  it('REV F-005：租户管理员恢复本部门范围时显式阻断，不静默改成仅自己', async () => {
+    const validateWorkflow = vi.fn(async () => ({ valid: true, issues: [] }));
+    const api = createFakeApi({
+      getWorkflow: vi.fn(async () =>
+        makeDetail({
+          latestVersion: makeVersion({ runScope: 'DEPARTMENT', departmentId: 'dept-1' }),
+        }),
+      ),
+      validateWorkflow,
+    });
+    renderEditor(api, vi.fn(), TENANT_ADMIN_SESSION);
+    await waitForEditor();
+
+    const departmentRadio = screen.getByRole('radio', { name: '本部门' });
+    expect(departmentRadio).toBeChecked();
+    expect(departmentRadio).toBeDisabled();
+    expect(
+      (await screen.findAllByText('租户管理员不能发布“本部门”范围，请改选“仅自己”或“本租户”。'))
+        .length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: '发布' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '发布版本' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: '校验' }));
+    await waitFor(() => expect(validateWorkflow).not.toHaveBeenCalled());
+  });
+
+  it('REV F-005：部门目录失败显示告警并可重试，不静默忽略', async () => {
+    const listDepartments = vi
+      .fn<WorkflowApi['listDepartments']>()
+      .mockRejectedValueOnce(new ApiError('forbidden', { status: 403, code: 'RICCON-AUTH-403' }))
+      .mockResolvedValueOnce(pageOf([DEPARTMENT]));
+    const api = createFakeApi({ listDepartments });
+    renderEditor(api);
+    await waitForEditor();
+
+    expect(await screen.findByText('部门目录加载失败')).toBeVisible();
+    expect(screen.getByText(/没有部门读取权限（department\.read）/)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '重试加载' }));
+    await waitFor(() => expect(listDepartments).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByText('部门目录加载失败')).toBeNull());
+    await waitFor(() => expect(screen.getByRole('radio', { name: '本部门' })).toBeEnabled());
+  });
+
+  it('REV F-002：另存副本名称不超过 200 字符', async () => {
+    const duplicateWorkflow = vi.fn<WorkflowApi['duplicateWorkflow']>(async () =>
+      makeDetail({ id: 'copy-1' }),
+    );
+    const saveDraft = vi
+      .fn<WorkflowApi['saveDraft']>()
+      .mockRejectedValueOnce(
+        new ApiError('draft version does not match', {
+          status: 409,
+          code: 'RICCON-WF-409',
+        }),
+      )
+      .mockImplementationOnce(async (_id, input) => ({
+        ...makeDetail({ id: 'copy-1' }),
+        draftVersion: input.version + 1,
+        name: input.name ?? '副本',
+        draftGraph: input.graph,
+      }));
+    const api = createFakeApi({ duplicateWorkflow, saveDraft });
+    renderEditor(api);
+    await waitForEditor();
+
+    fireEvent.change(screen.getByLabelText('流程名称'), {
+      target: { value: 'a'.repeat(200) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '保存草稿' }));
+    fireEvent.click(await screen.findByRole('button', { name: '另存副本' }));
+
+    await waitFor(() => expect(duplicateWorkflow).toHaveBeenCalledTimes(1));
+    const copyName = duplicateWorkflow.mock.calls[0][1]?.name;
+    expect(copyName).toHaveLength(200);
+    expect(copyName?.endsWith(' 副本')).toBe(true);
+    await waitFor(() => expect(saveDraft).toHaveBeenCalledTimes(2));
+    expect(saveDraft.mock.calls[1][1].name).toHaveLength(200);
   });
 
   it('发布前校验失败会阻止 publish 并展示问题计数', async () => {

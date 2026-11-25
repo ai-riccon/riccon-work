@@ -28,10 +28,15 @@ import { useAuth } from '@/services/auth/auth-store';
 import type { Department, McpTool } from '@/services/api/types';
 import type { EmployeeModel } from '@/services/model/types';
 import {
+  buildScopeOptions,
+  describeVersionScope,
+  evaluatePublishScope,
+  type DepartmentsState,
+} from '../history/format';
+import {
   hasWorkflowPermission,
   NODE_TYPE_LABELS,
   NODE_TYPE_OPTIONS,
-  RUN_SCOPE_LABELS,
   runScopeLabel,
   WORKFLOW_PERMISSIONS,
   workflowDisplayStatus,
@@ -63,6 +68,7 @@ import {
   validateEdgeForm,
   type EdgeFormValues,
 } from './graph';
+import { duplicateWorkflowName } from './limits';
 import {
   applyNodeFormValues,
   ASSIGNEE_ROLE_OPTIONS,
@@ -128,6 +134,16 @@ function editorErrorMessage(error: unknown, fallback: string): string {
     return '你没有该流程的编辑权限，请联系租户管理员。';
   }
   return describeApiError(error, fallback);
+}
+
+/**
+ * 缩短 UUID 便于在选择器中展示；保留前 12 位避免完全无法区分。
+ *
+ * @param value 原始 ID
+ * @returns 短 ID
+ */
+function shortId(value: string): string {
+  return value.length <= 12 ? value : `${value.slice(0, 12)}…`;
 }
 
 /**
@@ -509,6 +525,9 @@ export default function WorkflowEditorPage({
   const [models, setModels] = useState<EmployeeModel[]>([]);
   const [tools, setTools] = useState<McpTool[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [departmentsState, setDepartmentsState] = useState<DepartmentsState>('idle');
+  const [departmentsError, setDepartmentsError] = useState<string | null>(null);
+  const [departmentReloadKey, setDepartmentReloadKey] = useState(0);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [panelPhase, setPanelPhase] = useState<PanelPhase>('idle');
   const [issues, setIssues] = useState<EditorIssue[]>([]);
@@ -530,6 +549,8 @@ export default function WorkflowEditorPage({
   const [edgeForm] = Form.useForm<EdgeFormValues>();
   const edgeSourceId = Form.useWatch('source', edgeForm);
   const requestSeq = useRef(0);
+  /** 记录已按最近发布版本初始化范围的流程，避免刷新草稿时覆盖用户当前选择。 */
+  const scopeInitializedFor = useRef<string | null>(null);
 
   /**
    * 读取流程详情并重置编辑器状态。
@@ -564,9 +585,12 @@ export default function WorkflowEditorPage({
       setConflictOpen(false);
       setDuplicateState(null);
       setConflictError(null);
-      if (loaded.latestVersion?.runScope) {
-        setRunScope(loaded.latestVersion.runScope);
-        setDepartmentId(loaded.latestVersion.departmentId ?? undefined);
+      // 首次打开某个流程时按最近发布版本恢复发布范围；后续“重新加载/放弃修改”重置草稿时
+      // 不覆盖用户当前选择。部门目录可能仍在异步加载，这里不回退范围（F-001）。
+      if (scopeInitializedFor.current !== workflowId) {
+        setRunScope(loaded.latestVersion?.runScope ?? 'ONLY_SELF');
+        setDepartmentId(loaded.latestVersion?.departmentId ?? undefined);
+        scopeInitializedFor.current = workflowId;
       }
       setPhase(loaded.canEdit && loaded.draftGraph != null ? 'ready' : 'readOnly');
     } catch (caught) {
@@ -594,18 +618,17 @@ export default function WorkflowEditorPage({
     void loadDetail();
   }, [loadDetail]);
 
-  // 目录只加载一次：模型/工具用于下拉，部门用于“本部门”发布范围。
-  // WORKFLOW_EDITOR 角色可能没有 model.read/mcp.read/department.read，失败时降级为手动填写 UUID。
+  // 模型/工具只加载一次：用于节点配置下拉。WORKFLOW_EDITOR 角色可能没有
+  // model.read/mcp.read，失败时降级为手动填写 UUID。
   useEffect(() => {
     if (phase !== 'ready') {
       return;
     }
     let cancelled = false;
     const loadCatalogs = async (): Promise<void> => {
-      const [modelResult, toolResult, departmentResult] = await Promise.allSettled([
+      const [modelResult, toolResult] = await Promise.allSettled([
         api.listModels(),
         api.listMcpTools(),
-        api.listDepartments(),
       ]);
       if (cancelled) {
         return;
@@ -623,11 +646,6 @@ export default function WorkflowEditorPage({
         setTools([]);
         failed.push('工具');
       }
-      if (departmentResult.status === 'fulfilled') {
-        setDepartments(departmentResult.value.items);
-      } else {
-        setDepartments([]);
-      }
       setCatalogError(
         failed.length > 0
           ? `${failed.join('与')}目录加载失败：可直接填写 UUID，或刷新页面重试。`
@@ -640,6 +658,42 @@ export default function WorkflowEditorPage({
     };
   }, [api, phase]);
 
+  // 部门目录单独加载并保留 loading/loaded/failed：发布范围依赖它确认负责人关系，
+  // 失败必须显式告警并可重试，不能像空数组一样静默处理（F-005）。
+  useEffect(() => {
+    if (phase !== 'ready') {
+      return;
+    }
+    let cancelled = false;
+    setDepartmentsState('loading');
+    setDepartmentsError(null);
+    const loadDepartments = async (): Promise<void> => {
+      try {
+        const page = await api.listDepartments();
+        if (cancelled) {
+          return;
+        }
+        setDepartments(page.items);
+        setDepartmentsState('loaded');
+      } catch (caught) {
+        if (cancelled) {
+          return;
+        }
+        setDepartments([]);
+        setDepartmentsState('failed');
+        setDepartmentsError(
+          caught instanceof ApiError && caught.status === 403
+            ? '没有部门读取权限（department.read），无法确认你负责的启用部门；可先发布“仅自己”范围，或联系租户管理员补充权限。'
+            : describeApiError(caught, '部门目录加载失败，请重试；你也可以先发布“仅自己”范围。'),
+        );
+      }
+    };
+    void loadDepartments();
+    return () => {
+      cancelled = true;
+    };
+  }, [api, departmentReloadKey, phase]);
+
   const managerDepartments = useMemo(
     () =>
       departments.filter(
@@ -649,16 +703,58 @@ export default function WorkflowEditorPage({
     [departments, session?.user.id],
   );
 
-  // 部门目录异步返回或权限变化后，回退不可用的范围选择，避免发布请求被 403 拒绝。
-  useEffect(() => {
-    if (runScope === 'DEPARTMENT' && managerDepartments.length === 0) {
-      setRunScope('ONLY_SELF');
-      setDepartmentId(undefined);
+  /**
+   * 发布部门选项。
+   *
+   * 优先列出当前负责的启用部门；若最近发布版本使用的部门已不在目录中，仍保留一个
+   * “最近发布版本”选项用于展示原范围，避免选择器空白或被迫改回“仅自己”（F-001）。
+   */
+  const departmentOptions = useMemo(() => {
+    const options = managerDepartments.map((department) => ({
+      value: department.id,
+      label: department.name,
+    }));
+    const latestDepartmentId = detail?.latestVersion?.departmentId;
+    if (
+      departmentId &&
+      !options.some((option) => option.value === departmentId) &&
+      latestDepartmentId === departmentId
+    ) {
+      const known = departments.find((department) => department.id === departmentId);
+      options.push({
+        value: departmentId,
+        label: known?.name ?? `${shortId(departmentId)}（最近发布版本）`,
+      });
     }
-    if (runScope === 'TENANT' && !canManage) {
-      setRunScope('ONLY_SELF');
-    }
-  }, [canManage, managerDepartments.length, runScope]);
+    return options;
+  }, [departmentId, departments, detail?.latestVersion?.departmentId, managerDepartments]);
+
+  // 范围选项与 T12b 发布面板共用同一纯函数，与后端 WorkflowPublishScopeValidator 同口径：
+  // 租户管理员只能选“仅自己/本租户”，其他发布者只能选“仅自己/本部门”。
+  const scopeOptions = buildScopeOptions({
+    tenantAdmin: canManage,
+    departmentsState,
+    managedDepartmentCount: managerDepartments.length,
+  });
+
+  // 评估当前范围是否可提交；目录未加载时不重置范围，只在无法确认时显式提示或阻断（F-001/F-005）。
+  const scopeEvaluation = evaluatePublishScope({
+    tenantAdmin: canManage,
+    runScope,
+    departmentId,
+    departmentsState,
+    managedDepartmentIds: managerDepartments.map((department) => department.id),
+    latestVersionScope: detail?.latestVersion?.runScope ?? null,
+    latestVersionDepartmentId: detail?.latestVersion?.departmentId ?? null,
+  });
+
+  // 发布弹窗中的范围影响说明；二次确认必须让用户看清发布后谁能运行该版本。
+  const scopeImpactText =
+    runScope === 'TENANT'
+      ? '发布后租户内所有具备运行权限的用户都可以运行该版本；请确认范围符合预期。'
+      : runScope === 'DEPARTMENT'
+        ? '发布后该部门的成员可以运行该版本；服务端会再次核对你的负责人关系。'
+        : '发布后只有你能运行该版本。';
 
   const selectedNode = graph.nodes.find((node) => node.id === selectedNodeId) ?? null;
   const liveIssues = useMemo(() => validateGraph(graph, tools), [graph, tools]);
@@ -855,9 +951,10 @@ export default function WorkflowEditorPage({
     setPanelError(null);
     setIssues([]);
     setNotice(null);
-    if (runScope === 'DEPARTMENT' && !departmentId) {
+    // 与后端 VALIDATE 同口径（T04b）：范围不可提交时先给出明确原因，不发必然 400 的请求。
+    if (!scopeEvaluation.allowed) {
       setPanelPhase('error');
-      setPanelError('请选择发布部门后再校验。');
+      setPanelError(scopeEvaluation.blockedReason ?? '当前发布范围不可用，请重新选择。');
       return;
     }
     const ready = await persistIfNeeded(false);
@@ -884,9 +981,34 @@ export default function WorkflowEditorPage({
   };
 
   /**
+   * 切换发布范围。
+   *
+   * 离开“本部门”时清空部门；进入“本部门”时优先沿用最近发布版本的部门，否则选择第一个
+   * 负责的启用部门，减少“选了范围却没选部门”的必然失败。
+   *
+   * @param next 目标范围
+   */
+  const handleScopeChange = (next: WorkflowRunScope): void => {
+    setRunScope(next);
+    setPublishError(null);
+    if (next !== 'DEPARTMENT') {
+      setDepartmentId(undefined);
+      return;
+    }
+    if (!departmentId) {
+      setDepartmentId(detail?.latestVersion?.departmentId ?? managerDepartments[0]?.id);
+    }
+  };
+
+  /**
    * 打开发布确认弹窗。
+   *
+   * 范围不可提交时不打开；按钮本身已禁用，这里再兜底一次，避免键盘或程序触发。
    */
   const openPublish = (): void => {
+    if (!detail?.canPublish || !scopeEvaluation.allowed) {
+      return;
+    }
     setPublishError(null);
     setPublishOpen(true);
   };
@@ -898,8 +1020,9 @@ export default function WorkflowEditorPage({
     setPublishError(null);
     setPublishing(true);
     try {
-      if (runScope === 'DEPARTMENT' && !departmentId) {
-        setPublishError('请选择发布部门。');
+      // 与服务端发布范围校验同口径：非法角色/部门组合直接给出原因，不提交必然 400 的请求。
+      if (!scopeEvaluation.allowed) {
+        setPublishError(scopeEvaluation.blockedReason ?? '当前发布范围不可用，请重新选择。');
         return;
       }
       const ready = await persistIfNeeded(false);
@@ -920,6 +1043,10 @@ export default function WorkflowEditorPage({
         return;
       }
       const version = await api.publishWorkflow(workflowId, scopeInput);
+      // 以服务端返回版本为准同步范围，避免本地选择与服务端规范化结果漂移。
+      setRunScope(version.runScope);
+      setDepartmentId(version.departmentId ?? undefined);
+      scopeInitializedFor.current = workflowId;
       setDetail((current) =>
         current
           ? {
@@ -955,18 +1082,20 @@ export default function WorkflowEditorPage({
   const handleDuplicate = async (): Promise<void> => {
     setConflictBusy(true);
     setConflictError(null);
+    // 副本名与草稿名共用同一截断规则，保证不超过 WorkflowDuplicateRequest.name 的 200 字符上限。
+    const copyName = duplicateWorkflowName(name, detail?.name);
     try {
       let copy = duplicateState;
       if (!copy) {
         const duplicated = await api.duplicateWorkflow(workflowId, {
-          name: `${name.trim() || detail?.name || '流程'} 副本`,
+          name: copyName,
         });
         copy = { id: duplicated.id, version: duplicated.draftVersion };
         setDuplicateState(copy);
       }
       const saved = await api.saveDraft(copy.id, {
         version: copy.version,
-        name: `${name.trim() || detail?.name || '流程'} 副本`,
+        name: copyName,
         description: description.trim() || null,
         graph: normalizeGraphForSave(graph),
       });
@@ -1117,16 +1246,6 @@ export default function WorkflowEditorPage({
     );
   }
 
-  const scopeOptions = [
-    { label: RUN_SCOPE_LABELS.ONLY_SELF, value: 'ONLY_SELF' },
-    {
-      label: RUN_SCOPE_LABELS.DEPARTMENT,
-      value: 'DEPARTMENT',
-      disabled: managerDepartments.length === 0,
-    },
-    { label: RUN_SCOPE_LABELS.TENANT, value: 'TENANT', disabled: !canManage },
-  ];
-
   return (
     <div className="workflow-page" data-testid="workflow-editor-page">
       <Flex className="workflow-editor-header" wrap gap={8} align="center" justify="space-between">
@@ -1152,7 +1271,7 @@ export default function WorkflowEditorPage({
             type="primary"
             aria-label="发布"
             onClick={openPublish}
-            disabled={!detail?.canPublish || publishing}
+            disabled={!detail?.canPublish || !scopeEvaluation.allowed || publishing}
           >
             发布
           </Button>
@@ -1493,36 +1612,73 @@ export default function WorkflowEditorPage({
           <Segmented
             aria-label="运行范围"
             value={runScope}
-            options={scopeOptions}
-            onChange={(value) => {
-              const scope = value as WorkflowRunScope;
-              setRunScope(scope);
-              if (scope !== 'DEPARTMENT') {
-                setDepartmentId(undefined);
-              }
-            }}
+            options={scopeOptions.map((option) => ({
+              value: option.value,
+              label: option.label,
+              disabled: option.disabled,
+            }))}
+            onChange={(value) => handleScopeChange(value as WorkflowRunScope)}
           />
           {runScope === 'DEPARTMENT' ? (
             <Select
               aria-label="发布部门"
               value={departmentId}
-              options={managerDepartments.map((department) => ({
-                value: department.id,
-                label: department.name,
-              }))}
-              onChange={setDepartmentId}
-              placeholder="选择你负责的部门"
+              options={departmentOptions}
+              onChange={(value?: string) => setDepartmentId(value ?? undefined)}
+              placeholder={
+                departmentsState === 'failed' ? '部门目录加载失败，可重试' : '选择你负责的部门'
+              }
               style={{ minWidth: 180 }}
             />
           ) : null}
-          <Button type="primary" onClick={openPublish} disabled={!detail?.canPublish}>
+          <Button
+            type="primary"
+            onClick={openPublish}
+            disabled={!detail?.canPublish || !scopeEvaluation.allowed}
+          >
             发布版本
           </Button>
         </Flex>
+        {departmentsState === 'loading' ? (
+          <Typography.Text type="secondary">正在加载部门目录…</Typography.Text>
+        ) : null}
+        {departmentsState === 'failed' ? (
+          <Alert
+            className="workflow-editor-alert"
+            type="warning"
+            showIcon
+            title="部门目录加载失败"
+            description={`${
+              departmentsError ?? '无法确认你负责的部门。'
+            } 暂时不能选择本部门；若最近版本使用本部门范围，页面会保留原范围并在发布前再次确认。`}
+            action={
+              <Button size="small" onClick={() => setDepartmentReloadKey((key) => key + 1)}>
+                重试加载
+              </Button>
+            }
+          />
+        ) : null}
+        {scopeEvaluation.blockedReason ? (
+          <Alert
+            className="workflow-editor-alert"
+            type="error"
+            showIcon
+            title="暂不能发布"
+            description={scopeEvaluation.blockedReason}
+          />
+        ) : null}
+        {scopeEvaluation.warning ? (
+          <Alert
+            className="workflow-editor-alert"
+            type="warning"
+            showIcon
+            title="发布范围需要确认"
+            description={scopeEvaluation.warning}
+          />
+        ) : null}
         <Typography.Paragraph type="secondary" className="workflow-scope-hint">
-          {runScope === 'DEPARTMENT' && managerDepartments.length === 0
-            ? '只有部门负责人可以选择本部门范围。'
-            : '仅自己：只有你能运行；本部门：你负责的部门成员可运行；本租户：租户内可运行用户均可运行。'}
+          仅自己：只有你能运行；本部门：由你当前负责的启用部门成员运行；本租户：租户内具备运行权限的成员均可运行。
+          发布前会再次确认范围，服务端始终按最新负责人/角色关系校验。
         </Typography.Paragraph>
       </Card>
 
@@ -1531,7 +1687,7 @@ export default function WorkflowEditorPage({
         open={publishOpen}
         okText="发布"
         cancelText="取消"
-        okButtonProps={{ 'aria-label': '发布' }}
+        okButtonProps={{ 'aria-label': '发布', disabled: !scopeEvaluation.allowed }}
         confirmLoading={publishing}
         onOk={() => void handlePublish()}
         onCancel={() => {
@@ -1541,9 +1697,22 @@ export default function WorkflowEditorPage({
         }}
       >
         <Typography.Paragraph>
-          将按“{runScopeLabel(runScope)}
-          ”范围发布当前草稿，生成不可变版本。发布前会自动保存并执行完整校验。
+          {`将按“${
+            runScope === 'DEPARTMENT'
+              ? describeVersionScope({ runScope, departmentId }, departments)
+              : runScopeLabel(runScope)
+          }”范围发布当前草稿（草稿 v${draftVersion}），生成不可变版本。发布前会自动保存并执行完整校验。`}
         </Typography.Paragraph>
+        <Alert type="info" showIcon title={scopeImpactText} />
+        {scopeEvaluation.warning ? (
+          <Alert
+            className="workflow-editor-alert"
+            type="warning"
+            showIcon
+            title="请确认发布范围"
+            description={scopeEvaluation.warning}
+          />
+        ) : null}
         {publishError ? <Alert type="error" showIcon title={publishError} /> : null}
       </Modal>
 

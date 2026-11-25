@@ -1,6 +1,8 @@
 import type { McpTool } from '@/services/api/types';
 import { ancestorIds, isUuid, normalizeGraphForSave, successorIds } from './graph';
+import { MAX_ASSIGNEE_USER_IDS, MAX_CONDITION_IN_VALUES } from './limits';
 import type {
+  WorkflowConditionValueType,
   WorkflowGraph,
   WorkflowGraphNode,
   WorkflowNodeConfig,
@@ -474,6 +476,13 @@ function validateNodeConfig(
             'config.assigneeUserIds',
             '按人审批至少需要指定一名审批人。',
           );
+        } else if (config.assigneeUserIds.length > MAX_ASSIGNEE_USER_IDS) {
+          push(
+            'APPROVAL_CONFIG',
+            node.id,
+            'config.assigneeUserIds',
+            `按人审批最多 ${MAX_ASSIGNEE_USER_IDS} 名审批人。`,
+          );
         }
         if (config.assigneeRole) {
           push('APPROVAL_CONFIG', node.id, 'config.assigneeRole', '按人审批不能同时设置审批角色。');
@@ -541,12 +550,30 @@ function validateNodeConfig(
         );
       }
       if (condition.operator === 'IN') {
-        if (!condition.right.values || condition.right.values.length === 0) {
+        const values = condition.right.values ?? [];
+        if (values.length === 0) {
           push(
             'CONDITION_BRANCH_INVALID',
             node.id,
             'config.condition.right.values',
             'IN 算子至少需要一个值。',
+          );
+        } else if (values.length > MAX_CONDITION_IN_VALUES) {
+          // 契约 maxItems=20；从服务端旧数据或直接编辑载入时也可能超限。
+          push(
+            'CONDITION_BRANCH_INVALID',
+            node.id,
+            'config.condition.right.values',
+            `IN 比较值集合最多 ${MAX_CONDITION_IN_VALUES} 个。`,
+          );
+        } else if (
+          values.some((value) => !matchesConditionValue(value, condition.right.valueType))
+        ) {
+          push(
+            'CONDITION_BRANCH_INVALID',
+            node.id,
+            'config.condition.right.values',
+            'IN 比较值类型必须与条件值类型一致。',
           );
         }
         if (condition.right.value != null) {
@@ -640,6 +667,32 @@ function normalizeGraphFromMaps(
     nodes: [...nodes.values()],
     edges: [...outgoing.values()].flat(),
   };
+}
+
+/**
+ * 判断条件值是否匹配声明类型。
+ *
+ * 与后端 `WorkflowValidator.matchesValueType` 同口径：NUMBER 必须是有限数字，
+ * BOOLEAN 必须是布尔，STRING 必须是字符串；不做字符串到数字的隐式转换。
+ *
+ * @param value 条件值
+ * @param valueType 声明的值类型
+ * @returns 是否匹配
+ */
+function matchesConditionValue(
+  value: string | number | boolean,
+  valueType: WorkflowConditionValueType,
+): boolean {
+  switch (valueType) {
+    case 'NUMBER':
+      return typeof value === 'number' && Number.isFinite(value);
+    case 'BOOLEAN':
+      return typeof value === 'boolean';
+    case 'STRING':
+      return typeof value === 'string';
+    default:
+      return false;
+  }
 }
 
 /**

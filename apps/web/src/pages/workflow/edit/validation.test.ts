@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { McpTool } from '@/services/api/types';
-import type { WorkflowGraph, WorkflowGraphNode } from '../list/workflow-api';
+import type {
+  WorkflowConditionRight,
+  WorkflowGraph,
+  WorkflowGraphNode,
+} from '../list/workflow-api';
 import {
   fromServerIssue,
   issueCodeLabel,
@@ -44,6 +48,30 @@ function validGraph(): WorkflowGraph {
 /** 判断问题列表是否包含指定码。 */
 function hasCode(issues: ReturnType<typeof validateGraph>, code: EditorIssueCode): boolean {
   return issues.some((issue) => issue.code === code);
+}
+
+/** 构造含 IN 条件的图：开始 → 条件 → 两个结束。 */
+function conditionGraph(right: WorkflowConditionRight): WorkflowGraph {
+  return {
+    schemaVersion: 1,
+    nodes: [
+      node('start', 'START'),
+      node('cond', 'CONDITION', {
+        condition: {
+          left: { source: 'RUN_INPUT', path: 'topic', valueType: 'NUMBER' },
+          operator: 'IN',
+          right,
+        },
+      }),
+      node('end-true', 'END', { resultFrom: 'cond' }),
+      node('end-false', 'END', { resultFrom: 'cond' }),
+    ],
+    edges: [
+      { id: 'e1', source: 'start', target: 'cond' },
+      { id: 'e2', source: 'cond', target: 'end-true', branch: 'TRUE' },
+      { id: 'e3', source: 'cond', target: 'end-false', branch: 'FALSE' },
+    ],
+  };
 }
 
 /** 授权工具。 */
@@ -229,6 +257,80 @@ describe('validateGraph', () => {
       issues.some(
         (issue) =>
           issue.code === 'CONDITION_BRANCH_INVALID' && issue.field === 'config.condition.left.path',
+      ),
+    ).toBe(true);
+  });
+
+  it('IN 比较值限制数量与声明类型（F-002）', () => {
+    const valid = validateGraph(
+      conditionGraph({
+        valueType: 'NUMBER',
+        values: [1, 2, 3],
+      }),
+      [],
+    );
+    expect(valid).toEqual([]);
+
+    const tooMany = validateGraph(
+      conditionGraph({
+        valueType: 'NUMBER',
+        values: Array.from({ length: 21 }, (_, index) => index),
+      }),
+      [],
+    );
+    expect(
+      tooMany.some(
+        (issue) =>
+          issue.code === 'CONDITION_BRANCH_INVALID' &&
+          issue.field === 'config.condition.right.values' &&
+          issue.message.includes('最多 20 个'),
+      ),
+    ).toBe(true);
+
+    const mismatched = validateGraph(
+      conditionGraph({
+        valueType: 'NUMBER',
+        values: [1, '2'],
+      }),
+      [],
+    );
+    expect(
+      mismatched.some(
+        (issue) =>
+          issue.code === 'CONDITION_BRANCH_INVALID' &&
+          issue.field === 'config.condition.right.values' &&
+          issue.message.includes('类型必须与条件值类型一致'),
+      ),
+    ).toBe(true);
+  });
+
+  it('按人审批最多 50 名审批人（F-002）', () => {
+    const graph = (count: number): WorkflowGraph => ({
+      schemaVersion: 1,
+      nodes: [
+        node('start', 'START'),
+        node('approval', 'APPROVAL', {
+          assigneeType: 'USER',
+          assigneeUserIds: Array.from(
+            { length: count },
+            (_, index) => `01990000-0000-7000-8000-${String(index).padStart(12, '0')}`,
+          ),
+          actionKind: 'CONTINUE',
+        }),
+        node('end', 'END', { resultFrom: 'approval' }),
+      ],
+      edges: [
+        { id: 'e1', source: 'start', target: 'approval' },
+        { id: 'e2', source: 'approval', target: 'end' },
+      ],
+    });
+    expect(validateGraph(graph(50), [])).toEqual([]);
+    expect(
+      validateGraph(graph(51), []).some(
+        (issue) =>
+          issue.code === 'APPROVAL_CONFIG' &&
+          issue.field === 'config.assigneeUserIds' &&
+          issue.message.includes('最多 50 名'),
       ),
     ).toBe(true);
   });
