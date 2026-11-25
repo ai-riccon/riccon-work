@@ -4,7 +4,7 @@
   "module_id": "M06",
   "title": "M06 T08 运行历史/详情/重试/取消/管理性读取/保留/审批聚合",
   "owner": "riccon/builder-b1",
-  "status": "in_progress",
+  "status": "review",
   "write_scope": [
     "apps/api/src/main/java/com/riccon/api/workflow/history/**",
     "apps/api/src/test/java/com/riccon/api/workflow/history/**",
@@ -19,10 +19,16 @@
     "关闭 REV-TASK-0229-001 F-003/F-004：待办查询避免 N+1（批量 join/聚合）；补取消/审批并发竞态测试与 409/幂等断言。",
     "写范围经 Lead 扩到 workflow/approval/**：T08 必须把 T09 F-001 的 retention_expires_at 过滤落在审批待办/详情（跨 T09 范围），并补 N+1/竞态用例。"
   ],
-  "evidence": [],
-  "tools_used": [],
+  "evidence": [
+    "EV-1087",
+    "EV-1088"
+  ],
+  "tools_used": [
+    "codegraph"
+  ],
   "blocker": null,
   "created_at": "2026-11-25T02:10:49.954+08:00",
-  "updated_at": "2026-11-25T19:07:15.318+08:00",
-  "baseline_commit": "9dd90bee98f9eb3827c7c16a8c820069eed5f8fb"
+  "updated_at": "2026-11-25T19:29:05.972+08:00",
+  "baseline_commit": "b514fe6729569860be4e085482053377dc2a2425",
+  "end_commit": "0511afd3"
 }
