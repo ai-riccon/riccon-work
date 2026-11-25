@@ -3,7 +3,6 @@ package com.riccon.worker.mcp.service;
 import com.riccon.platform.common.tenant.TenantId;
 import com.riccon.platform.domain.audit.AuditOutcome;
 import com.riccon.platform.domain.mcp.McpInvocationStatus;
-import com.riccon.platform.domain.mcp.McpToolRisk;
 import com.riccon.worker.audit.service.AuditService;
 import com.riccon.worker.common.UuidV7;
 import com.riccon.worker.config.McpProperties;
@@ -14,9 +13,6 @@ import com.riccon.worker.mcp.domain.McpException;
 import com.riccon.worker.mcp.domain.McpInvocationRecord;
 import com.riccon.worker.mcp.domain.McpToolHandle;
 import com.riccon.worker.mcp.repository.McpRepository;
-import io.agentscope.core.tool.mcp.McpClientWrapper;
-import io.modelcontextprotocol.spec.McpSchema;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -33,7 +29,11 @@ import tools.jackson.databind.ObjectMapper;
  * MCP 工具调用网关。
  *
  * <p>每次调用必须同时满足：租户已授权、工具 READ、server 在平台白名单、工具要求审批且存在审批 ID。
- * 调用前写 {@code mcp_invocation} STARTED，结束后写终态与 {@code mcp.tool.invoked} 审计；
+ * 授权/白名单/端点/超时/结果上限由共享 {@link McpCallExecutor} 以 {@code READ_ONLY} 策略执行；本类只
+ * 负责 {@code mcp_invocation} 生命周期与 {@code mcp.tool.invoked} 审计。J2 行为不因 M06 引入写工具而
+ * 放宽（ADR-0024 §4.7）：WRITE 继续拒绝。
+ *
+ * <p>调用前写 {@code mcp_invocation} STARTED，结束后写终态与 {@code mcp.tool.invoked} 审计；
  * 请求/响应原文不落库、不写日志，只保存 SHA-256、大小与脱敏摘要。
  */
 @Component
@@ -45,8 +45,8 @@ public class McpGateway {
     /** 调用记录仓储。 */
     private final McpRepository mcpRepository;
 
-    /** 客户端工厂。 */
-    private final McpClientFactory clientFactory;
+    /** 共享 MCP 执行器（授权/策略/端点/超时/结果上限）。 */
+    private final McpCallExecutor mcpCallExecutor;
 
     /** 审计服务。 */
     private final AuditService auditService;
@@ -64,7 +64,7 @@ public class McpGateway {
      * 创建 MCP 网关。
      *
      * @param mcpRepository MCP 仓储
-     * @param clientFactory 客户端工厂
+     * @param mcpCallExecutor 共享 MCP 执行器
      * @param auditService 审计服务
      * @param properties MCP 配置
      * @param objectMapper JSON 序列化器
@@ -72,13 +72,13 @@ public class McpGateway {
      */
     public McpGateway(
             McpRepository mcpRepository,
-            McpClientFactory clientFactory,
+            McpCallExecutor mcpCallExecutor,
             AuditService auditService,
             McpProperties properties,
             ObjectMapper objectMapper,
             Clock clock) {
         this.mcpRepository = Objects.requireNonNull(mcpRepository, "mcpRepository must not be null");
-        this.clientFactory = Objects.requireNonNull(clientFactory, "clientFactory must not be null");
+        this.mcpCallExecutor = Objects.requireNonNull(mcpCallExecutor, "mcpCallExecutor must not be null");
         this.auditService = Objects.requireNonNull(auditService, "auditService must not be null");
         this.properties = Objects.requireNonNull(properties, "properties must not be null");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
@@ -93,13 +93,14 @@ public class McpGateway {
      * @throws McpException 授权、审批、端点或协议失败
      */
     public McpCallResult invoke(McpInvocationCommand command) {
-        Optional<McpToolHandle> maybeHandle = mcpRepository.findAuthorizedTool(command.tenantId(), command.toolId());
+        Optional<McpToolHandle> maybeHandle = mcpCallExecutor.findAuthorizedTool(command.tenantId(), command.toolId());
         if (maybeHandle.isEmpty()) {
             auditDeniedWithoutInvocation(command, "mcp tool is not authorized");
             throw new McpException(McpException.DENIED, false, "mcp tool is not authorized");
         }
         McpToolHandle handle = maybeHandle.get();
-        String policyFailure = validatePolicy(handle, command.approvalId());
+        String policyFailure =
+                mcpCallExecutor.validatePolicy(handle, McpCallExecutor.Policy.READ_ONLY, command.approvalId());
         if (policyFailure != null) {
             deny(command, handle, policyFailure);
         }
@@ -126,7 +127,7 @@ public class McpGateway {
                         paramsPreview));
 
         try {
-            McpCallResult raw = call(command, handle);
+            McpCallResult raw = mcpCallExecutor.call(handle, command.arguments());
             long duration = Math.max(0, clock.millis() - startedAt);
             McpCallResult result =
                     new McpCallResult(invocationId, raw.text(), raw.resultSha256(), raw.sizeBytes(), duration);
@@ -166,32 +167,6 @@ public class McpGateway {
             finishFailure(command, handle, invocationId, wrapped.errorCode(), startedAt);
             throw wrapped;
         }
-    }
-
-    /**
-     * 校验工具策略，返回失败原因或 null。
-     *
-     * @param handle 工具与 server
-     * @param approvalId 审批 ID
-     * @return 失败原因；通过时为 null
-     */
-    private String validatePolicy(McpToolHandle handle, UUID approvalId) {
-        if (!handle.server().active() || !handle.tool().active()) {
-            return "mcp server or tool is disabled";
-        }
-        if (!properties.allowedServerCodes().contains(handle.server().code())) {
-            return "mcp server is not in the platform allowlist";
-        }
-        if (handle.tool().riskLevel() != McpToolRisk.READ) {
-            return "mcp tool risk level is not allowed";
-        }
-        if (!handle.tool().requiresApproval()) {
-            return "mcp tool must require human approval";
-        }
-        if (approvalId == null) {
-            return "mcp tool call is missing approval";
-        }
-        return null;
     }
 
     /**
@@ -265,56 +240,6 @@ public class McpGateway {
                 command.runId(),
                 command.toolId(),
                 reason);
-    }
-
-    /**
-     * 执行客户端初始化、调用与文本提取。
-     *
-     * @param command 调用命令
-     * @param handle 工具
-     * @return 调用结果
-     */
-    private McpCallResult call(McpInvocationCommand command, McpToolHandle handle) {
-        McpClientWrapper client = clientFactory.create(handle.server());
-        try {
-            McpSchema.CallToolResult response = client.callTool(
-                            handle.tool().name(), ArgumentDigest.canonical(command.arguments()))
-                    .block(properties.requestTimeout());
-            if (response == null) {
-                throw new McpException(McpException.INVALID, false, "mcp tool returned no response");
-            }
-            if (Boolean.TRUE.equals(response.isError())) {
-                throw new McpException(McpException.INVALID, false, "mcp tool returned an error result");
-            }
-            String text = textOf(response);
-            long sizeBytes = text.getBytes(StandardCharsets.UTF_8).length;
-            if (sizeBytes > properties.maxResultBytes()) {
-                throw new McpException(McpException.INVALID, false, "mcp tool result exceeds size budget");
-            }
-            return new McpCallResult(null, text, Digests.sha256Hex(text), sizeBytes, 0);
-        } catch (McpException ex) {
-            throw ex;
-        } catch (RuntimeException ex) {
-            throw new McpException(McpException.UNAVAILABLE, true, "mcp tool call failed", ex);
-        } finally {
-            close(client);
-        }
-    }
-
-    /**
-     * 拼接 MCP text content。
-     *
-     * @param response 工具响应
-     * @return 文本
-     */
-    private static String textOf(McpSchema.CallToolResult response) {
-        StringBuilder builder = new StringBuilder();
-        for (McpSchema.Content content : response.content()) {
-            if (content instanceof McpSchema.TextContent text) {
-                builder.append(text.text());
-            }
-        }
-        return builder.toString();
     }
 
     /**
@@ -396,19 +321,6 @@ public class McpGateway {
             return objectMapper.writeValueAsString(preview);
         } catch (JacksonException ex) {
             throw new McpException(McpException.INVALID, false, "mcp tool preview cannot be serialized", ex);
-        }
-    }
-
-    /**
-     * 关闭客户端；关闭失败只影响资源回收，不回滚已完成的工具调用。
-     *
-     * @param client 客户端
-     */
-    private static void close(McpClientWrapper client) {
-        try {
-            client.close();
-        } catch (RuntimeException ex) {
-            LOG.warn("mcp.client.close_failed", ex);
         }
     }
 
