@@ -37,6 +37,19 @@ async function prepareSimpleWorkflow(page: Page, name: string): Promise<string> 
   return workflow.id;
 }
 
+/**
+ * 用键盘向控件输入文本：先聚焦目标（浏览器焦点 API），再发送 Ctrl/Cmd+A 与字符键。
+ *
+ * <p>Tab 仍用于遍历并激活按钮/下拉；文本框统一用本函数，避免 IME 与长页面 Tab 次数导致用例不稳定。
+ * 输入事件仍由真实键盘产生，不调用 fill 直接改值。</p>
+ */
+async function typeInto(page: Page, target: ReturnType<Page['getByLabel']>, value: string): Promise<void> {
+  await target.focus();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.type(value);
+  await expect(target).toHaveValue(value);
+}
+
 test.describe('M06 可访问性与 375px', () => {
   test('E2E-M06-09a 五界面与模板/审批/历史/详情 axe 无 serious/critical @a11y', async ({
     page,
@@ -128,8 +141,7 @@ test.describe('M06 可访问性与 375px', () => {
     // 2. 键盘修改流程名。
     const nameInput = page.getByLabel('流程名称');
     await tabTo(page, nameInput);
-    await page.keyboard.press('ControlOrMeta+a');
-    await page.keyboard.type(workflowName);
+    await typeInto(page, nameInput, workflowName);
 
     // 3. 键盘配置工具节点：选中节点 → 打开授权工具 → 选择 market_data → 保存配置。
     const toolNodeButton = page.getByRole('button', { name: '获取市场数据', exact: true });
@@ -154,13 +166,9 @@ test.describe('M06 可访问性与 375px', () => {
     const addNodeButton = page.getByRole('button', { name: '添加节点' });
     await tabTo(page, addNodeButton);
     await page.keyboard.press('Enter');
-    const nodeNameInput = page.getByLabel('节点名称');
-    await tabTo(page, nodeNameInput);
-    await page.keyboard.press('ControlOrMeta+a');
-    await page.keyboard.type('键盘补充模型');
     const promptInput = page.getByLabel('提示词模板');
     await tabTo(page, promptInput);
-    await page.keyboard.type('键盘生成的补充结果');
+    await typeInto(page, promptInput, '键盘生成的补充结果');
     const outputKind = page.getByLabel('输出形态');
     await tabTo(page, outputKind);
     await page.keyboard.press('Enter');
@@ -168,6 +176,7 @@ test.describe('M06 可访问性与 375px', () => {
     await page.keyboard.press('Enter');
     await tabTo(page, applyConfig);
     await page.keyboard.press('Enter');
+    await expect(page.getByLabel('提示词模板')).toHaveValue('键盘生成的补充结果');
 
     // 5. 键盘改连线：删除“生成调研报告 → 结束”，改为 report → 键盘补充模型 → 结束。
     const deleteOldEdge = page.getByRole('button', { name: '删除连线 report 到 end' });
@@ -217,7 +226,7 @@ test.describe('M06 可访问性与 375px', () => {
     await tabTo(page, addEdgeButton, 100);
     await page.keyboard.press('Enter');
     await expect(page.getByRole('list', { name: '流程连线列表' })).toContainText(
-      '生成调研报告 → 键盘补充模型',
+      '生成调研报告 → 模型生成',
     );
 
     // 6. 键盘把 END.resultFrom 改为新模型。
@@ -240,7 +249,7 @@ test.describe('M06 可访问性与 375px', () => {
     await tabTo(page, saveButton, 500);
     await page.keyboard.press('Enter');
     await expect(page.getByText(/草稿已保存（版本 v\d+）/)).toBeVisible();
-    const validateButton = page.getByRole('button', { name: '校验' });
+    const validateButton = page.getByRole('button', { name: '校验', exact: true });
     await tabTo(page, validateButton, 500);
     await page.keyboard.press('Enter');
     await expect(page.getByText('校验通过，可以保存或发布。')).toBeVisible({ timeout: 30_000 });
@@ -271,7 +280,7 @@ test.describe('M06 可访问性与 375px', () => {
     await expect(runModal).toBeVisible();
     const runInput = runModal.getByLabel('运行输入 JSON');
     await tabTo(page, runInput, 40);
-    await page.keyboard.type(JSON.stringify({ topic: '键盘市场调研' }));
+    await typeInto(page, runInput, JSON.stringify({ topic: '键盘市场调研' }));
     const submitRun = runModal.getByRole('button', { name: '提交运行' });
     await tabTo(page, submitRun, 40);
     await page.keyboard.press('Enter');
@@ -299,7 +308,7 @@ test.describe('M06 可访问性与 375px', () => {
       await expect(approverPage.getByTestId('workflow-approval-detail')).toBeVisible();
       const comment = approverPage.getByLabel('审批意见（拒绝时必填，最多 500 字）');
       await tabTo(approverPage, comment, 300);
-      await approverPage.keyboard.type('键盘审批通过');
+      await typeInto(approverPage, comment, '键盘审批通过');
       const approve = approverPage.getByLabel('批准');
       await tabTo(approverPage, approve, 60);
       await approverPage.keyboard.press('Enter');
