@@ -99,4 +99,35 @@ class PermissionCodesTest {
                 .filteredOn(value -> value.startsWith("platform."))
                 .doesNotContain(PermissionCodes.DEPARTMENT_READ, PermissionCodes.WORKSPACE_READ);
     }
+
+    /**
+     * M06 新增的 6 个 workflow 权限码必须与契约一致，且全部是租户业务权限。
+     *
+     * <p>平台管理员不持有任何 workflow 权限，`/workflows/**` 等路径对 {@code tenantId=platform} 统一 404
+     * （ADR-0024 §6.1）；因此这里同时锁定集合大小与前缀，防止把 workflow 码误加 {@code platform.} 前缀或
+     * 漏掉编辑/发布/审批中的任意一项。
+     */
+    @Test
+    void workflowPermissionCodes_matchM06Contract() throws IllegalAccessException {
+        Map<String, String> workflowCodes = new TreeMap<>();
+        permissionCodes().forEach((name, value) -> {
+            if (name.startsWith("WORKFLOW_")) {
+                workflowCodes.put(name, value);
+            }
+        });
+
+        assertThat(workflowCodes)
+                .containsOnly(
+                        Map.entry("WORKFLOW_READ", "workflow.read"),
+                        Map.entry("WORKFLOW_EDIT", "workflow.edit"),
+                        Map.entry("WORKFLOW_PUBLISH", "workflow.publish"),
+                        Map.entry("WORKFLOW_RUN", "workflow.run"),
+                        Map.entry("WORKFLOW_APPROVE", "workflow.approve"),
+                        Map.entry("WORKFLOW_MANAGE", "workflow.manage"));
+        assertThat(workflowCodes.values())
+                .allSatisfy(code -> assertThat(code)
+                        .startsWith("workflow.")
+                        // 平台管理员不持 workflow 权限，前缀错配会让网关按平台租户放行。
+                        .doesNotStartWith("platform."));
+    }
 }

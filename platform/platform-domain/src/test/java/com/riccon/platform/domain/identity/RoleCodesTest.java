@@ -78,4 +78,23 @@ class RoleCodesTest {
                 .allSatisfy(permissionCode -> assertThat(permissionCode).doesNotStartWith("platform."))
                 .doesNotContain(PermissionCodes.PLATFORM_TENANT_MANAGE, PermissionCodes.PLATFORM_DEPARTMENT_MANAGE);
     }
+
+    /**
+     * M06 流程编辑者必须是租户系统角色，不得与平台管理员或其他内置角色混用。
+     *
+     * <p>WORKFLOW_EDITOR 只承载 {@code workflow.read/edit/publish/run/approve}；部门负责人关系仍单独限制
+     * DEPARTMENT 发布范围，身份本身不授权（ADR-0024 §6.1）。
+     */
+    @Test
+    void workflowEditor_isTenantSystemRole() {
+        assertThat(RoleCodes.WORKFLOW_EDITOR)
+                .isEqualTo("WORKFLOW_EDITOR")
+                .doesNotStartWith("PLATFORM_")
+                .isNotEqualTo(RoleCodes.PLATFORM_ADMIN)
+                .isNotEqualTo(RoleCodes.TENANT_ADMIN)
+                .isNotEqualTo(RoleCodes.MEMBER);
+        assertThat(List.of(
+                        RoleCodes.PLATFORM_ADMIN, RoleCodes.TENANT_ADMIN, RoleCodes.MEMBER, RoleCodes.WORKFLOW_EDITOR))
+                .containsExactly("PLATFORM_ADMIN", "TENANT_ADMIN", "MEMBER", "WORKFLOW_EDITOR");
+    }
 }

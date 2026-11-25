@@ -134,4 +134,51 @@ class AuditVocabularyTest {
                         "WORKFLOW_TEMPLATE")
                 .allSatisfy(name -> assertThat(name).matches("^[A-Z][A-Z0-9_]*$"));
     }
+
+    /**
+     * M06 编排审计动作必须与 ADR-0024 §8.1 完全一致，并统一使用 {@code workflow.} 前缀。
+     *
+     * <p>动作名写入 append-only 审计表，也被 M10 的 details 读取白名单引用；漏项会让查询/导出出现
+     * “未知动作”。这里锁定流程、运行、审批与开关四组共 16 个动作的原文。
+     */
+    @Test
+    void workflowAuditActions_matchM06Contract() throws IllegalAccessException {
+        Map<String, String> workflowActions = new TreeMap<>();
+        actions().forEach((name, value) -> {
+            if (name.startsWith("WORKFLOW_")) {
+                workflowActions.put(name, value);
+            }
+        });
+
+        assertThat(workflowActions)
+                .containsOnly(
+                        Map.entry("WORKFLOW_CREATED", "workflow.created"),
+                        Map.entry("WORKFLOW_DRAFT_SAVED", "workflow.draft.saved"),
+                        Map.entry("WORKFLOW_PUBLISHED", "workflow.published"),
+                        Map.entry("WORKFLOW_DISABLED", "workflow.disabled"),
+                        Map.entry("WORKFLOW_ENABLED", "workflow.enabled"),
+                        Map.entry("WORKFLOW_OWNER_TRANSFERRED", "workflow.owner.transferred"),
+                        Map.entry("WORKFLOW_RUN_REQUESTED", "workflow.run.requested"),
+                        Map.entry("WORKFLOW_RUN_STARTED", "workflow.run.started"),
+                        Map.entry("WORKFLOW_RUN_COMPLETED", "workflow.run.completed"),
+                        Map.entry("WORKFLOW_RUN_FAILED", "workflow.run.failed"),
+                        Map.entry("WORKFLOW_RUN_CANCELLED", "workflow.run.cancelled"),
+                        Map.entry("WORKFLOW_RUN_RETRIED", "workflow.run.retried"),
+                        Map.entry("WORKFLOW_RUN_ADMIN_READ", "workflow.run.admin_read"),
+                        Map.entry("WORKFLOW_APPROVAL_REQUESTED", "workflow.approval.requested"),
+                        Map.entry("WORKFLOW_APPROVAL_DECIDED", "workflow.approval.decided"),
+                        Map.entry("WORKFLOW_FEATURE_CHANGED", "workflow.feature.changed"));
+        assertThat(workflowActions.values())
+                .allSatisfy(action -> assertThat(action).startsWith("workflow."));
+    }
+
+    /** M06 审计目标类型必须且只能新增 WORKFLOW / WORKFLOW_RUN / WORKFLOW_TEMPLATE 三类。 */
+    @Test
+    void workflowTargetTypes_matchM06Contract() {
+        assertThat(Arrays.stream(AuditTargetType.values())
+                        .map(Enum::name)
+                        .filter(name -> name.startsWith("WORKFLOW"))
+                        .toList())
+                .containsExactly("WORKFLOW", "WORKFLOW_RUN", "WORKFLOW_TEMPLATE");
+    }
 }
