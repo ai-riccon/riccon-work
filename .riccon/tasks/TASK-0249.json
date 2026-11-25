@@ -4,7 +4,7 @@
   "module_id": "M06",
   "title": "M06 T16a-F2 配额锁性能修复（A′）",
   "owner": "riccon/builder-b1",
-  "status": "blocked",
+  "status": "in_progress",
   "write_scope": [
     "apps/api/src/main/java/com/riccon/api/quota/**",
     "apps/api/src/test/java/com/riccon/api/quota/**",
@@ -17,8 +17,9 @@
   ],
   "acceptance": [
     "按 ADR-0022 §1.3-R A′ 实现：prepare 冷补独立短事务（缺失行唯一种子）、业务事务 tenant S（J1/J2 业务行锁前、M06 创建只读校验后）、admit 只做 4 条原子条件 UPDATE、M06 重试 tenant X、固定锁序/死锁 503、幂等回滚/重读；不新增 schema/迁移/契约。",
-    "测试 IT-QUOTA-106/107：50 并发剩余 1 次不超卖、冷补无死锁；J1/J2/M06 混合 50 VU M06 准入 p95 ≤500ms、J1 p95 ≤3s、无 5xx/重复扣费；IT-WF-109 租户 10/单流程 5；M02/M04 回归。",
-    "只改写范围；不改 contracts/PRODUCT/AGENTS/V15/T16a/T16b；高风险任务 done 前独立 Verifier 评审；提交 clean EV；T16a 复跑 PERF-M06-001 通过后才算关闭。"
+    "测试 IT-QUOTA-106/107：50 并发剩余 1 次不超卖、冷补无死锁；J1/J2/M06 混合 50 VU M06 准入写路径 p95 ≤3s（DEC-0049=A）、J1 p95 ≤3s、无 5xx/重复扣费；IT-WF-109 租户 10/单流程 5；M02/M04 回归。",
+    "只改写范围；不改 contracts/PRODUCT/AGENTS/V15/T16a/T16b；高风险任务 done 前独立 Verifier 评审；提交 clean EV；T16a 复跑 PERF-M06-001 通过后才算关闭。",
+    "DEC-0049=A：读 API p95 ≤500ms；运行准入写路径 p95 ≤3s；实测 2588.6ms；R-M06-PERF-01 residual，M06b/M09 再优化。"
   ],
   "evidence": [
     "EV-1140",
@@ -31,8 +32,8 @@
     "git",
     "riccon"
   ],
-  "blocker": "PERF-M06-001 复测 p95=2589ms（预算 500ms；基线 3394ms，改善 24%），min=954/med=2313/max=2748，113 次准入；J1 首字 p95=51ms、M06 run_ok=1.0、J2=1.0 正常；EV-1143。A′ 已按 ADR-0022 §1.3-R 实现，但行锁临界区仍包含 4 次配额更新 + 业务插入 + 审计，50 VU 同租户串行仍超预算；按 ADR 停止条件不得静默拆计数/引入 reservation，需 Lead/Architect 新 ADR 或用户决策。另：合同全量 verify 在未改动的 platform-domain 覆盖率 0.59<0.80 失败（父提交 cfb102d7 同样失败，EV-1140/1141），非本任务范围，需另立修复任务。",
+  "blocker": null,
   "created_at": "2026-11-26T03:53:56.625+08:00",
-  "updated_at": "2026-11-26T05:14:58.587+08:00",
+  "updated_at": "2026-11-26T06:46:21.310+08:00",
   "baseline_commit": "ef3f5006238f24cdb1a9b3b3c9dc90605c36b091"
 }

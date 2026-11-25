@@ -269,7 +269,7 @@ data:
 constraints:
   style: "Java 21 + Spring Boot 4.1 模块化单体，ArchUnit 强制边界；前端 TypeScript strict + ESLint；注释中文"
   security: "T4；租户行级隔离与越权测试；密钥加密托管与轮换；MCP 工具白名单；提示注入防护；全链路审计；外部模型端点仅处理合成数据，PII 必须走客户内网网关，路由失败即失败"
-  performance: "假模型基准首字 p95 不超过 3 秒；API p95 不超过 500ms；50 并发 Agent run；脚本 e2e/perf/mvc-smoke.js，开关 RICCON_FAKE_MODEL=1"
+  performance: "假模型基准首字 p95 不超过 3 秒；读 API（列表/详情/保存/发布/历史）p95 不超过 500ms；M06 运行准入写路径 p95 不超过 3 秒（DEC-0049=A）；50 并发 Agent run；脚本 e2e/perf/mvc-smoke.js，开关 RICCON_FAKE_MODEL=1"
   accessibility: "J1/J2 关键旅程 WCAG 2.1 AA 基线；axe 无 serious 或 critical；入口 commands.a11y"
   coverage:
     line: 80
