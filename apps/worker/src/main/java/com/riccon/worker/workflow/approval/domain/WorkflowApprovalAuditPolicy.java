@@ -1,6 +1,7 @@
 package com.riccon.worker.workflow.approval.domain;
 
 import com.riccon.platform.domain.workflow.WorkflowApprovalDecision;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -84,7 +85,7 @@ public final class WorkflowApprovalAuditPolicy {
         requireUuid(safeDetails, "approverUserId");
         Object decision = safeDetails.get("decision");
         if (!(decision instanceof String text)
-                || java.util.Arrays.stream(WorkflowApprovalDecision.values())
+                || Arrays.stream(WorkflowApprovalDecision.values())
                         .noneMatch(value -> value.name().equals(text))) {
             throw new IllegalArgumentException("audit detail decision is invalid");
         }

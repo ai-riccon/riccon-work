@@ -204,7 +204,7 @@ public class WorkflowApprovalDecisionService {
                 approval.id(),
                 approval.workflowRunId(),
                 approval.nodeKey(),
-                WorkflowApprovalDecision.APPROVE.name(),
+                WorkflowApprovalDecision.APPROVE,
                 WorkflowApprovalStatus.APPROVED,
                 WorkflowRunStatus.PENDING,
                 targetNodeKey);
@@ -264,7 +264,7 @@ public class WorkflowApprovalDecisionService {
                 approval.id(),
                 approval.workflowRunId(),
                 approval.nodeKey(),
-                WorkflowApprovalDecision.REJECT.name(),
+                WorkflowApprovalDecision.REJECT,
                 WorkflowApprovalStatus.REJECTED,
                 WorkflowRunStatus.FAILED,
                 null);

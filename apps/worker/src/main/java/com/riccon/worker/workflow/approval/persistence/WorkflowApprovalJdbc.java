@@ -535,6 +535,9 @@ public class WorkflowApprovalJdbc {
     /**
      * 解析角色审批人：本租户 ACTIVE 且拥有该角色，排除发起人。
      *
+     * <p>角色审批不在 {@code workflow_approval_assignee} 写行；结果只用于审计计数与计划哈希，
+     * 上限 500 行是防御性边界（租户管理员/普通成员规模远小于此）。
+     *
      * @param tenantId 租户
      * @param roleCode 角色码
      * @param excludeUserId 发起人

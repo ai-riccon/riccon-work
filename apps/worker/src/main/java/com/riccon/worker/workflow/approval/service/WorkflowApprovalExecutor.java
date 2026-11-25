@@ -224,7 +224,7 @@ public class WorkflowApprovalExecutor implements WorkflowNodeExecutor {
         auditor.requested(
                 tenantId, runId, approvalId, node.id(), assignees.count(), actionKind, toolName, TRACE_PREFIX + runId);
         // 已提交等待态：通知引擎停止推进，不写节点终态（决定路径负责恢复）。
-        throw new WorkflowApprovalParkedException(approvalId.toString());
+        throw new WorkflowApprovalParkedException();
     }
 
     /**

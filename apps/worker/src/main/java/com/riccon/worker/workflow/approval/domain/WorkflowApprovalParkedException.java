@@ -15,25 +15,8 @@ import com.riccon.worker.workflow.node.domain.WorkflowNodeAbortedException;
  */
 public class WorkflowApprovalParkedException extends WorkflowNodeAbortedException {
 
-    /** 审批 ID；仅用于服务内部断言与测试。 */
-    private final String approvalId;
-
-    /**
-     * 创建审批等待信号。
-     *
-     * @param approvalId 审批 ID
-     */
-    public WorkflowApprovalParkedException(String approvalId) {
+    /** 创建审批等待信号。 */
+    public WorkflowApprovalParkedException() {
         super(true);
-        this.approvalId = approvalId;
-    }
-
-    /**
-     * 返回审批 ID。
-     *
-     * @return 审批 ID
-     */
-    public String approvalId() {
-        return approvalId;
     }
 }

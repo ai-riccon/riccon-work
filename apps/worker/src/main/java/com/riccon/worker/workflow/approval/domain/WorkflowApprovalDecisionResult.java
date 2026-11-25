@@ -1,5 +1,6 @@
 package com.riccon.worker.workflow.approval.domain;
 
+import com.riccon.platform.domain.workflow.WorkflowApprovalDecision;
 import com.riccon.platform.domain.workflow.WorkflowApprovalStatus;
 import com.riccon.platform.domain.workflow.WorkflowRunStatus;
 import java.util.Objects;
@@ -24,7 +25,7 @@ public record WorkflowApprovalDecisionResult(
         UUID approvalId,
         UUID workflowRunId,
         String nodeKey,
-        String decision,
+        WorkflowApprovalDecision decision,
         WorkflowApprovalStatus approvalStatus,
         WorkflowRunStatus runStatus,
         String resumeNodeKey) {
