@@ -157,10 +157,10 @@ test.describe('M06 Studio 创建与发布', () => {
     await page.goto(M06_ROUTES.list);
     await page.getByText('可运行', { exact: true }).click();
     const list = page.getByTestId('workflow-list');
+    const empty = page.getByText(/还没有流程|当前没有可运行的流程/);
+    await expect(list.or(empty)).toBeVisible();
     if (await list.isVisible()) {
       await expect(list).not.toContainText(name);
-    } else {
-      await expect(page.getByText(/还没有流程|当前没有可运行的流程/)).toBeVisible();
     }
 
     // 并发修改：同账号第二个会话保存后，第一个会话保存收到 409，可另存副本。
@@ -272,7 +272,7 @@ test.describe('M06 Studio 创建与发布', () => {
     await page.waitForURL(/\/workflows\/runs\/[0-9a-f-]{36}$/);
     const runV1 = page.url().match(/\/workflows\/runs\/([0-9a-f-]{36})$/)?.[1];
     expect(runV1).toBeTruthy();
-    await expect(page.getByText('版本 v1')).toBeVisible();
+    await expect(page.getByTestId('workflow-run-detail').getByText('版本 v1')).toBeVisible();
     const runOne = await (
       await api<{ versionNo: number; status: string }>(
         page,
@@ -304,11 +304,11 @@ test.describe('M06 Studio 创建与发布', () => {
     await runModal2.getByRole('button', { name: '提交运行' }).click();
     await page.waitForURL(/\/workflows\/runs\/[0-9a-f-]{36}$/);
     const runV2 = page.url().match(/\/workflows\/runs\/([0-9a-f-]{36})$/)?.[1];
-    await expect(page.getByText('版本 v2')).toBeVisible();
+    await expect(page.getByTestId('workflow-run-detail').getByText('版本 v2')).toBeVisible();
     expect(runV2).not.toBe(runV1);
 
     await page.goto(M06_ROUTES.run(runV1!));
-    await expect(page.getByText('版本 v1')).toBeVisible();
+    await expect(page.getByTestId('workflow-run-detail').getByText('版本 v1')).toBeVisible();
 
     // 修改发布范围为“本部门”并发布 v3；旧运行仍按原版本可查。
     await page.goto(M06_ROUTES.runs);
@@ -340,7 +340,7 @@ test.describe('M06 Studio 创建与发布', () => {
     await expect(page.getByText(/已发布 v3/)).toBeVisible();
     await expect(page.getByTestId('workflow-version-list')).toContainText('本部门');
     await page.goto(M06_ROUTES.run(runV2!));
-    await expect(page.getByText('版本 v2')).toBeVisible();
+    await expect(page.getByTestId('workflow-run-detail').getByText('版本 v2')).toBeVisible();
 
     // 旧版本仍可选择运行。
     await page.goto(M06_ROUTES.runs);
@@ -362,7 +362,7 @@ test.describe('M06 Studio 创建与发布', () => {
     await oldRunModal.getByLabel('运行输入 JSON').fill(JSON.stringify({ topic: '旧版本运行' }));
     await oldRunModal.getByRole('button', { name: '提交运行' }).click();
     await page.waitForURL(/\/workflows\/runs\/[0-9a-f-]{36}$/);
-    await expect(page.getByText('版本 v1')).toBeVisible();
+    await expect(page.getByTestId('workflow-run-detail').getByText('版本 v1')).toBeVisible();
   });
 
   test('E2E-M06-07 模板复制、配置工具、发布运行与模板不被修改', async ({ page, browser }) => {
