@@ -1,7 +1,5 @@
 package com.riccon.worker.workflow.tool;
 
-import com.riccon.platform.common.tenant.TenantContext;
-import com.riccon.platform.common.tenant.TenantId;
 import com.riccon.platform.domain.workflow.WorkflowNodeType;
 import com.riccon.worker.common.UuidV7;
 import com.riccon.worker.persistence.UuidBinary;
@@ -430,26 +428,6 @@ public final class WorkflowToolTestSupport {
     }
 
     /**
-     * 直接把审批置为 APPROVED（用于并发/重复场景；正常路径应走决定服务）。
-     *
-     * @param tenant 租户
-     * @param approvalId 审批 ID
-     * @param approver 审批人
-     */
-    public void markApproved(String tenant, UUID approvalId, UUID approver) {
-        jdbcClient
-                .sql("""
-                        UPDATE workflow_approval
-                           SET status = 'APPROVED', decided_by = :approver, decided_at = NOW(6), updated_at = NOW(6)
-                         WHERE tenant_id = :tenantId AND id = :approvalId AND status = 'PENDING'
-                        """)
-                .param("tenantId", tenant)
-                .param("approvalId", UuidBinary.toBytes(approvalId))
-                .param("approver", UuidBinary.toBytes(approver))
-                .update();
-    }
-
-    /**
      * 把调用记录改为终态（模拟已完成/已失败的历史调用）。
      *
      * @param tenant 租户
@@ -477,16 +455,6 @@ public final class WorkflowToolTestSupport {
      */
     public WorkflowGraph parseGraph(String json) {
         return approval.parseGraph(json);
-    }
-
-    /**
-     * 在指定租户上下文内执行动作。
-     *
-     * @param action 动作
-     * @param tenant 租户
-     */
-    public static void runInTenant(Runnable action, String tenant) {
-        TenantContext.runWithTenant(TenantId.of(tenant), action);
     }
 
     /**
