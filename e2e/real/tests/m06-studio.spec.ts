@@ -62,7 +62,7 @@ async function publishFromEditor(page: Page, scopeLabel = '仅自己'): Promise<
   const modal = page.locator('.ant-modal').filter({ hasText: '确认发布' }).last();
   await expect(modal).toBeVisible();
   await modal.getByRole('button', { name: '发布', exact: true }).click();
-  await expect(page.getByText(/已发布 v\d+/)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/发布成功：v\d+/)).toBeVisible({ timeout: 30_000 });
 }
 
 test.describe('M06 Studio 创建与发布', () => {

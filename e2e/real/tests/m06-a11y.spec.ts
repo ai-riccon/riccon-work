@@ -213,7 +213,7 @@ test.describe('M06 可访问性与 375px', () => {
     const modal = page.locator('.ant-modal').filter({ hasText: '确认发布' }).last();
     await expect(modal).toBeVisible();
     await modal.getByRole('button', { name: '发布', exact: true }).press('Enter');
-    await expect(page.getByText(/已发布 v1/)).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/发布成功：v1/)).toBeVisible({ timeout: 30_000 });
 
     // 8. 键盘去运行历史，选择流程并运行。
     await page.goto(M06_ROUTES.runs);
