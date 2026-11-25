@@ -1,0 +1,111 @@
+/**
+ * 模板库页面样式。
+ *
+ * 375px 目标：列表使用卡片而不是固定列宽表格；工具栏、卡片元数据与操作区全部允许换行，
+ * 长名称/说明使用 anywhere 换行，页面不产生横向滚动。样式与 T10 流程列表保持同一视觉口径。
+ */
+
+.workflow-templates-page {
+  width: 100%;
+  max-width: 1200px;
+  min-width: 0;
+  margin: 0 auto;
+  overflow-wrap: anywhere;
+  box-sizing: border-box;
+}
+
+.workflow-templates-heading {
+  margin-bottom: 16px;
+}
+
+.workflow-templates-heading h1 {
+  margin: 0 0 4px;
+  font-size: 24px;
+  line-height: 1.35;
+}
+
+.workflow-templates-toolbar {
+  margin-bottom: 16px;
+  row-gap: 8px;
+}
+
+.workflow-templates-permission-note,
+.workflow-templates-copy-error {
+  margin-bottom: 16px;
+}
+
+.workflow-templates-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px 16px;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.workflow-templates-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+  margin: 0 0 16px;
+  list-style: none;
+}
+
+.workflow-templates-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  min-width: 0;
+}
+
+.workflow-templates-main {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.workflow-templates-name.ant-typography {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.workflow-templates-description,
+.workflow-templates-meta {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.workflow-templates-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 窄屏：操作按钮占满一行，避免固定在右侧时被长名称挤出视口。 */
+@media (max-width: 575px) {
+  .workflow-templates-item {
+    flex-direction: column;
+  }
+
+  .workflow-templates-actions {
+    width: 100%;
+  }
+
+  .workflow-templates-actions .ant-btn {
+    width: 100%;
+  }
+}
