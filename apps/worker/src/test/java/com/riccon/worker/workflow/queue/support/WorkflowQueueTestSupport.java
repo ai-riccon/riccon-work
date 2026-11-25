@@ -43,10 +43,12 @@ public final class WorkflowQueueTestSupport {
     }
 
     /**
-     * 把残留 PENDING 运行置为 RUNNING 并写入远期租约。
+     * 把残留的可领取或执行中运行（PENDING/RUNNING）置为远期租约。
      *
      * <p>{@code workflow_run} 是跨租户持久队列（TM-85），无法用租户过滤隔离；每个集成测试在创建
-     * 自己的夹具前调用本方法，避免测试类/方法之间通过全局队列互相“抢单”。与既有
+     * 自己的夹具前调用本方法，避免测试类/方法之间通过全局队列互相“抢单”。覆盖 PENDING 与
+     * RUNNING：心跳/租约负向用例会故意留下短租约或抢占行，即使当前未过期，也可能在后续用例执行
+     * 期间到期变成可领取；统一改为 1 天租约即可保证本轮测试只看到自己创建的行。与既有
      * {@code clearOutbox()} 同类，只在确实领取队列的测试类中使用。
      */
     public void drainPendingRuns() {
@@ -57,7 +59,7 @@ public final class WorkflowQueueTestSupport {
                                lease_until = DATE_ADD(NOW(6), INTERVAL 1 DAY),
                                started_at = COALESCE(started_at, NOW(6)),
                                updated_at = NOW(6)
-                         WHERE status = 'PENDING'
+                         WHERE status IN ('PENDING', 'RUNNING')
                         """).update();
     }
 
