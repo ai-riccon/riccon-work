@@ -51,14 +51,13 @@ class WorkflowApprovalWaitJdbcIntegrationTest {
     @DisplayName("只统计 PENDING 审批并计算最老等待")
     void waitStats_countsPendingAndOldestWait() {
         WorkflowQueueTestSupport support = new WorkflowQueueTestSupport(jdbcClient);
-        String tenant = "wf-approval-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String tenant =
+                "wf-approval-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         support.createTenant(tenant);
         UUID requester = support.createUser(tenant);
         WorkflowQueueTestSupport.WorkflowSeed seed = support.createWorkflow(tenant, requester);
-        UUID firstRun = support.insertRun(
-                tenant, seed, requester, "WAITING_APPROVAL", 0, null, null, "approval-a");
-        UUID secondRun = support.insertRun(
-                tenant, seed, requester, "WAITING_APPROVAL", 0, null, null, "approval-b");
+        UUID firstRun = support.insertRun(tenant, seed, requester, "WAITING_APPROVAL", 0, null, null, "approval-a");
+        UUID secondRun = support.insertRun(tenant, seed, requester, "WAITING_APPROVAL", 0, null, null, "approval-b");
         insertApproval(tenant, seed, firstRun, requester, "approval-a", "PENDING", 600L);
         insertApproval(tenant, seed, secondRun, requester, "approval-b", "PENDING", 60L);
         insertApproval(tenant, seed, firstRun, requester, "approval-c", "APPROVED", 900L);

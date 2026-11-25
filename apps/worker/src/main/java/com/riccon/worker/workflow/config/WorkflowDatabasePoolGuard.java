@@ -71,14 +71,13 @@ public class WorkflowDatabasePoolGuard implements InitializingBean {
                 DataSourceUnwrapper.unwrap(dataSource, HikariConfigMXBean.class, HikariDataSource.class);
         if (hikari == null) {
             // 非 Hikari 数据源（例如测试切片）不注册该指标；hikaricp_* 指标也只在 Hikari 存在时可用。
-            LOG.info("workflow.db.pool.guard_skipped reason=NOT_HIKARI dataSource={}", dataSource.getClass().getName());
+            LOG.info(
+                    "workflow.db.pool.guard_skipped reason=NOT_HIKARI dataSource={}",
+                    dataSource.getClass().getName());
             return;
         }
         int required = properties.workerConcurrency() + RESERVED_CONNECTIONS;
-        Gauge.builder(
-                        SHORTFALL_METRIC,
-                        hikari,
-                        config -> Math.max(0, required - config.getMaximumPoolSize()))
+        Gauge.builder(SHORTFALL_METRIC, hikari, config -> Math.max(0, required - config.getMaximumPoolSize()))
                 .description("Configured Hikari pool connections below workflow worker concurrency + 4")
                 .register(meterRegistry);
         if (hikari.getMaximumPoolSize() < required) {

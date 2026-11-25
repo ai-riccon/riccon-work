@@ -41,8 +41,8 @@ public class WorkflowApprovalWaitJdbc {
     public WorkflowApprovalWaitSnapshot waitStats() {
         return jdbcClient
                 .sql(WAIT_STATS_SQL)
-                .query((rs, rowNum) ->
-                        new WorkflowApprovalWaitSnapshot(rs.getLong("pending"), Math.max(0L, rs.getLong("oldest_wait_seconds"))))
+                .query((rs, rowNum) -> new WorkflowApprovalWaitSnapshot(
+                        rs.getLong("pending"), Math.max(0L, rs.getLong("oldest_wait_seconds"))))
                 .single();
     }
 }

@@ -21,8 +21,8 @@ import org.junit.jupiter.api.Test;
 class WorkflowOperationsMetricsTest {
 
     /** 默认运行限制。 */
-    private static final WorkflowRuntimeProperties RUNTIME = new WorkflowRuntimeProperties(
-            true, "", 50, 200, 300, 120, 60, 30, 10, 5, 5_242_880L, 180);
+    private static final WorkflowRuntimeProperties RUNTIME =
+            new WorkflowRuntimeProperties(true, "", 50, 200, 300, 120, 60, 30, 10, 5, 5_242_880L, 180);
 
     /** 默认队列配置（claim 开启）。 */
     private static final WorkflowQueueProperties QUEUE =

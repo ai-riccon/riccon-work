@@ -1472,28 +1472,28 @@ SELECT occurred_at, actor_type, actor_id, outcome, details
 
 - 关闭受理后先观察 `riccon_workflow_feature_enabled{instance}`：API 为 0 而 Worker 仍为 1 说明 Worker 未滚动完成；
   `riccon_workflow_claim_enabled` 为 1 表示仍在领取。
-- 优雅停机宽限耗尽不是“数据丢失”：租约到期后其他实例可重领；`lease_lost_total` 增长说明可能有重复执行风险，
+- 优雅停机宽限耗尽不是“数据丢失”：租约到期后其他实例可重领；`riccon_workflow_lease_lost_total` 增长说明可能有重复执行风险，
   必须按 M06-4 排查，而不是重试掩盖。
 - 关闭受理与停止领取是**两步**：只关闭 `ENABLED` 时 Worker 仍可领取旧 PENDING 并收尾；回滚顺序见 M06-8。
 
 ### M06-4 队列积压、租约与连接池排障
 
-| 指标                                                                                                      | 建议阈值               | 含义与处置                                                                                                                                                                                     |
-| --------------------------------------------------------------------------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `riccon_workflow_queue_depth{status="PENDING"}`                                                           | >50 持续 10min         | 检查 Worker 存活、`CLAIM_ENABLED`、`riccon_workflow_runs_active` 是否长期等于并发；需要扩容时同时调大 `WORKER_CONCURRENCY`、槽位池、心跳池与 `RICCON_DB_POOL_SIZE`。禁止把 `CLAIM_BATCH` 调 >1 |
-| `riccon_workflow_queue_oldest_pending_age_seconds`                                                        | >300s 告警，>900s 升级 | 最老 PENDING 年龄；与队列深度、执行槽位占用一起看；持续增长先停止发布并检查 DB/心跳                                                                                                            |
-| `riccon_workflow_lease_lost_total`                                                                        | 任何增长               | 续期返回 0 或续期异常；可能有重复执行。查日志 `workflow.heartbeat.*` 的 runId/tenantId，检查 DB 延迟、GC、心跳池是否被占满；必要时 `CLAIM_ENABLED=false` 止损                                  |
-| `riccon_workflow_heartbeat_renew_failures_total`                                                          | >0                     | 租约丢失前置信号；先于 `lease_lost` 增长处理                                                                                                                                                   |
-| `riccon_workflow_claim_exhausted_total`                                                                   | >0                     | `claim_attempts` 超过 5，运行进入 `FAILED`/`WF_INTERNAL`；查失败节点与租约竞争，修复后按 M06-6 重试                                                                                            |
-| `riccon_workflow_claim_failures_total{reason}`                                                            | >0                     | `INVALID_TENANT`：`workflow_run.tenant_id` 非法，已写 platform denied 审计且不读取业务列；`DB_ERROR`/`CLAIM_EXCEPTION`：DB 或领取 SQL 异常                                                     |
-| `riccon_workflow_runs_active`                                                                             | 长期等于并发           | 执行槽位饱和；先确认是否存在长模型/MCP 调用，再评估扩容；扩容遵守连接池公式                                                                                                                    |
-| `riccon_workflow_db_pool_shortfall`                                                                       | >0                     | Hikari 实际池小于并发 + 4；对齐 `RICCON_DB_POOL_SIZE` 与 `spring.datasource.hikari.maximum-pool-size`                                                                                          |
-| `hikaricp_connections_pending`                                                                            | >0 持续                | 连接等待；检查长事务、慢查询、outbox heavy 任务与连接泄漏。不要只调大 Hikari 而不查根因                                                                                                        |
-| `hikaricp_connections_timeout_total`                                                                      | 增长                   | 连接超时；与 pending、DB 延迟一起处置；必要时临时降并发或暂停领取                                                                                                                              |
-| `riccon_workflow_runs_total{status}` / `run_duration_seconds` / `node_duration_seconds{node_type,status}` | 失败率/耗时基线        | 定位失败节点类型与耗时；节点耗时接近超时（模型 300s/检索 120s/MCP 60s）时先缩 prompt/查询                                                                                                      |
+| 指标                                                                                                                                      | 建议阈值               | 含义与处置                                                                                                                                                                                     |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `riccon_workflow_queue_depth{status="PENDING"}`                                                                                           | >50 持续 10min         | 检查 Worker 存活、`CLAIM_ENABLED`、`riccon_workflow_runs_active` 是否长期等于并发；需要扩容时同时调大 `WORKER_CONCURRENCY`、槽位池、心跳池与 `RICCON_DB_POOL_SIZE`。禁止把 `CLAIM_BATCH` 调 >1 |
+| `riccon_workflow_queue_oldest_pending_age_seconds`                                                                                        | >300s 告警，>900s 升级 | 最老 PENDING 年龄；与队列深度、执行槽位占用一起看；持续增长先停止发布并检查 DB/心跳                                                                                                            |
+| `riccon_workflow_lease_lost_total`                                                                                                        | 任何增长               | 续期返回 0 或续期异常；可能有重复执行。查日志 `workflow.heartbeat.*` 的 runId/tenantId，检查 DB 延迟、GC、心跳池是否被占满；必要时 `CLAIM_ENABLED=false` 止损                                  |
+| `riccon_workflow_heartbeat_renew_failures_total`                                                                                          | >0                     | 租约丢失前置信号；先于 `riccon_workflow_lease_lost_total` 增长处理                                                                                                                             |
+| `riccon_workflow_claim_exhausted_total`                                                                                                   | >0                     | `claim_attempts` 超过 5，运行进入 `FAILED`/`WF_INTERNAL`；查失败节点与租约竞争，修复后按 M06-6 重试                                                                                            |
+| `riccon_workflow_claim_failures_total{reason}`                                                                                            | >0                     | `INVALID_TENANT`：`workflow_run.tenant_id` 非法，已写 platform denied 审计且不读取业务列；`DB_ERROR`/`CLAIM_EXCEPTION`：DB 或领取 SQL 异常                                                     |
+| `riccon_workflow_runs_active`                                                                                                             | 长期等于并发           | 执行槽位饱和；先确认是否存在长模型/MCP 调用，再评估扩容；扩容遵守连接池公式                                                                                                                    |
+| `riccon_workflow_db_pool_shortfall`                                                                                                       | >0                     | Hikari 实际池小于并发 + 4；对齐 `RICCON_DB_POOL_SIZE` 与 `spring.datasource.hikari.maximum-pool-size`                                                                                          |
+| `hikaricp_connections_pending`                                                                                                            | >0 持续                | 连接等待；检查长事务、慢查询、outbox heavy 任务与连接泄漏。不要只调大 Hikari 而不查根因                                                                                                        |
+| `hikaricp_connections_timeout_total`                                                                                                      | 增长                   | 连接超时；与 pending、DB 延迟一起处置；必要时临时降并发或暂停领取                                                                                                                              |
+| `riccon_workflow_runs_total{status}` / `riccon_workflow_run_duration_seconds` / `riccon_workflow_node_duration_seconds{node_type,status}` | 失败率/耗时基线        | 定位失败节点类型与耗时；节点耗时接近超时（模型 300s/检索 120s/MCP 60s）时先缩 prompt/查询                                                                                                      |
 
 **领取/重复执行语义**：claim 使用 `FOR UPDATE SKIP LOCKED` + 条件更新，租约持有者不匹配或状态非 `RUNNING`
-时当前槽位放弃并丢弃结果；重复领取不会产生第二次成功终态。`lease_lost_total` 只应作为异常信号，不应通过
+时当前槽位放弃并丢弃结果；重复领取不会产生第二次成功终态。`riccon_workflow_lease_lost_total` 只应作为异常信号，不应通过
 自动重试把重复执行当成正常恢复。**空队列退避**从 1000ms 指数到 5000ms；不要为了“更快”把退避调到 0。
 
 ### M06-5 审批等待占满准入
@@ -1632,22 +1632,22 @@ SELECT
 
 **指标与告警（M06 负责处置；M09 只做路由/长期容量）**
 
-| 指标                                                                                    | 告警建议                                         | 处置                                |
-| --------------------------------------------------------------------------------------- | ------------------------------------------------ | ----------------------------------- |
-| `riccon_workflow_feature_enabled`                                                       | API 与 Worker 不一致                             | 检查滚动发布是否完成/配置漂移       |
-| `riccon_workflow_claim_enabled`                                                         | 受理已关但仍为 1 且 PENDING 不下降               | 确认回滚步骤 2 是否执行             |
-| `riccon_workflow_queue_depth{status}`                                                   | PENDING >50×10min；WAITING_APPROVAL 接近租户并发 | M06-4 / M06-5                       |
-| `riccon_workflow_queue_oldest_pending_age_seconds`                                      | >300s 告警，>900s 升级                           | M06-4                               |
-| `riccon_workflow_lease_lost_total`                                                      | 任何增长                                         | M06-4，必要时停止领取               |
-| `riccon_workflow_claim_exhausted_total`                                                 | >0                                               | M06-6                               |
-| `riccon_workflow_claim_failures_total{reason}`                                          | >0                                               | 非法 tenant/DB 异常，按 reason 分派 |
-| `riccon_workflow_heartbeat_renew_failures_total`                                        | >0                                               | 租约风险前置信号                    |
-| `riccon_workflow_approvals_pending` / `approval_oldest_wait_seconds`                    | 最老 >24h                                        | M06-5，通知租户管理员               |
-| `riccon_workflow_runs_total{status}` / `run_duration_seconds` / `node_duration_seconds` | 失败率/耗时异常                                  | 定位节点类型与超时                  |
-| `riccon_workflow_admission_rejected_total{scope}`                                       | 突增                                             | 租户/流程准入 429；确认是否审批堆积 |
-| `riccon_workflow_result_oversize_total` / `result_size_bytes`                           | 超限增长                                         | 提示精简结果；校准容量              |
-| `hikaricp_connections_pending` / `hikaricp_connections_timeout_total`                   | pending 持续或 timeout 增长                      | 连接池/慢 SQL/outbox 挤压           |
-| `riccon_workflow_db_pool_shortfall`                                                     | >0                                               | Hikari 实际键与部署键不一致         |
+| 指标                                                                                                                    | 告警建议                                         | 处置                                |
+| ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ----------------------------------- |
+| `riccon_workflow_feature_enabled`                                                                                       | API 与 Worker 不一致                             | 检查滚动发布是否完成/配置漂移       |
+| `riccon_workflow_claim_enabled`                                                                                         | 受理已关但仍为 1 且 PENDING 不下降               | 确认回滚步骤 2 是否执行             |
+| `riccon_workflow_queue_depth{status}`                                                                                   | PENDING >50×10min；WAITING_APPROVAL 接近租户并发 | M06-4 / M06-5                       |
+| `riccon_workflow_queue_oldest_pending_age_seconds`                                                                      | >300s 告警，>900s 升级                           | M06-4                               |
+| `riccon_workflow_lease_lost_total`                                                                                      | 任何增长                                         | M06-4，必要时停止领取               |
+| `riccon_workflow_claim_exhausted_total`                                                                                 | >0                                               | M06-6                               |
+| `riccon_workflow_claim_failures_total{reason}`                                                                          | >0                                               | 非法 tenant/DB 异常，按 reason 分派 |
+| `riccon_workflow_heartbeat_renew_failures_total`                                                                        | >0                                               | 租约风险前置信号                    |
+| `riccon_workflow_approvals_pending` / `riccon_workflow_approval_oldest_wait_seconds`                                    | 最老 >24h                                        | M06-5，通知租户管理员               |
+| `riccon_workflow_runs_total{status}` / `riccon_workflow_run_duration_seconds` / `riccon_workflow_node_duration_seconds` | 失败率/耗时异常                                  | 定位节点类型与超时                  |
+| `riccon_workflow_admission_rejected_total{scope}`                                                                       | 突增                                             | 租户/流程准入 429；确认是否审批堆积 |
+| `riccon_workflow_result_oversize_total` / `riccon_workflow_result_size_bytes`                                           | 超限增长                                         | 提示精简结果；校准容量              |
+| `hikaricp_connections_pending` / `hikaricp_connections_timeout_total`                                                   | pending 持续或 timeout 增长                      | 连接池/慢 SQL/outbox 挤压           |
+| `riccon_workflow_db_pool_shortfall`                                                                                     | >0                                               | Hikari 实际键与部署键不一致         |
 
 `/actuator/prometheus` 仍仅内网/受控（M04 CIDR），不新增暴露面；告警规则由客户监控接入，M09 只做路由与长期容量。
 
@@ -1691,7 +1691,7 @@ M09 交付。发布前必须满足 T4 要求：
 - **API 无法启动**：检查 `RICCON_DB_*`、Flyway 迁移状态、端口占用；先恢复依赖再重启。
 - **Worker 无法启动**：检查 `RICCON_WORKER_PORT`、模型/MCP 出网允许列表与凭据；Worker 不健康不应阻塞 API 登录。
 - **连接器同步失败/出网被拒**：对照「M05b-5」先查 `endpoint_id` 是否在 `RICCON_CONNECTOR_ENDPOINTS`、scheme/host/port、DNS 与防火墙；修正部署配置后重启，**不要**放宽 allowlist（加宽 CIDR、加元数据地址）或关闭 TLS 校验。
-- **Worker 报 `RICCON-WORKER-001`（schema 版本不符）**：确认迁移已成功且 worker 镜像期望版本等于 DB（M04 起为 11）；**DB 版本高于 worker 期望时禁止启动旧 worker**，必须按“V10 生产迁移”/“M04-1…6 发布顺序”协调切换（或先回滚 API 与 DB 再回退 worker）。
+- **Worker 报 `RICCON-WORKER-001`（schema 版本不符）**：确认迁移已成功且 worker 镜像期望版本等于 DB（M06 起为 15）；**DB 版本高于 worker 期望时禁止启动旧 worker**，必须按“V10 生产迁移”/“M04-1…6 发布顺序”协调切换（或先回滚 API 与 DB 再回退 worker）。
 - **M04 链空/降级/配额/成本故障**：按“M04-15 故障与恢复”定位；配额 fail-closed 会返回 503 `RICCON-QUOTA-503`，不要用自动重试掩盖。
 - **Worker 无法领取任务**：检查 MySQL 连接、`agent_run_outbox` 索引与租约时间、服务令牌密钥；不要让 API 直接执行 Agent。
 - **Spring Session 表缺失**：确认 Flyway V7 已应用且 `spring.session.jdbc.initialize-schema=never`；恢复数据库备份时不要遗漏 `SPRING_SESSION*`。

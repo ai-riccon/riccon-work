@@ -100,10 +100,9 @@ public class WorkflowRuntimeConfigValidator implements InitializingBean {
      */
     private void validateSwitchCombination() {
         if (!runtimeProperties.enabled() && queueProperties.claimEnabled()) {
-            LOG.warn(
-                    "RICCON-WORKFLOW-021 workflow disabled but claim enabled;"
-                            + " new runs are rejected by API while workers keep draining in-flight runs."
-                            + " Set RICCON_WORKFLOW_CLAIM_ENABLED=false for rollback/shutdown.");
+            LOG.warn("RICCON-WORKFLOW-021 workflow disabled but claim enabled;"
+                    + " new runs are rejected by API while workers keep draining in-flight runs."
+                    + " Set RICCON_WORKFLOW_CLAIM_ENABLED=false for rollback/shutdown.");
         }
     }
 

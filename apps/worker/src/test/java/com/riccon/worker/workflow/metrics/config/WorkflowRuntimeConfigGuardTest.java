@@ -23,8 +23,8 @@ import org.junit.jupiter.api.Test;
 class WorkflowRuntimeConfigGuardTest {
 
     /** 默认运行限制。 */
-    private static final WorkflowRuntimeProperties RUNTIME = new WorkflowRuntimeProperties(
-            true, "", 50, 200, 300, 120, 60, 30, 10, 5, 5_242_880L, 180);
+    private static final WorkflowRuntimeProperties RUNTIME =
+            new WorkflowRuntimeProperties(true, "", 50, 200, 300, 120, 60, 30, 10, 5, 5_242_880L, 180);
 
     /** 默认队列配置。 */
     private static final WorkflowQueueProperties QUEUE =
@@ -44,11 +44,11 @@ class WorkflowRuntimeConfigGuardTest {
     @Test
     @DisplayName("非法运行上限阻断启动")
     void invalidLimits_failWithKey() {
-        WorkflowRuntimeProperties invalid = new WorkflowRuntimeProperties(
-                true, "", 0, 200, 300, 120, 60, 30, 10, 5, 5_242_880L, 180);
+        WorkflowRuntimeProperties invalid =
+                new WorkflowRuntimeProperties(true, "", 0, 200, 300, 120, 60, 30, 10, 5, 5_242_880L, 180);
 
-        assertThatThrownBy(() -> new WorkflowRuntimeConfigValidator(invalid, QUEUE, DEFAULT_PACKET)
-                        .afterPropertiesSet())
+        assertThatThrownBy(
+                        () -> new WorkflowRuntimeConfigValidator(invalid, QUEUE, DEFAULT_PACKET).afterPropertiesSet())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("RICCON_WORKFLOW_MAX_NODES");
     }
@@ -57,11 +57,11 @@ class WorkflowRuntimeConfigGuardTest {
     @Test
     @DisplayName("关闭原因超长阻断启动")
     void disabledReasonTooLong_fails() {
-        WorkflowRuntimeProperties invalid = new WorkflowRuntimeProperties(
-                true, "x".repeat(201), 50, 200, 300, 120, 60, 30, 10, 5, 5_242_880L, 180);
+        WorkflowRuntimeProperties invalid =
+                new WorkflowRuntimeProperties(true, "x".repeat(201), 50, 200, 300, 120, 60, 30, 10, 5, 5_242_880L, 180);
 
-        assertThatThrownBy(() -> new WorkflowRuntimeConfigValidator(invalid, QUEUE, DEFAULT_PACKET)
-                        .afterPropertiesSet())
+        assertThatThrownBy(
+                        () -> new WorkflowRuntimeConfigValidator(invalid, QUEUE, DEFAULT_PACKET).afterPropertiesSet())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("RICCON_WORKFLOW_DISABLED_REASON");
     }
@@ -70,8 +70,8 @@ class WorkflowRuntimeConfigGuardTest {
     @Test
     @DisplayName("包大小低于 8 MiB 阻断启动")
     void packetBelowMinimum_fails() {
-        assertThatThrownBy(() -> new WorkflowRuntimeConfigValidator(RUNTIME, QUEUE, 4L * 1024L * 1024L)
-                        .afterPropertiesSet())
+        assertThatThrownBy(() ->
+                        new WorkflowRuntimeConfigValidator(RUNTIME, QUEUE, 4L * 1024L * 1024L).afterPropertiesSet())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("8 MiB");
     }
@@ -80,8 +80,7 @@ class WorkflowRuntimeConfigGuardTest {
     @Test
     @DisplayName("包大小未覆盖结果上限加余量阻断启动")
     void packetBelowHeadroom_fails() {
-        assertThatThrownBy(() -> new WorkflowRuntimeConfigValidator(RUNTIME, QUEUE, 5_242_880L)
-                        .afterPropertiesSet())
+        assertThatThrownBy(() -> new WorkflowRuntimeConfigValidator(RUNTIME, QUEUE, 5_242_880L).afterPropertiesSet())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("RICCON_DB_MAX_ALLOWED_PACKET");
     }
@@ -90,8 +89,8 @@ class WorkflowRuntimeConfigGuardTest {
     @Test
     @DisplayName("关闭总开关但仍领取不阻断启动")
     void disabledButClaiming_doesNotFail() {
-        WorkflowRuntimeProperties disabled = new WorkflowRuntimeProperties(
-                false, "演练", 50, 200, 300, 120, 60, 30, 10, 5, 5_242_880L, 180);
+        WorkflowRuntimeProperties disabled =
+                new WorkflowRuntimeProperties(false, "演练", 50, 200, 300, 120, 60, 30, 10, 5, 5_242_880L, 180);
 
         new WorkflowRuntimeConfigValidator(disabled, QUEUE, DEFAULT_PACKET).afterPropertiesSet();
     }
