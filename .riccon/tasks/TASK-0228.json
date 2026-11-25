@@ -12,11 +12,13 @@
   "acceptance": [
     "实现历史列表/详情/过滤/重试/取消/管理性读取审计/180 天到期不可见/approvalStatus 聚合与 counts/inputSummary；AC-12/13/14/15/16；证据 IT-WF-106/107/108。",
     "不泄露 prompt/完整参数/凭据；所有者只看元数据；参照 ADR §3.3.3/§6.2/§7.4；受影响测试通过。",
-    "高风险任务：done 前必须有独立 Verifier 任务级评审；只改 write_scope；不改 contracts/PRODUCT/AGENTS；不启动 M06b；提交后取证，任务只移到 review。"
+    "高风险任务：done 前必须有独立 Verifier 任务级评审；只改 write_scope；不改 contracts/PRODUCT/AGENTS；不启动 M06b；提交后取证，任务只移到 review。",
+    "关闭 REV-TASK-0229-001 F-001：审批待办/详情必须应用 retention_expires_at 过滤（跨 T08 范围），到期不可见；补用例。",
+    "关闭 REV-TASK-0229-001 F-003/F-004：待办查询避免 N+1（批量 join/聚合）；补取消/审批并发竞态测试与 409/幂等断言。"
   ],
   "evidence": [],
   "tools_used": [],
   "blocker": null,
   "created_at": "2026-11-25T02:10:49.954+08:00",
-  "updated_at": "2026-11-25T02:10:49.954+08:00"
+  "updated_at": "2026-11-25T18:39:06.334+08:00"
 }
