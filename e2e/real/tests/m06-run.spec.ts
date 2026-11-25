@@ -227,11 +227,29 @@ test.describe('M06 运行与审批', () => {
 
       // 自批：发起人=审批人时，待办不显示、详情 404、直接决定 403 且写拒绝审计。
       const selfName = `E2E-M06-04 自批 ${Date.now()}`;
-      const selfWorkflow = await publishGraph(
+      const selfDraft = await createWorkflow(page, selfName);
+      await saveDraft(
         page,
-        selfName,
+        selfDraft.id,
+        selfDraft.draftVersion,
         approvalGraph(data.userIds.alphaEditor),
       );
+      // 自批流程必须由租户管理员发布：发布校验排除“发布者自己”，发起人=审批人仍可保存/发布，
+      // 运行后的自批阻断由决定接口与审计验证。
+      const selfPublisherContext = await browser.newContext({ baseURL: webBase });
+      const selfPublisherPage = await selfPublisherContext.newPage();
+      try {
+        await loginApi(
+          selfPublisherPage,
+          data.tenants.alpha,
+          'alpha-admin',
+          data.passwords.alphaAdmin,
+        );
+        await publishWorkflow(selfPublisherPage, selfDraft.id, 'ONLY_SELF');
+      } finally {
+        await selfPublisherContext.close();
+      }
+      const selfWorkflow = selfDraft.id;
       const selfRun = await createRun(page, selfWorkflow, { topic: '自批测试' });
       await waitForRun(page, selfRun.id, (detail) => detail.status === 'WAITING_APPROVAL');
       await page.goto(M06_ROUTES.approvals);

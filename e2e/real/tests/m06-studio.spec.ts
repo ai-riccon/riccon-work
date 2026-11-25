@@ -33,7 +33,7 @@ async function openEditor(page: Page, workflowId: string): Promise<void> {
 /** 在编辑器中选择节点。 */
 async function selectNode(page: Page, name: string): Promise<void> {
   await page.getByRole('button', { name, exact: true }).click();
-  await expect(page.locator('#workflow-node-config')).toContainText(name);
+  await expect(page.locator('#workflow-node-config').getByLabel('节点名称')).toHaveValue(name);
 }
 
 /** 保存节点配置。 */
@@ -442,7 +442,7 @@ test.describe('M06 Studio 创建与发布', () => {
     }
 
     await page.goto(M06_ROUTES.run(runId!));
-    await expect(page.getByText('运行详情')).toBeVisible();
+    await expect(page.getByRole('heading', { name: '运行详情' })).toBeVisible();
     await expect(page.getByText(/成功|已完成/).first()).toBeVisible({ timeout: 120_000 });
     await expect(page.getByTestId('workflow-run-result-text')).toBeVisible();
     const run = await (
@@ -511,7 +511,7 @@ test.describe('M06 Studio 创建与发布', () => {
 
     // 详情：节点时间线、结果、保留到期；不显示完整提示词。
     await page.goto(M06_ROUTES.run(run.id));
-    await expect(page.getByText('节点时间线')).toBeVisible();
+    await expect(page.getByRole('heading', { name: '节点时间线' })).toBeVisible();
     await expect(page.getByText('保留到期')).toBeVisible();
     await expect(page.getByRole('list', { name: '节点时间线' })).toContainText('检索知识库');
     await expect(page.getByText('整理主题：{{input.topic}}')).toHaveCount(0);
