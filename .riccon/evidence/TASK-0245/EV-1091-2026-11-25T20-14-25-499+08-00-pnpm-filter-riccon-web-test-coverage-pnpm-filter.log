@@ -1,0 +1,310 @@
+# command: pnpm --filter @riccon/web test:coverage && pnpm --filter @riccon/web typecheck && pnpm --filter @riccon/web lint && pnpm --filter @riccon/web build && node apps/web/scripts/check-prod-bundle.mjs && test -f apps/web/dist/p__workflow__approvals__detail.async.js && grep -lq workflow-approvals-page apps/web/dist/*.async.js
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-25T20:11:24.076+08:00
+# finished_at: 2026-11-25T20:14:24.640+08:00
+# duration_ms: 180563
+# exit_code: 0
+
+# --- stdout ---
+
+> @riccon/web@0.1.0 test:coverage /Users/ricky/Documents/projects/riccon-work/apps/web
+> vitest run --coverage
+
+
+ RUN  v5.1.0 /Users/ricky/Documents/projects/riccon-work/apps/web
+      Coverage enabled with v8
+
+
+ Test Files  93 passed (93)
+      Tests  837 passed (837)
+   Start at  20:11:25
+   Duration  132.96s (import 46%, tests 39%, environment 8%, setup 5%, transform 1%, worker 1%)
+
+     Import  683 modules were evaluated 7074 times · 223.93s total, 46% of tracked time
+             ~39.10s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   87.28 |    79.75 |   85.54 |   87.16 |                   
+ config            |   98.43 |    97.43 |     100 |   98.36 |                   
+  routes.ts        |   98.43 |    97.43 |     100 |   98.36 | 446               
+ ...orkflow/canvas |   96.62 |       80 |      96 |   96.29 |                   
+  index.tsx        |   93.18 |     72.5 |   93.33 |   92.68 | 52,67,72          
+ src/layouts/admin |     100 |       80 |     100 |     100 |                   
+  index.tsx        |     100 |       80 |     100 |     100 | 67                
+ ...outs/workspace |   93.18 |     87.8 |   81.81 |   93.18 |                   
+  index.tsx        |   93.18 |     87.8 |   81.81 |   93.18 | 104,123,178       
+ ...es/admin/audit |   84.93 |     79.8 |      85 |   84.93 |                   
+  event-drawer.tsx |     100 |    83.33 |     100 |     100 | 42                
+  ...er-fields.tsx |   90.47 |    86.66 |     100 |   90.47 | 86,190            
+  index.tsx        |   80.58 |    77.21 |   77.77 |   80.58 | ...86-403,463,526 
+ ...min/connectors |   86.43 |    75.57 |   87.73 |   86.29 |                   
+  ...orm-modal.tsx |   88.67 |    79.16 |   94.11 |      90 | ...18,220,223,397 
+  ...ms-drawer.tsx |   85.95 |    61.76 |   91.66 |   85.59 | ...65,305-308,473 
+  focus-trap.ts    |   85.29 |    79.48 |     100 |   85.29 | 35,38,45-46,52    
+  index.tsx        |   86.34 |    77.89 |   83.87 |      86 | ...,994,1034,1053 
+ ...es/admin/costs |   80.43 |    80.34 |   78.94 |   80.11 |                   
+  index.tsx        |   78.78 |    84.92 |    75.6 |   78.29 | ...92,621-686,708 
+  ...ion-panel.tsx |   84.61 |    68.08 |    87.5 |   84.61 | ...56-259,272,300 
+ ...min/model-keys |    79.9 |    72.02 |   73.91 |    79.6 |                   
+  ...orm-modal.tsx |   84.21 |    85.29 |      75 |   84.21 | 90-91,181         
+  index.tsx        |   79.45 |    69.18 |   73.68 |   79.12 | ...06,562,621,733 
+ .../model-routing |   85.38 |    76.58 |   86.25 |   84.65 |                   
+  index.tsx        |   85.38 |    76.58 |   86.25 |   84.65 | ...03,753-784,838 
+ ...s/admin/quotas |   81.67 |    74.19 |   78.94 |   81.67 |                   
+  index.tsx        |      80 |    73.73 |   75.75 |      80 | ...01,428-445,520 
+  ...mit-modal.tsx |   87.09 |       76 |     100 |   87.09 | 66,72,80-81       
+ ...tenant-exports |   80.24 |     70.9 |   72.46 |   80.24 |                   
+  ...ion-modal.tsx |   95.65 |       88 |     100 |   95.65 | 66                
+  ...il-drawer.tsx |     100 |    86.66 |     100 |     100 | 74,102            
+  index.tsx        |   77.98 |    66.66 |   69.69 |   77.98 | ...90,508-521,534 
+  platform.tsx     |   78.89 |    67.67 |      70 |   78.89 | ...23,544-557,572 
+ .../admin/tenants |   91.66 |    92.59 |   71.42 |   91.66 |                   
+  index.tsx        |   91.66 |    92.59 |   71.42 |   91.66 | 69,91             
+ ...ts/departments |   84.02 |     83.8 |   76.66 |   84.15 |                   
+  ...orm-modal.tsx |   88.23 |    92.85 |      80 |   88.23 | 70-71             
+  index.tsx        |   85.98 |       83 |   76.47 |   85.29 | ...95,375-386,413 
+  ...rs-drawer.tsx |      80 |    82.14 |   76.19 |   81.25 | ...15,132,152,242 
+ ...es/admin/users |   87.12 |    80.57 |   82.05 |   86.71 |                   
+  ...ing-modal.tsx |   90.62 |    93.33 |     100 |   90.62 | 43,51,70          
+  index.tsx        |   84.81 |    74.71 |   69.56 |      84 | ...33-334,346-347 
+  unbind-modal.tsx |   90.47 |    86.36 |     100 |   90.47 | 40,46             
+ src/pages/chat    |   80.57 |    71.47 |   77.94 |      80 |                   
+  index.tsx        |   69.64 |    77.52 |    64.7 |   69.09 | ...1071,1100-1106 
+  ...-workspace.ts |   85.79 |    64.51 |   91.17 |   85.37 | ...28-729,796-811 
+ ...hat/components |   90.43 |       75 |   86.74 |    89.9 |                   
+  ...ace-modal.tsx |   88.23 |      100 |   83.33 |   88.23 | 63-64             
+  ...ace-modal.tsx |    87.5 |      100 |      80 |    87.5 | 55-56             
+  ...il-drawer.tsx |   93.33 |    70.37 |     100 |   93.18 | 93,100,281        
+  ...ers-modal.tsx |   91.22 |    78.57 |      90 |      90 | 50,71,98,127-142  
+  ...ity-modal.tsx |   94.11 |    71.42 |     100 |   94.11 | 66                
+  ...ng-drawer.tsx |   88.46 |     75.4 |   77.41 |   87.83 | ...84-215,328-351 
+ ...dge/components |   87.46 |    80.34 |   84.94 |   87.28 |                   
+  acl-editor.tsx   |   85.96 |    71.42 |   94.44 |   85.71 | 152,160,361-368   
+  ...il-drawer.tsx |   97.14 |    89.36 |     100 |   97.14 | 87                
+  ...ate-modal.tsx |   94.59 |     79.1 |     100 |   94.28 | 62,142,164,171    
+  ...ge-detail.tsx |   81.19 |    79.84 |   76.19 |   80.86 | ...69,332,542,668 
+  ...ge-drawer.tsx |   86.84 |    86.66 |   72.41 |   87.14 | ...59,376-391,416 
+ src/pages/login   |   97.93 |    91.02 |     100 |   97.89 |                   
+  index.tsx        |   97.93 |    91.02 |     100 |   97.89 | 450,515           
+ ...pages/research |   84.77 |    78.32 |   76.11 |   84.96 |                   
+  detail.tsx       |   79.16 |    77.77 |   53.84 |   80.85 | ...30,163,236,270 
+  index.tsx        |   85.29 |    85.13 |   72.72 |   85.29 | ...08,226-229,387 
+  ...earch-task.ts |   90.34 |    81.01 |   94.44 |   90.34 | ...48,361-362,385 
+  ...-workspace.ts |   79.25 |    63.82 |   78.57 |    78.9 | ...28,245-246,282 
+ ...rch/components |   89.06 |    80.95 |   83.72 |    88.8 |                   
+  ...oval-card.tsx |     100 |     87.5 |     100 |     100 | 66-95,115         
+  ...act-panel.tsx |   83.67 |       80 |      75 |   83.67 | ...62,286,354,372 
+  ...tion-view.tsx |     100 |    80.95 |     100 |     100 | 44-45,74,124      
+  source-list.tsx  |   88.88 |    83.33 |      75 |   88.88 | 77                
+  ...-timeline.tsx |   90.38 |     79.1 |    87.5 |   89.79 | ...10,293,303,327 
+ ...flow/approvals |   93.86 |    86.72 |   88.46 |   93.77 |                   
+  approval-api.ts  |   92.68 |    82.85 |     100 |   92.68 | 128,160,163       
+  detail.tsx       |     100 |       60 |     100 |     100 | 37                
+  format.ts        |     100 |    98.43 |     100 |     100 | 170               
+  index.tsx        |   94.87 |       85 |     100 |   94.44 | 79,125            
+  ...ls-detail.tsx |   91.89 |    79.45 |   83.33 |   91.89 | ...99,134,231,429 
+  ...als-inbox.tsx |      88 |    88.63 |   66.66 |      88 | ...98,142,184-197 
+ .../workflow/edit |   84.45 |    73.31 |   86.22 |   84.38 |                   
+  graph.ts         |   97.16 |    85.87 |     100 |   96.96 | 219,379,409,534   
+  index.tsx        |      83 |    63.34 |   75.82 |   83.37 | ...1501,1538-1566 
+  node-form.ts     |   84.41 |    83.78 |   91.66 |   84.76 | ...95,421-422,455 
+  validation.ts    |   79.41 |    65.96 |     100 |    78.6 | ...23,655,659-663 
+ .../workflow/list |    85.1 |    80.74 |   75.55 |    85.1 |                   
+  index.tsx        |   77.35 |    77.08 |   58.33 |   77.35 | ...39-454,474,477 
+  workflow-api.ts  |   93.93 |    83.63 |   93.75 |   93.93 | 308,324,353,434   
+ ...flow/templates |   91.72 |    86.44 |   88.46 |   91.72 |                   
+  index.tsx        |   88.88 |    77.19 |      80 |   88.88 | ...38,228-259,283 
+  studio-nav.tsx   |     100 |    93.33 |     100 |     100 | 68                
+  template-api.ts  |   94.11 |    95.65 |     100 |   94.11 | 103,133,204       
+ src/services/api  |   87.64 |    79.54 |   88.17 |   87.86 |                   
+  client.ts        |   87.76 |    77.27 |   90.41 |   87.76 | ...1404,1444,1465 
+  config.ts        |     100 |       75 |     100 |     100 | 14                
+  errors.ts        |    92.5 |    81.81 |     100 |    92.5 | 169-171,191       
+  index.ts         |      50 |      100 |       0 |      50 | 16                
+  quota-detail.ts  |     100 |    96.55 |     100 |     100 | 56                
+  sse.ts           |   91.52 |    81.25 |     100 |   91.52 | ...38,142,147,157 
+  time.ts          |   52.38 |    41.66 |      50 |   52.63 | 44-59             
+ ...services/audit |   89.73 |     83.5 |   86.66 |   89.68 |                   
+  api.ts           |   85.71 |    77.41 |   89.47 |   85.71 | ...70,375,396,416 
+  download.ts      |    92.3 |       80 |     100 |    92.3 | 17                
+  format.ts        |   93.38 |     87.8 |    90.9 |   93.33 | ...51,462,473,476 
+  index.ts         |   33.33 |        0 |       0 |   33.33 | 15-16             
+ src/services/auth |   96.99 |     90.8 |   96.66 |   96.94 |                   
+  auth-store.ts    |     100 |    93.33 |     100 |     100 | 94                
+  ...ted-logout.ts |      92 |    85.36 |    90.9 |      92 | 75,93,144-145     
+  oidc-api.ts      |     100 |    95.65 |     100 |     100 | 45                
+ src/services/chat |   93.18 |    83.33 |     100 |    92.1 |                   
+  message-utils.ts |   93.18 |    83.33 |     100 |    92.1 | 158,173-174       
+ ...ices/connector |    84.4 |    79.28 |    92.1 |   84.23 |                   
+  api.ts           |   90.66 |    83.33 |     100 |   90.66 | ...31,351,356,376 
+  format.ts        |   81.55 |    77.66 |     100 |   81.18 | ...56,364,369,379 
+  index.ts         |      40 |        0 |       0 |      40 | 17-18,34          
+ src/services/cost |   94.59 |    83.84 |   96.77 |   94.52 |                   
+  access.ts        |     100 |       50 |     100 |     100 | 22                
+  api.ts           |   86.66 |    68.18 |     100 |   86.66 | 118,149,153,158   
+  format.ts        |   97.36 |    87.73 |     100 |   97.32 | 169,229,360       
+  index.ts         |      50 |      100 |       0 |      50 | 15                
+ ...services/files |     100 |    96.77 |     100 |     100 |                   
+  ...validation.ts |     100 |    96.77 |     100 |     100 | 87                
+ ...ices/knowledge |    92.2 |    87.69 |   94.52 |   92.13 |                   
+  api.ts           |   91.11 |     83.6 |     100 |   91.11 | ...83,413,418,438 
+  citation.ts      |    97.5 |    96.05 |     100 |    97.5 | 85                
+  format.ts        |   92.74 |    86.81 |   97.05 |   92.67 | ...73-481,485,639 
+  index.ts         |      40 |        0 |       0 |      40 | 16-17,26          
+  ...-directory.ts |    90.9 |    76.92 |     100 |   90.47 | 81,84             
+ ...services/model |   88.17 |    79.31 |     100 |   87.64 |                   
+  access.ts        |     100 |       50 |     100 |     100 | 20                
+  format.ts        |   87.77 |       80 |     100 |    87.2 | ...24-326,330,347 
+ ...services/quota |   87.87 |    80.68 |   92.59 |   87.75 |                   
+  access.ts        |     100 |       50 |     100 |     100 | 23                
+  api.ts           |    87.3 |    79.16 |     100 |    87.3 | ...51,255,260,280 
+  format.ts        |   93.54 |    88.88 |     100 |   93.33 | 155,163           
+  index.ts         |   33.33 |        0 |       0 |   33.33 | 15-16             
+ ...vices/research |   96.42 |    93.95 |   97.56 |   96.35 |                   
+  format.ts        |   96.42 |    93.95 |   97.56 |   96.35 | ...09,540,561-566 
+ src/services/runs |      88 |    73.68 |     100 |      88 |                   
+  format.ts        |      88 |    73.68 |     100 |      88 | 78-80,90          
+ ...services/users |    92.5 |    90.09 |      92 |   92.43 |                   
+  access.ts        |     100 |    94.44 |     100 |     100 | 99                
+  api.ts           |      90 |    83.78 |     100 |      90 | ...98,302,307,327 
+  errors.ts        |   96.96 |    97.72 |     100 |   96.96 | 90                
+  index.ts         |   33.33 |        0 |       0 |   33.33 | 15-16             
+ ...ces/workspaces |   91.46 |    85.52 |      90 |   92.59 |                   
+  ...ent-badge.tsx |     100 |       90 |     100 |     100 | 41                
+  errors.ts        |   93.54 |     92.3 |     100 |   93.54 | 78,117            
+  ...gement-api.ts |     100 |       50 |     100 |     100 | 17                
+  ...management.ts |   85.29 |    74.07 |   77.77 |   87.87 | 73-77,109         
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 87.28% ( 6590/7550 )
+Branches     : 79.75% ( 5089/6381 )
+Functions    : 85.54% ( 1545/1806 )
+Lines        : 87.16% ( 6406/7349 )
+================================================================================
+
+> @riccon/web@0.1.0 typecheck /Users/ricky/Documents/projects/riccon-work/apps/web
+> max setup && tsc --noEmit
+
+info  - [你知道吗？] 如果你需要增加 Git 提交消息校验和自动代码格式化, max g precommit 就可以一键完成配置，详见 https://umijs.org/docs/guides/generator#precommit-配置生成器
+info  - generate files
+info  - Preparing...
+
+> @riccon/web@0.1.0 lint /Users/ricky/Documents/projects/riccon-work/apps/web
+> eslint --max-warnings=0 . && prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+
+> @riccon/web@0.1.0 build /Users/ricky/Documents/projects/riccon-work/apps/web
+> max build
+
+info  - [你知道吗？] 想快速修改 html 模板、DIY 项目？试试编写项目级插件，详见 https://umijs.org/docs/guides/directory-structure#plugints
+info  - Umi v4.7.34
+info  - Preparing...
+[webpackbar] ℹ Compiling Webpack
+[webpackbar] ✔ Webpack: Compiled successfully in 14.52s
+info  - Memory Usage: 646.3 MB (RSS: 1002.07 MB)
+
+info  - File sizes after gzip:
+
+  299.63 kB  dist/umi.js
+  58.91 kB   dist/82.async.js
+  38.05 kB   dist/218.async.js
+  37.96 kB   dist/6447.async.js
+  37.14 kB   dist/4036.async.js
+  36.27 kB   dist/4950.async.js
+  31.94 kB   dist/8679.async.js
+  28.85 kB   dist/p__chat__index.async.js
+  24.01 kB   dist/p__workflow__edit__index.async.js
+  23.65 kB   dist/p__admin__connectors__index.async.js
+  20.16 kB   dist/4316.async.js
+  15.86 kB   dist/8364.async.js
+  13.94 kB   dist/8526.async.js
+  13.07 kB   dist/5265.async.js
+  12.73 kB   dist/9266.async.js
+  12.42 kB   dist/p__admin__costs__index.async.js
+  12.15 kB   dist/9595.async.js
+  12.03 kB   dist/p__admin__users__index.async.js
+  11.75 kB   dist/p__admin__model-routing__index.async.js
+  11.16 kB   dist/7078.async.js
+  10.76 kB   dist/596.async.js
+  10.63 kB   dist/p__admin__model-keys__index.async.js
+  10.34 kB   dist/8394.async.js
+  10 kB      dist/p__research__detail.async.js
+  9.99 kB    dist/p__admin__quotas__index.async.js
+  9.76 kB    dist/p__admin__tenants__departments__index.async.js
+  9.39 kB    dist/821.async.js
+  9.33 kB    dist/5808.async.js
+  8.89 kB    dist/3183.async.js
+  8.68 kB    dist/5252.async.js
+  8.6 kB     dist/p__research__index.async.js
+  8.15 kB    dist/5165.async.js
+  7.66 kB    dist/p__admin__tenant-exports__index.async.js
+  7.53 kB    dist/6841.async.js
+  7.52 kB    dist/layouts__workspace__index.async.js
+  7.08 kB    dist/8528.async.js
+  6.98 kB    dist/p__admin__tenant-exports__platform.async.js
+  6.97 kB    dist/p__admin__tenants__index.async.js
+  6.74 kB    dist/p__workflow__templates__index.async.js
+  6.55 kB    dist/7569.async.js
+  6.53 kB    dist/8853.async.js
+  6.46 kB    dist/p__workflow__list__index.async.js
+  6.37 kB    dist/p__admin__audit__index.async.js
+  6.13 kB    dist/1702.async.js
+  6.12 kB    dist/p__admin__overview__index.async.js
+  5.33 kB    dist/6066.async.js
+  5.21 kB    dist/9325.async.js
+  5.06 kB    dist/p__login__index.async.js
+  4.72 kB    dist/3248.async.js
+  4.45 kB    dist/p__workflow__templates__studio-nav.async.js
+  4.24 kB    dist/2871.async.js
+  4.16 kB    dist/2728.async.js
+  4.15 kB    dist/758.async.js
+  4.02 kB    dist/1492.async.js
+  3.92 kB    dist/7002.async.js
+  3.86 kB    dist/6212.async.js
+  3.71 kB    dist/2653.async.js
+  3.42 kB    dist/1301.async.js
+  3.2 kB     dist/647.async.js
+  3.19 kB    dist/12.async.js
+  2.29 kB    dist/layouts__admin__index.async.js
+  1.81 kB    dist/p__chat__index.chunk.css
+  1.14 kB    dist/p__research__detail.chunk.css
+  1.14 kB    dist/p__research__index.chunk.css
+  1.12 kB    dist/p__workflow__edit__index.chunk.css
+  749 B      dist/p__admin__settings__index.async.js
+  742 B      dist/p__workflow__approvals__detail.chunk.css
+  742 B      dist/p__workflow__approvals__index.chunk.css
+  633 B      dist/p__workflow__approvals__detail.async.js
+  624 B      dist/p__workflow__templates__index.chunk.css
+  624 B      dist/p__workflow__templates__studio-nav.chunk.css
+  605 B      dist/layouts__workspace__index.chunk.css
+  519 B      dist/p__workflow__list__index.chunk.css
+  512 B      dist/p__admin__audit__index.chunk.css
+  397 B      dist/p__404.async.js
+  390 B      dist/p__admin__tenants__departments__index.chunk.css
+  370 B      dist/p__admin__users__index.chunk.css
+  358 B      dist/p__admin__model-keys__index.chunk.css
+  346 B      dist/p__admin__model-routing__index.chunk.css
+  332 B      dist/p__admin__costs__index.chunk.css
+  312 B      dist/p__admin__tenants__index.chunk.css
+  262 B      dist/umi.css
+  253 B      dist/p__admin__tenant-exports__index.chunk.css
+  253 B      dist/p__admin__tenant-exports__platform.chunk.css
+  245 B      dist/p__admin__quotas__index.chunk.css
+  216 B      dist/p__admin__connectors__index.chunk.css
+  215 B      dist/3632.async.js
+
+event - Build index.html
+[check-prod-bundle] 通过：扫描 89 个文件（3117.9 KiB），未发现 mock/stub 特征。
+
+# --- stderr ---
+(node:94192) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94311) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
