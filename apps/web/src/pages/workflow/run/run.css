@@ -1,0 +1,254 @@
+/**
+ * 运行详情页样式。
+ *
+ * 约束：
+ * 1. 375 px 无横向滚动：所有容器 `min-width: 0`，长 ID/摘要/结果可换行；
+ * 2. 摘要与结果使用自身滚动区域，不撑破页面；
+ * 3. 当前节点用边框与文字双重标识，不只靠颜色；
+ * 4. 标题获得程序化焦点时提供可见轮廓。
+ */
+
+.workflow-run-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 1200px;
+  min-width: 0;
+  padding: 16px;
+  overflow-wrap: anywhere;
+}
+
+.workflow-run-toolbar {
+  min-width: 0;
+}
+
+.workflow-run-refresh-note {
+  display: block;
+  min-width: 0;
+}
+
+.workflow-run-refresh-error {
+  min-width: 0;
+}
+
+.workflow-run-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.workflow-run-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.workflow-run-title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.workflow-run-title:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: 2px;
+}
+
+.workflow-run-workflow-name {
+  margin: 0 !important;
+  font-size: 16px;
+  font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.workflow-run-heading-tags {
+  min-width: 0;
+}
+
+.workflow-run-summary {
+  min-width: 0;
+}
+
+.workflow-run-summary .ant-descriptions-item-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.workflow-run-failure,
+.workflow-run-retry-notice {
+  min-width: 0;
+}
+
+.workflow-run-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.workflow-run-section-title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.workflow-run-timeline,
+.workflow-run-citations,
+.workflow-run-approvals {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workflow-run-node,
+.workflow-run-approval {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fff;
+  overflow-wrap: anywhere;
+}
+
+.workflow-run-node-current {
+  border-color: #1677ff;
+  box-shadow: 0 0 0 1px #1677ff;
+}
+
+.workflow-run-node-header,
+.workflow-run-approval-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-width: 0;
+}
+
+.workflow-run-node-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  min-width: 0;
+  color: rgb(0 0 0 / 45%);
+  font-size: 13px;
+}
+
+.workflow-run-summary-block {
+  min-width: 0;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #fafafa;
+}
+
+.workflow-run-summary-block > summary {
+  cursor: pointer;
+  color: rgb(0 0 0 / 65%);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.workflow-run-summary-block > summary:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: 2px;
+}
+
+.workflow-run-summary-block > pre {
+  margin: 8px 0 0;
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-size: 13px;
+}
+
+.workflow-run-node-refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.workflow-run-citation {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.workflow-run-citation:last-child {
+  border-bottom: none;
+}
+
+.workflow-run-citation-button {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  padding: 4px 0;
+  text-align: left;
+  white-space: normal;
+}
+
+.workflow-run-citation-button:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: 2px;
+}
+
+.workflow-run-citation-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.workflow-run-citation-snippet {
+  margin: 0 !important;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.workflow-run-result-text {
+  margin: 0;
+  max-height: 360px;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fafafa;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-size: 13px;
+}
+
+@media (max-width: 767px) {
+  .workflow-run-page {
+    padding: 12px;
+  }
+
+  .workflow-run-title {
+    font-size: 20px;
+  }
+
+  .workflow-run-node-header,
+  .workflow-run-approval-header {
+    align-items: flex-start;
+  }
+}
