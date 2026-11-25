@@ -235,9 +235,10 @@ function buildThresholds() {
       // J1 首字使用 run 详情的 modelInvocation.firstTokenMs，不是 SSE TTFB。
       m06_j1_first_token_ms: ['p(95)<3000'],
       m06_j1_first_token_ok: ['rate>0.99'],
-      // Studio 列表/详情/保存/发布/运行准入/审批查询/历史查询；不含 SSE TTFB。
+      // Studio 读 API（列表/详情/保存/发布/审批查询/历史查询）p95 ≤500ms；
+      // 运行准入写路径按 DEC-0049=A 单列 p95 ≤3s，不混入读 API。
       m06_api_ms: ['p(95)<500'],
-      m06_run_admission_ms: ['p(95)<500'],
+      m06_run_admission_ms: ['p(95)<3000'],
       // 已接受的运行必须全部成功完成；429 单独计数，不伪装成失败或通过。
       m06_run_ok: ['rate>0.99'],
       m06_run_completed_ok: ['rate>0.99'],
@@ -716,9 +717,10 @@ function j2EnsureApprover() {
  * @param {object} [body] JSON 体
  * @param {string} op 操作标签
  * @param {object} [extraHeaders] 额外请求头
+ * @param {boolean} [measureApi] 是否计入 m06_api_ms；运行准入写路径单列，不计入读 API
  * @returns {object} k6 响应
  */
-function m06Request(current, method, path, body, op, extraHeaders = {}) {
+function m06Request(current, method, path, body, op, extraHeaders = {}, measureApi = true) {
   const headers = {
     cookie: current.cookie,
     'content-type': 'application/json',
@@ -727,7 +729,9 @@ function m06Request(current, method, path, body, op, extraHeaders = {}) {
   };
   const startedAt = Date.now();
   const response = api(current, method, path, body, { tags: { kind: 'api', op }, headers }, false);
-  m06ApiMs.add(Date.now() - startedAt, { op });
+  if (measureApi) {
+    m06ApiMs.add(Date.now() - startedAt, { op });
+  }
   return response;
 }
 
@@ -876,6 +880,7 @@ export function workflowStudio() {
     { inputs: { topic: `PERF-M06 ${__VU}-${__ITER}` } },
     'workflow-run-admission',
     { 'Idempotency-Key': `perf-m06-run-${__VU}-${__ITER}-${Date.now()}` },
+    false,
   );
   m06RunAdmissionMs.add(Date.now() - admissionStartedAt, { op: 'workflow-run-admission' });
   if (admission.status === 429) {
@@ -1600,7 +1605,8 @@ export function handleSummary(data) {
       },
       fakeModel: 1,
       firstTokenSource: 'run detail modelInvocation.firstTokenMs（不是 SSE TTFB）',
-      apiBudget: 'Studio 列表/详情/保存/发布/运行准入/审批查询/历史查询 p95 ≤ 500ms',
+      apiBudget: 'Studio 读 API（列表/详情/保存/发布/审批查询/历史查询，排除运行准入）p95 ≤ 500ms',
+      admissionBudget: 'M06 运行准入写路径 p95 ≤ 3000ms（DEC-0049=A）',
       runRejectedMetric: 'm06_run_rejected 记录 RICCON-WF-429 次数，单列不并入成功率',
       workflowLimits: envSnapshot.workflow ?? null,
     };
