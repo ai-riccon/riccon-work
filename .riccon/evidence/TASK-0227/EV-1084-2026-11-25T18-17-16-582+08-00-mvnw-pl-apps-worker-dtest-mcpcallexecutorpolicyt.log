@@ -1,0 +1,515 @@
+# command: ./mvnw -pl apps/worker -Dtest='McpCallExecutorPolicyTest,WorkflowToolNodeExecutorTest,McpGatewayIntegrationTest,HitlIntegrationTest,WorkflowApprovalExecutorIntegrationTest,WorkflowApprovalDecisionServiceIntegrationTest,WorkflowEngineIntegrationTest,WorkflowEngineWiringTest,WorkflowToolNodeExecutorIntegrationTest' -DfailIfNoTests=false test
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-25T18:15:54.330+08:00
+# finished_at: 2026-11-25T18:17:15.733+08:00
+# duration_ms: 81402
+# exit_code: 0
+
+# --- stdout ---
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------------< com.riccon:riccon-worker >----------------------
+[INFO] Building riccon-worker 0.1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] Loaded 64 auto-discovered prefixes for remote repository apache.snapshots (prefixes-apache.snapshots.txt)
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (enforce-toolchain) @ riccon-worker ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.version.RequireJavaVersion passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.version.RequireMavenVersion passed
+[INFO] 
+[INFO] --- enforcer:3.7.0:enforce (banned-worker-orm) @ riccon-worker ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- jacoco:0.8.16:prepare-agent (prepare-agent) @ riccon-worker ---
+[INFO] argLine set to -javaagent:/Users/ricky/.m2/repository/org/jacoco/org.jacoco.agent/0.8.16/org.jacoco.agent-0.8.16-runtime.jar=destfile=/Users/ricky/Documents/projects/riccon-work/apps/worker/target/jacoco.exec
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ riccon-worker ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ riccon-worker ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ riccon-worker ---
+[INFO] Copying 2 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ riccon-worker ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ riccon-worker ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.riccon.worker.research.HitlIntegrationTest
+18:16:03.030 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.research.HitlIntegrationTest]: HitlIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+18:16:03.288 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.research.HitlIntegrationTest
+18:16:03.479 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.research.HitlIntegrationTest]: HitlIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+18:16:03.480 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+18:16:03.484 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.research.HitlIntegrationTest
+18:16:03.630 [main] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+18:16:03.635 [main] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+18:16:03.671 [main] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.5
+18:16:05.256 [main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Docker accessed via Unix socket (/Users/ricky/.docker/run/docker.sock)
+18:16:05.257 [main] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+18:16:05.284 [main] INFO org.testcontainers.DockerClientFactory -- Connected to docker: 
+  Server Version: 29.9.3
+  API Version: 1.56
+  Operating System: Docker Desktop
+  Total Memory: 7936 MB
+  Labels: 
+    com.docker.desktop.address=unix:///Users/ricky/Library/Containers/com.docker.docker/Data/docker-cli.sock
+18:16:05.511 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Creating container for image: testcontainers/ryuk:0.14.0
+18:16:05.981 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 is starting: 8bb346d78f4631e7f1d9ad30d3b4e5642ad2fd42041ac445dd4a59496c4a7679
+18:16:06.743 [main] INFO tc.testcontainers/ryuk:0.14.0 -- Container testcontainers/ryuk:0.14.0 started in PT1.231898S
+18:16:06.751 [main] INFO org.testcontainers.utility.RyukResourceReaper -- Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+18:16:06.752 [main] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+18:16:06.752 [main] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+18:16:06.753 [main] INFO tc.mysql:8.4.13 -- Creating container for image: mysql:8.4.13
+18:16:06.837 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 is starting: 28a69e0371319614667a1bc6bef94cb6bd0976431d6bd4abfe6a4210c5ae6792
+18:16:07.165 [main] INFO tc.mysql:8.4.13 -- Waiting for database connection to become available at jdbc:mysql://localhost:61605/riccon using query 'SELECT 1'
+18:16:17.359 [main] INFO tc.mysql:8.4.13 -- Container mysql:8.4.13 started in PT10.606038S
+18:16:17.359 [main] INFO tc.mysql:8.4.13 -- Container is started (JDBC URL: jdbc:mysql://localhost:61605/riccon)
+18:16:17.362 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Creating container for image: opensearchproject/opensearch:3.9.0
+18:16:17.434 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 is starting: cc4ac9cfa112a54ec5f65dc973a4a584dab86ac87205e7c9c35e16b8b06435b9
+18:16:17.763 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /romantic_pare: Waiting for 180 seconds for URL: http://localhost:61695/_cluster/health?wait_for_status=yellow&timeout=120s (where port 61695 maps to container port 9200)
+18:16:44.199 [main] INFO tc.opensearchproject/opensearch:3.9.0 -- Container opensearchproject/opensearch:3.9.0 started in PT26.83692S
+18:16:44.200 [main] INFO tc.rustfs/rustfs:1.0.6 -- Creating container for image: rustfs/rustfs:1.0.6
+18:16:44.339 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 is starting: 9d29d6c8e42243cfa2eee79f392fbd828403c3efa85e8e822218b3700c7de2c6
+18:16:44.849 [main] INFO org.testcontainers.containers.wait.strategy.HttpWaitStrategy -- /distracted_euclid: Waiting for 60 seconds for URL: http://localhost:61945/health (where port 61945 maps to container port 9000)
+18:16:45.204 [main] INFO tc.rustfs/rustfs:1.0.6 -- Container rustfs/rustfs:1.0.6 started in PT1.004432S
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-25T18:16:51.748+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.research.HitlIntegrationTest  : Starting HitlIntegrationTest using Java 21.0.13 with PID 68364 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/worker)
+2026-11-25T18:16:51.749+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.research.HitlIntegrationTest  : The following 1 profile is active: "test"
+2026-11-25T18:16:54.147+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-25T18:16:54.408+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.c.config.ConnectorProperties       : worker connector configuration loaded; enabled=false endpoints=0 maxObjects=5000 maxObjectBytes=104857600 syncTimeoutMinutes=60 schedulerEnabled=true
+2026-11-25T18:16:54.908+08:00  WARN 68364 --- [riccon-worker] [           main] o.a.poi.openxml4j.util.ZipSecureFile     : setting max text size greater than 10485760 can be risky; set to 268435456 chars
+2026-11-25T18:16:55.142+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.c.WorkflowDatabasePoolGuard      : RICCON-WORKFLOW-022 workflow.db.pool.below_required actual=3 required=14 workerConcurrency=10 (RICCON_DB_POOL_SIZE is the authoritative deployment key)
+2026-11-25T18:16:55.211+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.q.service.WorkflowRunScheduler   : workflow.queue.scheduler.executor_missing claim_slots=0
+2026-11-25T18:16:56.225+08:00  INFO 68364 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-25T18:16:56.225+08:00  INFO 68364 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-25T18:16:56.245+08:00  INFO 68364 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-25T18:16:56.260+08:00  INFO 68364 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 35 ms
+2026-11-25T18:16:56.465+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.research.HitlIntegrationTest  : Started HitlIntegrationTest in 5.288 seconds (process running for 55.672)
+2026-11-25T18:16:56.589+08:00  INFO 68364 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-11-25T18:16:56.625+08:00  INFO 68364 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-11-25T18:16:56.668+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=15 actual=15
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+WARNING: A Java agent has been loaded dynamically (/Users/ricky/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.15/byte-buddy-agent-1.18.15.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+2026-11-25T18:16:58.366+08:00  INFO 68364 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-25T18:16:58.369+08:00  INFO 68364 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-25T18:16:58.935+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-a-ce282a7e2c runId=01a21235-61ca-793c-825d-21f079acddc8 approvalId=01a21235-64f7-7e06-901a-4e7712913bf5 toolId=01a21235-6198-77e8-a7cb-ab5e5fcf3037
+2026-11-25T18:16:58.942+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a21235-61f6-7412-a404-7f5cd2e4bc7b tenantId=tenant-a-ce282a7e2c runId=01a21235-61ca-793c-825d-21f079acddc8 attempts=1
+2026-11-25T18:16:58.942+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a21235-61f6-7412-a404-7f5cd2e4bc7b tenantId=tenant-a-ce282a7e2c runId=01a21235-61ca-793c-825d-21f079acddc8 reason=WAITING_APPROVAL
+2026-11-25T18:16:59.110+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.r.service.AgentRunCancelHandler    : research.run.cancelled tenantId=tenant-a-ce282a7e2c runId=01a21235-61ca-793c-825d-21f079acddc8 reason=USER_CANCELLED skippedStages=2
+2026-11-25T18:16:59.118+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a21235-65b5-725f-a645-1ace95d24e99 tenantId=tenant-a-ce282a7e2c runId=01a21235-61ca-793c-825d-21f079acddc8 attempts=1
+2026-11-25T18:16:59.333+08:00  INFO 68364 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-25T18:16:59.334+08:00  INFO 68364 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-25T18:16:59.411+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-a-3aa77fd985 runId=01a21235-666d-7482-a7a3-835bb2f6e6dc approvalId=01a21235-66ec-7ce5-ab3a-1c7941ae49e6 toolId=01a21235-664b-706a-bc1e-0c9c08d37295
+2026-11-25T18:16:59.417+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a21235-6672-7a36-aecc-5322da7459ac tenantId=tenant-a-3aa77fd985 runId=01a21235-666d-7482-a7a3-835bb2f6e6dc attempts=1
+2026-11-25T18:16:59.417+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a21235-6672-7a36-aecc-5322da7459ac tenantId=tenant-a-3aa77fd985 runId=01a21235-666d-7482-a7a3-835bb2f6e6dc reason=WAITING_APPROVAL
+2026-11-25T18:16:59.630+08:00  INFO 68364 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Initializing MCP sync client: riccon-builtin
+2026-11-25T18:16:59.636+08:00  INFO 68364 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server starting.
+2026-11-25T18:16:59.651+08:00  INFO 68364 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server started
+2026-11-25T18:17:00.168+08:00  INFO 68364 --- [riccon-worker] [ool-10-thread-1] i.m.client.LifecycleInitializer          : Server response with Protocol: 2024-11-05, Capabilities: ServerCapabilities[completions=null, experimental=null, logging=null, prompts=null, resources=null, tools=ToolCapabilities[listChanged=null]], Info: Implementation[name=riccon-mcp-mock, title=null, version=1.0.0] and Instructions null
+2026-11-25T18:17:00.245+08:00  INFO 68364 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Closing MCP sync client: riccon-builtin
+2026-11-25T18:17:00.360+08:00  INFO 68364 --- [riccon-worker] [onPool-worker-1] i.m.c.transport.StdioClientTransport     : MCP server process stopped
+2026-11-25T18:17:00.386+08:00  INFO 68364 --- [riccon-worker] [           main] c.riccon.worker.mcp.service.McpGateway   : mcp.tool.completed tenantId=tenant-a-3aa77fd985 runId=01a21235-666d-7482-a7a3-835bb2f6e6dc toolId=01a21235-664b-706a-bc1e-0c9c08d37295 durationMs=896 resultBytes=17
+2026-11-25T18:17:00.429+08:00  INFO 68364 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-25T18:17:00.602+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.r.service.ReportArtifactService    : research.artifact.saved tenantId=tenant-a-3aa77fd985 taskId=01a21235-666a-719e-a748-585a938e6332 artifactId=01a21235-6ba1-7b48-afc7-230d8070051d version=1 citations=2
+2026-11-25T18:17:00.620+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.r.service.AgentRunResumeHandler    : research.run.generation_completed tenantId=tenant-a-3aa77fd985 runId=01a21235-666d-7482-a7a3-835bb2f6e6dc chars=14 artifactId=01a21235-6ba1-7b48-afc7-230d8070051d version=1
+2026-11-25T18:17:00.633+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a21235-6723-7b08-937a-712638dd8836 tenantId=tenant-a-3aa77fd985 runId=01a21235-666d-7482-a7a3-835bb2f6e6dc attempts=1
+2026-11-25T18:17:00.651+08:00  WARN 68364 --- [riccon-worker] [           main] c.riccon.worker.mcp.service.McpGateway   : mcp.tool.denied tenantId=tenant-a-3aa77fd985 runId=01a21235-666d-7482-a7a3-835bb2f6e6dc toolId=01a21235-664b-706a-bc1e-0c9c08d37295 reason=ALREADY_INVOKED
+2026-11-25T18:17:00.781+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a21235-6c4c-77e1-bf51-bf19dbdd0f7a tenantId=tenant-a-9b8cd57410 runId=01a21235-6c49-762e-bf4f-3eb57465cf7f attempts=1 reason=RICCON-TENANT-403: run owner is disabled
+2026-11-25T18:17:00.987+08:00  INFO 68364 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-25T18:17:00.987+08:00  INFO 68364 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-25T18:17:01.055+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-a-11f36aaffc runId=01a21235-6cee-7a5c-be9e-4f12e071b1c0 approvalId=01a21235-6d5c-7ac0-950e-e07bc70744e3 toolId=01a21235-6cd1-75e2-9684-2e450021be36
+2026-11-25T18:17:01.060+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a21235-6cf1-7a89-8a66-efcf3f3fd871 tenantId=tenant-a-11f36aaffc runId=01a21235-6cee-7a5c-be9e-4f12e071b1c0 attempts=1
+2026-11-25T18:17:01.060+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a21235-6cf1-7a89-8a66-efcf3f3fd871 tenantId=tenant-a-11f36aaffc runId=01a21235-6cee-7a5c-be9e-4f12e071b1c0 reason=WAITING_APPROVAL
+2026-11-25T18:17:01.094+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.r.service.AgentRunCancelHandler    : research.run.cancelled tenantId=tenant-a-11f36aaffc runId=01a21235-6cee-7a5c-be9e-4f12e071b1c0 reason=USER_CANCELLED skippedStages=2
+2026-11-25T18:17:01.098+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a21235-6d8d-7068-9fa2-54f68de74651 tenantId=tenant-a-11f36aaffc runId=01a21235-6cee-7a5c-be9e-4f12e071b1c0 attempts=1
+2026-11-25T18:17:01.098+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.terminal_run_reconciled eventId=01a21235-6d8d-7068-9fa2-54f68de74651 tenantId=tenant-a-11f36aaffc runId=01a21235-6cee-7a5c-be9e-4f12e071b1c0 eventType=riccon.agent.run.cancel.v1
+2026-11-25T18:17:01.268+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a21235-6e11-7c8c-83e9-4688962d43fe tenantId=tenant-a-140a62cd80 runId=01a21235-6e0e-7ac1-b3a0-77ab0062fb1f attempts=1 reason=RICCON-MCP-403: no authorized mcp tool is available
+2026-11-25T18:17:01.410+08:00  INFO 68364 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-25T18:17:01.411+08:00  INFO 68364 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-25T18:17:01.473+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-a-b0f44d517e runId=01a21235-6ea1-7ccc-ad1f-a130bbcc3426 approvalId=01a21235-6f02-7015-b896-897ab8241d5c toolId=01a21235-6e89-75a1-83ee-8eb0e9fe761d
+2026-11-25T18:17:01.480+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a21235-6ea4-710d-a144-1c9acc5f400f tenantId=tenant-a-b0f44d517e runId=01a21235-6ea1-7ccc-ad1f-a130bbcc3426 attempts=1
+2026-11-25T18:17:01.480+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a21235-6ea4-710d-a144-1c9acc5f400f tenantId=tenant-a-b0f44d517e runId=01a21235-6ea1-7ccc-ad1f-a130bbcc3426 reason=WAITING_APPROVAL
+2026-11-25T18:17:01.560+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a21235-6f37-7bbb-b2e7-c3b26459d892 tenantId=tenant-a-b0f44d517e runId=01a21235-6ea1-7ccc-ad1f-a130bbcc3426 attempts=1 reason=RICCON-CRYPTO-500: approval parameters have no ciphertext
+2026-11-25T18:17:01.739+08:00  INFO 68364 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-25T18:17:01.739+08:00  INFO 68364 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-25T18:17:01.823+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-a-597e5e372e runId=01a21235-6fdb-767f-907a-f647993ba2ea approvalId=01a21235-704f-7057-8d78-d9b05625ef9c toolId=01a21235-6fbb-7d71-9e70-ad9653bb16d8
+2026-11-25T18:17:01.829+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a21235-6fdf-74b1-be76-9cdd22d3dad3 tenantId=tenant-a-597e5e372e runId=01a21235-6fdb-767f-907a-f647993ba2ea attempts=1
+2026-11-25T18:17:01.829+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a21235-6fdf-74b1-be76-9cdd22d3dad3 tenantId=tenant-a-597e5e372e runId=01a21235-6fdb-767f-907a-f647993ba2ea reason=WAITING_APPROVAL
+2026-11-25T18:17:01.894+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.r.service.AgentRunResumeHandler    : research.run.approval_rejected tenantId=tenant-a-597e5e372e runId=01a21235-6fdb-767f-907a-f647993ba2ea approvalId=01a21235-704f-7057-8d78-d9b05625ef9c decision=REJECTED
+2026-11-25T18:17:01.907+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a21235-708b-7d07-9d5d-6753ddbd9358 tenantId=tenant-a-597e5e372e runId=01a21235-6fdb-767f-907a-f647993ba2ea attempts=1
+2026-11-25T18:17:02.071+08:00  INFO 68364 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-25T18:17:02.071+08:00  INFO 68364 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-25T18:17:02.135+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-a-4e94b858d2 runId=01a21235-7133-7faa-91fe-bf44a9a8cdf1 approvalId=01a21235-7197-7405-8b3e-45645d79e1dc toolId=01a21235-7117-7441-9953-92a4493d990d
+2026-11-25T18:17:02.140+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a21235-7137-7cd8-992b-2a603f0a87ef tenantId=tenant-a-4e94b858d2 runId=01a21235-7133-7faa-91fe-bf44a9a8cdf1 attempts=1
+2026-11-25T18:17:02.140+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a21235-7137-7cd8-992b-2a603f0a87ef tenantId=tenant-a-4e94b858d2 runId=01a21235-7133-7faa-91fe-bf44a9a8cdf1 reason=WAITING_APPROVAL
+2026-11-25T18:17:02.186+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.r.service.AgentRunCancelHandler    : research.run.cancelled tenantId=tenant-a-4e94b858d2 runId=01a21235-7133-7faa-91fe-bf44a9a8cdf1 reason=USER_CANCELLED skippedStages=0
+2026-11-25T18:17:02.189+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a21235-71ca-7a86-a5f8-431b064707b2 tenantId=tenant-a-4e94b858d2 runId=01a21235-7133-7faa-91fe-bf44a9a8cdf1 attempts=1
+2026-11-25T18:17:02.190+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.terminal_run_reconciled eventId=01a21235-71ca-7a86-a5f8-431b064707b2 tenantId=tenant-a-4e94b858d2 runId=01a21235-7133-7faa-91fe-bf44a9a8cdf1 eventType=riccon.agent.run.cancel.v1
+2026-11-25T18:17:02.218+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.r.service.AgentRunCancelHandler    : research.run.cancelled tenantId=tenant-a-4e94b858d2 runId=01a21235-7133-7faa-91fe-bf44a9a8cdf1 reason=USER_CANCELLED skippedStages=0
+2026-11-25T18:17:02.221+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a21235-71ca-7a86-a5f8-431b064707b2 tenantId=tenant-a-4e94b858d2 runId=01a21235-7133-7faa-91fe-bf44a9a8cdf1 attempts=1
+2026-11-25T18:17:02.221+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.terminal_run_reconciled eventId=01a21235-71ca-7a86-a5f8-431b064707b2 tenantId=tenant-a-4e94b858d2 runId=01a21235-7133-7faa-91fe-bf44a9a8cdf1 eventType=riccon.agent.run.cancel.v1
+2026-11-25T18:17:02.373+08:00  INFO 68364 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-25T18:17:02.373+08:00  INFO 68364 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-25T18:17:02.435+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-a-3b5cbb697a runId=01a21235-7264-7161-b70d-6b15e9b27565 approvalId=01a21235-72c6-7aae-9b83-484cbda65118 toolId=01a21235-7246-7f7e-a30e-804f43f7d841
+2026-11-25T18:17:02.439+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a21235-7267-7a45-8dd8-7bf6463c97ae tenantId=tenant-a-3b5cbb697a runId=01a21235-7264-7161-b70d-6b15e9b27565 attempts=1
+2026-11-25T18:17:02.439+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a21235-7267-7a45-8dd8-7bf6463c97ae tenantId=tenant-a-3b5cbb697a runId=01a21235-7264-7161-b70d-6b15e9b27565 reason=WAITING_APPROVAL
+2026-11-25T18:17:02.531+08:00  INFO 68364 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Initializing MCP sync client: riccon-builtin
+2026-11-25T18:17:02.531+08:00  INFO 68364 --- [riccon-worker] [oundedElastic-1] i.m.c.transport.StdioClientTransport     : MCP server starting.
+2026-11-25T18:17:02.537+08:00  INFO 68364 --- [riccon-worker] [oundedElastic-1] i.m.c.transport.StdioClientTransport     : MCP server started
+2026-11-25T18:17:02.868+08:00  INFO 68364 --- [riccon-worker] [ool-21-thread-1] i.m.client.LifecycleInitializer          : Server response with Protocol: 2024-11-05, Capabilities: ServerCapabilities[completions=null, experimental=null, logging=null, prompts=null, resources=null, tools=ToolCapabilities[listChanged=null]], Info: Implementation[name=riccon-mcp-mock, title=null, version=1.0.0] and Instructions null
+2026-11-25T18:17:02.874+08:00  INFO 68364 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Closing MCP sync client: riccon-builtin
+2026-11-25T18:17:02.992+08:00  INFO 68364 --- [riccon-worker] [onPool-worker-1] i.m.c.transport.StdioClientTransport     : MCP server process stopped
+2026-11-25T18:17:03.001+08:00  INFO 68364 --- [riccon-worker] [           main] c.riccon.worker.mcp.service.McpGateway   : mcp.tool.completed tenantId=tenant-a-3b5cbb697a runId=01a21235-7264-7161-b70d-6b15e9b27565 toolId=01a21235-7246-7f7e-a30e-804f43f7d841 durationMs=466 resultBytes=17
+2026-11-25T18:17:03.040+08:00  INFO 68364 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-25T18:17:03.104+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.r.service.ReportArtifactService    : research.artifact.saved tenantId=tenant-a-3b5cbb697a taskId=01a21235-7261-74ea-8079-a5570a3f46b1 artifactId=01a21235-7570-7b92-a1de-44497cc43220 version=1 citations=2
+2026-11-25T18:17:03.115+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.r.service.AgentRunResumeHandler    : research.run.generation_completed tenantId=tenant-a-3b5cbb697a runId=01a21235-7264-7161-b70d-6b15e9b27565 chars=14 artifactId=01a21235-7570-7b92-a1de-44497cc43220 version=1
+2026-11-25T18:17:03.124+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a21235-7319-7f25-ba74-339fdde4425f tenantId=tenant-a-3b5cbb697a runId=01a21235-7264-7161-b70d-6b15e9b27565 attempts=1
+2026-11-25T18:17:03.304+08:00  INFO 68364 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'knowledge_search' in group 'ungrouped'
+2026-11-25T18:17:03.305+08:00  INFO 68364 --- [riccon-worker] [           main] io.agentscope.core.tool.Toolkit          : Registered tool 'echo' in group 'ungrouped'
+2026-11-25T18:17:03.370+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.r.s.AgentRunRequestedHandler       : research.run.waiting_approval tenantId=tenant-a-bfca66ceb5 runId=01a21235-7602-744d-9762-16780e41809c approvalId=01a21235-7668-705e-b588-813da8a0de67 toolId=01a21235-75e6-77a8-982c-462ea7332224
+2026-11-25T18:17:03.375+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.completed eventId=01a21235-7606-7754-ba72-a3d9560d75f8 tenantId=tenant-a-bfca66ceb5 runId=01a21235-7602-744d-9762-16780e41809c attempts=1
+2026-11-25T18:17:03.375+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.paused eventId=01a21235-7606-7754-ba72-a3d9560d75f8 tenantId=tenant-a-bfca66ceb5 runId=01a21235-7602-744d-9762-16780e41809c reason=WAITING_APPROVAL
+2026-11-25T18:17:03.450+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.worker.run.service.OutboxPoller      : outbox.event.dead eventId=01a21235-769b-72ff-83a4-e10e21ad8665 tenantId=tenant-a-bfca66ceb5 runId=01a21235-7602-744d-9762-16780e41809c attempts=1 reason=RICCON-CRYPTO-500: approval parameters cannot be replayed
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 60.82 s -- in com.riccon.worker.research.HitlIntegrationTest
+[INFO] Running com.riccon.worker.mcp.McpCallExecutorPolicyTest
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.916 s -- in com.riccon.worker.mcp.McpCallExecutorPolicyTest
+[INFO] Running com.riccon.worker.mcp.McpGatewayIntegrationTest
+2026-11-25T18:17:04.413+08:00  INFO 68364 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.mcp.McpGatewayIntegrationTest]: McpGatewayIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T18:17:04.516+08:00  INFO 68364 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.mcp.McpGatewayIntegrationTest
+2026-11-25T18:17:04.518+08:00  INFO 68364 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.mcp.McpGatewayIntegrationTest]: McpGatewayIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T18:17:04.519+08:00  INFO 68364 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T18:17:04.524+08:00  INFO 68364 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.mcp.McpGatewayIntegrationTest
+2026-11-25T18:17:04.638+08:00  WARN 68364 --- [riccon-worker] [           main] c.riccon.worker.mcp.service.McpGateway   : mcp.tool.denied tenantId=tenant-a-b192550a70 runId=01a21235-7b4d-74d0-b30b-e2f0b3b0b555 toolId=01a21235-7b59-722b-b228-120b63f9157a reason=mcp tool call is missing approval
+2026-11-25T18:17:04.744+08:00  WARN 68364 --- [riccon-worker] [           main] c.riccon.worker.mcp.service.McpGateway   : mcp.tool.denied tenantId=tenant-a-3c8eb88e9e runId=01a21235-7bb8-71a3-b79e-de7080e54e02 toolId=01a21235-7bc3-75b5-81fe-42e931668831 reason=mcp tool risk level is not allowed
+2026-11-25T18:17:04.831+08:00  WARN 68364 --- [riccon-worker] [           main] c.riccon.worker.mcp.service.McpGateway   : mcp.tool.denied tenantId=tenant-a-3b6a37b504 runId=01a21235-7c1f-7447-9a65-20cbf9ec3400 toolId=01a21235-7c2b-7e83-a7a0-958eb16be3bb reason=mcp tool is not authorized
+2026-11-25T18:17:04.926+08:00  WARN 68364 --- [riccon-worker] [           main] c.riccon.worker.mcp.service.McpGateway   : mcp.tool.denied tenantId=tenant-a-54ebbc9dea runId=01a21235-7c71-7495-bd79-76b2f52753c0 toolId=01a21235-7c7c-7fe8-9416-b6014244d34e reason=mcp server is not in the platform allowlist
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.534 s -- in com.riccon.worker.mcp.McpGatewayIntegrationTest
+[INFO] Running com.riccon.worker.workflow.engine.config.WorkflowEngineWiringTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.346 s -- in com.riccon.worker.workflow.engine.config.WorkflowEngineWiringTest
+[INFO] Running IT-WF-105/109 串行引擎与节点状态机
+2026-11-25T18:17:05.322+08:00  INFO 68364 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.workflow.engine.WorkflowEngineIntegrationTest]: WorkflowEngineIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T18:17:05.397+08:00  INFO 68364 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.workflow.engine.WorkflowEngineIntegrationTest
+2026-11-25T18:17:05.399+08:00  INFO 68364 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.workflow.engine.WorkflowEngineIntegrationTest]: WorkflowEngineIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T18:17:05.399+08:00  INFO 68364 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T18:17:05.404+08:00  INFO 68364 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.workflow.engine.WorkflowEngineIntegrationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.2)
+
+2026-11-25T18:17:05.496+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.w.e.WorkflowEngineIntegrationTest  : Starting WorkflowEngineIntegrationTest using Java 21.0.13 with PID 68364 (started by ricky in /Users/ricky/Documents/projects/riccon-work/apps/worker)
+2026-11-25T18:17:05.497+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.w.e.WorkflowEngineIntegrationTest  : The following 1 profile is active: "test"
+2026-11-25T18:17:06.520+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.config.ModelEndpointProperties     : model endpoint allowlist loaded; mode=DEMO endpoints=1
+2026-11-25T18:17:06.611+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.c.config.ConnectorProperties       : worker connector configuration loaded; enabled=false endpoints=0 maxObjects=5000 maxObjectBytes=104857600 syncTimeoutMinutes=60 schedulerEnabled=true
+2026-11-25T18:17:06.769+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.c.WorkflowDatabasePoolGuard      : RICCON-WORKFLOW-022 workflow.db.pool.below_required actual=3 required=14 workerConcurrency=10 (RICCON_DB_POOL_SIZE is the authoritative deployment key)
+2026-11-25T18:17:06.814+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.w.q.service.WorkflowRunScheduler   : workflow.queue.scheduler.disabled reason=CLAIM_ENABLED_FALSE
+2026-11-25T18:17:07.208+08:00  INFO 68364 --- [riccon-worker] [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-11-25T18:17:07.208+08:00  INFO 68364 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-11-25T18:17:07.219+08:00  INFO 68364 --- [riccon-worker] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoints beneath base path '/actuator'
+2026-11-25T18:17:07.229+08:00  INFO 68364 --- [riccon-worker] [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 21 ms
+2026-11-25T18:17:07.320+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.w.e.WorkflowEngineIntegrationTest  : Started WorkflowEngineIntegrationTest in 1.905 seconds (process running for 66.527)
+2026-11-25T18:17:07.321+08:00  INFO 68364 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Starting...
+2026-11-25T18:17:07.368+08:00  INFO 68364 --- [riccon-worker] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-2 - Start completed.
+2026-11-25T18:17:07.402+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : schema.version.checked expected=15 actual=15
+2026-11-25T18:17:07.916+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.lease_lost runId=01a21235-883a-7200-96f5-cfbe40cdf194 tenantId=wf-engine-lost-start-3c1983184c nodeKey=s
+2026-11-25T18:17:08.550+08:00 ERROR 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.state_corrupt runId=01a21235-8aba-7bde-9057-4443d89485a1 tenantId=wf-engine-corrupt-1a8884def0
+
+com.riccon.worker.workflow.node.domain.WorkflowNodeFailureException: 节点尝试不属于发布图，拒绝继续执行
+	at com.riccon.worker.workflow.engine.service.WorkflowExecutionState.load(WorkflowExecutionState.java:65) ~[classes/:na]
+	at com.riccon.worker.workflow.engine.service.WorkflowEngine.execute(WorkflowEngine.java:210) ~[classes/:na]
+	at com.riccon.worker.workflow.engine.WorkflowEngineIntegrationTest.lambda$execute$27(WorkflowEngineIntegrationTest.java:687) ~[test-classes/:na]
+	at com.riccon.platform.common.tenant.TenantContext.runWithTenant(TenantContext.java:108) ~[riccon-platform-common-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at com.riccon.worker.workflow.engine.WorkflowEngineIntegrationTest.execute(WorkflowEngineIntegrationTest.java:687) ~[test-classes/:na]
+	at com.riccon.worker.workflow.engine.WorkflowEngineIntegrationTest.execute(WorkflowEngineIntegrationTest.java:673) ~[test-classes/:na]
+	at com.riccon.worker.workflow.engine.WorkflowEngineIntegrationTest.stateCorrupt_failsClosed(WorkflowEngineIntegrationTest.java:743) ~[test-classes/:na]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:701) ~[junit-platform-commons-6.0.3.jar:6.0.3]
+	at org.junit.platform.commons.support.ReflectionSupport.invokeMethod(ReflectionSupport.java:502) ~[junit-platform-commons-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.support.MethodReflectionUtils.invoke(MethodReflectionUtils.java:45) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:61) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:124) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:163) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:148) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:123) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:105) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:99) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:66) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:47) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:39) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:104) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:98) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invokeVoid(InterceptingExecutableInvoker.java:71) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$0(TestMethodTestDescriptor.java:219) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:215) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:157) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:70) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:176) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:138) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596) ~[na:na]
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:138) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596) ~[na:na]
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:138) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:36) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:52) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:58) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.executeEngine(EngineExecutionOrchestrator.java:246) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.failOrExecuteEngine(EngineExecutionOrchestrator.java:218) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:179) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:108) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:66) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:157) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:65) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:125) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:114) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:58) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$2(InterceptingLauncher.java:57) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:56) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:58) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.apache.maven.surefire.api.util.ReflectionUtils.invokeMethodWithArray(ReflectionUtils.java:125) ~[surefire-api-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.executeWithCancellationToken(LauncherAdapter.java:68) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.execute(LauncherAdapter.java:54) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.execute(JUnitPlatformProvider.java:203) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invokeAllTests(JUnitPlatformProvider.java:168) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:136) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385) ~[surefire-booter-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162) ~[surefire-booter-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507) ~[surefire-booter-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495) ~[surefire-booter-3.5.6.jar:3.5.6]
+
+2026-11-25T18:17:08.647+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.run_not_running runId=01a21235-8b1f-7d8e-95c4-2364d35ffd64 tenantId=wf-engine-pending-9ce8b50dbd status=PENDING
+2026-11-25T18:17:09.057+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.graph_invalid runId=01a21235-8cba-7ae3-94e5-d7a87ca5c96c tenantId=wf-engine-invalid-3f5e08943c reason=node.type 不是受支持的值
+2026-11-25T18:17:09.494+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.graph_invalid runId=01a21235-8e6f-7068-bbaa-75cbe34e9984 tenantId=wf-engine-node-count-7c06489012 reason=发布图节点数与版本快照不一致
+2026-11-25T18:17:09.755+08:00 ERROR 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.node_internal_failed runId=01a21235-8f4d-7f43-b74f-df4d491fed08 tenantId=wf-engine-internal-60c244e6bf nodeKey=m
+
+java.lang.IllegalStateException: boom
+	at com.riccon.worker.workflow.engine.WorkflowEngineIntegrationTest.lambda$nodeInternalError_failsRun$30(WorkflowEngineIntegrationTest.java:820) ~[test-classes/:na]
+	at com.riccon.worker.workflow.engine.WorkflowEngineTestSupport$StubExecutor.execute(WorkflowEngineTestSupport.java:1000) ~[test-classes/:na]
+	at com.riccon.worker.workflow.node.service.WorkflowNodeDispatcher.execute(WorkflowNodeDispatcher.java:71) ~[classes/:na]
+	at com.riccon.worker.workflow.engine.service.WorkflowEngine.execute(WorkflowEngine.java:350) ~[classes/:na]
+	at com.riccon.worker.workflow.engine.WorkflowEngineIntegrationTest.lambda$execute$27(WorkflowEngineIntegrationTest.java:687) ~[test-classes/:na]
+	at com.riccon.platform.common.tenant.TenantContext.runWithTenant(TenantContext.java:108) ~[riccon-platform-common-0.1.0-SNAPSHOT.jar:0.1.0-SNAPSHOT]
+	at com.riccon.worker.workflow.engine.WorkflowEngineIntegrationTest.execute(WorkflowEngineIntegrationTest.java:687) ~[test-classes/:na]
+	at com.riccon.worker.workflow.engine.WorkflowEngineIntegrationTest.execute(WorkflowEngineIntegrationTest.java:673) ~[test-classes/:na]
+	at com.riccon.worker.workflow.engine.WorkflowEngineIntegrationTest.nodeInternalError_failsRun(WorkflowEngineIntegrationTest.java:823) ~[test-classes/:na]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:701) ~[junit-platform-commons-6.0.3.jar:6.0.3]
+	at org.junit.platform.commons.support.ReflectionSupport.invokeMethod(ReflectionSupport.java:502) ~[junit-platform-commons-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.support.MethodReflectionUtils.invoke(MethodReflectionUtils.java:45) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:61) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:124) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:163) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:148) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:123) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:105) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:99) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:66) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:47) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:39) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:104) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:98) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invokeVoid(InterceptingExecutableInvoker.java:71) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$0(TestMethodTestDescriptor.java:219) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:215) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:157) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:70) ~[junit-jupiter-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:176) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:138) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596) ~[na:na]
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:138) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596) ~[na:na]
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:138) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:36) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:52) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:58) ~[junit-platform-engine-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.executeEngine(EngineExecutionOrchestrator.java:246) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.failOrExecuteEngine(EngineExecutionOrchestrator.java:218) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:179) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:108) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:66) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:157) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:65) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:125) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:114) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:58) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$2(InterceptingLauncher.java:57) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:56) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:58) ~[junit-platform-launcher-6.0.3.jar:6.0.3]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580) ~[na:na]
+	at org.apache.maven.surefire.api.util.ReflectionUtils.invokeMethodWithArray(ReflectionUtils.java:125) ~[surefire-api-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.executeWithCancellationToken(LauncherAdapter.java:68) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.execute(LauncherAdapter.java:54) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.execute(JUnitPlatformProvider.java:203) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invokeAllTests(JUnitPlatformProvider.java:168) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:136) ~[surefire-junit-platform-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385) ~[surefire-booter-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162) ~[surefire-booter-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507) ~[surefire-booter-3.5.6.jar:3.5.6]
+	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495) ~[surefire-booter-3.5.6.jar:3.5.6]
+
+[INFO] Tests run: 27, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.773 s -- in IT-WF-105/109 串行引擎与节点状态机
+[INFO] Running com.riccon.worker.workflow.tool.service.WorkflowToolNodeExecutorTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in com.riccon.worker.workflow.tool.service.WorkflowToolNodeExecutorTest
+[INFO] Running IT-WF-104/SEC-WF-004 工作流工具执行
+2026-11-25T18:17:10.120+08:00  INFO 68364 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.workflow.tool.service.WorkflowToolNodeExecutorIntegrationTest]: WorkflowToolNodeExecutorIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T18:17:10.183+08:00  INFO 68364 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.workflow.tool.service.WorkflowToolNodeExecutorIntegrationTest
+2026-11-25T18:17:10.185+08:00  INFO 68364 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.workflow.tool.service.WorkflowToolNodeExecutorIntegrationTest]: WorkflowToolNodeExecutorIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T18:17:10.186+08:00  INFO 68364 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T18:17:10.188+08:00  INFO 68364 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.workflow.tool.service.WorkflowToolNodeExecutorIntegrationTest
+2026-11-25T18:17:10.341+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-9176-741f-8cab-1a7044aed04a nodeKey=approval
+2026-11-25T18:17:10.413+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.t.s.WorkflowToolNodeExecutor     : workflow.tool.denied tenantId=wf-tool-params-drift-fedd65e7ef runId=01a21235-9176-741f-8cab-1a7044aed04a nodeKey=tool toolId=01a21235-9161-787b-9492-d16fba87717e reason=WF_PLAN_DRIFT
+2026-11-25T18:17:10.541+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-9251-7610-9839-1660857b16d5 nodeKey=approval
+2026-11-25T18:17:10.609+08:00  INFO 68364 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Initializing MCP sync client: riccon-builtin
+2026-11-25T18:17:10.610+08:00  INFO 68364 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server starting.
+2026-11-25T18:17:10.616+08:00  INFO 68364 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server started
+2026-11-25T18:17:11.024+08:00  INFO 68364 --- [riccon-worker] [ool-26-thread-1] i.m.client.LifecycleInitializer          : Server response with Protocol: 2024-11-05, Capabilities: ServerCapabilities[completions=null, experimental=null, logging=null, prompts=null, resources=null, tools=ToolCapabilities[listChanged=null]], Info: Implementation[name=riccon-mcp-mock, title=null, version=1.0.0] and Instructions null
+2026-11-25T18:17:11.033+08:00  INFO 68364 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Closing MCP sync client: riccon-builtin
+2026-11-25T18:17:11.145+08:00  INFO 68364 --- [riccon-worker] [onPool-worker-1] i.m.c.transport.StdioClientTransport     : MCP server process stopped
+2026-11-25T18:17:11.160+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.w.t.s.WorkflowToolNodeExecutor     : workflow.tool.completed tenantId=wf-tool-write-49ff65d280 runId=01a21235-9251-7610-9839-1660857b16d5 nodeKey=tool toolId=01a21235-923f-719c-ab6b-cfc342de1730 durationMs=538 resultBytes=12
+2026-11-25T18:17:11.339+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-956e-7841-b7b8-d26515ad5ca1 nodeKey=approval
+2026-11-25T18:17:11.400+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.t.s.WorkflowToolNodeExecutor     : workflow.tool.denied tenantId=wf-tool-consumed-d9ede25d1a runId=01a21235-956e-7841-b7b8-d26515ad5ca1 nodeKey=tool toolId=01a21235-9559-7bd6-9e94-bfa3b1febec4 reason=APPROVAL_CONSUMED
+2026-11-25T18:17:11.499+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.t.s.WorkflowToolNodeExecutor     : workflow.tool.denied tenantId=wf-tool-no-approval-bc8ee47116 runId=01a21235-9630-7476-ade7-36e9b2251cfd nodeKey=tool toolId=01a21235-961f-793e-8bbd-7661c696ad6d reason=WF_APPROVAL_REQUIRED
+2026-11-25T18:17:11.626+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-968e-72de-8ae6-e43f27287c70 nodeKey=approval
+2026-11-25T18:17:11.681+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.t.s.WorkflowToolNodeExecutor     : workflow.tool.denied tenantId=wf-tool-plan-drift-16e26ab3ef runId=01a21235-968e-72de-8ae6-e43f27287c70 nodeKey=tool toolId=01a21235-967c-73f9-9c46-1a9a297d5606 reason=WF_PLAN_DRIFT
+2026-11-25T18:17:11.810+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-9746-7bd7-a58f-e41299c1c319 nodeKey=approval
+2026-11-25T18:17:11.872+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.t.s.WorkflowToolNodeExecutor     : workflow.tool.denied tenantId=wf-tool-unauthorized-4e0eb0e83a runId=01a21235-9746-7bd7-a58f-e41299c1c319 nodeKey=tool toolId=01a21235-9736-73e0-ac90-211d6a43f479 reason=TOOL_NOT_AUTHORIZED
+2026-11-25T18:17:11.998+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-9808-7be9-8e81-3a745043794c nodeKey=approval
+2026-11-25T18:17:12.054+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.t.s.WorkflowToolNodeExecutor     : workflow.tool.denied tenantId=wf-tool-retry-6ef0f9cb89 runId=01a21235-9808-7be9-8e81-3a745043794c nodeKey=tool toolId=01a21235-97f3-7cfd-a77d-c2d89842be97 reason=TOOL_NOT_AUTHORIZED
+2026-11-25T18:17:12.106+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.t.s.WorkflowToolNodeExecutor     : workflow.tool.denied tenantId=wf-tool-retry-6ef0f9cb89 runId=01a21235-9808-7be9-8e81-3a745043794c nodeKey=tool toolId=01a21235-97f3-7cfd-a77d-c2d89842be97 reason=WF_APPROVAL_REQUIRED
+2026-11-25T18:17:12.164+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-9808-7be9-8e81-3a745043794c nodeKey=approval
+2026-11-25T18:17:12.221+08:00  INFO 68364 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Initializing MCP sync client: riccon-builtin
+2026-11-25T18:17:12.222+08:00  INFO 68364 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server starting.
+2026-11-25T18:17:12.227+08:00  INFO 68364 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server started
+2026-11-25T18:17:12.600+08:00  INFO 68364 --- [riccon-worker] [ool-29-thread-1] i.m.client.LifecycleInitializer          : Server response with Protocol: 2024-11-05, Capabilities: ServerCapabilities[completions=null, experimental=null, logging=null, prompts=null, resources=null, tools=ToolCapabilities[listChanged=null]], Info: Implementation[name=riccon-mcp-mock, title=null, version=1.0.0] and Instructions null
+2026-11-25T18:17:12.608+08:00  INFO 68364 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Closing MCP sync client: riccon-builtin
+2026-11-25T18:17:12.725+08:00  INFO 68364 --- [riccon-worker] [onPool-worker-1] i.m.c.transport.StdioClientTransport     : MCP server process stopped
+2026-11-25T18:17:12.737+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.w.t.s.WorkflowToolNodeExecutor     : workflow.tool.completed tenantId=wf-tool-retry-6ef0f9cb89 runId=01a21235-9808-7be9-8e81-3a745043794c nodeKey=tool toolId=01a21235-97f3-7cfd-a77d-c2d89842be97 durationMs=506 resultBytes=12
+2026-11-25T18:17:12.874+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-9b72-792d-80d8-827998d33195 nodeKey=approval
+2026-11-25T18:17:12.934+08:00  INFO 68364 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Initializing MCP sync client: riccon-builtin
+2026-11-25T18:17:12.934+08:00  INFO 68364 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server starting.
+2026-11-25T18:17:12.939+08:00  INFO 68364 --- [riccon-worker] [oundedElastic-2] i.m.c.transport.StdioClientTransport     : MCP server started
+2026-11-25T18:17:13.294+08:00  INFO 68364 --- [riccon-worker] [ool-32-thread-1] i.m.client.LifecycleInitializer          : Server response with Protocol: 2024-11-05, Capabilities: ServerCapabilities[completions=null, experimental=null, logging=null, prompts=null, resources=null, tools=ToolCapabilities[listChanged=null]], Info: Implementation[name=riccon-mcp-mock, title=null, version=1.0.0] and Instructions null
+2026-11-25T18:17:13.302+08:00  INFO 68364 --- [riccon-worker] [           main] i.a.core.tool.mcp.McpSyncClientWrapper   : Closing MCP sync client: riccon-builtin
+2026-11-25T18:17:13.419+08:00  INFO 68364 --- [riccon-worker] [onPool-worker-1] i.m.c.transport.StdioClientTransport     : MCP server process stopped
+2026-11-25T18:17:13.429+08:00  INFO 68364 --- [riccon-worker] [           main] c.r.w.w.t.s.WorkflowToolNodeExecutor     : workflow.tool.completed tenantId=wf-tool-read-53c0110d46 runId=01a21235-9b72-792d-80d8-827998d33195 nodeKey=tool toolId=01a21235-9b5e-7f48-867c-9f4d2e20d1b9 durationMs=486 resultBytes=12
+2026-11-25T18:17:13.569+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-9e2a-7384-92e8-d9a0b3098eb2 nodeKey=approval
+2026-11-25T18:17:13.623+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.t.s.WorkflowToolNodeExecutor     : workflow.tool.denied tenantId=wf-tool-unknown-d46c396c90 runId=01a21235-9e2a-7384-92e8-d9a0b3098eb2 nodeKey=tool toolId=01a21235-9e18-7b3e-a07c-4fc4a014e67f reason=INVOCATION_STARTED
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.526 s -- in IT-WF-104/SEC-WF-004 工作流工具执行
+[INFO] Running IT-WF-108/SEC-WF-001 审批执行器
+2026-11-25T18:17:13.648+08:00  INFO 68364 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.workflow.approval.service.WorkflowApprovalExecutorIntegrationTest]: WorkflowApprovalExecutorIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T18:17:13.689+08:00  INFO 68364 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.workflow.approval.service.WorkflowApprovalExecutorIntegrationTest
+2026-11-25T18:17:13.690+08:00  INFO 68364 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.workflow.approval.service.WorkflowApprovalExecutorIntegrationTest]: WorkflowApprovalExecutorIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T18:17:13.691+08:00  INFO 68364 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T18:17:13.693+08:00  INFO 68364 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.workflow.approval.service.WorkflowApprovalExecutorIntegrationTest
+2026-11-25T18:17:13.779+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-9f00-7ad6-99a5-c1dfe1ff295b nodeKey=approval
+2026-11-25T18:17:13.961+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-9fb7-7db6-a463-60af00d04aa9 nodeKey=approval
+2026-11-25T18:17:14.172+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-a08c-7caa-90d8-f33038a80c63 nodeKey=approval
+2026-11-25T18:17:14.275+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-a0eb-75be-8dc4-5d843ad6870f nodeKey=approval
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.642 s -- in IT-WF-108/SEC-WF-001 审批执行器
+[INFO] Running IT-WF-108/SEC-WF-001 审批决定
+2026-11-25T18:17:14.291+08:00  INFO 68364 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.workflow.approval.service.WorkflowApprovalDecisionServiceIntegrationTest]: WorkflowApprovalDecisionServiceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T18:17:14.295+08:00  INFO 68364 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.workflow.approval.service.WorkflowApprovalDecisionServiceIntegrationTest
+2026-11-25T18:17:14.297+08:00  INFO 68364 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.workflow.approval.service.WorkflowApprovalDecisionServiceIntegrationTest]: WorkflowApprovalDecisionServiceIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T18:17:14.297+08:00  INFO 68364 --- [riccon-worker] [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.riccon.worker.WorkerIntegrationTestBase]: WorkerIntegrationTestBase does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-11-25T18:17:14.300+08:00  INFO 68364 --- [riccon-worker] [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.riccon.worker.WorkerApplication for test class com.riccon.worker.workflow.approval.service.WorkflowApprovalDecisionServiceIntegrationTest
+2026-11-25T18:17:14.396+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-a15e-7733-bc61-5b234542199a nodeKey=approval
+2026-11-25T18:17:14.546+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-a1fb-7f0c-8e86-fd4a1f3f4e5d nodeKey=approval
+2026-11-25T18:17:14.698+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-a290-73f4-a5f4-915f1addaa6e nodeKey=approval
+2026-11-25T18:17:14.818+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-a30c-7ea1-87c7-04677b1d7a65 nodeKey=approval
+2026-11-25T18:17:14.914+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-a371-7794-b423-b6e3f1cf45ba nodeKey=approval
+2026-11-25T18:17:15.034+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-a3e3-7b1e-9432-276c0a7dc729 nodeKey=approval
+2026-11-25T18:17:15.142+08:00  WARN 68364 --- [riccon-worker] [           main] c.r.w.w.engine.service.WorkflowEngine    : workflow.engine.aborted_lease_lost runId=01a21235-a44e-7156-8e51-b4863343c28f nodeKey=approval
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.871 s -- in IT-WF-108/SEC-WF-001 审批决定
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 77, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:19 min
+[INFO] Finished at: 2026-11-25T18:17:15+08:00
+[INFO] ------------------------------------------------------------------------
+
+# --- stderr ---
+
