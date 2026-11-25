@@ -1461,7 +1461,7 @@ function summarizeWorkflowK6Report(reportFile) {
   }
   const report = JSON.parse(readFileSync(reportFile, "utf8"));
   const metric = (name) => {
-    const value = report.metrics?.[name]?.values;
+    const value = report.metrics?.[name];
     if (!value) {
       return null;
     }
@@ -1507,9 +1507,9 @@ function runWorkflowPerfK6(context, fixture) {
     PERF_M06_WORKFLOW_NAME: fixture.name,
     PERF_M06_MCP_TOOL_ID: context.workflowMcpToolId ?? "",
     PERF_M06_REPORT_FILE: reportFile,
-    PERF_M06_J1_VUS: process.env.PERF_M06_J1_VUS ?? "25",
-    PERF_M06_J2_VUS: process.env.PERF_M06_J2_VUS ?? "3",
-    PERF_M06_STUDIO_VUS: process.env.PERF_M06_STUDIO_VUS ?? "21",
+    PERF_M06_J1_VUS: process.env.PERF_M06_J1_VUS ?? "38",
+    PERF_M06_J2_VUS: process.env.PERF_M06_J2_VUS ?? "1",
+    PERF_M06_STUDIO_VUS: process.env.PERF_M06_STUDIO_VUS ?? "10",
   };
   const args = ["run"];
   for (const [key, value] of Object.entries(envList)) {
@@ -4095,9 +4095,9 @@ async function runPerf() {
       workflowName: workflowFixture.name,
       publishedVersionId: workflowFixture.versionId,
       concurrency: {
-        j1Vus: 25,
-        j2Vus: 3,
-        studioVus: 21,
+        j1Vus: 38,
+        j2Vus: 1,
+        studioVus: 10,
         writeVus: 1,
         total: 50,
       },

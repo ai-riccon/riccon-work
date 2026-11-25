@@ -108,9 +108,9 @@ const m06WorkflowId = __ENV.PERF_M06_WORKFLOW_ID || '';
 const m06WorkflowName = __ENV.PERF_M06_WORKFLOW_NAME || 'PERF-M06';
 const m06AdminWorkflowId = __ENV.PERF_M06_ADMIN_WORKFLOW_ID || '';
 const m06McpToolId = __ENV.PERF_M06_MCP_TOOL_ID || '';
-const m06J1Vus = Number(__ENV.PERF_M06_J1_VUS || '25');
-const m06J2Vus = Number(__ENV.PERF_M06_J2_VUS || '3');
-const m06StudioVus = Number(__ENV.PERF_M06_STUDIO_VUS || '21');
+const m06J1Vus = Number(__ENV.PERF_M06_J1_VUS || '38');
+const m06J2Vus = Number(__ENV.PERF_M06_J2_VUS || '1');
+const m06StudioVus = Number(__ENV.PERF_M06_STUDIO_VUS || '10');
 const m06Editor = __ENV.PERF_M06_EDITOR || 'alpha-editor';
 const m06EditorPassword = __ENV.PERF_M06_EDITOR_PASSWORD || 'alpha-editor-password-12';
 
