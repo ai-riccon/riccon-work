@@ -171,9 +171,12 @@ test.describe('M06 可访问性与 375px', () => {
     const deleteNode = page.getByRole('button', { name: '删除节点 模型生成' });
     await tabTo(page, deleteNode, 500);
     await page.keyboard.press('Enter');
-    const popconfirm = page.locator('.ant-popover:not(.ant-popover-hidden)').last();
+    const popconfirm = page
+      .getByRole('tooltip')
+      .filter({ hasText: '删除节点“模型生成”' })
+      .last();
     await expect(popconfirm).toBeVisible();
-    const confirmDelete = popconfirm.getByRole('button', { name: '删除', exact: true });
+    const confirmDelete = popconfirm.getByRole('button', { name: /删\s*除/ });
     await tabTo(page, confirmDelete, 40);
     await page.keyboard.press('Enter');
     await expect(addedNode).toHaveCount(0);
