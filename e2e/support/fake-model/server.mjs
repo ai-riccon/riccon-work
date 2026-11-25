@@ -137,6 +137,22 @@ async function sleep(ms, aborted) {
  * @param {boolean} [options.logBodies] 是否记录请求体（默认 false）
  * @returns {{server: http.Server, control: object}} 服务与控制句柄
  */
+/** M06 重试 E2E 的一次性故障标记；与真实业务提示词无关，只在验证专用假模型生效。 */
+const WORKFLOW_RETRY_MARKER = '__WF_FAIL_3__';
+
+/**
+ * 计算提示词文本，用于识别 M06 重试夹具。
+ *
+ * @param {object} body 请求体
+ * @returns {string} 所有消息文本的拼接
+ */
+function promptText(body) {
+  const messages = Array.isArray(body?.messages) ? body.messages : [];
+  return messages
+    .map((message) => (typeof message?.content === 'string' ? message.content : ''))
+    .join('\n');
+}
+
 export function createFakeModelServer(options = {}) {
   const config = {
     host: options.host ?? '127.0.0.1',
@@ -170,6 +186,9 @@ export function createFakeModelServer(options = {}) {
 
   /** 自增序号，便于断言请求顺序。 */
   let sequence = 0;
+
+  /** M06 重试夹具：同一提示词的剩余故障次数；耗尽后恢复正常。 */
+  const workflowRetryFailures = new Map();
 
   /**
    * 选择本次请求的场景。
@@ -501,6 +520,18 @@ export function createFakeModelServer(options = {}) {
     requestLog.push(log);
     res.fakeScenario = scenarioName;
 
+    // M06 E2E-M06-05：提示词含标记时，同一提示词前 3 次返回 500（覆盖路由 3 次尝试），
+    // 第 4 次起恢复；用于验证“节点失败 → 重试成功、上游不重跑”的真实链路。
+    const prompt = promptText(body);
+    if (prompt.includes(WORKFLOW_RETRY_MARKER)) {
+      const remaining = workflowRetryFailures.has(prompt) ? workflowRetryFailures.get(prompt) : 3;
+      if (remaining > 0) {
+        workflowRetryFailures.set(prompt, remaining - 1);
+        writeHttpError(res, SCENARIOS.server_error, log);
+        return;
+      }
+    }
+
     if (scenario.kind === 'http_error' || scenario.kind === 'redirect') {
       if (scenario.kind === 'redirect') {
         res.writeHead(302, {
@@ -580,6 +611,7 @@ export function createFakeModelServer(options = {}) {
       requestLog.length = 0;
       sequence = 0;
       keyScenarios.clear();
+      workflowRetryFailures.clear();
       globalScenario = config.globalScenario;
     },
     /** 返回日志快照。 */

@@ -12,10 +12,35 @@ const TOOL_NAME = "market_data";
 const PROTOCOL_VERSION = "2024-11-05";
 
 /**
+ * 已触发过一次性失败的查询；只用于 M06 E2E-M06-05 的“失败 → 重试”真实链路。
+ *
+ * <p>同一查询第一次调用返回 isError，第二次起返回正常结果；进程内状态模拟外部工具的可恢复故障，
+ * 不改变其他查询、审计或权限语义。标记只存在于验证专用 MCP server，不进入生产代码。</p>
+ */
+const FAIL_ONCE_MARKER = "__FAIL_ONCE__";
+const failedOnceQueries = new Set();
+
+/**
  * 返回工具结果；内容为可读的市场数据文本，供报告生成阶段引用。
  */
 function toolResult(argumentsValue) {
   const query = argumentsValue?.query ?? "未提供查询";
+  if (
+    typeof query === "string" &&
+    query.includes(FAIL_ONCE_MARKER) &&
+    !failedOnceQueries.has(query)
+  ) {
+    failedOnceQueries.add(query);
+    return {
+      content: [
+        {
+          type: "text",
+          text: "注入的一次性工具故障：外部市场数据服务暂不可用，请重试。",
+        },
+      ],
+      isError: true,
+    };
+  }
   return {
     content: [
       {

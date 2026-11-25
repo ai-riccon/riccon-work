@@ -72,7 +72,78 @@ const OIDC_ISSUER = `http://127.0.0.1:${OIDC_PORT}/realms/${OIDC_REALM}`;
 const OIDC_PROVIDER_NAME = "Alpha 测试企业 IdP";
 
 /** Worker 启动时校验的 Flyway 期望版本；API 必须先迁移到这里再起 Worker。 */
-const FLYWAY_EXPECTED_VERSION = 14;
+const FLYWAY_EXPECTED_VERSION = 15;
+
+/**
+ * M06 编排运行限制默认值。
+ *
+ * <p>取值与 `apps/api/src/main/resources/application.yml` 的默认一致；显式注入是为了让 API 与 Worker
+ * 收到同一份限制，并把实际值写进 `real-stack-env.json`，避免“报告只写默认值、运行时却用了别的值”。
+ * 环境变量可覆盖，覆盖同样记录在快照中。
+ */
+const WORKFLOW_ENV = {
+  RICCON_WORKFLOW_ENABLED: process.env.RICCON_WORKFLOW_ENABLED ?? "true",
+  RICCON_WORKFLOW_MAX_NODES: process.env.RICCON_WORKFLOW_MAX_NODES ?? "50",
+  RICCON_WORKFLOW_MAX_STEPS: process.env.RICCON_WORKFLOW_MAX_STEPS ?? "200",
+  RICCON_WORKFLOW_MODEL_TIMEOUT_SECONDS:
+    process.env.RICCON_WORKFLOW_MODEL_TIMEOUT_SECONDS ?? "300",
+  RICCON_WORKFLOW_RETRIEVAL_TIMEOUT_SECONDS:
+    process.env.RICCON_WORKFLOW_RETRIEVAL_TIMEOUT_SECONDS ?? "120",
+  RICCON_WORKFLOW_MCP_TIMEOUT_SECONDS:
+    process.env.RICCON_WORKFLOW_MCP_TIMEOUT_SECONDS ?? "60",
+  RICCON_WORKFLOW_RUN_TIMEOUT_MINUTES:
+    process.env.RICCON_WORKFLOW_RUN_TIMEOUT_MINUTES ?? "30",
+  RICCON_WORKFLOW_TENANT_CONCURRENCY:
+    process.env.RICCON_WORKFLOW_TENANT_CONCURRENCY ?? "10",
+  RICCON_WORKFLOW_FLOW_CONCURRENCY:
+    process.env.RICCON_WORKFLOW_FLOW_CONCURRENCY ?? "5",
+  RICCON_WORKFLOW_RESULT_MAX_BYTES:
+    process.env.RICCON_WORKFLOW_RESULT_MAX_BYTES ?? "5242880",
+  RICCON_WORKFLOW_WORKER_CONCURRENCY:
+    process.env.RICCON_WORKFLOW_WORKER_CONCURRENCY ?? "10",
+  RICCON_WORKFLOW_CLAIM_BATCH: process.env.RICCON_WORKFLOW_CLAIM_BATCH ?? "1",
+  RICCON_WORKFLOW_CLAIM_POLL_INTERVAL_MS:
+    process.env.RICCON_WORKFLOW_CLAIM_POLL_INTERVAL_MS ?? "1000",
+  RICCON_WORKFLOW_RETENTION_DAYS:
+    process.env.RICCON_WORKFLOW_RETENTION_DAYS ?? "180",
+};
+
+/**
+ * 同步等待；仅用于 CLI 编排轮询，不用于浏览器或请求路径。
+ *
+ * @param {number} ms 毫秒
+ */
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/**
+ * 把 WORKFLOW_ENV 折叠成报告友好的结构；同时保留原始 env 键值供复现。
+ *
+ * @returns {object} 快照节点
+ */
+function workflowEnvSnapshot() {
+  const numeric = (key) => Number(WORKFLOW_ENV[key]);
+  return {
+    enabled: WORKFLOW_ENV.RICCON_WORKFLOW_ENABLED === "true",
+    source:
+      "scripts/real-stack/run.mjs WORKFLOW_ENV（默认值与 application.yml 一致；环境变量可覆盖）",
+    env: { ...WORKFLOW_ENV },
+    maxNodes: numeric("RICCON_WORKFLOW_MAX_NODES"),
+    maxSteps: numeric("RICCON_WORKFLOW_MAX_STEPS"),
+    modelTimeoutSeconds: numeric("RICCON_WORKFLOW_MODEL_TIMEOUT_SECONDS"),
+    retrievalTimeoutSeconds: numeric(
+      "RICCON_WORKFLOW_RETRIEVAL_TIMEOUT_SECONDS",
+    ),
+    mcpTimeoutSeconds: numeric("RICCON_WORKFLOW_MCP_TIMEOUT_SECONDS"),
+    runTimeoutMinutes: numeric("RICCON_WORKFLOW_RUN_TIMEOUT_MINUTES"),
+    tenantConcurrency: numeric("RICCON_WORKFLOW_TENANT_CONCURRENCY"),
+    flowConcurrency: numeric("RICCON_WORKFLOW_FLOW_CONCURRENCY"),
+    resultMaxBytes: numeric("RICCON_WORKFLOW_RESULT_MAX_BYTES"),
+    workerConcurrency: numeric("RICCON_WORKFLOW_WORKER_CONCURRENCY"),
+    retentionDays: numeric("RICCON_WORKFLOW_RETENTION_DAYS"),
+  };
+}
 
 /** M05 knowledge 场景默认规模；环境变量可覆盖，报告只记录实际写入值。 */
 const KNOWLEDGE_DEFAULTS = {
@@ -804,6 +875,8 @@ function buildEnvSnapshot(context) {
     dbPoolSize: context.mode === "perf" ? 50 : 25,
     fakeModel: 1,
     deploymentMode: "DEMO",
+    // M06 运行限制实际注入值与来源；T16a 要求快照登记默认值与来源，避免报告与运行漂移。
+    workflow: workflowEnvSnapshot(),
     ocr: context.ocrProbe ?? null,
     startCommand:
       `node scripts/real-stack/run.mjs ${process.argv.slice(2).join(" ")}`.trim(),
@@ -1004,6 +1077,7 @@ async function startApplications(context, extra = {}) {
     {
       env: {
         ...shared,
+        ...WORKFLOW_ENV,
         RICCON_BOOTSTRAP_ADMIN_USERNAME: "platform-admin",
         RICCON_BOOTSTRAP_ADMIN_PASSWORD: "test-bootstrap-password-12",
         RICCON_SERVICE_TOKEN_SECRET: serviceSecret,
@@ -1044,6 +1118,7 @@ async function startApplications(context, extra = {}) {
     {
       env: {
         ...shared,
+        ...WORKFLOW_ENV,
         RICCON_SERVICE_TOKEN_SECRET: serviceSecret,
         RICCON_S3_BUCKET: "riccon-test",
         RICCON_MCP_ALLOW_STDIO: "true",
@@ -1213,6 +1288,324 @@ function runK6(context, scenario, extra = {}) {
     status: result.status,
     report: path.relative(repoRoot, reportFile),
     log: path.relative(repoRoot, logFile),
+  };
+}
+
+/**
+ * 创建 PERF-M06-001 使用的真实流程：检索 → 模型 → 结束，仅自己能运行。
+ *
+ * <p>走公开 API 创建/保存/发布，与用户操作同链路；脚本不直接写 workflow 表，避免夹具绕过校验。</p>
+ *
+ * @param {object} seedState real-stack seed 结果
+ * @returns {Promise<{workflowId: string, versionId: string, name: string}>} 夹具
+ */
+async function createWorkflowPerfFixture(seedState) {
+  const client = new KnowledgePerfClient(`http://127.0.0.1:${API_PORT}`);
+  const csrf = await client.request("GET", "/api/v1/auth/csrf");
+  if (csrf.status !== 200) {
+    throw new Error(`M06 perf csrf failed: ${csrf.status} ${csrf.text}`);
+  }
+  client.csrf = csrf.data?.token ?? "";
+  const login = await client.request("POST", "/api/v1/auth/login", {
+    json: {
+      tenantCode: "tenant-alpha",
+      username: "alpha-editor",
+      password: "alpha-editor-password-12",
+    },
+  });
+  if (login.status !== 200) {
+    throw new Error(`M06 perf login failed: ${login.status} ${login.text}`);
+  }
+  client.csrf = login.data?.csrfToken ?? client.csrf;
+  const name = `PERF-M06 流程 ${Date.now()}`;
+  const created = await client.request("POST", "/api/v1/workflows", {
+    json: { name },
+    headers: { "Idempotency-Key": `perf-m06-create-${Date.now()}` },
+  });
+  if (created.status !== 201) {
+    throw new Error(`M06 perf create failed: ${created.status} ${created.text}`);
+  }
+  const workflowId = created.data.id;
+  const graph = {
+    schemaVersion: 1,
+    nodes: [
+      { id: "start", type: "START", name: "开始", config: {} },
+      {
+        id: "retrieval",
+        type: "RETRIEVAL",
+        name: "检索知识库",
+        config: { queryTemplate: "{{input.topic}}", topK: 5 },
+      },
+      {
+        id: "model",
+        type: "MODEL",
+        name: "生成结果",
+        config: { promptTemplate: "整理主题：{{input.topic}}", outputKind: "TEXT" },
+      },
+      { id: "end", type: "END", name: "结束", config: { resultFrom: "model", resultTitle: "性能结果" } },
+    ],
+    edges: [
+      { id: "e1", source: "start", target: "retrieval" },
+      { id: "e2", source: "retrieval", target: "model" },
+      { id: "e3", source: "model", target: "end" },
+    ],
+  };
+  const saved = await client.request("PUT", `/api/v1/workflows/${workflowId}/draft`, {
+    json: { version: 1, graph },
+  });
+  if (saved.status !== 200) {
+    throw new Error(`M06 perf save failed: ${saved.status} ${saved.text}`);
+  }
+  const published = await client.request("POST", `/api/v1/workflows/${workflowId}/publish`, {
+    json: { runScope: "ONLY_SELF" },
+    headers: { "Idempotency-Key": `perf-m06-publish-${Date.now()}` },
+  });
+  if (published.status !== 201) {
+    throw new Error(`M06 perf publish failed: ${published.status} ${published.text}`);
+  }
+
+  // 写路径专用流程：只被 save/validate/publish 使用，避免与运行准入夹具互相污染版本。
+  const adminName = `${name} 写路径`;
+  const adminCreated = await client.request("POST", "/api/v1/workflows", {
+    json: { name: adminName },
+    headers: { "Idempotency-Key": `perf-m06-admin-create-${Date.now()}` },
+  });
+  if (adminCreated.status !== 201) {
+    throw new Error(`M06 perf admin create failed: ${adminCreated.status} ${adminCreated.text}`);
+  }
+  const adminWorkflowId = adminCreated.data.id;
+  const adminSaved = await client.request("PUT", `/api/v1/workflows/${adminWorkflowId}/draft`, {
+    json: { version: 1, graph },
+  });
+  if (adminSaved.status !== 200) {
+    throw new Error(`M06 perf admin save failed: ${adminSaved.status} ${adminSaved.text}`);
+  }
+  return { workflowId, versionId: published.data.id, name, adminWorkflowId };
+}
+
+/**
+ * 并发上限探针：同时提交 tenantConcurrency+2 个运行，断言至少一个稳定 429 提示。
+ *
+ * @param {object} seedState seed 结果
+ * @param {object} fixture 流程夹具
+ * @returns {Promise<object>} 探针结果
+ */
+async function probeWorkflowConcurrencyLimit(seedState, fixture) {
+  const client = new KnowledgePerfClient(`http://127.0.0.1:${API_PORT}`);
+  const csrf = await client.request("GET", "/api/v1/auth/csrf");
+  client.csrf = csrf.data?.token ?? "";
+  const login = await client.request("POST", "/api/v1/auth/login", {
+    json: {
+      tenantCode: "tenant-alpha",
+      username: "alpha-editor",
+      password: "alpha-editor-password-12",
+    },
+  });
+  if (login.status !== 200) {
+    throw new Error(`M06 limit probe login failed: ${login.status} ${login.text}`);
+  }
+  client.csrf = login.data?.csrfToken ?? client.csrf;
+  const limit = Number(WORKFLOW_ENV.RICCON_WORKFLOW_TENANT_CONCURRENCY);
+  const attempts = limit + 2;
+  const startedAt = Date.now();
+  const responses = await Promise.all(
+    Array.from({ length: attempts }, (_, index) =>
+      client.request("POST", `/api/v1/workflows/${fixture.workflowId}/runs`, {
+        json: { inputs: { topic: `并发上限探针 ${index}` } },
+        headers: { "Idempotency-Key": `perf-m06-limit-${index}-${Date.now()}` },
+      }),
+    ),
+  );
+  const accepted = responses.filter((response) => response.status === 201).length;
+  const rejected = responses
+    .filter((response) => response.status === 429)
+    .map((response) => response.data?.code ?? "missing-code");
+  const result = {
+    configuredTenantConcurrency: limit,
+    attempts,
+    accepted,
+    rejectedCode: rejected,
+    durationMs: Date.now() - startedAt,
+  };
+  console.log(`[real-stack] M06 concurrency probe ${JSON.stringify(result)}`);
+  // 等待探针运行结束，避免占用后续 k6 的并发槽位。
+  const deadline = Date.now() + 120_000;
+  while (Date.now() < deadline) {
+    const active = runSql(
+      `SELECT COUNT(*) AS active FROM workflow_run WHERE tenant_id='tenant-alpha' AND status IN ('PENDING','RUNNING');`,
+      { repoRoot },
+    ).stdout.trim().split("\n").pop();
+    if (Number(active) === 0) {
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  if (rejected.length === 0) {
+    throw new Error(
+      `M06 concurrency limit probe did not observe RICCON-WF-429 at limit=${limit}: ${JSON.stringify(result)}`,
+    );
+  }
+  return result;
+}
+
+/**
+ * 读取 k6 JSON 报告中的关键指标（count/p95/rate）。
+ *
+ * @param {string} reportFile 报告路径
+ * @returns {object} 指标摘要
+ */
+function summarizeWorkflowK6Report(reportFile) {
+  if (!existsSync(reportFile)) {
+    return { error: "missing report" };
+  }
+  const report = JSON.parse(readFileSync(reportFile, "utf8"));
+  const metric = (name) => {
+    const value = report.metrics?.[name]?.values;
+    if (!value) {
+      return null;
+    }
+    return {
+      count: value.count ?? null,
+      p95: value["p(95)"] ?? null,
+      rate: value.rate ?? null,
+      value: value.value ?? null,
+    };
+  };
+  return {
+    m06_j1_first_token_ms: metric("m06_j1_first_token_ms"),
+    m06_api_ms: metric("m06_api_ms"),
+    m06_run_admission_ms: metric("m06_run_admission_ms"),
+    m06_run_ok: metric("m06_run_ok"),
+    m06_run_rejected: metric("m06_run_rejected"),
+    m06_run_completed_ok: metric("m06_run_completed_ok"),
+    m06_j2_ok: metric("m06_j2_ok"),
+    m06_j2_duration_ms: metric("m06_j2_duration_ms"),
+  };
+}
+
+/**
+ * 运行 PERF-M06-001 k6 场景并核对数据库不变量。
+ *
+ * @param {object} context 上下文
+ * @param {object} fixture 流程夹具
+ * @returns {{run: object, invariants: object}} 结果
+ */
+function runWorkflowPerfK6(context, fixture) {
+  const since = new Date().toISOString().slice(0, 19).replace("T", " ");
+  const reportFile = path.join(evidenceDir, "perf-m06-workflow.json");
+  const logFile = path.join(evidenceDir, "perf-m06-workflow.log");
+  const duration = process.env.REAL_PERF_DURATION ?? "45s";
+  const envList = {
+    PERF_M04_ENV_JSON: JSON.stringify(context.envSnapshot),
+    PERF_M04_BASE_URL: `http://127.0.0.1:${API_PORT}`,
+    PERF_M04_WORKSPACE_ID: context.workspaceId,
+    PERF_M04_SCENARIO: "workflow",
+    PERF_M04_DURATION: duration,
+    PERF_M06_WORKFLOW_ID: fixture.workflowId,
+    PERF_M06_ADMIN_WORKFLOW_ID: fixture.adminWorkflowId,
+    PERF_M06_WORKFLOW_NAME: fixture.name,
+    PERF_M06_MCP_TOOL_ID: context.workflowMcpToolId ?? "",
+    PERF_M06_REPORT_FILE: reportFile,
+    PERF_M06_J1_VUS: process.env.PERF_M06_J1_VUS ?? "25",
+    PERF_M06_J2_VUS: process.env.PERF_M06_J2_VUS ?? "3",
+    PERF_M06_STUDIO_VUS: process.env.PERF_M06_STUDIO_VUS ?? "22",
+  };
+  const args = ["run"];
+  for (const [key, value] of Object.entries(envList)) {
+    args.push("-e", `${key}=${value}`);
+  }
+  args.push("e2e/perf/mvc-smoke.js");
+  const result = spawnSync("k6", args, {
+    cwd: repoRoot,
+    env: { ...process.env, ...context.modelKeysEnv, ...envList },
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  writeFileSync(logFile, `${result.stdout ?? ""}\n${result.stderr ?? ""}`);
+  console.log(
+    `[real-stack] k6 workflow exit=${result.status} report=${path.relative(repoRoot, reportFile)}`,
+  );
+
+  // k6 结束后等待队列清空，再核对无状态丢失、无重复成功节点、无自批。
+  const deadline = Date.now() + 240_000;
+  let active = -1;
+  while (Date.now() < deadline) {
+    const value = runSql(
+      `SELECT COUNT(*) FROM workflow_run WHERE tenant_id='tenant-alpha' AND created_at >= ${sqlString(since)} AND status IN ('PENDING','RUNNING');`,
+      { repoRoot },
+    ).stdout.trim().split("\n").pop();
+    active = Number(value);
+    if (active === 0) {
+      break;
+    }
+    sleepSync(500);
+  }
+  const queryCount = (sql) => {
+    const output = runSql(sql, { repoRoot }).stdout.trim().split("\n").pop();
+    return Number(output);
+  };
+  const created = queryCount(
+    `SELECT COUNT(*) FROM workflow_run WHERE tenant_id='tenant-alpha' AND created_at >= ${sqlString(since)};`,
+  );
+  const succeeded = queryCount(
+    `SELECT COUNT(*) FROM workflow_run WHERE tenant_id='tenant-alpha' AND created_at >= ${sqlString(since)} AND status='SUCCEEDED';`,
+  );
+  const failedCount = queryCount(
+    `SELECT COUNT(*) FROM workflow_run WHERE tenant_id='tenant-alpha' AND created_at >= ${sqlString(since)} AND status='FAILED';`,
+  );
+  const duplicateSuccessNodes = queryCount(`
+    SELECT COUNT(*) FROM (
+      SELECT nr.workflow_run_id, nr.node_key
+        FROM workflow_node_run nr
+        JOIN workflow_run r ON r.tenant_id=nr.tenant_id AND r.id=nr.workflow_run_id
+       WHERE r.tenant_id='tenant-alpha' AND r.created_at >= ${sqlString(since)}
+         AND nr.status='SUCCEEDED'
+       GROUP BY nr.workflow_run_id, nr.node_key
+      HAVING COUNT(*) > 1
+    ) duplicates;`);
+  const selfApprovals = queryCount(`
+    SELECT COUNT(*) FROM workflow_approval
+     WHERE tenant_id='tenant-alpha' AND decided_by IS NOT NULL AND decided_by = requested_by;`);
+  const approvalRunMismatch = queryCount(`
+    SELECT COUNT(*) FROM workflow_approval a
+      JOIN workflow_run r ON r.tenant_id=a.tenant_id AND r.id=a.workflow_run_id
+     WHERE a.tenant_id='tenant-alpha' AND a.workflow_id <> r.workflow_id;`);
+  const resultOk = created > 0 && succeeded > 0;
+  const invariants = {
+    ok:
+      result.status === 0 &&
+      active === 0 &&
+      created > 0 &&
+      succeeded > 0 &&
+      failedCount === 0 &&
+      duplicateSuccessNodes === 0 &&
+      selfApprovals === 0 &&
+      approvalRunMismatch === 0,
+    k6ExitCode: result.status,
+    duration,
+    createdRuns: created,
+    succeededRuns: succeeded,
+    failedRuns: failedCount,
+    nonTerminalRuns: active,
+    duplicateSuccessfulNodes: duplicateSuccessNodes,
+    selfApprovals,
+    approvalRunMismatch,
+    metrics: summarizeWorkflowK6Report(reportFile),
+    fakeModel: 1,
+    limits: workflowEnvSnapshot(),
+    report: path.relative(repoRoot, reportFile),
+    log: path.relative(repoRoot, logFile),
+  };
+  console.log(`[real-stack] PERF-M06 invariants ${JSON.stringify(invariants)}`);
+  return {
+    run: {
+      scenario: "workflow",
+      failureMode: null,
+      status: result.status,
+      report: path.relative(repoRoot, reportFile),
+      log: path.relative(repoRoot, logFile),
+    },
+    invariants,
   };
 }
 
@@ -3508,6 +3901,9 @@ async function runPerf() {
   const endpoints = buildModelEndpoints();
   const initialKeys = buildModelKeys(options.perfModes[0]);
   const knowledgePerf = process.env.PERF_M05_SCENARIO === "knowledge";
+  // PERF-M06-001：50 并发混合 J1/J2/M06。该场景需要知识库/MCP/S3（J2 报告依赖），
+  // 因此启动 MySQL + OpenSearch + RustFS 并按 full 模式播种。
+  const workflowPerf = process.env.PERF_M06_SCENARIO === "workflow";
   const connectorConfig = connectorPerfConfig();
   if (connectorConfig.enabled && !knowledgePerf) {
     throw new Error(
@@ -3595,9 +3991,10 @@ async function runPerf() {
       stdio: "ignore",
     },
   );
-  const services = knowledgePerf
-    ? ["mysql", "opensearch", "object-storage"]
-    : ["mysql"];
+  const services =
+    knowledgePerf || workflowPerf
+      ? ["mysql", "opensearch", "object-storage"]
+      : ["mysql"];
   run("compose-up-perf", "docker", [
     "compose",
     "-f",
@@ -3608,8 +4005,8 @@ async function runPerf() {
     ...services,
   ]);
   phases.compose = "passed";
-  if (knowledgePerf) {
-    // 下载场景需要真实对象；bucket 创建与 full 模式共用同一 SigV4 实现。
+  if (knowledgePerf || workflowPerf) {
+    // 下载/知识库场景需要真实对象；bucket 创建与 full 模式共用同一 SigV4 实现。
     await createBucket();
     phases.objectStorage = "passed";
   }
@@ -3658,12 +4055,48 @@ async function runPerf() {
     RICCON_CREDENTIAL_FINGERPRINT_PEPPER: pepper,
     RICCON_MASTER_KEY_ID: masterKeyId,
   };
-  run("seed-perf", "node", ["scripts/real-stack/seed.mjs", "--mode=perf"], {
+  const seedMode = workflowPerf ? "full" : "perf";
+  run("seed-perf", "node", ["scripts/real-stack/seed.mjs", `--mode=${seedMode}`], {
     env: seedEnv,
   });
   phases.seed = "passed";
   const seedState = JSON.parse(readFileSync(SEED_FILE, "utf8"));
   context.workspaceId = seedState.workspaces.alpha.id;
+  context.workflowMcpToolId = seedState.catalog?.mcpToolId ?? "";
+
+  let workflowFixture = null;
+  let limitProbe = null;
+  if (workflowPerf) {
+    // M06 夹具：真实接口创建/发布一个无审批简单流程；并发探针验证上限提示。
+    workflowFixture = await createWorkflowPerfFixture(seedState);
+    limitProbe = await probeWorkflowConcurrencyLimit(seedState, workflowFixture);
+    context.envSnapshot.perfM06 = {
+      scenario: "workflow",
+      workflowId: workflowFixture.workflowId,
+      adminWorkflowId: workflowFixture.adminWorkflowId,
+      workflowName: workflowFixture.name,
+      publishedVersionId: workflowFixture.versionId,
+      concurrency: {
+        j1Vus: 25,
+        j2Vus: 3,
+        studioVus: 22,
+        total: 50,
+      },
+      workflowLimits: workflowEnvSnapshot(),
+      fakeModel: 1,
+      limitProbe,
+      reproduceCommand: [
+        "PERF_M06_SCENARIO=workflow",
+        `REAL_PERF_DURATION=${process.env.REAL_PERF_DURATION ?? "45s"}`,
+        "REAL_PERF_SKIP_M04=1",
+        "node scripts/real-stack/run.mjs --mode=perf",
+      ].join(" "),
+    };
+    writeFileSync(
+      ENV_SNAPSHOT_FILE,
+      `${JSON.stringify(context.envSnapshot, null, 2)}\n`,
+    );
+  }
 
   const runs = [];
   const skipM04 = process.env.REAL_PERF_SKIP_M04 === "1";
@@ -3707,12 +4140,20 @@ async function runPerf() {
       : "unavailable-on-host";
   }
 
+  let workflowResult = null;
+  if (workflowPerf) {
+    workflowResult = runWorkflowPerfK6(context, workflowFixture);
+    runs.push(workflowResult.run);
+    phases.workflow = workflowResult.invariants.ok ? "passed" : "failed";
+  }
+
   const failed = runs.filter((entry) => entry.status !== 0);
   const knowledgeFailed = knowledgeResult?.status === "failed";
+  const workflowFailed = workflowResult != null && !workflowResult.invariants.ok;
   const knowledgeDecision = knowledgeResult?.status === "passed-with-decision";
   const matrix = {
     status:
-      failed.length === 0 && !knowledgeFailed
+      failed.length === 0 && !knowledgeFailed && !workflowFailed
         ? knowledgeDecision
           ? "passed-with-decision"
           : "passed"
@@ -3724,6 +4165,13 @@ async function runPerf() {
     phases,
     runs,
     knowledge: knowledgeResult?.matrix ?? null,
+    workflow: workflowResult
+      ? {
+          fixture: workflowFixture,
+          limitProbe,
+          invariants: workflowResult.invariants,
+        }
+      : null,
     notes: [
       knowledgePerf
         ? "M05 knowledge：MySQL + OpenSearch + RustFS 启动；OpenSearch 只做可重建索引，检索仍以 MySQL FULLTEXT + ACL 为准。"
@@ -3738,7 +4186,7 @@ async function runPerf() {
     `${JSON.stringify(matrix, null, 2)}\n`,
   );
   console.log(JSON.stringify(matrix, null, 2));
-  if (failed.length > 0 || knowledgeFailed) {
+  if (failed.length > 0 || knowledgeFailed || workflowFailed) {
     process.exitCode = 1;
   }
   return matrix;

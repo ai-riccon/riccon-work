@@ -12,20 +12,38 @@ export interface RealSeed {
     alphaAdmin2: string;
     alphaMember: string;
     betaMember: string;
+    alphaEditor: string;
+    alphaApprover: string;
   };
   userIds: {
     alphaAdmin: string;
     alphaAdmin2: string;
     alphaMember: string;
     betaMember: string;
+    alphaEditor: string;
+    alphaApprover: string;
   };
   passwords: {
     alphaAdmin: string;
     alphaAdmin2: string;
     alphaMember: string;
     betaMember: string;
+    alphaEditor: string;
+    alphaApprover: string;
   };
   workspaces: { alpha: { id: string; name: string }; beta: { id: string; name: string } };
+  /** M06 编排部门与账号；由 seed.mjs 通过真实平台接口创建。 */
+  workflow: {
+    department: {
+      id: string;
+      name: string;
+      managerUserId: string;
+      memberUserIds: string[];
+    };
+    editorUserId: string;
+    approverUserId: string;
+    tenantAdminUserId: string;
+  };
   catalog: { mcpToolId: string };
 }
 

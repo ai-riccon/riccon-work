@@ -88,7 +88,39 @@ const USERS = [
     password: "beta-member-password-12",
     roles: ["MEMBER"],
   },
+  {
+    // M06 编排账号：MEMBER 提供 department.read 等基础权限，WORKFLOW_EDITOR 授予
+    // workflow.read/edit/publish/run/approve；该组合对应“被授予流程编辑权限的部门负责人”。
+    key: "alphaEditor",
+    tenant: TENANTS.alpha,
+    username: "alpha-editor",
+    displayName: "Alpha 流程编辑",
+    password: "alpha-editor-password-12",
+    roles: ["MEMBER", "WORKFLOW_EDITOR"],
+  },
+  {
+    // M06 第二个审批人：普通员工自带 workflow.approve，与发起人（alpha-editor）分离，
+    // 用于 E2E-M06-04 的审批批准/拒绝与非自批路径。
+    key: "alphaApprover",
+    tenant: TENANTS.alpha,
+    username: "alpha-approver",
+    displayName: "Alpha 审批员工",
+    password: "alpha-approver-password-12",
+    roles: ["MEMBER"],
+  },
 ];
+
+/**
+ * M06 编排部门定义。
+ *
+ * <p>部门负责人必须显式授权（OQ-M06-04）：alpha-editor 加入部门并成为负责人后，
+ * 才能发布 DEPARTMENT 范围；alpha-approver 作为同部门成员提供非发起人审批人。
+ */
+const WORKFLOW_DEPARTMENT = {
+  name: "Alpha 流程编排部",
+  managerKey: "alphaEditor",
+  memberKeys: ["alphaEditor", "alphaApprover"],
+};
 
 /** 固定目录 UUID；每次播种都指向同一行，便于重复执行与断言。 */
 const CATALOG_IDS = {
@@ -644,7 +676,80 @@ async function loginAndWorkspace(apiBase, tenantCode, username, password) {
 }
 
 /**
- * 播种租户、账号与工作空间。
+ * 创建部门；同名已存在时返回既有部门。
+ *
+ * @param {ApiClient} admin 平台管理员客户端
+ * @param {string} tenantId 租户
+ * @param {string} name 部门名
+ * @returns {Promise<object>} 部门
+ */
+async function ensureDepartment(admin, tenantId, name) {
+  const response = await admin.post(
+    `/api/v1/admin/tenants/${tenantId}/departments`,
+    { name },
+  );
+  if (response.status === 201) {
+    return response.data;
+  }
+  if (response.status === 409) {
+    const page = await admin.get(
+      `/api/v1/admin/tenants/${tenantId}/departments?page=1&size=100`,
+    );
+    const found = page.data?.items?.find((item) => item.name === name);
+    if (found) {
+      return found;
+    }
+  }
+  throw new Error(
+    `create department ${name} failed: ${response.status} ${response.text}`,
+  );
+}
+
+/**
+ * 把账号加入部门；已在部门内视为成功。
+ *
+ * @param {ApiClient} admin 平台管理员客户端
+ * @param {string} tenantId 租户
+ * @param {string} departmentId 部门
+ * @param {string} userId 账号
+ * @returns {Promise<void>}
+ */
+async function ensureDepartmentMember(admin, tenantId, departmentId, userId) {
+  const response = await admin.post(
+    `/api/v1/admin/tenants/${tenantId}/departments/${departmentId}/members`,
+    { userId },
+  );
+  if (response.status !== 201 && response.status !== 409) {
+    throw new Error(
+      `add department member ${userId} failed: ${response.status} ${response.text}`,
+    );
+  }
+}
+
+/**
+ * 指定部门负责人；已是负责人视为成功。
+ *
+ * @param {ApiClient} admin 平台管理员客户端
+ * @param {string} tenantId 租户
+ * @param {string} departmentId 部门
+ * @param {string} userId 账号
+ * @returns {Promise<void>}
+ */
+async function ensureDepartmentManager(admin, tenantId, departmentId, userId) {
+  const response = await admin.request(
+    "PUT",
+    `/api/v1/admin/tenants/${tenantId}/departments/${departmentId}/manager`,
+    { body: { userId } },
+  );
+  if (response.status !== 200) {
+    throw new Error(
+      `transfer department manager ${userId} failed: ${response.status} ${response.text}`,
+    );
+  }
+}
+
+/**
+ * 播种租户、账号、工作空间与 M06 编排部门。
  *
  * @param {object} context 运行上下文
  * @returns {Promise<object>}  seeds 结果
@@ -667,6 +772,28 @@ async function seedAccounts(context) {
     );
   }
 
+  // M06：部门负责人必须显式授权（OQ-M06-04）。部门与成员均通过真实平台接口创建，
+  // 不使用 SQL 抄近路，确保角色/部门/负责人关系与生产一致。
+  const workflowDepartment = await ensureDepartment(
+    admin,
+    TENANTS.alpha,
+    WORKFLOW_DEPARTMENT.name,
+  );
+  for (const memberKey of WORKFLOW_DEPARTMENT.memberKeys) {
+    await ensureDepartmentMember(
+      admin,
+      TENANTS.alpha,
+      workflowDepartment.id,
+      users[memberKey].id,
+    );
+  }
+  await ensureDepartmentManager(
+    admin,
+    TENANTS.alpha,
+    workflowDepartment.id,
+    users[WORKFLOW_DEPARTMENT.managerKey].id,
+  );
+
   const alpha = await loginAndWorkspace(
     context.apiBase,
     TENANTS.alpha,
@@ -682,6 +809,7 @@ async function seedAccounts(context) {
   return {
     users,
     workspaces: { alpha: alpha.workspace, beta: beta.workspace },
+    workflowDepartment,
   };
 }
 
@@ -1117,12 +1245,16 @@ function writeState(context, accounts, knowledge) {
       alphaAdmin2: "alpha-admin-2",
       alphaMember: "alpha-member",
       betaMember: "beta-member",
+      alphaEditor: "alpha-editor",
+      alphaApprover: "alpha-approver",
     },
     userIds: {
       alphaAdmin: accounts.users.alphaAdmin.id,
       alphaAdmin2: accounts.users.alphaAdmin2.id,
       alphaMember: accounts.users.alphaMember.id,
       betaMember: accounts.users.betaMember.id,
+      alphaEditor: accounts.users.alphaEditor.id,
+      alphaApprover: accounts.users.alphaApprover.id,
     },
     passwords: {
       platformAdmin: ADMIN.password,
@@ -1130,11 +1262,28 @@ function writeState(context, accounts, knowledge) {
       alphaAdmin2: "alpha-admin-2-password-12",
       alphaMember: "alpha-member-password-12",
       betaMember: "beta-member-password-12",
+      alphaEditor: "alpha-editor-password-12",
+      alphaApprover: "alpha-approver-password-12",
     },
     tenantIds: { alpha: TENANTS.alpha, beta: TENANTS.beta },
     workspaces: {
       alpha: accounts.workspaces.alpha,
       beta: accounts.workspaces.beta,
+    },
+    // M06 编排部门：alpha-editor 为负责人（可发布 DEPARTMENT 范围），alpha-approver 为成员。
+    workflow: {
+      department: {
+        id: accounts.workflowDepartment.id,
+        name: accounts.workflowDepartment.name,
+        managerUserId: accounts.users.alphaEditor.id,
+        memberUserIds: [
+          accounts.users.alphaEditor.id,
+          accounts.users.alphaApprover.id,
+        ],
+      },
+      editorUserId: accounts.users.alphaEditor.id,
+      approverUserId: accounts.users.alphaApprover.id,
+      tenantAdminUserId: accounts.users.alphaAdmin.id,
     },
     catalog: catalogOutput(context.catalog, context.modelKeys),
     knowledge,

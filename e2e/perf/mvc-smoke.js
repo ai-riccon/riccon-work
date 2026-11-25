@@ -98,6 +98,22 @@ const m05AclUserIds = (() => {
   }
 })();
 
+/**
+ * PERF-M06-001 输入：混合 J1/J2/M06 负载。
+ *
+ * workflowId 为只读运行夹具（仅自己能运行），adminWorkflowId 专供 save/validate/publish 写路径；
+ * `mcpToolId` 用于 J2 报告任务。缺任一输入直接失败，避免空负载当通过。
+ */
+const m06WorkflowId = __ENV.PERF_M06_WORKFLOW_ID || '';
+const m06WorkflowName = __ENV.PERF_M06_WORKFLOW_NAME || 'PERF-M06';
+const m06AdminWorkflowId = __ENV.PERF_M06_ADMIN_WORKFLOW_ID || '';
+const m06McpToolId = __ENV.PERF_M06_MCP_TOOL_ID || '';
+const m06J1Vus = Number(__ENV.PERF_M06_J1_VUS || '25');
+const m06J2Vus = Number(__ENV.PERF_M06_J2_VUS || '3');
+const m06StudioVus = Number(__ENV.PERF_M06_STUDIO_VUS || '21');
+const m06Editor = __ENV.PERF_M06_EDITOR || 'alpha-editor';
+const m06EditorPassword = __ENV.PERF_M06_EDITOR_PASSWORD || 'alpha-editor-password-12';
+
 /** 自定义指标；标签只保留场景/操作，不含租户或用户高基数标签。 */
 const firstTokenMs = new Trend('m04_first_token_ms', true);
 const chatStreamMs = new Trend('m04_chat_stream_ms', true);
@@ -131,6 +147,17 @@ const m05AclGetMs = new Trend('m05_acl_get_ms', true);
 const m05DownloadMs = new Trend('m05_download_ms', true);
 const m05DownloadOk = new Rate('m05_download_ok');
 const m05Denied404 = new Rate('m05_denied_404');
+
+/** PERF-M06-001 指标：J1 首字、Studio JSON API、运行准入/完成、J2 报告与 429 拒绝。 */
+const m06J1FirstTokenMs = new Trend('m06_j1_first_token_ms', true);
+const m06J1FirstTokenOk = new Rate('m06_j1_first_token_ok');
+const m06ApiMs = new Trend('m06_api_ms', true);
+const m06RunAdmissionMs = new Trend('m06_run_admission_ms', true);
+const m06RunOk = new Rate('m06_run_ok');
+const m06RunRejected = new Counter('m06_run_rejected');
+const m06RunCompletedOk = new Rate('m06_run_completed_ok');
+const m06J2Ok = new Rate('m06_j2_ok');
+const m06J2DurationMs = new Trend('m06_j2_duration_ms', true);
 
 /**
  * 解析并校验环境快照；缺少 profile 证据时直接失败，避免把默认 pool/stream 当成 perf 结果。
@@ -171,6 +198,9 @@ if (scenario === 'knowledge') {
   requireKnowledgeInputs();
   requireConnectorInputs();
 }
+if (scenario === 'workflow') {
+  requireWorkflowInputs();
+}
 
 /** 场景级阈值；未列出的场景只记录指标，不伪造通过。 */
 function buildThresholds() {
@@ -198,6 +228,20 @@ function buildThresholds() {
     return {
       m04_cost_query_ms: ['p(95)<2000'],
       m04_cost_query_ok: ['rate==1'],
+    };
+  }
+  if (scenario === 'workflow') {
+    return {
+      // J1 首字使用 run 详情的 modelInvocation.firstTokenMs，不是 SSE TTFB。
+      m06_j1_first_token_ms: ['p(95)<3000'],
+      m06_j1_first_token_ok: ['rate>0.99'],
+      // Studio 列表/详情/保存/发布/运行准入/审批查询/历史查询；不含 SSE TTFB。
+      m06_api_ms: ['p(95)<500'],
+      m06_run_admission_ms: ['p(95)<500'],
+      // 已接受的运行必须全部成功完成；429 单独计数，不伪装成失败或通过。
+      m06_run_ok: ['rate>0.99'],
+      m06_run_completed_ok: ['rate>0.99'],
+      m06_j2_ok: ['rate>0.99'],
     };
   }
   if (scenario === 'knowledge') {
@@ -252,6 +296,34 @@ function buildOptions() {
         vus: 2,
         duration: __ENV.PERF_M04_COST_DURATION || '15s',
         exec: 'costQuery',
+      },
+    },
+    workflow: {
+      // 50 VU 混合：J1 问答 25 + J2 报告 3 + M06 运行 21 + save/publish 写路径 1。
+      // 审批等待不占执行并发；M06 运行准入受 tenantConcurrency 限制，429 单列。
+      m06_j1: {
+        executor: 'constant-vus',
+        vus: m06J1Vus,
+        duration: __ENV.PERF_M04_DURATION || '45s',
+        exec: 'workflowJ1',
+      },
+      m06_j2: {
+        executor: 'constant-vus',
+        vus: m06J2Vus,
+        duration: __ENV.PERF_M04_DURATION || '45s',
+        exec: 'workflowJ2',
+      },
+      m06_studio: {
+        executor: 'constant-vus',
+        vus: m06StudioVus,
+        duration: __ENV.PERF_M04_DURATION || '45s',
+        exec: 'workflowStudio',
+      },
+      m06_write: {
+        executor: 'constant-vus',
+        vus: 1,
+        duration: __ENV.PERF_M04_DURATION || '45s',
+        exec: 'workflowWrite',
       },
     },
     knowledge: {
@@ -579,6 +651,328 @@ function readFirstToken(current, runId, series = 'm04') {
     firstToken: Number.isInteger(value) ? value : null,
     status: invocation ? invocation.status : null,
   };
+}
+
+/**
+ * 校验 PERF-M06-001 输入；缺失直接失败，不跑空负载。
+ */
+function requireWorkflowInputs() {
+  const missing = [];
+  if (!m06WorkflowId) {
+    missing.push('PERF_M06_WORKFLOW_ID');
+  }
+  if (!m06AdminWorkflowId) {
+    missing.push('PERF_M06_ADMIN_WORKFLOW_ID');
+  }
+  if (!m06McpToolId) {
+    missing.push('PERF_M06_MCP_TOOL_ID');
+  }
+  if (!workspaceId) {
+    missing.push('PERF_M04_WORKSPACE_ID');
+  }
+  if (missing.length > 0) {
+    fail(`workflow scenario requires ${missing.join(', ')}; run scripts/real-stack/run.mjs --mode=perf with PERF_M06_SCENARIO=workflow`);
+  }
+  if (m06J1Vus + m06J2Vus + m06StudioVus + 1 !== 50) {
+    fail(`M06 mixed load must total 50 VUs, got ${m06J1Vus + m06J2Vus + m06StudioVus + 1}`);
+  }
+}
+
+/** M06 编辑器会话缓存（每 VU 独立）。 */
+let m06Session = null;
+/** J2 审批管理员会话缓存。 */
+let j2AdminSession = null;
+
+/**
+ * 确保 M06 编辑器会话。
+ *
+ * @returns {object} 会话
+ */
+function m06EnsureSession() {
+  if (!m06Session) {
+    m06Session = login(tenant, m06Editor, m06EditorPassword);
+  }
+  return m06Session;
+}
+
+/**
+ * 确保 J2 审批管理员会话。
+ *
+ * @returns {object} 会话
+ */
+function j2EnsureApprover() {
+  if (!j2AdminSession) {
+    j2AdminSession = login(tenant, adminUser, adminPassword);
+  }
+  return j2AdminSession;
+}
+
+/**
+ * Studio JSON 请求；记录 m06_api_ms，不并入 M04 API 序列。
+ *
+ * @param {object} current 会话
+ * @param {string} method HTTP 方法
+ * @param {string} path 路径
+ * @param {object} [body] JSON 体
+ * @param {string} op 操作标签
+ * @param {object} [extraHeaders] 额外请求头
+ * @returns {object} k6 响应
+ */
+function m06Request(current, method, path, body, op, extraHeaders = {}) {
+  const headers = {
+    cookie: current.cookie,
+    'content-type': 'application/json',
+    ...(method === 'GET' ? {} : { 'x-csrf-token': current.csrf }),
+    ...extraHeaders,
+  };
+  const startedAt = Date.now();
+  const response = api(current, method, path, body, { tags: { kind: 'api', op }, headers }, false);
+  m06ApiMs.add(Date.now() - startedAt, { op });
+  return response;
+}
+
+/**
+ * J1 混合负载：发送聊天并读取模型首字（不是 SSE TTFB）。
+ */
+export function workflowJ1() {
+  const current = ensureContext();
+  const chat = sendChat(current.session, current.conversationId, 'm06-j1');
+  const first = readFirstToken(current.session, chat.runId, 'm04');
+  const ok = chat.status === 200 && first.ok;
+  m06J1FirstTokenOk.add(ok);
+  if (first.ok) {
+    m06J1FirstTokenMs.add(first.firstToken, { scenario: 'workflow' });
+  }
+  check(first, {
+    'M06 混合 J1 首字存在且成功': (value) => value.ok,
+  });
+}
+
+/**
+ * J2 混合负载：创建报告任务 → 等待审批 → 管理员批准 → 等待产物/引用。
+ */
+export function workflowJ2() {
+  const current = ensureContext();
+  const startedAt = Date.now();
+  const topic = `PERF-M06 J2 ${__VU}-${__ITER}-${Date.now()}`;
+  const created = api(
+    current.session,
+    'POST',
+    `/api/v1/workspaces/${workspaceId}/research-tasks`,
+    { topic, mcpToolId: m06McpToolId },
+    {
+      headers: {
+        cookie: current.session.cookie,
+        'content-type': 'application/json',
+        'x-csrf-token': current.session.csrf,
+        'idempotency-key': `perf-m06-j2-${__VU}-${__ITER}-${Date.now()}`,
+      },
+      tags: { kind: 'api', op: 'j2-create' },
+    },
+    false,
+  );
+  let ok = created.status === 201;
+  let taskId = ok ? created.json().id : null;
+  if (ok) {
+    const approver = j2EnsureApprover();
+    let terminal = false;
+    for (let attempt = 0; attempt < 120 && !terminal; attempt += 1) {
+      const detail = api(
+        current.session,
+        'GET',
+        `/api/v1/research-tasks/${taskId}`,
+        undefined,
+        { tags: { kind: 'api', op: 'j2-detail' } },
+        false,
+      );
+      if (detail.status !== 200) {
+        ok = false;
+        break;
+      }
+      const body = detail.json();
+      if (body.status === 'WAITING_APPROVAL') {
+        const approval = (body.approvals || []).find((item) => item.status === 'PENDING');
+        if (!approval) {
+          ok = false;
+          break;
+        }
+        const decided = api(
+          approver,
+          'POST',
+          `/api/v1/approvals/${approval.id}/decision`,
+          { decision: 'APPROVE', comment: 'PERF-M06 自动审批' },
+          {
+            headers: {
+              cookie: approver.cookie,
+              'content-type': 'application/json',
+              'x-csrf-token': approver.csrf,
+              'idempotency-key': `perf-m06-j2-approve-${approval.id}`,
+            },
+            tags: { kind: 'api', op: 'j2-approve' },
+          },
+          false,
+        );
+        if (decided.status !== 200) {
+          ok = false;
+          break;
+        }
+      } else if (body.status === 'SUCCEEDED') {
+        ok = ok && Boolean(body.artifact);
+        terminal = true;
+      } else if (['FAILED', 'CANCELLED'].includes(body.status)) {
+        ok = false;
+        terminal = true;
+      }
+      if (!terminal) {
+        sleep(0.5);
+      }
+    }
+    if (!terminal) {
+      ok = false;
+    }
+  }
+  m06J2Ok.add(ok);
+  m06J2DurationMs.add(Date.now() - startedAt, { scenario: 'workflow' });
+  check({ ok }, { 'M06 混合 J2 报告成功': (value) => value.ok });
+}
+
+/**
+ * M06 混合负载：列表/详情/历史/审批查询 + 运行准入与完成；429 单独计数。
+ */
+export function workflowStudio() {
+  const current = m06EnsureSession();
+  const list = m06Request(current, 'GET', '/api/v1/workflows?view=MINE&page=1&size=20', undefined, 'workflow-list');
+  check(list, { 'Studio 列表 200': (response) => response.status === 200 });
+  const detail = m06Request(
+    current,
+    'GET',
+    `/api/v1/workflows/${m06WorkflowId}`,
+    undefined,
+    'workflow-detail',
+  );
+  check(detail, { 'Studio 详情 200': (response) => response.status === 200 });
+  const history = m06Request(
+    current,
+    'GET',
+    '/api/v1/workflow-runs?page=1&size=20',
+    undefined,
+    'workflow-history',
+  );
+  check(history, { '运行历史 200': (response) => response.status === 200 });
+  const inbox = m06Request(
+    current,
+    'GET',
+    '/api/v1/workflow-approvals?page=1&size=20',
+    undefined,
+    'workflow-approvals',
+  );
+  check(inbox, { '审批查询 200': (response) => response.status === 200 });
+
+  const admissionStartedAt = Date.now();
+  const admission = m06Request(
+    current,
+    'POST',
+    `/api/v1/workflows/${m06WorkflowId}/runs`,
+    { inputs: { topic: `PERF-M06 ${__VU}-${__ITER}` } },
+    'workflow-run-admission',
+    { 'Idempotency-Key': `perf-m06-run-${__VU}-${__ITER}-${Date.now()}` },
+  );
+  m06RunAdmissionMs.add(Date.now() - admissionStartedAt, { op: 'workflow-run-admission' });
+  if (admission.status === 429) {
+    m06RunRejected.add(1);
+    let code = '';
+    try {
+      code = admission.json().code || '';
+    } catch (error) {
+      code = '';
+    }
+    check({ code }, { '并发上限提示 RICCON-WF-429': (value) => value.code === 'RICCON-WF-429' });
+    return;
+  }
+  if (admission.status !== 201) {
+    m06RunOk.add(false);
+    m06RunCompletedOk.add(false);
+    fail(`run admission failed: ${admission.status} ${admission.body}`);
+  }
+  m06RunOk.add(true);
+  const runId = admission.json().id;
+  let completed = false;
+  for (let attempt = 0; attempt < 180; attempt += 1) {
+    const run = api(
+      current,
+      'GET',
+      `/api/v1/workflow-runs/${runId}`,
+      undefined,
+      { tags: { kind: 'api', op: 'workflow-run-detail' } },
+      false,
+    );
+    if (run.status !== 200) {
+      break;
+    }
+    const body = run.json();
+    if (body.status === 'SUCCEEDED') {
+      const attemptsPerNode = {};
+      for (const node of body.nodes || []) {
+        attemptsPerNode[node.nodeId] = Math.max(attemptsPerNode[node.nodeId] || 0, node.attempt || 1);
+      }
+      completed =
+        Object.values(attemptsPerNode).every((value) => value === 1) &&
+        body.resultStatus === 'SAVED' &&
+        body.workflowId === m06WorkflowId;
+      break;
+    }
+    if (['FAILED', 'CANCELLED'].includes(body.status)) {
+      break;
+    }
+    sleep(0.5);
+  }
+  m06RunCompletedOk.add(completed);
+  check({ completed }, { '运行成功且无重复节点执行': (value) => value.completed });
+}
+
+/**
+ * M06 保存/校验/发布写路径（1 VU）；覆盖 Studio API p95 的写操作。
+ */
+export function workflowWrite() {
+  const current = m06EnsureSession();
+  const detail = m06Request(
+    current,
+    'GET',
+    `/api/v1/workflows/${m06AdminWorkflowId}`,
+    undefined,
+    'workflow-write-detail',
+  );
+  if (!check(detail, { '写路径详情 200': (response) => response.status === 200 })) {
+    return;
+  }
+  const body = detail.json();
+  const saved = m06Request(
+    current,
+    'PUT',
+    `/api/v1/workflows/${m06AdminWorkflowId}/draft`,
+    { version: body.draftVersion, name: `${m06WorkflowName} 写路径`, graph: body.draftGraph },
+    'workflow-save',
+  );
+  check(saved, { '保存草稿 200': (response) => response.status === 200 });
+  const validated = m06Request(
+    current,
+    'POST',
+    `/api/v1/workflows/${m06AdminWorkflowId}/validate?runScope=ONLY_SELF`,
+    undefined,
+    'workflow-validate',
+  );
+  if (!check(validated, { '校验 200': (response) => response.status === 200 })) {
+    return;
+  }
+  const published = m06Request(
+    current,
+    'POST',
+    `/api/v1/workflows/${m06AdminWorkflowId}/publish`,
+    { runScope: 'ONLY_SELF' },
+    'workflow-publish',
+    { 'Idempotency-Key': `perf-m06-publish-${__VU}-${__ITER}-${Date.now()}` },
+  );
+  check(published, { '发布 201': (response) => response.status === 201 });
 }
 
 /**
@@ -1190,6 +1584,20 @@ export function handleSummary(data) {
     thresholds: buildThresholds(),
     metrics,
   };
+  if (scenario === 'workflow') {
+    return {
+      // J1 首字使用 run 详情的 modelInvocation.firstTokenMs，不是 SSE TTFB。
+      m06_j1_first_token_ms: ['p(95)<3000'],
+      m06_j1_first_token_ok: ['rate>0.99'],
+      // Studio 列表/详情/保存/发布/运行准入/审批查询/历史查询；不含 SSE TTFB。
+      m06_api_ms: ['p(95)<500'],
+      m06_run_admission_ms: ['p(95)<500'],
+      // 已接受的运行必须全部成功完成；429 单独计数，不伪装成失败或通过。
+      m06_run_ok: ['rate>0.99'],
+      m06_run_completed_ok: ['rate>0.99'],
+      m06_j2_ok: ['rate>0.99'],
+    };
+  }
   if (scenario === 'knowledge') {
     report.m05 = {
       query: m05Query,
