@@ -1561,6 +1561,7 @@ export function handleSummary(data) {
   const suffix = scenario === 'failover' ? `-${failureMode}` : '';
   const file =
     __ENV.PERF_M05_REPORT_FILE ||
+    __ENV.PERF_M06_REPORT_FILE ||
     __ENV.PERF_M04_REPORT_FILE ||
     `${reportDir}/mvc-smoke-${scenario}${suffix}.json`;
   const metrics = {};
@@ -1568,6 +1569,7 @@ export function handleSummary(data) {
     if (
       name.startsWith('m04_') ||
       name.startsWith('m05_') ||
+      name.startsWith('m06_') ||
       name === 'http_req_duration' ||
       name === 'http_req_failed' ||
       name === 'iterations'
@@ -1585,17 +1587,22 @@ export function handleSummary(data) {
     metrics,
   };
   if (scenario === 'workflow') {
-    return {
-      // J1 首字使用 run 详情的 modelInvocation.firstTokenMs，不是 SSE TTFB。
-      m06_j1_first_token_ms: ['p(95)<3000'],
-      m06_j1_first_token_ok: ['rate>0.99'],
-      // Studio 列表/详情/保存/发布/运行准入/审批查询/历史查询；不含 SSE TTFB。
-      m06_api_ms: ['p(95)<500'],
-      m06_run_admission_ms: ['p(95)<500'],
-      // 已接受的运行必须全部成功完成；429 单独计数，不伪装成失败或通过。
-      m06_run_ok: ['rate>0.99'],
-      m06_run_completed_ok: ['rate>0.99'],
-      m06_j2_ok: ['rate>0.99'],
+    report.m06 = {
+      workflowId: m06WorkflowId,
+      adminWorkflowId: m06AdminWorkflowId,
+      workflowName: m06WorkflowName,
+      concurrency: {
+        j1Vus: m06J1Vus,
+        j2Vus: m06J2Vus,
+        studioVus: m06StudioVus,
+        writeVus: 1,
+        total: m06J1Vus + m06J2Vus + m06StudioVus + 1,
+      },
+      fakeModel: 1,
+      firstTokenSource: 'run detail modelInvocation.firstTokenMs（不是 SSE TTFB）',
+      apiBudget: 'Studio 列表/详情/保存/发布/运行准入/审批查询/历史查询 p95 ≤ 500ms',
+      runRejectedMetric: 'm06_run_rejected 记录 RICCON-WF-429 次数，单列不并入成功率',
+      workflowLimits: envSnapshot.workflow ?? null,
     };
   }
   if (scenario === 'knowledge') {

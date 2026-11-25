@@ -221,6 +221,7 @@ function usage() {
   REAL_EVIDENCE_DIR              证据目录绝对/相对路径；设置后覆盖 REAL_EVIDENCE_TASK 目录
   REAL_API_PORT/REAL_WORKER_PORT/REAL_WEB_PORT/REAL_MODEL_PORT
   REAL_PLAYWRIGHT_GREP           只过滤浏览器用例；全量 gate 不设置
+  REAL_PLAYWRIGHT_GREP_INVERT    反向过滤浏览器用例（例如排除已知失败的单条 @a11y）
   REAL_PERF_DURATION             perf 首字/降级场景时长（默认 45s）
   REAL_PERF_SKIP_M04=1           跳过 M04 首字/降级/配额/成本矩阵（M05 定向复验用）
   PERF_M05_SCENARIO=knowledge    启用 M05 知识库性能场景（OpenSearch+RustFS+10 万 chunk）
@@ -3798,6 +3799,7 @@ async function runFull() {
     REAL_OIDC_PROVIDER_NAME: OIDC_PROVIDER_NAME,
   };
   const playwrightGrep = process.env.REAL_PLAYWRIGHT_GREP;
+  const playwrightGrepInvert = process.env.REAL_PLAYWRIGHT_GREP_INVERT;
   const playwrightArgs = [
     "exec",
     "playwright",
@@ -3808,6 +3810,9 @@ async function runFull() {
   ];
   if (playwrightGrep) {
     playwrightArgs.push("--grep", playwrightGrep);
+  }
+  if (playwrightGrepInvert) {
+    playwrightArgs.push("--grep-invert", playwrightGrepInvert);
   }
   const playwright = spawnSync("pnpm", playwrightArgs, {
     cwd: repoRoot,
