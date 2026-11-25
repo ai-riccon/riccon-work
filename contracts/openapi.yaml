@@ -3095,7 +3095,9 @@ paths:
       tags: [Workflow]
       operationId: listWorkflowApprovals
       summary: 审批待办
-      description: 只返回分配给当前用户的 PENDING 项，按创建时间升序；发起人的自己运行不出现在待办；空态有固定文案。
+      description: |
+        只返回分配给当前用户（用户指派或角色成员）的 PENDING 项，按创建时间升序；发起人的自己运行不出现在待办；空态有固定文案。
+        租户管理员未获指派时不额外返回，不因管理员身份扩大待办范围；非 assignee 看不到他人审批存在性。
       x-riccon-permission: workflow.approve
       parameters:
         - name: status
@@ -3120,7 +3122,9 @@ paths:
       tags: [Workflow]
       operationId: getWorkflowApproval
       summary: 审批详情
-      description: 只显示分配给当前用户或租户管理员的审批；参数摘要按 M05 ACL 最小可见；不返回完整参数/提示词/凭据。
+      description: |
+        仅 assignee 可读：只有分配给当前用户的审批返回 200；租户管理员（未获指派）、运行发起人及其他非 assignee 一律 404 `RICCON-TENANT-404`（不可见即不存在），不返回 `paramsPreview` 或任何待审批参数摘要。
+        参数摘要按 M05 ACL 最小可见；不返回完整参数/提示词/凭据。租户管理员在运行详情只看到审批状态/决定/审批人/时间等元数据，不因管理员身份获得审批详情。
       x-riccon-permission: workflow.approve
       parameters:
         - $ref: "#/components/parameters/WorkflowApprovalId"
@@ -3142,7 +3146,10 @@ paths:
       tags: [Workflow]
       operationId: decideWorkflowApproval
       summary: 批准或拒绝
-      description: 发起人自批 403 `RICCON-AUTH-403` 并写拒绝审计；重复决定 409 `RICCON-WF-409`；拒绝理由必填。
+      description: |
+        仅 assignee 可决定；租户管理员等非 assignee 即使持有 `workflow.approve` 也不得代批，按范围外处理。
+        自批、范围外、账号停用返回 403 `RICCON-AUTH-403` 并写 `outcome=DENIED` 审计（运行保持等待）；平台管理员与跨租户统一 404 `RICCON-TENANT-404`。
+        重复/并发决定 409 `RICCON-WF-409`；拒绝理由必填（≤500 字符）。
       x-riccon-permission: workflow.approve
       parameters:
         - $ref: "#/components/parameters/WorkflowApprovalId"

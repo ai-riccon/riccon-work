@@ -136,8 +136,8 @@ contracts/
 | GET      | `/api/v1/workflow-runs`                                  | `workflow.read`                   | 运行历史（流程/版本/状态/时间/发起人过滤）                                    |
 | GET      | `/api/v1/workflow-runs/{workflowRunId}`                  | `workflow.read`                   | 详情：节点时间线、审批、引用、结果                                            |
 | POST     | `/api/v1/workflow-runs/{workflowRunId}/cancel`、`/retry` | `workflow.run`                    | 取消 / 重试失败节点                                                           |
-| GET      | `/api/v1/workflow-approvals`、`/{id}`                    | `workflow.approve`                | 待办（仅分配给本人）/ 审批详情                                                |
-| POST     | `/api/v1/workflow-approvals/{id}/decision`               | `workflow.approve`                | 批准/拒绝；自批 403；拒绝理由必填                                             |
+| GET      | `/api/v1/workflow-approvals`、`/{id}`                    | `workflow.approve`                | 待办（仅 assignee）/ 详情仅 assignee（管理员等非 assignee 404）               |
+| POST     | `/api/v1/workflow-approvals/{id}/decision`               | `workflow.approve`                | 仅 assignee 可批；自批/范围外 403；拒绝理由必填                              |
 | GET      | `/api/v1/workflow-templates`                             | `workflow.read`                   | 内置模板列表（M06 至少 1 个）                                                 |
 | POST     | `/api/v1/workflow-templates/{templateId}/copy`           | `workflow.edit`                   | 复制为当前用户草稿；可选键仅长度/兼容校验，不承诺重放                         |
 
@@ -161,7 +161,7 @@ contracts/
 - 审计哈希链、MFA、平台跨租户审计明细、租户 BYO 模型凭据、模型价格编辑、多币种/账单对账、MCP 注册与凭据托管（M07）、引用页图渲染/框选、物理对象与分块清理（M09）、代码执行/脚本/任意 HTTP/并行/循环/子流程/定时触发、跨租户模板市场不在本契约中定义；
   `openapi.yaml` 的 `x-riccon-deferred` 记录后置范围。M05 已交付文档级 ACL/OCR 引用定位，`knowledge-acl-ocr` deferred 已移除；M05b 已交付连接器契约（`1.5.0-m05b`），不存在 `knowledge-connectors` deferred；M06 已交付内置模板列表/复制，`workflow-template-sharing`（用户另存/租户共享/升级提示）标 M06b，`workflow-code-execution` 标 not planned。
 - 知识库 ACL：`knowledge.read` 控制入口，`knowledge.acl.manage`（当前仅 `TENANT_ADMIN`）控制 ACL/删除/重索引；创建人是服务层资源例外，不是角色授权。不可见/跨租户统一 404，已可见但无管理能力 403；租户管理员绕过 ACL 的管理性读取写 `knowledge.document.admin_read` 审计；平台管理员不读取租户文档内容。
-- 编排 Studio：`workflow.read/edit/publish/run/approve/manage` 分离；`WORKFLOW_EDITOR` 由租户管理员经既有角色管理授予/撤销；部门负责人关系只限制 `DEPARTMENT` 发布范围，不授权。跨租户/跨部门/私有草稿/私有模板/他人运行详情统一 404；平台管理员访问租户工作流统一 404；自批 403 并审计；审批参数只存脱敏摘要 + 密文，运行详情不返回完整 prompt/工具参数/凭据/正文；运行结果默认 180 天到期不可见，物理清理归 M09。
+- 编排 Studio：`workflow.read/edit/publish/run/approve/manage` 分离；`WORKFLOW_EDITOR` 由租户管理员经既有角色管理授予/撤销；部门负责人关系只限制 `DEPARTMENT` 发布范围，不授权。跨租户/跨部门/私有草稿/私有模板/他人运行详情/审批详情非 assignee 统一 404；平台管理员访问租户工作流统一 404；自批 403 并审计；审批参数只存脱敏摘要 + 密文，运行详情不返回完整 prompt/工具参数/凭据/正文；运行结果默认 180 天到期不可见，物理清理归 M09。
 - 连接器：`knowledge.connector.read` 控制列表/条目，`knowledge.connector.manage` 控制创建/更新/删除/凭据/测试/同步；当前仅 `TENANT_ADMIN` 持有。端点只来自部署允许列表，连接器只存 `endpointId`，不能提交任意 URL、查询串或重定向。API 响应只向有权限的管理员返回配置（含 `bucket`/`prefix`）与 `credentialMaskedHint`，不返回凭据明文/密文/DEK、端点 URL 或对象 key；日志不记 bucket 全名、`externalId`、对象 key 或凭据；审计 details 只记 `bucket`/`prefix` 摘要（`prefix` ≤200），不记凭据、正文或完整 `externalId`；跨租户 `connectorId` 统一 404，同租户非管理员 403。
 
 ## 6. 校验
