@@ -8,9 +8,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * M05b 知识库连接器契约（{@code 1.5.0-m05b}）。
+ * M05b 知识库连接器契约（{@code 1.6.0-m06}）。
  *
- * <p>读取 {@code contracts/openapi.yaml} 断言：版本为 {@code 1.5.0-m05b}；8 个连接器 operationId 全量存在，
+ * <p>读取 {@code contracts/openapi.yaml} 断言：版本为 {@code 1.6.0-m06}；8 个连接器 operationId 全量存在，
  * 权限（`knowledge.connector.read`/`knowledge.connector.manage`）、CSRF、幂等键与错误码正确；
  * {@code Connector}/{@code ConnectorCreate}/{@code ConnectorUpdate}/{@code ConnectorCredential}/{@code ConnectorItemPage}
  * 等 schema 的必填字段、{@code additionalProperties} 与 deferred 标记齐全；M05 与既有模块端点保持回归面。

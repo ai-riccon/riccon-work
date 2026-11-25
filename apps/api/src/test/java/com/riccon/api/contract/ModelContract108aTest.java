@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 /**
  * M04 模型/路由/凭据/开关契约（IT-MODEL-108a）。
  *
- * <p>读取 {@code contracts/openapi.yaml} 断言：当前契约版本为 {@code 1.5.0-m05b}（M04 端点保持全量、无回归）；
+ * <p>读取 {@code contracts/openapi.yaml} 断言：当前契约版本为 {@code 1.6.0-m06}（M04 端点保持全量、无回归）；
  * 三个模型端点存在且权限正确；员工 {@code EmployeeModel} 不含价格/provider/baseUrl；平台 {@code AdminModel} 含价格与 pricingStatus；
  * provider PUT 只允许 name；路由/凭据/开关端点与权限齐全；MCP 目录仍标 {@code x-riccon-deferred: M07}；
  * M02/M03/M10 路径零回归。

@@ -8,9 +8,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * M05 知识库深度契约（{@code 1.5.0-m05b}）。
+ * M05 知识库深度契约（{@code 1.6.0-m06}）。
  *
- * <p>读取 {@code contracts/openapi.yaml} 断言：版本为 {@code 1.5.0-m05b}；ACL 读取/整体替换、软删除、服务端流式下载与重索引端点
+ * <p>读取 {@code contracts/openapi.yaml} 断言：版本为 {@code 1.6.0-m06}；ACL 读取/整体替换、软删除、服务端流式下载与重索引端点
  * 存在且权限/CSRF/错误码正确；{@code KnowledgeDocument} 与创建请求的 M05 字段、ACL schema、解析摘要、
  * {@code Citation}/{@code ArtifactCitation} 的 {@code bbox}/{@code ocrConfidence}/{@code sourceStatus} 齐全；
  * M05b 连接器端点作为 additive 增量存在，{@code KnowledgeDocument} 增加连接器来源字段且 {@code sourceType} 含 {@code CONNECTOR}，
