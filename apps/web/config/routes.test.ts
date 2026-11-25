@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { adminNavigation, filterAdminNavigation, findRouteByPath, routes } from './routes';
+import {
+  adminNavigation,
+  buildWorkspaceBreadcrumb,
+  filterAdminNavigation,
+  filterWorkspaceNavigation,
+  findRouteByPath,
+  isNavigationActive,
+  routes,
+  workspaceNavigation,
+} from './routes';
 
 describe('路由表', () => {
   it('根路径重定向到员工端工作空间', () => {
@@ -73,8 +82,8 @@ describe('路由表', () => {
     const pagePaths: string[] = [];
     const collect = (nodes: typeof routes) => {
       nodes.forEach((node) => {
-        // 父级布局与同路径的 index 重定向允许共存，这里只检查真正渲染页面的路由。
-        if (node.path && node.component) {
+        // 父级布局可与同路径页面（如 /workflows/templates）共存，这里只检查真正渲染页面的路由。
+        if (node.path && node.component?.startsWith('@/pages/')) {
           pagePaths.push(node.path);
         }
         if (node.routes) {
@@ -84,6 +93,70 @@ describe('路由表', () => {
     };
     collect(routes);
     expect(new Set(pagePaths).size).toBe(pagePaths.length);
+  });
+});
+
+describe('编排 Studio 模板库路由与入口', () => {
+  /** Studio 子导航路由包装路径。 */
+  const STUDIO_NAV = '@/pages/workflow/templates/studio-nav';
+
+  it('模板库挂 workspace layout，既有 /workflows 重定向、列表、编辑器与 404 保持不变', () => {
+    const workflows = findRouteByPath('/workflows');
+    expect(workflows?.component).toBe('@/layouts/workspace');
+    // T10b 已验收的父子结构保持不变；模板库使用独立布局节点，避免影响既有深链与回归。
+    expect(workflows?.routes?.map((route) => route.path)).toEqual([
+      '/workflows',
+      '/workflows/list',
+      '/workflows/:workflowId/edit',
+    ]);
+    expect(workflows?.routes?.[0]).toEqual({ path: '/workflows', redirect: '/workflows/list' });
+    expect(findRouteByPath('/workflows/list')?.component).toBe('@/pages/workflow/list');
+    expect(findRouteByPath('/workflows/:workflowId/edit')?.component).toBe('@/pages/workflow/edit');
+    expect(findRouteByPath('/login')?.component).toBe('@/pages/login');
+    expect(findRouteByPath('*')?.component).toBe('@/pages/404');
+    expect(findRouteByPath('/chat')?.component).toBe('@/pages/chat');
+    expect(findRouteByPath('/research/tasks')?.component).toBe('@/pages/research');
+  });
+
+  it('模板库页面注册到 workspace layout，并提供标题与异步页面组件', () => {
+    const layout = findRouteByPath('/workflows/templates');
+    expect(layout?.component).toBe('@/layouts/workspace');
+    const page = layout?.routes?.[0];
+    expect(page?.path).toBe('/workflows/templates');
+    expect(page?.component).toBe('@/pages/workflow/templates');
+    expect(page?.title).toBe('模板库');
+  });
+
+  it('列表、编辑器与模板库通过同一 Studio 子导航包装提供模板库入口', () => {
+    expect(findRouteByPath('/workflows/list')?.wrappers).toEqual([STUDIO_NAV]);
+    expect(findRouteByPath('/workflows/:workflowId/edit')?.wrappers).toEqual([STUDIO_NAV]);
+    expect(findRouteByPath('/workflows/templates')?.routes?.[0]?.wrappers).toEqual([STUDIO_NAV]);
+  });
+
+  it('模板库归入编排 Studio 分区：入口要求 workflow.read，选中态与面包屑正确', () => {
+    const studio = workspaceNavigation.find((item) => item.path === '/workflows');
+    expect(studio?.permissions).toEqual(['workflow.read']);
+    // 模板库不新增顶层导航项，避免与“编排 Studio”重复高亮；仍由 Studio 分区承载选中态。
+    expect(workspaceNavigation.map((item) => item.path)).toEqual([
+      '/chat',
+      '/research',
+      '/workflows',
+    ]);
+    expect(isNavigationActive('/workflows/templates', '/workflows')).toBe(true);
+    expect(filterWorkspaceNavigation(['workflow.read']).map((item) => item.path)).toEqual([
+      '/chat',
+      '/research',
+      '/workflows',
+    ]);
+    expect(filterWorkspaceNavigation(['workspace.read']).map((item) => item.path)).toEqual([
+      '/chat',
+      '/research',
+    ]);
+    expect(buildWorkspaceBreadcrumb('/workflows/templates')).toEqual([
+      { label: '工作空间', path: '/chat' },
+      { label: '编排 Studio', path: '/workflows' },
+      { label: '模板库' },
+    ]);
   });
 });
 

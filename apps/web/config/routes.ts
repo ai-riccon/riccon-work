@@ -9,6 +9,13 @@ export interface RicconRoute {
   redirect?: string;
   /** 页面组件路径，使用 Umi 的 @/ 别名 */
   component?: string;
+  /**
+   * 路由包装组件路径，使用 Umi 的 @/ 别名。
+   *
+   * Umi 会把页面渲染在包装组件的 Outlet 中；M06 用它给 Studio 的列表、编辑器与模板库
+   * 统一挂载“流程列表 / 模板库”子导航，不侵入各页面主体。
+   */
+  wrappers?: string[];
   /** 子路由 */
   routes?: RicconRoute[];
   /** 路由标题，用于页面 title 与菜单展示 */
@@ -53,12 +60,31 @@ export const routes: RicconRoute[] = [
       {
         path: '/workflows/list',
         component: '@/pages/workflow/list',
+        // Studio 子导航由 T14b 以路由包装提供：列表页可直接进入模板库，
+        // 同时不改动列表页主体与顶层工作空间导航（导航仍按 workflow.read 过滤）。
+        wrappers: ['@/pages/workflow/templates/studio-nav'],
         title: '编排 Studio',
       },
       {
         path: '/workflows/:workflowId/edit',
         component: '@/pages/workflow/edit',
+        wrappers: ['@/pages/workflow/templates/studio-nav'],
         title: '流程编辑',
+      },
+    ],
+  },
+  {
+    // 模板库与 Studio 共用员工端工作空间外壳。T14 页面此前只有组件与被测引用，T14b 补齐可访问路由。
+    // 这里沿用 /research 的“独立布局 + 同路径子页面”写法，不改变 /workflows 既有父子结构，
+    // 避免影响顶层导航、深链刷新与 T10b 已验收的路由回归。
+    path: '/workflows/templates',
+    component: '@/layouts/workspace',
+    routes: [
+      {
+        path: '/workflows/templates',
+        component: '@/pages/workflow/templates',
+        wrappers: ['@/pages/workflow/templates/studio-nav'],
+        title: '模板库',
       },
     ],
   },
