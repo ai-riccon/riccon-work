@@ -184,6 +184,8 @@ public class WorkflowToolNodeExecutor implements WorkflowNodeExecutor {
             throw new WorkflowNodeFailureException(WorkflowErrorCode.WF_TOOL_NOT_AUTHORIZED, NOT_AUTHORIZED_MESSAGE);
         }
 
+        // 先计算超时再写 STARTED：预算已耗尽时不应留下“已发起调用”的记录，避免被迫重新审批。
+        Duration callTimeout = callTimeout(execution);
         UUID invocationId = UuidV7.generate();
         Instant startedAt = clock.instant();
         try {
@@ -223,7 +225,7 @@ public class WorkflowToolNodeExecutor implements WorkflowNodeExecutor {
         long durationMs;
         try {
             long startedMillis = clock.millis();
-            result = mcpCallExecutor.call(handle, verified.arguments(), callTimeout(execution));
+            result = mcpCallExecutor.call(handle, verified.arguments(), callTimeout);
             durationMs = Math.max(0L, clock.millis() - startedMillis);
         } catch (McpException exception) {
             WorkflowErrorCode errorCode = errorCodeOf(exception);
