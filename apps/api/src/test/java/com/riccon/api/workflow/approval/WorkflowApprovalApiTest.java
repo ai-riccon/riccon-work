@@ -155,6 +155,24 @@ class WorkflowApprovalApiTest extends WorkflowApprovalTestSupport {
         assertProblem(getApproval(fixture.owner(), approvalId), 404, APPROVAL_404);
         assertProblem(getApproval(fixture.owner(), UUID.randomUUID()), 404, APPROVAL_404);
 
+        UUID userApproval = seedAwaitingApproval(
+                fixture,
+                workflowId,
+                fixture.ownerId(),
+                "USER",
+                null,
+                List.of(fixture.memberId()),
+                Instant.now().minusSeconds(15));
+        JsonNode userDetail = client.json(getApproval(fixture.member(), userApproval));
+        assertThat(userDetail.path("assigneeType").asText()).isEqualTo("USER");
+        assertThat(userDetail.path("assigneeUserIds").size()).isEqualTo(1);
+        assertThat(userDetail.path("assigneeUserIds").get(0).asText())
+                .isEqualTo(fixture.memberId().toString());
+        assertThat(userDetail.has("assigneeRole")).isFalse();
+        assertThat(decideApproval(fixture.member(), userApproval, "APPROVE", "成员同意", "decision-user-001")
+                        .status())
+                .isEqualTo(200);
+
         Fixture other = fixture("wap");
         assertProblem(getApproval(other.otherEditor(), approvalId), 404, APPROVAL_404);
         assertProblem(getApproval(other.platform(), approvalId), 404, APPROVAL_404);
@@ -175,6 +193,8 @@ class WorkflowApprovalApiTest extends WorkflowApprovalTestSupport {
                 Instant.now().minusSeconds(20));
         UUID runId = approvalRunId(fixture.tenant(), approvalId);
 
+        assertProblem(
+                decideApproval(fixture.otherEditor(), approvalId, "MAYBE", "无效", "decision-invalid-001"), 400, WF_400);
         assertProblem(decideApproval(fixture.otherEditor(), approvalId, "APPROVE", "同意", null), 400, WF_400);
 
         ApiTestClient.ApiResponse response =
@@ -246,6 +266,8 @@ class WorkflowApprovalApiTest extends WorkflowApprovalTestSupport {
                 null,
                 Instant.now().minusSeconds(20));
         UUID runId = approvalRunId(fixture.tenant(), approvalId);
+        // 工具节点已有 PENDING 尝试：拒绝必须走 skipPendingNode 分支而不是直接插入 SKIPPED。
+        insertNodeRun(fixture.tenant(), runId, APPROVAL_TARGET_NODE, "MCP_TOOL", "取数", 1, "PENDING");
 
         assertProblem(
                 decideApproval(fixture.otherEditor(), approvalId, "REJECT", null, "decision-reject-001"), 400, WF_400);
@@ -281,6 +303,9 @@ class WorkflowApprovalApiTest extends WorkflowApprovalTestSupport {
         assertThat(run.finishedAt()).isNotNull();
         assertThat(runResultStatus(fixture.tenant(), runId)).isEqualTo("NONE");
         assertThat(nodeKeysByStatus(fixture.tenant(), runId, "SKIPPED")).containsExactly("end", "report", "tool");
+        assertThat(nodeRows(fixture.tenant(), runId, APPROVAL_TARGET_NODE))
+                .extracting(NodeRow::status)
+                .containsExactly(WorkflowNodeStatus.SKIPPED);
 
         List<AuditRowAccessor> audits = decidedAudits(fixture.tenant());
         assertThat(audits).hasSize(1);
