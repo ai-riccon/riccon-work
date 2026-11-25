@@ -122,7 +122,7 @@ test.describe('M06 Studio 创建与发布', () => {
     await applyNodeConfig(page);
 
     await selectNode(page, '结束');
-    await selectOption(page, page.getByLabel('结果来源节点'), /生成结果/);
+    await selectOption(page, page.getByLabel('结果来源节点'), /模型生成/);
     await page.getByLabel('结果标题').fill('E2E-M06-01 结果');
     await applyNodeConfig(page);
 
@@ -234,18 +234,24 @@ test.describe('M06 Studio 创建与发布', () => {
     await expect(page.getByTestId('workflow-version-list')).toContainText('v1');
     await expect(page.getByTestId('workflow-version-list')).toContainText('仅自己');
 
-    // 修改草稿但不发布：运行仍绑定 v1。
-    await saveDraft(
-      page,
-      workflow.id,
-      workflow.draftVersion + 1,
-      simpleGraph(),
-      `${name} 草稿修改`,
+    // 修改草稿图但不发布：运行仍绑定 v1，且草稿显示未发布修改。
+    const modifiedGraph = simpleGraph();
+    modifiedGraph.nodes = modifiedGraph.nodes.map((node) =>
+      node.id === 'model'
+        ? {
+            ...node,
+            config: { ...node.config, promptTemplate: '修改后的草稿提示词：{{input.topic}}' },
+          }
+        : node,
     );
+    await saveDraft(page, workflow.id, workflow.draftVersion + 1, modifiedGraph);
     const detailV1 = await getWorkflow(page, workflow.id);
     expect(detailV1.publishedVersionNo).toBe(1);
     expect(detailV1.draftVersion).toBeGreaterThanOrEqual(workflow.draftVersion + 1);
     expect(detailV1.hasUnpublishedChanges).toBe(true);
+    expect(
+      detailV1.draftGraph?.nodes.find((node) => node.id === 'model')?.config.promptTemplate,
+    ).toBe('修改后的草稿提示词：{{input.topic}}');
 
     await page.reload();
     await page.getByLabel('选择流程').click();
