@@ -761,21 +761,23 @@ export async function expectNoHorizontalScroll(page: Page): Promise<void> {
  * @param page Playwright 页面
  * @param label 场景标签
  */
-export async function expectAxeClean(page: Page, label: string): Promise<void> {
+export async function axeViolations(page: Page, label: string): Promise<string[]> {
   const result = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze();
-  const violations = result.violations.filter((violation) =>
-    ['serious', 'critical'].includes(violation.impact ?? ''),
-  );
-  expect(
-    violations.map(
+  return result.violations
+    .filter((violation) => ['serious', 'critical'].includes(violation.impact ?? ''))
+    .map(
       (violation) =>
         `${label}: ${violation.id} (${violation.impact}) ${violation.nodes
           .map((node) => node.target.join(' '))
           .join(' | ')}`,
-    ),
-  ).toEqual([]);
+    );
+}
+
+/** 断言当前页面 axe 无 serious/critical。 */
+export async function expectAxeClean(page: Page, label: string): Promise<void> {
+  expect(await axeViolations(page, label)).toEqual([]);
 }
 
 /**

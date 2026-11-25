@@ -3,7 +3,7 @@ import {
   api,
   createRun,
   createWorkflow,
-  expectAxeClean,
+  axeViolations,
   expectNoHorizontalScroll,
   loginAs,
   M06_ROUTES,
@@ -57,37 +57,41 @@ test.describe('M06 可访问性与 375px', () => {
     await loginAs(page, 'alpha-editor', data.passwords.alphaEditor);
     const workflowId = await prepareSimpleWorkflow(page, `E2E-M06-09 a11y ${Date.now()}`);
 
+    // 逐页收集全部 serious/critical，最后一次性断言；失败时报告覆盖所有页面而不是首个页面。
+    const violations: string[] = [];
+
     // 流程列表。
     await page.goto(M06_ROUTES.list);
     await expect(page.getByRole('heading', { name: '编排 Studio' })).toBeVisible();
-    await expectAxeClean(page, '流程列表');
+    violations.push(...(await axeViolations(page, '流程列表')));
 
     // 编辑器。
     await page.goto(M06_ROUTES.editor(workflowId));
     await expect(page.getByText('流程信息')).toBeVisible();
-    await expectAxeClean(page, '流程编辑器');
+    violations.push(...(await axeViolations(page, '流程编辑器')));
 
     // 模板库。
     await page.goto(M06_ROUTES.templates);
     await expect(page.getByRole('heading', { name: '模板库' })).toBeVisible();
-    await expectAxeClean(page, '模板库');
+    violations.push(...(await axeViolations(page, '模板库')));
 
     // 审批待办（空态或真实待办均按当前数据检查）。
     await page.goto(M06_ROUTES.approvals);
     await expect(page.getByRole('heading', { name: '审批待办' })).toBeVisible();
-    await expectAxeClean(page, '审批待办');
+    violations.push(...(await axeViolations(page, '审批待办')));
 
     // 运行历史。
     await page.goto(M06_ROUTES.runs);
     await expect(page.getByRole('heading', { name: '运行历史' })).toBeVisible();
-    await expectAxeClean(page, '运行历史');
+    violations.push(...(await axeViolations(page, '运行历史')));
 
     // 运行详情。
     const run = await createRun(page, workflowId, { topic: 'a11y 详情' });
     await waitForRun(page, run.id, (detail) => detail.status === 'SUCCEEDED');
     await page.goto(M06_ROUTES.run(run.id));
     await expect(page.getByRole('heading', { name: '运行详情' })).toBeVisible();
-    await expectAxeClean(page, '运行详情');
+    violations.push(...(await axeViolations(page, '运行详情')));
+    expect(violations).toEqual([]);
   });
 
   test('E2E-M06-09b 五界面 375px 无横向滚动 @a11y', async ({ page }) => {
