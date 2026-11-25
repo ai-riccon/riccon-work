@@ -26,10 +26,17 @@ export interface WorkflowApprovalsPageProps {
   /**
    * 深链打开某个审批详情。
    *
-   * 路由接入任务（T13b）在 `/workflows/approvals/:workflowApprovalId` 读取 `useParams` 后传入；
-   * 页面本身不依赖 Umi 路由，组件测试可直接注入。
+   * `/workflows/approvals/:workflowApprovalId` 路由组件读取 `useParams` 后传入；页面本身不依赖
+   * Umi 路由，组件测试可直接注入。
    */
   initialApprovalId?: string;
+  /**
+   * 详情深链退出时的导航钩子。
+   *
+   * 详情路由（`/workflows/approvals/:workflowApprovalId`）注入后，返回待办或决定成功会导航回
+   * 待办路由；待办路由不注入，保持“打开详情不改变 URL”的主从视图行为。
+   */
+  onLeaveDetail?: () => void;
   /** 当前时间；测试注入固定时钟，用于等待时长。 */
   now?: () => Date;
 }
@@ -37,9 +44,9 @@ export interface WorkflowApprovalsPageProps {
 /**
  * M06 审批待办/详情页面。
  *
- * 页面是“待办列表 ↔ 审批详情”的主从视图：打开详情不改变 URL，返回时重新聚焦待办标题并
- * 重新读取待办；决定成功后回到待办并强制刷新，避免把已决定的审批继续显示为待处理。
- * 动态详情路由由后续路由任务接入，本页面只接收审批 ID。
+ * 页面是“待办列表 ↔ 审批详情”的主从视图：待办路由内打开详情不改变 URL，返回时重新聚焦
+ * 待办标题并重新读取待办；决定成功后回到待办并强制刷新，避免把已决定的审批继续显示为待处理。
+ * 详情深链路由通过 `initialApprovalId` 打开指定审批，并在退出时导航回待办路由。
  *
  * 权限：入口要求 `workflow.approve`；前端隐藏入口不代替服务端 assignee/自批校验，详情 404/403
  * 与决定 403 仍按服务端结果展示。
@@ -52,6 +59,7 @@ export default function WorkflowApprovalsPage({
   sessionReader = defaultApi,
   navigate: injectedNavigate,
   initialApprovalId,
+  onLeaveDetail,
   now,
 }: WorkflowApprovalsPageProps) {
   const umiNavigate = useNavigate();
@@ -84,8 +92,12 @@ export default function WorkflowApprovalsPage({
     navigate('/workflows/list');
   };
 
-  /** 从详情返回待办，并把焦点交还待办标题。 */
+  /** 从详情返回待办，并把焦点交还待办标题；详情深链则导航回待办路由。 */
   const handleBack = (): void => {
+    if (onLeaveDetail) {
+      onLeaveDetail();
+      return;
+    }
     setSelectedId(null);
     setFocusToken((token) => token + 1);
   };
@@ -94,11 +106,16 @@ export default function WorkflowApprovalsPage({
    * 决定成功后回到待办。
    *
    * 先提示结果再切回列表，列表通过刷新令牌重新读取；不在前端改写状态，避免与服务端不一致。
+   * 详情深链通过 `onLeaveDetail` 导航回待办路由，待办路由则在原地刷新并交还焦点。
    *
    * @param decision 已提交的决定
    */
   const handleDecided = (decision: WorkflowApprovalDecision): void => {
     message.success(describeDecisionSuccess(decision));
+    if (onLeaveDetail) {
+      onLeaveDetail();
+      return;
+    }
     setSelectedId(null);
     setRefreshToken((token) => token + 1);
     setFocusToken((token) => token + 1);

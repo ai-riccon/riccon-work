@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { SessionInfo } from '@/services/api/types';
 import { authStore } from '@/services/auth/auth-store';
@@ -10,7 +10,7 @@ import WorkflowStudioNav from './studio-nav';
 /**
  * Studio 子导航测试。
  *
- * 覆盖列表/编辑器/模板库入口可见性、选中态互斥、子路由出口与 375px 可聚焦；
+ * 覆盖列表/编辑器/模板库/审批待办入口可见性、选中态互斥、子路由出口与 375px 可聚焦；
  * 真实 Umi 路由匹配与跨页跳转由 T16a 的 E2E 覆盖。
  */
 
@@ -19,6 +19,13 @@ const READER_SESSION: SessionInfo = {
   ...DEMO_SESSION,
   roles: ['MEMBER'],
   permissions: [...DEMO_SESSION.permissions, 'workflow.read'],
+};
+
+/** 具备编排读取与审批待办权限的会话（MEMBER 在生产迁移中即持有 read/run/approve）。 */
+const APPROVER_SESSION: SessionInfo = {
+  ...DEMO_SESSION,
+  roles: ['MEMBER'],
+  permissions: [...DEMO_SESSION.permissions, 'workflow.read', 'workflow.approve'],
 };
 
 /** 无编排权限的会话。 */
@@ -53,6 +60,8 @@ describe('编排 Studio 子导航', () => {
     const templates = within(nav).getByRole('link', { name: '模板库' });
     expect(templates).toHaveAttribute('href', '/workflows/templates');
     expect(templates).not.toHaveAttribute('aria-current');
+    // 只有 workflow.read 时审批入口必须隐藏，避免无审批权限用户看到死链。
+    expect(within(nav).queryByRole('link', { name: '审批待办' })).not.toBeInTheDocument();
     expect(screen.getByTestId('umi-outlet')).toBeInTheDocument();
   });
 
@@ -86,6 +95,41 @@ describe('编排 Studio 子导航', () => {
     expect(screen.getByTestId('umi-outlet')).toBeInTheDocument();
   });
 
+  it('有 workflow.approve 时展示审批待办入口，列表页仍高亮流程列表', () => {
+    renderNav('/workflows/list', APPROVER_SESSION);
+
+    const nav = screen.getByRole('navigation', { name: '编排 Studio 导航' });
+    const approvals = within(nav).getByRole('link', { name: '审批待办' });
+    expect(approvals).toHaveAttribute('href', '/workflows/approvals');
+    expect(approvals).not.toHaveAttribute('aria-current');
+    expect(within(nav).getByRole('link', { name: '流程列表' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
+  it('审批待办页只有审批待办高亮，详情深链同样归属该入口', () => {
+    renderNav('/workflows/approvals', APPROVER_SESSION);
+
+    let nav = screen.getByRole('navigation', { name: '编排 Studio 导航' });
+    expect(within(nav).getByRole('link', { name: '审批待办' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(within(nav).getByRole('link', { name: '流程列表' })).not.toHaveAttribute('aria-current');
+    expect(within(nav).getByRole('link', { name: '模板库' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByTestId('umi-outlet')).toBeInTheDocument();
+
+    cleanup();
+    renderNav('/workflows/approvals/approval-1', APPROVER_SESSION);
+    nav = screen.getByRole('navigation', { name: '编排 Studio 导航' });
+    expect(within(nav).getByRole('link', { name: '审批待办' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(within(nav).getByRole('link', { name: '流程列表' })).not.toHaveAttribute('aria-current');
+  });
+
   it('无 workflow.read 时不渲染 Studio 子导航，页面守卫仍可显示 403', () => {
     renderNav('/workflows/list', NO_PERMISSION_SESSION);
 
@@ -93,15 +137,17 @@ describe('编排 Studio 子导航', () => {
     expect(screen.getByTestId('umi-outlet')).toBeInTheDocument();
   });
 
-  it('375px 下子导航换行展示且模板库入口可聚焦', () => {
+  it('375px 下子导航换行展示且审批待办入口可聚焦', () => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 375 });
-    renderNav('/workflows/list');
+    renderNav('/workflows/list', APPROVER_SESSION);
 
     const nav = screen.getByRole('navigation', { name: '编排 Studio 导航' });
     expect(nav).toBeVisible();
     const templates = within(nav).getByRole('link', { name: '模板库' });
     expect(templates).toBeVisible();
-    templates.focus();
-    expect(templates).toHaveFocus();
+    const approvals = within(nav).getByRole('link', { name: '审批待办' });
+    expect(approvals).toBeVisible();
+    approvals.focus();
+    expect(approvals).toHaveFocus();
   });
 });

@@ -89,6 +89,27 @@ export const routes: RicconRoute[] = [
     ],
   },
   {
+    // 审批待办属于 Studio 的子页面，但同样使用独立布局节点，保持 /workflows 既有父子结构不变。
+    // 列表由页面内部完成“待办 ↔ 详情”切换；详情深链把动态段交给页面 `initialApprovalId`，
+    // 使通知链接、刷新与直接访问都能定位到同一条审批。
+    path: '/workflows/approvals',
+    component: '@/layouts/workspace',
+    routes: [
+      {
+        path: '/workflows/approvals',
+        component: '@/pages/workflow/approvals',
+        wrappers: ['@/pages/workflow/templates/studio-nav'],
+        title: '审批待办',
+      },
+      {
+        path: '/workflows/approvals/:workflowApprovalId',
+        component: '@/pages/workflow/approvals/detail',
+        wrappers: ['@/pages/workflow/templates/studio-nav'],
+        title: '审批详情',
+      },
+    ],
+  },
+  {
     path: '/admin',
     component: '@/layouts/admin',
     routes: [

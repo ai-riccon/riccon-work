@@ -160,6 +160,72 @@ describe('编排 Studio 模板库路由与入口', () => {
   });
 });
 
+describe('编排 Studio 审批待办路由与入口', () => {
+  /** Studio 子导航路由包装路径。 */
+  const STUDIO_NAV = '@/pages/workflow/templates/studio-nav';
+
+  it('审批待办挂 workspace layout，待办与详情路由使用同一 Studio 子导航', () => {
+    const layout = findRouteByPath('/workflows/approvals');
+    expect(layout?.component).toBe('@/layouts/workspace');
+    expect(layout?.routes?.map((route) => route.path)).toEqual([
+      '/workflows/approvals',
+      '/workflows/approvals/:workflowApprovalId',
+    ]);
+
+    const inbox = layout?.routes?.[0];
+    expect(inbox?.component).toBe('@/pages/workflow/approvals');
+    expect(inbox?.title).toBe('审批待办');
+    expect(inbox?.wrappers).toEqual([STUDIO_NAV]);
+
+    const detail = layout?.routes?.[1];
+    expect(detail?.component).toBe('@/pages/workflow/approvals/detail');
+    expect(detail?.title).toBe('审批详情');
+    expect(detail?.wrappers).toEqual([STUDIO_NAV]);
+  });
+
+  it('既有列表、编辑器、模板库、问答、调研、管理端、登录与 404 兜底保持注册', () => {
+    // T10b 的 /workflows 父子结构不因审批待办而变化，避免影响已验收深链。
+    expect(findRouteByPath('/workflows')?.routes?.map((route) => route.path)).toEqual([
+      '/workflows',
+      '/workflows/list',
+      '/workflows/:workflowId/edit',
+    ]);
+    expect(findRouteByPath('/workflows/list')?.component).toBe('@/pages/workflow/list');
+    expect(findRouteByPath('/workflows/:workflowId/edit')?.component).toBe('@/pages/workflow/edit');
+    expect(findRouteByPath('/workflows/templates')?.component).toBe('@/layouts/workspace');
+    expect(findRouteByPath('/workflows/templates')?.routes?.[0]?.component).toBe(
+      '@/pages/workflow/templates',
+    );
+    expect(findRouteByPath('/chat')?.component).toBe('@/pages/chat');
+    expect(findRouteByPath('/research/tasks')?.component).toBe('@/pages/research');
+    expect(findRouteByPath('/research/:researchTaskId')?.component).toBe('@/pages/research/detail');
+    expect(findRouteByPath('/admin/overview')?.component).toBe('@/pages/admin/overview');
+    expect(findRouteByPath('/login')?.component).toBe('@/pages/login');
+    expect(findRouteByPath('*')?.component).toBe('@/pages/404');
+  });
+
+  it('审批待办归入编排 Studio 分区：不新增顶层导航，选中态与面包屑正确', () => {
+    // 顶层导航仍只有问答/调研/编排三项，审批待办由 Studio 子导航承载，避免重复高亮。
+    expect(workspaceNavigation.map((item) => item.path)).toEqual([
+      '/chat',
+      '/research',
+      '/workflows',
+    ]);
+    expect(isNavigationActive('/workflows/approvals', '/workflows')).toBe(true);
+    expect(isNavigationActive('/workflows/approvals/approval-1', '/workflows')).toBe(true);
+    expect(buildWorkspaceBreadcrumb('/workflows/approvals')).toEqual([
+      { label: '工作空间', path: '/chat' },
+      { label: '编排 Studio', path: '/workflows' },
+      { label: '审批待办' },
+    ]);
+    expect(buildWorkspaceBreadcrumb('/workflows/approvals/approval-1')).toEqual([
+      { label: '工作空间', path: '/chat' },
+      { label: '编排 Studio', path: '/workflows' },
+      { label: '审批详情' },
+    ]);
+  });
+});
+
 describe('管理端导航权限过滤', () => {
   /** 读取指定权限下的可见菜单路径。 */
   const visiblePaths = (permissions?: readonly string[]): string[] =>
