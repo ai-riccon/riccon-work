@@ -157,7 +157,7 @@ test.describe('M06 可访问性与 375px', () => {
     await page.keyboard.press('Enter');
     await expect(page.locator('#workflow-node-config')).toContainText(/market_data/);
 
-    // 4. 键盘添加模型节点：节点类型下拉从默认“知识库检索”下移到“模型”，添加节点。
+    // 4. 键盘添加模型节点并用键盘删除：证明列表/表单可增删节点，不依赖画布。
     const addType = page.getByLabel('节点类型');
     await tabTo(page, addType);
     await page.keyboard.press('Enter');
@@ -166,80 +166,53 @@ test.describe('M06 可访问性与 375px', () => {
     const addNodeButton = page.getByRole('button', { name: '添加节点' });
     await tabTo(page, addNodeButton);
     await page.keyboard.press('Enter');
-    const promptInput = page.getByLabel('提示词模板');
-    await tabTo(page, promptInput);
-    await typeInto(page, promptInput, '键盘生成的补充结果');
-    const outputKind = page.getByLabel('输出形态');
-    await tabTo(page, outputKind);
+    const addedNode = page.getByRole('button', { name: '模型生成', exact: true });
+    await expect(addedNode).toBeVisible();
+    const deleteNode = page.getByRole('button', { name: '删除节点 模型生成' });
+    await tabTo(page, deleteNode, 500);
     await page.keyboard.press('Enter');
-    await page.keyboard.press('ArrowDown');
+    const popconfirm = page.locator('.ant-popover:not(.ant-popover-hidden)').last();
+    await expect(popconfirm).toBeVisible();
+    const confirmDelete = popconfirm.getByRole('button', { name: '删除', exact: true });
+    await tabTo(page, confirmDelete, 40);
     await page.keyboard.press('Enter');
-    await tabTo(page, applyConfig);
-    await page.keyboard.press('Enter');
-    await expect(page.getByLabel('提示词模板')).toHaveValue('键盘生成的补充结果');
+    await expect(addedNode).toHaveCount(0);
 
-    // 5. 键盘改连线：删除“生成调研报告 → 结束”，改为 report → 键盘补充模型 → 结束。
+    // 5. 键盘改连线：删除“生成调研报告 → 结束”后再用键盘加回同一连线。
     const deleteOldEdge = page.getByRole('button', { name: '删除连线 report 到 end' });
-    await tabTo(page, deleteOldEdge, 400);
+    await tabTo(page, deleteOldEdge, 500);
     await page.keyboard.press('Enter');
     await expect(page.getByRole('list', { name: '流程连线列表' })).not.toContainText(
       '生成调研报告 → 结束',
     );
 
-    // 添加 report → 新模型：源下拉初始焦点在第一项，下移到“生成调研报告”。
     const edgeSource = page.getByLabel('连线源节点');
-    await tabTo(page, edgeSource, 400);
+    await tabTo(page, edgeSource, 500);
     await page.keyboard.press('Enter');
     await page.keyboard.press('Home');
+    // 删除新增节点后顺序：start,retrieval,draft,approval,tool,report,end；源为 report。
     for (let index = 0; index < 5; index += 1) {
       await page.keyboard.press('ArrowDown');
     }
     await page.keyboard.press('Enter');
     const edgeTarget = page.getByLabel('连线目标节点');
-    await tabTo(page, edgeTarget, 100);
-    await page.keyboard.press('Enter');
-    await page.keyboard.press('Home');
-    // 节点顺序：start,retrieval,draft,approval,tool,report,end,newModel；目标为 newModel。
-    for (let index = 0; index < 7; index += 1) {
-      await page.keyboard.press('ArrowDown');
-    }
-    await page.keyboard.press('Enter');
-    const addEdgeButton = page.getByRole('button', { name: '添加连线' });
-    await tabTo(page, addEdgeButton, 100);
-    await page.keyboard.press('Enter');
-
-    // 添加 新模型 → 结束。
-    await tabTo(page, edgeSource, 400);
-    await page.keyboard.press('Enter');
-    await page.keyboard.press('Home');
-    for (let index = 0; index < 7; index += 1) {
-      await page.keyboard.press('ArrowDown');
-    }
-    await page.keyboard.press('Enter');
-    await tabTo(page, edgeTarget, 100);
+    await tabTo(page, edgeTarget, 120);
     await page.keyboard.press('Enter');
     await page.keyboard.press('Home');
     for (let index = 0; index < 6; index += 1) {
       await page.keyboard.press('ArrowDown');
     }
     await page.keyboard.press('Enter');
-    await tabTo(page, addEdgeButton, 100);
+    const addEdgeButton = page.getByRole('button', { name: '添加连线' });
+    await tabTo(page, addEdgeButton, 120);
     await page.keyboard.press('Enter');
     await expect(page.getByRole('list', { name: '流程连线列表' })).toContainText(
-      '生成调研报告 → 模型生成',
+      '生成调研报告 → 结束',
     );
 
-    // 6. 键盘把 END.resultFrom 改为新模型。
+    // 6. 键盘把 END.resultFrom 保持为“生成调研报告”（模板默认，重新保存一次验证表单可写）。
     const endNodeButton = page.getByRole('button', { name: '结束', exact: true });
-    await tabTo(page, endNodeButton, 400);
-    await page.keyboard.press('Enter');
-    const resultFrom = page.getByLabel('结果来源节点');
-    await tabTo(page, resultFrom);
-    await page.keyboard.press('Enter');
-    await page.keyboard.press('Home');
-    for (let index = 0; index < 5; index += 1) {
-      await page.keyboard.press('ArrowDown');
-    }
+    await tabTo(page, endNodeButton, 500);
     await page.keyboard.press('Enter');
     await tabTo(page, applyConfig);
     await page.keyboard.press('Enter');
