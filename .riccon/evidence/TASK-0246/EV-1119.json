@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-1119",
+  "task_id": "TASK-0246",
+  "command": "pnpm --filter @riccon/web test:coverage && pnpm --filter @riccon/web typecheck && pnpm --filter @riccon/web lint && pnpm --filter @riccon/web build && node apps/web/scripts/check-prod-bundle.mjs && test -f apps/web/dist/p__workflow__history__index.async.js && test -f apps/web/dist/p__workflow__run__detail.async.js && grep -qF 'p__workflow__history__index' apps/web/dist/umi.js && grep -qF 'p__workflow__run__detail' apps/web/dist/umi.js && grep -qF '\"/workflows/runs/:workflowRunId\"' apps/web/dist/umi.js",
+  "manual": false,
+  "commit": "30e27c473b5a117315115e7d0cca2d4936a3050e",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0246/EV-1119-2026-11-25T23-44-39-132+08-00-pnpm-filter-riccon-web-test-coverage-pnpm-filter.log",
+  "output_sha256": "ead5d6422fe308ee4b128eb555a7c9aaa64c0e109dc4cfb02392f58a84de026b",
+  "output_bytes": 20724,
+  "agent": "riccon/builder-b3",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-25T23:42:02.738+08:00",
+  "finished_at": "2026-11-25T23:44:38.388+08:00",
+  "duration_ms": 155649,
+  "note": "T12c：web 全量 test:coverage + typecheck + lint + build + 产物守卫 + run/history chunk 与路由字符串校验（clean c629783e）",
+  "recorded_at": "2026-11-25T23:44:39.133+08:00"
+}
