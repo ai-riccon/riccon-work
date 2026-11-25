@@ -71,13 +71,13 @@ contracts/
 
 ### 3.2 幂等键约定
 
-| 事件                                  | 幂等键                                                                                                 |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `riccon.file.parse.requested.v1`      | `file:{fileId}:parse:{parseId}`                                                                        |
-| `riccon.knowledge.index.requested.v1` | `doc:{documentId}:index:{attempt}`                                                                     |
-| `riccon.agent.run.requested.v1`       | `run:{runId}:requested:{attempt}`                                                                      |
-| `riccon.agent.run.resume.v1`          | `run:{runId}:resume:{approvalId}`                                                                      |
-| `riccon.agent.run.cancel.v1`          | `run:{runId}:cancel`                                                                                   |
+| 事件                                  | 幂等键                             |
+| ------------------------------------- | ---------------------------------- |
+| `riccon.file.parse.requested.v1`      | `file:{fileId}:parse:{parseId}`    |
+| `riccon.knowledge.index.requested.v1` | `doc:{documentId}:index:{attempt}` |
+| `riccon.agent.run.requested.v1`       | `run:{runId}:requested:{attempt}`  |
+| `riccon.agent.run.resume.v1`          | `run:{runId}:resume:{approvalId}`  |
+| `riccon.agent.run.cancel.v1`          | `run:{runId}:cancel`               |
 
 ### 3.3 SSE
 
@@ -96,7 +96,7 @@ contracts/
 - 错误：RFC 9457 `application/problem+json`，至少 `type/title/status/code/traceId`；
   跨租户与跨部门对象统一 404 `RICCON-TENANT-404`；部门/空间成员冲突使用 `RICCON-DEPT-409`；OIDC 绑定冲突使用 `RICCON-OIDC-409`；审计查询/导出使用 `RICCON-AUDIT-*`；模型配置使用 `RICCON-MODEL-400/409`；配额使用 `RICCON-QUOTA-429/503`；成本查询使用 `RICCON-COST-400/503`；知识库 ACL/下载/重索引/连接器使用 `RICCON-KB-400/404/409/502/503`（无源文件 `RICCON-KB-404` 只在 ACL 通过后出现，不替代不可见时的 `RICCON-TENANT-404`；源文件读取失败为 `RICCON-KB-502`；连接器跨租户统一 `RICCON-TENANT-404`，同租户非管理员 `RICCON-AUTH-403`）。429 用 `code` 判别：`RICCON-QUOTA-429` → `QuotaExceededProblem`；`RICCON-RATE-429`/`RICCON-QUEUE-429` → `RateLimitedProblem`。
 - 下载：工作空间业务文件由服务端校验归属后签发预签名 URL，TTL ≤ 300 秒；URL 绑定对象 key。知识库文档下载（M05）是例外：`GET /api/v1/knowledge/documents/{documentId}/download` 每次请求重判文档 ACL，由 API 流式代理返回，`Content-Type` 为文档 `mimeType`，`Content-Disposition` 使用 `filename*=UTF-8''`（RFC 5987），不返回对象 key、预签名 URL 或存储端点；对象存储读取失败返回 502 `RICCON-KB-502`，响应不含桶名/key/存储端点；原工作空间路径仍只按空间谓词判定。审计导出是另一例外：CSV 由 API 流式生成，不写对象存储、无预签名 URL，只有申请人可在批准有效期内下载；平台租户自身导出 M10 不支持（403）。
-- 幂等：`Idempotency-Key` 用于创建报告任务、审批决定、重试、工作流运行/重试/审批决定（键级）；工作流 create/duplicate 不承诺键级重放，publish 使用资源级幂等（见 §4.2）。审计导出审批使用状态条件更新，不做幂等重放。模型路由/开关使用 `version` 乐观锁；凭据新增/轮换不承诺 `Idempotency-Key`，由 HMAC fingerprint 唯一键与状态机兜底。连接器创建/立即同步可选 `Idempotency-Key`；连接器凭据 `PUT` 为覆盖写（轮换），不做幂等重放。
+- 幂等：`Idempotency-Key` 用于创建报告任务、审批决定、重试、工作流运行/重试/审批决定（键级）；工作流 create/duplicate/template copy 不承诺键级重放（copy 的可选键仅长度/兼容校验），publish 使用资源级幂等（见 §4.2）。审计导出审批使用状态条件更新，不做幂等重放。模型路由/开关使用 `version` 乐观锁；凭据新增/轮换不承诺 `Idempotency-Key`，由 HMAC fingerprint 唯一键与状态机兜底。连接器创建/立即同步可选 `Idempotency-Key`；连接器凭据 `PUT` 为覆盖写（轮换），不做幂等重放。
 - 模型网关：端点只来自部署允许列表，没有端点创建 API；`PUT /api/v1/admin/model-providers/{providerId}` 只改展示名，`baseUrl`/`environmentLabel`/`protocol` 写入返回 400；`apiKey` 只进不出，响应只返回 `maskedHint`；路由/开关保存后下一次请求生效。员工 `/models` 使用 `EmployeeModel`（无价格字段）；平台用 `AdminModel`。
 - 配额/成本：配额按请求数、租户+用户、日+月、`Asia/Shanghai`；超限用 `QuotaExceededProblem`（`RICCON-QUOTA-429`）；成本金额用 6 位小数字符串。平台 `PlatformCostReport` **不含**用户字段，租户 `TenantCostReport` 含用户明细；`unbucketedCalls` 显式呈现 `cost_day NULL`。
 
@@ -120,29 +120,29 @@ contracts/
 
 ### 4.2 编排 Studio（M06）
 
-| 方法     | 路径                                                     | 权限                              | 说明                                                          |
-| -------- | -------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------- |
+| 方法     | 路径                                                     | 权限                              | 说明                                                                          |
+| -------- | -------------------------------------------------------- | --------------------------------- | ----------------------------------------------------------------------------- |
 | GET/POST | `/api/v1/workflows`                                      | `workflow.read` / `workflow.edit` | 列表（`view=MINE/RUNNABLE/ALL`）/ 新建草稿或从模板复制；create 不承诺键级重放 |
-| GET      | `/api/v1/workflows/runtime-limits`                       | `workflow.read`                   | 生效限制、保留、开关；租户只读；字面路径优先于 `{workflowId}` |
-| GET      | `/api/v1/workflows/{workflowId}`                         | `workflow.read`                   | 详情 + `draftGraph`（仅所有者/租户管理员）                    |
-| PUT      | `/api/v1/workflows/{workflowId}/draft`                   | `workflow.edit`                   | 保存草稿；编辑级校验（非法 400 不写库）；`version` 乐观锁，冲突 409 |
-| POST     | `/api/v1/workflows/{workflowId}/duplicate`               | `workflow.edit`                   | 另存副本；不承诺键级重放                                      |
-| POST     | `/api/v1/workflows/{workflowId}/validate`                | `workflow.edit`                   | 完整发布口径逐项校验（同 PUBLISH）；可带 runScope/departmentId；只读 |
-| POST     | `/api/v1/workflows/{workflowId}/publish`                 | `workflow.publish`                | 完整校验（含 NO_APPROVER/范围）；资源级幂等；失败不产生版本   |
-| GET      | `/api/v1/workflows/{workflowId}/versions`                | `workflow.read`                   | 版本列表                                                      |
-| POST     | `/api/v1/workflows/{workflowId}/disable`、`/enable`      | `workflow.publish`                | 停用/启用；审计前后状态                                       |
-| POST     | `/api/v1/workflows/{workflowId}/transfer`                | `workflow.manage`                 | 移交所有权（仅租户管理员）                                    |
-| POST/GET | `/api/v1/workflows/{workflowId}/runs`                    | `workflow.run` / `workflow.read`  | 创建运行 / 该流程运行列表                                     |
-| GET      | `/api/v1/workflow-runs`                                  | `workflow.read`                   | 运行历史（流程/版本/状态/时间/发起人过滤）                    |
-| GET      | `/api/v1/workflow-runs/{workflowRunId}`                  | `workflow.read`                   | 详情：节点时间线、审批、引用、结果                            |
-| POST     | `/api/v1/workflow-runs/{workflowRunId}/cancel`、`/retry` | `workflow.run`                    | 取消 / 重试失败节点                                           |
-| GET      | `/api/v1/workflow-approvals`、`/{id}`                    | `workflow.approve`                | 待办（仅分配给本人）/ 审批详情                                |
-| POST     | `/api/v1/workflow-approvals/{id}/decision`               | `workflow.approve`                | 批准/拒绝；自批 403；拒绝理由必填                             |
-| GET      | `/api/v1/workflow-templates`                             | `workflow.read`                   | 内置模板列表（M06 至少 1 个）                                 |
-| POST     | `/api/v1/workflow-templates/{templateId}/copy`           | `workflow.edit`                   | 复制为当前用户草稿                                            |
+| GET      | `/api/v1/workflows/runtime-limits`                       | `workflow.read`                   | 生效限制、保留、开关；租户只读；字面路径优先于 `{workflowId}`                 |
+| GET      | `/api/v1/workflows/{workflowId}`                         | `workflow.read`                   | 详情 + `draftGraph`（仅所有者/租户管理员）                                    |
+| PUT      | `/api/v1/workflows/{workflowId}/draft`                   | `workflow.edit`                   | 保存草稿；编辑级校验（非法 400 不写库）；`version` 乐观锁，冲突 409           |
+| POST     | `/api/v1/workflows/{workflowId}/duplicate`               | `workflow.edit`                   | 另存副本；不承诺键级重放                                                      |
+| POST     | `/api/v1/workflows/{workflowId}/validate`                | `workflow.edit`                   | 完整发布口径逐项校验（同 PUBLISH）；可带 runScope/departmentId；只读          |
+| POST     | `/api/v1/workflows/{workflowId}/publish`                 | `workflow.publish`                | 完整校验（含 NO_APPROVER/范围）；资源级幂等；失败不产生版本                   |
+| GET      | `/api/v1/workflows/{workflowId}/versions`                | `workflow.read`                   | 版本列表                                                                      |
+| POST     | `/api/v1/workflows/{workflowId}/disable`、`/enable`      | `workflow.publish`                | 停用/启用；审计前后状态                                                       |
+| POST     | `/api/v1/workflows/{workflowId}/transfer`                | `workflow.manage`                 | 移交所有权（仅租户管理员）                                                    |
+| POST/GET | `/api/v1/workflows/{workflowId}/runs`                    | `workflow.run` / `workflow.read`  | 创建运行 / 该流程运行列表                                                     |
+| GET      | `/api/v1/workflow-runs`                                  | `workflow.read`                   | 运行历史（流程/版本/状态/时间/发起人过滤）                                    |
+| GET      | `/api/v1/workflow-runs/{workflowRunId}`                  | `workflow.read`                   | 详情：节点时间线、审批、引用、结果                                            |
+| POST     | `/api/v1/workflow-runs/{workflowRunId}/cancel`、`/retry` | `workflow.run`                    | 取消 / 重试失败节点                                                           |
+| GET      | `/api/v1/workflow-approvals`、`/{id}`                    | `workflow.approve`                | 待办（仅分配给本人）/ 审批详情                                                |
+| POST     | `/api/v1/workflow-approvals/{id}/decision`               | `workflow.approve`                | 批准/拒绝；自批 403；拒绝理由必填                                             |
+| GET      | `/api/v1/workflow-templates`                             | `workflow.read`                   | 内置模板列表（M06 至少 1 个）                                                 |
+| POST     | `/api/v1/workflow-templates/{templateId}/copy`           | `workflow.edit`                   | 复制为当前用户草稿；可选键仅长度/兼容校验，不承诺重放                         |
 
 - 图约束：1 个 `START`、≥1 个 `END`、每个节点入边 ≤1、`CONDITION` 出边恰好 `TRUE/FALSE`、无环/无孤立、节点 ≤50、边 ≤100。**校验 profile**：SAVE=编辑级（结构/必填/节点配置/模型/工具/条件/结果/限制；非法 400 不写库/不写审计）；VALIDATE=PUBLISH=完整发布口径（再加审批可达/NO_APPROVER；VALIDATE 可选带 `runScope`/`departmentId`，带范围时与 PUBLISH 同口径（DEPARTMENT 必须带 departmentId，非 DEPARTMENT 带 departmentId 返回 400），省略时不含范围；VALIDATE 只读，PUBLISH 失败不产生版本）；运行前再做一次执行前校验。SAVE 不替代发布校验，也不允许非法图。
-- 幂等：run/retry/approval 使用键级 `Idempotency-Key` 与 V15 唯一约束；publish 使用资源级幂等（同 `graph_sha256 + runScope + departmentId` 返回既有版本）；create/duplicate **不承诺**键级重放，前端必须防重复提交。publish 不再要求 `Idempotency-Key`。
+- 幂等：run/retry/approval 使用键级 `Idempotency-Key` 与 V15 唯一约束；publish 使用资源级幂等（同 `graph_sha256 + runScope + departmentId` 返回既有版本）；create/duplicate/**template copy** 不承诺键级重放（copy 的可选键仅长度/兼容校验），前端必须防重复提交。publish 不再要求 `Idempotency-Key`。
 - 版本：发布不可变；运行绑定版本；`runScope` 为版本属性，变更需发布新版本；旧版本仍可运行，除非流程停用。
 - 审批：指定 `USER` 或 `ROLE`（`TENANT_ADMIN`/`WORKFLOW_EDITOR`/`MEMBER`）；发起人不得审批；无可用审批人保持等待；写工具/高风险工具必须前置审批，重试重新审批；审批摘要按审批人 ACL 最小可见。
 - 运行：默认 180 天保留、到期不可见、无在线删除；节点/步数/超时/并发/5 MiB 限制由部署配置；超限 `RICCON-WF-429` 或 `WF_*` 稳定码。队列执行不变量（batch=1/槽位、心跳≤lease/3、独立调度/心跳池）属于实现/运维约束，不在 REST 契约暴露；指标/RUNBOOK 见 ADR-0024 §10。

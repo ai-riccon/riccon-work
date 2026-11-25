@@ -3215,12 +3215,21 @@ paths:
       tags: [Workflow]
       operationId: copyWorkflowTemplate
       summary: 从模板创建草稿
-      description: 生成当前用户的草稿副本（默认仅自己可见）；模板本身不被修改；来源与版本记录在草稿上。
+      description: |
+        生成当前用户的草稿副本（默认仅自己可见）；模板本身不被修改；来源与版本记录在草稿上。
+        M06 的 `Idempotency-Key` 仅做长度/兼容校验，**不承诺键级重放**：每次成功复制生成新草稿并写审计，重复请求可能产生多个副本；前端应防重复提交。
       x-riccon-permission: workflow.edit
       parameters:
         - $ref: "#/components/parameters/WorkflowTemplateId"
         - $ref: "#/components/parameters/CsrfToken"
-        - $ref: "#/components/parameters/IdempotencyKey"
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: 仅做长度/兼容校验；M06 不承诺键级重放。
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 128
       requestBody:
         required: false
         content:
