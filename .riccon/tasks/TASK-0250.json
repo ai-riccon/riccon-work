@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "TASK-0250",
+  "module_id": "M06",
+  "title": "M06 platform-domain 覆盖率修复",
+  "owner": "riccon/builder-b2",
+  "status": "review",
+  "write_scope": [
+    "platform/platform-domain/src/test/java/com/riccon/platform/domain/workflow/**",
+    "platform/platform-domain/src/test/java/com/riccon/platform/domain/identity/**",
+    "platform/platform-domain/src/test/java/com/riccon/platform/domain/audit/**"
+  ],
+  "acceptance": [
+    "修复 TASK-0249 暴露的 riccon-platform-domain 覆盖率 0.59<0.80：为 M06 workflow 枚举/常量、权限/审计词汇补测试（不排除生产代码、不降低门槛）。",
+    "./mvnw -q -pl platform/platform-domain verify jacoco:report 达 line ≥80/branch ≥70；不影响既有词测试；clean EV；任务只移 review。"
+  ],
+  "evidence": [
+    "EV-1144"
+  ],
+  "tools_used": [
+    "git",
+    "maven"
+  ],
+  "blocker": null,
+  "created_at": "2026-11-26T05:16:35.518+08:00",
+  "updated_at": "2026-11-26T05:21:50.994+08:00",
+  "baseline_commit": "2ce72fcec0775a03f1ecd30896f3df366ca6fcb3",
+  "end_commit": "f1bee5a6"
+}
