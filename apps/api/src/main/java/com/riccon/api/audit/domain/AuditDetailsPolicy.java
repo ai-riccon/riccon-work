@@ -35,7 +35,8 @@ import java.util.UUID;
  * <p>M06：{@code workflow.*} 动作只允许 ID、枚举、计数与脱敏摘要（ADR-0024 第 8.1/8.2 节）；
  * {@code workflow.feature.changed} 强制 {@code enabled}/{@code source=DEPLOYMENT_CONFIG}/
  * {@code instanceId}/{@code observedAt} 四键，供关闭态启动观测审计（OPS-M06-019）。
- * 未登记动作仍只允许空 details，保持 M10 读取端 fail-closed。
+ * {@code workflow.approval.decided} 按 DEC-0050=B 只写 {@code commentSha256}，历史
+ * {@code decisionComment} 仅为读取兼容保留；未登记动作仍只允许空 details，保持 M10 读取端 fail-closed。
  */
 public final class AuditDetailsPolicy {
 
@@ -328,6 +329,9 @@ public final class AuditDetailsPolicy {
                             "decision",
                             "approverUserId",
                             "targetToolName",
+                            "commentSha256",
+                            // 历史行兼容：DEC-0050=B 之前的审计曾写明文理由，读取端必须继续可读；
+                            // 新写入只允许 commentSha256，写入方不得再使用本键（仅读，不新写）。
                             "decisionComment")),
             // 启动观测（不是变更日志）：ADR-0024 §4.8/§8.1 要求 instanceId 与 observedAt 必须可写入。
             Map.entry(
@@ -360,7 +364,10 @@ public final class AuditDetailsPolicy {
             Map.entry(AuditActions.WORKFLOW_RUN_FAILED, Set.of("failedNodeId")),
             Map.entry(AuditActions.WORKFLOW_RUN_CANCELLED, Set.of("reason")),
             Map.entry(AuditActions.WORKFLOW_APPROVAL_REQUESTED, Set.of("targetToolName")),
-            Map.entry(AuditActions.WORKFLOW_APPROVAL_DECIDED, Set.of("targetToolName", "decisionComment")),
+            Map.entry(
+                    AuditActions.WORKFLOW_APPROVAL_DECIDED,
+                    // commentSha256 仅在无理由时可显式为空；decisionComment 只为历史读取兼容保留。
+                    Set.of("targetToolName", "commentSha256", "decisionComment")),
             Map.entry(AuditActions.WORKFLOW_FEATURE_CHANGED, Set.of("reason")),
             // M06：J2 工具调用不带工作流引用；显式 null 与省略等价，避免写入端为空值失败。
             Map.entry(AuditActions.MCP_TOOL_INVOKED, Set.of("workflowRunId", "workflowNodeId")));
@@ -377,6 +384,16 @@ public final class AuditDetailsPolicy {
             Set.of("modelIds"),
             AuditActions.KNOWLEDGE_ACL_CHANGED,
             Set.of("addedUserIds", "removedUserIds"));
+
+    /**
+     * 历史只读键：读取端兼容，写入端必须拒绝（DEC-0050=B）。
+     *
+     * <p>{@code workflow.approval.decided.decisionComment} 在 DEC-0050=B 之前被写入审计；历史行
+     * 必须继续可读，但新写入只能写 {@code commentSha256}。读取端使用 {@link #validate(String, Map)}，
+     * 写入端对登记的动作额外调用 {@link #validateWrite(String, Map)}。
+     */
+    private static final Map<String, Set<String>> LEGACY_READ_ONLY_KEYS =
+            Map.of(AuditActions.WORKFLOW_APPROVAL_DECIDED, Set.of("decisionComment"));
 
     /**
      * 动作级数组元素上限；未登记时使用 {@link #DEFAULT_MAX_ARRAY_ELEMENTS}。
@@ -493,12 +510,13 @@ public final class AuditDetailsPolicy {
     /**
      * 动作级字符串长度覆盖；未登记的键使用 {@link #MAX_VALUE_LENGTH}。
      *
-     * <p>M06 审批理由 {@code workflow.approval.decided.decisionComment} 按契约、ADR-0024 §8.1/§8.3 与
-     * {@code workflow_approval.decision_comment VARCHAR(500)} 允许 1–500 字符；读取端复用同一策略，
-     * 避免 201–500 字符出现“写得进、读不出”（REV-TASK-0219-001 F-001、REV-TASK-0226-001 F-002）。
+     * <p>M06 审批理由 {@code workflow.approval.decided.decisionComment} 是 DEC-0050=B 之前的审计
+     * 历史键，按契约、ADR-0024 §8.1/§8.3 与 {@code workflow_approval.decision_comment VARCHAR(500)}
+     * 允许 1–500 字符；读取端复用同一策略，避免历史 201–500 字符行“读不出”。新写入只写
+     * {@code commentSha256}（64 位小写十六进制），不允许再写明文理由。
      */
     private static final Map<String, Map<String, Integer>> VALUE_LENGTH_LIMITS =
-            Map.of(AuditActions.WORKFLOW_APPROVAL_DECIDED, Map.of("decisionComment", 500));
+            Map.of(AuditActions.WORKFLOW_APPROVAL_DECIDED, Map.of("decisionComment", 500, "commentSha256", 64));
 
     /** 未在 {@link #ARRAY_LIMITS} 登记时的数组元素上限；ADR-0021 §7.4 规定路由链最多 20 个 UUID。 */
     private static final int DEFAULT_MAX_ARRAY_ELEMENTS = 20;
@@ -546,6 +564,30 @@ public final class AuditDetailsPolicy {
             throw new IllegalArgumentException("audit detail key is not allowed for " + action + ": " + key);
         }
         validateRequiredDetails(action, safeDetails);
+    }
+
+    /**
+     * 写入前校验：在读取兼容白名单之上拒绝历史只读键。
+     *
+     * <p>读取端继续使用 {@link #validate(String, Map)} 以兼容历史行；写入端对登记了历史键的动作
+     * （当前为 {@code workflow.approval.decided.decisionComment}）必须调用本方法，防止 DEC-0050=B
+     * 之后重新写入明文理由。未登记动作与本方法无额外约束。
+     *
+     * @param action 审计动作名
+     * @param details 待写入字段
+     * @throws IllegalArgumentException 出现未授权键、敏感键、非法值类型或历史只读键
+     */
+    public static void validateWrite(String action, Map<String, Object> details) {
+        validate(action, details);
+        Set<String> legacyKeys = LEGACY_READ_ONLY_KEYS.getOrDefault(action, Set.of());
+        if (legacyKeys.isEmpty() || details == null) {
+            return;
+        }
+        for (String key : details.keySet()) {
+            if (legacyKeys.contains(key)) {
+                throw new IllegalArgumentException("audit detail key is read-only for " + action + ": " + key);
+            }
+        }
     }
 
     /**

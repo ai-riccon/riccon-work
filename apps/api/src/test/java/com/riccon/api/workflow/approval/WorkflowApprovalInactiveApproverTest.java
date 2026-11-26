@@ -80,5 +80,6 @@ class WorkflowApprovalInactiveApproverTest extends WorkflowApprovalTestSupport {
         assertThat(details.path("approverUserId").asText()).isEqualTo(disabledEditorId.toString());
         assertThat(details.path("decision").asText()).isEqualTo("APPROVE");
         assertThat(details.has("decisionComment")).isFalse();
+        assertThat(details.has("commentSha256")).isFalse();
     }
 }

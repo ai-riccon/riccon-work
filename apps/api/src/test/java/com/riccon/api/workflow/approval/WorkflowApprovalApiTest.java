@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.riccon.api.audit.service.AuditDetailsReader;
 import com.riccon.api.support.ApiTestClient;
+import com.riccon.api.workflow.approval.service.WorkflowApprovalCommentHash;
 import com.riccon.platform.domain.audit.AuditActions;
 import com.riccon.platform.domain.workflow.WorkflowNodeStatus;
 import java.time.Instant;
@@ -24,8 +25,8 @@ import tools.jackson.databind.JsonNode;
  *
  * <p>覆盖：待办仅 assignee PENDING、created_at ASC、分页与空态；详情 dataScopeSummary 与脱敏参数、
  * 非 assignee/管理员/发起人/跨租户 404；批准恢复运行、拒绝失败与下游 SKIPPED、拒绝理由必填与 201/500
- * 字符审计可读（T01 F-001/T07a F-002）；自批/范围外 403 + denied 审计、平台与跨租户 404、无审批人
- * 不自动放行、重复/并发 409。
+ * 字符写入审批记录（DEC-0050=B 审计只读 hash）；自批/范围外 403 + denied 审计、平台与跨租户 404、
+ * 无审批人不自动放行、重复/并发 409。
  */
 class WorkflowApprovalApiTest extends WorkflowApprovalTestSupport {
 
@@ -242,7 +243,8 @@ class WorkflowApprovalApiTest extends WorkflowApprovalTestSupport {
         assertThat(details.path("approverUserId").asText())
                 .isEqualTo(fixture.otherEditorId().toString());
         assertThat(details.path("targetToolName").asText()).isEqualTo("search-mock");
-        assertThat(details.path("decisionComment").asText()).isEqualTo("同意");
+        assertThat(details.path("commentSha256").asText()).isEqualTo(WorkflowApprovalCommentHash.sha256("同意"));
+        assertThat(details.has("decisionComment")).isFalse();
 
         assertProblem(
                 decideApproval(fixture.otherEditor(), approvalId, "APPROVE", "同意", "decision-approve-001"),
@@ -253,7 +255,7 @@ class WorkflowApprovalApiTest extends WorkflowApprovalTestSupport {
     }
 
     @Test
-    @DisplayName("SEC-WF-001 拒绝理由必填且 201 字符可写入并可读回审计")
+    @DisplayName("SEC-WF-001 拒绝理由必填且 201 字符保留在审批记录，审计只存 hash")
     void reject_requiresComment_andEndsRunWithSkippedDownstream() {
         Fixture fixture = fixture("wap");
         String workflowId = publishApprovalWorkflow(fixture, "拒绝运行");
@@ -291,6 +293,10 @@ class WorkflowApprovalApiTest extends WorkflowApprovalTestSupport {
         assertThat(approval.status()).isEqualTo("REJECTED");
         assertThat(approval.decidedBy()).isEqualTo(fixture.otherEditorId());
         assertThat(approval.decisionComment()).isEqualTo(reason);
+        // 决定后审批详情仍返回理由原文（assignee 可见），审计只存 hash。
+        JsonNode detail = client.json(getApproval(fixture.otherEditor(), approvalId));
+        assertThat(detail.path("status").asText()).isEqualTo("REJECTED");
+        assertThat(detail.path("decisionComment").asText()).isEqualTo(reason);
 
         NodeRow approvalNode = nodeRows(fixture.tenant(), runId, APPROVAL_NODE).getLast();
         assertThat(approvalNode.status()).isEqualTo(WorkflowNodeStatus.FAILED);
@@ -312,14 +318,17 @@ class WorkflowApprovalApiTest extends WorkflowApprovalTestSupport {
         assertThat(audits.getFirst().outcome()).isEqualTo("SUCCESS");
         JsonNode details = audits.getFirst().details();
         assertThat(details.path("decision").asText()).isEqualTo("REJECT");
-        assertThat(details.path("decisionComment").asText()).isEqualTo(reason);
+        assertThat(details.path("commentSha256").asText()).isEqualTo(WorkflowApprovalCommentHash.sha256(reason));
+        assertThat(details.has("decisionComment")).isFalse();
+        assertThat(audits.getFirst().rawDetails()).doesNotContain(reason);
         Map<String, Object> readBack = AuditDetailsReader.read(
                 JSON, AuditActions.WORKFLOW_APPROVAL_DECIDED, audits.getFirst().rawDetails());
-        assertThat((String) readBack.get("decisionComment")).hasSize(201);
+        assertThat((String) readBack.get("commentSha256")).hasSize(64);
+        assertThat(readBack).doesNotContainKey("decisionComment");
     }
 
     @Test
-    @DisplayName("SEC-WF-001 500 字符理由写入并可读回审计，501 字符拒绝")
+    @DisplayName("SEC-WF-001 500 字符理由保留在审批记录，审计只存 hash；501 字符拒绝")
     void decide_commentLengthBoundary_isReadableForAudit() {
         Fixture fixture = fixture("wap");
         String workflowId = publishApprovalWorkflow(fixture, "理由边界");
@@ -346,10 +355,12 @@ class WorkflowApprovalApiTest extends WorkflowApprovalTestSupport {
 
         List<AuditRowAccessor> audits = decidedAudits(fixture.tenant());
         assertThat(audits).hasSize(1);
-        assertThat(audits.getFirst().details().path("decisionComment").asText()).isEqualTo(comment);
+        assertThat(audits.getFirst().details().path("commentSha256").asText())
+                .isEqualTo(WorkflowApprovalCommentHash.sha256(comment));
+        assertThat(audits.getFirst().details().has("decisionComment")).isFalse();
         Map<String, Object> readBack = AuditDetailsReader.read(
                 JSON, AuditActions.WORKFLOW_APPROVAL_DECIDED, audits.getFirst().rawDetails());
-        assertThat((String) readBack.get("decisionComment")).hasSize(500);
+        assertThat((String) readBack.get("commentSha256")).hasSize(64);
     }
 
     @Test
@@ -395,6 +406,7 @@ class WorkflowApprovalApiTest extends WorkflowApprovalTestSupport {
         assertThat(audits).allSatisfy(audit -> {
             assertThat(audit.outcome()).isEqualTo("DENIED");
             assertThat(audit.details().has("decisionComment")).isFalse();
+            assertThat(audit.details().has("commentSha256")).isFalse();
         });
         assertThat(approvalRow(fixture.tenant(), approvalId).status()).isEqualTo("PENDING");
         RunRow run = runRow(fixture.tenant(), runId);

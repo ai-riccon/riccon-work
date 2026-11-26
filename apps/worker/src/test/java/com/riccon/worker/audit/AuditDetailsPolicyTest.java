@@ -283,6 +283,33 @@ class AuditDetailsPolicyTest {
                 .hasMessageContaining("workflowApprovalId");
     }
 
+    /** M06 审批决定（DEC-0050=B）：只允许理由 hash；明文 decisionComment 必须拒绝。 */
+    @Test
+    void validate_workflowApprovalDecided_acceptsHashAndRejectsPlaintext() {
+        Map<String, Object> decided = new HashMap<>();
+        decided.put("workflowRunId", UUID.randomUUID().toString());
+        decided.put("workflowApprovalId", UUID.randomUUID().toString());
+        decided.put("nodeId", "approval-1");
+        decided.put("decision", "APPROVE");
+        decided.put("approverUserId", UUID.randomUUID().toString());
+        decided.put("targetToolName", null);
+        decided.put("commentSha256", "a".repeat(64));
+        assertThatCode(() -> AuditDetailsPolicy.validate(AuditActions.WORKFLOW_APPROVAL_DECIDED, decided))
+                .doesNotThrowAnyException();
+
+        Map<String, Object> withPlaintext = new HashMap<>(decided);
+        withPlaintext.put("decisionComment", "不合规");
+        assertThatThrownBy(() -> AuditDetailsPolicy.validate(AuditActions.WORKFLOW_APPROVAL_DECIDED, withPlaintext))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("decisionComment");
+
+        Map<String, Object> invalidDecision = new HashMap<>(decided);
+        invalidDecision.put("decision", "MAYBE");
+        assertThatThrownBy(() -> AuditDetailsPolicy.validate(AuditActions.WORKFLOW_APPROVAL_DECIDED, invalidDecision))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("decision");
+    }
+
     /** M06 必填键与停止/取消枚举：缺 ID、非法 status/previousStatus 必须拒绝。 */
     @Test
     void validate_workflowRunRequiredFieldsAndEnums_fail() {

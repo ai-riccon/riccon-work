@@ -11,18 +11,18 @@ import java.util.UUID;
  *
  * <p>ADR-0024 §8.1 把该动作的写入方登记为 api；Worker 侧决定状态机（T07a）为了验证“决定与审计
  * 同事务、审计失败即回滚”的语义，需要在本部署物内写入同名动作。T01 维护的
- * {@code com.riccon.worker.audit.domain.AuditDetailsPolicy} 只登记了
- * {@code workflow.approval.requested}，且该文件不在 T07a 写入范围；因此这里按 ADR 字段清单
- * 提供一份只用于 decided 的本地校验，字段集合与 API 侧读取白名单一致：
+ * {@code com.riccon.worker.audit.domain.AuditDetailsPolicy} 登记了同一动作的共享白名单；这里按
+ * DEC-0050=B 提供一份只用于 decided 的本地校验，字段集合与 API 侧读取白名单一致：
  * {@code workflowRunId/workflowApprovalId/nodeId/decision/approverUserId/targetToolName?/
- * decisionComment?}。新增字段必须先改 ADR 与两侧白名单，禁止在这里放宽。
+ * commentSha256?}。明文 {@code decisionComment} 不再允许写入，历史行由 API 读取端兼容。
+ * 新增字段必须先改 ADR 与两侧白名单，禁止在这里放宽。
  *
  * <p>拒绝路径（自批/范围外/账号停用）复用同一动作但 {@code outcome=denied}，用于满足 ADR
  * §5.2 “自批 403 并写拒绝审计”；拒绝理由不写入，避免把未决内容落审计。
  */
 public final class WorkflowApprovalAuditPolicy {
 
-    /** 允许的 details 键。 */
+    /** 允许的 details 键；明文 decisionComment 不在其中（DEC-0050=B）。 */
     private static final Set<String> ALLOWED_KEYS = Set.of(
             "workflowRunId",
             "workflowApprovalId",
@@ -30,13 +30,13 @@ public final class WorkflowApprovalAuditPolicy {
             "decision",
             "approverUserId",
             "targetToolName",
-            "decisionComment");
+            "commentSha256");
 
     /** 允许为空的键。 */
-    private static final Set<String> NULLABLE_KEYS = Set.of("targetToolName", "decisionComment");
+    private static final Set<String> NULLABLE_KEYS = Set.of("targetToolName", "commentSha256");
 
-    /** 理由最大长度；与 {@code decision_comment} 列宽和 U-05 临时默认一致。 */
-    private static final int MAX_COMMENT_LENGTH = 500;
+    /** 理由哈希长度；SHA-256 十六进制固定 64 位。 */
+    private static final int COMMENT_HASH_LENGTH = 64;
 
     /** 其他字符串值最大长度。 */
     private static final int MAX_VALUE_LENGTH = 200;
@@ -71,7 +71,7 @@ public final class WorkflowApprovalAuditPolicy {
                 throw new IllegalArgumentException("audit detail value must be a string: " + entry.getKey());
             }
             int maxLength = switch (entry.getKey()) {
-                case "decisionComment" -> MAX_COMMENT_LENGTH;
+                case "commentSha256" -> COMMENT_HASH_LENGTH;
                 case "targetToolName" -> MAX_TOOL_NAME_LENGTH;
                 default -> MAX_VALUE_LENGTH;
             };

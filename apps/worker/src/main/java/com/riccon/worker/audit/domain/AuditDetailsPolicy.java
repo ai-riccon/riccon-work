@@ -3,6 +3,7 @@ package com.riccon.worker.audit.domain;
 import com.riccon.platform.domain.audit.AuditActions;
 import com.riccon.platform.domain.knowledge.KnowledgeVisibility;
 import com.riccon.platform.domain.workflow.WorkflowApprovalActionKind;
+import com.riccon.platform.domain.workflow.WorkflowApprovalDecision;
 import com.riccon.platform.domain.workflow.WorkflowRunStatus;
 import java.util.List;
 import java.util.Map;
@@ -20,9 +21,10 @@ import java.util.UUID;
  * {@code com.riccon.api.audit.domain.AuditDetailsPolicy} 保持同一语义，避免写入端与读取端漂移。
  *
  * <p>M06（ADR-0024 §8.1）：Worker 写运行/审批生命周期审计（{@code workflow.run.started/completed/
- * failed/cancelled}、{@code workflow.approval.requested}），并给 {@code mcp.tool.invoked} 追加可选
- * {@code workflowRunId}/{@code workflowNodeId}。只允许 ID、枚举、计数与脱敏摘要；枚举与必填键
- * fail-closed，未登记动作仍只允许空 details，与 API 读取白名单保持对称。
+ * failed/cancelled}、{@code workflow.approval.requested/decided}），并给 {@code mcp.tool.invoked} 追加可选
+ * {@code workflowRunId}/{@code workflowNodeId}。只允许 ID、枚举、计数与脱敏摘要；审批决定按
+ * DEC-0050=B 只写 {@code commentSha256}，不写明文理由。枚举与必填键 fail-closed，未登记动作仍只允许
+ * 空 details，与 API 读取白名单保持对称。
  */
 public final class AuditDetailsPolicy {
 
@@ -77,7 +79,18 @@ public final class AuditDetailsPolicy {
                             "nodeId",
                             "assigneeCount",
                             "actionKind",
-                            "targetToolName")));
+                            "targetToolName")),
+            // DEC-0050=B：审批决定只写理由哈希；历史明文 decisionComment 由 API 读取端兼容，Worker 不写。
+            Map.entry(
+                    AuditActions.WORKFLOW_APPROVAL_DECIDED,
+                    Set.of(
+                            "workflowRunId",
+                            "workflowApprovalId",
+                            "nodeId",
+                            "decision",
+                            "approverUserId",
+                            "targetToolName",
+                            "commentSha256")));
 
     /**
      * 允许 JSON null 的动作级键；没有 nullable 字段的动作不登记，新增时必须显式加入。
@@ -89,6 +102,7 @@ public final class AuditDetailsPolicy {
             Map.entry(AuditActions.WORKFLOW_RUN_FAILED, Set.of("failedNodeId")),
             Map.entry(AuditActions.WORKFLOW_RUN_CANCELLED, Set.of("reason")),
             Map.entry(AuditActions.WORKFLOW_APPROVAL_REQUESTED, Set.of("targetToolName")),
+            Map.entry(AuditActions.WORKFLOW_APPROVAL_DECIDED, Set.of("targetToolName", "commentSha256")),
             Map.entry(AuditActions.MCP_TOOL_INVOKED, Set.of("workflowRunId", "workflowNodeId")));
 
     /**
@@ -106,7 +120,12 @@ public final class AuditDetailsPolicy {
                                     WorkflowRunStatus.FAILED.name(),
                                     WorkflowRunStatus.CANCELLED.name()))),
             Map.entry(AuditActions.WORKFLOW_RUN_CANCELLED, Map.of("previousStatus", runStatusValues())),
-            Map.entry(AuditActions.WORKFLOW_APPROVAL_REQUESTED, Map.of("actionKind", approvalActionKindValues())));
+            Map.entry(AuditActions.WORKFLOW_APPROVAL_REQUESTED, Map.of("actionKind", approvalActionKindValues())),
+            Map.entry(
+                    AuditActions.WORKFLOW_APPROVAL_DECIDED,
+                    Map.of(
+                            "decision",
+                            Set.of(WorkflowApprovalDecision.APPROVE.name(), WorkflowApprovalDecision.REJECT.name()))));
 
     /**
      * 允许受限数组的动作级键；M04 Worker 写入的动作没有数组字段，数组能力保留用于未来
@@ -231,6 +250,14 @@ public final class AuditDetailsPolicy {
                 requireText(details, "workflowApprovalId");
                 requireText(details, "nodeId");
                 requireText(details, "actionKind");
+                return;
+            }
+            case AuditActions.WORKFLOW_APPROVAL_DECIDED -> {
+                requireText(details, "workflowRunId");
+                requireText(details, "workflowApprovalId");
+                requireText(details, "nodeId");
+                requireText(details, "decision");
+                requireText(details, "approverUserId");
                 return;
             }
             default -> {

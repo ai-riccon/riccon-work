@@ -29,8 +29,8 @@ import org.springframework.stereotype.Component;
  * {@link WorkflowApprovalAuditPolicy} 按 ADR 字段清单校验。
  *
  * <p><b>fail-closed</b>：本类不捕获仓储异常；调用方在事务内调用时，审计失败会让整个审批停车/
- * 决定回滚，不产生无审计的业务变更。details 只含 ID、枚举与理由，不含工具参数、提示词、凭据或
- * 文档正文。
+ * 决定回滚，不产生无审计的业务变更。details 只含 ID、枚举与理由哈希，不含工具参数、提示词、
+ * 凭据、文档正文或审批理由明文（DEC-0050=B）。
  */
 @Component
 public class WorkflowApprovalAuditor {
@@ -114,6 +114,8 @@ public class WorkflowApprovalAuditor {
             String traceId) {
         Map<String, Object> details =
                 decisionDetails(runId, approvalId, nodeKey, decision, approverUserId, targetToolName, comment);
+        // 共享动作级白名单与本地字段清单双重校验；两者都 fail-closed。
+        AuditDetailsPolicy.validate(AuditActions.WORKFLOW_APPROVAL_DECIDED, details);
         WorkflowApprovalAuditPolicy.validateDecided(details);
         append(tenantId, AuditActions.WORKFLOW_APPROVAL_DECIDED, AuditOutcome.SUCCESS, runId, traceId, details);
     }
@@ -143,6 +145,7 @@ public class WorkflowApprovalAuditor {
             String traceId) {
         Map<String, Object> details =
                 decisionDetails(runId, approvalId, nodeKey, decision, approverUserId, targetToolName, null);
+        AuditDetailsPolicy.validate(AuditActions.WORKFLOW_APPROVAL_DECIDED, details);
         WorkflowApprovalAuditPolicy.validateDecided(details);
         append(tenantId, AuditActions.WORKFLOW_APPROVAL_DECIDED, AuditOutcome.DENIED, runId, traceId, details);
     }
@@ -156,7 +159,7 @@ public class WorkflowApprovalAuditor {
      * @param decision 决定
      * @param approverUserId 审批人
      * @param targetToolName 工具名；可空
-     * @param comment 理由；可空
+     * @param comment 理由；仅用于计算 {@code commentSha256}，不写明文
      * @return details
      */
     private static Map<String, Object> decisionDetails(
@@ -176,8 +179,10 @@ public class WorkflowApprovalAuditor {
         if (targetToolName != null) {
             details.put("targetToolName", targetToolName);
         }
-        if (comment != null) {
-            details.put("decisionComment", comment);
+        String commentSha256 = WorkflowApprovalCommentHash.sha256(comment);
+        if (commentSha256 != null) {
+            // DEC-0050=B：审计只存哈希，理由原文只保留在审批记录中供详情读取。
+            details.put("commentSha256", commentSha256);
         }
         return details;
     }

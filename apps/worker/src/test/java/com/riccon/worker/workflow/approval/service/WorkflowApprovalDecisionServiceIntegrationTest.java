@@ -121,12 +121,12 @@ class WorkflowApprovalDecisionServiceIntegrationTest extends WorkerIntegrationTe
                 .singleElement()
                 .satisfies(row -> {
                     assertThat(row.outcome()).isEqualTo("SUCCESS");
-                    assertThat(support.json(row.detailsJson()).path("decision").asString())
-                            .isEqualTo("APPROVE");
-                    assertThat(support.json(row.detailsJson())
-                                    .path("decisionComment")
-                                    .asString())
-                            .isEqualTo("同意");
+                    var details = support.json(row.detailsJson());
+                    assertThat(details.path("decision").asString()).isEqualTo("APPROVE");
+                    assertThat(details.path("commentSha256").asString())
+                            .isEqualTo(WorkflowApprovalCommentHash.sha256("同意"));
+                    assertThat(details.has("decisionComment")).isFalse();
+                    assertThat(row.detailsJson()).doesNotContain("同意");
                 });
 
         // 重复决定：审批已 APPROVED，条件更新 0 行 -> 冲突。
@@ -192,12 +192,12 @@ class WorkflowApprovalDecisionServiceIntegrationTest extends WorkerIntegrationTe
                 .singleElement()
                 .satisfies(row -> {
                     assertThat(row.outcome()).isEqualTo("SUCCESS");
-                    assertThat(support.json(row.detailsJson()).path("decision").asString())
-                            .isEqualTo("REJECT");
-                    assertThat(support.json(row.detailsJson())
-                                    .path("decisionComment")
-                                    .asString())
-                            .isEqualTo("不合规");
+                    var details = support.json(row.detailsJson());
+                    assertThat(details.path("decision").asString()).isEqualTo("REJECT");
+                    assertThat(details.path("commentSha256").asString())
+                            .isEqualTo(WorkflowApprovalCommentHash.sha256("不合规"));
+                    assertThat(details.has("decisionComment")).isFalse();
+                    assertThat(row.detailsJson()).doesNotContain("不合规");
                 });
 
         // 拒绝后审批终态，再次决定冲突。
@@ -208,6 +208,40 @@ class WorkflowApprovalDecisionServiceIntegrationTest extends WorkerIntegrationTe
                         WorkflowApprovalDecision.REJECT,
                         "重复拒绝"))
                 .isInstanceOf(WorkflowApprovalConflictException.class);
+    }
+
+    /** 理由长度边界（DEC-0050=B）：500 字符写入审批记录并只审计 hash，501 拒绝且不写审计。 */
+    @Test
+    @DisplayName("U-05 拒绝理由 500 通过、501 拒绝，审计只存 hash")
+    void decide_commentLengthBoundaries() {
+        Fixture fixture = parkUserApproval("wf-approval-reason-length");
+
+        assertThatThrownBy(() -> decide(
+                        fixture.tenant(),
+                        fixture.approvalId(),
+                        fixture.approver(),
+                        WorkflowApprovalDecision.REJECT,
+                        "长".repeat(501)))
+                .isInstanceOf(WorkflowApprovalInvalidRequestException.class);
+        assertThat(support.readApproval(fixture.tenant(), fixture.runId()).status())
+                .isEqualTo("PENDING");
+        assertThat(auditDecided(fixture.tenant(), fixture.runId())).isEmpty();
+
+        String reason = "理".repeat(500);
+        WorkflowApprovalDecisionResult result = decide(
+                fixture.tenant(), fixture.approvalId(), fixture.approver(), WorkflowApprovalDecision.REJECT, reason);
+        assertThat(result.approvalStatus().name()).isEqualTo("REJECTED");
+        assertThat(support.readApproval(fixture.tenant(), fixture.runId()).decisionComment())
+                .isEqualTo(reason);
+        assertThat(auditDecided(fixture.tenant(), fixture.runId()))
+                .singleElement()
+                .satisfies(row -> {
+                    var details = support.json(row.detailsJson());
+                    assertThat(details.path("commentSha256").asString())
+                            .isEqualTo(WorkflowApprovalCommentHash.sha256(reason));
+                    assertThat(details.has("decisionComment")).isFalse();
+                    assertThat(row.detailsJson()).doesNotContain(reason);
+                });
     }
 
     /** 自批：发起人即使拥有角色也不能批准，写 denied 审计且运行保持等待。 */
