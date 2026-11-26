@@ -1,0 +1,522 @@
+{
+  "drill": "workflow-rollback",
+  "version": 1,
+  "task": "TASK-0238",
+  "mode": "apply",
+  "startedAt": "2026-11-26T00:00:41.341Z",
+  "environment": {
+    "via": "compose",
+    "sourceDatabase": "riccon",
+    "drillPrefix": "riccon_wf_drill_",
+    "testedAt": "2026-11-26T00:00:41.342Z",
+    "timezone": "Asia/Shanghai",
+    "source": {
+      "tables": 58,
+      "triggers": 4,
+      "schemaVersion": 15
+    }
+  },
+  "worker": {
+    "rollbackTarget": {
+      "tag": "riccon-worker-ocr:o1b",
+      "digest": "sha256:986d50f242f2737685775633a180c6dc33ebdc4f931ea1fe8bf55d7f7769ae9e",
+      "digestSource": "operator",
+      "complete": true,
+      "localImageId": "sha256:986d50f242f2737685775633a180c6dc33ebdc4f931ea1fe8bf55d7f7769ae9e",
+      "matchesLocalImage": true
+    },
+    "preRollbackWorker": {
+      "repoCommit": "db7e617b99a3921cb94290842f32e088596d392c",
+      "jarPath": "apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar",
+      "jarSha256": "f67b08f599c70098ae053c40be8fb7834e50fbf25bc302a2d13b3ffdace511f2",
+      "note": "演练开始前本机 Worker 制品指纹；生产演练应同时记录实际镜像 tag/digest"
+    },
+    "note": "回滚目标由部署/操作者提供；脚本校验 digest 形状并尝试匹配本地镜像，但默认不执行镜像切换（旧 Worker 期望 schema 14，需人工核对）"
+  },
+  "config": {
+    "resultMaxBytes": 5242880,
+    "nodeOutputMaxBytes": 262144,
+    "serverMaxAllowedPacket": 67108864,
+    "jdbcMaxAllowedPacket": 16777216,
+    "requiredPacketBytes": 8388608,
+    "workerConcurrency": 10,
+    "dbPoolSize": 16,
+    "poolMinimum": 14,
+    "checks": {
+      "serverPacketAtLeast8MiB": true,
+      "jdbcPacketAtLeast8MiB": true,
+      "serverPacketAtLeastResultPlusHeadroom": true,
+      "jdbcPacketAtLeastResultPlusHeadroom": true,
+      "serverAtLeastJdbc": true,
+      "dbPoolAtLeastConcurrencyPlusReserved": true
+    }
+  },
+  "phases": [
+    {
+      "id": "empty-allow",
+      "status": "pass",
+      "database": "riccon_wf_drill_empty_20261126000043",
+      "counts": {
+        "definitions": 0,
+        "versions": 0,
+        "runs": 0,
+        "node_runs": 0,
+        "approvals": 0,
+        "tool_invocations": 0,
+        "user_templates": 0,
+        "workflow_audit_events": 0
+      },
+      "decision": {
+        "allowed": true,
+        "exitCode": 0,
+        "nonZero": []
+      },
+      "emergencyDrop": {
+        "allowed": true,
+        "executed": false,
+        "note": "演练只验证判定；应急 drop SQL 的权威维护点在 V15MigrationTest/RUNBOOK M06-9/ADR-0024 §10.4，脚本不另存一份"
+      }
+    },
+    {
+      "id": "data-reject",
+      "status": "pass",
+      "database": "riccon_wf_drill_data_20261126000043",
+      "source": "riccon",
+      "dumpBytes": 946269,
+      "counts": {
+        "definitions": 15,
+        "versions": 15,
+        "runs": 16,
+        "node_runs": 84,
+        "approvals": 6,
+        "tool_invocations": 2,
+        "user_templates": 0,
+        "workflow_audit_events": 77
+      },
+      "nonZero": [
+        "definitions",
+        "versions",
+        "runs",
+        "node_runs",
+        "approvals",
+        "tool_invocations",
+        "workflow_audit_events"
+      ],
+      "decision": {
+        "allowed": false,
+        "exitCode": 3,
+        "nonZero": [
+          "definitions",
+          "versions",
+          "runs",
+          "node_runs",
+          "approvals",
+          "tool_invocations",
+          "workflow_audit_events"
+        ]
+      }
+    },
+    {
+      "id": "capacity-5mib",
+      "status": "pass",
+      "database": "riccon_wf_drill_data_20261126000043",
+      "result": {
+        "runId": "4ff9288f-2a9a-40ed-bc6b-2f56d6be27c4",
+        "payloadBytes": 5238768,
+        "storedBytes": 5238783,
+        "limitBytes": 5242880,
+        "headroomBytes": 4097,
+        "sha256Match": true,
+        "jsonValid": true,
+        "resultSizeBytesMatches": true,
+        "ratioToLimit": 0.9992
+      },
+      "nodeOutput": {
+        "storedBytes": 261116,
+        "limitBytes": 262144,
+        "headroomBytes": 1028,
+        "sha256Match": true,
+        "note": "单节点上限由 WorkflowEngine/WorkflowEngineLimits 在写入前检查；本演练验证存储与传输不截断"
+      },
+      "note": "数据库本身不强制 5 MiB/256 KiB；应用层上限由 WorkflowEngine 与 WF_RESULT_LIMIT 测试覆盖（IT-WF-109/E2E-M06-09）",
+      "capacityReport": {
+        "formula": "日容量 ≈ 每日运行数 × 结果大小 p95 × (1 + 节点输出/审批/索引开销系数)；保留容量 = 日容量 × 保留天数 × (1 + binlog/备份副本倍数)",
+        "inputs": {
+          "runsPerDay": 100,
+          "p95Bytes": 482,
+          "p95Source": "源库 workflow_run.result_size_bytes nearest-rank",
+          "observedSampleCount": 13,
+          "observedP95": 482,
+          "overheadFactor": 1.35,
+          "retentionDays": 180,
+          "backupMultiplier": 2
+        },
+        "estimates": {
+          "dailyBytes": 65070,
+          "retainedBytes": 11712600,
+          "withBackupBytes": 23425200,
+          "withBackupMiB": 22.34
+        },
+        "worstCaseAtResultMax": {
+          "resultMaxBytes": 5242880,
+          "dailyBytes": 707788800,
+          "retainedBytes": 127401984000,
+          "withBackupBytes": 254803968000,
+          "withBackupMiB": 243000,
+          "note": "每次运行都接近 5 MiB 的上界；用于磁盘/备份预留，不是预期值"
+        },
+        "observedWorkflowTableBytes": 802816,
+        "sourceDatabase": "riccon",
+        "caveat": "源库为假模型测试数据时 p95 偏小；生产容量必须用客户真实分位数校准（riccon_workflow_result_size_bytes）"
+      }
+    },
+    {
+      "id": "claim-stop-grace",
+      "status": "pass",
+      "claimEnabled": false,
+      "claimMetric": 0,
+      "hikaricpConnectionsMax": 16,
+      "schedulerLine": "2026-11-26T08:01:19.236+08:00  INFO 29865 --- [riccon-worker] [           main] c.r.w.w.q.service.WorkflowRunScheduler   : workflow.queue.scheduler.disabled reason=CLAIM_ENABLED_FALSE",
+      "graceSeconds": 2,
+      "graceSecondsSource": "CLI override（演练缩短；生产按默认 120s）",
+      "observedBefore": {
+        "waitingApproval": 2,
+        "pending": 1,
+        "running": 1
+      },
+      "note": "真实 Worker 以 RICCON_WORKFLOW_CLAIM_ENABLED=false 启动；宽限内不得出现新 claim",
+      "observedAfter": {
+        "waitingApproval": 2,
+        "pending": 1,
+        "running": 1
+      },
+      "workerStop": {
+        "exited": true,
+        "exitCode": 143,
+        "forcedKill": false
+      }
+    },
+    {
+      "id": "clear-active",
+      "status": "pass",
+      "cancelledWaiting": [
+        "01a21506-4908-71fc-b740-90e605cf95a8",
+        "49b4b3db-4094-41c0-8720-06ab9ebf0808"
+      ],
+      "cancelledActive": [
+        "3329d3ec-48a5-41c2-a4aa-4f894a5dd9d7",
+        "cb706bea-be3a-44ca-87db-fac9a098c134"
+      ],
+      "counts": {
+        "waitingApproval": 0,
+        "pending": 0,
+        "running": 0
+      },
+      "guard": {
+        "allowed": true,
+        "exitCode": 0,
+        "nonZero": []
+      }
+    },
+    {
+      "id": "refuse-dirty",
+      "status": "pass",
+      "counts": {
+        "waitingApproval": 1,
+        "pending": 0,
+        "running": 0
+      },
+      "activeRuns": [
+        [
+          "6a4ab2779e0b4aff9ce68e4313c0fb59",
+          "WAITING_APPROVAL",
+          "tenant-beta"
+        ]
+      ],
+      "guard": {
+        "allowed": false,
+        "exitCode": 3,
+        "nonZero": [
+          "WAITING_APPROVAL"
+        ]
+      },
+      "note": "跨租户 WAITING_APPROVAL 模拟清零后新行；alpha 管理员 404，无法清零 → 拒绝回滚 Worker"
+    },
+    {
+      "id": "worker-rollback",
+      "status": "pass",
+      "allowed": true,
+      "executed": true,
+      "mode": "container",
+      "target": {
+        "tag": "riccon-worker-ocr:o1b",
+        "digest": "sha256:986d50f242f2737685775633a180c6dc33ebdc4f931ea1fe8bf55d7f7769ae9e",
+        "digestSource": "operator",
+        "complete": true,
+        "localImageId": "sha256:986d50f242f2737685775633a180c6dc33ebdc4f931ea1fe8bf55d7f7769ae9e",
+        "matchesLocalImage": true
+      },
+      "command": null,
+      "exitCode": 0,
+      "note": "启动 M06 前 Worker 容器，schema 校验关闭，断言其不领取且活动运行保持 0",
+      "oldWorker": {
+        "mode": "container",
+        "executed": true,
+        "image": "riccon-worker-ocr:o1b",
+        "imageId": "sha256:986d50f242f2737685775633a180c6dc33ebdc4f931ea1fe8bf55d7f7769ae9e",
+        "containerId": "32c881702a28",
+        "health": 200,
+        "schemaValidation": "disabled-for-rollback-window",
+        "expectedSchema": 14,
+        "schemaLine": "2026-11-26T00:01:39.082Z  WARN 1 --- [riccon-worker] [           main] c.r.w.persistence.SchemaVersionChecker   : RICCON-WORKER-002 schema validation disabled; worker is running in rollback window, expected schema version=14",
+        "countsBefore": {
+          "waitingApproval": 0,
+          "pending": 0,
+          "running": 0
+        },
+        "countsAfter": {
+          "waitingApproval": 0,
+          "pending": 0,
+          "running": 0
+        },
+        "noNewClaims": true
+      }
+    },
+    {
+      "id": "post-rollback-assert",
+      "status": "pass",
+      "counts": {
+        "waitingApproval": 0,
+        "pending": 0,
+        "running": 0
+      },
+      "guard": {
+        "allowed": true,
+        "exitCode": 0,
+        "nonZero": []
+      },
+      "historyStatus": 200,
+      "historyTotal": 19,
+      "limitsStatus": 200,
+      "apiHealth": 200,
+      "schema": {
+        "tables": 58,
+        "triggers": 0,
+        "schemaVersion": 15
+      }
+    },
+    {
+      "id": "disabled-startup-audit",
+      "status": "pass",
+      "database": "riccon_wf_drill_empty_20261126000043",
+      "counts": {
+        "definitions": 0,
+        "versions": 0,
+        "runs": 0,
+        "node_runs": 0,
+        "approvals": 0,
+        "tool_invocations": 0,
+        "user_templates": 0,
+        "workflow_audit_events": 1
+      },
+      "decision": {
+        "allowed": false,
+        "exitCode": 3,
+        "nonZero": [
+          "workflow_audit_events"
+        ]
+      },
+      "audit": {
+        "action": "workflow.feature.changed",
+        "tenant": "platform",
+        "source": "DEPLOYMENT_CONFIG",
+        "instanceId": "api-8e3efdcb",
+        "observedAt": "2026-11-26T08:01:09.886417+08:00",
+        "origin": "真实关闭态 API 启动写入（order 栈）后复制到空栈"
+      },
+      "note": "首次 ENABLED=false 启动写入 workflow.feature.changed 后“全 0”不可达；试发布失败只能恢复 V15 前备份"
+    },
+    {
+      "id": "cleanup",
+      "status": "pass",
+      "keptDatabases": [],
+      "droppedDatabases": true
+    }
+  ],
+  "assertions": [
+    {
+      "id": "schema.v15",
+      "status": "pass",
+      "expected": 15,
+      "actual": 15
+    },
+    {
+      "id": "schema.tables",
+      "status": "pass",
+      "expected": 58,
+      "actual": 58
+    },
+    {
+      "id": "schema.triggers",
+      "status": "pass",
+      "expected": 4,
+      "actual": 4
+    },
+    {
+      "id": "empty.allZero",
+      "status": "pass",
+      "expected": "true",
+      "actual": "true"
+    },
+    {
+      "id": "empty.gateExit",
+      "status": "pass",
+      "expected": "0",
+      "actual": "0"
+    },
+    {
+      "id": "data.rejected",
+      "status": "pass",
+      "expected": "true",
+      "actual": "true"
+    },
+    {
+      "id": "data.gateExit",
+      "status": "pass",
+      "expected": "3",
+      "actual": "3"
+    },
+    {
+      "id": "capacity.resultNear5MiB",
+      "status": "pass",
+      "expected": "true",
+      "actual": "true"
+    },
+    {
+      "id": "capacity.resultNoTruncation",
+      "status": "pass",
+      "expected": "true",
+      "actual": "true"
+    },
+    {
+      "id": "capacity.nodeNear256KiB",
+      "status": "pass",
+      "expected": "true",
+      "actual": "true"
+    },
+    {
+      "id": "order.featureDisabled",
+      "status": "pass",
+      "expected": "false",
+      "actual": "false"
+    },
+    {
+      "id": "order.createRun503",
+      "status": "pass",
+      "expected": "503",
+      "actual": "503"
+    },
+    {
+      "id": "order.workerClaimDisabled",
+      "status": "pass",
+      "expected": "0",
+      "actual": "0"
+    },
+    {
+      "id": "order.hikaricpAtLeastPoolMinimum",
+      "status": "pass",
+      "expected": "true",
+      "actual": "true"
+    },
+    {
+      "id": "order.workerStopped",
+      "status": "pass",
+      "expected": "true",
+      "actual": "true"
+    },
+    {
+      "id": "order.noClaimDuringGrace",
+      "status": "pass",
+      "expected": "true",
+      "actual": "true"
+    },
+    {
+      "id": "order.waitingZero",
+      "status": "pass",
+      "expected": "0",
+      "actual": "0"
+    },
+    {
+      "id": "order.allActiveZero",
+      "status": "pass",
+      "expected": "true",
+      "actual": "true"
+    },
+    {
+      "id": "order.dirtyRefused",
+      "status": "pass",
+      "expected": "true",
+      "actual": "true"
+    },
+    {
+      "id": "order.dirtyExit",
+      "status": "pass",
+      "expected": "3",
+      "actual": "3"
+    },
+    {
+      "id": "order.workerRollbackAllowed",
+      "status": "pass",
+      "expected": "true",
+      "actual": "true"
+    },
+    {
+      "id": "order.workerRollbackExecuted",
+      "status": "pass",
+      "expected": "true",
+      "actual": "true"
+    },
+    {
+      "id": "order.postRollbackZero",
+      "status": "pass",
+      "expected": "true",
+      "actual": "true"
+    },
+    {
+      "id": "order.historyReadable",
+      "status": "pass",
+      "expected": "200",
+      "actual": "200"
+    },
+    {
+      "id": "order.apiRetained",
+      "status": "pass",
+      "expected": "200",
+      "actual": "200"
+    },
+    {
+      "id": "firstDisable.auditRejects",
+      "status": "pass",
+      "expected": "true",
+      "actual": "true"
+    },
+    {
+      "id": "firstDisable.auditSource",
+      "status": "pass",
+      "expected": "DEPLOYMENT_CONFIG",
+      "actual": "DEPLOYMENT_CONFIG"
+    }
+  ],
+  "residuals": [],
+  "artifacts": {
+    "apiLog": "/Users/ricky/Documents/projects/riccon-work/.riccon/evidence/TASK-0238/wf-drill-api-riccon_wf_drill_order_20261126000043.log",
+    "workerLog": "/Users/ricky/Documents/projects/riccon-work/.riccon/evidence/TASK-0238/wf-drill-worker-riccon_wf_drill_order_20261126000043.log"
+  },
+  "finishedAt": "2026-11-26T00:01:48.802Z",
+  "durationMs": 67461,
+  "result": {
+    "verdict": "pass",
+    "assertions": 27,
+    "failed": 0
+  }
+}

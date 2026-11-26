@@ -4,7 +4,7 @@
   "module_id": "M06",
   "title": "M06 T16b 回滚演练/5MiB 容量/包大小预检",
   "owner": "riccon/verifier",
-  "status": "planned",
+  "status": "review",
   "write_scope": [
     "scripts/ops/workflow-*.mjs"
   ],
@@ -13,9 +13,20 @@
     "无法清零不得回滚 Worker；回滚后复断言；受支持回滚与 DEC-0047=A 一致。",
     "高风险任务：done 前必须有独立 Verifier 任务级评审；只改 write_scope；不改 contracts/PRODUCT/AGENTS；不启动 M06b；提交后取证，任务只移到 review。"
   ],
-  "evidence": [],
-  "tools_used": [],
+  "evidence": [
+    "EV-1150"
+  ],
+  "tools_used": [
+    "node26",
+    "docker",
+    "git",
+    "jdk21",
+    "riccon",
+    "codegraph"
+  ],
   "blocker": null,
   "created_at": "2026-11-25T02:10:50.116+08:00",
-  "updated_at": "2026-11-25T02:10:50.116+08:00"
+  "updated_at": "2026-11-26T08:02:12.237+08:00",
+  "baseline_commit": "c310c61d47076ea2aa21d1d3fd8e3bc61c003b19",
+  "end_commit": "db7e617b99a3921cb94290842f32e088596d392c"
 }
