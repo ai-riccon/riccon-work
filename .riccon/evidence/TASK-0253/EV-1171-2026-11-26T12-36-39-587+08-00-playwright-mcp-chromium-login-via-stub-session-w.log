@@ -1,0 +1,38 @@
+# M06 T17b：AC-17 运行限制 Drawer 真实浏览器 a11y / 375px / 键盘复核
+
+- 日期：2026-11-26（Asia/Shanghai）
+- 代码提交：9b86e2b6bf9523f53ff95f32406b09ae4f07f3b7（与模块证据 EV-1165/1166/1167/1168 同一提交）
+- 浏览器：Playwright MCP Chromium（真实浏览器，非 jsdom）
+- 页面：`http://127.0.0.1:8123/workflows/templates` → Studio 子导航“运行限制” → 打开只读 Drawer
+- 前端：仓库最终代码 `apps/web` 开发服务器（`pnpm --filter @riccon/web run dev`），非 mock 组件
+- 登录/会话权限与 `GET /api/v1/workflows/runtime-limits` 响应由 Playwright 路由拦截提供（在 stub 登录会话上追加 `workflow.read` 等权限；limits 为与契约一致的示例值 20 节点/200 步/1800s/5 MiB/10/5/180 天）。真实 API 行为由 EV-1167 的真实栈 E2E-M06-10 与 IT-WF-109 覆盖；本文件只复核用户可见渲染/a11y/375px/键盘，不把 stub 数据当作 API 证据。
+- axe：`axe-core 4.14.1`，`runOnly: wcag2a, wcag2aa, wcag21a, wcag21aa`（WCAG 2.1 AA 标签集）。
+
+## 结果
+
+| 检查 | 结果 |
+| --- | --- |
+| Drawer 可见/字段完整 | pass：标题“运行限制（只读）”；只读说明“租户只能查看，不能在此修改”；编排状态、节点/步数/执行超时/结果大小、模型/检索/MCP 节点超时、租户/单流程并发、保留 180 天（部署默认）、生成时间均显示 |
+| 只读性 | pass：Drawer 内无 textbox/spinbutton/编辑按钮；只有“刷新”按钮 |
+| 桌面 axe（Drawer 打开、稳定 1s） | pass：serious/critical = 0；仅有既有 `meta-viewport` moderate（全站基线，E2E-M06-09a 同口径） |
+| 375px axe（Drawer 打开、稳定后） | pass：serious/critical = 0；仅有 `meta-viewport` moderate |
+| 375px 横向滚动 | pass：`documentElement.scrollWidth=375 = clientWidth=375`（body scrollWidth 同为 375） |
+| 键盘焦点 | pass：打开后焦点进入 `.ant-drawer` 根（含在 Drawer 内）；Tab 一次到“关闭”按钮；Escape 关闭后焦点回到“运行限制”触发按钮 |
+| 触发按钮稳定态对比度 | pass：`.workflow-studio-help .ant-btn` 计算色 `rgb(89,89,89)`（#595959）对 #f5f5f5 约 6.4:1；键盘 focus-visible 态同为 #595959 |
+| 截图 | `.riccon/evidence/TASK-0253/m06-runtime-limits-drawer-desktop.png`、`m06-runtime-limits-drawer-375.png` |
+
+## 观察（非失败）
+
+- 打开 Drawer 后立即（<0.3s）扫描时，axe 曾在触发按钮上命中一次 `color-contrast`（serious）：antd Button 的颜色过渡中瞬时计算色为 `rgb(87,157,242)`，背景 #f5f5f5。等待过渡结束（1s）后在桌面与 375px 稳定态复扫均不再出现；键盘 focus-visible 稳态与页面静止态均为 #595959。该现象是 antd 200ms 颜色 transition 的瞬时态，不是持久可操作状态，故不判失败；记录以便将来若把 axe 扫描插到点击瞬间时避免误报。
+- 既有 `meta-viewport` moderate 违规来自 Umi 默认 viewport meta，与 M06/M06b 全站基线一致；T16a E2E-M06-09a 也只对 serious/critical 断言。不是本次修复引入。
+
+## 复现要点
+
+1. 启动 stub 前端：`STUB_PORT=8124 node e2e/stub/server.mjs` 与 `PORT=8123 RICCON_API_BASE_URL='' RICCON_E2E_API_TARGET=http://127.0.0.1:8124 RICCON_E2E=1 UMI_DEV_SERVER_COMPRESS=none pnpm --filter @riccon/web run dev`。
+2. Playwright 路由：`/api/v1/auth/login`、`/api/v1/auth/session` 追加 `workflow.read/edit/publish/run/approve/manage`；`/api/v1/workflows/runtime-limits` 返回契约字段示例。
+3. 登录（acme/demo）→ `/workflows/templates` → 点击“运行限制” → 等 `data-testid=workflow-runtime-limits` 稳定 1s → 注入 axe-core → `axe.run(document, {runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21a','wcag21aa']}})`。
+4. 375×812 检查 `scrollWidth/clientWidth`；键盘 Enter 打开、Tab、Escape 关闭与焦点回归。
+
+## 结论
+
+AC-17 新增的租户只读运行限制 Drawer 在真实浏览器中：字段可见、只读、375px 无横向滚动、键盘可打开/关闭且焦点管理正确、WCAG 2.1 AA axe 无 serious/critical。TASK-0251 评审 F-001 的“真实浏览器打开态 axe/375px/E2E 未复核”在本 T17b 关闭；模块级 a11y 仍以 EV-1146/EV-1148（真实栈 E2E-M06-09a/b/c）为主证据。

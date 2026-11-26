@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "EV-1169",
+  "task_id": "TASK-0253",
+  "command": "set -euo pipefail; git diff --check; grep -q 'M06' docs/RUNBOOK.md; grep -q 'TM-85' docs/security/THREAT-MODEL.md; grep -q 'DEC-0050=B' docs/PRODUCT.md docs/ACCEPTANCE.md docs/adr/ADR-0024-m06-workflow-orchestration.md docs/ARCHITECTURE.md; grep -q 'commentSha256' docs/PRODUCT.md docs/ACCEPTANCE.md docs/adr/ADR-0024-m06-workflow-orchestration.md docs/ARCHITECTURE.md; grep -q 'R-38' docs/security/THREAT-MODEL.md docs/adr/ADR-0024-m06-workflow-orchestration.md; grep -q 'AC-17.*pass（F-001 fixed）' docs/ACCEPTANCE.md; grep -q 'AC-16.*pass（U-05 B）' docs/ACCEPTANCE.md; grep -q 'DEC-0049' docs/PRODUCT.md; grep -q 'M06' docs/ARCHITECTURE.md; grep -q '1.6.0-m06' contracts/openapi.yaml; node ~/.config/opencode/riccon/scripts/riccon.mjs contract validate --strict",
+  "manual": false,
+  "commit": "9b86e2b6bf9523f53ff95f32406b09ae4f07f3b7",
+  "dirty": false,
+  "exit_code": 0,
+  "output_path": ".riccon/evidence/TASK-0253/EV-1169-2026-11-26T12-35-31-029+08-00-set-euo-pipefail-git-diff-check-grep-q-m06-docs-.log",
+  "output_sha256": "ec4525e1b9f4272e7e75349fcdc26eb4782bfa704079663062d1f94296bae3c9",
+  "output_bytes": 1036,
+  "agent": "riccon/verifier",
+  "cwd": "/Users/ricky/Documents/projects/riccon-work",
+  "started_at": "2026-11-26T12:35:30.083+08:00",
+  "finished_at": "2026-11-26T12:35:30.600+08:00",
+  "duration_ms": 516,
+  "note": "M06 T17b final module gate docs/contract consistency at final docs commit 9b86e2b6: PRODUCT AC-16 U-05 B / AC-17 fixed, ACCEPTANCE Product pass (19 pass + 4 residual + 0 fail), ADR-0024 U-05/R-38, THREAT-MODEL R-38/TM-76/80, ARCHITECTURE U-05 sync, RUNBOOK M06, OpenAPI 1.6.0-m06, contract validate --strict",
+  "recorded_at": "2026-11-26T12:35:31.030+08:00"
+}

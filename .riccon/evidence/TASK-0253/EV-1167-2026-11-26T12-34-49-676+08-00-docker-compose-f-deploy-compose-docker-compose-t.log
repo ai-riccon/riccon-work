@@ -1,0 +1,248 @@
+# command: docker compose -f deploy/compose/docker-compose.test.yml up -d --wait && pnpm -w e2e && REAL_EVIDENCE_TASK=TASK-0253-e2e node scripts/real-stack/run.mjs --mode=full
+# cwd: /Users/ricky/Documents/projects/riccon-work
+# started_at: 2026-11-26T12:16:10.012+08:00
+# finished_at: 2026-11-26T12:34:48.774+08:00
+# duration_ms: 1118761
+# exit_code: 0
+
+# --- stdout ---
+
+> riccon-work@0.1.0 e2e /Users/ricky/Documents/projects/riccon-work
+> playwright test --config e2e/playwright.config.ts
+
+
+Running 63 tests using 1 worker
+
+  ✓   1 [chromium] › e2e/tests/admin.spec.ts:10:3 › 管理端布局 › 渲染 ProLayout 与占位菜单且无严重可访问性问题 @a11y (8.9s)
+  ✓   2 [chromium] › e2e/tests/chat.spec.ts:10:3 › 员工端工作空间 › 登录后展示租户、会话列表与空态，无严重可访问性问题 @a11y (3.2s)
+  ✓   3 [chromium] › e2e/tests/chat.spec.ts:18:3 › 员工端工作空间 › 新建会话后展示 J1 问答空态 (2.3s)
+  ✓   4 [chromium] › e2e/tests/errors.spec.ts:12:3 › API 错误语义 › 未登录访问受保护接口返回 ProblemDetail 401 (987ms)
+  ✓   5 [chromium] › e2e/tests/errors.spec.ts:30:3 › API 错误语义 › 服务端会话失效后写请求返回 401，页面回到登录页并提示过期 (2.4s)
+  ✓   6 [chromium] › e2e/tests/errors.spec.ts:47:3 › API 错误语义 › 报告任务列表 403 显示无权限态且可返回工作空间 (3.0s)
+  ✓   7 [chromium] › e2e/tests/errors.spec.ts:60:3 › API 错误语义 › MCP 工具目录 403 时展示权限态并禁用创建 (2.9s)
+  ✓   8 [chromium] › e2e/tests/errors.spec.ts:74:3 › API 错误语义 › 审批冲突 409 时提示已刷新最新结果，任务保持待审批 (5.5s)
+  ✓   9 [chromium] › e2e/tests/j1.spec.ts:104:3 › J1 通用问答与文件处理 › 上传、流式引用、停止与重开完整闭环 @a11y (7.4s)
+  ✓  10 [chromium] › e2e/tests/j1.spec.ts:159:3 › J1 通用问答与文件处理 › 回答完成后按需查看运行详情与模型调用记录 @a11y (6.2s)
+  ✓  11 [chromium] › e2e/tests/j1.spec.ts:189:5 › J1 通用问答与文件处理 › XLSX 上传后显示解析成功并可提问引用 @a11y (10.8s)
+  ✓  12 [chromium] › e2e/tests/j1.spec.ts:189:5 › J1 通用问答与文件处理 › PNG 上传后显示解析成功并可提问引用 @a11y (10.1s)
+  ✓  13 [chromium] › e2e/tests/j1.spec.ts:189:5 › J1 通用问答与文件处理 › JPEG 上传后显示解析成功并可提问引用 @a11y (10.3s)
+  ✓  14 [chromium] › e2e/tests/j1.spec.ts:277:3 › J1 通用问答与文件处理 › 失败态 danger 文本与重试入口 @a11y (9.8s)
+  ✓  15 [chromium] › e2e/tests/j2.spec.ts:17:3 › J2 市场调研报告 › 创建、审批、工具取数与报告产物完整闭环 @a11y (13.3s)
+  ✓  16 [chromium] › e2e/tests/j2.spec.ts:103:3 › J2 市场调研报告 › 拒绝审批后任务终止且不产生报告 (5.3s)
+  ✓  17 [chromium] › e2e/tests/j2.spec.ts:123:3 › J2 市场调研报告 › MCP 超时后重试工具阶段即可产出报告 (8.8s)
+  ✓  18 [chromium] › e2e/tests/login.spec.ts:10:3 › 登录页 › 错误凭据显示统一失败提示，不泄露账号是否存在 @a11y (2.6s)
+  ✓  19 [chromium] › e2e/tests/login.spec.ts:25:3 › 登录页 › 正确凭据进入工作空间并显示租户名 @a11y (3.0s)
+  ✓  20 [chromium] › e2e/tests/login.spec.ts:33:3 › 登录页 › 375px 宽度无横向滚动 (1.5s)
+  ✓  21 [chromium] › e2e/tests/m03.spec.ts:26:3 › M03 部门与空间共享 › E2E-M03-01 平台管理员创建部门、加移成员并任命负责人 (6.2s)
+  ✓  22 [chromium] › e2e/tests/m03.spec.ts:91:3 › M03 部门与空间共享 › E2E-M03-02 负责人空间共享、普通成员入口隐藏与知识库边界 (12.9s)
+  ✓  23 [chromium] › e2e/tests/m03.spec.ts:237:3 › M03 部门与空间共享 › E2E-M03-07 部门管理页 375px 与键盘 (5.0s)
+  ✓  24 [chromium] › e2e/tests/m03.spec.ts:274:3 › M03 部门与空间共享 › E2E-M03-07 部门管理页 axe 无 serious/critical @a11y (4.2s)
+  ✓  25 [chromium] › e2e/tests/m04-quota-cost.spec.ts:94:3 › M04 配额页 › E2E-M04-05 平台/租户配额视图、重置时间、限额保存、只读与五态 (15.0s)
+  ✓  26 [chromium] › e2e/tests/m04-quota-cost.spec.ts:248:3 › M04 成本页 › E2E-M04-06 平台/租户聚合、金额精度、边界单列、免责文案与明细快照展开 (14.0s)
+  ✓  27 [chromium] › e2e/tests/m04-quota-cost.spec.ts:486:3 › M04 四页可访问性与入口 › E2E-M04-07b 四页五态、375px、键盘路径、axe 与按角色入口 @a11y (35.3s)
+  ✓  28 [chromium] › e2e/tests/m04-routing.spec.ts:55:3 › M04 模型路由页 › E2E-M04-01 配置顺序、停用/启用与保存，端点标签来自部署允许列表 (4.3s)
+  ✓  29 [chromium] › e2e/tests/m04-routing.spec.ts:113:3 › M04 模型路由页 › E2E-M04-04 路由页 key 新增/轮换/停用、掩码与保存前影响说明（合同桩 UI 段） (6.1s)
+  ✓  30 [chromium] › e2e/tests/m04-routing.spec.ts:188:3 › M04 模型路由页 › E2E-M04-07a 路由/key 两页五态、375px、键盘、axe 与无写入口 @a11y (18.8s)
+  ✓  31 [chromium] › e2e/tests/m04-routing.spec.ts:370:3 › M04 回归 › E2E-M04-08 J1/J2/M03/M10 关键旅程与运行详情模型标识无回归 (13.0s)
+  ✓  32 [chromium] › e2e/tests/m05.spec.ts:118:3 › M05 知识库纵深 › E2E-M05-01 Excel 多表/空表/隐藏表/截断/失败与格式拒绝 (6.3s)
+  ✓  33 [chromium] › e2e/tests/m05.spec.ts:184:3 › M05 知识库纵深 › E2E-M05-02 OCR 四态、低置信、OCR 关闭与重试 (9.2s)
+  ✓  34 [chromium] › e2e/tests/m05.spec.ts:267:3 › M05 知识库纵深 › E2E-M05-03 ACL 四处一致、创建人例外、403/404 与旧引用遮蔽 (13.6s)
+  ✓  35 [chromium] › e2e/tests/m05.spec.ts:413:3 › M05 知识库纵深 › E2E-M05-05 删除/重索引幂等、审计动作与 409/503 (7.5s)
+  ✓  36 [chromium] › e2e/tests/m05.spec.ts:485:3 › M05 知识库纵深 › E2E-M05-06 429 聊天/报告入口显示限额类型、绝对与相对重置时间 (4.1s)
+  ✓  37 [chromium] › e2e/tests/m05.spec.ts:521:3 › M05 知识库纵深 › E2E-M05-07 375px 与键盘路径（打开文档 → 修改可见范围 → 保存；打开引用 → 查看文本块/坐标） (5.9s)
+  ✓  38 [chromium] › e2e/tests/m05.spec.ts:579:3 › M05 知识库纵深 › E2E-M05-07b 知识库列表 axe 无 serious/critical @a11y (3.8s)
+  ✓  39 [chromium] › e2e/tests/m05.spec.ts:589:3 › M05 知识库纵深 › E2E-M05-07c 文档详情/ACL 设置 axe 无 serious/critical @a11y (4.5s)
+  ✓  40 [chromium] › e2e/tests/m05.spec.ts:599:3 › M05 知识库纵深 › E2E-M05-07d 引用详情 axe 无 serious/critical @a11y (5.2s)
+  ✓  41 [chromium] › e2e/tests/m05.spec.ts:610:3 › M05 知识库纵深 › E2E-M05-08 保留策略、已到期不可见与已删除引用 (7.3s)
+  ✓  42 [chromium] › e2e/tests/m05.spec.ts:651:3 › M05 知识库纵深 › E2E-M05-09 失败时间与保留策略不追溯明示 (3.5s)
+  ✓  43 [chromium] › e2e/tests/m05.spec.ts:678:3 › M05 知识库纵深 › E2E-M05-03b 新文档登记、空/错误态与 ACL 表单影响提示 (15.4s)
+  ✓  44 [chromium] › e2e/tests/m05b.spec.ts:113:3 › M05b 知识库连接器 › E2E-M05-04 创建/编辑/测试/凭据掩码与 endpointId 允许列表 (13.2s)
+  ✓  45 [chromium] › e2e/tests/m05b.spec.ts:318:3 › M05b 知识库连接器 › E2E-M05-04b 越权：员工 403、平台 404、跨租户 404 与 CSRF 拒绝 (7.0s)
+  ✓  46 [chromium] › e2e/tests/m05b.spec.ts:440:3 › M05b 知识库连接器 › E2E-M05-05 同步 202/409、失败原因与条目五态 (8.4s)
+  ✓  47 [chromium] › e2e/tests/m05b.spec.ts:575:3 › M05b 知识库连接器 › E2E-M05-05b 删除 KEEP/SOFT_DELETE 与知识库删除传播 (6.4s)
+  ✓  48 [chromium] › e2e/tests/m05b.spec.ts:663:3 › M05b 知识库连接器 › E2E-M05-04c 列表五态：加载/空/错误/禁用/无权限/404/成功 (11.0s)
+  ✓  49 [chromium] › e2e/tests/m05b.spec.ts:728:3 › M05b 知识库连接器 › E2E-M05-07e 375px、键盘路径与 Modal/Drawer 焦点 (6.4s)
+  ✓  50 [chromium] › e2e/tests/m05b.spec.ts:808:3 › M05b 知识库连接器 › E2E-M05-07f-1 连接器列表 axe 无 serious/critical @a11y (4.2s)
+  ✓  51 [chromium] › e2e/tests/m05b.spec.ts:818:3 › M05b 知识库连接器 › E2E-M05-07f-2 新建连接器表单 axe 无 serious/critical @a11y (4.9s)
+  ✓  52 [chromium] › e2e/tests/m05b.spec.ts:829:3 › M05b 知识库连接器 › E2E-M05-07f-3 条目抽屉 axe 无 serious/critical @a11y (4.7s)
+  ✓  53 [chromium] › e2e/tests/m05b.spec.ts:846:3 › M05b 知识库连接器 › E2E-M05-07f-4 删除确认弹窗 axe 无 serious/critical @a11y (4.4s)
+  ✓  54 [chromium] › e2e/tests/m05b.spec.ts:864:3 › M05b 知识库连接器 › E2E-M05-04f 连接器来源引用显示“源内容已更新” (4.1s)
+  ✓  55 [chromium] › e2e/tests/m10.spec.ts:90:3 › M15 来源 IdP 展示 › E2E-M15-01 本地会话显示来源：本地账号 (2.1s)
+  ✓  56 [chromium] › e2e/tests/m10.spec.ts:104:3 › M15 来源 IdP 展示 › E2E-M15-02 用户管理按账号显示脱敏来源 IdP，两个 issuer 可区分 (3.0s)
+  ✓  57 [chromium] › e2e/tests/m10.spec.ts:137:3 › M15 来源 IdP 展示 › E2E-M15-03 会话与用户管理 375px、键盘与 axe @a11y (5.4s)
+  ✓  58 [chromium] › e2e/tests/m13.spec.ts:27:3 › M13 M03 验收补丁 › R-M03-01 成员端显示所属部门、未分配与停用提示 (7.1s)
+  ✓  59 [chromium] › e2e/tests/m13.spec.ts:65:3 › M13 M03 验收补丁 › R-M03-02 可管理空间重命名、错误文案与 TENANT 只读 (7.5s)
+  ✓  60 [chromium] › e2e/tests/m13.spec.ts:140:3 › M13 M03 验收补丁 › R-M03-03 研究页按空间选择并打开部门报告 (6.3s)
+  ✓  61 [chromium] › e2e/tests/navigation.spec.ts:9:1 › 根路径跳转登录，登录后可访问管理端 (3.9s)
+  ✓  62 [chromium] › e2e/tests/responsive.spec.ts:21:3 › 窄屏布局 › 员工端工作空间在 375px 下无横向滚动 (2.3s)
+  ✓  63 [chromium] › e2e/tests/responsive.spec.ts:32:3 › 窄屏布局 › 报告任务列表、详情与产物在 375px 下无横向滚动 (7.0s)
+
+  63 passed (7.9m)
+[real-stack] reset compose test stack
+[real-stack] started model pid=71867 log=.riccon/evidence/TASK-0253-e2e/real-stack-model.log
+[real-stack] started oidc pid=71871 log=.riccon/evidence/TASK-0253-e2e/real-stack-oidc.log
+[real-stack] started api pid=71876 log=.riccon/evidence/TASK-0253-e2e/real-stack-api.log
+[real-stack] api ready (flyway=15); starting worker
+[real-stack] started worker pid=71903 log=.riccon/evidence/TASK-0253-e2e/real-stack-worker.log
+[real-stack] started web pid=71909 log=.riccon/evidence/TASK-0253-e2e/real-stack-web.log
+{
+  "status": "passed",
+  "generatedAt": "2026-11-26T04:34:45.714Z",
+  "mode": "full",
+  "phases": {
+    "compose": "passed",
+    "migration": "passed",
+    "fingerprint": "passed",
+    "seed": "passed",
+    "seedIdempotent": "passed",
+    "m10Checks": "passed",
+    "browserE2e": "passed",
+    "j2Journey": "passed",
+    "securityChecks": "passed",
+    "m04Checks": "passed",
+    "m03Checks": "passed"
+  },
+  "env": {
+    "generatedAt": "2026-11-26T04:24:05.574Z",
+    "mode": "full",
+    "host": {
+      "platform": "darwin 24.6.0",
+      "arch": "x64",
+      "cpus": 12,
+      "cpuModel": "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz",
+      "memoryBytes": 17179869184,
+      "memoryGiB": 16,
+      "loadAverage": [
+        5,
+        5.87,
+        6.24
+      ],
+      "node": "v26.13.0"
+    },
+    "images": {
+      "compose": [
+        "mysql:8.4.13",
+        "opensearchproject/opensearch:3.9.0",
+        "rustfs/rustfs:1.0.6"
+      ],
+      "started": [
+        "opensearchproject/opensearch:3.9.0",
+        "rustfs/rustfs:1.0.6",
+        "mysql:8.4.13"
+      ]
+    },
+    "k6Version": "k6 v2.4.0 (commit/dd9395906d, go1.26.11, darwin/amd64)",
+    "scriptSha256": "5d471a712b6f19635734f9134d96fe4537d64c8cfabf8567ab0a946c4e6565f1",
+    "chatMaxStreams": 50,
+    "dbPoolSize": 25,
+    "fakeModel": 1,
+    "deploymentMode": "DEMO",
+    "workflow": {
+      "enabled": true,
+      "source": "scripts/real-stack/run.mjs WORKFLOW_ENV（默认值与 application.yml 一致；环境变量可覆盖）",
+      "env": {
+        "RICCON_WORKFLOW_ENABLED": "true",
+        "RICCON_WORKFLOW_MAX_NODES": "50",
+        "RICCON_WORKFLOW_MAX_STEPS": "200",
+        "RICCON_WORKFLOW_MODEL_TIMEOUT_SECONDS": "300",
+        "RICCON_WORKFLOW_RETRIEVAL_TIMEOUT_SECONDS": "120",
+        "RICCON_WORKFLOW_MCP_TIMEOUT_SECONDS": "60",
+        "RICCON_WORKFLOW_RUN_TIMEOUT_MINUTES": "30",
+        "RICCON_WORKFLOW_TENANT_CONCURRENCY": "10",
+        "RICCON_WORKFLOW_FLOW_CONCURRENCY": "5",
+        "RICCON_WORKFLOW_RESULT_MAX_BYTES": "5242880",
+        "RICCON_WORKFLOW_WORKER_CONCURRENCY": "10",
+        "RICCON_WORKFLOW_CLAIM_BATCH": "1",
+        "RICCON_WORKFLOW_CLAIM_POLL_INTERVAL_MS": "1000",
+        "RICCON_WORKFLOW_RETENTION_DAYS": "180"
+      },
+      "maxNodes": 50,
+      "maxSteps": 200,
+      "modelTimeoutSeconds": 300,
+      "retrievalTimeoutSeconds": 120,
+      "mcpTimeoutSeconds": 60,
+      "runTimeoutMinutes": 30,
+      "tenantConcurrency": 10,
+      "flowConcurrency": 5,
+      "resultMaxBytes": 5242880,
+      "workerConcurrency": 10,
+      "retentionDays": 180
+    },
+    "ocr": {
+      "available": false,
+      "exitCode": 4,
+      "engine": "tesseract",
+      "language": "chi_sim+eng",
+      "sample": "deploy/ocr/sample.png",
+      "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
+      "probedAt": "2026-11-26T12:24:03+08:00"
+    },
+    "startCommand": "node scripts/real-stack/run.mjs --mode=full",
+    "startupCommands": [
+      "java -jar apps/api/target/riccon-api-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/MASTER_KEY_ID/FINGERPRINT_PEPPER/BILLING_CURRENCY/QUOTA_DEFAULT_*/DB_POOL)",
+      "java -jar apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/CHAT_MAX_STREAMS/DB_POOL_SIZE/MODEL_FIRST_TOKEN_TIMEOUT/PRE_FIRST_TOKEN_BUDGET)",
+      "node scripts/real-stack/fake-model.mjs --scenario ok --chunk-count 18"
+    ],
+    "perfProfile": null,
+    "openSearch": "started (compose full)",
+    "perfM05": null
+  },
+  "fingerprint": {
+    "api": {
+      "deploymentMode": "DEMO",
+      "endpointSetHash": "45f1b03d8c4b3b8901c8960ecb498d83165b34b92bd18fbddab53356820ca7a2",
+      "routingMode": "",
+      "failoverEnabled": "",
+      "quotaEnforcementEnabled": "",
+      "masterKeyId": "mk-1",
+      "currency": "CNY",
+      "tenantDaily": "10000",
+      "tenantMonthly": "200000",
+      "userDaily": "1000",
+      "userMonthly": "20000"
+    },
+    "worker": {
+      "deploymentMode": "DEMO",
+      "endpointSetHash": "45f1b03d8c4b3b8901c8960ecb498d83165b34b92bd18fbddab53356820ca7a2",
+      "routingMode": "",
+      "failoverEnabled": "",
+      "quotaEnforcementEnabled": "",
+      "masterKeyId": "mk-1",
+      "currency": "CNY",
+      "tenantDaily": "10000",
+      "tenantMonthly": "200000",
+      "userDaily": "1000",
+      "userMonthly": "20000"
+    },
+    "matched": true
+  },
+  "firstTokenBudget": "3000ms (M02-AC-03 / PERF-M04-001)",
+  "notes": [
+    "浏览器 E2E 覆盖登录、J1 上传/解析/引用/重开/首字与逐段增长、J1 运行详情、filesRef 快速发送、J2 创建与审批/产物、M10 OIDC/审计/导出、可访问性。",
+    "J2 后端闭环与安全检查另行通过 HTTP/数据库验证；M10 安全复核另跑测试 IdP 与审计/导出断言；M04 目录/配额/成本检查在 checks.mjs。",
+    "任何阶段失败都会让本脚本以非零退出。"
+  ]
+}
+[real-stack] stopping web pid=71909
+[real-stack] stopping worker pid=71903
+[real-stack] stopping api pid=71876
+[real-stack] stopping oidc pid=71871
+[real-stack] stopping model pid=71867
+[real-stack] oidc exited code=null signal=SIGTERM
+[real-stack] web exited code=null signal=SIGTERM
+[real-stack] model exited code=0 signal=null
+[real-stack] worker exited code=143 signal=null
+[real-stack] api exited code=143 signal=null
+
+# --- stderr ---
+ Container riccon-test-opensearch Running 
+ Container riccon-test-object-storage Running 
+ Container riccon-test-mysql Running 
+ Container riccon-test-mysql Waiting 
+ Container riccon-test-opensearch Waiting 
+ Container riccon-test-object-storage Waiting 
+ Container riccon-test-mysql Healthy 
+ Container riccon-test-object-storage Healthy 
+ Container riccon-test-opensearch Healthy 
+[WebServer] (node:71402) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
