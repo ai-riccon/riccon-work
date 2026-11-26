@@ -523,7 +523,7 @@ notes: >-
   rollback 复用 T16a/T16b clean EV（EV-1146..1151），EV-1171 为 AC-17 Drawer 真实浏览器补充。
   AC-17/F-001 与 U-05/F-002 已关闭；P0/P1 为 0，P2 只剩 F-003 环境 residual，其余为 P3 accepted。
   本评审是独立技术验收，不是 Product 预验收或用户最终验收；M06b/M26 不在本评审范围。
-created_at: "2026-11-26T12:45:00+08:00"
+created_at: "2026-11-26T12:48:18+08:00"
 ---
 
 # REV-M06-002：M06 编排 Studio 模块评审（最终版，取代 REV-M06-001）
