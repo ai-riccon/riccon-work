@@ -7,6 +7,7 @@ invariants:
   - M06 done + user accepted DEC-0051（with residual）；M06b AC-11/25 不在 M06 gate，也未验收。
   - M26/M06b 尚未创建；无 M06b 源码/任务/决策；未获用户启动决定前不得创建或写实现。
   - M06 gate pass；合同路线图 M06=done、M26=planned；M11/M14 仍按 DEC-0045=A 归档 blocked legacy；DEC-0049/0050/0051 已 answered。
+  - state.current_module=M16 是旧 planned 占位（Web 审计 flake，TASK-0088 仍 pending），不要启动；是否修 M16 由用户决定。
 risks:
   - R-M06-PERF-01：运行准入 p95 2557ms/2588.6ms ≤3s（DEC-0049=A），读 API 141ms；M06b/M09 再优化，release 跟踪。
   - F-003 本机 Testcontainers 环境偏离 external 热栈；CI/M06b 前收敛；R-38 无盐 hash 低熵确认风险 accepted P3；F-004..F-010 P3 均有 owner/due。
