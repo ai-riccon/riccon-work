@@ -68,7 +68,7 @@ product:
     - id: M06
       title: "编排 Studio"
       goal: "Studio 核心：自研 DAG 可视化、版本发布、串行执行 + 条件分支、1 个内置模板、运行历史与审批节点"
-      status: planned
+      status: done
     - id: M26
       title: "M06b 模板库与共享纵深"
       goal: "模板库、至少 2 个内置模板、升级提示与租户内共享；M06 用户验收后启动；alias M06b"

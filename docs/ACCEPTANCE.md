@@ -768,6 +768,14 @@ M02 是用户可见 MVC 模块，但 2026-11-18 关闭时没有 `product_accepta
 - **下一步**：1) Lead/Verifier 将 EV-1163/EV-1164 纳入 M06 模块收口与 review/gate 记录；2) T17b/T16a 复核真实 drawer axe/E2E；3) Product 已给出预验收 `pass`，按流程提交用户最终验收；4) 用户未 `accepted` 前不启动 M06b/M26；5) F-003 交 Lead/Verifier 在 CI/M06b 前收敛。
 - **边界**：本结论不是用户最终验收，不替代模块 review/gate 或 release 批准；本 Product 任务未改模块状态、未写 `--product-status`。M06b/M26 不得用本段证据。
 
+### 用户最终验收（M06）
+
+- **决策**：DEC-0051=A（`accepted`，with residual），2026-11-26。
+- **接受范围**：M06 编排 Studio 核心；M06 gate 23 条 AC 为 19 pass + 4 pass（with residual）+ 0 fail；AC-11/25 属 M06b/M26，不在本次验收，不得用 M06 证据替代。
+- **Residual**：R-M06-PERF-01（运行准入 p95 2557ms ≤3s，DEC-0049=A；读 API 141ms）；F-003（本机 Testcontainers 环境，CI/M06b 前收敛）；R-38（审计无盐 SHA-256 低熵确认风险，accepted P3）；F-004..F-010（P3 accepted）。
+- **后续**：M06b/M26 未启动，需另立用户决策；R-M06-PERF-01 在 release 前继续跟踪；F-003 在 CI/M06b 前收敛；M06b/M26 不得直接复用 M06 验收结论。
+- **边界**：用户 accepted 表示接受 residual；不表示 residual 已修复，也不替代 release/sandbox 批准。
+
 ## 历史模块
 
 | 模块 | Product 预验收                                                     | 用户最终验收               | 记录                                                                                                                 |
