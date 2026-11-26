@@ -43,11 +43,11 @@
 | 检查                        | 状态                 | 记录                                                                                                                                                                                                                                                                                   |
 | --------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Architect 草案              | pass                 | ADR-0024 `proposed`（2026-11-25；设计评审 pass，实现/收口后转 accepted）：`workflow_*` 9 张表（V15）、串行 + 条件求值、新建 `workflow_approval`、`WORKFLOW_EDITOR` 角色、`1.6.0-m06`、`workflow_run` 持久运行队列（TM-85 跨租户领取例外）、TM-72..TM-85、21 任务/120h + M26 6 任务/48h |
-| Lead 完整性/合同一致性      | pass                 | Lead 检查通过（2026-11-25）：23+2 条 AC 归属、21 任务/120h + M26 48h 与 DEC-0046=A、V15/V16 边界、契约 `1.6.0-m06` 一致；DEC-0047=A 回滚口径、DEC-0048=A 配额口径；既有 path 0 改动、既有 schema 仅 `AuditTargetType` 扩展；U-05/U-13 作为 gate 前 residual 跟踪                       |
+| Lead 完整性/合同一致性      | pass                 | Lead 检查通过（2026-11-25）：23+2 条 AC 归属、21 任务/120h + M26 48h 与 DEC-0046=A、V15/V16 边界、契约 `1.6.0-m06` 一致；DEC-0047=A 回滚口径、DEC-0048=A 配额口径；既有 path 0 改动、既有 schema 仅 `AuditTargetType` 扩展；U-05 已由 DEC-0050=B 解决，U-13 作为 gate 前 residual 跟踪                       |
 | 用户批准（不可逆/高成本项） | pass                 | DEC-0046=A（2026-11-25）：拆分 M06 120h + M06b/M26 48h、25 条 AC、non-goals、角色模型、16 条 OQ 默认值、代码执行不开放；DEC-0047=A 确认 AC-23 回滚口径；DEC-0048=A 确认配额按运行准入 1 单位                                                                                           |
-| Verifier 可测试性/安全边界  | pass                 | REV-M06-ARCH-003 pass（2026-11-25；基于 06b3db2）：F-001..F-021 中 P1 全 fixed，F-013/F-014 为 accepted P2（U-05/U-13），其余 P2/P3 accepted；25 条 AC 逐条对账，AC-05/09/15/16/18 已转 pass，AC-11/25 仅 M06b gate；21 任务/120h、T16a 7h/T17 7h 成立                                 |
+| Verifier 可测试性/安全边界  | pass                 | REV-M06-ARCH-003 pass（2026-11-25；基于 06b3db2）：F-001..F-021 中 P1 全 fixed，F-013 已由 DEC-0050=B/TASK-0252 关闭（REV-TASK-0252-001 pass），F-014 为 accepted P2（U-13），其余 P2/P3 accepted；25 条 AC 逐条对账，AC-05/09/15/16/18 已转 pass，AC-11/25 仅 M06b gate；21 任务/120h、T16a 7h/T17 7h 成立                                 |
 | Ops 可运维/可回滚           | pass                 | REV-M06-OPS-004 pass（2026-11-25；基于 a0b6216）：OPS-017..025 中 8 fixed + OPS-023 accepted，0 open；G1 无窗口回滚、V15 预检/失败处置、RUNBOOK/T15、T16b 演练顺序、Hikari/claim 指标均落位；21 任务/120h、M26 48h 不变                                                                |
-| 安全/合规评审（如适用）     | pass (with residual) | REV-M06-ARCH-003 安全边界 pass（TM-72..TM-85、B-27..B-30、提示注入/canary、工具参数加密/plan 绑定）；U-05（审批理由入审计 PII）与 U-13（跨租户领取独立安全证据）为 accepted P2 residual，owner=Lead/Verifier、due=M06 gate 前；M06b/M26 在 M06 用户验收后另行设计/评审                 |
+| 安全/合规评审（如适用）     | pass (with residual) | REV-M06-ARCH-003 安全边界 pass（TM-72..TM-85、B-27..B-30、提示注入/canary、工具参数加密/plan 绑定）；U-05 已由 DEC-0050=B 解决（TASK-0252/EV-1163，REV-TASK-0252-001 pass；审计 hash-only；R-38 无盐 hash 低熵猜测为 accepted P3）；U-13（跨租户领取独立安全证据）为 accepted P2 residual，owner=Lead/Verifier、due=M06 gate 前；M06b/M26 在 M06 用户验收后另行设计/评审                 |
 
 > ADR-0024 设计评审已完成（REV-M06-ARCH-003 / REV-M06-OPS-004），M06 进入实现；ADR 状态仍 `proposed`，实现/收口后由 Architect 转 `accepted`。本表不声称 M06 已交付。M06b/M26 在 M06 用户验收后另行设计/评审。
 
@@ -516,6 +516,7 @@ Studio 编辑（列表/表单为主，画布增强）
 - 新建 `workflow_approval`，不扩 J2 `approval`；审批人按角色/人解析，排除发起人；无可用审批人保持等待（不自动放行）；发布校验阻断；平台管理员 404。
 - 新增权限 `workflow.read/edit/publish/run/approve/manage` 与系统角色 `WORKFLOW_EDITOR`（租户管理员经既有角色管理授予/撤销，审计 `permission.changed`）。部门负责人仅在发布 `DEPARTMENT` 范围时要求 `department.manager_user_id` 关系；关系本身不授权。
 - 403/404：跨租户/跨部门/私有草稿/他人运行详情 → `RICCON-TENANT-404`；同租户可见无能力 → `RICCON-AUTH-403`；平台管理员统一 404。租户管理员查看他人运行写 `workflow.run.admin_read`。
+- 审计：`workflow.approval.decided` 的 details 只写 `commentSha256`（DEC-0050=B，TASK-0252/EV-1163）；理由原文保留在 `workflow_approval.decision_comment`，按审批/运行 ACL 最小可见；旧 `decisionComment` 历史行读取兼容，新写入禁止明文；其余 `workflow.*` 仍同事务 fail-closed。
 
 ### 契约与迁移
 
@@ -538,7 +539,7 @@ Studio 编辑（列表/表单为主，画布增强）
 - AC-23 的“应用回滚后历史仍可读”与旧 API 无 workflow 端点/审计白名单冲突 → DEC-0047=A 已确认：受支持回滚 = 关开关 + 回滚 Worker + 保留/前向修复 API；全量 API 回滚仅限无数据/审计行（ADR-0024 §10.4）。
 - 按运行计 1 个配额单位（DEC-0048=A），模型成本按 `model_invocation` 聚合；资源上限约束套利；R-36 为已接受 residual。
 - 单入边树状图表达力有限；提示注入无法根治；结果/节点输出存 MySQL 明文（与现有会话内容同级）；180 天物理清理归 M09。
-- 审批理由进入审计可能含 PII（U-05）；平台管理员不可读租户工作流内容；`WORKFLOW_EDITOR` 授予/撤销必须审计并立即生效。
+- 审批理由只写 `commentSha256` 入审计，原文保留在 `workflow_approval.decision_comment`（DEC-0050=B）；旧 `decisionComment` 历史行读取兼容；无盐 hash 低熵猜测为 accepted P3（R-38）。平台管理员不可读租户工作流内容；`WORKFLOW_EDITOR` 授予/撤销必须审计并立即生效。
 
 ## 契约
 

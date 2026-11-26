@@ -3,7 +3,7 @@
 Status: proposed
 Date: 2026-11-25
 Reviewers: `riccon/lead`（范围/合同一致性、回滚口径）、`riccon/verifier`（权限矩阵、审批边界、资源上限、可测性）、`riccon/ops`（并发/租约/开关/回滚/指标）、安全评审（提示注入、工具审批、跨租户/跨部门、审计白名单）
-Approved-by: DEC-0046=A（2026-11-25）已批准 `docs/PRODUCT.md` §12 的 25 条 AC、non-goals、角色模型与 16 条 OQ 默认值，并批准拆分 M06 120h + M06b/M26 48h；M06 先做，M06b 在 M06 用户验收后启动。后续 DEC-0047=A（2026-11-25）已确认 AC-23 回滚口径；DEC-0048=A（2026-11-25）已确认工作流配额按运行准入 1 单位。ADR 本身仍为 `proposed`，待 Lead/Verifier/Ops/安全设计评审。
+Approved-by: DEC-0046=A（2026-11-25）已批准 `docs/PRODUCT.md` §12 的 25 条 AC、non-goals、角色模型与 16 条 OQ 默认值，并批准拆分 M06 120h + M06b/M26 48h；M06 先做，M06b 在 M06 用户验收后启动。后续 DEC-0047=A（2026-11-25）已确认 AC-23 回滚口径；DEC-0048=A（2026-11-25）已确认工作流配额按运行准入 1 单位；DEC-0050=B（2026-11-26）确认审批理由审计只写 `commentSha256`、理由保留在审批记录。ADR 本身仍为 `proposed`，待 Lead/Verifier/Ops/安全设计评审。
 Review-date: 待定（M06 gate 前完成 Lead/Verifier/Ops/安全评审；M06b 另在 M06b gate 前复核）
 Supersedes: none
 Scope: M06「编排 Studio 核心」的流程定义/版本、串行执行 + 条件分支、审批节点、运行历史/重试/取消、权限/审计/资源限制/回滚；并给出 M06b/M26「模板库与共享」的前向兼容边界
@@ -453,7 +453,7 @@ run queue:        PENDING -> RUNNING（领取）；RUNNING + lease 过期 -> 可
 
 - 待办列表只显示“分配给当前用户”的 PENDING 项；按 `created_at ASC`；每项显示流程名、节点名、发起人、等待时长、数据范围摘要；空态固定文案（AC-05）。`GET /workflow-approvals/{id}` 同样只对 assignee 开放（未分配 404）；租户管理员在运行详情只看到审批状态/决定/审批人与时间等元数据，不因管理员身份获得待审批参数摘要。
 - 审批详情/待办显示：将要执行的动作、目标工具、`dataScopeSummary`（运行范围/部门/引用计数）、脱敏参数摘要；**不显示**完整工具参数、完整提示词、凭据、文档正文/OCR 文本。若审批人在 M05 文档 ACL 下无权访问引用文档，只显示脱敏摘要与来源标识（AC-05/18、OQ-M06-13）。`WorkflowDataScopeSummary` 只含范围/部门/计数，不含标题/片段/正文。
-- 审批记录（审批人、时间、决定、理由）在运行详情与审计中可查；拒绝理由必填（≤500 字符），进入审批记录与审计（§8 隐私说明）。
+- 审批记录（审批人、时间、决定、理由）在运行详情/审批记录中可查；拒绝理由必填（≤500 字符），理由原文仅存审批记录，审计只写 `commentSha256`（DEC-0050=B，§8.3）。
 - 无审批通知/代理/转交/超时自动放行（non-goal）；`expires_at` 不使用，审批不过期（M06 不自动放行）。
 
 ### 5.4 审批状态与运行推进
@@ -601,7 +601,7 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 | `workflow.run.retried`                   | `WORKFLOW_RUN` | api        | `workflowRunId`、`nodeId`、`attempt`                                                                                                  |
 | `workflow.run.admin_read`                | `WORKFLOW_RUN` | api        | `workflowRunId`、`scope`(`LIST/DETAIL`)、`reason`（固定 `MANAGEMENT_READ`）                                                           |
 | `workflow.approval.requested`            | `WORKFLOW_RUN` | worker     | `workflowRunId`、`workflowApprovalId`、`nodeId`、`assigneeCount`、`actionKind`、`targetToolName?`                                     |
-| `workflow.approval.decided`              | `WORKFLOW_RUN` | api        | `workflowRunId`、`workflowApprovalId`、`nodeId`、`decision`、`approverUserId`、`targetToolName?`、`decisionComment?`（≤500，见 §8.3） |
+| `workflow.approval.decided`              | `WORKFLOW_RUN` | api/worker | `workflowRunId`、`workflowApprovalId`、`nodeId`、`decision`、`approverUserId`、`targetToolName?`、`commentSha256?`（64 位小写 hex，见 §8.3；历史 `decisionComment` 仅读取兼容） |
 | `workflow.feature.changed`               | `WORKFLOW`     | api        | `enabled`、`source`（`DEPLOYMENT_CONFIG`）、`reason?`、`instanceId`、`observedAt`（启动观测；T01 同步 AuditDetailsPolicy 与启动审计断言） |
 
 - 复用 `mcp.tool.invoked` 记录工作流工具调用：`details` 追加可选 `workflowRunId`、`workflowNodeId`；`approvalId` 为工作流审批 ID；不新增第二套工具审计动作。
@@ -618,7 +618,7 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 
 ### 8.3 隐私说明
 
-`workflow.approval.decided.decisionComment` 是 Product AC-16 要求的“审批含理由”，属于用户输入的业务说明（≤500 字符）。风险：可能包含 PII/敏感信息。控制：审批 UI 明示“理由会进入审计并按审计保留期保存”；输入长度限制；导出沿用 M10 字段白名单；不写入 prompt/文档正文。若安全评审不接受，替代方案是审计只写 `commentSha256` 并在审批记录中保留理由（需 Product 确认 AC-16 口径，§16）。**状态：U-05 未解决**（owner=安全评审/Product，due=M06 gate 前）；当前是临时默认，不得在评审中声称已接受；M06 gate 前必须二选一并补测试（F-013）。
+`workflow.approval.decided` 的 details 只写 `commentSha256`（DEC-0050=B，TASK-0252/EV-1163），**不写理由原文**；理由原文保留在 `workflow_approval.decision_comment`（≤500），仅按审批/运行 ACL 在审批记录与运行详情中可见。哈希规范化：先 `strip()`，再按 UTF-8 计算 SHA-256，输出 64 位小写 hex；API/Worker 两侧写入均只写 `commentSha256`，算法必须一致，修改需新决策。旧行 `decisionComment` 仅由读取端兼容保留，新写入不得再产生该键；审计导出白名单不含理由原文。**U-05 已由 DEC-0050=B 解决**。残余：无盐 SHA-256 对低熵理由可被字典/暴力猜测，接受为 P3（R-38），owner=安全评审/Architect，due=M06 gate 前登记、M06b/M09 复核是否改 keyed HMAC。
 
 ---
 
@@ -674,6 +674,7 @@ Builder 必须新增 `WorkflowContractM06Test`：每个 operationId 的请求/�
 | R-35 | 180 天保留只做到期不可见，物理清理归 M09                                | 合规时间差         | 与 M05 R-26 一致；M06 不声称已删除；M09 release blocker                                   |
 | R-36 | M06 v1 按运行计 1 个配额单位，模型节点不逐次计（DEC-0048=A 接受） | 配额套利 | owner=Lead/Verifier；due=M06 gate 前；accepted_reason=DEC-0048=A 接受；节点 ≤50、步数 ≤200、运行 30min、租户并发 10 约束套利；如客户要求逐次计费需共享配额组件/新 ADR |
 | R-37 | 单入边树状图不支持合并/并行，复杂流程需拆多个流程                       | 表达力限制         | 已在 non-goals；文案不声称并行/循环；后续模块另立 ADR                                     |
+| R-38 | 审计只存无盐 SHA-256；低熵审批理由可被字典/暴力猜测                    | 理由原文被还原（低概率） | accepted P3（DEC-0050=B）；owner=安全评审/Architect；due=M06 gate 前登记、M06b/M09 复核是否改 keyed HMAC；审批记录仍按 ACL 最小可见 |
 
 ---
 
@@ -964,7 +965,7 @@ SELECT
 
 ## 16. 风险与问题记录（含已解决）
 
-U-01/U-02 已由 DEC-0047=A / DEC-0048=A 解决；U-03..U-13 仍未决，不得视为已解决。
+U-01/U-02 已由 DEC-0047=A / DEC-0048=A 解决；U-05 已由 DEC-0050=B 解决；U-03/U-04/U-06..U-13 仍未决，不得视为已解决。
 
 | ID   | 问题                                                                                       | 默认/建议                                                                                         | 需谁决策              | 影响                |
 | ---- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- | --------------------- | ------------------- |
@@ -972,7 +973,7 @@ U-01/U-02 已由 DEC-0047=A / DEC-0048=A 解决；U-03..U-13 仍未决，不得�
 | U-02（已解决：DEC-0048=A） | 配额单位：按运行 1 单位 vs 按模型节点逐次 | DEC-0048=A：按运行准入 1 单位；模型成本按 model_invocation 聚合；资源上限约束；R-36 accepted | user（DEC-0048=A） | 成本/配额公平 |
 | U-03 | AC-01“另一编辑者”是否要求同侪协同编辑                                                      | 默认所有者 + 租户管理员；同侪需草稿共享模型                                                       | Product               | 权限/审计           |
 | U-04 | kill switch 审计：部署配置 + 启动审计 vs 参考 M04 的 DB 开关 + 平台 API | 默认部署配置 + 启动**观测**审计（instanceId/observedAt）+ `riccon_workflow_feature_enabled` gauge + Worker claim 开关；不升用户决策（OPS-M06-009） | Ops/Verifier | 可运维/审计 |
-| U-05 | 审批理由进入审计（AC-16）可能含 PII | **未解决**：临时默认允许 ≤500 字符并提示；替代为 `commentSha256` + 审批记录保留；M06 gate 前安全评审二选一（F-013） | 安全评审/Product | 隐私/合规 |
+| U-05（已解决：DEC-0050=B） | 审批理由进入审计（AC-16）可能含 PII | DEC-0050=B：审计只写 `commentSha256`；理由原文保留在 `workflow_approval.decision_comment`（≤500）；旧 `decisionComment` 历史行读取兼容；API/Worker 对称（TASK-0252/EV-1163，REV-TASK-0252-001 pass） | user（DEC-0050=B） | 隐私/合规 |
 | U-06 | 模型节点是否允许选择任意员工可用模型                                                       | 默认必须属于 REPORT 路由链且 ACTIVE                                                               | Product/架构          | 路由/成本           |
 | U-07 | 运行结果是否写对象存储 | 默认 MySQL ≤5 MiB；预检 `max_allowed_packet`/JDBC `maxAllowedPacket` ≥8 MiB + 容量公式；更大需 ADR-0009 对象 key 扩展（OPS-M06-011） | 架构/Ops | 存储/下载 |
 | U-08 | `WORKFLOW_EDITOR` 角色 vs 专用授权表                                                       | 默认角色（复用角色管理/审计）；专用表增加端点与审计面                                             | Lead/Product          | 权限模型            |
@@ -1048,7 +1049,7 @@ REV-M06-OPS-001 基线 `751d384`、HEAD `a694979`，结论 `fail`；REV-M06-OPS-
 | F-010 | P2 | 设计已补：`WorkflowRun.updatedAt` required；终态停止轮询、result 只读一次（与 OPS-M06-010 同一修改） | `contracts/openapi.yaml`、§7.4、§13.1 T01/T08 | T01/T08；T08 契约冻结前 |
 | F-011 | P2 | 设计已补：`workflow_node_run.input_summary` + `WorkflowNodeRun.inputSummary` | §3.3.4、§4.4、`contracts/openapi.yaml`、T08 | T08；实现前 |
 | F-012 | P2 | 设计已补：`approvalStatus` 聚合规则 + pending/approved/rejected counts（派生，不新增列） | §3.3.3、§5.4、`contracts/openapi.yaml`、T08 | T08；实现前 |
-| F-013 | P2 | **未解决（U-05）**：保留理由入审计为临时默认；安全评审/Product 在 M06 gate 前二选一（原文+提示 vs hash+记录保留）；不得声称已接受 | §8.3、§16 U-05 | 安全评审/Product；M06 gate 前 |
+| F-013 | P2 | **fixed（DEC-0050=B）**：审计只写 `commentSha256`，理由原文保留在审批记录；旧 `decisionComment` 历史行读取兼容；TASK-0252/EV-1163，REV-TASK-0252-001 pass | §8.3、§16 U-05 | 安全评审/Product；已关闭 |
 | F-014 | P2 | 设计已补：claim SELECT 恰好 4 列、非法 tenant fail-closed、claim_failures/denied、静态断言与负向测试；需独立安全评审（与 OPS-M06-015 同一修改） | §4.3、§9.2 TM-85、T06a/TEN-M06-01 | T06a/Verifier；实现前 |
 | F-015 | P2 | 设计已补：拆 T06a/b、T07a/b、T12a/b、T16a/b；总 120h 不变（与 OPS-M06-013 合并） | §13.1 | Lead 建卡；实现前 |
 | F-017 | P3 | 设计已补：请求 schema `if decision=REJECT then comment required/minLength=1`；400 断言 | `contracts/openapi.yaml`、§5.4、T01/T09 | T01/T09；实现前 |
