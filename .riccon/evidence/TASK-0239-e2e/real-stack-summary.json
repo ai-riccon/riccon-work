@@ -1,0 +1,138 @@
+{
+  "status": "passed",
+  "generatedAt": "2026-11-26T02:09:26.212Z",
+  "mode": "full",
+  "phases": {
+    "compose": "passed",
+    "migration": "passed",
+    "fingerprint": "passed",
+    "seed": "passed",
+    "seedIdempotent": "passed",
+    "m10Checks": "passed",
+    "browserE2e": "passed",
+    "j2Journey": "passed",
+    "securityChecks": "passed",
+    "m04Checks": "passed",
+    "m03Checks": "passed"
+  },
+  "env": {
+    "generatedAt": "2026-11-26T01:59:25.070Z",
+    "mode": "full",
+    "host": {
+      "platform": "darwin 24.6.0",
+      "arch": "x64",
+      "cpus": 12,
+      "cpuModel": "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz",
+      "memoryBytes": 17179869184,
+      "memoryGiB": 16,
+      "loadAverage": [
+        3.98,
+        5.32,
+        5.67
+      ],
+      "node": "v26.13.0"
+    },
+    "images": {
+      "compose": [
+        "rustfs/rustfs:1.0.6",
+        "mysql:8.4.13",
+        "opensearchproject/opensearch:3.9.0"
+      ],
+      "started": [
+        "mysql:8.4.13",
+        "opensearchproject/opensearch:3.9.0",
+        "rustfs/rustfs:1.0.6"
+      ]
+    },
+    "k6Version": "k6 v2.4.0 (commit/dd9395906d, go1.26.11, darwin/amd64)",
+    "scriptSha256": "5d471a712b6f19635734f9134d96fe4537d64c8cfabf8567ab0a946c4e6565f1",
+    "chatMaxStreams": 50,
+    "dbPoolSize": 25,
+    "fakeModel": 1,
+    "deploymentMode": "DEMO",
+    "workflow": {
+      "enabled": true,
+      "source": "scripts/real-stack/run.mjs WORKFLOW_ENV（默认值与 application.yml 一致；环境变量可覆盖）",
+      "env": {
+        "RICCON_WORKFLOW_ENABLED": "true",
+        "RICCON_WORKFLOW_MAX_NODES": "50",
+        "RICCON_WORKFLOW_MAX_STEPS": "200",
+        "RICCON_WORKFLOW_MODEL_TIMEOUT_SECONDS": "300",
+        "RICCON_WORKFLOW_RETRIEVAL_TIMEOUT_SECONDS": "120",
+        "RICCON_WORKFLOW_MCP_TIMEOUT_SECONDS": "60",
+        "RICCON_WORKFLOW_RUN_TIMEOUT_MINUTES": "30",
+        "RICCON_WORKFLOW_TENANT_CONCURRENCY": "10",
+        "RICCON_WORKFLOW_FLOW_CONCURRENCY": "5",
+        "RICCON_WORKFLOW_RESULT_MAX_BYTES": "5242880",
+        "RICCON_WORKFLOW_WORKER_CONCURRENCY": "10",
+        "RICCON_WORKFLOW_CLAIM_BATCH": "1",
+        "RICCON_WORKFLOW_CLAIM_POLL_INTERVAL_MS": "1000",
+        "RICCON_WORKFLOW_RETENTION_DAYS": "180"
+      },
+      "maxNodes": 50,
+      "maxSteps": 200,
+      "modelTimeoutSeconds": 300,
+      "retrievalTimeoutSeconds": 120,
+      "mcpTimeoutSeconds": 60,
+      "runTimeoutMinutes": 30,
+      "tenantConcurrency": 10,
+      "flowConcurrency": 5,
+      "resultMaxBytes": 5242880,
+      "workerConcurrency": 10,
+      "retentionDays": 180
+    },
+    "ocr": {
+      "available": false,
+      "exitCode": 4,
+      "engine": "tesseract",
+      "language": "chi_sim+eng",
+      "sample": "deploy/ocr/sample.png",
+      "output": "errorCode=KB_OCR_ENGINE_UNAVAILABLE message=OCR 引擎原生库不可用",
+      "probedAt": "2026-11-26T09:59:23+08:00"
+    },
+    "startCommand": "node scripts/real-stack/run.mjs --mode=full",
+    "startupCommands": [
+      "java -jar apps/api/target/riccon-api-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/MASTER_KEY_ID/FINGERPRINT_PEPPER/BILLING_CURRENCY/QUOTA_DEFAULT_*/DB_POOL)",
+      "java -jar apps/worker/target/riccon-worker-0.1.0-SNAPSHOT-exec.jar (env keys: RICCON_MODEL_DEPLOYMENT_MODE/ENDPOINTS/ALLOW_HTTP/MASTER_KEY/CHAT_MAX_STREAMS/DB_POOL_SIZE/MODEL_FIRST_TOKEN_TIMEOUT/PRE_FIRST_TOKEN_BUDGET)",
+      "node scripts/real-stack/fake-model.mjs --scenario ok --chunk-count 18"
+    ],
+    "perfProfile": null,
+    "openSearch": "started (compose full)",
+    "perfM05": null
+  },
+  "fingerprint": {
+    "api": {
+      "deploymentMode": "DEMO",
+      "endpointSetHash": "45f1b03d8c4b3b8901c8960ecb498d83165b34b92bd18fbddab53356820ca7a2",
+      "routingMode": "",
+      "failoverEnabled": "",
+      "quotaEnforcementEnabled": "",
+      "masterKeyId": "mk-1",
+      "currency": "CNY",
+      "tenantDaily": "10000",
+      "tenantMonthly": "200000",
+      "userDaily": "1000",
+      "userMonthly": "20000"
+    },
+    "worker": {
+      "deploymentMode": "DEMO",
+      "endpointSetHash": "45f1b03d8c4b3b8901c8960ecb498d83165b34b92bd18fbddab53356820ca7a2",
+      "routingMode": "",
+      "failoverEnabled": "",
+      "quotaEnforcementEnabled": "",
+      "masterKeyId": "mk-1",
+      "currency": "CNY",
+      "tenantDaily": "10000",
+      "tenantMonthly": "200000",
+      "userDaily": "1000",
+      "userMonthly": "20000"
+    },
+    "matched": true
+  },
+  "firstTokenBudget": "3000ms (M02-AC-03 / PERF-M04-001)",
+  "notes": [
+    "浏览器 E2E 覆盖登录、J1 上传/解析/引用/重开/首字与逐段增长、J1 运行详情、filesRef 快速发送、J2 创建与审批/产物、M10 OIDC/审计/导出、可访问性。",
+    "J2 后端闭环与安全检查另行通过 HTTP/数据库验证；M10 安全复核另跑测试 IdP 与审计/导出断言；M04 目录/配额/成本检查在 checks.mjs。",
+    "任何阶段失败都会让本脚本以非零退出。"
+  ]
+}
