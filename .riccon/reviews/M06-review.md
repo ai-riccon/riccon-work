@@ -480,6 +480,39 @@ reviewed_evidence:
   - EV-1149
   - EV-1150
   - EV-1151
+  - EV-1016
+  - EV-1017
+  - EV-1019
+  - EV-1021
+  - EV-1030
+  - EV-1033
+  - EV-1045
+  - EV-1067
+  - EV-1077
+  - EV-1079
+  - EV-1084
+  - EV-1094
+  - EV-1082
+  - EV-1038
+  - EV-1053
+  - EV-1114
+  - EV-1118
+  - EV-1089
+  - EV-1065
+  - EV-1076
+  - EV-1159
+  - EV-1025
+  - EV-1041
+  - EV-1049
+  - EV-1057
+  - EV-1066
+  - EV-1091
+  - EV-1119
+  - EV-1110
+  - EV-1145
+  - EV-1142
+  - EV-1144
+  - EV-1172
 notes: >-
   M06 模块评审在最终文档提交 9b86e2b6 上重跑合同 build/test+coverage/e2e、security、docs、
   typecheck+lint；EV-1166 为 external 热栈 + t17b namespace 的合同 test/coverage（API 1049、
