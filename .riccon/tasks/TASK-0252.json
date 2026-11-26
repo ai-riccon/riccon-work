@@ -4,7 +4,7 @@
   "module_id": "M06",
   "title": "M06 U-05 审计只存 commentSha256",
   "owner": "riccon/builder-b1",
-  "status": "in_progress",
+  "status": "review",
   "write_scope": [
     "apps/api/src/main/java/com/riccon/api/workflow/approval/**",
     "apps/api/src/test/java/com/riccon/api/workflow/approval/**",
@@ -19,10 +19,19 @@
     "按 DEC-0050=B：API/Worker 的 workflow.approval.decided 审计 details 只写 commentSha256（不写 decisionComment）；审批记录仍保留 ≤500 理由，审批详情可读；201–500 接受、501 拒绝；审计查询/导出返回 hash；旧 decisionComment 历史行保持可读（读端兼容），不删除历史。",
     "测试 API/Worker approval/audit：decision reason 仍在审批记录、audit 无明文理由、hash 稳定、历史读兼容；T16a WorkflowAuditM06Test 同步；不改 schema/契约/PRODUCT/AGENTS；提交 clean EV；高风险 done 前独立 Verifier 评审。"
   ],
-  "evidence": [],
-  "tools_used": [],
+  "evidence": [
+    "EV-1163"
+  ],
+  "tools_used": [
+    "codegraph",
+    "serena",
+    "maven",
+    "pnpm",
+    "docker"
+  ],
   "blocker": null,
   "created_at": "2026-11-26T10:35:44.788+08:00",
-  "updated_at": "2026-11-26T10:35:45.381+08:00",
-  "baseline_commit": "439a6710af98d1b5258dd647e133bf87d2801e03"
+  "updated_at": "2026-11-26T11:28:33.935+08:00",
+  "baseline_commit": "e26fee8f",
+  "end_commit": "a9608afebd9318b2d0bbd2cad04c4f1c13849dab"
 }
