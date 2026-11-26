@@ -880,4 +880,25 @@ describe('流程编辑器', () => {
     fireEvent.click(screen.getByRole('button', { name: '查看校验问题' }));
     expect(panel).toHaveFocus();
   });
+
+  it('保存 429 时展示并发限制、当前值与下一步（AC-17）', async () => {
+    const limited = new ApiError(
+      'tenant active run limit reached (limit=10, current=12); wait for an active run to finish before retrying',
+      { status: 429, code: 'RICCON-WF-429' },
+    );
+    const saveDraft = vi.fn(async () => {
+      throw limited;
+    });
+    renderEditor(createFakeApi({ saveDraft }));
+    await waitForEditor();
+
+    fireEvent.change(screen.getByLabelText('流程名称'), { target: { value: '触发并发限制' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存草稿' }));
+
+    const alertText = await screen.findByText(/租户并发运行已达上限/);
+    expect(alertText).toHaveTextContent('当前 12 个');
+    expect(alertText).toHaveTextContent('上限 10 个');
+    expect(alertText).toHaveTextContent('等待已有运行结束后重试');
+    expect(alertText).toHaveTextContent('联系租户管理员');
+  });
 });

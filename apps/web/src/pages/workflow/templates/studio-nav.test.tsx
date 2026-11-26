@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { WorkflowRuntimeLimitsApi } from '@/components/workflow/runtime-limits-api';
 import type { SessionInfo } from '@/services/api/types';
 import { authStore } from '@/services/auth/auth-store';
 import { DEMO_SESSION } from '@/test/fake-api';
@@ -36,11 +37,18 @@ const NO_PERMISSION_SESSION: SessionInfo = DEMO_SESSION;
  *
  * @param pathname 当前路径
  * @param session 会话
+ * @param runtimeLimitsApi 运行限制 API；仅入口测试注入
  * @returns 渲染结果
  */
-function renderNav(pathname: string, session: SessionInfo = READER_SESSION) {
+function renderNav(
+  pathname: string,
+  session: SessionInfo = READER_SESSION,
+  runtimeLimitsApi?: WorkflowRuntimeLimitsApi,
+) {
   authStore.setAuthenticated(session);
-  return render(withProviders(<WorkflowStudioNav pathname={pathname} />));
+  return render(
+    withProviders(<WorkflowStudioNav pathname={pathname} runtimeLimitsApi={runtimeLimitsApi} />),
+  );
 }
 
 describe('编排 Studio 子导航', () => {
@@ -134,6 +142,7 @@ describe('编排 Studio 子导航', () => {
     renderNav('/workflows/list', NO_PERMISSION_SESSION);
 
     expect(screen.queryByRole('navigation', { name: '编排 Studio 导航' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '运行限制' })).not.toBeInTheDocument();
     expect(screen.getByTestId('umi-outlet')).toBeInTheDocument();
   });
 
@@ -195,6 +204,50 @@ describe('编排 Studio 子导航', () => {
     expect(screen.queryByRole('navigation', { name: '编排 Studio 导航' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '运行历史' })).not.toBeInTheDocument();
     expect(screen.getByTestId('umi-outlet')).toBeInTheDocument();
+  });
+
+  it('提供运行限制只读入口，点击后从后端加载限制值', async () => {
+    const runtimeLimitsApi: WorkflowRuntimeLimitsApi = {
+      getRuntimeLimits: vi.fn(async () => ({
+        featureEnabled: true,
+        disabledReason: null,
+        maxNodes: 50,
+        maxSteps: 200,
+        nodeTimeoutSeconds: { model: 300, retrieval: 120, mcp: 60 },
+        runTimeoutSeconds: 1800,
+        tenantConcurrency: 10,
+        workflowConcurrency: 5,
+        resultMaxBytes: 5 * 1024 * 1024,
+        retentionDays: 180,
+        retentionPolicy: 'DEPLOYMENT_DEFAULT' as const,
+        generatedAt: '2026-11-26T10:30:00+08:00',
+      })),
+    };
+    renderNav('/workflows/list', READER_SESSION, runtimeLimitsApi);
+
+    const entry = screen.getByRole('button', { name: '运行限制' });
+    expect(entry).toBeVisible();
+    entry.focus();
+    expect(entry).toHaveFocus();
+    expect(runtimeLimitsApi.getRuntimeLimits).not.toHaveBeenCalled();
+
+    fireEvent.click(entry);
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('运行限制（只读）')).toBeVisible();
+    expect(await within(dialog).findByText('50 个节点')).toBeVisible();
+    expect(within(dialog).getByText('10 个运行（含等待审批）')).toBeVisible();
+    expect(within(dialog).queryAllByRole('textbox')).toHaveLength(0);
+    expect(runtimeLimitsApi.getRuntimeLimits).toHaveBeenCalledTimes(1);
+  });
+
+  it('375px 下运行限制入口可见且可聚焦', () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 375 });
+    renderNav('/workflows/list');
+
+    const entry = screen.getByRole('button', { name: '运行限制' });
+    expect(entry).toBeVisible();
+    entry.focus();
+    expect(entry).toHaveFocus();
   });
 
   it('375px 下子导航换行展示且运行历史、审批待办入口可聚焦', () => {

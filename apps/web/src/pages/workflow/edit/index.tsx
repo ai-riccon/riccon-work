@@ -23,6 +23,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WorkflowTag } from '@/components/workflow/accessible-tag';
 import { WorkflowCanvas } from '@/components/workflow/canvas';
+import { describeWorkflowRunLimitExceeded } from '@/components/workflow/runtime-limits-format';
 import { ApiError, describeApiError } from '@/services/api/errors';
 import { formatOffsetDateTime } from '@/services/api/time';
 import { useAuth } from '@/services/auth/auth-store';
@@ -133,6 +134,11 @@ function isWorkflowDisabled(error: unknown): boolean {
 function editorErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof ApiError && error.status === 403) {
     return '你没有该流程的编辑权限，请联系租户管理员。';
+  }
+  // M06-AC-17：429 必须显示后端 detail 中的限制值/当前值与下一步，不能只显示“请稍后重试”。
+  const limitExceeded = describeWorkflowRunLimitExceeded(error);
+  if (limitExceeded) {
+    return limitExceeded;
   }
   return describeApiError(error, fallback);
 }

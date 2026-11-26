@@ -1,0 +1,64 @@
+/**
+ * 运行限制只读抽屉样式。
+ *
+ * 375px 目标：抽屉宽度不超过视口，描述表的标签与值均允许换行，长字节/时间文本
+ * 不撑出横向滚动；只读说明与刷新按钮在窄屏纵向排列。
+ */
+
+.workflow-runtime-limits-drawer .ant-drawer-content-wrapper {
+  max-width: 100vw;
+}
+
+.workflow-runtime-limits-drawer .ant-drawer-body {
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+}
+
+.workflow-runtime-limits-readonly {
+  margin-bottom: 16px !important;
+}
+
+.workflow-runtime-limits {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.workflow-runtime-limits-disabled {
+  margin: 0;
+}
+
+.workflow-runtime-limits-group {
+  min-width: 0;
+}
+
+.workflow-runtime-limits-group .ant-descriptions-view {
+  min-width: 0;
+}
+
+.workflow-runtime-limits-group .ant-descriptions-item-label,
+.workflow-runtime-limits-group .ant-descriptions-item-content {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.workflow-runtime-limits-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* 窄屏：说明与刷新按钮各占一行，避免按钮被长说明挤出视口。 */
+@media (max-width: 575px) {
+  .workflow-runtime-limits-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

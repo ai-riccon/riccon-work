@@ -474,6 +474,62 @@ describe('错误文案', () => {
     expect(describeCreateRunFailure(new Error('boom'))).toContain('创建运行失败');
   });
 
+  it('运行准入 429 解析后端 detail，显示限制/当前值与下一步', () => {
+    const tenantLimited = new ApiError(
+      'tenant active run limit reached (limit=10, current=12); wait for an active run to finish before retrying',
+      { status: 429, code: 'RICCON-WF-429' },
+    );
+    const tenantText = describeCreateRunFailure(tenantLimited);
+    expect(tenantText).toContain('当前 12 个');
+    expect(tenantText).toContain('上限 10 个');
+    expect(tenantText).toContain('等待');
+    expect(tenantText).toContain('联系租户管理员');
+
+    const workflowLimited = new ApiError(
+      'workflow active run limit reached (limit=5, current=5); wait for an active run to finish before retrying',
+      { status: 429, code: 'RICCON-WF-429' },
+    );
+    const workflowText = describeCreateRunFailure(workflowLimited);
+    expect(workflowText).toContain('该流程并发运行已达上限');
+    expect(workflowText).toContain('当前 5 个');
+    expect(workflowText).toContain('调整流程');
+  });
+
+  it('历史重试与编辑器发布 429 同样透传具体限制', () => {
+    const limited = new ApiError(
+      'workflow active run limit reached (limit=5, current=5); wait for an active run to finish before retrying',
+      { status: 429, code: 'RICCON-WF-429' },
+    );
+    expect(describeRunControlFailure(limited, 'retry')).toContain('当前 5 个');
+    expect(describeRunControlFailure(limited, 'retry')).toContain('调整流程');
+    expect(describePublishFailure(limited)).toContain('当前 5 个');
+    expect(describePublishFailure(limited)).toContain('联系租户管理员');
+  });
+
+  it('运行准入的配额 429 仍走 M05 限额/重置文案，不误报成并发超限', () => {
+    const quotaLimited = new ApiError('今日配额已用尽。', {
+      status: 429,
+      code: 'RICCON-QUOTA-429',
+      problem: {
+        type: 'about:blank',
+        title: 'Too Many Requests',
+        status: 429,
+        detail: '今日配额已用尽。',
+        code: 'RICCON-QUOTA-429',
+        traceId: 'trace-1',
+        scopeType: 'TENANT',
+        window: 'DAILY',
+        limit: 100,
+        used: 100,
+        resetsAt: '2026-11-27T00:00:00+08:00',
+      },
+    });
+    const text = describeCreateRunFailure(quotaLimited);
+    expect(text).toContain('今日配额已用尽');
+    expect(text).toContain('重置时间');
+    expect(text).not.toContain('并发运行');
+  });
+
   it('编排关闭只认 503 稳定码', () => {
     expect(isWorkflowUnavailable(apiError(503, 'RICCON-WF-503'))).toBe(true);
     expect(isWorkflowUnavailable(apiError(503, 'RICCON-MODEL-503'))).toBe(false);

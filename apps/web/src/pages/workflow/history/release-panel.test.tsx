@@ -444,16 +444,23 @@ describe('ReleasePanel', () => {
     expect(createRun).not.toHaveBeenCalled();
   });
 
-  it('运行 429/503 给出可执行提示', async () => {
-    const createRun = vi
-      .fn<WorkflowHistoryApi['createRun']>()
-      .mockRejectedValueOnce(apiError(429, 'RICCON-WF-429'));
+  it('运行 429 展示后端 limit/current 与等待/联系管理员下一步', async () => {
+    const limited = new ApiError(
+      'tenant active run limit reached (limit=10, current=10); wait for an active run to finish before retrying',
+      { status: 429, code: 'RICCON-WF-429' },
+    );
+    const createRun = vi.fn<WorkflowHistoryApi['createRun']>().mockRejectedValueOnce(limited);
     renderPanel(createFakeApi({ createRun }));
     await waitForDetail();
 
     fireEvent.click(screen.getAllByRole('button', { name: '用此版本运行' })[0]);
     fireEvent.click(await screen.findByRole('button', { name: '提交运行' }));
-    expect(await screen.findByText(/同时运行的流程已达上限/)).toBeInTheDocument();
+    const alertText = await screen.findByText(/租户并发运行已达上限/);
+    expect(alertText).toHaveTextContent('当前 10 个');
+    expect(alertText).toHaveTextContent('上限 10 个');
+    expect(alertText).toHaveTextContent('等待已有运行结束后重试');
+    expect(alertText).toHaveTextContent('联系租户管理员');
+    expect(screen.queryByText('同时运行的流程已达上限，请等待已有运行结束后重试。')).toBeNull();
   });
 
   it('版本列表失败时仍可用最近发布版本运行', async () => {

@@ -14,6 +14,11 @@ const EDITOR_CSS = readFileSync(new URL('./edit/editor.css', import.meta.url), '
 const RUN_CSS = readFileSync(new URL('./run/run.css', import.meta.url), 'utf8');
 const HISTORY_CSS = readFileSync(new URL('./history/history.css', import.meta.url), 'utf8');
 const APPROVALS_CSS = readFileSync(new URL('./approvals/approvals.css', import.meta.url), 'utf8');
+const RUNTIME_LIMITS_CSS = readFileSync(
+  new URL('../../components/workflow/runtime-limits.css', import.meta.url),
+  'utf8',
+);
+const TEMPLATES_CSS = readFileSync(new URL('./templates/templates.css', import.meta.url), 'utf8');
 
 /**
  * 提取简单选择器的声明块。
@@ -103,5 +108,28 @@ describe('编排页面危险按钮颜色对比度', () => {
     const color = /color:\s*(#[0-9a-fA-F]{6});/.exec(block ?? '')?.[1] ?? '';
     expect(contrastRatio(color, '#ffffff')).toBeGreaterThanOrEqual(4.5);
     expect(APPROVALS_CSS.toLowerCase()).not.toContain('#8c8c8c');
+  });
+
+  it('运行限制抽屉 375px 不超出视口，长字段可换行', () => {
+    expect(RUNTIME_LIMITS_CSS).toContain('@media (max-width: 575px)');
+    const wrapper = declarationBlock(
+      RUNTIME_LIMITS_CSS,
+      '.workflow-runtime-limits-drawer .ant-drawer-content-wrapper',
+    );
+    expect(wrapper).toContain('max-width: 100vw');
+    const body = declarationBlock(
+      RUNTIME_LIMITS_CSS,
+      '.workflow-runtime-limits-drawer .ant-drawer-body',
+    );
+    expect(body).toContain('overflow-x: hidden');
+    const content = declarationBlock(RUNTIME_LIMITS_CSS, '.workflow-runtime-limits');
+    expect(content).toContain('min-width: 0');
+    expect(RUNTIME_LIMITS_CSS).toContain('overflow-wrap: anywhere');
+  });
+
+  it('Studio 运行限制入口在 375px 下左对齐换行', () => {
+    const block = declarationBlock(TEMPLATES_CSS, '.workflow-studio-help');
+    expect(block).not.toBeNull();
+    expect(TEMPLATES_CSS).toContain('@media (max-width: 575px)');
   });
 });

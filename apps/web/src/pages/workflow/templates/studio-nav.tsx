@@ -1,4 +1,9 @@
+import { InfoCircleOutlined } from '@ant-design/icons';
 import { Link, Outlet, useLocation } from '@umijs/max';
+import { Button } from 'antd';
+import { useState } from 'react';
+import { WorkflowRuntimeLimitsDrawer } from '@/components/workflow/runtime-limits';
+import type { WorkflowRuntimeLimitsApi } from '@/components/workflow/runtime-limits-api';
 import { useAuth } from '@/services/auth/auth-store';
 import { isNavigationActive } from '../../../../config/routes';
 import { hasWorkflowPermission, WORKFLOW_PERMISSIONS } from '../list/format';
@@ -8,6 +13,8 @@ import './templates.css';
 export interface WorkflowStudioNavProps {
   /** 当前路径；默认读取 Umi 路由，测试可注入不同深链。 */
   pathname?: string;
+  /** 运行限制 API；默认同源真实客户端，仅测试注入替身。 */
+  runtimeLimitsApi?: WorkflowRuntimeLimitsApi;
 }
 
 /** Studio 子导航条目。 */
@@ -69,11 +76,15 @@ function isStudioNavActive(pathname: string, path: string): boolean {
  * @param props 可注入的当前路径
  * @returns 子导航与页面出口
  */
-export default function WorkflowStudioNav({ pathname: injectedPathname }: WorkflowStudioNavProps) {
+export default function WorkflowStudioNav({
+  pathname: injectedPathname,
+  runtimeLimitsApi,
+}: WorkflowStudioNavProps) {
   const auth = useAuth();
   const location = useLocation();
   const pathname = injectedPathname ?? location.pathname;
   const canRead = hasWorkflowPermission(auth.session?.permissions, WORKFLOW_PERMISSIONS.read);
+  const [limitsOpen, setLimitsOpen] = useState(false);
   const visibleLinks = STUDIO_LINKS.filter(
     (item) =>
       item.permission === undefined ||
@@ -96,8 +107,23 @@ export default function WorkflowStudioNav({ pathname: injectedPathname }: Workfl
               );
             })}
           </ol>
+          <div className="workflow-studio-help">
+            <Button
+              type="link"
+              size="small"
+              icon={<InfoCircleOutlined aria-hidden="true" />}
+              onClick={() => setLimitsOpen(true)}
+            >
+              运行限制
+            </Button>
+          </div>
         </nav>
       ) : null}
+      <WorkflowRuntimeLimitsDrawer
+        open={limitsOpen}
+        onClose={() => setLimitsOpen(false)}
+        api={runtimeLimitsApi}
+      />
       <Outlet />
     </>
   );

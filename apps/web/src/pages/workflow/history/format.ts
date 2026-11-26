@@ -1,3 +1,4 @@
+import { describeWorkflowRunLimitExceeded } from '@/components/workflow/runtime-limits-format';
 import { ApiError, describeApiError } from '@/services/api/errors';
 import type { SessionInfo } from '@/services/api/types';
 import { formatOffsetDateTime } from '@/services/api/time';
@@ -515,6 +516,11 @@ export function describePublishFailure(error: unknown): string {
         return '流程不存在，或当前账号无权访问该流程。';
       case 409:
         return '流程已被其他操作修改，请刷新后重试。';
+      case 429:
+        return (
+          describeWorkflowRunLimitExceeded(error) ??
+          describeApiError(error, '发布失败，请稍后重试。')
+        );
       case 503:
         return '编排功能已关闭，暂时不能发布；已有版本仍可查看。';
       default:
@@ -569,8 +575,17 @@ export function describeRunControlFailure(error: unknown, action: 'cancel' | 're
         return action === 'cancel'
           ? '运行已结束或状态已变化，不能取消；请刷新后查看最新状态。'
           : '运行或节点状态已变化（可能已重试、已取消或已结束），请刷新后重试。';
-      case 429:
+      case 429: {
+        const runLimited = describeWorkflowRunLimitExceeded(error);
+        if (runLimited) {
+          return runLimited;
+        }
+        // 取消/重试也可能触发配额校验；配额 429 归 M05 文案，其他 429 保持并发提示。
+        if (error.code === 'RICCON-QUOTA-429') {
+          return describeApiError(error, '配额已用尽，请稍后重试。');
+        }
         return '并发运行已达上限，请稍后重试。';
+      }
       case 503:
         return '编排功能已关闭，当前不能执行该操作；已有运行记录仍可查看。';
       default:
@@ -597,8 +612,18 @@ export function describeCreateRunFailure(error: unknown): string {
         return '流程或所选版本不可见，可能已停用、删除或不在你的运行范围。';
       case 409:
         return '流程状态已变化或所选版本不可运行，请刷新后重试。';
-      case 429:
+      case 429: {
+        const runLimited = describeWorkflowRunLimitExceeded(error);
+        if (runLimited) {
+          return runLimited;
+        }
+        // 运行准入同时消耗 M04 配额（DEC-0048=A）：配额 429 必须沿用 M05 的
+        // “限额类型 + 重置时间”文案，不能误报成工作流并发超限。
+        if (error.code === 'RICCON-QUOTA-429') {
+          return describeApiError(error, '配额已用尽，请稍后重试。');
+        }
         return '同时运行的流程已达上限，请等待已有运行结束后重试。';
+      }
       case 503:
         return '编排功能已关闭，暂时不能创建运行；已有运行记录仍可查看。';
       default:

@@ -434,6 +434,28 @@ describe('RunHistoryPanel', () => {
     await waitFor(() => expect(listRuns).toHaveBeenCalledTimes(2));
   });
 
+  it('重试 429 展示后端并发限制与等待/联系管理员下一步', async () => {
+    const retryRunNode = vi.fn(async () => {
+      throw new ApiError(
+        'workflow active run limit reached (limit=5, current=5); wait for an active run to finish before retrying',
+        { status: 429, code: 'RICCON-WF-429' },
+      );
+    });
+    const listRuns = vi.fn(async () => pageOf([makeRun({ status: 'FAILED' })]));
+    renderPanel(createFakeApi({ retryRunNode, listRuns }));
+
+    await screen.findByText('市场调研流程');
+    fireEvent.click(screen.getByRole('button', { name: '重试失败节点：市场调研流程' }));
+    fireEvent.click(await screen.findByRole('button', { name: '提交重试' }));
+
+    const alertText = await screen.findByText(/该流程并发运行已达上限/);
+    expect(alertText).toHaveTextContent('当前 5 个');
+    expect(alertText).toHaveTextContent('上限 5 个');
+    expect(alertText).toHaveTextContent('等待该流程的运行结束后重试');
+    expect(alertText).toHaveTextContent('联系租户管理员');
+    expect(listRuns).toHaveBeenCalledTimes(1);
+  });
+
   it('运行已不在失败状态时不提交重试', async () => {
     const retryRunNode = vi.fn(async () => undefined);
     renderPanel(
